@@ -81,6 +81,32 @@ div.newnumbered li:before {
 
 This paper contains a self-contained design for an executors library for C++, based on the ideas in [[P0443R14]] and its companion papers.
 
+## Code example ## {#design-code}
+
+Using the facilities in this paper, an end user can write code such as this:
+
+<pre highlight="c++">
+using namespace std::execution;
+
+// get a scheduler from somewhere, e.g. a thread pool
+executor auto sch = get_thread_pool().scheduler();
+
+// describe a chain of dependent work
+sender auto begin = schedule(sch);
+sender auto hi_again = then(begin, []{
+    std::cout << "Hi again! Have an int.";
+    return 13;
+});
+sender auto work = then(hi_again, [](int arg) { return arg + 42; });
+
+// submit the work for execution on the pool
+// block the current thread until its completion
+// the return value is a tuple of values being the result of the sender chain
+auto [i] = std::this_thread::sync_wait(work);
+</pre>
+
+See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]] for short explanations of the algorithms used in this code example.
+
 ## What this proposal is ## {#abstract-is}
 
 This paper describes a design for a complete, self-contained library providing precise control for code execution on varying execution contexts in C++. This paper should be considered as a full design on its own, based heavily on prior papers that have been seen and
@@ -112,7 +138,7 @@ essential when writing user code using standard execution concepts; we have also
 4. We have implemented the SG1 direction to remove executors and base all of the proposed functionalities on senders and schedulers.
 5. Senders now advertise what scheduler, if any, they are bound to, and they also advertise whether they will execute in a strictly lazy way (with no work being submitted for execution until `execution::start` is called on an operation state they produced) or not.
 6. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
-7. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-algorithms]].
+7. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
 8. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-fork]].
 
 # Revision history # {#revisions}
@@ -138,32 +164,6 @@ The following conventions are used throughout the design section:
 
   1. Universal references and explicit calls to `std::move`/`std::forward` are omitted in code samples and signatures for simplicity; assume universal references and perfect forwarding unless stated otherwise.
   2. The namespace proposed in this paper is the same as in [[P0443R14]]: `std::execution`; however, for brevity, the `std::` part of this name is omitted. When you see `execution::foo`, treat that as `std::execution::foo`.
-
-## Code example ## {#design-code}
-
-Using the facilities in this paper, an end user can write code such as this:
-
-<pre highlight="c++">
-using namespace std::execution;
-
-// get a scheduler from somewhere, e.g. a thread pool
-executor auto sch = get_thread_pool().scheduler();
-
-// describe a chain of dependent work
-sender auto begin = schedule(sch);
-sender auto hi_again = then(begin, []{
-    std::cout << "Hi again! Have an int.";
-    return 13;
-});
-sender auto work = then(hi_again, [](int arg) { return arg + 42; });
-
-// submit the work for execution on the pool
-// block the current thread until its completion
-// the return value is a tuple of values being the result of the sender chain
-auto [i] = std::this_thread::sync_wait(work);
-</pre>
-
-See [[#design-algorithms]] for short explanations of the algorithms used in this code example.
 
 # Proposed design - user side # {#design-user}
 
@@ -191,7 +191,7 @@ sender is said to <dfn>send</dfn> some values if a receiver connected (see [[#de
 
 The primary defining operation of senders is [[#design-connect]]; this function, however, is not a user-facing API; it is used to facilitate communication between senders and various sender algorithms (or other senders), but end user code is not expected to invoke
 it directly. The way user code is expected to interact with senders is by using said sender algorithms; the opening example of the design section already contains a sample of sender algorithms, and the ones we are proposing as a part of this paper are described in
-[[#design-algorithms]]. Here is how a user can ensure that work is started (and will eventually complete if no errors happen), but without waiting for it to finish:
+[[#design-factories]], [[#design-adapters]], and [[#design-algorithms]]. Here is how a user can ensure that work is started (and will eventually complete if no errors happen), but without waiting for it to finish:
 
 <pre highlight="c++">
 execution::scheduler auto sch = get_thread_pool().scheduler();
@@ -243,11 +243,13 @@ scheduler returned from this function.
 
 ## Senders advertise if they are lazy ## {#design-laziness}
 
-It is sometimes necessary for the correctness of an algorithm to know whether calling a sender algorithm on a sender can cause work to start without explicitly triggering it (for instance by calling [[#design-algo-ensure_started]]). A consumer of a sender can check
-whether a sender guarantees that work will not be submitted before `ensure_started` or a similar function is called by checking the value of `execution::sender_traits<Sender>::is_strictly_lazy`. A sender <b>must</b> strictly adhere to this value.
+It is sometimes necessary for the correctness of an algorithm to know whether calling a sender algorithm on a sender can cause work to start without explicitly triggering it (for instance by calling [[#design-adapter-ensure_started]]). A consumer of a sender can
+check whether a sender guarantees that work will not be submitted before `ensure_started` or a similar function is called by checking the value of `execution::sender_traits<Sender>::is_strictly_lazy`. A sender <b>must</b> strictly adhere to this value.
 
 Only senders that have an [=underlying scheduler=] are allowed to set the above value to `false`. If a sender does not have an underlying scheduler, that means there is not enough information for it to actually start work on its own, and that information must be
 provided later, for instance by passing it to `execution::on`.
+
+A sender can be stripped off of its underlying scheduler, and by consequence - turned into a strictly lazy sender - by calling [[#design-adapter-unschedule]].
 
 ## Execution context transitions are explicit ## {#design-transitions}
 
@@ -281,21 +283,21 @@ std::this_thread::sync_wait(then2);
 Any non-trivial program will eventually want to fork a chain of senders into independent streams of work; an incoming event to a middleware system may be required to trigger events on more than one downstream system, for instance. This requires that senders provide
 well defined mechanisms for making sure that attaching multiple continuations to a sender is possible and correct.
 
-There are two parts of what we are proposing in this area. One is a semantic requirement on the `connect` function of senders: if a call to `execution::connect(sender, receiver)` is well formed when `sender` is an lvalue, the sender must correctly accept further
-calls to `connect` with different receiver, and the sender shall [=send=] equivalent values to all of those receivers. A call to `connect` with an rvalue sender is allowed to consume the sender, and subsequent calls to `connect` are not required to be well-defined.
+There are two parts of what we are proposing in this area. One is a semantic requirement on both senders and sender algorithms: if you invoke a sender algorithm with an lvalue sender, that sender must remain valid after such an algorithm invocation. If your algorithm
+accepts an lvalue sender, it must not invalidate the lvalue it has received. It must be possible to invoke sender algorithms with rvalue senders, but lvalues must not be invalidated other than by turning them in rvalues ("moving" them).
 
-The consequences of the above requirement are as follows
+The consequences of the above requirement are as follows:
 
- * single-shot senders should only define rvalue-qualified overloads of `connect`;
- * multi-shot senders should define at least an lvalue-qualified overload of `connect`; and
- * if a call to `connect` with an lvalue sender argument compiles, that means the sender is multi-shot.
+ * single-shot senders should only work with rvalue-qualified overloads of sender algorithms;
+ * multi-shot senders should work with at least some lvalue-qualified algorithms; and
+ * multi-shot senders can still have operations that require moving them into an algorithm call.
 
 To facilitate attaching multiple continuations to the same sender multiple times regardless of whether it is single-shot or multi-shot, we are also proposing a new sender algorithm: `split`.
 
 <pre highlight=c++>
 auto some_algorithm(execution::sender auto predecessor) {
-    // here, we can test whether the predecessor is multi-shot; for instance, with
-    // requires { { execution::connect(predecessor, desired_receiver) }; }
+    // here, we can test whether the predecessor is multi-shot
+    // (for the purposes of the algorithms being used in this function)
 
     // but we can also turn the predecessor into a multi-shot sender:
 
@@ -309,20 +311,22 @@ auto some_algorithm(execution::sender auto predecessor) {
 Similarly to how it's hard to write a complex program that will eventually want to fork sender chains into independent streams, it's also hard to write a program that does not want to eventually create join nodes, where multiple independent streams of execution are
 merged into a single one in an asynchronous fashion. We are proposing two algorithms that deal with the common use cases for such merging: `when_all` and `when_any`.
 
-Both of these algorithms are extremely similar. They both take two groups of arguments:
-
- * the "canonical" scheduler: this is the scheduler on whose execution agent the completion of the sender returned by the algorithm will happen - for rationale as to why this is necessary, refer to [[#design-propagation]] and [[#design-customization]]; and
- * any non-zero number of predecessor senders.
+Both of these algorithms are very similar; they differ primarily in when they complete, and what values they send:
 
 The sender returned from `when_all` completes when the last of the predecessor senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the predecessor senders, in order.
 
 The sender returned from `when_any` completes when the first of the predecessor senders completes. It [=send|sends=] the value that has been sent by that first predecessor to complete.
 
-## Proposed set of user-facing algorithms ## {#design-algorithms}
+We propose that when all the predecessor senders to both of these algorithms do not have an [=underlying scheduler=], there is no additional information that must be passed into `when_all` and `when_any`, and they should both return senders that do not have an
+underlying scheduler. A similar route could be taken for senders bound to schedulers, but we believe that this is suboptimal. If the joining algorithm return senders that are detached from any schedulers that have to be explicitly transitioned onto one, they may
+result in a loss of efficiency, because additional control and data transfers may need to happen in such case. Therefore, we propose that when at least one of the sender arguments to the joining algorithms has an underlying scheduler, a user must also provide an
+explicit scheduler argument, which describes the scheduler that the returned sender will be bound to.
 
-This is a short summary of all the algorithms expected to be called by end users of the executors library that are being proposed in this paper.
+## Proposed set of user-facing sender factories ## {#design-factories}
 
-### `execution::schedule` ### {#design-algo-schedule}
+A <dfn>sender factory</dfn> is a function which creates new senders, without requiring a predecessor sender.
+
+### `execution::schedule` ### {#design-factory-schedule}
 
 <pre highlight="c++">
 execution::sender auto schedule(
@@ -339,74 +343,7 @@ execution::sender auto snd1 = execution::schedule(sch1);
 // snd1 describes the creation of a new task on the system thread pool
 </pre>
 
-### `execution::transfer` ### {#design-algo-transfer}
-
-<pre highlight="c++">
-execution::sender auto transfer(
-    execution::sender auto predecessor,
-    execution::scheduler auto scheduler
-);
-</pre>
-
-Returns a sender describing the transition from the execution agent of the predecessor to the execution agent of the target scheduler. See [[#design-transitions]].
-
-<pre highlight="c++">
-execution::scheduler auto cpu_sched = get_system_thread_pool().scheduler();
-execution::scheduler auto gpu_sched = cuda::scheduler();
-
-execution::sender auto cpu_task = execution::schedule(cpu_sched);
-// cpu_task describes the creation of a new task on the system thread pool
-
-execution::sender auto gpu_task = execution::transfer(cpu_task, gpu_sched);
-// gpu_task describes the transition of the task graph described by cpu_task to the gpu
-</pre>
-
-### `execution::then` ### {#design-algo-then}
-
-<pre highlight="c++">
-execution::sender auto then(
-    execution::sender auto predecessor,
-    std::invocable<<i>values-sent-by(predecessor)</i>...> function
-);
-</pre>
-
-Returns a sender describing the task graph described by the predecessor, with an added node of invoking the provided function with the values [=send|sent=] by the predecessor as arguments.
-
-<pre highlight="c++">
-execution::sender auto pred = get_predecessor();
-execution::sender auto snd = execution::then(pred, [](auto... args) {
-    std::print(args..);
-});
-// snd describes the work described by pred
-// followed by printing all of the values sent by pred
-</pre>
-
-This algorithm is included, as it is necessary for writing any sender code that actually performs a useful function.
-
-### `execution::on` ### {#design-algo-on}
-
-<pre highlight="c++">
-execution::sender auto on(
-    execution::scheduler auto sched,
-    execution::sender auto snd
-);
-</pre>
-
-TODO
-
-### `execution::unschedule` ### {#design-algo-unschedule}
-
-<pre highlight="c++">
-execution::sender unschedule(
-    execution::sender auto snd
-);
-</pre>
-
-Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but does not have an [=underlying scheduler=].
-
-TODO: example
-
-### `execution::just` ### {#design-algo-just}
+### `execution::just` ### {#design-factory-just}
 
 <pre highlight="c++">
 execution::sender auto just(
@@ -418,7 +355,7 @@ Returns a sender with no [=underlying scheduler=], which [=send|sends=] copies o
 
 TODO: example
 
-### `execution::just_on` ### {#design-algo-just_on}
+### `execution::just_on` ### {#design-factory-just_on}
 
 <pre highlight="c++">
 execution::sender auto just_on(
@@ -441,13 +378,84 @@ execution::sender auto snd = execution::then(pred, [](auto... args) {
 
 This algorithm is included, as it greatly simplifies lifting values into senders.
 
-### `execution::bulk` ### {#design-algo-bulk}
+## Proposed set of user-facing sender adapters ## {#design-adapters}
+
+A <dfn>sender adapter</dfn> is a function which accepts one or more senders, and possibly other algorithms, and returns a sender, whose completion is related to the sender arguments it has received.
+
+### `execution::transfer` ### {#design-adapter-transfer}
+
+<pre highlight="c++">
+execution::sender auto transfer(
+    execution::sender auto predecessor,
+    execution::scheduler auto scheduler
+);
+</pre>
+
+Returns a sender describing the transition from the execution agent of the predecessor to the execution agent of the target scheduler. See [[#design-transitions]].
+
+<pre highlight="c++">
+execution::scheduler auto cpu_sched = get_system_thread_pool().scheduler();
+execution::scheduler auto gpu_sched = cuda::scheduler();
+
+execution::sender auto cpu_task = execution::schedule(cpu_sched);
+// cpu_task describes the creation of a new task on the system thread pool
+
+execution::sender auto gpu_task = execution::transfer(cpu_task, gpu_sched);
+// gpu_task describes the transition of the task graph described by cpu_task to the gpu
+</pre>
+
+### `execution::then` ### {#design-adapter-then}
+
+<pre highlight="c++">
+execution::sender auto then(
+    execution::sender auto predecessor,
+    std::invocable<<i>values-sent-by(predecessor)</i>...> function
+);
+</pre>
+
+Returns a sender describing the task graph described by the predecessor, with an added node of invoking the provided function with the values [=send|sent=] by the predecessor as arguments.
+
+<pre highlight="c++">
+execution::sender auto pred = get_predecessor();
+execution::sender auto snd = execution::then(pred, [](auto... args) {
+    std::print(args..);
+});
+// snd describes the work described by pred
+// followed by printing all of the values sent by pred
+</pre>
+
+This algorithm is included, as it is necessary for writing any sender code that actually performs a useful function.
+
+### `execution::on` ### {#design-adapter-on}
+
+<pre highlight="c++">
+execution::sender auto on(
+    execution::scheduler auto sched,
+    execution::sender auto snd
+);
+</pre>
+
+TODO
+
+### `execution::unschedule` ### {#design-adapter-unschedule}
+
+<pre highlight="c++">
+execution::sender unschedule(
+    execution::sender auto snd
+);
+</pre>
+
+Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but does not have an [=underlying scheduler=].
+
+TODO: example
+
+### `execution::bulk` ### {#design-adapter-bulk}
 
 <pre highlight="c++">
 execution::sender auto bulk(
     execution::sender auto predecessor,
-    execution::shape auto shape,
-    invocable<<i>index-of(shape)</i>, <i>values-sent-by(predecessor)</i>...> function
+    std::integral auto size,
+    invocable<decltype(size), <i>values-sent-by(predecessor)</i>...> function
 );
 </pre>
 
@@ -457,7 +465,7 @@ In this paper, only integral types satisfy the concept of a shape, but future pa
 
 XXX TODO: provide an example
 
-### `execution::split` ### {#design-algo-split}
+### `execution::split` ### {#design-adapter-split}
 
 <pre highlight="c++">
 execution::sender auto split(execution::sender auto sender);
@@ -465,17 +473,24 @@ execution::sender auto split(execution::sender auto sender);
 
 If the provided sender is a multi-shot sender, returns that sender. Otherwise, returns a multi-shot sender which sends values equivalent to the values sent by the provided sender. See [[#design-fork]].
 
-### `execution::when_all` ### {#design-algo-when_all}
+### `execution::when_all` ### {#design-adapter-when_all}
 
 <pre highlight="c++">
 execution::sender auto when_all(
     execution::scheduler auto sched,
     execution::sender auto ...predecessors
 );
+
+execution::sender auto when_all(
+    execution::sender auto ...predecessors
+) requires (!<i>have-underlying-schedulers(predecessors...)</i>);
 </pre>
 
-Returns a sender which completes once all of the predecessor senders have completed. This sender will complete on an execution agent obtained from the provided scheduler. The values send by this sender are the values sent by each of the predecessor, in order of the
-arguments passed to `when_all`. See [[#design-join]].
+Returns a sender which completes once all of the predecessor senders have completed. The values send by this sender are the values sent by each of the predecessor, in order of the arguments passed to `when_all`.
+
+For the first overload, the returned sender will complete on an execution agent obtained from the provided scheduler. For the second overload, the returned sender shall not have an underlying scheduler.
+
+See [[#design-join]].
 
 <pre highlight="c++">
 execution::scheduler auto sched = get_thread_pool().scheduler();
@@ -494,16 +509,23 @@ execution::sender auto final = execution::then(both, [](auto... args){
 // when final executes, it will print "the two args: 1, abc"
 </pre>
 
-### `execution::when_any` ### {#design-algo-when_any}
+### `execution::when_any` ### {#design-adapter-when_any}
 
 <pre highlight="c++">
 execution::sender auto when_any(
     execution::scheduler auto sched,
     execution::sender auto ...predecessors
 );
+
+execution::sender auto when_any(
+    execution::sender auto ...predecessors
+) requires (!<i>have-underlying-schedulers(predecessors...)</i>);
 </pre>
 
-Returns a sender which completes once any of the predecessor senders has completed. This sender will complete on an execution agent obtained from the provided scheduler. The value sent by this sender is the value sent by the first of the predecessors that completes.
+Returns a sender which completes once any of the predecessor senders has completed. The value sent by this sender is the value sent by the first of the predecessors that completes.
+
+For the first overload, the returned sender will complete on an execution agent obtained from the provided scheduler. For the second overload, the returned sender shall not have an underlying scheduler.
+
 See [[#design-join]].
 
 <pre highlight="c++">
@@ -525,7 +547,7 @@ execution::sender auto final = execution::then(either, [](auto arg){
 // * "the only arg: abc"
 </pre>
 
-### `execution::ensure_started` ### {#design-algo-ensure_started}
+### `execution::ensure_started` ### {#design-adapter-ensure_started}
 
 <pre highlight="c++">
 execution::sender auto ensure_started(
@@ -538,7 +560,11 @@ for execution on the appropriate execution contexts. Returns a sender which comp
 
 XXX TODO: provide an example
 
-### `execution::submit` ### {#design-algo-submit}
+## Proposed set of user-facing sender algorithms ## {#design-algorithms}
+
+A <dfn>sender algorithm</dfn> is a function that accepts one or more senders, but does not return a sender.
+
+### `execution::submit` ### {#design-adapter-submit}
 
 <pre highlight="c++">
 void auto submit(
@@ -548,7 +574,7 @@ void auto submit(
 
 Like `ensure_started`, but does not return a value; if the provided sender sends an error instead of a value, `std::terminate` is called.
 
-### `std::this_thread::sync_wait` ### {#design-algo-sync_wait}
+### `std::this_thread::sync_wait` ### {#design-algorithm-sync_wait}
 
 <pre highlight="c++">
 auto sync_wait(
@@ -557,8 +583,8 @@ auto sync_wait(
 </pre>
 
 `std::this_thread::sync_wait` is an algorithm that submits the work described by the provided sender for execution, similarly to `ensure_started`, execept that it blocks <b>the current `std::thread` or thread of `main`</b> until the work is completed, and returns
-a tuple of values that were sent by the provided sender on its completion of work. Where [[#design-algo-schedule]] and [[#design-algo-just_on]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of senders, retrieving the
-result of the task graph.
+a tuple of values that were sent by the provided sender on its completion of work. Where [[#design-factory-schedule]] and [[#design-factory-just_on]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of senders,
+retrieving the result of the task graph.
 
 XXX TODO: provide an example
 
@@ -567,7 +593,9 @@ does not specify any functions on the current execution agent other than those i
 `std::this_fiber::sync_wait` would be provided. We also expect that runtimes with execution agents that use different synchronization mechanisms than `std::thread`'s will provide their own flavors of `sync_wait` as well (assuming their execution agents have the means
 to block in a non-deadlock manner).
 
-### `execution::execute` ### {#design-algo-execute}
+## `execution::execute` ## {#design-execute}
+
+In addition to the three categories of functions presented above, we also propose to include a convenience function for fire-and-forget eager one-way submission of an invocable to a scheduler, to fullfil the role of one-way executors from P0443.
 
 <pre highlight="c++">
 void execution::execute(
@@ -644,7 +672,7 @@ execution::start(state);
 
 Senders being able to be bound to schedulers, and being able to advertise what their [=underlying scheduler=] is, fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler it will execute on.
 
-The simple way to provide customizations for algorithms like `then`, which we'll call <dfn lt="sender adapter algorithm">sender adapter algorithms</dfn>, is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
+The simple way to provide customizations for functionS like `then`, that is for [=sender adapter|sender adapters=] and [=sender algorithm|algorithms=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
 the expression `execution::then(sender, invocable)` to be equivalent to:
 
   1. `sender.then(invocable)`, if that expression is well formed; otherwise
@@ -755,7 +783,7 @@ The mechanism for this advertisement is the same as in [[P0443R14]]; the way to 
 `sender_traits::value_types` is a template that takes two arguments: one is a tuple-like template, the other is a variant-like template. The tuple-like argument is required to represent senders sending more than one value (such as `when_all`). The variant-like
 argument is required to represent senders that choose which specific values to send at runtime (such as `when_any`).
 
-There's a choice made in the specification of [[#design-algo-sync_wait]]: it returns a tuple of values sent by the sender passed to it. However, this assumes that those values can be represented as a tuple, like here:
+There's a choice made in the specification of [[#design-algorithm-sync_wait]]: it returns a tuple of values sent by the sender passed to it. However, this assumes that those values can be represented as a tuple, like here:
 
 <pre highlight=c++>
 execution::sender auto sends_1 = ...;
