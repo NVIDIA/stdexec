@@ -452,7 +452,7 @@ TODO: example
 execution::sender auto bulk(
     execution::sender auto predecessor,
     std::integral auto size,
-    invocable<decltype(size), <i>values-sent-by(predecessor)</i>...> function
+    invocable&lt;decltype(size), <i>values-sent-by(predecessor)</i>...> function
 );
 </pre>
 
