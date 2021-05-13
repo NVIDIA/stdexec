@@ -132,7 +132,7 @@ essential when writing user code using standard execution concepts; we have also
 
 ## What are the major design changes compared to P0443? ## {#abstract-compare}
 
-1. This proposal does not propose any specific type erasure facilities; it does, however, discuss type erasure to an extend in [[#design-dispatch]].
+1. This proposal does not propose any specific type erasure facilities; it does, however, discuss type erasure to an extent in [[#design-dispatch]].
 2. Properties are not included in this paper; we see them as a possible future extension, if the committee gets more comfortable with them.
 3. This paper does not include a specific thread pool implementation, per prior committee direction to propose it separately.
 4. We have implemented the SG1 direction to remove executors and base all of the proposed functionalities on senders and schedulers.
@@ -149,9 +149,9 @@ Initial revision, still in progress.
 
 # Proposed design - introduction # {#design-intro}
 
-The following four sections describe the entirety of the proposed design. [[#design-intro]] describes the conventions used through the rest of the design sections, as well as a code example illustrating how we envision code will be written using this proposal.
+The following four sections describe the entirety of the proposed design. [[#design-intro]] describes the conventions used through the rest of the design sections, as well as an example illustrating how we envision code will be written using this proposal.
 
-[[#design-user]] describes all the functionality from the perspective we intend for users: it describes what the various concepts they will interact with, and what their programming model is. [[#design-implementer]] describes the machinery that allows for
+[[#design-user]] describes all the functionality from the perspective we intend for users: it describes the various concepts they will interact with, and what their programming model is. [[#design-implementer]] describes the machinery that allows for
 that programming model to function, and the information contained there is necessary for people implementing senders and sender algorithms (including the standard library ones) - but is not necessary for being able to use senders productively.
 
 Finally, [[#design-api]] discusses API decisions and questions that we believe reflect on the code that will need to be written to implement and use senders, but not on the programming model of senders in general.
@@ -208,7 +208,7 @@ execution::submit(cont);
 ## Senders may be bound to schedulers ## {#design-propagation}
 
 One of the less clear aspects of [[P0443R14]] has been the set of requirements for the <i>place of execution</i> of any given piece of code. This underspecification is problematic, especially in case of systems where not all execution agents are created equal,
-and not all functions can be run on all execution agents. Having precise control over the execution context used for any given function call being submitted is very important on such systems, and the users of standard execution facilities will expect to be albe
+and not all functions can be run on all execution agents. Having precise control over the execution context used for any given function call being submitted is very important on such systems, and the users of standard execution facilities will expect to be able
 to express such (binding) requirements.
 
 Such precise control was present in the two-way execution API, but it has so far been missing from the senders design. There has been a proposal ([[P1897R3]]) to provide a number of algorithms that would enforce certain rules on the places of execution
@@ -286,7 +286,7 @@ Any non-trivial program will eventually want to fork a chain of senders into ind
 well defined mechanisms for making sure that attaching multiple continuations to a sender is possible and correct.
 
 There are two parts of what we are proposing in this area. One is a semantic requirement on both senders and sender algorithms: if you invoke a sender algorithm with an lvalue sender, that sender must remain valid after such an algorithm invocation. If your algorithm
-accepts an lvalue sender, it must not invalidate the lvalue it has received. It must be possible to invoke sender algorithms with rvalue senders, but lvalues must not be invalidated other than by turning them in rvalues ("moving" them).
+accepts an lvalue sender, it must not invalidate the lvalue it has received. It must be possible to invoke sender algorithms with rvalue senders, but lvalues must not be invalidated other than by turning them into rvalues ("moving" them).
 
 The consequences of the above requirement are as follows:
 
@@ -496,7 +496,7 @@ execution::sender auto both = execution::when_all(sched,
 );
 
 execution::sender auto final = execution::then(both, [](auto... args){
-    std::cout << std:;format("the two args: {}, {}", args...);
+    std::cout << std::format("the two args: {}, {}", args...);
 });
 // when final executes, it will print "the two args: 1, abc"
 </pre>
@@ -619,7 +619,7 @@ The return value of [[#design-connect]] must satisfy the operation state concept
 
 ## `execution::connect` ## {#design-connect}
 
-`execution::connect` is a customization point which <dfn lt="connect">connects</dfn> senders with receivers, resulting in an operation state that will ensure that the [=receiver contract=] of the receiver passed to connect will be fulfilled.
+`execution::connect` is a customization point which <dfn lt="connect">connects</dfn> senders with receivers, resulting in an operation state that will ensure that the [=receiver contract=] of the receiver passed to `connect` will be fulfilled.
 
 <pre highlight="c++">
 execution::sender auto snd = <i>some predecessor sender</i>;
@@ -639,7 +639,7 @@ execution::start(state);
 
 Senders being able to be bound to schedulers, and being able to advertise what their [=completion scheduler=] is, fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler it will execute on.
 
-The simple way to provide customizations for functionS like `then`, that is for [=sender adapter|sender adapters=] and [=sender algorithm|algorithms=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
+The simple way to provide customizations for functions like `then`, that is for [=sender adapter|sender adapters=] and [=sender algorithm|algorithms=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
 the expression `execution::then(sender, invocable)` to be equivalent to:
 
   1. `sender.then(invocable)`, if that expression is well formed; otherwise
