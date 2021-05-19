@@ -218,8 +218,11 @@ of the work described by a sender, but we have found those algorithms to be insu
   2. forcibly interleaving two adjacent execution graph nodes that are both executing on an accelerator with glue code that runs on the CPU; this operation is prohibitively expensive on runtimes such as CUDA.
 
 Neither of these implementation strategies is acceptable for accelerator runtimes. Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing to add a standardized way for senders to advertise what scheduler (and by extension - what execution
-context) any work (save for explicit transitions) attached to them will execute on. Any given sender <b>may</b> have an <dfn>underlying scheduler</dfn>. When further work is attached to that sender by invoking sender algorithms, that work will also execute on the
-underlying scheduler. For instance:
+context) any work (save for explicit transitions) attached to them will execute on. Any given sender <b>may</b> have an <dfn>completion scheduler</dfn>. When further work is attached to that sender by invoking sender algorithms, that work will also execute on the
+completion scheduler.
+
+There exists a function to retrieve the [=completion scheduler=] from a sender, called `get_completion_scheduler`. Calling this function on a sender that does not have an completion scheduler is ill-formed. If a scheduler advertises its completion scheduler in this
+way, that sender <b>must</b> ensure that it [=send|sends=] its values on an execution agent belonging to an execution context represented by a scheduler returned from this function.
 
 <pre highlight="c++">
 execution::scheduler auto sch = new_thread_scheduler{};
@@ -233,30 +236,29 @@ execution::sender auto last = execution::then(next, []{
     std::cout << "Second continuation" << std::endl;
 });
 
+execution::scheduler auto completion_sch = execution::get_completion_scheduler(last);
+// completion_sch is equivalent to sch
+
 std::this_thread::sync_wait(last);
 // both continuations will run on the same thread created by the scheduler
 </pre>
-
-There exists a function to retrieve the [=underlying scheduler=] from a sender, called `get_underlying_scheduler`. At the end of the example above, `execution::get_underlying_scheduler(last)` returns an object equivalent to `sch`. Calling this function on a sender
-that does not have an underlying scheduler is ill-formed. If a scheduler advertises its underlying scheduler in this way, that sender <b>must</b> ensure that it [=send|sends=] its values on an execution agent belonging to an execution context represented by a
-scheduler returned from this function.
 
 ## Senders advertise if they are lazy ## {#design-laziness}
 
 It is sometimes necessary for the correctness of an algorithm to know whether calling a sender algorithm on a sender can cause work to start without explicitly triggering it (for instance by calling [[#design-adapter-ensure_started]]). A consumer of a sender can
 check whether a sender guarantees that work will not be submitted before `ensure_started` or a similar function is called by checking the value of `execution::sender_traits<Sender>::is_strictly_lazy`. A sender <b>must</b> strictly adhere to this value.
 
-Only senders that have an [=underlying scheduler=] are allowed to set the above value to `false`. If a sender does not have an underlying scheduler, that means there is not enough information for it to actually start work on its own, and that information must be
+Only senders that have an [=completion scheduler=] are allowed to set the above value to `false`. If a sender does not have an completion scheduler, that means there is not enough information for it to actually start work on its own, and that information must be
 provided later, for instance by passing it to `execution::on`.
 
-A sender can be stripped off of its underlying scheduler, and by consequence - turned into a strictly lazy sender - by calling [[#design-adapter-unschedule]].
+A sender can be stripped off of its completion scheduler, and by consequence - turned into a strictly lazy sender - by calling [[#design-adapter-unschedule]].
 
 ## Execution context transitions are explicit ## {#design-transitions}
 
 [[P0443R14]] does not contain any mechanisms for performing an execution context transition. The only algorithm that can create a sender that will move execution to a specific* execution context is `execution::schedule`, which does not take a predecessor, which
 means that there's no way to construct sender chains that traverse different execution contexts. This is necessary to fulfill the promise of senders being able to replace two-way executors, which had this capability.
 
-We propose that, for senders advertising their [=underlying scheduler=], all execution context transitions <b>must</b> be explicit; running user code anywhere but where they defined it to run <b>must</b> be considered a bug.
+We propose that, for senders advertising their [=completion scheduler=], all execution context transitions <b>must</b> be explicit; running user code anywhere but where they defined it to run <b>must</b> be considered a bug.
 
 We propose a new user-facing algorithm, `execution::transfer`, for performing transitions from one execution context to another:
 
@@ -309,18 +311,13 @@ auto some_algorithm(execution::sender auto predecessor) {
 ## Senders are joinable ## {#design-join}
 
 Similarly to how it's hard to write a complex program that will eventually want to fork sender chains into independent streams, it's also hard to write a program that does not want to eventually create join nodes, where multiple independent streams of execution are
-merged into a single one in an asynchronous fashion. We are proposing two algorithms that deal with the common use cases for such merging: `when_all` and `when_any`.
+merged into a single one in an asynchronous fashion. We are proposing an algorithm that deals with the common use case for such merging: `when_all`, and an additional variant, `transfer_when_all`, which takes an additional scheduler.
 
-Both of these algorithms are very similar; they differ primarily in when they complete, and what values they send:
+The sender returned from `when_all` completes when the last of the predecessor senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the predecessor senders, in order. The `when_all` algorithm requires that none
+of the predecessor senders have a [=completion scheduler=], and returns a sender that also does not have an associated scheduler.
 
-The sender returned from `when_all` completes when the last of the predecessor senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the predecessor senders, in order.
-
-The sender returned from `when_any` completes when the first of the predecessor senders completes. It [=send|sends=] the value that has been sent by that first predecessor to complete.
-
-We propose that when all the predecessor senders to both of these algorithms do not have an [=underlying scheduler=], there is no additional information that must be passed into `when_all` and `when_any`, and they should both return senders that do not have an
-underlying scheduler. A similar route could be taken for senders bound to schedulers, but we believe that this is suboptimal. If the joining algorithm return senders that are detached from any schedulers that have to be explicitly transitioned onto one, they may
-result in a loss of efficiency, because additional control and data transfers may need to happen in such case. Therefore, we propose that when at least one of the sender arguments to the joining algorithms has an underlying scheduler, a user must also provide an
-explicit scheduler argument, which describes the scheduler that the returned sender will be bound to.
+`transfer_when_all` accepts an additional scheduler argument, and has no requirements on the predecessor senders. It returns a sender whose [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think
+of it as a composition of `transform(when_all(predecessors...), scheduler)`, but one that allows for better efficiency through customization.
 
 ## Proposed set of user-facing sender factories ## {#design-factories}
 
@@ -351,7 +348,7 @@ execution::sender auto just(
 );
 </pre>
 
-Returns a sender with no [=underlying scheduler=], which [=send|sends=] copies of the provided values.
+Returns a sender with no [=completion scheduler=], which [=send|sends=] copies of the provided values.
 
 TODO: example
 
@@ -364,7 +361,7 @@ execution::sender auto just_on(
 );
 </pre>
 
-Returns a sender whose [=underlying scheduler=] is the provided scheduler, which [=send|sends=] copies of the provided values.
+Returns a sender whose [=completion scheduler=] is the provided scheduler, which [=send|sends=] copies of the provided values.
 
 <pre highlight="c++">
 execution::sender auto vals = execution::just_on(get_system_thread_pool().scheduler(),
@@ -445,7 +442,7 @@ execution::sender unschedule(
 );
 </pre>
 
-Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but does not have an [=underlying scheduler=].
+Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but does not have an [=completion scheduler=].
 
 TODO: example
 
@@ -477,18 +474,13 @@ If the provided sender is a multi-shot sender, returns that sender. Otherwise, r
 
 <pre highlight="c++">
 execution::sender auto when_all(
-    execution::scheduler auto sched,
-    execution::sender auto ...predecessors
-);
-
-execution::sender auto when_all(
     execution::sender auto ...predecessors
 ) requires (!<i>have-underlying-schedulers(predecessors...)</i>);
 </pre>
 
 Returns a sender which completes once all of the predecessor senders have completed. The values send by this sender are the values sent by each of the predecessor, in order of the arguments passed to `when_all`.
 
-For the first overload, the returned sender will complete on an execution agent obtained from the provided scheduler. For the second overload, the returned sender shall not have an underlying scheduler.
+The returned sender does not have a [=completion scheduler=].
 
 See [[#design-join]].
 
@@ -509,43 +501,18 @@ execution::sender auto final = execution::then(both, [](auto... args){
 // when final executes, it will print "the two args: 1, abc"
 </pre>
 
-### `execution::when_any` ### {#design-adapter-when_any}
+### `execution::transfer_when_all` ### {#design-adapter-transfer_when_all}
 
 <pre highlight="c++">
-execution::sender auto when_any(
+execution::sender auto when_all(
     execution::scheduler auto sched,
     execution::sender auto ...predecessors
 );
-
-execution::sender auto when_any(
-    execution::sender auto ...predecessors
-) requires (!<i>have-underlying-schedulers(predecessors...)</i>);
 </pre>
 
-Returns a sender which completes once any of the predecessor senders has completed. The value sent by this sender is the value sent by the first of the predecessors that completes.
-
-For the first overload, the returned sender will complete on an execution agent obtained from the provided scheduler. For the second overload, the returned sender shall not have an underlying scheduler.
+Similar to [[#design-adapter-when_all]], but returns a sender whose [=completion scheduler=] is the provided scheduler.
 
 See [[#design-join]].
-
-<pre highlight="c++">
-execution::scheduler auto sched = get_thread_pool().scheduler();
-
-execution::sender auto sends_1 = ...;
-execution::sender auto sends_abc = ...;
-
-execution::sender auto either = execution::when_any(sched,
-    sends_1,
-    sends_abc
-);
-
-execution::sender auto final = execution::then(either, [](auto arg){
-    std::cout << std:;format("the only arg: {}", arg);
-});
-// when final executes, it will print one of the following:
-// * "the only arg: 1", or
-// * "the only arg: abc"
-</pre>
 
 ### `execution::ensure_started` ### {#design-adapter-ensure_started}
 
@@ -670,7 +637,7 @@ execution::start(state);
 
 ## Sender algorithms are customizable ## {#design-customization}
 
-Senders being able to be bound to schedulers, and being able to advertise what their [=underlying scheduler=] is, fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler it will execute on.
+Senders being able to be bound to schedulers, and being able to advertise what their [=completion scheduler=] is, fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler it will execute on.
 
 The simple way to provide customizations for functionS like `then`, that is for [=sender adapter|sender adapters=] and [=sender algorithm|algorithms=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
 the expression `execution::then(sender, invocable)` to be equivalent to:
