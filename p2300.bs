@@ -748,7 +748,7 @@ The mechanism for this advertisement is the same as in [[P0443R14]]; the way to 
 ### Design question: `sync_wait` ### {#design-typed-question1}
 
 `sender_traits::value_types` is a template that takes two arguments: one is a tuple-like template, the other is a variant-like template. The tuple-like argument is required to represent senders sending more than one value (such as `when_all`). The variant-like
-argument is required to represent senders that choose which specific values to send at runtime (such as `when_any`).
+argument is required to represent senders that choose which specific values to send at runtime.
 
 There's a choice made in the specification of [[#design-algorithm-sync_wait]]: it returns a tuple of values sent by the sender passed to it. However, this assumes that those values can be represented as a tuple, like here:
 
@@ -802,6 +802,7 @@ execution::sender auto sends_int = ...;
 execution::sender auto sends_float = ...;
 execution::sender auto sends_string = ...;
 
+// assume that when_any gets added in the future
 execution::sender auto all = execution::when_any(
     get_scheduler(sends_int),
     sends_int,
