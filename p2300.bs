@@ -5,7 +5,8 @@ Revision: 0
 Status: D
 Group: WG21
 Audience: SG1, LEWG
-Editor: Michał Dominiak, Michał Dominiak <griwes@griwes.info>
+Editor: Michał Dominiak, NVIDIA, griwes@griwes.info
+Editor: Bryce Adelstein Lelbach, NVIDIA, brycelelblach@gmail.com
 URL: https://wg21.link/D2300
 Metadata Order: Editor, This Version, Source, Issue Tracking, Project, Audience
 Markup Shorthands: markdown yes
