@@ -2176,14 +2176,12 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R0<br>Completing the Design of Executors</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-05-24">2021-05-24</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-05-25">2021-05-25</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
      <dd class="editor p-author h-card vcard"><a class="p-name fn u-email email" href="mailto:griwes@griwes.info">Michał Dominiak</a> (<span class="p-org org">NVIDIA</span>)
      <dd class="editor p-author h-card vcard"><a class="p-name fn u-email email" href="mailto:brycelelblach@gmail.com">Bryce Adelstein Lelbach</a> (<span class="p-org org">NVIDIA</span>)
-     <dt>Issue Tracking:
-     <dd><a href="#issues-index">Inline In Spec</a>
      <dt>Project:
      <dd>ISO/IEC JTC1/SC22/WG21 14882: Programming Language — C++
      <dt>Audience:
@@ -2270,8 +2268,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li>
        <a href="#design-typed"><span class="secno">6.2</span> <span class="content">Senders are typed</span></a>
        <ol class="toc">
-        <li><a href="#design-typed-question1"><span class="secno">6.2.1</span> <span class="content">Design question: <code class="highlight"><c- n>sync_wait</c-></code></span></a>
-        <li><a href="#design-typed-question2"><span class="secno">6.2.2</span> <span class="content">Design question: canonical form</span></a>
+        <li><a href="#design-typed-issue"><span class="secno">6.2.1</span> <span class="content">Design issue: <code class="highlight"><c- n>value_types</c-></code></span></a>
        </ol>
       <li><a href="#design-dispatch"><span class="secno">6.3</span> <span class="content">Ranges-style CPOs vs <code class="highlight"><c- n>tag_invoke</c-></code></span></a>
      </ol>
@@ -2286,7 +2283,6 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <ol class="toc">
       <li><a href="#informative"><span class="secno"></span> <span class="content">Informative References</span></a>
      </ol>
-    <li><a href="#issues-index"><span class="secno"></span> <span class="content">Issues Index</span></a>
    </ol>
   </nav>
   <main>
@@ -2789,7 +2785,7 @@ for chaining, just like C++20 ranges do. Therefore, a user could write the follo
    <p>All senders must advertise the types they will <a data-link-type="dfn" href="#send" id="ref-for-send⑦">send</a> when they complete. This is necessary for a number of features, and writing code in a way that’s agnostic of whether a predecessor is typed or not in common sender adapters such as <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> is hard.
 We are not aware of compelling use cases that <em>require</em> untyped senders (i.e. senders that effectively only decide what to send when you <a data-link-type="dfn" href="#connect" id="ref-for-connect①">connect</a> a receiver to them, and not without that), therefore we are proposing that all senders must be typed.</p>
    <p>The mechanism for this advertisement is the same as in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; the way to query the types is through <code class="highlight"><c- n>sender_traits</c-><c- o>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>tuple_like</c-><c- p>,</c-> <c- n>variant_like</c-><c- o>></c-></code>.</p>
-   <h4 class="heading settled" data-level="6.2.1" id="design-typed-question1"><span class="secno">6.2.1. </span><span class="content">Design question: <code class="highlight"><c- n>sync_wait</c-></code></span><a class="self-link" href="#design-typed-question1"></a></h4>
+   <h4 class="heading settled" data-level="6.2.1" id="design-typed-issue"><span class="secno">6.2.1. </span><span class="content">Design issue: <code class="highlight"><c- n>value_types</c-></code></span><a class="self-link" href="#design-typed-issue"></a></h4>
    <p><code class="highlight"><c- n>sender_traits</c-><c- o>::</c-><c- n>value_types</c-></code> is a template that takes two arguments: one is a tuple-like template, the other is a variant-like template. The tuple-like argument is required to represent senders sending more than one value (such as <code class="highlight"><c- n>when_all</c-></code>). The variant-like
 argument is required to represent senders that choose which specific values to send at runtime.</p>
    <p>There’s a choice made in the specification of <a href="#design-algorithm-sync_wait">§ 4.11.2 std::this_thread::sync_wait</a>: it returns a tuple of values sent by the sender passed to it. However, this assumes that those values can be represented as a tuple, like here:</p>
@@ -2807,62 +2803,46 @@ argument is required to represent senders that choose which specific values to s
 <c- c1>// b == 2</c->
 <c- c1>// c == 3</c->
 </pre>
-   <p>This works well for senders that don’t require the variant-like argument to <code class="highlight"><c- nl>sender_traits</c-><c- p>:;</c-><c- n>value_types</c-></code>. However, if a sender requires the variant-like argument to represent all of its sent values, then the above doesn’t work.</p>
-   <p class="issue" id="issue-f7fad637"><a class="self-link" href="#issue-f7fad637"></a> How should <code class="highlight"><c- n>sync_wait</c-></code> handle senders that send multiple sets of types?</p>
-   <h4 class="heading settled" data-level="6.2.2" id="design-typed-question2"><span class="secno">6.2.2. </span><span class="content">Design question: canonical form</span><a class="self-link" href="#design-typed-question2"></a></h4>
-   <p>There’s a similar problem to the above: what is the canonical form of <code class="highlight"><c- n>sender_traits</c-><c- o>::</c-><c- n>value_types</c-></code>? Is there such a thing?</p>
-   <p>Specifically, given:</p>
-<pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sched</c-><c- p>);</c->
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd2</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd1</c-><c- p>,</c-> <c- p>[]{</c-> <c- k>return</c-> <c- mi>1</c-><c- p>;</c-> <c- p>});</c->
-
-<c- k>using</c-> <c- n>type</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>sender_traits</c-><decltypeU00028snd2U00029><c- o>::</c-><c- k>template</c-> <c- n>value_types</c-><c- o>&lt;</c->
-    <c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>variant</c->
-<c- o>></c-><c- p>;</c->
-</decltypeU00028snd2U00029></pre>
-   <p>What are the permitted types <code class="highlight"><c- n>type</c-></code> names?</p>
-   <p>The most straightforward answer to this question could be <code class="highlight"><c- b>int</c-></code>, but that means that functions such as <code class="highlight"><c- n>sync_wait</c-></code> need to add the tuple wrapper over the <code class="highlight"><c- b>int</c-></code> to provide consistent interface for all senders (so that we can avoid breaking generic code like the
-deduction guides for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple</c-></code> did; if you saw <code class="highlight"><c- n>value_types</c-></code> be <code class="highlight"><c- n>std</c-><c- p>;</c-><c- o>:</c-><c- n>tuple</c-></code>, is that a wrapped tuple and you are supposed to treat it as the single value sent by the sender, or is it a tuple of the values sent by the sender?). It also makes implementing <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> harder (again, for the same reason - you can’t tell the "single value that is a tuple" and "multiple values wrapped in a tuple" cases apart).</p>
-   <p>Okay, so maybe the answer should be <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- b>int</c-><c- o>></c-></code>. This may cause some inconvenience in unwrapping the tuple, but it should not be very problematic with structured bindings. But what about variants? Consider this example:</p>
-<pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sends_int</c-> <c- o>=</c-> <c- p>...;</c->
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sends_float</c-> <c- o>=</c-> <c- p>...;</c->
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sends_string</c-> <c- o>=</c-> <c- p>...;</c->
-
-<c- c1>// assume that when_any gets added in the future</c->
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>all</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>when_any</c-><c- p>(</c->
-    <c- n>get_scheduler</c-><c- p>(</c-><c- n>sends_int</c-><c- p>),</c->
-    <c- n>sends_int</c-><c- p>,</c->
-    <c- n>sends_float</c-><c- p>,</c->
-    <c- n>sends_string</c->
-<c- p>));</c->
-
-<c- k>using</c-> <c- n>type</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>sender_traits</c-><decltypeU00028snd2U00029><c- o>::</c-><c- k>template</c-> <c- n>value_types</c-><c- o>&lt;</c->
-    <c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>variant</c->
-<c- o>></c-><c- p>;</c->
-</decltypeU00028snd2U00029></pre>
-   <p>In this case we could allow senders to choose what they want to do, basically between:</p>
-   <ul>
-    <li data-md>
-     <p><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>variant</c-><c- o>&lt;</c-><c- b>int</c-><c- p>,</c-> <c- b>float</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>string</c-><c- o>></c-></code>, or</p>
-    <li data-md>
-     <p><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>variant</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- b>int</c-><c- o>></c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- b>float</c-><c- o>></c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>string</c-><c- o>>></c-></code></p>
-   </ul>
-   <p>But this causes the same issues as earlier: if senders can decide, it’s impossible to tell the difference between the second choice for the code above, and the first choice with senders that send tuples of single elements.</p>
-   <p>It seems that there <em>must</em> be a canonical form of <code class="highlight"><c- n>value_types</c-></code> that all senders follow; and it seems that for a sender sending <code class="highlight"><c- n>Args1</c-></code>, <code class="highlight"><c- n>Args2</c-></code>, ..., <code class="highlight"><c- n>ArgsN</c-></code> (where each <code class="highlight"><c- n>ArgsX</c-></code> is a pack of types), the canonical form of <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> must be:</p>
-<pre class="highlight"><c- n>Variant</c-><c- o>&lt;</c->
-    <c- n>Tuple</c-><args1...><c- p>,</c->
-    <c- n>Tuple</c-><args2...><c- p>,</c->
-    <c- p>...,</c->
-    <c- n>Tuple</c-><argsn>
+   <p>This works well for senders that always send the same set of arguments. If we ignore the possibility of having a sender that sends different sets of arguments into a receiver, we can specify the "canonical" (i.e. required to be followed by all senders) form of <code class="highlight"><c- n>value_types</c-></code> of a sender which sends <code class="highlight"><c- n>Types</c-><c- p>...</c-></code> to be as follows:</p>
+<pre class="highlight"><c- k>template</c-><templateU0003Ctypename U0002E..> <c- k>typename</c-> <c- nc>TupleLike</c-><c- o>></c->
+<c- k>using</c-> <c- n>value_types</c-> <c- o>=</c-> <c- n>TupleLike</c-><types...><c- p>;</c->
+</types...></templateU0003Ctypename></pre>
+   <p>If senders could only ever send one specific set of values, this would probably need to be the required form of <code class="highlight"><c- n>value_types</c-></code> for all senders; defining it otherwise would cause very weird results and should be considered a bug.</p>
+   <p>This matter is somewhat complicated by the fact that (1) <code class="highlight"><c- n>set_value</c-></code> for receivers can be overloaded and accept different sets of arguments, and (2) senders are allowed to send multiple different sets of values, depending on runtime conditions, the data they
+consumed, and so on. To accomodate this, <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> also includes a second template parameter to <code class="highlight"><c- n>value_types</c-></code>, one that represents a variant-like type. If we permit such senders, we would almost certainly need to require that the canonical form of <code class="highlight"><c- n>value_types</c-></code> for <em>all</em> senders (to ensure consistency in how they are handled, and to avoid accidentally interpreting a user-provided variant as a sender-provided one) sending the different sets of arguments <code class="highlight"><c- n>Types1</c-><c- p>...</c-></code>, <code class="highlight"><c- n>Types2</c-><c- p>...</c-></code>, ..., <code class="highlight"><c- n>TypesN</c-><c- p>...</c-></code> to be as follows:</p>
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c->
+    <c- k>template</c-><typename U0002E..> <c- k>typename</c-> <c- nc>TupleLike</c-><c- p>,</c->
+    <c- k>template</c-><typename U0002E..> <c- k>typename</c-> <c- nc>VariantLike</c->
 <c- o>></c->
-</argsn></args2...></args1...></pre>
-   <p>However, this means that in the first example, with a relatively simple sender which senders precisely just a single integer every type, <code class="highlight"><c- n>value_types</c-></code> must be <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- b>int</c-><c- o>>></c-></code>. This seems suboptimal, but necessary for generic code to make sense (and not fall
-prey of edge cases like <code class="highlight"><c- n>tuple</c-><c- p>(</c-><c- n>args</c-><c- p>...)</c-></code> when <code class="highlight"><c- n>args</c-></code> is a pack of a single element which is a tuple).</p>
-   <p class="issue" id="issue-3607fd5f"><a class="self-link" href="#issue-3607fd5f"></a> Is the above canonical form acceptable? Should it be required that all senders adhere to this canonical form of <code class="highlight"><c- n>sender_traits</c-><c- o>::</c-><c- n>value_types</c-></code>? If not, what is the generic programming model for handling predecessors that use unknown forms of <code class="highlight"><c- n>sender_traits</c-><c- o>::</c-><c- n>value_types</c-></code>?</p>
+<c- k>using</c-> <c- n>value_types</c-> <c- o>=</c-> <c- n>VariantLike</c-><c- o>&lt;</c->
+    <c- n>TupleLike</c-><types1...><c- p>,</c->
+    <c- n>TupleLike</c-><types2...><c- p>,</c->
+    <c- p>...,</c->
+    <c- n>TupleLike</c-><types3...>
+<c- o>></c-><c- p>;</c->
+</types3...></types2...></types1...></typename></typename></pre>
+   <p>This, however, introduces a couple of complications:</p>
+   <ol>
+    <li data-md>
+     <p>A <code class="highlight"><c- n>just</c-><c- p>(</c-><c- mi>1</c-><c- p>)</c-></code> sender would also need to follow this structure, so the correct type for storing the value sent by it would be <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>variant</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- b>int</c-><c- o>>></c-></code> or some such. This introduces a lot of compile time overhead for the simplest senders, and this overhead
+effectively exists in all places in the code where <code class="highlight"><c- n>value_types</c-></code> is queried, regardless of the tuple-like and variant-like templates passed to it. Such overhead does exist if only the tuple-like parameter exists, but is made much worse by adding this second
+wrapping layer.</p>
+    <li data-md>
+     <p>As a consequence of (1): because <code class="highlight"><c- n>sync_wait</c-></code> needs to store the above type, it can no longer return just a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- b>int</c-><c- o>></c-></code> for <code class="highlight"><c- n>just</c-><c- p>(</c-><c- mi>1</c-><c- p>)</c-></code>; it has to return <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>variant</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- b>int</c-><c- o>>></c-></code>. C++ currently does not have an easy way to destructure this; it may get
+less awkward with pattern matching, but even then it seems extremely heavyweight to involve variants in this API, and for the purpose of generic code, the kind of the return type of <code class="highlight"><c- n>sync_wait</c-></code> must be the same across all sender types.</p>
+   </ol>
+   <p>One possible solution to (2) above is to place a requirement on <code class="highlight"><c- n>sync_wait</c-></code> that it can only accept senders which send only a single set of values, therefore removing the need for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>variant</c-></code> to appear in its API.</p>
    <h3 class="heading settled" data-level="6.3" id="design-dispatch"><span class="secno">6.3. </span><span class="content">Ranges-style CPOs vs <code class="highlight"><c- n>tag_invoke</c-></code></span><a class="self-link" href="#design-dispatch"></a></h3>
-   <p>XXX TODO: describe pros and cons of both; (MD) personally I think I’m starting to move into the <code class="highlight"><c- n>tag_invoke</c-></code> camp, for better or worse</p>
+   <p>XXX TODO: describe pros and cons of both; make the argument for using <code class="highlight"><c- n>tag_invoke</c-></code></p>
+   <p>short list:</p>
+   <ol>
+    <li data-md>
+     <p>allows for propagation of all specializations to a wrapped object, without having to know them all;</p>
+    <li data-md>
+     <p>in the future provides what is necessary for a polymorphic wrapper that is supposed to perform well;</p>
+    <li data-md>
+     <p>because we anticipate multiple versions of <code class="highlight"><c- n>sync_wait</c-></code>, for different runtimes (<code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-></code> vs <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_fiber</c-></code>, for instance), the specializations for it must happen not by a global name (because otherwise it’d need to be something like <code class="highlight"><c- n>std_this_thread_sync_wait</c-></code>), but rather by a namespaced name, and <code class="highlight"><c- n>tag_invoke</c-></code> provides a way to do this</p>
+   </ol>
    <h2 class="heading settled" data-level="7" id="spec"><span class="secno">7. </span><span class="content">Specification</span><a class="self-link" href="#spec"></a></h2>
   </main>
 <script>
@@ -3018,11 +2998,6 @@ prey of edge cases like <code class="highlight"><c- n>tuple</c-><c- p>(</c-><c- 
    <dt id="biblio-p1897r3">[P1897R3]
    <dd>Lee Howes. <a href="https://wg21.link/p1897r3">Towards C++23 executors: A proposal for an initial set of algorithms</a>. 16 May 2020. URL: <a href="https://wg21.link/p1897r3">https://wg21.link/p1897r3</a>
   </dl>
-  <h2 class="no-num no-ref heading settled" id="issues-index"><span class="content">Issues Index</span><a class="self-link" href="#issues-index"></a></h2>
-  <div style="counter-reset:issue">
-   <div class="issue"> How should <code class="highlight"><c- n>sync_wait</c-></code> handle senders that send multiple sets of types?<a href="#issue-f7fad637"> ↵ </a></div>
-   <div class="issue"> Is the above canonical form acceptable? Should it be required that all senders adhere to this canonical form of <code class="highlight"><c- n>sender_traits</c-><c- o>::</c-><c- n>value_types</c-></code>? If not, what is the generic programming model for handling predecessors that use unknown forms of <code class="highlight"><c- n>sender_traits</c-><c- o>::</c-><c- n>value_types</c-></code>?<a href="#issue-3607fd5f"> ↵ </a></div>
-  </div>
   <aside class="dfn-panel" data-for="send">
    <b><a href="#send">#send</a></b><b>Referenced in:</b>
    <ul>
