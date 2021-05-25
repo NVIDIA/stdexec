@@ -746,7 +746,7 @@ We are not aware of compelling use cases that *require* untyped senders (i.e. se
 
 The mechanism for this advertisement is the same as in [[P0443R14]]; the way to query the types is through `sender_traits::value_types<tuple_like, variant_like>`.
 
-### Design question: `sync_wait` ### {#design-typed-question1}
+### Design issue: `value_types` ### {#design-typed-issue}
 
 `sender_traits::value_types` is a template that takes two arguments: one is a tuple-like template, the other is a variant-like template. The tuple-like argument is required to represent senders sending more than one value (such as `when_all`). The variant-like
 argument is required to represent senders that choose which specific values to send at runtime.
@@ -769,80 +769,51 @@ auto [a, b, c] = std::this_thread::sync_wait(
 // c == 3
 </pre>
 
-This works well for senders that don't require the variant-like argument to `sender_traits:;value_types`. However, if a sender requires the variant-like argument to represent all of its sent values, then the above doesn't work.
-
-Issue: How should `sync_wait` handle senders that send multiple sets of types?
-
-### Design question: canonical form ### {#design-typed-question2}
-
-There's a similar problem to the above: what is the canonical form of `sender_traits::value_types`? Is there such a thing?
-
-Specifically, given:
+This works well for senders that always send the same set of arguments. If we ignore the possibility of having a sender that sends different sets of arguments into a receiver, we can specify the "canonical" (i.e. required to be followed by all senders) form of
+`value_types` of a sender which sends `Types...` to be as follows:
 
 <pre highlight=c++>
-execution::scheduler auto sched = get_thread_pool().scheduler();
-execution::sender auto snd1 = execution::schedule(sched);
-execution::sender auto snd2 = execution::then(snd1, []{ return 1; });
-
-using type = execution::sender_traits<decltype(snd2)>::template value_types<
-    std::tuple,
-    std::variant
->;
+template<template<typename ...> typename TupleLike>
+using value_types = TupleLike<Types...>;
 </pre>
 
-What are the permitted types `type` names?
+If senders could only ever send one specific set of values, this would probably need to be the required form of `value_types` for all senders; defining it otherwise would cause very weird results and should be considered a bug.
 
-The most straightforward answer to this question could be `int`, but that means that functions such as `sync_wait` need to add the tuple wrapper over the `int` to provide consistent interface for all senders (so that we can avoid breaking generic code like the
-deduction guides for `std::tuple` did; if you saw `value_types` be `std;:tuple`, is that a wrapped tuple and you are supposed to treat it as the single value sent by the sender, or is it a tuple of the values sent by the sender?). It also makes implementing
-`execution::then` harder (again, for the same reason - you can't tell the "single value that is a tuple" and "multiple values wrapped in a tuple" cases apart).
-
-Okay, so maybe the answer should be `std::tuple<int>`. This may cause some inconvenience in unwrapping the tuple, but it should not be very problematic with structured bindings. But what about variants? Consider this example:
+This matter is somewhat complicated by the fact that (1) `set_value` for receivers can be overloaded and accept different sets of arguments, and (2) senders are allowed to send multiple different sets of values, depending on runtime conditions, the data they
+consumed, and so on. To accomodate this, [[P0443R14]] also includes a second template parameter to `value_types`, one that represents a variant-like type. If we permit such senders, we would almost certainly need to require that the canonical form of `value_types`
+for *all* senders (to ensure consistency in how they are handled, and to avoid accidentally interpreting a user-provided variant as a sender-provided one) sending the different sets of arguments `Types1...`, `Types2...`, ..., `TypesN...` to be as follows:
 
 <pre highlight=c++>
-execution::sender auto sends_int = ...;
-execution::sender auto sends_float = ...;
-execution::sender auto sends_string = ...;
-
-// assume that when_any gets added in the future
-execution::sender auto all = execution::when_any(
-    get_scheduler(sends_int),
-    sends_int,
-    sends_float,
-    sends_string
-));
-
-using type = execution::sender_traits<decltype(snd2)>::template value_types<
-    std::tuple,
-    std::variant
->;
-</pre>
-
-In this case we could allow senders to choose what they want to do, basically between:
-
- * `std::variant<int, float, std::string>`, or
- * `std::variant<std::tuple<int>, std::tuple<float>, std::tuple<std::string>>`
-
-But this causes the same issues as earlier: if senders can decide, it's impossible to tell the difference between the second choice for the code above, and the first choice with senders that send tuples of single elements.
-
-It seems that there *must* be a canonical form of `value_types` that all senders follow; and it seems that for a sender sending `Args1`, `Args2`, ..., `ArgsN` (where each `ArgsX` is a pack of types), the canonical form of `sender_traits<Tuple, Variant>` must be:
-
-<pre highlight=c++>
-Variant<
-    Tuple<Args1...>,
-    Tuple<Args2...>,
-    ...,
-    Tuple<ArgsN>
+template<
+    template<typename ...> typename TupleLike,
+    template<typename ...> typename VariantLike
 >
+using value_types = VariantLike<
+    TupleLike<Types1...>,
+    TupleLike<Types2...>,
+    ...,
+    TupleLike<Types3...>
+>;
 </pre>
 
-However, this means that in the first example, with a relatively simple sender which senders precisely just a single integer every type, `value_types` must be `Variant<Tuple<int>>`. This seems suboptimal, but necessary for generic code to make sense (and not fall
-prey of edge cases like `tuple(args...)` when `args` is a pack of a single element which is a tuple).
+This, however, introduces a couple of complications:
 
-Issue: Is the above canonical form acceptable? Should it be required that all senders adhere to this canonical form of `sender_traits::value_types`? If not, what is the generic programming model for handling predecessors that use unknown forms of
-`sender_traits::value_types`?
+1. A `just(1)` sender would also need to follow this structure, so the correct type for storing the value sent by it would be `std::variant<std::tuple<int>>` or some such. This introduces a lot of compile time overhead for the simplest senders, and this overhead
+    effectively exists in all places in the code where `value_types` is queried, regardless of the tuple-like and variant-like templates passed to it. Such overhead does exist if only the tuple-like parameter exists, but is made much worse by adding this second
+    wrapping layer.
+2. As a consequence of (1): because `sync_wait` needs to store the above type, it can no longer return just a `std::tuple<int>` for `just(1)`; it has to return `std::variant<std::tuple<int>>`. C++ currently does not have an easy way to destructure this; it may get
+    less awkward with pattern matching, but even then it seems extremely heavyweight to involve variants in this API, and for the purpose of generic code, the kind of the return type of `sync_wait` must be the same across all sender types.
+
+One possible solution to (2) above is to place a requirement on `sync_wait` that it can only accept senders which send only a single set of values, therefore removing the need for `std::variant` to appear in its API.
 
 ## Ranges-style CPOs vs `tag_invoke` ## {#design-dispatch}
 
-XXX TODO: describe pros and cons of both; (MD) personally I think I'm starting to move into the `tag_invoke` camp, for better or worse
+XXX TODO: describe pros and cons of both; make the argument for using `tag_invoke`
+
+short list:
+1. allows for propagation of all specializations to a wrapped object, without having to know them all;
+2. in the future provides what is necessary for a polymorphic wrapper that is supposed to perform well;
+3. because we anticipate multiple versions of `sync_wait`, for different runtimes (`std::this_thread` vs `std::this_fiber`, for instance), the specializations for it must happen not by a global name (because otherwise it'd need to be something like
+    `std_this_thread_sync_wait`), but rather by a namespaced name, and `tag_invoke` provides a way to do this
 
 # Specification # {#spec}
