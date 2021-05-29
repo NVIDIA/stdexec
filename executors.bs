@@ -137,10 +137,11 @@ essential when writing user code using standard execution concepts; we have also
 2. Properties are not included in this paper; we see them as a possible future extension, if the committee gets more comfortable with them.
 3. This paper does not include a specific thread pool implementation, per prior committee direction to propose it separately.
 4. We have implemented the SG1 direction to remove executors and base all of the proposed functionalities on senders and schedulers.
-5. Senders now advertise what scheduler, if any, they are bound to, and they also advertise whether they will execute in a strictly lazy way (with no work being submitted for execution until `execution::start` is called on an operation state they produced) or not.
-6. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
-7. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
-8. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-fork]].
+5. Senders now advertise what scheduler, if any, they are bound to.
+6. Users now have a choice between using a stricly lazy vs a possibly eager version of most algorithms.
+7. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
+8. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
+9. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-fork]].
 
 # Revision history # {#revisions}
 
@@ -244,16 +245,6 @@ std::this_thread::sync_wait(last);
 // both continuations will run on the same thread created by the scheduler
 </pre>
 
-## Senders advertise if they are lazy ## {#design-laziness}
-
-It is sometimes necessary for the correctness of an algorithm to know whether calling a sender algorithm on a sender can cause work to start without explicitly triggering it (for instance by calling [[#design-adapter-ensure_started]]). A consumer of a sender can
-check whether a sender guarantees that work will not be submitted before `ensure_started` or a similar function is called by checking the value of `execution::sender_traits<Sender>::is_strictly_lazy`. A sender <b>must</b> strictly adhere to this value.
-
-Only senders that have an [=completion scheduler=] are allowed to set the above value to `false`. If a sender does not have an completion scheduler, that means there is not enough information for it to actually start work on its own, and that information must be
-provided later, for instance by passing it to `execution::on`.
-
-A sender can be stripped off of its completion scheduler, and by consequence - turned into a strictly lazy sender - by calling [[#design-adapter-unschedule]].
-
 ## Execution context transitions are explicit ## {#design-transitions}
 
 [[P0443R14]] does not contain any mechanisms for performing an execution context transition. The only algorithm that can create a sender that will move execution to a specific* execution context is `execution::schedule`, which does not take a predecessor, which
@@ -353,10 +344,10 @@ Returns a sender with no [=completion scheduler=], which [=send|sends=] copies o
 
 TODO: example
 
-### `execution::just_on` ### {#design-factory-just_on}
+### `execution::transfer_just` ### {#design-factory-transfer_just}
 
 <pre highlight="c++">
-execution::sender auto just_on(
+execution::sender auto transfer_just(
     execution::scheduler auto scheduler,
     auto ...values
 );
@@ -365,7 +356,8 @@ execution::sender auto just_on(
 Returns a sender whose [=completion scheduler=] is the provided scheduler, which [=send|sends=] copies of the provided values.
 
 <pre highlight="c++">
-execution::sender auto vals = execution::just_on(get_system_thread_pool().scheduler(),
+execution::sender auto vals = execution::transfer_just(
+    get_system_thread_pool().scheduler(),
     1, 2, 3
 );
 execution::sender auto snd = execution::then(pred, [](auto... args) {
@@ -380,10 +372,23 @@ This algorithm is included, as it greatly simplifies lifting values into senders
 
 A <dfn>sender adapter</dfn> is a function which accepts one or more senders, and possibly other algorithms, and returns a sender, whose completion is related to the sender arguments it has received.
 
+Many sender adapters come in two versions: a stricly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
+the returned sender being started. Sender algorithms such as [[#design-adapter-ensure_started]], [[#design-algorithm-submit]], and [[#design-algorithm-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**, but not
+guaranteed, to start senders.
+
+The strictly lazy versions of the adapters below (that is, all the versions whose names start with `lazy_`) are guaranteed to not start any predecessor senders passed into them.
+
+For more implementer-centric description of starting senders, see [[#design-laziness]].
+
 ### `execution::transfer` ### {#design-adapter-transfer}
 
 <pre highlight="c++">
 execution::sender auto transfer(
+    execution::sender auto predecessor,
+    execution::scheduler auto scheduler
+);
+
+execution::sender auto lazy_transfer(
     execution::sender auto predecessor,
     execution::scheduler auto scheduler
 );
@@ -409,9 +414,16 @@ execution::sender auto then(
     execution::sender auto predecessor,
     std::invocable<<i>values-sent-by(predecessor)</i>...> function
 );
+
+execution::sender auto lazy_then(
+    execution::sender auto predecessor,
+    std::invocable<<i>values-sent-by(predecessor)</i>...> function
+);
 </pre>
 
 Returns a sender describing the task graph described by the predecessor, with an added node of invoking the provided function with the values [=send|sent=] by the predecessor as arguments.
+
+`lazy_then` is **guaranteed** to not begin executing `function` until the returned sender is started.
 
 <pre highlight="c++">
 execution::sender auto pred = get_predecessor();
@@ -428,6 +440,11 @@ This algorithm is included, as it is necessary for writing any sender code that 
 
 <pre highlight="c++">
 execution::sender auto on(
+    execution::scheduler auto sched,
+    execution::sender auto snd
+);
+
+execution::sender auto lazy_on(
     execution::scheduler auto sched,
     execution::sender auto snd
 );
@@ -455,11 +472,19 @@ execution::sender auto bulk(
     std::integral auto size,
     invocable&lt;decltype(size), <i>values-sent-by(predecessor)</i>...> function
 );
+
+execution::sender auto lazy_bulk(
+    execution::sender auto predecessor,
+    std::integral auto size,
+    invocable&lt;decltype(size), <i>values-sent-by(predecessor)</i>...> function
+);
 </pre>
 
 Returns a sender describing the task of invoking the provided function with the values [=send|sent=] by the predecessor for every index in the provided shape.
 
 In this paper, only integral types satisfy the concept of a shape, but future papers will explore bulk shapes of different kinds in more detail.
+
+`lazy_bulk` is **guaranteed** to not begin executing `function` until the returned sender is started.
 
 XXX TODO: provide an example
 
@@ -467,6 +492,8 @@ XXX TODO: provide an example
 
 <pre highlight="c++">
 execution::sender auto split(execution::sender auto sender);
+
+execution::sender auto lazy_split(execution::sender auto sender);
 </pre>
 
 If the provided sender is a multi-shot sender, returns that sender. Otherwise, returns a multi-shot sender which sends values equivalent to the values sent by the provided sender. See [[#design-fork]].
@@ -476,12 +503,14 @@ If the provided sender is a multi-shot sender, returns that sender. Otherwise, r
 <pre highlight="c++">
 execution::sender auto when_all(
     execution::sender auto ...predecessors
-) requires (!<i>have-underlying-schedulers(predecessors...)</i>);
+)</i>);
 </pre>
 
 Returns a sender which completes once all of the predecessor senders have completed. The values send by this sender are the values sent by each of the predecessor, in order of the arguments passed to `when_all`.
 
 The returned sender does not have a [=completion scheduler=].
+
+`when_all` is a strictly lazy algorithm; it is guaranteed to not start any of the predecessor senders.
 
 See [[#design-join]].
 
@@ -505,7 +534,12 @@ execution::sender auto final = execution::then(both, [](auto... args){
 ### `execution::transfer_when_all` ### {#design-adapter-transfer_when_all}
 
 <pre highlight="c++">
-execution::sender auto when_all(
+execution::sender auto transfer_when_all(
+    execution::scheduler auto sched,
+    execution::sender auto ...predecessors
+);
+
+execution::sender auto lazy_transfer_when_all(
     execution::scheduler auto sched,
     execution::sender auto ...predecessors
 );
@@ -530,9 +564,9 @@ XXX TODO: provide an example
 
 ## Proposed set of user-facing sender algorithms ## {#design-algorithms}
 
-A <dfn>sender algorithm</dfn> is a function that accepts one or more senders, but does not return a sender.
+A <dfn>sender algorithm</dfn> is a function that accepts one or more senders.
 
-### `execution::submit` ### {#design-adapter-submit}
+### `execution::submit` ### {#design-algorithm-submit}
 
 <pre highlight="c++">
 void auto submit(
@@ -551,7 +585,7 @@ auto sync_wait(
 </pre>
 
 `std::this_thread::sync_wait` is an algorithm that submits the work described by the provided sender for execution, similarly to `ensure_started`, execept that it blocks <b>the current `std::thread` or thread of `main`</b> until the work is completed, and returns
-a tuple of values that were sent by the provided sender on its completion of work. Where [[#design-factory-schedule]] and [[#design-factory-just_on]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of senders,
+a tuple of values that were sent by the provided sender on its completion of work. Where [[#design-factory-schedule]] and [[#design-factory-transfer_just]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of senders,
 retrieving the result of the task graph.
 
 XXX TODO: provide an example
@@ -705,6 +739,18 @@ For algorithms which accept concepts other than `sender` as their first argument
 
 TODO: more example
 
+## Laziness of operations is defined by algorithms ## {#design-laziness}
+
+We distinguish two different guarantees about *when* work is submitted to an execution context:
+
+ * <dfn>strictly lazy submission</dfn>, which means that there is a guarantee that no work is submitted to an execution context before a receiver is connected to a sender, and `execution::start` is called on the resulting operation state;
+ * <dfn>potentially eager submission</dfn>, which means that work may be submitted to an execution context as soon as all the information necessary to perform it is provided.
+
+If an operation requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adapters are specified
+to dispatch to the strictly lazy ones; for an author of a specific sender, it is sufficient to specialize the strictly lazy version, to also achieve a specialization of the potentially eager one.
+
+As has been described in [[#design-adapters]], whether an operation is guaranteed to perform strictly lazy submission or not is defined by the adapter used to perform it; the adapters whose names begin with `lazy_` provide the strictly lazy guarantee.
+
 ## Execution context transitions are two-step ## {#design-transition-details}
 
 Because `execution::transfer` takes a sender as its first argument, it is not actually directly customizable by the target scheduler. This is by design: the target scheduler may not know how to transition <i>from</i> a scheduler such as a CUDA scheduler;
@@ -773,7 +819,7 @@ This works well for senders that always send the same set of arguments. If we ig
 `value_types` of a sender which sends `Types...` to be as follows:
 
 <pre highlight=c++>
-template<template<typename ...> typename TupleLike>
+template&lt;template&lt;typename ...> typename TupleLike>
 using value_types = TupleLike<Types...>;
 </pre>
 
@@ -784,15 +830,15 @@ consumed, and so on. To accomodate this, [[P0443R14]] also includes a second tem
 for *all* senders (to ensure consistency in how they are handled, and to avoid accidentally interpreting a user-provided variant as a sender-provided one) sending the different sets of arguments `Types1...`, `Types2...`, ..., `TypesN...` to be as follows:
 
 <pre highlight=c++>
-template<
-    template<typename ...> typename TupleLike,
-    template<typename ...> typename VariantLike
+template&lt;
+    template&lt;typename ...> typename TupleLike,
+    template&lt;typename ...> typename VariantLike
 >
-using value_types = VariantLike<
-    TupleLike<Types1...>,
-    TupleLike<Types2...>,
+using value_types = VariantLike&lt;
+    TupleLike&lt;Types1...>,
+    TupleLike&lt;Types2...>,
     ...,
-    TupleLike<Types3...>
+    TupleLike&lt;Types3...>
 >;
 </pre>
 
