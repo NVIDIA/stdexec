@@ -2176,7 +2176,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R0<br>Completing the Design of Executors</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-05-28">2021-05-28</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-05-31">2021-05-31</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2340,7 +2340,7 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>Senders now advertise what scheduler, if any, they are bound to.</p>
     <li data-md>
-     <p>Users now have a choice between using a stricly lazy vs a possibly eager version of most algorithms.</p>
+     <p>Users now have a choice between using a strictly lazy vs a possibly eager version of most algorithms.</p>
     <li data-md>
      <p>The places of execution of user code in P0443 weren’t precisely defined, whereas they are in this paper. See <a href="#design-propagation">§ 4.4 Senders may be bound to schedulers</a>.</p>
     <li data-md>
@@ -2518,7 +2518,7 @@ of it as a composition of <code class="highlight"><c- n>transform</c-><c- p>(</c
    <p>This algorithm is included, as it greatly simplifies lifting values into senders.</p>
    <h3 class="heading settled" data-level="4.9" id="design-adapters"><span class="secno">4.9. </span><span class="content">Proposed set of user-facing sender adapters</span><a class="self-link" href="#design-adapters"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-adapter">sender adapter</dfn> is a function which accepts one or more senders, and possibly other algorithms, and returns a sender, whose completion is related to the sender arguments it has received.</p>
-   <p>Many sender adapters come in two versions: a stricly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn data-dfn-type="dfn" data-lt="start" data-noexport id="start">started<a class="self-link" href="#start"></a></dfn> later on, and a potentially eager one, which is allowed to submit work prior to
+   <p>Many sender adapters come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn data-dfn-type="dfn" data-lt="start" data-noexport id="start">started<a class="self-link" href="#start"></a></dfn> later on, and a potentially eager one, which is allowed to submit work prior to
 the returned sender being started. Sender algorithms such as <a href="#design-adapter-ensure_started">§ 4.9.9 execution::ensure_started</a>, <a href="#design-algorithm-submit">§ 4.10.1 execution::submit</a>, and <a href="#design-algorithm-sync_wait">§ 4.10.2 std::this_thread::sync_wait</a> start senders; the implementations of non-lazy versions of the sender adapters are <strong>allowed</strong>, but not
 guaranteed, to start senders.</p>
    <p>The strictly lazy versions of the adapters below (that is, all the versions whose names start with <code class="highlight"><c- n>lazy_</c-></code>) are guaranteed to not start any predecessor senders passed into them.</p>
