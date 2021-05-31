@@ -138,7 +138,7 @@ essential when writing user code using standard execution concepts; we have also
 3. This paper does not include a specific thread pool implementation, per prior committee direction to propose it separately.
 4. We have implemented the SG1 direction to remove executors and base all of the proposed functionalities on senders and schedulers.
 5. Senders now advertise what scheduler, if any, they are bound to.
-6. Users now have a choice between using a stricly lazy vs a possibly eager version of most algorithms.
+6. Users now have a choice between using a strictly lazy vs a possibly eager version of most algorithms.
 7. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
 8. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
 9. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-fork]].
@@ -372,7 +372,7 @@ This algorithm is included, as it greatly simplifies lifting values into senders
 
 A <dfn>sender adapter</dfn> is a function which accepts one or more senders, and possibly other algorithms, and returns a sender, whose completion is related to the sender arguments it has received.
 
-Many sender adapters come in two versions: a stricly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
+Many sender adapters come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
 the returned sender being started. Sender algorithms such as [[#design-adapter-ensure_started]], [[#design-algorithm-submit]], and [[#design-algorithm-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**, but not
 guaranteed, to start senders.
 
