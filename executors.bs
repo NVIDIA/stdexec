@@ -133,7 +133,7 @@ We believe that this aim has been achieved by the design proposed here.
 This paper is not a patch on top of [[P0443R14]]; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
 to standardize any further facilities.
 
-This paper is not an alternative design to [[P0443R14]]; rather, we have taken the design in the current executors paper, and applied targetted fixes to allow it to fulfill the promises of the sender/receiver model, as well as provide all the facilities we consider
+This paper is not an alternative design to [[P0443R14]]; rather, we have taken the design in the current executors paper, and applied targeted fixes to allow it to fulfill the promises of the sender/receiver model, as well as provide all the facilities we consider
 essential when writing user code using standard execution concepts; we have also applied the guidance of removing one-way executors from the paper entirely, and instead provided an algorithm based around senders that serves the same purpose.
 
 ## What are the major design changes compared to P0443? ## {#abstract-compare}
