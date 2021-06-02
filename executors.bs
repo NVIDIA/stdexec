@@ -450,7 +450,9 @@ execution::sender auto lazy_on(
 );
 </pre>
 
-TODO
+Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender does not have a [=completion scheduler=].
+
+TODO: example
 
 ### `execution::unschedule` ### {#design-adapter-unschedule}
 
@@ -510,7 +512,7 @@ Returns a sender which completes once all of the predecessor senders have comple
 
 The returned sender does not have a [=completion scheduler=].
 
-`when_all` is a strictly lazy algorithm; it is guaranteed to not start any of the predecessor senders.
+`when_all` is a strictly lazy algorithm; it is guaranteed to not start any of the predecessor senders until the returned sender is started.
 
 See [[#design-join]].
 
@@ -581,12 +583,19 @@ Like `ensure_started`, but does not return a value; if the provided sender sends
 <pre highlight="c++">
 auto sync_wait(
     execution::sender auto sender
-) -> std::tuple<<i>values-sent-by(sender)</i>>;
+) requires (<i>always-sends-same-values</i>(sender))
+    -> std::optional&lt;std::tuple&lt;<i>values-sent-by</i>(sender)>>;
 </pre>
 
 `std::this_thread::sync_wait` is an algorithm that submits the work described by the provided sender for execution, similarly to `ensure_started`, execept that it blocks <b>the current `std::thread` or thread of `main`</b> until the work is completed, and returns
-a tuple of values that were sent by the provided sender on its completion of work. Where [[#design-factory-schedule]] and [[#design-factory-transfer_just]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of senders,
-retrieving the result of the task graph.
+an optional tuple of values that were sent by the provided sender on its completion of work. Where [[#design-factory-schedule]] and [[#design-factory-transfer_just]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of
+senders, retrieving the result of the task graph.
+
+If the provided sender sends an error instead of values, `sync_wait` throws that error as an exception, or rethrows the original exception if the error is of type `std::exception_ptr`.
+
+If the provided sender sends the "done" signal instead of values, `sync_wait` returns an empty optional.
+
+For an explanation of the `requires` clause, see [[#design-typed-issue]].
 
 XXX TODO: provide an example
 
@@ -617,12 +626,6 @@ execution::submit(work);
 TODO: example
 
 # Proposed design - implementer side # {#design-implementer}
-
-## Senders provide optimization opportunities ## {#design-fusion}
-
-XXX TODO: describe "kernel" fusion better here
-
-Because senders fundamentally *describe* work, instead of describing or representing submission of said work to an execution context, they provide an opportunity for fusing multiple operations in a sender chain together.
 
 ## Receivers serve as glue between senders ## {#design-receivers}
 
@@ -751,6 +754,18 @@ to dispatch to the strictly lazy ones; for an author of a specific sender, it is
 
 As has been described in [[#design-adapters]], whether an operation is guaranteed to perform strictly lazy submission or not is defined by the adapter used to perform it; the adapters whose names begin with `lazy_` provide the strictly lazy guarantee.
 
+## Lazy senders provide optimization opportunities ## {#design-fusion}
+
+Because lazy senders fundamentally *describe* work, instead of describing or representing the submission of said work to an execution context, and thanks to the flexibility of the customization of most sender algorithms, they provide an opportunity for fusing
+multiple operations in a sender chain together, into a single function that can later be submitted for execution by an execution context. There are two ways this can happen.
+
+The first (and most common) way for such optimizations to happen is thanks to the structure of the implementation: because all the work is done within callbacks invoked on the completion of a predecessor's work completion, recursively up to the root of computation,
+the compiler is able to see a chain of work described using senders as a tree of tail calls, allowing for inlining and removal of most of the sender machinery. In fact, when work is not submitted to execution contexts outside of the current thread of execution,
+compilers are capable of removing the senders abstraction entirely, while still allowing for composition of functions across different parts of a program.
+
+The second way for this to occur is when an algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, [[#design-adapter-ensure_started]] will be an identity transformation,
+because the algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy [[#design-adapter-bulk]] operations of compatible shapes, and merge them together into a single submission of a GPU kernel.
+
 ## Execution context transitions are two-step ## {#design-transition-details}
 
 Because `execution::transfer` takes a sender as its first argument, it is not actually directly customizable by the target scheduler. This is by design: the target scheduler may not know how to transition <i>from</i> a scheduler such as a CUDA scheduler;
@@ -773,17 +788,22 @@ The default implementation of `transfer(snd, sched)` is `schedule_from(sched, sn
 
 All sender algorithms that take a single predecessor that we are proposing here take the predecessor as the first argument. This is not an accident; in line with prior proposals, we are proposing that senders and sender algorithms use the familiar pipeline syntax
 for chaining, just like C++20 ranges do. Therefore, a user could write the following to represent a sequence of tasks to execute first on the CPU, then on a CUDA GPU, then on a CPU again, retrieving the result at the end:
-[[
+
 <pre highlight=c++>
-auto [result] = execution::schedule(get_thread_pool())
+auto work = execution::schedule(get_thread_pool())
     | execution::then([]{ return 123; })
     | execution::transfer(cuda::get_scheduler())
     | execution::then([](int i){ return 123 * 5; })
     | execution::transfer(get_thread_pool())
-    | execution::then([](int i){ return i - 5; })
-    | std::this_thread::sync_wait;
+    | execution::then([](int i){ return i - 5; });
+auto [result] = std::this_thread::sync_wait(work);
 // result == 610
 </pre>
+
+Certain functions should not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the algorithms involved. Specifically, the following algorithms should not be pipeable:
+
+ * `sync_wait`: rather than being a terminal node in a pipeline, it <b>consumes</b> a pipeline, and reads better as a function call;
+ * `on` and `lazy_on`: the `on` algorithm changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `transfer`.
 
 ## Senders are typed ## {#design-typed}
 
@@ -797,7 +817,8 @@ The mechanism for this advertisement is the same as in [[P0443R14]]; the way to 
 `sender_traits::value_types` is a template that takes two arguments: one is a tuple-like template, the other is a variant-like template. The tuple-like argument is required to represent senders sending more than one value (such as `when_all`). The variant-like
 argument is required to represent senders that choose which specific values to send at runtime.
 
-There's a choice made in the specification of [[#design-algorithm-sync_wait]]: it returns a tuple of values sent by the sender passed to it. However, this assumes that those values can be represented as a tuple, like here:
+There's a choice made in the specification of [[#design-algorithm-sync_wait]]: it returns a tuple of values sent by the sender passed to it, wrapped in `std::optional` to handle the `set_done` signal. However, this assumes that those values can be represented as a
+tuple, like here:
 
 <pre highlight=c++>
 execution::sender auto sends_1 = ...;
@@ -809,7 +830,7 @@ auto [a, b, c] = std::this_thread::sync_wait(
         sends_1,
         sends_2,
         sends_3
-    ));
+    ).value());
 // a == 1
 // b == 2
 // c == 3
@@ -850,7 +871,25 @@ This, however, introduces a couple of complications:
 2. As a consequence of (1): because `sync_wait` needs to store the above type, it can no longer return just a `std::tuple<int>` for `just(1)`; it has to return `std::variant<std::tuple<int>>`. C++ currently does not have an easy way to destructure this; it may get
     less awkward with pattern matching, but even then it seems extremely heavyweight to involve variants in this API, and for the purpose of generic code, the kind of the return type of `sync_wait` must be the same across all sender types.
 
-One possible solution to (2) above is to place a requirement on `sync_wait` that it can only accept senders which send only a single set of values, therefore removing the need for `std::variant` to appear in its API.
+One possible solution to (2) above is to place a requirement on `sync_wait` that it can only accept senders which send only a single set of values, therefore removing the need for `std::variant` to appear in its API; because of this, we propose to expose both
+`sync_wait`, which is a simple, user-friendly version of the algorithm, but requires that `value_types` have only one possible variant, and `sync_wait_with_variant`, which accepts any sender, but returns an optional whose value type is the variant of all the possible
+tuples sent by the predecessor sender:
+
+<pre highlight=c++>
+auto sync_wait_with_variant(
+    execution::sender auto sender
+) -> std::optional&lt;std::variant&lt;
+        std::tuple&lt;<i>values<sub>0</sub>-sent-by</i>(sender)>,
+        std::tuple&lt;<i>values<sub>1</sub>-sent-by</i>(sender)>,
+        ...,
+        std::tuple&lt;<i>values<sub>n</sub>-sent-by</i>(sender)>
+    >>;
+
+auto sync_wait(
+    execution::sender auto sender
+) requires (<i>always-sends-same-values</i>(sender))
+    -> std::optional&lt;std::tuple&lt;<i>values-sent-by</i>(sender)>>;
+</pre>
 
 ## Ranges-style CPOs vs `tag_invoke` ## {#design-dispatch}
 
@@ -863,3 +902,4 @@ short list:
     `std_this_thread_sync_wait`), but rather by a namespaced name, and `tag_invoke` provides a way to do this
 
 # Specification # {#spec}
+
