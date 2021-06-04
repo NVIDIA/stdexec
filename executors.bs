@@ -903,3 +903,441 @@ short list:
 
 # Specification # {#spec}
 
+Much of this wording follows the wording of [[P0443R14]]. [[#spec-execution]] is meant to be added as a new library clause to the working draft of C++.
+
+# Execution control library <b>[execution]</b> # {#spec-execution}
+
+1. This Clause describes components supporting execution of function objects [function.objects].
+
+2. The following subclauses describe the requirements, concepts, and components for execution control primitives as summarized in Table 1.
+
+<table>
+<caption>Table 1: Execution control library summary <b>[tab:execution.summary]</b></caption>
+<th><td>Subclause</td><td>Header</td></th>
+<tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.req">[execution.req]</a></td><td>Requirements</td><td>`<execution>`</td></tr>
+<tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.scheduler">[execution.scheduler]</a></td><td>Schedulers</td><td></td></tr>
+<tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.receiver">[execution.receiver]</a></td><td>Receivers</td><td></td></tr>
+<tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.op_state">[execution.op_state]</a></td><td>Operation states</td><td></td></tr>
+<tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.sender">[execution.sender]</a></td><td>Senders</td><td></td></tr>
+<tr><td><a href="#spec-execution.execute">[execution.execute]</a></td><td>One-way execution</td><td></td></tr>
+</table>
+
+## Header `<execution>` synopsis <b>[execution.syn]</b> ## {#spec-execution.syn}
+
+<pre highlight=c++>
+namespace std::execution {
+  // [execution.helpers], helper concepts
+  template&lt;class T>
+    concept <i>moveable-value</i> = <i>see-below</i>; // exposition only
+
+  // [execution.scheduler], schedulers
+  template&lt;class S>
+    concept scheduler = <i>see-below</i>;
+
+  inline namespace <i>unspecified</i> {
+    struct get_forward_progress_guarantee_t;
+    inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{}; // TODO
+  }
+
+  // [execution.receiver], receivers
+  template&lt;class T, class E = exception_ptr>
+    concept receiver = <i>see-below</i>;
+
+  template&lt;class T, class... An>
+    concept receiver_of = <i>see-below</i>;
+
+  inline namespace <i>unspecified</i> {
+    struct set_value_t;
+    inline constexpr set_value_t set_value{};
+    struct set_error_t;
+    inline constexpr set_error_t set_error{};
+    struct set_done_t;
+    inline constexpr set_done_t set_done{};
+  }
+
+  // [execution.op_state], operation states
+  template&lt;class O>
+    concept operation_state = <i>see-below</i>;
+
+  inline namespace <i>unspecified</i> {
+    struct start_t;
+    inline constexpr start_t start{};
+  }
+
+  // [execution.sender], senders
+  template&lt;class S>
+    concept sender = <i>see-below</i>;
+
+  template&lt;class S>
+    concept sender_to = <i>see-below</i>;
+
+  template&lt;class S>
+    concept <i>has-sender-types</i> = <i>see-below</i>; // exposition only
+
+  template&lt;class S>
+    concept typed_sender = <i>see-below</i>;
+
+  // [execution.sender.traits], sender traits
+  template&lt;class S>
+    struct sender_traits; // TODO
+
+  inline namespace <i>unspecified</i> {
+    // [execution.sender.connect], the connect algorithm
+    struct connect_t;
+    inline constexpr connect_t connect{};
+
+    // [execution.sender.queries], sender queries
+    struct get_completion_scheduler_t;
+    inline constexpr get_completion_scheduler_t get_completion_scheduler{}; // TODO
+
+    // [execution.sender.factories], sender factories
+    struct schedule_t;
+    inline constexpr schedule_t schedule{};
+    template&lt;class... Ts>
+      struct <i>just-sender</i>; // exposition only
+    template&lt;<i>moveable-value</i>... Ts>
+      <i>just-sender</i>&lt;remove_cvref_t&lt;Ts>...> just(Ts &&...);
+    struct transfer_just_t;
+    inline constexpr transfer_just_t transfer_just{};
+
+    // [execution.sender.adapters], sender adapters
+    struct on_t;
+    inline constexpr on_t on{}; // TODO
+    struct lazy_on_t;
+    inline constexpr lazy_on_t lazy_on{}; // TODO
+    struct transfer_t;
+    inline constexpr transfer_t transfer{}; // TODO
+    struct lazy_transfer_t;
+    inline constexpr lazy_transfer_t lazy_transfer{}; // TODO
+    struct schedule_from_t;
+    inline constexpr schedule_from_t schedule_from{}; // TODO
+    struct lazy_schedule_from_t;
+    inline constexpr lazy_schedule_from_t lazy_schedule_from{}; // TODO
+    struct then_t;
+    inline constexpr then_t then{}; // TODO
+    struct lazy_then_t;
+    inline constexpr lazy_then_t lazy_then{}; // TODO
+    struct bulk_t;
+    inline constexpr bulk_t bulk{}; // TODO
+    struct lazy_bulk_t;
+    inline constexpr lazy_bulk_t lazy_bulk{}; // TODO
+    struct split_t;
+    inline constexpr split_t split{}; // TODO
+    struct lazy_split_t;
+    inline constexpr lazy_split_t lazy_split{}; // TODO
+    struct when_all_t;
+    inline constexpr when_all_t when_all{}; // TODO
+    struct lazy_when_all_t;
+    inline constexpr lazy_when_all_t lazy_when_all{}; // TODO
+    struct transfer_when_all_t;
+    inline constexpr transfer_when_all_t transfer_when_all{}; // TODO
+    struct lazy_transfer_when_all_t;
+    inline constexpr lazy_transfer_when_all_t lazy_transfer_when_all{}; // TODO
+    struct unschedule_t;
+    inline constexpr unschedule_t unschedule{}; // TODO
+    struct ensure_started_t;
+    inline constexpr ensure_started_t ensure_started{}; // TODO
+
+    // [execution.sender.algorithms], sender algorithms
+    struct submit_t;
+    inline constexpr submit_t submit{}; // TODO
+  }
+}
+
+namespace std::this_thread {
+  inline namespace <i>unspecified</i> {
+    struct sync_wait_t;
+    inline constexpr sync_wait_t sync_wait{};
+    struct sync_wait_with_variant_t;
+    inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
+  }
+}
+
+namespace std::execution {
+  inline namespace <i>unspecified</i> {
+    // [execution.execute], one-way execution
+    struct execute_t;
+    inline constexpr execute_t execute{};
+  }
+}
+</pre>
+
+## Helper concepts <b>[execution.helpers]</b> ## {#spec-execution.helpers}
+
+<pre highlight=c++>
+template&lt;class T>
+concept moveable-value = // exposition only
+  move_constructible&lt;remove_cvref_t&lt;T>> &&
+  constructible_from&lt;remove_cvref_t&lt;T>, T>;
+</pre>
+
+## Schedulers <b>[execution.scheduler] </b> ## {#spec-execution.scheduler}
+
+1. The `scheduler` concept defines the requirements of a type that allows for scheduling of work on its <i>associated execution context</i>.
+
+<pre highlight=c++>
+template&lt;class S>
+  concept scheduler =
+    copy_constructible&lt;remove_cvref_t&lt;S>> &&
+    equality_comparable&lt;remove_cvref_t&lt;S>> &&
+    requires(S&& s) {
+      execution::schedule((S&&)s);
+    };
+</pre>
+
+2. None of a scheduler's copy constructor, destructor, equality comparison, or `swap` operations shall exit via an exception.
+
+3. None of these operations, nor a scheduler type's `schedule` function, or a call to a scheduler type's query functions ([[#spec-execution.scheduler.queries]]) shall introduce data races as a result of concurrent invocations of thos functions from different
+    threads.
+
+4. For any two (possibly const) values `s1` and `s2` of some scheduler type `S`, `s1 == s2` shall return `true` only if both `s1` and `s2` are handles to the same associated execution context.
+
+5. A scheduler type's destructor shall not block pending completion of any receivers connected to the sender objects returned from `schedule`. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
+    context of the scheduler. <i>—end note</i>]
+
+## Receivers <b>[execution.receiver]</b> ## {#spec-execution.receiver}
+
+1. A <i>receiver</i> represents the continuation of an asynchronous operation. An asynchronous operation may complete with a (possibly empty) set of values, an error, or it may be cancelled. A receiver has three principal operations corresponding to the three ways
+    an asynchronous operation may complete: `set_value`, `set_error`, and `set_done`. These are collectively known as a receiver’s <i>completion-signal operations</i>.
+
+2. The `receiver` concept defines the requirements for a receiver type with an unknown set of value types. The `receiver_of` concept defines the requirements for a receiver type with a known set of value types, whose error type is `std::exception_ptr`.
+
+<pre highlight=c++>
+template&lt;class T, class E = exception_ptr>
+concept receiver =
+  move_constructible&lt;remove_cvref_t&lt;T>> &&
+  constructible_from&lt;remove_cvref_t&lt;T>, T> &&
+  requires(remove_cvref_t&lt;T>&& t, E&& e) {
+    { execution::set_done(std::move(t)) } noexcept;
+    { execution::set_error(std::move(t), (E&&) e) } noexcept;
+  };
+
+template&lt;class T, class... An>
+concept receiver_of =
+  receiver&lt;T> &&
+  requires(remove_cvref_t&lt;T>&& t, An&&... an) {
+    execution::set_value(std::move(t), (An&&) an...);
+  };
+</pre>
+
+3. The receiver’s completion-signal operations have semantic requirements that are collectively known as the <i>receiver contract</i>, described below:
+
+    1. None of a receiver’s completion-signal operations shall be invoked before `execution::start` has been called on the operation state object that was returned by `execution::connect` to connect that receiver to a sender.
+
+    2. Once `execution::start` has been called on the operation state object, exactly one of the receiver’s completion-signal operations shall complete non-exceptionally before the receiver is destroyed.
+
+    3. If `execution::set_value` exits with an exception, it is still valid to call `execution::set_error` or `execution::set_done` on the receiver, but it is no longer valid to call `execution::set_value` on the receiver.
+
+4. Once one of a receiver’s completion-signal operations has completed non-exceptionally, the receiver contract has been satisfied.
+
+### Set value algorithm <b>[execution.receiver.set_value]</b> ### {#spec-execution.receiver.set_value}
+
+1. `execution::set_value` is used to send a <i>value completion signal</i> to a receiver.
+
+2. The name `execution::set_value` denotes a customization point object. The expression `execution::set_value(R, Vs...)` for some subexpressions `R` and `Vs...` is expression-equivalent to:
+
+    1. `tag_invoke(set_value, R, Vs...)`, if that expression is valid. If the function selected by `tag_invoke` does not send the value(s) `Vs...` to the receiver `R`’s value channel, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::set_value(R, Vs...)` is ill-formed.
+
+### Set error algorithm <b>[execution.receiver.set_error]</b> ### {#spec-execution.receiver.set_error}
+
+1. `execution::set_error` is used to send a <i>error signal</i> to a receiver.
+
+2. The name `execution::set_error` denotes a customization point object. The expression `execution::set_error(R, E)` for some subexpressions `R` and `E` is expression-equivalent to:
+
+    1. `tab_invoke(set_error, R, E)`, if that expression is valid. If the function selected by `tag_invoke` does not send the error `E` to the receiver `R`’s error channel, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::set_error(R, E)` is ill-formed.
+
+### Set done algorithm <b>[execution.receiver.set_done]</b> ### {#spec-execution.receiver.set_done}
+
+1. `execution::set_done` is used to send a <i>done signal</i> to a receiver.
+
+2. The name `execution::set_done` denotes a customization point object. The expression `execution::set_done(R)` for some subexpression `R` is expression-equivalent to:
+
+    1. `tag_invoke(set_done, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s done channel, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::set_done(R)` is ill-formed.
+
+## Operation states <b>[execution.op_state]</b> ## {#spec-execution.op_state}
+
+1. The `operation_state` concept defines the requirements for an operation state type, which allows for starting the execution of work.
+
+<pre highlight=c++>
+template&lt;class O>
+  concept operation_state =
+    destructible&lt;O> &&
+    is_object_v&lt;O> &&
+    requires (O& o) {
+      { execution::start(o) } noexcept;
+    };
+</pre>
+
+### Start algorithm <b>[execution.op_state.start]</b> ### {#spec-execution.op_state.start}
+
+1. `execution::start` is used to start work represented by an operation state object.
+
+2. The name `execution::start` denotes a customization point object. The expression `execution::start(O)` for some lvalue subexpression `O` is expression-equivalent to:
+
+    1. `tag_invoke(start, O)`, if that expression is valid. If the function selected by `tag_invoke` does not start the work represented by the operation state `O`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::start(O)` is ill-formed.
+
+## Senders <b>[execution.sender]</b> ## {#spec-execution.sender}
+
+1. A sender describes a potentially asynchronous operation. A sender's responsibility is to fulfill the receiver contract of a connected receiver by delivering one of the receiver completion-signals.
+
+2. The `sender` concept defines the requirements for a sender type. The `sender_to` concept defines the requirements for a sender type capable of being connected with a specific receiver type.
+
+<pre highlight=c++>
+template&lt;class S>
+  concept sender =
+    move_constructible&lt;remove_cvref_t&lt;S>> &&
+    !requires {
+      typename sender_traits&lt;remove_cvref_t&lt;S>>::__unspecialized; // exposition only
+    };
+
+template&lt;class S, class R>
+  concept sender_to =
+    sender&lt;S> &&
+    receiver&lt;R> &&
+    requires (S&& s, R&& r) {
+      execution::connect((S&&) s, (R&&) r);
+    };
+</pre>
+
+3. A sender is <i>typed</i> if it declares what types it sends through a connected receiver's channels.
+
+4. The `typed_sender` concept defines the requirements for a typed sender type.
+
+<pre highlight=c++>
+template&lt;class S>
+  concept <i>has-sender-types</i> = // exposition only
+    requires {
+      typename has-value-types&lt;S::template value_types>;
+      typename has-error-types&lt;S::template error_types>;
+      typename bool_constant&lt;S::sends_done>;
+    };
+
+template&lt;class S>
+  concept typed_sender =
+    sender&lt;S> &&
+    <i>has-sender-types</i>&lt;sender_traits&lt;remove_cvref_t&lt;S>>>;
+</pre>
+
+### Sender traits <b>[execution.sender.traits]</b> ### {#spec-execution.sender.traits}
+
+### Connect algorithm <b>[execution.sender.connect]</b> ### {#spec-execution.sender.connect}
+
+1. `execution::connect` is used to <i>connect</i> a sender with a receiver, producing an operation state object that represents the work that needs to be performed to satisfy the receiver contract of the receiver with values that are the result of the operations
+    described by the sender.
+
+2. The name `execution::connect` denotes a customization point object. For some subexpressions `s` and `r`, let `S` be `decltype((s))` and `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver` or `S` does not satisfy `execution::sender`,
+    `execution::connect(s, r)` is ill-formed. Otherwise, the expression `execution::connect(s, r)` is expression-equivalent to:
+
+    1. `tag_invoke(connect, s, r)`, if that expression is valid and its type satisfies `execution::operation_state`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program
+        is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::connect(s, r)` is ill-formed.
+
+### Sender queries <b>[execution.sender.queries]</b> ### {#spec-execution.sender.queries}
+
+### Sender factories <b>[execution.sender.factories]</b> ### {#spec-execution.sender.factories}
+
+#### General <b>[execution.sender.factories.general]</b> #### {#spec-execution.sender.factories.general}
+
+1. Subclause [execution.sender.factories] defines <i>sender factories</i>, which are utilities that return senders without accepting senders as arguments.
+
+#### Schedule sender factory <b>[execution.sender.schedule]</b> #### {#spec-execution.sender.schedule}
+
+1. `execution::schedule` is used to obtain a sender associated with a scheduler, which can be used to describe work to be started on that scheduler's associated execution context.
+
+2. The name `execution::schedule` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::scheduler`, `execution::schedule` is ill-formed. Otherwise, the expression `execution::schedule(s)`
+    is expression-equivalent to:
+
+    1. `tag_invoke(schedule, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s`, the program is ill-formed with no diagnostic
+        required.
+
+    2. Otherwise, `execution::schedule(s)` is ill-formed.
+
+#### Just sender factory <b>[execution.sender.just]</b> #### {#spec-execution.sender.just}
+
+1. `execution::just` is used to create a sender that propagates a set of values to a connected receiver.
+
+<pre highlight=c++>
+template&lt;class... Ts>
+struct <i>just-sender</i> // exposition only
+{
+  std::tuple&lt;Ts...> vs_;
+
+  template&lt;template&lt;class...> class Tuple, template&lt;class...> class Tuple>
+  using value_types = Variant&lt;Tuple&lt;Ts...>>;
+
+  template&lt;template&lt;class...> class Variant>
+  using error_types = Variant&lt;>;
+
+  static const constexpr auto sends_done = false;
+
+  template&lt;class R>
+  struct operation_state {
+    std::tuple&lt;Ts...> vs_;
+    R r_;
+
+    void tag_invoke(execution::start_t)
+      noexcept(noexcept(
+        execution::set_value(declval&lt;R>(), declval&lt;Ts>()...)
+      )) {
+      try {
+        apply([&](Ts &... values_) {
+          execution::set_value(move(r_), move(values_)...);
+        }, vs_);
+      }
+      catch (...) {
+        execution::set_error(move(r_), current_exception());
+      }
+    }
+  };
+
+  template&lt;receiver R>
+    requires receiver_of&lt;R, Ts...> && (copyable&ltTs>... &&)
+  auto tag_invoke(execution::connect_t, R && r) const & {
+    return operation_state&lt;R>{ vs_, std::forward&lt;R>(r) };
+  }
+
+  template&lt;receiver R>
+    requires receiver_of&lt;R, Ts...>
+  auto tag_invoke(execution::connect_t, R && r) && {
+    return operation_state&lt;R>{ std::move(vs_), std::forward&lt;R>(r) };
+  }
+};
+
+template&lt;<i>moveable-value</i>... Ts>
+  <i>just-sender</i>&lt;remove_cvref_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
+</pre>
+
+1. <i>Effects</i>: Initializes `vs_` with `make_tuple(forward<Ts>(ts)...)`.
+
+2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
+
+<pre highlight=c++>
+(is_nothrow_constructible_v&lt;remove_cvref_t&lt;Ts>, Ts> && ...)
+</pre>
+
+#### Transfer_just sender factory <b>[execution.sender.transfer_just]</b> #### {#spec-execution.sender.transfer_just}
+
+1. `execution::transfer_just` is used to create a sender that propagates a set of values to a connected receiver on an execution agent belonging to the associated execution context of a specified scheduler.
+
+2. The name `execution::transfer_just` denotes a customization point object. For some subexpressions `s` and `vs...`, let `S` be `decltype((s))` and `Vs...` be `decltype((vs))`. If `S` does not satisfy `execution::scheduler`, or any type `V` in `Vs` does not satisfy
+    `<i>moveable-value</i>`, `execution::transfer_just(s, vs...)` is ill-formed. Otherwise, `execution::transfer_just(s, vs...)` is expression-equivalent to:
+
+    1. `tag_invoke(transfer_just, s, vs...)`, if that expression is valid and its type satisfies `execution::typed_sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s` and sends values equivalent
+        to `vs...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::transfer(execution::just(vs...), s)`.
+
+### Sender adaptors <b>[execution.sender.adaptors]</b> ### {#spec-execution.sender.adaptors}
+
+### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
+
+## One-way execution <b>[execution.execute]</b> ## {#spec-execution.execute}
