@@ -305,11 +305,11 @@ auto some_algorithm(execution::sender auto predecessor) {
 Similarly to how it's hard to write a complex program that will eventually want to fork sender chains into independent streams, it's also hard to write a program that does not want to eventually create join nodes, where multiple independent streams of execution are
 merged into a single one in an asynchronous fashion. We are proposing an algorithm that deals with the common use case for such merging: `when_all`, and an additional variant, `transfer_when_all`, which takes an additional scheduler.
 
-The sender returned from `when_all` completes when the last of the predecessor senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the predecessor senders, in order. The `when_all` algorithm requires that none
-of the predecessor senders have a [=completion scheduler=], and returns a sender that also does not have an associated scheduler.
+The sender returned from `when_all` completes when the last of the predecessor senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the predecessor senders, in order. The `when_all` algorithm returns a sender
+that also does not have an associated scheduler.
 
-`transfer_when_all` accepts an additional scheduler argument, and has no requirements on the predecessor senders. It returns a sender whose [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think
-of it as a composition of `transform(when_all(predecessors...), scheduler)`, but one that allows for better efficiency through customization.
+`transfer_when_all` accepts an additional scheduler argument. It returns a sender whose [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
+`transform(when_all(predecessors...), scheduler)`, but one that allows for better efficiency through customization.
 
 ## Proposed set of user-facing sender factories ## {#design-factories}
 
