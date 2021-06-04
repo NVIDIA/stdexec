@@ -1064,26 +1064,26 @@ namespace std::execution {
 
 ## Helper concepts <b>[execution.helpers]</b> ## {#spec-execution.helpers}
 
-<pre highlight=c++>
-template&lt;class T>
-concept moveable-value = // exposition only
-  move_constructible&lt;remove_cvref_t&lt;T>> &&
-  constructible_from&lt;remove_cvref_t&lt;T>, T>;
-</pre>
+    <pre highlight=c++>
+    template&lt;class T>
+    concept moveable-value = // exposition only
+      move_constructible&lt;remove_cvref_t&lt;T>> &&
+      constructible_from&lt;remove_cvref_t&lt;T>, T>;
+    </pre>
 
 ## Schedulers <b>[execution.scheduler] </b> ## {#spec-execution.scheduler}
 
 1. The `scheduler` concept defines the requirements of a type that allows for scheduling of work on its <i>associated execution context</i>.
 
-<pre highlight=c++>
-template&lt;class S>
-  concept scheduler =
-    copy_constructible&lt;remove_cvref_t&lt;S>> &&
-    equality_comparable&lt;remove_cvref_t&lt;S>> &&
-    requires(S&& s) {
-      execution::schedule((S&&)s);
-    };
-</pre>
+    <pre highlight=c++>
+    template&lt;class S>
+      concept scheduler =
+        copy_constructible&lt;remove_cvref_t&lt;S>> &&
+        equality_comparable&lt;remove_cvref_t&lt;S>> &&
+        requires(S&& s) {
+          execution::schedule((S&&)s);
+        };
+    </pre>
 
 2. None of a scheduler's copy constructor, destructor, equality comparison, or `swap` operations shall exit via an exception.
 
@@ -1102,23 +1102,23 @@ template&lt;class S>
 
 2. The `receiver` concept defines the requirements for a receiver type with an unknown set of value types. The `receiver_of` concept defines the requirements for a receiver type with a known set of value types, whose error type is `std::exception_ptr`.
 
-<pre highlight=c++>
-template&lt;class T, class E = exception_ptr>
-concept receiver =
-  move_constructible&lt;remove_cvref_t&lt;T>> &&
-  constructible_from&lt;remove_cvref_t&lt;T>, T> &&
-  requires(remove_cvref_t&lt;T>&& t, E&& e) {
-    { execution::set_done(std::move(t)) } noexcept;
-    { execution::set_error(std::move(t), (E&&) e) } noexcept;
-  };
+    <pre highlight=c++>
+    template&lt;class T, class E = exception_ptr>
+    concept receiver =
+      move_constructible&lt;remove_cvref_t&lt;T>> &&
+      constructible_from&lt;remove_cvref_t&lt;T>, T> &&
+      requires(remove_cvref_t&lt;T>&& t, E&& e) {
+        { execution::set_done(std::move(t)) } noexcept;
+        { execution::set_error(std::move(t), (E&&) e) } noexcept;
+      };
 
-template&lt;class T, class... An>
-concept receiver_of =
-  receiver&lt;T> &&
-  requires(remove_cvref_t&lt;T>&& t, An&&... an) {
-    execution::set_value(std::move(t), (An&&) an...);
-  };
-</pre>
+    template&lt;class T, class... An>
+    concept receiver_of =
+      receiver&lt;T> &&
+      requires(remove_cvref_t&lt;T>&& t, An&&... an) {
+        execution::set_value(std::move(t), (An&&) an...);
+      };
+    </pre>
 
 3. The receiver’s completion-signal operations have semantic requirements that are collectively known as the <i>receiver contract</i>, described below:
 
@@ -1164,15 +1164,15 @@ concept receiver_of =
 
 1. The `operation_state` concept defines the requirements for an operation state type, which allows for starting the execution of work.
 
-<pre highlight=c++>
-template&lt;class O>
-  concept operation_state =
-    destructible&lt;O> &&
-    is_object_v&lt;O> &&
-    requires (O& o) {
-      { execution::start(o) } noexcept;
-    };
-</pre>
+    <pre highlight=c++>
+    template&lt;class O>
+      concept operation_state =
+        destructible&lt;O> &&
+        is_object_v&lt;O> &&
+        requires (O& o) {
+          { execution::start(o) } noexcept;
+        };
+    </pre>
 
 ### Start algorithm <b>[execution.op_state.start]</b> ### {#spec-execution.op_state.start}
 
@@ -1190,41 +1190,41 @@ template&lt;class O>
 
 2. The `sender` concept defines the requirements for a sender type. The `sender_to` concept defines the requirements for a sender type capable of being connected with a specific receiver type.
 
-<pre highlight=c++>
-template&lt;class S>
-  concept sender =
-    move_constructible&lt;remove_cvref_t&lt;S>> &&
-    !requires {
-      typename sender_traits&lt;remove_cvref_t&lt;S>>::__unspecialized; // exposition only
-    };
+    <pre highlight=c++>
+    template&lt;class S>
+      concept sender =
+        move_constructible&lt;remove_cvref_t&lt;S>> &&
+        !requires {
+          typename sender_traits&lt;remove_cvref_t&lt;S>>::__unspecialized; // exposition only
+        };
 
-template&lt;class S, class R>
-  concept sender_to =
-    sender&lt;S> &&
-    receiver&lt;R> &&
-    requires (S&& s, R&& r) {
-      execution::connect((S&&) s, (R&&) r);
-    };
-</pre>
+    template&lt;class S, class R>
+      concept sender_to =
+        sender&lt;S> &&
+        receiver&lt;R> &&
+        requires (S&& s, R&& r) {
+          execution::connect((S&&) s, (R&&) r);
+        };
+    </pre>
 
 3. A sender is <i>typed</i> if it declares what types it sends through a connected receiver's channels.
 
 4. The `typed_sender` concept defines the requirements for a typed sender type.
 
-<pre highlight=c++>
-template&lt;class S>
-  concept <i>has-sender-types</i> = // exposition only
-    requires {
-      typename has-value-types&lt;S::template value_types>;
-      typename has-error-types&lt;S::template error_types>;
-      typename bool_constant&lt;S::sends_done>;
-    };
+    <pre highlight=c++>
+    template&lt;class S>
+      concept <i>has-sender-types</i> = // exposition only
+        requires {
+          typename has-value-types&lt;S::template value_types>;
+          typename has-error-types&lt;S::template error_types>;
+          typename bool_constant&lt;S::sends_done>;
+        };
 
-template&lt;class S>
-  concept typed_sender =
-    sender&lt;S> &&
-    <i>has-sender-types</i>&lt;sender_traits&lt;remove_cvref_t&lt;S>>>;
-</pre>
+    template&lt;class S>
+      concept typed_sender =
+        sender&lt;S> &&
+        <i>has-sender-types</i>&lt;sender_traits&lt;remove_cvref_t&lt;S>>>;
+    </pre>
 
 ### Sender traits <b>[execution.sender.traits]</b> ### {#spec-execution.sender.traits}
 
@@ -1265,64 +1265,64 @@ template&lt;class S>
 
 1. `execution::just` is used to create a sender that propagates a set of values to a connected receiver.
 
-<pre highlight=c++>
-template&lt;class... Ts>
-struct <i>just-sender</i> // exposition only
-{
-  std::tuple&lt;Ts...> vs_;
+    <pre highlight=c++>
+    template&lt;class... Ts>
+    struct <i>just-sender</i> // exposition only
+    {
+      std::tuple&lt;Ts...> vs_;
 
-  template&lt;template&lt;class...> class Tuple, template&lt;class...> class Tuple>
-  using value_types = Variant&lt;Tuple&lt;Ts...>>;
+      template&lt;template&lt;class...> class Tuple, template&lt;class...> class Tuple>
+      using value_types = Variant&lt;Tuple&lt;Ts...>>;
 
-  template&lt;template&lt;class...> class Variant>
-  using error_types = Variant&lt;>;
+      template&lt;template&lt;class...> class Variant>
+      using error_types = Variant&lt;>;
 
-  static const constexpr auto sends_done = false;
+      static const constexpr auto sends_done = false;
 
-  template&lt;class R>
-  struct operation_state {
-    std::tuple&lt;Ts...> vs_;
-    R r_;
+      template&lt;class R>
+      struct operation_state {
+        std::tuple&lt;Ts...> vs_;
+        R r_;
 
-    void tag_invoke(execution::start_t)
-      noexcept(noexcept(
-        execution::set_value(declval&lt;R>(), declval&lt;Ts>()...)
-      )) {
-      try {
-        apply([&](Ts &... values_) {
-          execution::set_value(move(r_), move(values_)...);
-        }, vs_);
+        void tag_invoke(execution::start_t)
+          noexcept(noexcept(
+            execution::set_value(declval&lt;R>(), declval&lt;Ts>()...)
+          )) {
+          try {
+            apply([&](Ts &... values_) {
+              execution::set_value(move(r_), move(values_)...);
+            }, vs_);
+          }
+          catch (...) {
+            execution::set_error(move(r_), current_exception());
+          }
+        }
+      };
+
+      template&lt;receiver R>
+        requires receiver_of&lt;R, Ts...> && (copyable&ltTs>... &&)
+      auto tag_invoke(execution::connect_t, R && r) const & {
+        return operation_state&lt;R>{ vs_, std::forward&lt;R>(r) };
       }
-      catch (...) {
-        execution::set_error(move(r_), current_exception());
+
+      template&lt;receiver R>
+        requires receiver_of&lt;R, Ts...>
+      auto tag_invoke(execution::connect_t, R && r) && {
+        return operation_state&lt;R>{ std::move(vs_), std::forward&lt;R>(r) };
       }
-    }
-  };
+    };
 
-  template&lt;receiver R>
-    requires receiver_of&lt;R, Ts...> && (copyable&ltTs>... &&)
-  auto tag_invoke(execution::connect_t, R && r) const & {
-    return operation_state&lt;R>{ vs_, std::forward&lt;R>(r) };
-  }
-
-  template&lt;receiver R>
-    requires receiver_of&lt;R, Ts...>
-  auto tag_invoke(execution::connect_t, R && r) && {
-    return operation_state&lt;R>{ std::move(vs_), std::forward&lt;R>(r) };
-  }
-};
-
-template&lt;<i>moveable-value</i>... Ts>
-  <i>just-sender</i>&lt;remove_cvref_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
-</pre>
+    template&lt;<i>moveable-value</i>... Ts>
+      <i>just-sender</i>&lt;remove_cvref_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
+    </pre>
 
 1. <i>Effects</i>: Initializes `vs_` with `make_tuple(forward<Ts>(ts)...)`.
 
 2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
 
-<pre highlight=c++>
-(is_nothrow_constructible_v&lt;remove_cvref_t&lt;Ts>, Ts> && ...)
-</pre>
+    <pre highlight=c++>
+    (is_nothrow_constructible_v&lt;remove_cvref_t&lt;Ts>, Ts> && ...)
+    </pre>
 
 #### Transfer_just sender factory <b>[execution.sender.transfer_just]</b> #### {#spec-execution.sender.transfer_just}
 
@@ -1337,6 +1337,43 @@ template&lt;<i>moveable-value</i>... Ts>
     2. Otherwise, `execution::transfer(execution::just(vs...), s)`.
 
 ### Sender adaptors <b>[execution.sender.adaptors]</b> ### {#spec-execution.sender.adaptors}
+
+#### General <b>[execution.sender.adaptors.general]</b> #### {#spec-execution.sender.adaptors.general}
+
+1. Subclause [execution.sender.adaptors] defines <i>sender adaptors</i>, which are utilities that transform one or more senders into a sender with custom behaviors. When they accept a single sender argument, they can be chained to create sender chains.
+
+2. The bitwise OR operator is overloaded for the purpose of creating sender chains. The adaptors also support function call syntax with equivalent semantics.
+
+#### Sender adaptor closure objects <b>[execution.sender.adaptor.objects]</b> #### {#spec-execution.sender.adaptor.objects}
+
+1. A <i>pipeable sender adaptor closure object</i> is a function object that accepts one or more `sender` arguments and returns a `sender`. For a sender adaptor closure object `C` and an expression `S` such that `decltype((S))` models `sender`, the following
+    expressions are equivalent and yield a `sender`:
+
+    <pre highlight=c++>
+    C(S)
+    S | C
+    </pre>
+
+    Given an additional pipeable sender adaptor closure object `D`, the expression `C | D` is well-formed and produces another range adaptor closure object such that the following two expressions are equivalent:
+
+    <pre highlight=c++>
+    S | C | D
+    S | (C | D)
+    </pre>
+
+2. A <i>pipeable sender adaptor object</i> is a customization point object that accepts a `sender` as its first argument and returns a `sender`.
+
+3. If a pipeable sender adaptor object accepts only one argument, then it is a pipeable sender adaptor closure object.
+
+4. If a pipeable sender adaptor object accepts more than one argument, then the following expressions are equivalent:
+
+    <pre highlight=c++>
+    <i>adaptor</i>(sender, args...)
+    <i>adaptor</i>(args...)(sender)
+    sender | <i>adaptor</i>(args...)
+    </pre>
+
+    In that case, <code><i>adaptor</i>(args...)</code> is a pipeable sender adaptor closure object.
 
 ### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
 
