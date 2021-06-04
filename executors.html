@@ -2517,10 +2517,9 @@ accepts an lvalue sender, it must not invalidate the lvalue it has received. It 
    <h3 class="heading settled" data-level="4.7" id="design-join"><span class="secno">4.7. </span><span class="content">Senders are joinable</span><a class="self-link" href="#design-join"></a></h3>
    <p>Similarly to how it’s hard to write a complex program that will eventually want to fork sender chains into independent streams, it’s also hard to write a program that does not want to eventually create join nodes, where multiple independent streams of execution are
 merged into a single one in an asynchronous fashion. We are proposing an algorithm that deals with the common use case for such merging: <code class="highlight"><c- n>when_all</c-></code>, and an additional variant, <code class="highlight"><c- n>transfer_when_all</c-></code>, which takes an additional scheduler.</p>
-   <p>The sender returned from <code class="highlight"><c- n>when_all</c-></code> completes when the last of the predecessor senders completes. It <a data-link-type="dfn" href="#send" id="ref-for-send①">sends</a> a pack of values, where the elements of said pack are the values sent by the predecessor senders, in order. The <code class="highlight"><c- n>when_all</c-></code> algorithm requires that none
-of the predecessor senders have a <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler②">completion scheduler</a>, and returns a sender that also does not have an associated scheduler.</p>
-   <p><code class="highlight"><c- n>transfer_when_all</c-></code> accepts an additional scheduler argument, and has no requirements on the predecessor senders. It returns a sender whose <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler③">completion scheduler</a> is the scheduler provided as an argument, but otherwise behaves the same as <code class="highlight"><c- n>when_all</c-></code>. You can think
-of it as a composition of <code class="highlight"><c- n>transform</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>predecessors</c-><c- p>...),</c-> <c- n>scheduler</c-><c- p>)</c-></code>, but one that allows for better efficiency through customization.</p>
+   <p>The sender returned from <code class="highlight"><c- n>when_all</c-></code> completes when the last of the predecessor senders completes. It <a data-link-type="dfn" href="#send" id="ref-for-send①">sends</a> a pack of values, where the elements of said pack are the values sent by the predecessor senders, in order. The <code class="highlight"><c- n>when_all</c-></code> algorithm returns a sender
+that also does not have an associated scheduler.</p>
+   <p><code class="highlight"><c- n>transfer_when_all</c-></code> accepts an additional scheduler argument. It returns a sender whose <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler②">completion scheduler</a> is the scheduler provided as an argument, but otherwise behaves the same as <code class="highlight"><c- n>when_all</c-></code>. You can think of it as a composition of <code class="highlight"><c- n>transform</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>predecessors</c-><c- p>...),</c-> <c- n>scheduler</c-><c- p>)</c-></code>, but one that allows for better efficiency through customization.</p>
    <h3 class="heading settled" data-level="4.8" id="design-factories"><span class="secno">4.8. </span><span class="content">Proposed set of user-facing sender factories</span><a class="self-link" href="#design-factories"></a></h3>
    <p>A <dfn data-dfn-type="dfn" data-noexport id="sender-factory">sender factory<a class="self-link" href="#sender-factory"></a></dfn> is a function which creates new senders, without requiring a predecessor sender.</p>
    <h4 class="heading settled" data-level="4.8.1" id="design-factory-schedule"><span class="secno">4.8.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code></span><a class="self-link" href="#design-factory-schedule"></a></h4>
@@ -2539,7 +2538,7 @@ of it as a composition of <code class="highlight"><c- n>transform</c-><c- p>(</c
     <c- k>auto</c-> <c- p>...</c-><c- n>values</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender with no <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler④">completion scheduler</a>, which <a data-link-type="dfn" href="#send" id="ref-for-send②">sends</a> copies of the provided values.</p>
+   <p>Returns a sender with no <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler③">completion scheduler</a>, which <a data-link-type="dfn" href="#send" id="ref-for-send②">sends</a> copies of the provided values.</p>
    <p>TODO: example</p>
    <h4 class="heading settled" data-level="4.8.3" id="design-factory-transfer_just"><span class="secno">4.8.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code></span><a class="self-link" href="#design-factory-transfer_just"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>transfer_just</c-><c- p>(</c->
@@ -2547,7 +2546,7 @@ of it as a composition of <code class="highlight"><c- n>transform</c-><c- p>(</c
     <c- k>auto</c-> <c- p>...</c-><c- n>values</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender whose <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑤">completion scheduler</a> is the provided scheduler, which <a data-link-type="dfn" href="#send" id="ref-for-send③">sends</a> copies of the provided values.</p>
+   <p>Returns a sender whose <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler④">completion scheduler</a> is the provided scheduler, which <a data-link-type="dfn" href="#send" id="ref-for-send③">sends</a> copies of the provided values.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>vals</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>(</c->
     <c- n>get_system_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>(),</c->
     <c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c->
@@ -2618,14 +2617,14 @@ guaranteed, to start senders.</p>
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender does not have a <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑥">completion scheduler</a>.</p>
+   <p>Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender does not have a <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑤">completion scheduler</a>.</p>
    <p>TODO: example</p>
    <h4 class="heading settled" data-level="4.9.4" id="design-adapter-unschedule"><span class="secno">4.9.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>unschedule</c-></code></span><a class="self-link" href="#design-adapter-unschedule"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- n>unschedule</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender which <a data-link-type="dfn" href="#send" id="ref-for-send⑤">sends</a> values equivalent to values sent by the provided sender, but does not have an <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑦">completion scheduler</a>.</p>
+   <p>Returns a sender which <a data-link-type="dfn" href="#send" id="ref-for-send⑤">sends</a> values equivalent to values sent by the provided sender, but does not have an <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑥">completion scheduler</a>.</p>
    <p>TODO: example</p>
    <h4 class="heading settled" data-level="4.9.5" id="design-adapter-bulk"><span class="secno">4.9.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span><a class="self-link" href="#design-adapter-bulk"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>bulk</c-><c- p>(</c->
@@ -2656,7 +2655,7 @@ guaranteed, to start senders.</p>
 <c- p>));</c->
 </pre>
    <p>Returns a sender which completes once all of the predecessor senders have completed. The values send by this sender are the values sent by each of the predecessor, in order of the arguments passed to <code class="highlight"><c- n>when_all</c-></code>.</p>
-   <p>The returned sender does not have a <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑧">completion scheduler</a>.</p>
+   <p>The returned sender does not have a <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑦">completion scheduler</a>.</p>
    <p><code class="highlight"><c- n>when_all</c-></code> is a strictly lazy algorithm; it is guaranteed to not start any of the predecessor senders until the returned sender is started.</p>
    <p>See <a href="#design-join">§ 4.7 Senders are joinable</a>.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
@@ -2685,7 +2684,7 @@ guaranteed, to start senders.</p>
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- p>...</c-><c- n>predecessors</c->
 <c- p>);</c->
 </pre>
-   <p>Similar to <a href="#design-adapter-when_all">§ 4.9.7 execution::when_all</a>, but returns a sender whose <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑨">completion scheduler</a> is the provided scheduler.</p>
+   <p>Similar to <a href="#design-adapter-when_all">§ 4.9.7 execution::when_all</a>, but returns a sender whose <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑧">completion scheduler</a> is the provided scheduler.</p>
    <p>See <a href="#design-join">§ 4.7 Senders are joinable</a>.</p>
    <h4 class="heading settled" data-level="4.9.9" id="design-adapter-ensure_started"><span class="secno">4.9.9. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code></span><a class="self-link" href="#design-adapter-ensure_started"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>ensure_started</c-><c- p>(</c->
@@ -2770,7 +2769,7 @@ interact with operation states directly are authors of senders and authors of se
 <c- c1>// kept alive until the operation finishes</c->
 </pre>
    <h3 class="heading settled" data-level="5.4" id="design-customization"><span class="secno">5.4. </span><span class="content">Sender algorithms are customizable</span><a class="self-link" href="#design-customization"></a></h3>
-   <p>Senders being able to be bound to schedulers, and being able to advertise what their <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler①⓪">completion scheduler</a> is, fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler it will execute on.</p>
+   <p>Senders being able to be bound to schedulers, and being able to advertise what their <a data-link-type="dfn" href="#completion-scheduler" id="ref-for-completion-scheduler⑨">completion scheduler</a> is, fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler it will execute on.</p>
    <p>The simple way to provide customizations for functions like <code class="highlight"><c- n>then</c-></code>, that is for <a data-link-type="dfn" href="#sender-adapter" id="ref-for-sender-adapter">sender adapters</a> and <a data-link-type="dfn" href="#sender-algorithm" id="ref-for-sender-algorithm">algorithms</a>, is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
 the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>sender</c-><c- p>,</c-> <c- n>invocable</c-><c- p>)</c-></code> to be equivalent to:</p>
    <ol>
@@ -3636,14 +3635,14 @@ expressions are equivalent and yield a <code class="highlight"><c- n>sender</c->
    <ul>
     <li><a href="#ref-for-completion-scheduler">4.4. Senders may be bound to schedulers</a>
     <li><a href="#ref-for-completion-scheduler①">4.5. Execution context transitions are explicit</a>
-    <li><a href="#ref-for-completion-scheduler②">4.7. Senders are joinable</a> <a href="#ref-for-completion-scheduler③">(2)</a>
-    <li><a href="#ref-for-completion-scheduler④">4.8.2. execution::just</a>
-    <li><a href="#ref-for-completion-scheduler⑤">4.8.3. execution::transfer_just</a>
-    <li><a href="#ref-for-completion-scheduler⑥">4.9.3. execution::on</a>
-    <li><a href="#ref-for-completion-scheduler⑦">4.9.4. execution::unschedule</a>
-    <li><a href="#ref-for-completion-scheduler⑧">4.9.7. execution::when_all</a>
-    <li><a href="#ref-for-completion-scheduler⑨">4.9.8. execution::transfer_when_all</a>
-    <li><a href="#ref-for-completion-scheduler①⓪">5.4. Sender algorithms are customizable</a>
+    <li><a href="#ref-for-completion-scheduler②">4.7. Senders are joinable</a>
+    <li><a href="#ref-for-completion-scheduler③">4.8.2. execution::just</a>
+    <li><a href="#ref-for-completion-scheduler④">4.8.3. execution::transfer_just</a>
+    <li><a href="#ref-for-completion-scheduler⑤">4.9.3. execution::on</a>
+    <li><a href="#ref-for-completion-scheduler⑥">4.9.4. execution::unschedule</a>
+    <li><a href="#ref-for-completion-scheduler⑦">4.9.7. execution::when_all</a>
+    <li><a href="#ref-for-completion-scheduler⑧">4.9.8. execution::transfer_when_all</a>
+    <li><a href="#ref-for-completion-scheduler⑨">5.4. Sender algorithms are customizable</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="sender-adapter">
