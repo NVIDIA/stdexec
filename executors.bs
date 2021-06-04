@@ -1344,6 +1344,15 @@ namespace std::execution {
 
 2. The bitwise OR operator is overloaded for the purpose of creating sender chains. The adaptors also support function call syntax with equivalent semantics.
 
+3. Most sender adaptors have two versions, an <i>potentially eager version</i>, and a <i>strictly lazy</i> version. For such sender adaptors, <code><i>adaptor</i></code> is the potentially eager version, and <code>lazy&lowbar;<i>adaptor</i></code> is the strictly
+    lazy version.
+
+4. A strictly lazy version of a sender adaptor is required to not begin executing any functions which would observe or modify any of the arguments of the adaptor before the returned sender is connected with a receiver using `execution::connect`, and
+    `execution::start` is called on the resulting operation state. This requirement applies to any function that is selected by the implementation of the sender adaptor.
+
+5. Unless otherwise specified, all sender adaptors which accept a single `sender` argument return sender objects that propagate sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
+    sender adaptor.
+
 #### Sender adaptor closure objects <b>[execution.sender.adaptor.objects]</b> #### {#spec-execution.sender.adaptor.objects}
 
 1. A <i>pipeable sender adaptor closure object</i> is a function object that accepts one or more `sender` arguments and returns a `sender`. For a sender adaptor closure object `C` and an expression `S` such that `decltype((S))` models `sender`, the following
