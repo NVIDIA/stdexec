@@ -2176,7 +2176,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R0<br>Completing the Design of Executors</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-06-04">2021-06-04</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-06-05">2021-06-05</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2310,6 +2310,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
          <ol class="toc">
           <li><a href="#spec-execution.sender.adaptors.general"><span class="secno">8.6.5.1</span> <span class="content">General <b>[execution.sender.adaptors.general]</b></span></a>
           <li><a href="#spec-execution.sender.adaptor.objects"><span class="secno">8.6.5.2</span> <span class="content">Sender adaptor closure objects <b>[execution.sender.adaptor.objects]</b></span></a>
+          <li><a href="#spec-execution.sender.adaptors.on"><span class="secno">8.6.5.3</span> <span class="content">On adaptor <b>[execution.sender.adaptors.on]</b></span></a>
          </ol>
         <li><a href="#spec-execution.sender.algorithms"><span class="secno">8.6.6</span> <span class="content">Sender algorithms <b>[execution.sender.algorithms]</b></span></a>
        </ol>
@@ -3457,6 +3458,42 @@ expressions are equivalent and yield a <code class="highlight"><c- n>sender</c->
 <c- n>sender</c-> <c- o>|</c-> <i><c- n>adaptor</c-></i><c- p>(</c-><c- n>args</c-><c- p>...)</c->
 </pre>
      <p>In that case, <code class="highlight"><i><c- n>adaptor</c-></i><c- p>(</c-><c- n>args</c-><c- p>...)</c-></code> is a pipeable sender adaptor closure object.</p>
+   </ol>
+   <h5 class="heading settled" data-level="8.6.5.3" id="spec-execution.sender.adaptors.on"><span class="secno">8.6.5.3. </span><span class="content">On adaptor <b>[execution.sender.adaptors.on]</b></span><a class="self-link" href="#spec-execution.sender.adaptors.on"></a></h5>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> and <code class="highlight"><c- nl>execution</c-><c- p>:;</c-><c- n>lazy_on</c-></code> are used to adapt a sender in a sender that will start the predecessor sender on an execution agent belonging to a specific execution context.</p>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
+     <ol>
+      <li data-md>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>on</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><c- n>lazy_on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is ill-formed.</p>
+     </ol>
+     <p>If the function selected above does not return a sender which starts <code class="highlight"><c- n>s</c-></code> on an execution agent of the associated execution context of <code class="highlight"><c- n>sch</c-></code>, the program is ill-formed with no diagnostic required.</p>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_on</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_on</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
+     <ol>
+      <li data-md>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>lazy_on</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected above does not return a sender which starts <code class="highlight"><c- n>s</c-></code> on an execution agent of the associated execution context of <code class="highlight"><c- n>sch</c-></code> when started,
+the program is ill-formed with no diagnostic required.</p>
+      <li data-md>
+       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it results in an operation state <code class="highlight"><c- n>op_state</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>, it:</p>
+       <ol>
+        <li data-md>
+         <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>.</p>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> is called on <code class="highlight"><c- n>r</c-></code>, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>out_r</c-><c- p>)</c-></code>, which results in <code class="highlight"><c- n>op_state2</c-></code>. If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> throws, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> is called on <code class="highlight"><c- n>out_r</c-></code>, with an exception pointer to that exception as the second
+argument. Otherwise, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> is called on <code class="highlight"><c- n>r</c-></code>, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> on <code class="highlight"><c- n>out_r</c-></code> with the same second argument.</p>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-></code> is called on <code class="highlight"><c- n>r</c-></code>, it calls <code class="highlight"><c- nl>execution</c-><c- p>:;</c-><c- n>set_done</c-></code> on <code class="highlight"><c- n>out_r</c-></code>.</p>
+       </ol>
+     </ol>
    </ol>
    <h4 class="heading settled" data-level="8.6.6" id="spec-execution.sender.algorithms"><span class="secno">8.6.6. </span><span class="content">Sender algorithms <b>[execution.sender.algorithms]</b></span><a class="self-link" href="#spec-execution.sender.algorithms"></a></h4>
    <h3 class="heading settled" data-level="8.7" id="spec-execution.execute"><span class="secno">8.7. </span><span class="content">One-way execution <b>[execution.execute]</b></span><a class="self-link" href="#spec-execution.execute"></a></h3>
