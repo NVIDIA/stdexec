@@ -1384,6 +1384,38 @@ namespace std::execution {
 
     In that case, <code><i>adaptor</i>(args...)</code> is a pipeable sender adaptor closure object.
 
+#### On adaptor <b>[execution.sender.adaptors.on]</b> #### {#spec-execution.sender.adaptors.on}
+
+1. `execution::on` and `execution:;lazy_on` are used to adapt a sender in a sender that will start the predecessor sender on an execution agent belonging to a specific execution context.
+
+2. The name `execution::on` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
+    `execution::on` is ill-formed. Otherwise, the expression `execution::on(sch, s)` is expression-equivalent to:
+
+    1. `tag_invoke(on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `lazy_on(sch, s)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `execution::on(sch, s)` is ill-formed.
+
+    If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
+
+2. The name `execution::lazy_on` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
+    `execution::lazy_on` is ill-formed. Otherwise, the expression `execution::lazy_on(sch, s)` is expression-equivalent to:
+
+    1. `tag_invoke(lazy_on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch` when started,
+        the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+
+        1. Constructs a receiver `r`.
+
+        2. When `execution::set_value` is called on `r`, it calls `execution::connect(s, out_r)`, which results in `op_state2`. If `execution::connect` throws, `execution::set_error` is called on `out_r`, with an exception pointer to that exception as the second
+            argument. Otherwise, it calls `execution::start(op_state2)`.
+
+        3. When `execution::set_error` is called on `r`, it calls `execution::set_error` on `out_r` with the same second argument.
+
+        4. When `execution::set_done` is called on `r`, it calls `execution:;set_done` on `out_r`.
+
 ### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
 
 ## One-way execution <b>[execution.execute]</b> ## {#spec-execution.execute}
