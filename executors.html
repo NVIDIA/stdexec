@@ -3098,6 +3098,7 @@ tuples sent by the predecessor sender:</p>
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>schedule_from_t</c-> <c- n>schedule_from</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>lazy_schedule_from_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_schedule_from_t</c-> <c- n>lazy_schedule_from</c-><c- p>{};</c->
+
     <c- k>struct</c-> <c- nc>then_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>then_t</c-> <c- n>then</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>lazy_then_t</c-><c- p>;</c->
@@ -3110,10 +3111,12 @@ tuples sent by the predecessor sender:</p>
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>upon_done_t</c-> <c- n>upon_done</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>lazy_upon_done_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_upon_done_t</c-> <c- n>lazy_upon_done</c-><c- p>{};</c->
+
     <c- k>struct</c-> <c- nc>bulk_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>bulk_t</c-> <c- n>bulk</c-><c- p>{};</c-> <c- c1>// TODO</c->
     <c- k>struct</c-> <c- nc>lazy_bulk_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_bulk_t</c-> <c- n>lazy_bulk</c-><c- p>{};</c-> <c- c1>// TODO</c->
+
     <c- k>struct</c-> <c- nc>split_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>split_t</c-> <c- n>split</c-><c- p>{};</c-> <c- c1>// TODO</c->
     <c- k>struct</c-> <c- nc>lazy_split_t</c-><c- p>;</c->
@@ -3126,6 +3129,7 @@ tuples sent by the predecessor sender:</p>
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>reschedule_when_all_t</c-> <c- n>reschedule_when_all</c-><c- p>{};</c-> <c- c1>// TODO</c->
     <c- k>struct</c-> <c- nc>lazy_reschedule_when_all_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_reschedule_when_all_t</c-> <c- n>lazy_reschedule_when_all</c-><c- p>{};</c-> <c- c1>// TODO</c->
+
     <c- k>struct</c-> <c- nc>unschedule_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>unschedule_t</c-> <c- n>unschedule</c-><c- p>{};</c-> <c- c1>// TODO</c->
     <c- k>struct</c-> <c- nc>ensure_started_t</c-><c- p>;</c->
@@ -3453,6 +3457,9 @@ lazy version.</p>
     <li data-md>
      <p>Unless otherwise specified, all sender adaptors which accept a single <code class="highlight"><c- n>sender</c-></code> argument return sender objects that propagate sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
 sender adaptor.</p>
+    <li data-md>
+     <p>Unless otherwise specified, whenever a strictly lazy sender adaptor constructs a receiver it passes to another sender’s connect, that receiver shall propagate receiver queries to a receiver accepted as an argument of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>. This requirements
+applies to any sender returned from a function that is selected by the implementation of a strictly lazy sender adaptor.</p>
    </ol>
    <h5 class="heading settled" data-level="8.6.5.2" id="spec-execution.sender.adaptor.objects"><span class="secno">8.6.5.2. </span><span class="content">Sender adaptor closure objects <b>[execution.sender.adaptor.objects]</b></span><a class="self-link" href="#spec-execution.sender.adaptor.objects"></a></h5>
    <ol>
@@ -3542,6 +3549,8 @@ passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code>
        <p>Otherwise, <code class="highlight"><c- n>lazy_schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
      </ol>
      <p>If the function selected above does not return a sender which is a result of a call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s2</c-><c- p>)</c-></code>, where <code class="highlight"><c- n>s2</c-></code> is a sender which sends equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+    <li data-md>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to a predecessor sender. They shall return a sender equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
    </ol>
    <h5 class="heading settled" data-level="8.6.5.5" id="spec-execution.sender.adaptors.schedule_from"><span class="secno">8.6.5.5. </span><span class="content">Schedule_from adaptor <b>[execution.sender.adaptors.schedule_from]</b></span><a class="self-link" href="#spec-execution.sender.adaptors.schedule_from"></a></h5>
    <ol>
@@ -3585,6 +3594,8 @@ second argument.</p>
 it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
        </ol>
      </ol>
+    <li data-md>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to a predecessor sender. They shall return a sender equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
    </ol>
    <h5 class="heading settled" data-level="8.6.5.6" id="spec-execution.sender.adaptor.then"><span class="secno">8.6.5.6. </span><span class="content">Then adaptor <b>[execution.sender.adaptors.then]</b></span><a class="self-link" href="#spec-execution.sender.adaptor.then"></a></h5>
    <ol>
