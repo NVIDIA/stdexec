@@ -252,7 +252,7 @@ means that there's no way to construct sender chains that traverse different exe
 
 We propose that, for senders advertising their [=completion scheduler=], all execution context transitions <b>must</b> be explicit; running user code anywhere but where they defined it to run <b>must</b> be considered a bug.
 
-We propose a new user-facing algorithm, `execution::transfer`, for performing transitions from one execution context to another:
+We propose a new user-facing algorithm, `execution::reschedule`, for performing transitions from one execution context to another:
 
 <pre highlight="c++">
 execution::scheduler auto sch1 = ...;
@@ -263,7 +263,7 @@ execution::sender auto then1 = execution::then(snd1, []{
     std::cout << "I am running on sch1!\n";
 });
 
-execution::sender auto snd2 = execution::transfer(then1, sch2);
+execution::sender auto snd2 = execution::reschedule(then1, sch2);
 
 execution::sender auto then2 = execution::then(snd2, []{
     std::cout << "I am running on sch2!\n";
@@ -303,12 +303,12 @@ auto some_algorithm(execution::sender auto predecessor) {
 ## Senders are joinable ## {#design-join}
 
 Similarly to how it's hard to write a complex program that will eventually want to fork sender chains into independent streams, it's also hard to write a program that does not want to eventually create join nodes, where multiple independent streams of execution are
-merged into a single one in an asynchronous fashion. We are proposing an algorithm that deals with the common use case for such merging: `when_all`, and an additional variant, `transfer_when_all`, which takes an additional scheduler.
+merged into a single one in an asynchronous fashion. We are proposing an algorithm that deals with the common use case for such merging: `when_all`, and an additional variant, `reschedule_when_all`, which takes an additional scheduler.
 
 The sender returned from `when_all` completes when the last of the predecessor senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the predecessor senders, in order. The `when_all` algorithm returns a sender
 that also does not have an associated scheduler.
 
-`transfer_when_all` accepts an additional scheduler argument. It returns a sender whose [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
+`reschedule_when_all` accepts an additional scheduler argument. It returns a sender whose [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
 `transform(when_all(predecessors...), scheduler)`, but one that allows for better efficiency through customization.
 
 ## Proposed set of user-facing sender factories ## {#design-factories}
@@ -344,10 +344,10 @@ Returns a sender with no [=completion scheduler=], which [=send|sends=] copies o
 
 TODO: example
 
-### `execution::transfer_just` ### {#design-factory-transfer_just}
+### `execution::reschedule_just` ### {#design-factory-reschedule_just}
 
 <pre highlight="c++">
-execution::sender auto transfer_just(
+execution::sender auto reschedule_just(
     execution::scheduler auto scheduler,
     auto ...values
 );
@@ -356,7 +356,7 @@ execution::sender auto transfer_just(
 Returns a sender whose [=completion scheduler=] is the provided scheduler, which [=send|sends=] copies of the provided values.
 
 <pre highlight="c++">
-execution::sender auto vals = execution::transfer_just(
+execution::sender auto vals = execution::reschedule_just(
     get_system_thread_pool().scheduler(),
     1, 2, 3
 );
@@ -380,15 +380,15 @@ The strictly lazy versions of the adapters below (that is, all the versions whos
 
 For more implementer-centric description of starting senders, see [[#design-laziness]].
 
-### `execution::transfer` ### {#design-adapter-transfer}
+### `execution::reschedule` ### {#design-adapter-reschedule}
 
 <pre highlight="c++">
-execution::sender auto transfer(
+execution::sender auto reschedule(
     execution::sender auto predecessor,
     execution::scheduler auto scheduler
 );
 
-execution::sender auto lazy_transfer(
+execution::sender auto lazy_reschedule(
     execution::sender auto predecessor,
     execution::scheduler auto scheduler
 );
@@ -403,7 +403,7 @@ execution::scheduler auto gpu_sched = cuda::scheduler();
 execution::sender auto cpu_task = execution::schedule(cpu_sched);
 // cpu_task describes the creation of a new task on the system thread pool
 
-execution::sender auto gpu_task = execution::transfer(cpu_task, gpu_sched);
+execution::sender auto gpu_task = execution::reschedule(cpu_task, gpu_sched);
 // gpu_task describes the transition of the task graph described by cpu_task to the gpu
 </pre>
 
@@ -533,15 +533,15 @@ execution::sender auto final = execution::then(both, [](auto... args){
 // when final executes, it will print "the two args: 1, abc"
 </pre>
 
-### `execution::transfer_when_all` ### {#design-adapter-transfer_when_all}
+### `execution::reschedule_when_all` ### {#design-adapter-reschedule_when_all}
 
 <pre highlight="c++">
-execution::sender auto transfer_when_all(
+execution::sender auto reschedule_when_all(
     execution::scheduler auto sched,
     execution::sender auto ...predecessors
 );
 
-execution::sender auto lazy_transfer_when_all(
+execution::sender auto lazy_reschedule_when_all(
     execution::scheduler auto sched,
     execution::sender auto ...predecessors
 );
@@ -588,7 +588,7 @@ auto sync_wait(
 </pre>
 
 `std::this_thread::sync_wait` is an algorithm that submits the work described by the provided sender for execution, similarly to `ensure_started`, execept that it blocks <b>the current `std::thread` or thread of `main`</b> until the work is completed, and returns
-an optional tuple of values that were sent by the provided sender on its completion of work. Where [[#design-factory-schedule]] and [[#design-factory-transfer_just]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of
+an optional tuple of values that were sent by the provided sender on its completion of work. Where [[#design-factory-schedule]] and [[#design-factory-reschedule_just]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of
 senders, retrieving the result of the task graph.
 
 If the provided sender sends an error instead of values, `sync_wait` throws that error as an exception, or rethrows the original exception if the error is of type `std::exception_ptr`.
@@ -768,19 +768,19 @@ because the algorithm will be specialized for such senders. Similarly, an implem
 
 ## Execution context transitions are two-step ## {#design-transition-details}
 
-Because `execution::transfer` takes a sender as its first argument, it is not actually directly customizable by the target scheduler. This is by design: the target scheduler may not know how to transition <i>from</i> a scheduler such as a CUDA scheduler;
+Because `execution::reschedule` takes a sender as its first argument, it is not actually directly customizable by the target scheduler. This is by design: the target scheduler may not know how to transition <i>from</i> a scheduler such as a CUDA scheduler;
 transitioning away from a GPU in an efficient manner requires making runtime calls that are specific to the GPU in question, and the same is usually true for other kinds of accelerators too (or for scheduler running on remote systems). To avoid this problem,
 specialized schedulers like the ones mentioned here can still hook into the transition mechanism, and inject a sender which will perform a transition to the regular CPU execution context, so that any sender can be attached to it.
 
-This, however, is a problem: because customization of algorithms must be controlled by the scheduler they will run on (see [[#design-customization]]), the type of the sender returned from `transfer` must be controllable by the target scheduler. Besides, the target
+This, however, is a problem: because customization of algorithms must be controlled by the scheduler they will run on (see [[#design-customization]]), the type of the sender returned from `reschedule` must be controllable by the target scheduler. Besides, the target
 scheduler may itself represent a specialized execution context, which requires additional work to be performed to transition <i>to</i> it. GPUs and remote node schedulers are once again good examples of such schedulers: executing code on their execution contexts
-requires making runtime API calls for work submission, and quite possibly for the data movement of the values being sent by the predecessor passed into `transfer`.
+requires making runtime API calls for work submission, and quite possibly for the data movement of the values being sent by the predecessor passed into `reschedule`.
 
 To allow for such customization from both ends, we propose the inclusion of a secondary transitioning algorithm, called `schedule_from`. This algorithm is a form of `schedule`, but takes an additional, second argument: the predecessor sender. This algorithm is not
-meant to be invoked manually by the end users; they are always supposed to invoke `transfer`, to ensure that both schedulers have a say in how the transitions are made. Any predecessor scheduler that specializes `transfer(snd, sch)` shall ensure that the
+meant to be invoked manually by the end users; they are always supposed to invoke `reschedule`, to ensure that both schedulers have a say in how the transitions are made. Any predecessor scheduler that specializes `reschedule(snd, sch)` shall ensure that the
 return value of their customization is equivalent to `schedule_from(sch, snd2)`, where `snd2` is a successor of `snd` that sends values equivalent to those sent by `snd`.
 
-The default implementation of `transfer(snd, sched)` is `schedule_from(sched, snd)`.
+The default implementation of `reschedule(snd, sched)` is `schedule_from(sched, snd)`.
 
 # Proposed design - API specifics # {#design-api}
 
@@ -792,9 +792,9 @@ for chaining, just like C++20 ranges do. Therefore, a user could write the follo
 <pre highlight=c++>
 auto work = execution::schedule(get_thread_pool())
     | execution::then([]{ return 123; })
-    | execution::transfer(cuda::get_scheduler())
+    | execution::reschedule(cuda::get_scheduler())
     | execution::then([](int i){ return 123 * 5; })
-    | execution::transfer(get_thread_pool())
+    | execution::reschedule(get_thread_pool())
     | execution::then([](int i){ return i - 5; });
 auto [result] = std::this_thread::sync_wait(work);
 // result == 610
@@ -803,7 +803,7 @@ auto [result] = std::this_thread::sync_wait(work);
 Certain functions should not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the algorithms involved. Specifically, the following algorithms should not be pipeable:
 
  * `sync_wait`: rather than being a terminal node in a pipeline, it <b>consumes</b> a pipeline, and reads better as a function call;
- * `on` and `lazy_on`: the `on` algorithm changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `transfer`.
+ * `on` and `lazy_on`: the `on` algorithm changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `reschedule`.
 
 ## Senders are typed ## {#design-typed}
 
@@ -987,7 +987,9 @@ namespace std::execution {
     inline constexpr connect_t connect{};
 
     // [execution.sender.queries], sender queries
+    template&lt;class CPO>
     struct get_completion_scheduler_t;
+    template&lt;class CPO>
     inline constexpr get_completion_scheduler_t get_completion_scheduler{}; // TODO
 
     // [execution.sender.factories], sender factories
@@ -997,26 +999,34 @@ namespace std::execution {
       struct <i>just-sender</i>; // exposition only
     template&lt;<i>moveable-value</i>... Ts>
       <i>just-sender</i>&lt;remove_cvref_t&lt;Ts>...> just(Ts &&...);
-    struct transfer_just_t;
-    inline constexpr transfer_just_t transfer_just{};
+    struct reschedule_just_t;
+    inline constexpr reschedule_just_t reschedule_just{};
 
     // [execution.sender.adapters], sender adapters
     struct on_t;
-    inline constexpr on_t on{}; // TODO
+    inline constexpr on_t on{};
     struct lazy_on_t;
-    inline constexpr lazy_on_t lazy_on{}; // TODO
-    struct transfer_t;
-    inline constexpr transfer_t transfer{}; // TODO
-    struct lazy_transfer_t;
-    inline constexpr lazy_transfer_t lazy_transfer{}; // TODO
+    inline constexpr lazy_on_t lazy_on{};
+    struct reschedule_t;
+    inline constexpr reschedule_t reschedule{};
+    struct lazy_reschedule_t;
+    inline constexpr lazy_reschedule_t lazy_reschedule{};
     struct schedule_from_t;
-    inline constexpr schedule_from_t schedule_from{}; // TODO
+    inline constexpr schedule_from_t schedule_from{};
     struct lazy_schedule_from_t;
-    inline constexpr lazy_schedule_from_t lazy_schedule_from{}; // TODO
+    inline constexpr lazy_schedule_from_t lazy_schedule_from{};
     struct then_t;
     inline constexpr then_t then{}; // TODO
     struct lazy_then_t;
     inline constexpr lazy_then_t lazy_then{}; // TODO
+    struct upon_error_t;
+    inline constexpr upon_error_t upon_error{}; // TODO
+    struct lazy_upon_error_t;
+    inline constexpr lazy_upon_error_t lazy_upon_error{}; // TODO
+    struct upon_done_t;
+    inline constexpr upon_done_t upon_done{}; // TODO
+    struct lazy_upon_done_t;
+    inline constexpr lazy_upon_done_t lazy_upon_done{}; // TODO
     struct bulk_t;
     inline constexpr bulk_t bulk{}; // TODO
     struct lazy_bulk_t;
@@ -1029,10 +1039,10 @@ namespace std::execution {
     inline constexpr when_all_t when_all{}; // TODO
     struct lazy_when_all_t;
     inline constexpr lazy_when_all_t lazy_when_all{}; // TODO
-    struct transfer_when_all_t;
-    inline constexpr transfer_when_all_t transfer_when_all{}; // TODO
-    struct lazy_transfer_when_all_t;
-    inline constexpr lazy_transfer_when_all_t lazy_transfer_when_all{}; // TODO
+    struct reschedule_when_all_t;
+    inline constexpr reschedule_when_all_t reschedule_when_all{}; // TODO
+    struct lazy_reschedule_when_all_t;
+    inline constexpr lazy_reschedule_when_all_t lazy_reschedule_when_all{}; // TODO
     struct unschedule_t;
     inline constexpr unschedule_t unschedule{}; // TODO
     struct ensure_started_t;
@@ -1184,6 +1194,9 @@ namespace std::execution {
 
     2. Otherwise, `execution::start(O)` is ill-formed.
 
+3. The caller of `execution::start(O)` must guarantee that the lifetime of the operation state object `O` extends at least until one of the receiver completion-signal functions of a receiver `R` passed into the `execution::connect` call that produced `O` is ready
+    to successfully return. [<i>Note:</i> this allows for the receiver to manage the lifetime of the operation state object, if destroying it is the last operation it performs in its completion-signal functions. --<i>end note</i>]
+
 ## Senders <b>[execution.sender]</b> ## {#spec-execution.sender}
 
 1. A sender describes a potentially asynchronous operation. A sender's responsibility is to fulfill the receiver contract of a connected receiver by delivering one of the receiver completion-signals.
@@ -1324,17 +1337,17 @@ namespace std::execution {
     (is_nothrow_constructible_v&lt;remove_cvref_t&lt;Ts>, Ts> && ...)
     </pre>
 
-#### Transfer_just sender factory <b>[execution.sender.transfer_just]</b> #### {#spec-execution.sender.transfer_just}
+#### Reschedule_just sender factory <b>[execution.sender.reschedule_just]</b> #### {#spec-execution.sender.reschedule_just}
 
-1. `execution::transfer_just` is used to create a sender that propagates a set of values to a connected receiver on an execution agent belonging to the associated execution context of a specified scheduler.
+1. `execution::reschedule_just` is used to create a sender that propagates a set of values to a connected receiver on an execution agent belonging to the associated execution context of a specified scheduler.
 
-2. The name `execution::transfer_just` denotes a customization point object. For some subexpressions `s` and `vs...`, let `S` be `decltype((s))` and `Vs...` be `decltype((vs))`. If `S` does not satisfy `execution::scheduler`, or any type `V` in `Vs` does not satisfy
-    `<i>moveable-value</i>`, `execution::transfer_just(s, vs...)` is ill-formed. Otherwise, `execution::transfer_just(s, vs...)` is expression-equivalent to:
+2. The name `execution::reschedule_just` denotes a customization point object. For some subexpressions `s` and `vs...`, let `S` be `decltype((s))` and `Vs...` be `decltype((vs))`. If `S` does not satisfy `execution::scheduler`, or any type `V` in `Vs` does not
+    satisfy `<i>moveable-value</i>`, `execution::reschedule_just(s, vs...)` is ill-formed. Otherwise, `execution::reschedule_just(s, vs...)` is expression-equivalent to:
 
-    1. `tag_invoke(transfer_just, s, vs...)`, if that expression is valid and its type satisfies `execution::typed_sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s` and sends values equivalent
-        to `vs...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(reschedule_just, s, vs...)`, if that expression is valid and its type satisfies `execution::typed_sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s` and sends values
+        equivalent to `vs...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
 
-    2. Otherwise, `execution::transfer(execution::just(vs...), s)`.
+    2. Otherwise, `execution::reschedule(execution::just(vs...), s)`.
 
 ### Sender adaptors <b>[execution.sender.adaptors]</b> ### {#spec-execution.sender.adaptors}
 
@@ -1386,16 +1399,14 @@ namespace std::execution {
 
 #### On adaptor <b>[execution.sender.adaptors.on]</b> #### {#spec-execution.sender.adaptors.on}
 
-1. `execution::on` and `execution:;lazy_on` are used to adapt a sender in a sender that will start the predecessor sender on an execution agent belonging to a specific execution context.
+1. `execution::on` and `execution::lazy_on` are used to adapt a sender in a sender that will start the predecessor sender on an execution agent belonging to a specific execution context.
 
 2. The name `execution::on` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
     `execution::on` is ill-formed. Otherwise, the expression `execution::on(sch, s)` is expression-equivalent to:
 
     1. `tag_invoke(on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `lazy_on(sch, s)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `execution::on(sch, s)` is ill-formed.
+    2. Otherwise, `lazy_on(sch, s)`.
 
     If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
 
@@ -1407,14 +1418,80 @@ namespace std::execution {
 
     2. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
 
+        1. Constructs a receiver `r`:
+
+            2. When `execution::set_value` is called on `r`, it calls `execution::connect(s, out_r)`, which results in `op_state2`. It calls `execution::start(op_state2)`. If any of these operations throws an exception, it calls `execution::set_error` on `out_r`,
+                passing `current_exception()` as the second argument.
+
+            3. When `execution::set_error` is called on `r`, it calls `execution::set_error` on `out_r` with the same second argument.
+
+            4. When `execution::set_done` is called on `r`, it calls `execution::set_done` on `out_r`.
+
+        2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`. If any of these operation throws an exception, it calls `execution::set_error`
+            on `out_r`, passing `current_exception()` as the second argument.
+
+#### Reschedule adaptor <b>[execution.sender.adaptors.reschedule]</b> #### {#spec-execution.sender.adaptors.reschedule}
+
+1. `execution::reschedule` and `execution::lazy_reschedule` are used to adapt a sender into a sender with a different associated completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]
+
+2. The name `execution::reschedule` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`. or `S` does not satisfy `execution::sender`,
+    `execution::reschedule` is ill-formed. Otherwise, the expression `execution::reschedule(s, sch)` is expression-equivalent to:
+
+    1. `tag_invoke(reschedule, get_completion_scheduler<set_value>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(reschedule, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `schedule_from(sch, s)`.
+
+    If the function selected above does not return a sender which is a result of a call to `execution::schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+
+2. The name `execution::lazy_reschedule` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`. or `S` does not satisfy
+    `execution::sender`, `execution::lazy_reschedule` is ill-formed. Otherwise, the expression `execution::lazy_reschedule(s, sch)` is expression-equivalent to:
+
+    1. `tag_invoke(lazy_reschedule, get_completion_scheduler<set_value>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(lazy_reschedule, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `lazy_schedule_from(sch, s)`.
+
+    If the function selected above does not return a sender which is a result of a call to `execution::lazy_schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+
+#### Schedule_from adaptor <b>[execution.sender.adaptors.schedule_from]</b> #### {#spec-execution.sender.adaptors.schedule_from}
+
+1. `execution::schedule_from` and `execution::lazy_schedule_from` are used to schedule work dependent on the completion of a sender onto a scheduler's associated execution context. [<i>Note</i>: `schedule_from` and `lazy_schedule_from` are not meant to be used in
+    user code; they are used in the implementation of `reschedule` and `lazy_reschedule`. -<i>end note</i>]
+
+2. The name `execution::schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
+    `execution::typed_sender`, `execution::schedule_from` is ill-formed. Otherwise, the expression `execution::schedule_from(sch, s)` is expression-equivalent to:
+
+    1. `tag_invoke(schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated execution context
+        of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `tag_invoke(lazy_schedule_from, sch, s)`.
+
+2. The name `execution::lazy_schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
+    `execution::typed_sender`, `execution::lazy_schedule_from` is ill-formed. Otherwise, the expression `execution::lazy_schedule_from(sch, s)` is expression-equivalent to:
+
+    1. `tag_invoke(lazy_schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated execution
+        context of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, constructs a sender `s2`. When `s2` is connected with some reciever `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+
         1. Constructs a receiver `r`.
 
-        2. When `execution::set_value` is called on `r`, it calls `execution::connect(s, out_r)`, which results in `op_state2`. If `execution::connect` throws, `execution::set_error` is called on `out_r`, with an exception pointer to that exception as the second
-            argument. Otherwise, it calls `execution::start(op_state2)`.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`, then calls `execution::start` on `op_state2`. If any of these operations throws an exception, calls `execution::set_error` on `out_r`, passing `current_exception()` as the
+            second argument.
 
-        3. When `execution::set_error` is called on `r`, it calls `execution::set_error` on `out_r` with the same second argument.
+        3. When a receiver completion-signals <i>Signal</i> is called on `r` with additional arguments `args...`, it constructs a receiver `r2`:
 
-        4. When `execution::set_done` is called on `r`, it calls `execution:;set_done` on `out_r`.
+            1. When `execution::set_value` is called on `r2`, it calls <i>Signal</i> on `out_r`, passing `args...` as the additional arguments.
+
+            2. When `execution::set_error` is called on `r2`, it calls `execution::set_error` on `out_r` with the same second argument.
+
+            3. When `execution::done` is called on `r2`, it calls `execution::set_done` on `out_r`.
+
+            It then calls `execution::schedule(sch)`, resulting in a sender `s3`. It then calls `execution::connect(s3, r2)`, resulting in an operation state `op_state3`. It then calls `execution::start(op_state3)`. If any of these operations throws an exception,
+            it calls `execution::set_error` on `out_r`, passing `current_exception()` as the second argument.
 
 ### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
 
