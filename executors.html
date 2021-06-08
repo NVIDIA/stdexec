@@ -2285,6 +2285,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#spec-execution.receiver.set_value"><span class="secno">8.4.1</span> <span class="content">Set value algorithm <b>[execution.receiver.set_value]</b></span></a>
         <li><a href="#spec-execution.receiver.set_error"><span class="secno">8.4.2</span> <span class="content">Set error algorithm <b>[execution.receiver.set_error]</b></span></a>
         <li><a href="#spec-execution.receiver.set_done"><span class="secno">8.4.3</span> <span class="content">Set done algorithm <b>[execution.receiver.set_done]</b></span></a>
+        <li><a href="#spec-execution.receiver.queries"><span class="secno">8.4.4</span> <span class="content">Receiver queries <b>[execution.receiver.queries]</b></span></a>
        </ol>
       <li>
        <a href="#spec-execution.op_state"><span class="secno">8.5</span> <span class="content">Operation states <b>[execution.op_state]</b></span></a>
@@ -2315,7 +2316,9 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
           <li><a href="#spec-execution.sender.adaptors.schedule_from"><span class="secno">8.6.5.5</span> <span class="content">Schedule_from adaptor <b>[execution.sender.adaptors.schedule_from]</b></span></a>
           <li><a href="#spec-execution.sender.adaptor.then"><span class="secno">8.6.5.6</span> <span class="content">Then adaptor <b>[execution.sender.adaptors.then]</b></span></a>
           <li><a href="#spec-execution.sender.adaptor.upon_error"><span class="secno">8.6.5.7</span> <span class="content">Upon_error adaptor <b>[execution.sender.adaptors.upon_error]</b></span></a>
-          <li><a href="#spec-execution.sender.adaptor.upon_done"><span class="secno">8.6.5.8</span> <span class="content">upon_done adaptor <b>[execution.sender.adaptors.upon_done]</b></span></a>
+          <li><a href="#spec-execution.sender.adaptor.upon_done"><span class="secno">8.6.5.8</span> <span class="content">Upon_done adaptor <b>[execution.sender.adaptors.upon_done]</b></span></a>
+          <li><a href="#spec-execution.sender.adaptor.when_all"><span class="secno">8.6.5.9</span> <span class="content">When_all adaptor <b>[execution.sender.adaptors.when_all]</b></span></a>
+          <li><a href="#spec-execution.sender.adaptor.reschedule_when_all"><span class="secno">8.6.5.10</span> <span class="content">Reschedule_when_all adaptor <b>[execution.sender.adaptors.reschedule_when_all]</b></span></a>
          </ol>
         <li><a href="#spec-execution.sender.algorithms"><span class="secno">8.6.6</span> <span class="content">Sender algorithms <b>[execution.sender.algorithms]</b></span></a>
        </ol>
@@ -3122,13 +3125,13 @@ tuples sent by the predecessor sender:</p>
     <c- k>struct</c-> <c- nc>lazy_split_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_split_t</c-> <c- n>lazy_split</c-><c- p>{};</c-> <c- c1>// TODO</c->
     <c- k>struct</c-> <c- nc>when_all_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>when_all_t</c-> <c- n>when_all</c-><c- p>{};</c-> <c- c1>// TODO</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>when_all_t</c-> <c- n>when_all</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>lazy_when_all_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_when_all_t</c-> <c- n>lazy_when_all</c-><c- p>{};</c-> <c- c1>// TODO</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_when_all_t</c-> <c- n>lazy_when_all</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>reschedule_when_all_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>reschedule_when_all_t</c-> <c- n>reschedule_when_all</c-><c- p>{};</c-> <c- c1>// TODO</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>reschedule_when_all_t</c-> <c- n>reschedule_when_all</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>lazy_reschedule_when_all_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_reschedule_when_all_t</c-> <c- n>lazy_reschedule_when_all</c-><c- p>{};</c-> <c- c1>// TODO</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_reschedule_when_all_t</c-> <c- n>lazy_reschedule_when_all</c-><c- p>{};</c->
 
     <c- k>struct</c-> <c- nc>unschedule_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>unschedule_t</c-> <c- n>unschedule</c-><c- p>{};</c-> <c- c1>// TODO</c->
@@ -3262,6 +3265,7 @@ an asynchronous operation may complete: <code class="highlight"><c- n>set_value<
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>R</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
    </ol>
+   <h4 class="heading settled" data-level="8.4.4" id="spec-execution.receiver.queries"><span class="secno">8.4.4. </span><span class="content">Receiver queries <b>[execution.receiver.queries]</b></span><a class="self-link" href="#spec-execution.receiver.queries"></a></h4>
    <h3 class="heading settled" data-level="8.5" id="spec-execution.op_state"><span class="secno">8.5. </span><span class="content">Operation states <b>[execution.op_state]</b></span><a class="self-link" href="#spec-execution.op_state"></a></h3>
    <ol>
     <li data-md>
@@ -3573,13 +3577,12 @@ of <code class="highlight"><c- n>sch</c-></code> and sends signals equivalent to
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>lazy_schedule_from</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which completes on an execution agent belonging to the associated execution
 context of <code class="highlight"><c- n>sch</c-></code> and sends signals equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
       <li data-md>
-       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some reciever <code class="highlight"><c- n>out_r</c-></code>, it results in an operation state <code class="highlight"><c- n>op_state</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>, it:</p>
+       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some reciever <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
         <li data-md>
          <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>.</p>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>, then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> on <code class="highlight"><c- n>op_state2</c-></code>. If any of these operations throws an exception, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> on <code class="highlight"><c- n>out_r</c-></code>, passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code> as the
-second argument.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>. If any of these operations throws an exception, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> on <code class="highlight"><c- n>out_r</c-></code>, passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code> as the second argument.</p>
         <li data-md>
          <p>When a receiver completion-signal <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is called, it constructs a receiver <code class="highlight"><c- n>r2</c-></code>:</p>
          <ol>
@@ -3592,10 +3595,12 @@ second argument.</p>
          </ol>
          <p>It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code>, resulting in a sender <code class="highlight"><c- n>s3</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s3</c-><c- p>,</c-> <c- n>r2</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state3</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state3</c-><c- p>)</c-></code>. If any of these operations throws an exception,
 it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
+        <li data-md>
+         <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
        </ol>
      </ol>
     <li data-md>
-     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to a predecessor sender. They shall return a sender equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to a predecessor sender. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
    </ol>
    <h5 class="heading settled" data-level="8.6.5.6" id="spec-execution.sender.adaptor.then"><span class="secno">8.6.5.6. </span><span class="content">Then adaptor <b>[execution.sender.adaptors.then]</b></span><a class="self-link" href="#spec-execution.sender.adaptor.then"></a></h5>
    <ol>
@@ -3622,7 +3627,7 @@ expression-equivalent to:</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>lazy_then</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
-       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it results in an operation state <code class="highlight"><c- n>op_state</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>, it:</p>
+       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
         <li data-md>
          <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>:</p>
@@ -3635,7 +3640,9 @@ expression-equivalent to:</p>
            <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
          </ol>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>, then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>. If any of these operations throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>. If this operation throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
+        <li data-md>
+         <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
        </ol>
      </ol>
      <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> with the result of the <code class="highlight"><c- n>set_value</c-></code> signal of <code class="highlight"><c- n>s</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
@@ -3665,7 +3672,7 @@ expression-equivalent to:</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>lazy_upon_error</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
-       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it results in an operation state <code class="highlight"><c- n>op_state</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>, it:</p>
+       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
         <li data-md>
          <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>:</p>
@@ -3678,13 +3685,15 @@ expression-equivalent to:</p>
            <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
          </ol>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>, then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>. If any of these operations throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>. If this operation throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
+        <li data-md>
+         <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
        </ol>
      </ol>
      <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> with the result of the <code class="highlight"><c- n>set_error</c-></code> signal of <code class="highlight"><c- n>s</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
     ill-formed with no diagnostic required.</p>
    </ol>
-   <h5 class="heading settled" data-level="8.6.5.8" id="spec-execution.sender.adaptor.upon_done"><span class="secno">8.6.5.8. </span><span class="content">upon_done adaptor <b>[execution.sender.adaptors.upon_done]</b></span><a class="self-link" href="#spec-execution.sender.adaptor.upon_done"></a></h5>
+   <h5 class="heading settled" data-level="8.6.5.8" id="spec-execution.sender.adaptor.upon_done"><span class="secno">8.6.5.8. </span><span class="content">Upon_done adaptor <b>[execution.sender.adaptors.upon_done]</b></span><a class="self-link" href="#spec-execution.sender.adaptor.upon_done"></a></h5>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_done</c-></code> are used to attach invocables as continuation for successful completion of the predecessor sender.</p>
@@ -3708,7 +3717,7 @@ expression-equivalent to:</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>lazy_upon_done</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
-       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it results in an operation state <code class="highlight"><c- n>op_state</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>, it:</p>
+       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
         <li data-md>
          <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>:</p>
@@ -3721,11 +3730,83 @@ expression-equivalent to:</p>
            <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>invoke</c-><c- p>(</c-><c- n>f</c-><c- p>)</c-></code> and passes the result <code class="highlight"><c- n>v</c-></code> to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>v</c-><c- p>)</c-></code>. If any of these operations throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
          </ol>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>, then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>. If any of these operations throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>. If this operation throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
+        <li data-md>
+         <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
        </ol>
      </ol>
      <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when the <code class="highlight"><c- n>set_done</c-></code> signal of <code class="highlight"><c- n>s</c-></code> is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
     ill-formed with no diagnostic required.</p>
+   </ol>
+   <h5 class="heading settled" data-level="8.6.5.9" id="spec-execution.sender.adaptor.when_all"><span class="secno">8.6.5.9. </span><span class="content">When_all adaptor <b>[execution.sender.adaptors.when_all]</b></span><a class="self-link" href="#spec-execution.sender.adaptor.when_all"></a></h5>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_when_all</c-></code> are used to join multiple sender chains and create a sender whose execution is dependent on all of the predecessors.</p>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> is
+ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
+     <ol>
+      <li data-md>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>when_all</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no diagnostic required.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><c- n>lazy_when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...)</c-></code>.</p>
+     </ol>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_when_all</c-></code> is
+ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
+     <ol>
+      <li data-md>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>lazy_when_all</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no diagnostic required.</p>
+      <li data-md>
+       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s</c-></code>. When <code class="highlight"><c- n>s</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
+       <ol>
+        <li data-md>
+         <p>For each sender <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, constructs a receiver <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>:</p>
+         <ol start="2">
+          <li data-md>
+           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>t</c-><sub><i><c- n>i</c-></i></sub><c- p>...)</c-></code> is called for every <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>t</c-><sub><i><c- n>0</c-></i></sub><c- p>...,</c-> <c- n>t</c-><sub><i><c- n>1</c-></i></sub><c- p>...,</c-> <c- p>...,</c-> <c- n>t</c-><sub><i><c- n>n</c-></i></sub><c- p>...)</c-></code> is called, where <code class="highlight"><c- n>n</c-></code> is <code class="highlight"><c- k>sizeof</c-><c- p>...(</c-><c- n>s</c-><c- p>)</c-> <c- o>-</c-> <c- mi>1</c-></code>.</p>
+          <li data-md>
+           <p>Otherwise, if <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called for any <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called.</p>
+          <li data-md>
+           <p>Otherwise, if <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>)</c-></code> is called for any <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code> is called.</p>
+         </ol>
+        <li data-md>
+         <p>For each sender <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>)</c-></code>, resulting in operation states <code class="highlight"><c- n>op_state</c-><sub><i><c- n>i</c-></i></sub></code>.</p>
+        <li data-md>
+         <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains each operation state <code class="highlight"><c- n>op_state</c-><sub><i><c- n>i</c-></i></sub></code>. When <code class="highlight"><c- nl>execution</c-><c- p>:;</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><sub><i><c- n>i</c-></i></sub><c- p>)</c-></code> for each <code class="highlight"><c- n>op_state</c-><sub><i><c- n>i</c-></i></sub></code>.</p>
+       </ol>
+     </ol>
+    <li data-md>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_when_all</c-></code> shall not expose the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code>.</p>
+    <li data-md>
+     <p><code class="highlight"><c- n>tag_invoke</c-></code> expressions used in the definitions of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_when_all</c-></code> shall not consider member functions of their first non-tag arguments.</p>
+   </ol>
+   <h5 class="heading settled" data-level="8.6.5.10" id="spec-execution.sender.adaptor.reschedule_when_all"><span class="secno">8.6.5.10. </span><span class="content">Reschedule_when_all adaptor <b>[execution.sender.adaptors.reschedule_when_all]</b></span><a class="self-link" href="#spec-execution.sender.adaptor.reschedule_when_all"></a></h5>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_when_all</c-></code> are used to join multiple sender chains and create a sender whose execution is dependent on all of the predecessors, while also making sure that they complete on the specified scheduler. [<i>Note:</i> this can
+allow for better customization of the algorithm. --<i>end note</i>]</p>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>scheduler</c-></code>, or any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_when_all</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
+     <ol>
+      <li data-md>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>reschedule_when_all</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when they all complete
+with <code class="highlight"><c- n>set_value</c-></code>, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of <code class="highlight"><c- n>sch</c-></code>, the program is ill-formed with no diagnostic required.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><c- n>reschedule</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...),</c-> <c- n>sch</c-><c- p>)</c-></code>.</p>
+     </ol>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule_when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>scheduler</c-></code>, or any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule_when_all</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
+     <ol>
+      <li data-md>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>lazy_reschedule_when_all</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when they all
+complete with <code class="highlight"><c- n>set_value</c-></code>, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of <code class="highlight"><c- n>sch</c-></code>, the program is ill-formed with no diagnostic required.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><c- n>lazy_reschedule</c-><c- p>(</c-><c- n>lazy_when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...),</c-> <c- n>sch</c-><c- p>)</c-></code>.</p>
+     </ol>
+    <li data-md>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule_when_all</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to predecessor senders. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from
+those queries.</p>
    </ol>
    <h4 class="heading settled" data-level="8.6.6" id="spec-execution.sender.algorithms"><span class="secno">8.6.6. </span><span class="content">Sender algorithms <b>[execution.sender.algorithms]</b></span><a class="self-link" href="#spec-execution.sender.algorithms"></a></h4>
    <h3 class="heading settled" data-level="8.7" id="spec-execution.execute"><span class="secno">8.7. </span><span class="content">One-way execution <b>[execution.execute]</b></span><a class="self-link" href="#spec-execution.execute"></a></h3>
