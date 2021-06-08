@@ -1015,6 +1015,7 @@ namespace std::execution {
     inline constexpr schedule_from_t schedule_from{};
     struct lazy_schedule_from_t;
     inline constexpr lazy_schedule_from_t lazy_schedule_from{};
+
     struct then_t;
     inline constexpr then_t then{};
     struct lazy_then_t;
@@ -1027,10 +1028,12 @@ namespace std::execution {
     inline constexpr upon_done_t upon_done{};
     struct lazy_upon_done_t;
     inline constexpr lazy_upon_done_t lazy_upon_done{};
+
     struct bulk_t;
     inline constexpr bulk_t bulk{}; // TODO
     struct lazy_bulk_t;
     inline constexpr lazy_bulk_t lazy_bulk{}; // TODO
+
     struct split_t;
     inline constexpr split_t split{}; // TODO
     struct lazy_split_t;
@@ -1043,6 +1046,7 @@ namespace std::execution {
     inline constexpr reschedule_when_all_t reschedule_when_all{}; // TODO
     struct lazy_reschedule_when_all_t;
     inline constexpr lazy_reschedule_when_all_t lazy_reschedule_when_all{}; // TODO
+
     struct unschedule_t;
     inline constexpr unschedule_t unschedule{}; // TODO
     struct ensure_started_t;
@@ -1366,6 +1370,9 @@ namespace std::execution {
 5. Unless otherwise specified, all sender adaptors which accept a single `sender` argument return sender objects that propagate sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
     sender adaptor.
 
+6. Unless otherwise specified, whenever a strictly lazy sender adaptor constructs a receiver it passes to another sender's connect, that receiver shall propagate receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
+    applies to any sender returned from a function that is selected by the implementation of a strictly lazy sender adaptor.
+
 #### Sender adaptor closure objects <b>[execution.sender.adaptor.objects]</b> #### {#spec-execution.sender.adaptor.objects}
 
 1. A <i>pipeable sender adaptor closure object</i> is a function object that accepts one or more `sender` arguments and returns a `sender`. For a sender adaptor closure object `C` and an expression `S` such that `decltype((S))` models `sender`, the following
@@ -1445,7 +1452,7 @@ namespace std::execution {
 
     If the function selected above does not return a sender which is a result of a call to `execution::schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
 
-2. The name `execution::lazy_reschedule` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`. or `S` does not satisfy
+3. The name `execution::lazy_reschedule` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`. or `S` does not satisfy
     `execution::sender`, `execution::lazy_reschedule` is ill-formed. Otherwise, the expression `execution::lazy_reschedule(s, sch)` is expression-equivalent to:
 
     1. `tag_invoke(lazy_reschedule, get_completion_scheduler<set_value>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
@@ -1455,6 +1462,8 @@ namespace std::execution {
     3. Otherwise, `lazy_schedule_from(sch, s)`.
 
     If the function selected above does not return a sender which is a result of a call to `execution::lazy_schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+
+4. Senders returned from `execution::reschedule` and `execution::lazy_reschedule` shall not propagate the sender queries `get_completion_scheduler<CPO>` to a predecessor sender. They shall return a sender equivalent to the `sch` argument from those queries.
 
 #### Schedule_from adaptor <b>[execution.sender.adaptors.schedule_from]</b> #### {#spec-execution.sender.adaptors.schedule_from}
 
@@ -1469,7 +1478,7 @@ namespace std::execution {
 
     2. Otherwise, `lazy_schedule_from(sch, s)`.
 
-2. The name `execution::lazy_schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
+3. The name `execution::lazy_schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
     `execution::typed_sender`, `execution::lazy_schedule_from` is ill-formed. Otherwise, the expression `execution::lazy_schedule_from(sch, s)` is expression-equivalent to:
 
     1. `tag_invoke(lazy_schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated execution
@@ -1492,6 +1501,8 @@ namespace std::execution {
 
             It then calls `execution::schedule(sch)`, resulting in a sender `s3`. It then calls `execution::connect(s3, r2)`, resulting in an operation state `op_state3`. It then calls `execution::start(op_state3)`. If any of these operations throws an exception,
             it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+4. Senders returned from `execution::reschedule` and `execution::lazy_reschedule` shall not propagate the sender queries `get_completion_scheduler<CPO>` to a predecessor sender. They shall return a sender equivalent to the `sch` argument from those queries.
 
 #### Then adaptor <b>[execution.sender.adaptors.then]</b> #### {#spec-execution.sender.adaptor.then}
 
