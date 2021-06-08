@@ -1039,13 +1039,13 @@ namespace std::execution {
     struct lazy_split_t;
     inline constexpr lazy_split_t lazy_split{}; // TODO
     struct when_all_t;
-    inline constexpr when_all_t when_all{}; // TODO
+    inline constexpr when_all_t when_all{};
     struct lazy_when_all_t;
-    inline constexpr lazy_when_all_t lazy_when_all{}; // TODO
+    inline constexpr lazy_when_all_t lazy_when_all{};
     struct reschedule_when_all_t;
-    inline constexpr reschedule_when_all_t reschedule_when_all{}; // TODO
+    inline constexpr reschedule_when_all_t reschedule_when_all{};
     struct lazy_reschedule_when_all_t;
-    inline constexpr lazy_reschedule_when_all_t lazy_reschedule_when_all{}; // TODO
+    inline constexpr lazy_reschedule_when_all_t lazy_reschedule_when_all{};
 
     struct unschedule_t;
     inline constexpr unschedule_t unschedule{}; // TODO
@@ -1173,6 +1173,8 @@ namespace std::execution {
     1. `tag_invoke(set_done, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s done channel, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::set_done(R)` is ill-formed.
+
+### Receiver queries <b>[execution.receiver.queries]</b> ### {#spec-execution.receiver.queries}
 
 ## Operation states <b>[execution.op_state]</b> ## {#spec-execution.op_state}
 
@@ -1484,12 +1486,11 @@ namespace std::execution {
     1. `tag_invoke(lazy_schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated execution
         context of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
 
-    2. Otherwise, constructs a sender `s2`. When `s2` is connected with some reciever `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+    2. Otherwise, constructs a sender `s2`. When `s2` is connected with some reciever `out_r`, it:
 
         1. Constructs a receiver `r`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`, then calls `execution::start` on `op_state2`. If any of these operations throws an exception, calls `execution::set_error` on `out_r`, passing `current_exception()` as the
-            second argument.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If any of these operations throws an exception, calls `execution::set_error` on `out_r`, passing `current_exception()` as the second argument.
 
         3. When a receiver completion-signal <code><i>Signal</i>(r, args...)</code> is called, it constructs a receiver `r2`:
 
@@ -1502,7 +1503,9 @@ namespace std::execution {
             It then calls `execution::schedule(sch)`, resulting in a sender `s3`. It then calls `execution::connect(s3, r2)`, resulting in an operation state `op_state3`. It then calls `execution::start(op_state3)`. If any of these operations throws an exception,
             it catches it and calls `execution::set_error(out_r, current_exception())`.
 
-4. Senders returned from `execution::reschedule` and `execution::lazy_reschedule` shall not propagate the sender queries `get_completion_scheduler<CPO>` to a predecessor sender. They shall return a sender equivalent to the `sch` argument from those queries.
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+
+4. Senders returned from `execution::reschedule` and `execution::lazy_reschedule` shall not propagate the sender queries `get_completion_scheduler<CPO>` to a predecessor sender. They shall return a scheduler equivalent to the `sch` argument from those queries.
 
 #### Then adaptor <b>[execution.sender.adaptors.then]</b> #### {#spec-execution.sender.adaptor.then}
 
@@ -1527,7 +1530,7 @@ namespace std::execution {
 
     2. Otherwise, `tag_invoke(lazy_then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
         1. Constructs a receiver `r`:
 
@@ -1538,7 +1541,9 @@ namespace std::execution {
 
             3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`, then calls `execution::start(op_state2)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If this operation throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
     If the function selected above does not return a sender which invokes `f` with the result of the `set_value` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
@@ -1566,7 +1571,7 @@ namespace std::execution {
 
     2. Otherwise, `tag_invoke(lazy_upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
         1. Constructs a receiver `r`:
 
@@ -1577,12 +1582,14 @@ namespace std::execution {
 
             3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`, then calls `execution::start(op_state2)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If this operation throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
     If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### upon_done adaptor <b>[execution.sender.adaptors.upon_done]</b> #### {#spec-execution.sender.adaptor.upon_done}
+#### Upon_done adaptor <b>[execution.sender.adaptors.upon_done]</b> #### {#spec-execution.sender.adaptor.upon_done}
 
 1. `execution::upon_done` and `execution::lazy_upon_done` are used to attach invocables as continuation for successful completion of the predecessor sender.
 
@@ -1605,7 +1612,7 @@ namespace std::execution {
 
     2. Otherwise, `tag_invoke(lazy_upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
         1. Constructs a receiver `r`:
 
@@ -1615,10 +1622,74 @@ namespace std::execution {
 
             3. When `execution::set_done(r)` is called, calls `invoke(f)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`, then calls `execution::start(op_state2)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If this operation throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
     If the function selected above does not return a sender which invokes `f` when the `set_done` signal of `s` is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
+
+#### When_all adaptor <b>[execution.sender.adaptors.when_all]</b> #### {#spec-execution.sender.adaptor.when_all}
+
+1. `execution::when_all` and `execution::lazy_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the predecessors.
+
+2. The name `execution::when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, `execution::when_all` is
+    ill-formed. Otherwise, the expression `execution::when_all(s...)` is expression-equivalent to:
+
+    1. `tag_invoke(when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete with
+        `set_value`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `lazy_when_all(s...)`.
+
+3. The name `execution::lazy_when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, `execution::lazy_when_all` is
+    ill-formed. Otherwise, the expression `execution::lazy_when_all(s...)` is expression-equivalent to:
+
+    1. `tag_invoke(lazy_when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete with
+        `set_value`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, constructs a sender `s`. When `s` is connected with some receiver `out_r`, it:
+
+        1. For each sender <code>s<i><sub>i</sub></i></code> in `s...`, constructs a receiver <code>r<sub><i>i</i></sub></code>:
+
+            2. If <code>execution::set_value(r<sub><i>i</i></sub>, t<sub><i>i</i></sub>...)</code> is called for every <code>r<sub><i>i</i></sub></code>,
+                <code>execution::set_value(out_r, t<sub><i>0</i></sub>..., t<sub><i>1</i></sub>..., ..., t<sub><i>n</i></sub>...)</code> is called, where `n` is `sizeof...(s) - 1`.
+
+            2. Otherwise, if <code>execution::set_error(r<sub><i>i</i></sub>, e)</code> is called for any <code>r<sub><i>i</i></sub></code>, `execution::set_error(out_r, e)` is called.
+
+            3. Otherwise, if <code>execution::set_done(r<sub><i>i</i></sub>)</code> is called for any <code>r<sub><i>i</i></sub></code>, `execution::set_done(out_r)` is called.
+
+        3. For each sender <code>s<i><sub>i</sub></i></code> in `s...`, calls <code>execution::connect(s<sub><i>i</i></sub>, r<sub><i>i</i></sub>)</code>, resulting in operation states <code>op_state<sub><i>i</i></sub></code>.
+
+        4. Returns an operation state `op_state` that contains each operation state <code>op_state<sub><i>i</i></sub></code>. When `execution:;start(op_state)` is called, calls <code>execution::start(op_state<sub><i>i</i></sub>)</code> for each
+            <code>op_state<sub><i>i</i></sub></code>.
+
+4. Senders returned from `execution::when_all` and `execution::lazy_when_all` shall not expose the sender queries `get_completion_scheduler<CPO>`.
+
+5. `tag_invoke` expressions used in the definitions of `execution::when_all` and `execution::lazy_when_all` shall not consider member functions of their first non-tag arguments.
+
+#### Reschedule_when_all adaptor <b>[execution.sender.adaptors.reschedule_when_all]</b> #### {#spec-execution.sender.adaptor.reschedule_when_all}
+
+1. `execution::when_all` and `execution::lazy_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the predecessors, while also making sure that they complete on the specified scheduler. [<i>Note:</i> this can
+    allow for better customization of the algorithm. --<i>end note</i>]
+
+2. The name `execution::reschedule_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type <code>S<i><sub>i</sub></i></code>
+    in `S...` does not satisfy `execution::typed_sender`, `execution::reschedule_when_all` is ill-formed. Otherwise, the expression `execution::reschedule_when_all(sch, s...)` is expression-equivalent to:
+
+    1. `tag_invoke(reschedule_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete
+        with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `reschedule(when_all(s...), sch)`.
+
+3. The name `execution::lazy_reschedule_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type
+    <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, `execution::lazy_reschedule_when_all` is ill-formed. Otherwise, the expression `execution::lazy_reschedule_when_all(sch, s...)` is expression-equivalent to:
+
+    1. `tag_invoke(lazy_reschedule_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all
+        complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `lazy_reschedule(lazy_when_all(s...), sch)`.
+
+4. Senders returned from `execution::reschedule_when_all` and `execution::lazy_reschedule_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to predecessor senders. They shall return a scheduler equivalent to the `sch` argument from
+    those queries.
 
 ### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
 
