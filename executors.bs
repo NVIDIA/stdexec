@@ -1016,17 +1016,17 @@ namespace std::execution {
     struct lazy_schedule_from_t;
     inline constexpr lazy_schedule_from_t lazy_schedule_from{};
     struct then_t;
-    inline constexpr then_t then{}; // TODO
+    inline constexpr then_t then{};
     struct lazy_then_t;
-    inline constexpr lazy_then_t lazy_then{}; // TODO
+    inline constexpr lazy_then_t lazy_then{};
     struct upon_error_t;
-    inline constexpr upon_error_t upon_error{}; // TODO
+    inline constexpr upon_error_t upon_error{};
     struct lazy_upon_error_t;
-    inline constexpr lazy_upon_error_t lazy_upon_error{}; // TODO
+    inline constexpr lazy_upon_error_t lazy_upon_error{};
     struct upon_done_t;
-    inline constexpr upon_done_t upon_done{}; // TODO
+    inline constexpr upon_done_t upon_done{};
     struct lazy_upon_done_t;
-    inline constexpr lazy_upon_done_t lazy_upon_done{}; // TODO
+    inline constexpr lazy_upon_done_t lazy_upon_done{};
     struct bulk_t;
     inline constexpr bulk_t bulk{}; // TODO
     struct lazy_bulk_t;
@@ -1420,15 +1420,15 @@ namespace std::execution {
 
         1. Constructs a receiver `r`:
 
-            2. When `execution::set_value` is called on `r`, it calls `execution::connect(s, out_r)`, which results in `op_state2`. It calls `execution::start(op_state2)`. If any of these operations throws an exception, it calls `execution::set_error` on `out_r`,
+            2. When `execution::set_value(r)` is called, it calls `execution::connect(s, out_r)`, which results in `op_state2`. It calls `execution::start(op_state2)`. If any of these operations throws an exception, it calls `execution::set_error` on `out_r`,
                 passing `current_exception()` as the second argument.
 
-            3. When `execution::set_error` is called on `r`, it calls `execution::set_error` on `out_r` with the same second argument.
+            3. When `execution::set_error(r, e)` is called, it calls `execution::set_error(out_r, e)`.
 
-            4. When `execution::set_done` is called on `r`, it calls `execution::set_done` on `out_r`.
+            4. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
 
-        2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`. If any of these operation throws an exception, it calls `execution::set_error`
-            on `out_r`, passing `current_exception()` as the second argument.
+        2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`. If any of these operation throws an exception, it catches it and calls
+            `execution::set_error(out_r, current_exception())`.
 
 #### Reschedule adaptor <b>[execution.sender.adaptors.reschedule]</b> #### {#spec-execution.sender.adaptors.reschedule}
 
@@ -1467,7 +1467,7 @@ namespace std::execution {
     1. `tag_invoke(schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated execution context
         of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
 
-    2. Otherwise, `tag_invoke(lazy_schedule_from, sch, s)`.
+    2. Otherwise, `lazy_schedule_from(sch, s)`.
 
 2. The name `execution::lazy_schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
     `execution::typed_sender`, `execution::lazy_schedule_from` is ill-formed. Otherwise, the expression `execution::lazy_schedule_from(sch, s)` is expression-equivalent to:
@@ -1482,16 +1482,132 @@ namespace std::execution {
         2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`, then calls `execution::start` on `op_state2`. If any of these operations throws an exception, calls `execution::set_error` on `out_r`, passing `current_exception()` as the
             second argument.
 
-        3. When a receiver completion-signals <i>Signal</i> is called on `r` with additional arguments `args...`, it constructs a receiver `r2`:
+        3. When a receiver completion-signal <code><i>Signal</i>(r, args...)</code> is called, it constructs a receiver `r2`:
 
-            1. When `execution::set_value` is called on `r2`, it calls <i>Signal</i> on `out_r`, passing `args...` as the additional arguments.
+            1. When `execution::set_value(r2)` is called, it calls <code><i>Signal</i>(out_r, args...)</code>.
 
-            2. When `execution::set_error` is called on `r2`, it calls `execution::set_error` on `out_r` with the same second argument.
+            2. When `execution::set_error(r2, e)` is called, it calls `execution::set_error(out_r, e)`.
 
-            3. When `execution::done` is called on `r2`, it calls `execution::set_done` on `out_r`.
+            3. When `execution::done(r2)` is called, it calls `execution::set_done(out_r)`.
 
             It then calls `execution::schedule(sch)`, resulting in a sender `s3`. It then calls `execution::connect(s3, r2)`, resulting in an operation state `op_state3`. It then calls `execution::start(op_state3)`. If any of these operations throws an exception,
-            it calls `execution::set_error` on `out_r`, passing `current_exception()` as the second argument.
+            it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+#### Then adaptor <b>[execution.sender.adaptors.then]</b> #### {#spec-execution.sender.adaptor.then}
+
+1. `execution::then` and `execution::lazy_then` are used to attach invocables as continuation for successful completion of the predecessor sender.
+
+2. The name `execution::then` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::then` is ill-formed. Otherwise, the expression `execution::then(s, f)` is
+    expression-equivalent to:
+
+    1. `tag_invoke(then, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `lazy_then(s, f)`.
+
+    If the function selected above does not return a sender which invokes `f` with the result of the `set_value` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+2. The name `execution::lazy_then` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_then` is ill-formed. Otherwise, the expression
+    `execution::lazy_then(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(lazy_then, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(lazy_then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+
+        1. Constructs a receiver `r`:
+
+            1. When `execution::set_value(r, args...)` is called, calls `invoke(f, args...)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these operations throws an exception, it catches it and calls
+                `execution::set_error(out_r, current_exception())`.
+
+            2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
+
+            3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
+
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`, then calls `execution::start(op_state2)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+    If the function selected above does not return a sender which invokes `f` with the result of the `set_value` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+#### Upon_error adaptor <b>[execution.sender.adaptors.upon_error]</b> #### {#spec-execution.sender.adaptor.upon_error}
+
+1. `execution::upon_error` and `execution::lazy_upon_error` are used to attach invocables as continuation for successful completion of the predecessor sender.
+
+2. The name `execution::upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_error` is ill-formed. Otherwise, the expression
+    `execution::upon_error(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(upon_error, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `lazy_upon_error(s, f)`.
+
+    If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+2. The name `execution::lazy_upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_error` is ill-formed. Otherwise, the expression
+    `execution::lazy_upon_error(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(lazy_upon_error, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(lazy_upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+
+        1. Constructs a receiver `r`:
+
+            1. When `execution::set_value(r, args...)` is called, calls `execution::set_value(out_r, args...)`.
+
+            2. When `execution::set_error(r, e)` is called, calls `invoke(f, e)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these operations throws an exception, it catches it and calls
+                `execution::set_error(out_r, current_exception())`.
+
+            3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
+
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`, then calls `execution::start(op_state2)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+    If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+#### upon_done adaptor <b>[execution.sender.adaptors.upon_done]</b> #### {#spec-execution.sender.adaptor.upon_done}
+
+1. `execution::upon_done` and `execution::lazy_upon_done` are used to attach invocables as continuation for successful completion of the predecessor sender.
+
+2. The name `execution::upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_done` is ill-formed. Otherwise, the expression
+    `execution::upon_done(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(upon_done, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `lazy_upon_done(s, f)`.
+
+    If the function selected above does not return a sender which invokes `f` when the `set_done` signal of `s` is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+2. The name `execution::lazy_upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_done` is ill-formed. Otherwise, the expression
+    `execution::lazy_upon_done(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(lazy_upon_done, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(lazy_upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+
+        1. Constructs a receiver `r`:
+
+            1. When `execution::set_value(r, args...)` is called, calls `execution::set_value(out_r, args...)`.
+
+            2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
+
+            3. When `execution::set_done(r)` is called, calls `invoke(f)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`, then calls `execution::start(op_state2)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+    If the function selected above does not return a sender which invokes `f` when the `set_done` signal of `s` is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
 
 ### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
 
