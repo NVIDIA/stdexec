@@ -203,7 +203,7 @@ execution::sender auto cont = execution::then(snd, []{
     file << compute_result;
 });
 
-execution::submit(cont);
+execution::start_detached(cont);
 // at this point, the work described by \`cont\` has been submitted to the thread pool
 </pre>
 
@@ -568,10 +568,10 @@ XXX TODO: provide an example
 
 A <dfn>sender algorithm</dfn> is a function that accepts one or more senders.
 
-### `execution::submit` ### {#design-algorithm-submit}
+### `execution::start_detached` ### {#design-algorithm-start_detached}
 
 <pre highlight="c++">
-void auto submit(
+void auto start_detached(
     execution::sender auto sender
 );
 </pre>
@@ -620,7 +620,7 @@ Submits the provided function for execution on the provided scheduler, as-if by:
 <pre highlight="c++">
 auto snd = execution::schedule(sched);
 auto work = execution::then(snd, fn);
-execution::submit(work);
+execution::start_detached(work);
 </pre>
 
 TODO: example
