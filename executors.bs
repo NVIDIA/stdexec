@@ -1060,7 +1060,7 @@ namespace std::execution {
     template&lt;sender S>
       <i>see-below</i> unschedule(S &&);
     struct ensure_started_t;
-    inline constexpr ensure_started_t ensure_started{}; // TODO
+    inline constexpr ensure_started_t ensure_started{};
 
     // [execution.sender.algorithms], sender algorithms
     struct start_detached_t;
@@ -1756,6 +1756,33 @@ namespace std::execution {
     <pre highlight=c++>
         is_nothrow_constructible_v&lt;remove_cvref_t&lt;S>, S>
     </pre>
+
+#### Ensure_started adaptor <b>[execution.sender.adaptors.ensure_started]</b> #### {#spec-execution.sender.adaptors.unschedule}
+
+1. `execution::ensure_started` is used to eagerly start the execution of a sender, while also providing a way to attach further work to execute once it has completed.
+
+2. The name `execution::ensure_started` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution:;ensure_started` is ill-formed. Otherwise, the expression
+    `execution::ensure_started(s)` is expression-equivalent to:
+
+    1. `tag_invoke(ensure_started, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution:;sender`.
+
+    2. Otherwise, `tag_invoke(ensure_started, s)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise:
+
+        1. Constructs a receiver `r`.
+
+        2. Calls `execution::connect(s, r)`, resulting in operation state `op_state`, and then calls `execution::start(op_state)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(r, current_exception())`.
+
+        3. Constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state2`. Once both `execution::start(op_state2)` and one of the receiver completion-signals has been called on `r`:
+
+            1. If `execution::set_value(r, ts...)` has been called, calls `execution:;set_value(out_r, ts...)`.
+
+            2. If `execution::set_error(r, e)` has been called, calls `execution:;set_error(out_r, e)`.
+
+            3. If `execution::set_done(r)` has been called, calls `execution:;set_done(out_r)`.
+
+    If the function selected above does not eagerly start the sender `s` and return a sender which propagates the signals sent by `s` once started, the program is ill-formed with no diagnostic required.
 
 ### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
 
