@@ -1070,10 +1070,15 @@ namespace std::execution {
 
 namespace std::this_thread {
   inline namespace <i>unspecified</i> {
+    template&lt;typed_sender S>
+      using <i>sync-wait-type</i> = <i>see-below</i>; // exposition-only
+    template&lt;typed_sender S>
+      using <i>sync-wait-with-variant-type</i> = <i>see-below</i>; // exposition-only
+
     struct sync_wait_t;
-    inline constexpr sync_wait_t sync_wait{}; // TODO
+    inline constexpr sync_wait_t sync_wait{};
     struct sync_wait_with_variant_t;
-    inline constexpr sync_wait_with_variant_t sync_wait_with_variant{}; // TODO
+    inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
   }
 }
 
@@ -1160,7 +1165,7 @@ namespace std::execution {
 
 2. The name `execution::set_value` denotes a customization point object. The expression `execution::set_value(R, Vs...)` for some subexpressions `R` and `Vs...` is expression-equivalent to:
 
-    1. `tag_invoke(set_value, R, Vs...)`, if that expression is valid. If the function selected by `tag_invoke` does not send the value(s) `Vs...` to the receiver `R`’s value channel, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::set_value, R, Vs...)`, if that expression is valid. If the function selected by `tag_invoke` does not send the value(s) `Vs...` to the receiver `R`’s value channel, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::set_value(R, Vs...)` is ill-formed.
 
@@ -1170,7 +1175,7 @@ namespace std::execution {
 
 2. The name `execution::set_error` denotes a customization point object. The expression `execution::set_error(R, E)` for some subexpressions `R` and `E` is expression-equivalent to:
 
-    1. `tab_invoke(set_error, R, E)`, if that expression is valid. If the function selected by `tag_invoke` does not send the error `E` to the receiver `R`’s error channel, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::set_error, R, E)`, if that expression is valid. If the function selected by `tag_invoke` does not send the error `E` to the receiver `R`’s error channel, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::set_error(R, E)` is ill-formed.
 
@@ -1180,7 +1185,7 @@ namespace std::execution {
 
 2. The name `execution::set_done` denotes a customization point object. The expression `execution::set_done(R)` for some subexpression `R` is expression-equivalent to:
 
-    1. `tag_invoke(set_done, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s done channel, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::set_done, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s done channel, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::set_done(R)` is ill-formed.
 
@@ -1206,7 +1211,7 @@ namespace std::execution {
 
 2. The name `execution::start` denotes a customization point object. The expression `execution::start(O)` for some lvalue subexpression `O` is expression-equivalent to:
 
-    1. `tag_invoke(start, O)`, if that expression is valid. If the function selected by `tag_invoke` does not start the work represented by the operation state `O`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::start, O)`, if that expression is valid. If the function selected by `tag_invoke` does not start the work represented by the operation state `O`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::start(O)` is ill-formed.
 
@@ -1265,7 +1270,7 @@ namespace std::execution {
 2. The name `execution::connect` denotes a customization point object. For some subexpressions `s` and `r`, let `S` be `decltype((s))` and `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver` or `S` does not satisfy `execution::sender`,
     `execution::connect(s, r)` is ill-formed. Otherwise, the expression `execution::connect(s, r)` is expression-equivalent to:
 
-    1. `tag_invoke(connect, s, r)`, if that expression is valid and its type satisfies `execution::operation_state`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program
+    1. `tag_invoke(execution::connect, s, r)`, if that expression is valid and its type satisfies `execution::operation_state`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program
         is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::connect(s, r)` is ill-formed.
@@ -1285,8 +1290,8 @@ namespace std::execution {
 2. The name `execution::schedule` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::scheduler`, `execution::schedule` is ill-formed. Otherwise, the expression `execution::schedule(s)`
     is expression-equivalent to:
 
-    1. `tag_invoke(schedule, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s`, the program is ill-formed with no diagnostic
-        required.
+    1. `tag_invoke(execution::schedule, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s`, the program is ill-formed with no
+        diagnostic required.
 
     2. Otherwise, `execution::schedule(s)` is ill-formed.
 
@@ -1360,8 +1365,8 @@ namespace std::execution {
 2. The name `execution::reschedule_just` denotes a customization point object. For some subexpressions `s` and `vs...`, let `S` be `decltype((s))` and `Vs...` be `decltype((vs))`. If `S` does not satisfy `execution::scheduler`, or any type `V` in `Vs` does not
     satisfy `<i>moveable-value</i>`, `execution::reschedule_just(s, vs...)` is ill-formed. Otherwise, `execution::reschedule_just(s, vs...)` is expression-equivalent to:
 
-    1. `tag_invoke(reschedule_just, s, vs...)`, if that expression is valid and its type satisfies `execution::typed_sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s` and sends values
-        equivalent to `vs...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::reschedule_just, s, vs...)`, if that expression is valid and its type satisfies `execution::typed_sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s` and sends
+        values equivalent to `vs...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::reschedule(execution::just(vs...), s)`.
 
@@ -1423,7 +1428,7 @@ namespace std::execution {
 2. The name `execution::on` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
     `execution::on` is ill-formed. Otherwise, the expression `execution::on(sch, s)` is expression-equivalent to:
 
-    1. `tag_invoke(on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `lazy_on(sch, s)`.
 
@@ -1432,8 +1437,8 @@ namespace std::execution {
 2. The name `execution::lazy_on` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
     `execution::lazy_on` is ill-formed. Otherwise, the expression `execution::lazy_on(sch, s)` is expression-equivalent to:
 
-    1. `tag_invoke(lazy_on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch` when started,
-        the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::lazy_on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch` when
+        started, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
 
@@ -1456,9 +1461,9 @@ namespace std::execution {
 2. The name `execution::reschedule` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`. or `S` does not satisfy `execution::sender`,
     `execution::reschedule` is ill-formed. Otherwise, the expression `execution::reschedule(s, sch)` is expression-equivalent to:
 
-    1. `tag_invoke(reschedule, get_completion_scheduler<set_value>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::reschedule, get_completion_scheduler<set_value>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(reschedule, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::reschedule, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, `schedule_from(sch, s)`.
 
@@ -1467,9 +1472,9 @@ namespace std::execution {
 3. The name `execution::lazy_reschedule` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`. or `S` does not satisfy
     `execution::sender`, `execution::lazy_reschedule` is ill-formed. Otherwise, the expression `execution::lazy_reschedule(s, sch)` is expression-equivalent to:
 
-    1. `tag_invoke(lazy_reschedule, get_completion_scheduler<set_value>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_reschedule, get_completion_scheduler<set_value>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(lazy_reschedule, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::lazy_reschedule, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, `lazy_schedule_from(sch, s)`.
 
@@ -1485,16 +1490,16 @@ namespace std::execution {
 2. The name `execution::schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
     `execution::typed_sender`, `execution::schedule_from` is ill-formed. Otherwise, the expression `execution::schedule_from(sch, s)` is expression-equivalent to:
 
-    1. `tag_invoke(schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated execution context
-        of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated
+        execution context of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `lazy_schedule_from(sch, s)`.
 
 3. The name `execution::lazy_schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
     `execution::typed_sender`, `execution::lazy_schedule_from` is ill-formed. Otherwise, the expression `execution::lazy_schedule_from(sch, s)` is expression-equivalent to:
 
-    1. `tag_invoke(lazy_schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated execution
-        context of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::lazy_schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated
+        execution context of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, constructs a sender `s2`. When `s2` is connected with some reciever `out_r`, it:
 
@@ -1524,9 +1529,9 @@ namespace std::execution {
 2. The name `execution::then` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::then` is ill-formed. Otherwise, the expression `execution::then(s, f)` is
     expression-equivalent to:
 
-    1. `tag_invoke(then, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::then, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, `lazy_then(s, f)`.
 
@@ -1536,9 +1541,9 @@ namespace std::execution {
 2. The name `execution::lazy_then` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_then` is ill-formed. Otherwise, the expression
     `execution::lazy_then(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(lazy_then, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_then, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(lazy_then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::lazy_then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -1565,9 +1570,9 @@ namespace std::execution {
 2. The name `execution::upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_error` is ill-formed. Otherwise, the expression
     `execution::upon_error(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(upon_error, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::upon_error, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, `lazy_upon_error(s, f)`.
 
@@ -1577,9 +1582,9 @@ namespace std::execution {
 2. The name `execution::lazy_upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_error` is ill-formed. Otherwise, the expression
     `execution::lazy_upon_error(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(lazy_upon_error, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_upon_error, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(lazy_upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::lazy_upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -1606,9 +1611,9 @@ namespace std::execution {
 2. The name `execution::upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_done` is ill-formed. Otherwise, the expression
     `execution::upon_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(upon_done, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::upon_done, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, `lazy_upon_done(s, f)`.
 
@@ -1618,9 +1623,9 @@ namespace std::execution {
 2. The name `execution::lazy_upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_done` is ill-formed. Otherwise, the expression
     `execution::lazy_upon_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(lazy_upon_done, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_upon_done, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(lazy_upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::lazy_upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -1646,18 +1651,18 @@ namespace std::execution {
 2. The name `execution::bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape` does not
     satisfy `integral`, `execution::bulk` is ill-formed. Otherwise, the expression `execution::bulk(s, shape, f)` is expression-equivalent to:
 
-    1. `tag_invoke(bulk, get_completion_scheduler<set_value>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, `lazy_bulk(s, shape, f)`.
 
 2. The name `execution::lazy_bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape`
     does not satisfy `integral`, `execution::bulk` is ill-formed. Otherwise, the expression `execution::bulk(s, shape, f)` is expression-equivalent to:
 
-    1. `tag_invoke(bulk, get_completion_scheduler<set_value>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -1684,7 +1689,7 @@ namespace std::execution {
 2. The name `execution::when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, `execution::when_all` is
     ill-formed. Otherwise, the expression `execution::when_all(s...)` is expression-equivalent to:
 
-    1. `tag_invoke(when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete with
+    1. `tag_invoke(execution::when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete with
         `set_value`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `lazy_when_all(s...)`.
@@ -1692,8 +1697,8 @@ namespace std::execution {
 3. The name `execution::lazy_when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, `execution::lazy_when_all` is
     ill-formed. Otherwise, the expression `execution::lazy_when_all(s...)` is expression-equivalent to:
 
-    1. `tag_invoke(lazy_when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete with
-        `set_value`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::lazy_when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete
+        with `set_value`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, constructs a sender `s`. When `s` is connected with some receiver `out_r`, it:
 
@@ -1723,16 +1728,17 @@ namespace std::execution {
 2. The name `execution::reschedule_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type <code>S<i><sub>i</sub></i></code>
     in `S...` does not satisfy `execution::typed_sender`, `execution::reschedule_when_all` is ill-formed. Otherwise, the expression `execution::reschedule_when_all(sch, s...)` is expression-equivalent to:
 
-    1. `tag_invoke(reschedule_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete
-        with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::reschedule_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they
+        all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `reschedule(when_all(s...), sch)`.
 
 3. The name `execution::lazy_reschedule_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type
     <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, `execution::lazy_reschedule_when_all` is ill-formed. Otherwise, the expression `execution::lazy_reschedule_when_all(sch, s...)` is expression-equivalent to:
 
-    1. `tag_invoke(lazy_reschedule_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all
-        complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::lazy_reschedule_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when
+        they all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic
+        required.
 
     2. Otherwise, `lazy_reschedule(lazy_when_all(s...), sch)`.
 
@@ -1764,9 +1770,9 @@ namespace std::execution {
 2. The name `execution::ensure_started` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution:;ensure_started` is ill-formed. Otherwise, the expression
     `execution::ensure_started(s)` is expression-equivalent to:
 
-    1. `tag_invoke(ensure_started, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution:;sender`.
+    1. `tag_invoke(execution::ensure_started, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution:;sender`.
 
-    2. Otherwise, `tag_invoke(ensure_started, s)`, if that expression is valid and its type satisfies `execution::sender`.
+    2. Otherwise, `tag_invoke(execution::ensure_started, s)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise:
 
@@ -1793,9 +1799,9 @@ namespace std::execution {
 2. The name `execution::start_detached` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution:;start_detached` is ill-formed. Otherwise, the expression
     `execution::start_detached(s)` is expression-equivalent to:
 
-    1. `tag_invoke(start_detached, get_completion_scheduler(s), s)`, if that expression is valid and its type is `void`.
+    1. `tag_invoke(execution::start_detached, get_completion_scheduler(s), s)`, if that expression is valid and its type is `void`.
 
-    2. Otherwise, `tag_invoke(start_detached, s)`, if that expression is valid and its type is `void`.
+    2. Otherwise, `tag_invoke(execution::start_detached, s)`, if that expression is valid and its type is `void`.
 
     3. Otherwise:
 
@@ -1811,5 +1817,65 @@ namespace std::execution {
 
     If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_done` signals and calls `std::terminate()` on the `set_error` signal, the program is ill-formed with no diagnostic
         required.
+
+#### Sync_wait algorithm <b>[execution.sender.algorithms.sync_wait]</b> #### {#spec-execution.sender.algorithms.sync_wait}
+
+1. `this_thread::sync_wait` and `this_thread::sync_wait_with_variant` are used to block a current thread until a sender passed into it as an argument has completed, and to obtain the values (if any) it completed with.
+
+2. The templates <code><i>sync-wait-type</i></code> and <code><i>sync-wait-with-variant-type</i></code> are used to determine the return types of `this_thread::sync_wait` and `this_thread::sync_wait_with_variant`.
+
+    <pre highlight=c++>
+        template<typed_sender S>
+          using <i>sync-wait-type</i> = optional<
+            typename execution::sender_traits<remove_cvref_t<S>>
+              ::template value_types<tuple, type_identity>>;
+
+        template<typed_sender S>
+          using <i>sync-wait-with-variant-type</i> = optional<
+            typename execution::sender_traits<remove_cvref_t<S>>
+              ::template value_types<tuple, variant>>;
+    </pre>
+
+3. The name `this_thread::sync_wait` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, or the number of the arguments `sender_traits<S>::value_types` passes into the
+    `Variant` template parameter is not 1, `this_thread::sync_wait` is ill-formed. Otherwise, `this_thread::sync_wait` is expression-equivalent to:
+
+    1. `tag_invoke(this_thread::sync_wait, get_completion_scheduler(s), s)`, if this expression is valid and its type is <code><i>sync-wait-type</i>&lt;S></code>.
+
+    2. Otherwise, `tag_invoke(this_thread::sync_wait, s)`, if this expression is valid and its type is <code><i>sync-wait-type</i>&lt;S></code>.
+
+    3. Otherwise:
+
+        1. Constructs a receiver `r`.
+
+        2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`.
+
+        3. Blocks the current thread until a receiver completion-signal of `r` is called. When it is:
+
+            1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-type</i>&lt;S>(make_tuple(ts...))</code>.
+
+            2. If `execution::set_error(r, e...)` has been called, if `remove_cvref_t(decltype(e))` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, throws `e`.
+
+            3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-type</i>&lt;S(nullopt)</code>.
+
+3. The name `this_thread::sync_wait_with_variant` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `this_thread::sync_wait_with_variant` is ill-formed. Otherwise,
+    `this_thread::sync_wait_with_variant` is expression-equivalent to:
+
+    1. `tag_invoke(this_thread::sync_wait_with_variant, get_completion_scheduler(s), s)`, if this expression is valid and its type is <code><i>sync-wait-with-variant-type</i>&lt;S></code>.
+
+    2. Otherwise, `tag_invoke(this_thread::sync_wait_with_variant, s)`, if this expression is valid and its type is <code><i>sync-wait-with-variant-type</i>&lt;S></code>.
+
+    3. Otherwise:
+
+        1. Constructs a receiver `r`.
+
+        2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`.
+
+        3. Blocks the current thread until a receiver completion-signal of `r` is called. When it is:
+
+            1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-with-variant-type</i>&lt;S>(make_tuple(ts...))</code>.
+
+            2. If `execution::set_error(r, e...)` has been called, if `remove_cvref_t(decltype(e))` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, throws `e`.
+
+            3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-with-variant-type</i>&lt;S(nullopt)</code>.
 
 ## One-way execution <b>[execution.execute]</b> ## {#spec-execution.execute}
