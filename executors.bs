@@ -373,8 +373,8 @@ This algorithm is included, as it greatly simplifies lifting values into senders
 A <dfn>sender adapter</dfn> is a function which accepts one or more senders, and possibly other algorithms, and returns a sender, whose completion is related to the sender arguments it has received.
 
 Many sender adapters come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
-the returned sender being started. Sender algorithms such as [[#design-adapter-ensure_started]], [[#design-algorithm-submit]], and [[#design-algorithm-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**, but not
-guaranteed, to start senders.
+the returned sender being started. Sender algorithms such as [[#design-adapter-ensure_started]], [[#design-algorithm-start_detached]], and [[#design-algorithm-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**,
+but not guaranteed, to start senders.
 
 The strictly lazy versions of the adapters below (that is, all the versions whose names start with `lazy_`) are guaranteed to not start any predecessor senders passed into them.
 
@@ -934,6 +934,7 @@ namespace std::execution {
   template&lt;class S>
     concept scheduler = <i>see-below</i>;
 
+  // [execution.scheduler.queries], scheduler queries
   inline namespace <i>unspecified</i> {
     struct get_forward_progress_guarantee_t;
     inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{}; // TODO
@@ -1123,6 +1124,8 @@ namespace std::execution {
 
 5. A scheduler type's destructor shall not block pending completion of any receivers connected to the sender objects returned from `schedule`. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
     context of the scheduler. <i>—end note</i>]
+
+### Scheduler queries <b>[execution.scheduler.queries]</b> ### {#spec-execution.scheduler.queries}
 
 ## Receivers <b>[execution.receiver]</b> ## {#spec-execution.receiver}
 
@@ -1851,11 +1854,11 @@ namespace std::execution {
 
         3. Blocks the current thread until a receiver completion-signal of `r` is called. When it is:
 
-            1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-type</i>&lt;S>(make_tuple(ts...))</code>.
+            1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-type</i>&lt;S>(make_tuple(ts...))></code>.
 
             2. If `execution::set_error(r, e...)` has been called, if `remove_cvref_t(decltype(e))` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, throws `e`.
 
-            3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-type</i>&lt;S(nullopt)</code>.
+            3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-type</i>&lt;S(nullopt)></code>.
 
 3. The name `this_thread::sync_wait_with_variant` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `this_thread::sync_wait_with_variant` is ill-formed. Otherwise,
     `this_thread::sync_wait_with_variant` is expression-equivalent to:
@@ -1872,11 +1875,11 @@ namespace std::execution {
 
         3. Blocks the current thread until a receiver completion-signal of `r` is called. When it is:
 
-            1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-with-variant-type</i>&lt;S>(make_tuple(ts...))</code>.
+            1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-with-variant-type</i>&lt;S>(make_tuple(ts...))></code>.
 
             2. If `execution::set_error(r, e...)` has been called, if `remove_cvref_t(decltype(e))` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, throws `e`.
 
-            3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-with-variant-type</i>&lt;S(nullopt)</code>.
+            3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-with-variant-type</i>&lt;S(nullopt)></code>.
 
 ## One-way execution <b>[execution.execute]</b> ## {#spec-execution.execute}
 
