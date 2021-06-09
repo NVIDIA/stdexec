@@ -1040,9 +1040,9 @@ namespace std::execution {
     inline constexpr lazy_upon_done_t lazy_upon_done{};
 
     struct bulk_t;
-    inline constexpr bulk_t bulk{}; // TODO
+    inline constexpr bulk_t bulk{};
     struct lazy_bulk_t;
-    inline constexpr lazy_bulk_t lazy_bulk{}; // TODO
+    inline constexpr lazy_bulk_t lazy_bulk{};
 
     struct split_t;
     inline constexpr split_t split{}; // TODO
@@ -1638,6 +1638,44 @@ namespace std::execution {
 
     If the function selected above does not return a sender which invokes `f` when the `set_done` signal of `s` is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
+
+#### Bulk adaptor <b>[execution.sender.adaptors.bulk]</b> #### {#spec-execution.sender.adaptors.bulk}
+
+1. `execution::bulk` and `execution::lazy_bulk` are used to run a task repeatedly for every index in an index space.
+
+2. The name `execution::bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape` does not
+    satisfy `integral`, `execution::bulk` is ill-formed. Otherwise, the expression `execution::bulk(s, shape, f)` is expression-equivalent to:
+
+    1. `tag_invoke(bulk, get_completion_scheduler<set_value>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `lazy_bulk(s, shape, f)`.
+
+2. The name `execution::lazy_bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape`
+    does not satisfy `integral`, `execution::bulk` is ill-formed. Otherwise, the expression `execution::bulk(s, shape, f)` is expression-equivalent to:
+
+    1. `tag_invoke(bulk, get_completion_scheduler<set_value>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
+
+        1. Constructs a receiver `r`:
+
+            1. When `execution::set_value(r, args...)` is called, calls `f(i, args...)` for each `i` of type `Shape` from `0` to `shape`, then calls `execution::set_value(out_r, args...)`. If any of these operations throws an exception, it catches it and calls
+                `execution::set_error(out_r, current_exception())`.
+
+            2. When `execution:;set_error(r, e)` is called, calls `execution:;set_error(out_r, e)`.
+
+            3. When `execution::set_done(r, e)` is called, calls `execution:;set_done(out_r, e)`.
+
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If this operation throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution:;start(op_state)` is called, calls `execution::start(op_state2)`.
+
+    If the function selected above does not return a sender which invokes `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when the predecessor sender sends values `args...`, or does not propagate the values of the signals sent by the predecessor to
+        a connected receiver, the program is ill-formed with no diagnostic required.
 
 #### When_all adaptor <b>[execution.sender.adaptors.when_all]</b> #### {#spec-execution.sender.adaptor.when_all}
 
