@@ -2278,7 +2278,11 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <ol class="toc">
       <li><a href="#spec-execution.syn"><span class="secno">8.1</span> <span class="content">Header <code class="highlight"><c- o>&lt;</c-><c- n>execution</c-><c- o>></c-></code> synopsis <b>[execution.syn]</b></span></a>
       <li><a href="#spec-execution.helpers"><span class="secno">8.2</span> <span class="content">Helper concepts <b>[execution.helpers]</b></span></a>
-      <li><a href="#spec-execution.scheduler"><span class="secno">8.3</span> <span class="content">Schedulers <b>[execution.scheduler] </b></span></a>
+      <li>
+       <a href="#spec-execution.scheduler"><span class="secno">8.3</span> <span class="content">Schedulers <b>[execution.scheduler] </b></span></a>
+       <ol class="toc">
+        <li><a href="#spec-execution.scheduler.queries"><span class="secno">8.3.1</span> <span class="content">Scheduler queries <b>[execution.scheduler.queries]</b></span></a>
+       </ol>
       <li>
        <a href="#spec-execution.receiver"><span class="secno">8.4</span> <span class="content">Receivers <b>[execution.receiver]</b></span></a>
        <ol class="toc">
@@ -2577,8 +2581,8 @@ that also does not have an associated scheduler.</p>
    <h3 class="heading settled" data-level="4.9" id="design-adapters"><span class="secno">4.9. </span><span class="content">Proposed set of user-facing sender adapters</span><a class="self-link" href="#design-adapters"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-adapter">sender adapter</dfn> is a function which accepts one or more senders, and possibly other algorithms, and returns a sender, whose completion is related to the sender arguments it has received.</p>
    <p>Many sender adapters come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn data-dfn-type="dfn" data-lt="start" data-noexport id="start">started<a class="self-link" href="#start"></a></dfn> later on, and a potentially eager one, which is allowed to submit work prior to
-the returned sender being started. Sender algorithms such as <a href="#design-adapter-ensure_started">§ 4.9.9 execution::ensure_started</a>, <a href="#design-algorithm-submit"></a>, and <a href="#design-algorithm-sync_wait">§ 4.10.2 std::this_thread::sync_wait</a> start senders; the implementations of non-lazy versions of the sender adapters are <strong>allowed</strong>, but not
-guaranteed, to start senders.</p>
+the returned sender being started. Sender algorithms such as <a href="#design-adapter-ensure_started">§ 4.9.9 execution::ensure_started</a>, <a href="#design-algorithm-start_detached">§ 4.10.1 execution::start_detached</a>, and <a href="#design-algorithm-sync_wait">§ 4.10.2 std::this_thread::sync_wait</a> start senders; the implementations of non-lazy versions of the sender adapters are <strong>allowed</strong>,
+but not guaranteed, to start senders.</p>
    <p>The strictly lazy versions of the adapters below (that is, all the versions whose names start with <code class="highlight"><c- n>lazy_</c-></code>) are guaranteed to not start any predecessor senders passed into them.</p>
    <p>For more implementer-centric description of starting senders, see <a href="#design-laziness">§ 5.5 Laziness of operations is defined by algorithms</a>.</p>
    <h4 class="heading settled" data-level="4.9.1" id="design-adapter-reschedule"><span class="secno">4.9.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code></span><a class="self-link" href="#design-adapter-reschedule"></a></h4>
@@ -3028,6 +3032,7 @@ tuples sent by the predecessor sender:</p>
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>scheduler</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
+  <c- c1>// [execution.scheduler.queries], scheduler queries</c->
   <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
     <c- k>struct</c-> <c- nc>get_forward_progress_guarantee_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_forward_progress_guarantee_t</c-> <c- n>get_forward_progress_guarantee</c-><c- p>{};</c-> <c- c1>// TODO</c->
@@ -3205,7 +3210,7 @@ tuples sent by the predecessor sender:</p>
     <li data-md>
      <p>None of a scheduler’s copy constructor, destructor, equality comparison, or <code class="highlight"><c- n>swap</c-></code> operations shall exit via an exception.</p>
     <li data-md>
-     <p>None of these operations, nor a scheduler type’s <code class="highlight"><c- n>schedule</c-></code> function, or a call to a scheduler type’s query functions (<a href="#spec-execution.scheduler.queries"></a>) shall introduce data races as a result of concurrent invocations of thos functions from different
+     <p>None of these operations, nor a scheduler type’s <code class="highlight"><c- n>schedule</c-></code> function, or a call to a scheduler type’s query functions (<a href="#spec-execution.scheduler.queries">§ 8.3.1 Scheduler queries [execution.scheduler.queries]</a>) shall introduce data races as a result of concurrent invocations of thos functions from different
 threads.</p>
     <li data-md>
      <p>For any two (possibly const) values <code class="highlight"><c- n>s1</c-></code> and <code class="highlight"><c- n>s2</c-></code> of some scheduler type <code class="highlight"><c- n>S</c-></code>, <code class="highlight"><c- n>s1</c-> <c- o>==</c-> <c- n>s2</c-></code> shall return <code class="highlight">true</code> only if both <code class="highlight"><c- n>s1</c-></code> and <code class="highlight"><c- n>s2</c-></code> are handles to the same associated execution context.</p>
@@ -3213,6 +3218,7 @@ threads.</p>
      <p>A scheduler type’s destructor shall not block pending completion of any receivers connected to the sender objects returned from <code class="highlight"><c- n>schedule</c-></code>. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
 context of the scheduler. <i>—end note</i>]</p>
    </ol>
+   <h4 class="heading settled" data-level="8.3.1" id="spec-execution.scheduler.queries"><span class="secno">8.3.1. </span><span class="content">Scheduler queries <b>[execution.scheduler.queries]</b></span><a class="self-link" href="#spec-execution.scheduler.queries"></a></h4>
    <h3 class="heading settled" data-level="8.4" id="spec-execution.receiver"><span class="secno">8.4. </span><span class="content">Receivers <b>[execution.receiver]</b></span><a class="self-link" href="#spec-execution.receiver"></a></h3>
    <ol>
     <li data-md>
@@ -3989,11 +3995,11 @@ those queries.</p>
          <p>Blocks the current thread until a receiver completion-signal of <code class="highlight"><c- n>r</c-></code> is called. When it is:</p>
          <ol>
           <li data-md>
-           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(</c-><c- n>make_tuple</c-><c- p>(</c-><c- n>ts</c-><c- p>...))</c-></code>.</p>
+           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(</c-><c- n>make_tuple</c-><c- p>(</c-><c- n>ts</c-><c- p>...))</c-><c- o>></c-></code>.</p>
           <li data-md>
            <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>...)</c-></code> has been called, if <code class="highlight"><c- n>remove_cvref_t</c-><c- p>(</c-><c- k>decltype</c-><c- p>(</c-><c- n>e</c-><c- p>))</c-></code> is <code class="highlight"><c- n>exception_ptr</c-></code>, calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>rethrow_exception</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code>. Otherwise, throws <code class="highlight"><c- n>e</c-></code>.</p>
           <li data-md>
-           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>(</c-><c- n>nullopt</c-><c- p>)</c-></code>.</p>
+           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>(</c-><c- n>nullopt</c-><c- p>)</c-><c- o>></c-></code>.</p>
          </ol>
        </ol>
      </ol>
@@ -4015,11 +4021,11 @@ those queries.</p>
          <p>Blocks the current thread until a receiver completion-signal of <code class="highlight"><c- n>r</c-></code> is called. When it is:</p>
          <ol>
           <li data-md>
-           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(</c-><c- n>make_tuple</c-><c- p>(</c-><c- n>ts</c-><c- p>...))</c-></code>.</p>
+           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(</c-><c- n>make_tuple</c-><c- p>(</c-><c- n>ts</c-><c- p>...))</c-><c- o>></c-></code>.</p>
           <li data-md>
            <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>...)</c-></code> has been called, if <code class="highlight"><c- n>remove_cvref_t</c-><c- p>(</c-><c- k>decltype</c-><c- p>(</c-><c- n>e</c-><c- p>))</c-></code> is <code class="highlight"><c- n>exception_ptr</c-></code>, calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>rethrow_exception</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code>. Otherwise, throws <code class="highlight"><c- n>e</c-></code>.</p>
           <li data-md>
-           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>(</c-><c- n>nullopt</c-><c- p>)</c-></code>.</p>
+           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>(</c-><c- n>nullopt</c-><c- p>)</c-><c- o>></c-></code>.</p>
          </ol>
        </ol>
      </ol>
