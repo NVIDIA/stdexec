@@ -1086,7 +1086,7 @@ namespace std::execution {
   inline namespace <i>unspecified</i> {
     // [execution.execute], one-way execution
     struct execute_t;
-    inline constexpr execute_t execute{}; // TODO
+    inline constexpr execute_t execute{};
   }
 }
 </pre>
@@ -1671,13 +1671,13 @@ namespace std::execution {
             1. When `execution::set_value(r, args...)` is called, calls `f(i, args...)` for each `i` of type `Shape` from `0` to `shape`, then calls `execution::set_value(out_r, args...)`. If any of these operations throws an exception, it catches it and calls
                 `execution::set_error(out_r, current_exception())`.
 
-            2. When `execution:;set_error(r, e)` is called, calls `execution:;set_error(out_r, e)`.
+            2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
-            3. When `execution::set_done(r, e)` is called, calls `execution:;set_done(out_r, e)`.
+            3. When `execution::set_done(r, e)` is called, calls `execution::set_done(out_r, e)`.
 
         2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If this operation throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
-        3. Returns an operation state `op_state` that contains `op_state2`. When `execution:;start(op_state)` is called, calls `execution::start(op_state2)`.
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
     If the function selected above does not return a sender which invokes `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when the predecessor sender sends values `args...`, or does not propagate the values of the signals sent by the predecessor to
         a connected receiver, the program is ill-formed with no diagnostic required.
@@ -1713,7 +1713,7 @@ namespace std::execution {
 
         3. For each sender <code>s<i><sub>i</sub></i></code> in `s...`, calls <code>execution::connect(s<sub><i>i</i></sub>, r<sub><i>i</i></sub>)</code>, resulting in operation states <code>op_state<sub><i>i</i></sub></code>.
 
-        4. Returns an operation state `op_state` that contains each operation state <code>op_state<sub><i>i</i></sub></code>. When `execution:;start(op_state)` is called, calls <code>execution::start(op_state<sub><i>i</i></sub>)</code> for each
+        4. Returns an operation state `op_state` that contains each operation state <code>op_state<sub><i>i</i></sub></code>. When `execution::start(op_state)` is called, calls <code>execution::start(op_state<sub><i>i</i></sub>)</code> for each
             <code>op_state<sub><i>i</i></sub></code>.
 
 4. Senders returned from `execution::when_all` and `execution::lazy_when_all` shall not expose the sender queries `get_completion_scheduler<CPO>`.
@@ -1767,10 +1767,10 @@ namespace std::execution {
 
 1. `execution::ensure_started` is used to eagerly start the execution of a sender, while also providing a way to attach further work to execute once it has completed.
 
-2. The name `execution::ensure_started` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution:;ensure_started` is ill-formed. Otherwise, the expression
+2. The name `execution::ensure_started` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::ensure_started` is ill-formed. Otherwise, the expression
     `execution::ensure_started(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::ensure_started, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution:;sender`.
+    1. `tag_invoke(execution::ensure_started, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::ensure_started, s)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -1782,11 +1782,11 @@ namespace std::execution {
 
         3. Constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state2`. Once both `execution::start(op_state2)` and one of the receiver completion-signals has been called on `r`:
 
-            1. If `execution::set_value(r, ts...)` has been called, calls `execution:;set_value(out_r, ts...)`.
+            1. If `execution::set_value(r, ts...)` has been called, calls `execution::set_value(out_r, ts...)`.
 
-            2. If `execution::set_error(r, e)` has been called, calls `execution:;set_error(out_r, e)`.
+            2. If `execution::set_error(r, e)` has been called, calls `execution::set_error(out_r, e)`.
 
-            3. If `execution::set_done(r)` has been called, calls `execution:;set_done(out_r)`.
+            3. If `execution::set_done(r)` has been called, calls `execution::set_done(out_r)`.
 
     If the function selected above does not eagerly start the sender `s` and return a sender which propagates the signals sent by `s` once started, the program is ill-formed with no diagnostic required.
 
@@ -1796,7 +1796,7 @@ namespace std::execution {
 
 1. `execution::start_detached` is used to eagerly start a sender without the caller needing to manage the lifetimes of any objects.
 
-2. The name `execution::start_detached` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution:;start_detached` is ill-formed. Otherwise, the expression
+2. The name `execution::start_detached` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::start_detached` is ill-formed. Otherwise, the expression
     `execution::start_detached(s)` is expression-equivalent to:
 
     1. `tag_invoke(execution::start_detached, get_completion_scheduler(s), s)`, if that expression is valid and its type is `void`.
@@ -1879,3 +1879,13 @@ namespace std::execution {
             3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-with-variant-type</i>&lt;S(nullopt)</code>.
 
 ## One-way execution <b>[execution.execute]</b> ## {#spec-execution.execute}
+
+1. `execution::execute` is used to create fire-and-forget tasks on a specified scheduler.
+
+2. The name `execution::execute` denotes a customization point object. For some subexpressions `sch` and `f`, let `Sch` be `decltype((sch))` and `F` be `decltype((f))`. If `Sch` does not satisfy `execution::scheduler` or `F` does not satisfy `invocable<>`,
+    `execution::execute` is ill-formed. Otherwise, `execution::execute` is expression-equivalent to:
+
+    1. `tag_invoke(execution::execute, sch, f)`, if that expression is valid and its type is `void`. If the function selected by `tag_invoke` does not invoke the function `f` on an execution agent belonging to the associated execution context of `sch`, or if it
+        does not call `std::terminate()` if an error occurs after control is returned to the caller, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::start_detached(execution::then(execution::schedule(sch), f))`.
