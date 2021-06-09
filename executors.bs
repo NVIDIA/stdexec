@@ -955,6 +955,16 @@ namespace std::execution {
     inline constexpr set_done_t set_done{};
   }
 
+  // [execution.receiver.queries], receiver queries
+  inline namespace <i>unspecified</i> {
+    struct get_scheduler_t;
+    inline constexpr get_scheduler_t get_scheduler{}; // TODO
+    struct get_allocator_t;
+    inline constexpr get_allocator_t get_allocator{}; // TODO
+    struct get_stop_token_t;
+    inline constesxpr get_stop_token_t get_stop_token{}; // TODO
+  }
+
   // [execution.op_state], operation states
   template&lt;class O>
     concept operation_state = <i>see-below</i>;
@@ -968,7 +978,7 @@ namespace std::execution {
   template&lt;class S>
     concept sender = <i>see-below</i>;
 
-  template&lt;class S>
+  template&lt;class S, class R>
     concept sender_to = <i>see-below</i>;
 
   template&lt;class S>
@@ -1053,17 +1063,17 @@ namespace std::execution {
     inline constexpr ensure_started_t ensure_started{}; // TODO
 
     // [execution.sender.algorithms], sender algorithms
-    struct submit_t;
-    inline constexpr submit_t submit{}; // TODO
+    struct start_detached_t;
+    inline constexpr start_detached_t start_detached{}; // TODO
   }
 }
 
 namespace std::this_thread {
   inline namespace <i>unspecified</i> {
     struct sync_wait_t;
-    inline constexpr sync_wait_t sync_wait{};
+    inline constexpr sync_wait_t sync_wait{}; // TODO
     struct sync_wait_with_variant_t;
-    inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
+    inline constexpr sync_wait_with_variant_t sync_wait_with_variant{}; // TODO
   }
 }
 
@@ -1071,7 +1081,7 @@ namespace std::execution {
   inline namespace <i>unspecified</i> {
     // [execution.execute], one-way execution
     struct execute_t;
-    inline constexpr execute_t execute{};
+    inline constexpr execute_t execute{}; // TODO
   }
 }
 </pre>
