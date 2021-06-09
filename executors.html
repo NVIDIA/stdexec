@@ -3041,6 +3041,16 @@ tuples sent by the predecessor sender:</p>
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>set_done_t</c-> <c- n>set_done</c-><c- p>{};</c->
   <c- p>}</c->
 
+  <c- c1>// [execution.receiver.queries], receiver queries</c->
+  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+    <c- k>struct</c-> <c- nc>get_scheduler_t</c-><c- p>;</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_scheduler_t</c-> <c- n>get_scheduler</c-><c- p>{};</c-> <c- c1>// TODO</c->
+    <c- k>struct</c-> <c- nc>get_allocator_t</c-><c- p>;</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_allocator_t</c-> <c- n>get_allocator</c-><c- p>{};</c-> <c- c1>// TODO</c->
+    <c- k>struct</c-> <c- nc>get_stop_token_t</c-><c- p>;</c->
+    <c- kr>inline</c-> <c- n>constesxpr</c-> <c- n>get_stop_token_t</c-> <c- n>get_stop_token</c-><c- p>{};</c-> <c- c1>// TODO</c->
+  <c- p>}</c->
+
   <c- c1>// [execution.op_state], operation states</c->
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>O</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>operation_state</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
@@ -3054,7 +3064,7 @@ tuples sent by the predecessor sender:</p>
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>sender</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
-  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
+  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>R</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>sender_to</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
@@ -3139,17 +3149,17 @@ tuples sent by the predecessor sender:</p>
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>ensure_started_t</c-> <c- n>ensure_started</c-><c- p>{};</c-> <c- c1>// TODO</c->
 
     <c- c1>// [execution.sender.algorithms], sender algorithms</c->
-    <c- k>struct</c-> <c- nc>submit_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>submit_t</c-> <c- n>submit</c-><c- p>{};</c-> <c- c1>// TODO</c->
+    <c- k>struct</c-> <c- nc>start_detached_t</c-><c- p>;</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>start_detached_t</c-> <c- n>start_detached</c-><c- p>{};</c-> <c- c1>// TODO</c->
   <c- p>}</c->
 <c- p>}</c->
 
 <c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-> <c- p>{</c->
   <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
     <c- k>struct</c-> <c- nc>sync_wait_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>sync_wait_t</c-> <c- n>sync_wait</c-><c- p>{};</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>sync_wait_t</c-> <c- n>sync_wait</c-><c- p>{};</c-> <c- c1>// TODO</c->
     <c- k>struct</c-> <c- nc>sync_wait_with_variant_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>sync_wait_with_variant_t</c-> <c- n>sync_wait_with_variant</c-><c- p>{};</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>sync_wait_with_variant_t</c-> <c- n>sync_wait_with_variant</c-><c- p>{};</c-> <c- c1>// TODO</c->
   <c- p>}</c->
 <c- p>}</c->
 
@@ -3157,7 +3167,7 @@ tuples sent by the predecessor sender:</p>
   <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
     <c- c1>// [execution.execute], one-way execution</c->
     <c- k>struct</c-> <c- nc>execute_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>execute_t</c-> <c- n>execute</c-><c- p>{};</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>execute_t</c-> <c- n>execute</c-><c- p>{};</c-> <c- c1>// TODO</c->
   <c- p>}</c->
 <c- p>}</c->
 </pre>
