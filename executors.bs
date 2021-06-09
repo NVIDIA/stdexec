@@ -1064,7 +1064,7 @@ namespace std::execution {
 
     // [execution.sender.algorithms], sender algorithms
     struct start_detached_t;
-    inline constexpr start_detached_t start_detached{}; // TODO
+    inline constexpr start_detached_t start_detached{};
   }
 }
 
@@ -1785,5 +1785,31 @@ namespace std::execution {
     If the function selected above does not eagerly start the sender `s` and return a sender which propagates the signals sent by `s` once started, the program is ill-formed with no diagnostic required.
 
 ### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
+
+#### Start_detached algorithm <b>[execution.sender.algorithms.start_detached]</b> #### {#spec-execution.sender.algorithms.start_detached}
+
+1. `execution::start_detached` is used to eagerly start a sender without the caller needing to manage the lifetimes of any objects.
+
+2. The name `execution::start_detached` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution:;start_detached` is ill-formed. Otherwise, the expression
+    `execution::start_detached(s)` is expression-equivalent to:
+
+    1. `tag_invoke(start_detached, get_completion_scheduler(s), s)`, if that expression is valid and its type is `void`.
+
+    2. Otherwise, `tag_invoke(start_detached, s)`, if that expression is valid and its type is `void`.
+
+    3. Otherwise:
+
+        1. Constructs a receiver `r`:
+
+            1. When `set_value(r, ts...)` is called, it does nothing.
+
+            2. When `set_error(r, e)` is called, it calls `std::terminate()`.
+
+            3. When `set_done(r)` is called, it does nothing.
+
+        2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`.
+
+    If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_done` signals and calls `std::terminate()` on the `set_error` signal, the program is ill-formed with no diagnostic
+        required.
 
 ## One-way execution <b>[execution.execute]</b> ## {#spec-execution.execute}
