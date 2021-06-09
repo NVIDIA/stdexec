@@ -1057,8 +1057,8 @@ namespace std::execution {
     struct lazy_reschedule_when_all_t;
     inline constexpr lazy_reschedule_when_all_t lazy_reschedule_when_all{};
 
-    struct unschedule_t;
-    inline constexpr unschedule_t unschedule{}; // TODO
+    template&lt;sender S>
+      <i>see-below</i> unschedule(S &&);
     struct ensure_started_t;
     inline constexpr ensure_started_t ensure_started{}; // TODO
 
@@ -1738,6 +1738,24 @@ namespace std::execution {
 
 4. Senders returned from `execution::reschedule_when_all` and `execution::lazy_reschedule_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to predecessor senders. They shall return a scheduler equivalent to the `sch` argument from
     those queries.
+
+#### Unschedule adaptor <b>[execution.sender.adaptors.unschedule]</b> #### {#spec-execution.sender.adaptors.unschedule}
+
+1. `execution::unschedule` can be used to remove the information about completion schedulers from a sender, in effect removing any scheduler-specific customizations of sender algorithms from that sender.
+
+    <pre highlight=c++>
+        template&lt;sender S>
+          <i>see-below</i> unschedule(S && s) noexcept(<i>see-below</i>);
+    </pre>
+
+2. <i>Effects:</i> If `S` provides none of the `get_completion_scheduler<CPO>` sender queries, returns `std::forward<S>(s)`. Otherwise. returns a sender adaptor `s2` containing a subobject of type `remove_cvref_t<S>`, initialized with `std::forward<S>(s)`. `s2`
+    propagates all customizations, except for `get_completion_scheduler<CPO>`, to `s`.
+
+3. <i>Remarks:</i> The expression in the `noexcept-specifier` is equivalent to
+
+    <pre highlight=c++>
+        is_nothrow_constructible_v&lt;remove_cvref_t&lt;S>, S>
+    </pre>
 
 ### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
 
