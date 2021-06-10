@@ -919,8 +919,7 @@ Much of this wording follows the wording of [[P0443R14]]. [[#spec-execution]] is
 <table>
 <caption>Table 1: Execution control library summary <b>[tab:execution.summary]</b></caption>
 <th><td>Subclause</td><td>Header</td></th>
-<tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.req">[execution.req]</a></td><td>Requirements</td><td>`<execution>`</td></tr>
-<tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.scheduler">[execution.scheduler]</a></td><td>Schedulers</td><td></td></tr>
+<tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.scheduler">[execution.scheduler]</a></td><td>Schedulers</td><td>`<execution>`</td></tr>
 <tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.receiver">[execution.receiver]</a></td><td>Receivers</td><td></td></tr>
 <tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.op_state">[execution.op_state]</a></td><td>Operation states</td><td></td></tr>
 <tr style="border-bottom-style: hidden;"><td><a href="#spec-execution.sender">[execution.sender]</a></td><td>Senders</td><td></td></tr>
