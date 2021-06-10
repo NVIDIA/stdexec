@@ -1063,27 +1063,27 @@ namespace std::execution {
     inline constexpr lazy_bulk_t lazy_bulk{};
 
     struct split_t;
-    inline constexpr split_t split{}; // TODO
+    inline constexpr split_t split{};
     struct lazy_split_t;
-    inline constexpr lazy_split_t lazy_split{}; // TODO
+    inline constexpr lazy_split_t lazy_split{};
     struct when_all_t;
     inline constexpr when_all_t when_all{};
     struct lazy_when_all_t;
     inline constexpr lazy_when_all_t lazy_when_all{};
     struct when_all_with_variant_t;
-    inline constexpr when_all_with_variant_t when_all_with_variant{}; // TODO
+    inline constexpr when_all_with_variant_t when_all_with_variant{};
     struct lazy_when_all_with_variant_t;
-    inline constexpr lazy_when_all_with_variant_t lazy_when_all_with_variant{}; // TODO
+    inline constexpr lazy_when_all_with_variant_t lazy_when_all_with_variant{};
     struct reschedule_when_all_t;
     inline constexpr reschedule_when_all_t reschedule_when_all{};
     struct lazy_reschedule_when_all_t;
     inline constexpr lazy_reschedule_when_all_t lazy_reschedule_when_all{};
     struct reschedule_when_all_with_variant_t;
     inline constexpr reschedule_when_all_with_variant_t
-      reschedule_when_all_with_variant{}; // TODO
+      reschedule_when_all_with_variant{};
     struct lazy_reschedule_when_all_with_variant_t;
     inline constexpr lazy_reschedule_when_all_with_variant_t
-      lazy_reschedule_when_all_with_variant{}; // TODO
+      lazy_reschedule_when_all_with_variant{};
 
     template&lt;typed_sender S>
       using <i>into-variant-type</i> = <i>see-below</i>; // exposition-only
@@ -1718,18 +1718,19 @@ namespace std::execution {
 
 #### When_all adaptor <b>[execution.sender.adaptors.when_all]</b> #### {#spec-execution.sender.adaptor.when_all}
 
-1. `execution::when_all` and `execution::lazy_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the predecessors.
+1. `execution::when_all` and `execution::lazy_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values. `execution::when_all_with_variant` and
+    `execution::lazy_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, which may have one or more sets of sent values.
 
-2. The name `execution::when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, `execution::when_all` is
-    ill-formed. Otherwise, the expression `execution::when_all(s...)` is expression-equivalent to:
+2. The name `execution::when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, or the number of the arguments
+    <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1, `execution::when_all` is ill-formed. Otherwise, the expression `execution::when_all(s...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete with
         `set_value`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `lazy_when_all(s...)`.
 
-3. The name `execution::lazy_when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, `execution::lazy_when_all` is
-    ill-formed. Otherwise, the expression `execution::lazy_when_all(s...)` is expression-equivalent to:
+3. The name `execution::lazy_when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, or the number of the
+    arguments <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1, `execution::lazy_when_all` is ill-formed. Otherwise, the expression `execution::lazy_when_all(s...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::lazy_when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete
         with `set_value`, the program is ill-formed with no diagnostic required.
@@ -1750,17 +1751,35 @@ namespace std::execution {
         4. Returns an operation state `op_state` that contains each operation state <code>op_state<sub><i>i</i></sub></code>. When `execution::start(op_state)` is called, calls <code>execution::start(op_state<sub><i>i</i></sub>)</code> for each
             <code>op_state<sub><i>i</i></sub></code>.
 
-4. Senders returned from `execution::when_all` and `execution::lazy_when_all` shall not expose the sender queries `get_completion_scheduler<CPO>`.
+4. The name `execution::when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
+    `execution::when_all_with_variant` is ill-formed. Otherwise, the expression `execution::when_all_with_variant(s...)` is expression-equivalent to:
 
-5. `tag_invoke` expressions used in the definitions of `execution::when_all` and `execution::lazy_when_all` shall not consider member functions of their first non-tag arguments.
+    1. `tag_invoke(execution::when_all_with_variant, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends the types
+        <code><i>into-variant-type</i>&lt;S>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::when_all(execution::into_variant(s)...)`.
+
+5. The name `execution::lazy_when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
+    `execution::lazy_when_all_with_variant` is ill-formed. Otherwise, the expression `execution::lazy_when_all_with_variant(s...)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::lazy_when_all_with_variant, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends the types
+        <code><i>into-variant-type</i>&lt;S>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::lazy_when_all(execution::into_variant(s)...)`.
+
+6. Senders returned from adaptors defined in this subclause shall not expose the sender queries `get_completion_scheduler<CPO>`.
+
+7. `tag_invoke` expressions used in the definitions of the sender adaptors in this subclause shall not consider member functions of their first non-tag arguments.
 
 #### Reschedule_when_all adaptor <b>[execution.sender.adaptors.reschedule_when_all]</b> #### {#spec-execution.sender.adaptor.reschedule_when_all}
 
-1. `execution::when_all` and `execution::lazy_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the predecessors, while also making sure that they complete on the specified scheduler. [<i>Note:</i> this can
-    allow for better customization of the algorithm. --<i>end note</i>]
+1. `execution::when_all` and `execution::lazy_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure that they complete on the
+    specified scheduler. `execution::reschedule_when_all_with_variant` and `execution::lazy_reschedule_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, which may have one or
+    more sets of sent values. [<i>Note:</i> this can allow for better customization of the algorithm. --<i>end note</i>]
 
 2. The name `execution::reschedule_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type <code>S<i><sub>i</sub></i></code>
-    in `S...` does not satisfy `execution::typed_sender`, `execution::reschedule_when_all` is ill-formed. Otherwise, the expression `execution::reschedule_when_all(sch, s...)` is expression-equivalent to:
+    in `S...` does not satisfy `execution::typed_sender`,  or the number of the arguments <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1 `execution::reschedule_when_all` is ill-formed.
+    Otherwise, the expression `execution::reschedule_when_all(sch, s...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::reschedule_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they
         all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
@@ -1768,13 +1787,30 @@ namespace std::execution {
     2. Otherwise, `reschedule(when_all(s...), sch)`.
 
 3. The name `execution::lazy_reschedule_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type
-    <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, `execution::lazy_reschedule_when_all` is ill-formed. Otherwise, the expression `execution::lazy_reschedule_when_all(sch, s...)` is expression-equivalent to:
+    <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, or the number of the arguments <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1,
+    `execution::lazy_reschedule_when_all` is ill-formed. Otherwise, the expression `execution::lazy_reschedule_when_all(sch, s...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::lazy_reschedule_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when
         they all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic
         required.
 
     2. Otherwise, `lazy_reschedule(lazy_when_all(s...), sch)`.
+
+4. The name `execution::reschedule_when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
+    `execution::reschedule_when_all_with_variant` is ill-formed. Otherwise, the expression `execution::reschedule_when_all_with_variant(s...)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::reschedule_when_all_with_variant, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends the types
+        <code><i>into-variant-type</i>&lt;S>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::reschedule_when_all(sch, execution::into_variant(s)...)`.
+
+5. The name `execution::lazy_reschedule_when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
+    `execution::lazy_reschedule_when_all_with_variant` is ill-formed. Otherwise, the expression `execution::lazy_reschedule_when_all_with_variant(s...)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::lazy_reschedule_when_all_with_variant, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends the types
+        <code><i>into-variant-type</i>&lt;S>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
+
+    2. Otherwise, `execution::lazy_reschedule_when_all(sch, execution::into_variant(s)...)`.
 
 4. Senders returned from `execution::reschedule_when_all` and `execution::lazy_reschedule_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to predecessor senders. They shall return a scheduler equivalent to the `sch` argument from
     those queries.
