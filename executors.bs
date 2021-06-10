@@ -412,7 +412,7 @@ execution::sender auto gpu_task = execution::reschedule(cpu_task, gpu_sched);
 // gpu_task describes the transition of the task graph described by cpu_task to the gpu
 </pre>
 
-### `execution::then` ### {#design-adapter-then}
+### `execution::then`, `execution::upon_error`, `execution::upon_done` ### {#design-adapter-then}
 
 <pre highlight="c++">
 execution::sender auto then(
@@ -424,11 +424,33 @@ execution::sender auto lazy_then(
     execution::sender auto predecessor,
     std::invocable<<i>values-sent-by(predecessor)</i>...> function
 );
+
+execution::sender auto upon_error(
+    execution::sender auto predecessor,
+    std::invocable<<i>errors-sent-by(predecessor)</i>...> function
+);
+
+execution::sender auto lazy_upon_error(
+    execution::sender auto predecessor,
+    std::invocable<<i>errors-sent-by(predecessor)</i>...> function
+);
+
+execution::sender auto upon_error(
+    execution::sender auto predecessor,
+    std::invocable<> function
+);
+
+execution::sender auto lazy_upon_error(
+    execution::sender auto predecessor,
+    std::invocable<> function
+);
 </pre>
 
-Returns a sender describing the task graph described by the predecessor, with an added node of invoking the provided function with the values [=send|sent=] by the predecessor as arguments.
+`then` returns a sender describing the task graph described by the predecessor, with an added node of invoking the provided function with the values [=send|sent=] by the predecessor as arguments.
 
 `lazy_then` is **guaranteed** to not begin executing `function` until the returned sender is started.
+
+`upon_error` and `upon_done` are similar to `then`, but where `then` works with values sent by the predecessor sender, `upon_error` works with errors, and `upon_done` is invoked when the "done" signal is sent.
 
 <pre highlight="c++">
 execution::sender auto pred = get_predecessor();
@@ -456,6 +478,18 @@ execution::sender auto lazy_on(
 </pre>
 
 Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender does not have a [=completion scheduler=].
+
+TODO: example
+
+### `execution::into_variant` ### {#design-adapter-into_variant}
+
+<pre highlight=c++>
+execution:;sender into_variant(
+    execution::sender auto snd
+);
+</pre>
+
+Returns a sender which sends a variant of tuples of all the possible sets of types sent by the input sender. Senders can send multiple sets of values depending on runtime conditions; this is a helper function that turns them into a single variant value.
 
 TODO: example
 
@@ -510,10 +544,16 @@ If the provided sender is a multi-shot sender, returns that sender. Otherwise, r
 <pre highlight="c++">
 execution::sender auto when_all(
     execution::sender auto ...predecessors
-)</i>);
+);
+
+execution::sender auto when_all_with_variant(
+    execution::sender auto ...predecessors
+);
 </pre>
 
-Returns a sender which completes once all of the predecessor senders have completed. The values send by this sender are the values sent by each of the predecessor, in order of the arguments passed to `when_all`.
+`when_all` returns a sender which completes once all of the predecessor senders have completed. The values send by this sender are the values sent by each of the predecessor, in order of the arguments passed to `when_all`.
+
+`when_all_with_variant` does the same, but it adapts all the predecessor senders using `into_variant`.
 
 The returned sender does not have a [=completion scheduler=].
 
@@ -546,7 +586,17 @@ execution::sender auto reschedule_when_all(
     execution::sender auto ...predecessors
 );
 
+execution::sender auto reschedule_when_all_with_variant(
+    execution::scheduler auto sched,
+    execution::sender auto ...predecessors
+);
+
 execution::sender auto lazy_reschedule_when_all(
+    execution::scheduler auto sched,
+    execution::sender auto ...predecessors
+);
+
+execution::sender auto lazy_reschedule_when_all_with_variant(
     execution::scheduler auto sched,
     execution::sender auto ...predecessors
 );
@@ -600,7 +650,7 @@ If the provided sender sends an error instead of values, `sync_wait` throws that
 
 If the provided sender sends the "done" signal instead of values, `sync_wait` returns an empty optional.
 
-For an explanation of the `requires` clause, see [[#design-typed-issue]].
+For an explanation of the `requires` clause, see [[#design-typed-issue]]. That clause also explains another algorithm, built on top of `sync_wait`: `sync_wait_with_variant`.
 
 XXX TODO: provide an example
 
