@@ -1080,12 +1080,16 @@ namespace std::execution {
     struct lazy_reschedule_when_all_t;
     inline constexpr lazy_reschedule_when_all_t lazy_reschedule_when_all{};
     struct reschedule_when_all_with_variant_t;
-    inline constexpr reschedule_when_all_with_variant_t reschedule_when_all_with_variant{}; // TODO
+    inline constexpr reschedule_when_all_with_variant_t
+      reschedule_when_all_with_variant{}; // TODO
     struct lazy_reschedule_when_all_with_variant_t;
-    inline constexpr lazy_reschedule_when_all_with_variant_t lazy_reschedule_when_all_with_variant{}; // TODO
+    inline constexpr lazy_reschedule_when_all_with_variant_t
+      lazy_reschedule_when_all_with_variant{}; // TODO
 
     template&lt;typed_sender S>
-      <i>see-below</i> into_variant(S &&); // TODO
+      using <i>into-variant-type</i> = <i>see-below</i>; // exposition-only
+    template&lt;typed_sender S>
+      <i>see-below</i> into_variant(S &&);
     template&lt;sender S>
       <i>see-below</i> unschedule(S &&);
     struct ensure_started_t;
@@ -1776,6 +1780,36 @@ namespace std::execution {
 4. Senders returned from `execution::reschedule_when_all` and `execution::lazy_reschedule_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to predecessor senders. They shall return a scheduler equivalent to the `sch` argument from
     those queries.
 
+#### Into_variant adaptor <b>[execution.sender.adaptors.into_variant]</b> #### {#spec-execution.sender.adaptors.into_variant}
+
+1. `execution::into_variant` can be used to turn a typed sender which sends multiple sets of values into a sender which sends a variant of all of those sets of values.
+
+2. The template <code><i>into-variant-type</i></code> is used to compute the type sent by a sender returned from `execution::into_variant`.
+
+    <pre highlight=c++>
+        template&lt;typed_sender S>
+          using <i>into-with-variant-type</i> =
+            typename execution::sender_traits&lt;remove_cvref_t&lt;S>>
+              ::template value_types&lt;tuple, variant>;
+
+        template&lt;typed_sender S>
+          <i>see-below</i> into_variant(S && s);
+    </pre>
+
+3. <i>Effects:</i> Returns a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
+
+    1. Constructs a receiver `r`:
+
+        1. If `execution::set_value(r, ts...)` is called, calls <code>execution:;set_value(out_r, <i>into-variant-type</i>&lt;S>(make_tuple(ts...)))</code>.
+
+        2. If `execution::set_error(r, e)` is called, calls `execution:;set_error(out_r, e)`.
+
+        3. If `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
+
+    2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state2`.
+
+    3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+
 #### Unschedule adaptor <b>[execution.sender.adaptors.unschedule]</b> #### {#spec-execution.sender.adaptors.unschedule}
 
 1. `execution::unschedule` can be used to remove the information about completion schedulers from a sender, in effect removing any scheduler-specific customizations of sender algorithms from that sender.
@@ -1856,15 +1890,13 @@ namespace std::execution {
 2. The templates <code><i>sync-wait-type</i></code> and <code><i>sync-wait-with-variant-type</i></code> are used to determine the return types of `this_thread::sync_wait` and `this_thread::sync_wait_with_variant`.
 
     <pre highlight=c++>
-        template<typed_sender S>
-          using <i>sync-wait-type</i> = optional<
-            typename execution::sender_traits<remove_cvref_t<S>>
-              ::template value_types<tuple, type_identity>>;
+        template&lt;typed_sender S>
+          using <i>sync-wait-type</i> = optional&lt;
+            typename execution::sender_traits&lt;remove_cvref_t&lt;S>>
+              ::template value_types&lt;tuple, type_identity>>;
 
-        template<typed_sender S>
-          using <i>sync-wait-with-variant-type</i> = optional<
-            typename execution::sender_traits<remove_cvref_t<S>>
-              ::template value_types<tuple, variant>>;
+        template&lt;typed_sender S>
+          using <i>sync-wait-with-variant-type</i> = optional<<i>into-variant-type</i>&lt;S>>;
     </pre>
 
 3. The name `this_thread::sync_wait` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, or the number of the arguments `sender_traits<S>::value_types` passes into the
@@ -1895,19 +1927,7 @@ namespace std::execution {
 
     2. Otherwise, `tag_invoke(this_thread::sync_wait_with_variant, s)`, if this expression is valid and its type is <code><i>sync-wait-with-variant-type</i>&lt;S></code>.
 
-    3. Otherwise:
-
-        1. Constructs a receiver `r`.
-
-        2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`.
-
-        3. Blocks the current thread until a receiver completion-signal of `r` is called. When it is:
-
-            1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-with-variant-type</i>&lt;S>(make_tuple(ts...))></code>.
-
-            2. If `execution::set_error(r, e...)` has been called, if `remove_cvref_t(decltype(e))` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, throws `e`.
-
-            3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-with-variant-type</i>&lt;S(nullopt)></code>.
+    3. Otherwise, `execution::sync_wait(execution::into_variant(s))`.
 
 ## One-way execution <b>[execution.execute]</b> ## {#spec-execution.execute}
 
