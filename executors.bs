@@ -1045,6 +1045,19 @@ namespace std::execution {
     struct lazy_upon_done_t;
     inline constexpr lazy_upon_done_t lazy_upon_done{};
 
+    struct let_value_t;
+    inline constexpr let_value_t let_value{}; // TODO
+    struct lazy_let_value_t;
+    inline constexpr lazy_let_value_t lazy_let_value{}; // TODO
+    struct let_error_t;
+    inline constexpr let_error_t let_error{}; // TODO
+    struct lazy_let_error_t;
+    inline constexpr lazy_let_error_t lazy_let_error{}; // TODO
+    struct let_done_t;
+    inline constexpr let_done_t let_done{}; // TODO
+    struct lazy_let_done_t;
+    inline constexpr lazy_let_done_t lazy_let_done{}; // TODO
+
     struct bulk_t;
     inline constexpr bulk_t bulk{};
     struct lazy_bulk_t;
@@ -1058,11 +1071,21 @@ namespace std::execution {
     inline constexpr when_all_t when_all{};
     struct lazy_when_all_t;
     inline constexpr lazy_when_all_t lazy_when_all{};
+    struct when_all_with_variant_t;
+    inline constexpr when_all_with_variant_t when_all_with_variant{}; // TODO
+    struct lazy_when_all_with_variant_t;
+    inline constexpr lazy_when_all_with_variant_t lazy_when_all_with_variant{}; // TODO
     struct reschedule_when_all_t;
     inline constexpr reschedule_when_all_t reschedule_when_all{};
     struct lazy_reschedule_when_all_t;
     inline constexpr lazy_reschedule_when_all_t lazy_reschedule_when_all{};
+    struct reschedule_when_all_with_variant_t;
+    inline constexpr reschedule_when_all_with_variant_t reschedule_when_all_with_variant{}; // TODO
+    struct lazy_reschedule_when_all_with_variant_t;
+    inline constexpr lazy_reschedule_when_all_with_variant_t lazy_reschedule_when_all_with_variant{}; // TODO
 
+    template&lt;typed_sender S>
+      <i>see-below</i> into_variant(S &&); // TODO
     template&lt;sender S>
       <i>see-below</i> unschedule(S &&);
     struct ensure_started_t;
