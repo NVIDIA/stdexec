@@ -265,8 +265,9 @@ don't need to have a representation in code; they are simply a term describing c
 
 ## Schedulers represent execution contexts ## {#design-schedulers}
 
-A <dfn>scheduler</dfn> is a lightweight handle to an *execution context*, which allows describing work that will be executed on an execution agent belonging to that context. Since execution contexts don't necessarily manifest in C++ code, it's not possible to program
-directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single operation, `schedule`, which creates a description of work on its associated execution context, materialized in the form of a sender.
+A <dfn>scheduler</dfn> is a lightweight handle that represents a strategy for scheduling work onto an *execution context*. Since execution contexts don't necessarily manifest in C++ code, it's not possible to program
+directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single operation, `schedule`, which returns a sender that will complete on an execution context determined
+by the scheduler. Logic that you want to run on that context can be placed in the receiver's completion-signalling method.
 
 <pre highlight="c++">
 execution::scheduler auto sch = get_thread_pool().scheduler();
