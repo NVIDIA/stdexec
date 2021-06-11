@@ -463,6 +463,47 @@ execution::sender auto snd = execution::then(pred, [](auto... args) {
 
 This algorithm is included, as it is necessary for writing any sender code that actually performs a useful function.
 
+### `execution::let_value`, `execution::let_error`, `execution::let_done` ### {#design-adapter-let}
+
+<pre highlight="c++">
+execution::sender auto let_value(
+    execution::sender auto predecessor,
+    std::invocable<<i>values-sent-by(predecessor)</i>...> function
+);
+
+execution::sender auto lazy_let_value(
+    execution::sender auto predecessor,
+    std::invocable<<i>values-sent-by(predecessor)</i>...> function
+);
+
+execution::sender auto let_error(
+    execution::sender auto predecessor,
+    std::invocable<<i>errors-sent-by(predecessor)</i>...> function
+);
+
+execution::sender auto lazy_let_error(
+    execution::sender auto predecessor,
+    std::invocable<<i>errors-sent-by(predecessor)</i>...> function
+);
+
+execution::sender auto let_error(
+    execution::sender auto predecessor,
+    std::invocable<> function
+);
+
+execution::sender auto lazy_let_error(
+    execution::sender auto predecessor,
+    std::invocable<> function
+);
+</pre>
+
+`let_value` is very similar to `then`: when it is started, it invokes the provided function with the values [=send|sent=] by the predecessor as arguments. However, where the sender returned from `then` sends exactly what that function ends up returning - `let_value`
+requires that the function return a sender, and the sender returned by `let_value` sends the values sent by the sender returned from the callback. (In the futures world, we would call this "future unwrapping".)
+
+`lazy_let_value` is **guaranteed** to not begin executing `function` until the returned sender is started.
+
+`let_error` and `let_done` are similar to `let_value`, but where `let_value` works with values sent by the predecessor sender, `let_error` works with errors, and `let_done` is invoked when the "done" signal is sent.
+
 ### `execution::on` ### {#design-adapter-on}
 
 <pre highlight="c++">
@@ -958,7 +999,191 @@ short list:
 
 # Specification # {#spec}
 
-Much of this wording follows the wording of [[P0443R14]]. [[#spec-execution]] is meant to be added as a new library clause to the working draft of C++.
+Much of this wording follows the wording of [[P0443R14]].
+
+[[#spec-thread]] is meant to be a diff relative to the wording of the <b>[thread]</b> clause of [[N4885]]. This diff imports changes from [[P2175R0]].
+
+[[#spec-utilities]] is meant to be a diff relative to the wording of the <b>[utilities]</b> clause of [[N4885]]. This diff imports changes from [[P1895R0]].
+
+[[#spec-execution]] is meant to be added as a new library clause to the working draft of C++.
+
+# General utilities library <b>[utilities]</b> # {#spec-utilities}
+
+## Function objects <b>[function.objects]</b> ## {#spec-function.objects}
+
+### Header `<functional>` synopsis <b>[functional.syn]</b> ### {#spec-functional.syn}
+
+At the end of this subclause, insert the following declarations into the synopsis within `namespace std`:
+
+<ins>
+<blockquote>
+<pre highlight=c++>
+// [func.tag_invoke], tag_invoke
+inline namespace unspecified {
+  inline constexpr unspecified tag_invoke = unspecified;
+}
+
+template&lt;auto& Tag>
+  using tag_t = decay_t&lt;decltype(Tag)>;
+
+template&lt;class Tag, class... Args>
+  concept tag_invocable =
+    invocable&lt;decltype(tag_invoke), Tag, Args...>;
+
+template&lt;class Tag, class... Args>
+  concept nothrow_tag_invocable =
+    tag_invocable&lt;Tag, Args...> &&
+    is_nothrow_invocable_v&lt;decltype(tag_invoke), Tag, Args...>;
+
+template&lt;class Tag, class... Args>
+  using tag_invoke_result = invoke_result&lt;decltype(tag_invoke), Tag, Args...>;
+
+template&lt;class Tag, class... Args>
+  using tag_invoke_result_t = invoke_result_t&lt;decltype(tag_invoke), Tag, Args...>;
+</pre>
+</blockquote>
+</ins>
+
+### Tag_invoke <b>[func.tag_invoke]</b> ### {#spec-func.tag_invoke}
+
+Insert this section as a new subclause, between Searchers <b>[func.search]</b> and Class template `hash` <b>[unord.hash]</b>.
+
+<ins>
+<blockquote>
+
+1. The name `std::tag_invoke` denotes a customization point object. For some subexpressions `tag` and `args...`, `tag_invoke(tag, args...)` is expression-equivalent to an unqualified call to <code>tag_invoke(<i>decay-copy</i>(tag), args...)</code> with overload
+    resolution performed in a context that includes the declaration:
+
+    <pre>
+    void tag_invoke();
+    </pre>
+
+    and that does not include the the `std::tag_invoke` name.
+
+</blockquote>
+</ins>
+
+# Thread support library <b>[thread]</b> # {#spec-thread}
+
+## Stop tokens <b>[thread.stoptoken]</b> ## {#spec-thread.stoptoken}
+
+### Header `<stop_token>` synopsis <b>[thread.stoptoken.syn]</b> ### {#spec-thread.stoptoken.syn}
+
+At the beginning of this subclause, insert the following declarations into the synopsis within `namespace std`:
+
+<ins>
+<blockquote>
+<pre>
+template&lt;template&lt;typename> class>
+  struct &lt;i>check-type-alias-exists&lt;/i>; // exposition-only
+
+template&lt;typename T>
+  concept stoppable_token = &lt;i>see-below&lt;/i>;
+
+template&lt;typename T, typename CB, typename Initializer = CB>
+  concept stoppable_token_for = &lt;i>see-below&lt;/i>;
+
+template&lt;typename T>
+  concept unstoppable_token = &lt;i>see-below&lt;/i>;
+</pre>
+</blockquote>
+</ins>
+
+At the end of this subclause, insert the following declarations into the synopsis of within `namespace std`:
+
+<ins>
+<blockquote>
+<pre>
+// [stoptoken.never], class never_stop_token
+class never_stop_token;
+
+// [stoptoken.inplace], class in_place_stop_token
+class in_place_stop_token;
+
+// [stopsource.inplace], class in_place_stop_source
+class in_place_stop_source;
+
+// [stopcallback.inplace], class template in_place_stop_callback
+template&lt;typename Callback>
+class in_place_stop_callback;
+</pre>
+</blockquote>
+</ins>
+
+### Stop token concepts <b>[thread.stoptoken.concepts]</b> ### {#spec-thread.stoptoken.concepts}
+
+Insert this section as a new subclause between Header `<stop_token>` synopsis <b>[thread.stoptoken.syn]</b> and Class `stop_token` <b>[stoptoken]</b>.
+
+<ins>
+<blockquote>
+1. The `stoppable_token` concept checks for the basic interface of a “stop token” which is copyable and allows polling to see if stop has been requested and also whether a stop request is possible. It also requires an associated nested template-type-alias,
+    `T::callback_type<CB>`, that identifies the stop-callback type to use to register a callback to be executed if a stop-request is ever made on a stoppable_token of type, `T`. The `stoppable_token_for` concept checks for a stop token type compatible with a given
+    callback type. The `unstoppable_token` concept checks for a stop token type that does not allow stopiing.
+
+<pre>
+template&lt;typename T>
+  concept stoppable_token =
+    copy_constructible&lt;T> &&
+    move_constructible&lt;T> &&
+    is_nothrow_copy_constructible_v&lt;T> &&
+    is_nothrow_move_constructible_v&lt;T> &&
+    equality_comparable&lt;T> &&
+    requires (const T& token) {
+      { token.stop_requested() } noexcept -> boolean-testable;
+      { token.stop_possible() } noexcept -> boolean-testable;
+      typename __check_type_alias_exists&lt;T::template callback_type>;
+    };
+
+template&lt;typename T, typename CB, typename Initializer = CB>
+  concept stoppable_token_for =
+    stoppable_token&lt;T> &&
+    invocable&lt;CB> &&
+    requires {
+      typename T::template callback_type&lt;CB>;
+    } &&
+    constructible_from&lt;CB, Initializer> &&
+    constructible_from&lt;typename T::template callback_type&lt;CB>, T, Initializer> &&
+    constructible_from&lt;typename T::template callback_type&lt;CB>, T&, Initializer> &&
+    constructible_from&lt;typename T::template callback_type&lt;CB>, const T, Initializer> &&
+    constructible_from&lt;typename T::template callback_type&lt;CB>, const T&, Initializer>;
+
+template&lt;typename T>
+  concept unstoppable_token =
+    stoppable_token&lt;T> &&
+    requires {
+      { T::stop_possible() } -> boolean-testable;
+    } &&
+    (!T::stop_possible());
+</pre>
+
+2. Let `t` and `u` be distinct object of type `T`. The type `T` models `stoppable_token` only if:
+
+    1. All copies of a `stoppable_token` reference the same logical shared stop state and shall report values consistent with each other.
+
+    2. If `t.stop_possible()` evaluates to `false` then, if `u`, references the same logical shared stop state, `u.stop_possible()` shall also subsequently evaluate to `false` and `u.stop_requested()` shall also subsequently evaluate to `false`.
+
+    3. If `t.stop_requested()` evaluates to `true` then, if `u`, references the same logical shared stop state, `u.stop_requested()` shall also subsequently evaluate to `true` and `u.stop_possible()` shall also subsequently evaluate to `true`.
+
+    4. Given a callback-type, CB, and a callback-initializer argument, `init`, of type `Initializer` then constructing an instance, `cb`, of type `T::callback_type<CB>`, passing `t` as the first argument and `init` as the second argument to the constructor, shall,
+        if `t.stop_possible()` is `true`, construct an instance, `callback`, of type `CB`, direct-initialized with `init`, and register callback with `t`’s shared stop state such that callback will be invoked with an empty argument list if a stop request is made on
+        the shared stop state.
+
+        1. If `t.stop_requested()` is `true` at the time callback is registered then callback may be invoked immediately inline inside the call to `cb`’s constructor.
+
+        2. If callback is invoked then, if `u` references the same shared stop state as `t`, an evaluation of `u.stop_requested()` will be `true` if the beginning of the invocation of callback strongly-happens-before the evaluation of `u.stop_requested()`.
+
+        3. If `t.stop_possible()` evaluates to `false` then the construction of `cb` is not required to construct and initialize `callback`.
+
+    5. Construction of a `T::callback_type<CB>` instance shall only throw exceptions thrown by the initialization of the `CB` instance from the value of type `Initializer`.
+
+    6. Destruction of the `T::callback_type<CB>` object, `cb`, deregisters callback from the shared stop state such that `callback` will not be invoked after the destructor returns.
+
+        1. If `callback` is currently being invoked on another thread then the destructor of `cb` will block until the invocation of `callback` returns such that the return from the invocation of `callback` strongly-happens-before the destruction of `callback`.
+
+        2. Destruction of a callback `cb` shall not block on the completion of the invocation of some other callback registered with the same shared stop state.
+
+</blockquote>
+</ins>
 
 # Execution control library <b>[execution]</b> # {#spec-execution}
 
@@ -1013,11 +1238,11 @@ namespace std::execution {
   // [execution.receiver.queries], receiver queries
   inline namespace <i>unspecified</i> {
     struct get_scheduler_t;
-    inline constexpr get_scheduler_t get_scheduler{}; // TODO
+    inline constexpr get_scheduler_t get_scheduler{};
     struct get_allocator_t;
-    inline constexpr get_allocator_t get_allocator{}; // TODO
+    inline constexpr get_allocator_t get_allocator{};
     struct get_stop_token_t;
-    inline constesxpr get_stop_token_t get_stop_token{}; // TODO
+    inline constesxpr get_stop_token_t get_stop_token{};
   }
 
   // [execution.op_state], operation states
@@ -1055,7 +1280,7 @@ namespace std::execution {
     template&lt;class CPO>
     struct get_completion_scheduler_t;
     template&lt;class CPO>
-    inline constexpr get_completion_scheduler_t get_completion_scheduler{}; // TODO
+    inline constexpr get_completion_scheduler_t get_completion_scheduler{};
 
     // [execution.sender.factories], sender factories
     struct schedule_t;
@@ -1095,17 +1320,17 @@ namespace std::execution {
     inline constexpr lazy_upon_done_t lazy_upon_done{};
 
     struct let_value_t;
-    inline constexpr let_value_t let_value{}; // TODO
+    inline constexpr let_value_t let_value{};
     struct lazy_let_value_t;
-    inline constexpr lazy_let_value_t lazy_let_value{}; // TODO
+    inline constexpr lazy_let_value_t lazy_let_value{};
     struct let_error_t;
-    inline constexpr let_error_t let_error{}; // TODO
+    inline constexpr let_error_t let_error{};
     struct lazy_let_error_t;
-    inline constexpr lazy_let_error_t lazy_let_error{}; // TODO
+    inline constexpr lazy_let_error_t lazy_let_error{};
     struct let_done_t;
-    inline constexpr let_done_t let_done{}; // TODO
+    inline constexpr let_done_t let_done{};
     struct lazy_let_done_t;
-    inline constexpr lazy_let_done_t lazy_let_done{}; // TODO
+    inline constexpr lazy_let_done_t lazy_let_done{};
 
     struct bulk_t;
     inline constexpr bulk_t bulk{};
@@ -1113,17 +1338,13 @@ namespace std::execution {
     inline constexpr lazy_bulk_t lazy_bulk{};
 
     struct split_t;
-    inline constexpr split_t split{};
+    inline constexpr split_t split{}; // TODO
     struct lazy_split_t;
-    inline constexpr lazy_split_t lazy_split{};
+    inline constexpr lazy_split_t lazy_split{}; // TODO
     struct when_all_t;
     inline constexpr when_all_t when_all{};
-    struct lazy_when_all_t;
-    inline constexpr lazy_when_all_t lazy_when_all{};
     struct when_all_with_variant_t;
     inline constexpr when_all_with_variant_t when_all_with_variant{};
-    struct lazy_when_all_with_variant_t;
-    inline constexpr lazy_when_all_with_variant_t lazy_when_all_with_variant{};
     struct reschedule_when_all_t;
     inline constexpr reschedule_when_all_t reschedule_when_all{};
     struct lazy_reschedule_when_all_t;
@@ -1275,6 +1496,42 @@ namespace std::execution {
 
 ### Receiver queries <b>[execution.receiver.queries]</b> ### {#spec-execution.receiver.queries}
 
+#### Scheduler receiver query <b>[execution.receiver.queries.scheduler]</b> #### {#spec-execution.receiver.queries.scheduler}
+
+1. `execution::get_scheduler` is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
+    its result. --<i>end note</i>]
+
+2. The name `execution::get_scheduler` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_scheduler` is ill-formed. Otherwise, `execution:;get_scheduler(r)` is
+    expression equivalent to:
+
+    1. `tag_invoke(execution:;get_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+
+    2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
+
+#### Allocator receiver query <b>[execution.receiver.queries.allocator]</b> #### {#spec-execution.receiver.queries.allocator}
+
+1. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
+    its result. --<i>end note</i>]
+
+2. The name `execution::get_allocator` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_allocator` is ill-formed. Otherwise, `execution:;get_allocator(r)` is
+    expression equivalent to:
+
+    1. `tag_invoke(execution:;get_allocator, as_const(r))`, if this expression is well formed and models <i>Allocator</i>, and is `noexcept`.
+
+    2. Otherwise, `execution::get_allocator(r)` is ill-formed.
+
+#### Stop_token receiver query <b>[execution.receiver.queries.stop_token]</b> #### {#spec-execution.receiver.queries.stop_token}
+
+1. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to
+    use its result. --<i>end note</i>]
+
+2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_stop_token` is ill-formed. Otherwise, `execution:;get_stop_token(r)`
+    is expression equivalent to:
+
+    1. `tag_invoke(execution:;get_stop_token, as_const(r))`, if this expression is well formed and satisfies `stoppable_token`, and is `noexcept`.
+
+    2. Otherwise, `never_stop_token{}`.
+
 ## Operation states <b>[execution.op_state]</b> ## {#spec-execution.op_state}
 
 1. The `operation_state` concept defines the requirements for an operation state type, which allows for starting the execution of work.
@@ -1360,6 +1617,21 @@ namespace std::execution {
     2. Otherwise, `execution::connect(s, r)` is ill-formed.
 
 ### Sender queries <b>[execution.sender.queries]</b> ### {#spec-execution.sender.queries}
+
+#### Scheduler sender query <b>[execution.sender.queries.scheduler]</b> #### {#spec-execution.sender.queries.scheduler}
+
+1. `execution::get_completion_scheduler` is used to ask a sender object for the <i>completion scheduler</i> for one of its signals.
+
+2. The name `execution::get_completion_scheduler` denotes a customization point object template. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::get_completion_scheduler` is ill-formed. If the template
+    argument `CPO` in `execution::get_completion_scheduler<CPO>` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution:;set_done_t`, `execution::get_completion_scheduler<CPO>` is ill-formed. Otherwise,
+    `execution::get_completion_scheduler<CPO>(s)` is expression-equivalent to:
+
+    1. `tag_invoke(execution:;get_completion_scheduler<CPO>, as_const(s))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+
+    2. Otherwise, `execution::get_completion_scheduler<CPO>(s)` is ill-formed.
+
+3. If, for some sender `s` and customization point object `CPO`, `execution::get_completion_scheduler<decltype(CPO)>(s)` is well-formed and results in a scheduler `sch`, and the sender `s` invokes `CPO(r, args...)`, for some receiver `r` which has been connected to
+    `s`, with additional arguments `args...`, on an execution agent which does not belong to the associated execution context of `sch`, the behavior is undefined.
 
 ### Sender factories <b>[execution.sender.factories]</b> ### {#spec-execution.sender.factories}
 
@@ -1640,7 +1912,7 @@ namespace std::execution {
 
             3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If this operation throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
@@ -1654,7 +1926,7 @@ namespace std::execution {
 2. The name `execution::upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_error` is ill-formed. Otherwise, the expression
     `execution::upon_error(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::upon_error, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::upon_error, get_completion_scheduler<set_error>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -1666,7 +1938,7 @@ namespace std::execution {
 2. The name `execution::lazy_upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_error` is ill-formed. Otherwise, the expression
     `execution::lazy_upon_error(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_upon_error, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_upon_error, get_completion_scheduler<set_error>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -1681,7 +1953,7 @@ namespace std::execution {
 
             3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If this operation throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
@@ -1695,7 +1967,7 @@ namespace std::execution {
 2. The name `execution::upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_done` is ill-formed. Otherwise, the expression
     `execution::upon_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::upon_done, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::upon_done, get_completion_scheduler<set_done>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -1707,7 +1979,7 @@ namespace std::execution {
 2. The name `execution::lazy_upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_done` is ill-formed. Otherwise, the expression
     `execution::lazy_upon_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_upon_done, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_upon_done, get_completion_scheduler<set_done>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -1721,11 +1993,134 @@ namespace std::execution {
 
             3. When `execution::set_done(r)` is called, calls `invoke(f)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If this operation throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
     If the function selected above does not return a sender which invokes `f` when the `set_done` signal of `s` is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+#### Let_value adaptor <b>[execution.sender.adaptors.let_value]</b> #### {#spec-execution.sender.adaptors.let_value}
+
+1. `execution::let_value` and `execution::lazy_let_value` are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
+
+2. The name `execution::let_value` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::let_value` is ill-formed. Otherwise, the expression
+    `execution::let_value(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::let_value, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::let_value, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `lazy_let_value(s, f)`.
+
+    If the function selected above does not return a sender which invokes `f` when `set_value` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+2. The name `execution::lazy_let_value` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_let_value` is ill-formed. Otherwise, the expression
+    `execution::lazy_let_value(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::lazy_let_value, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::lazy_let_value, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
+
+        1. Constructs a receiver `r`.
+
+            1. When `execution::set_value(r, args...)` is called, calls `invoke(f, args...)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved as a part of `op_state2`.
+                It then calls `execution:;start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution:;set_error(out_r, current_exception())`.
+
+            2. When `execution::set_error(r, e)` is called, calls `execution:;set_error(out_r, e)`.
+
+            3. When `execution:;set_done(r, e)` is called, calls `execution::set_done(out_r)`.
+
+        2. Calls `execution::connect(s, r)`. which results in an operation state `op_state2`.
+
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+
+    If the function selected above does not return a sender which invokes `f` when `set_value` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+#### Let_error adaptor <b>[execution.sender.adaptors.let_error]</b> #### {#spec-execution.sender.adaptors.let_error}
+
+1. `execution::let_error` and `execution::lazy_let_error` are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
+
+2. The name `execution::let_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::let_error` is ill-formed. Otherwise, the expression
+    `execution::let_error(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::let_error, get_completion_scheduler<set_error>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::let_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `lazy_let_error(s, f)`.
+
+    If the function selected above does not return a sender which invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+2. The name `execution::lazy_let_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_let_error` is ill-formed. Otherwise, the expression
+    `execution::lazy_let_error(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::lazy_let_error, get_completion_scheduler<set_error>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::lazy_let_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
+
+        1. Constructs a receiver `r`.
+
+            1. When `execution::set_value(r, args...)` is called, calls `execution:;set_value(out_r, args...)`.
+
+            2. When `execution::set_error(r, e)` is called, calls `invoke(f, e)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved as a part of `op_state2`.
+                It then calls `execution:;start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution:;set_error(out_r, current_exception())`.
+
+            3. When `execution:;set_done(r, e)` is called, calls `execution::set_done(out_r)`.
+
+        2. Calls `execution::connect(s, r)`. which results in an operation state `op_state2`.
+
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+
+    If the function selected above does not return a sender which invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+#### Let_done adaptor <b>[execution.sender.adaptors.let_done]</b> #### {#spec-execution.sender.adaptors.let_done}
+
+1. `execution::let_done` and `execution::lazy_let_done` are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
+
+2. The name `execution::let_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::let_done` is ill-formed. Otherwise, the expression
+    `execution::let_done(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::let_done, get_completion_scheduler<set_done>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::let_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `lazy_let_done(s, f)`.
+
+    If the function selected above does not return a sender which invokes `f` when `set_done` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
+        ill-formed with no diagnostic required.
+
+2. The name `execution::lazy_let_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_let_done` is ill-formed. Otherwise, the expression
+    `execution::lazy_let_done(s, f)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::lazy_let_done, get_completion_scheduler<set_done>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::lazy_let_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
+
+        1. Constructs a receiver `r`.
+
+            1. When `execution:;set_value(r, args...)` is called, calls `execution::set_value(out_r, args...)`.
+
+            2. When `execution::set_error(r, e)` is called, calls `execution:;set_error(out_r, e)`.
+
+            3. When `execution::set_done(r)` is called, calls `invoke(f)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved as a part of `op_state2`.
+                It then calls `execution:;start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution:;set_error(out_r, current_exception())`.
+
+        2. Calls `execution::connect(s, r)`. which results in an operation state `op_state2`.
+
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+
+    If the function selected above does not return a sender which invokes `f` when `set_done` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
 #### Bulk adaptor <b>[execution.sender.adaptors.bulk]</b> #### {#spec-execution.sender.adaptors.bulk}
@@ -1759,7 +2154,7 @@ namespace std::execution {
 
             3. When `execution::set_done(r, e)` is called, calls `execution::set_done(out_r, e)`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If this operation throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
@@ -1768,22 +2163,14 @@ namespace std::execution {
 
 #### When_all adaptor <b>[execution.sender.adaptors.when_all]</b> #### {#spec-execution.sender.adaptor.when_all}
 
-1. `execution::when_all` and `execution::lazy_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values. `execution::when_all_with_variant` and
-    `execution::lazy_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, which may have one or more sets of sent values.
+1. `execution::when_all` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values. `execution::when_all_with_variant`
+    is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, which may have one or more sets of sent values.
 
 2. The name `execution::when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, or the number of the arguments
     <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1, `execution::when_all` is ill-formed. Otherwise, the expression `execution::when_all(s...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete with
         `set_value`, the program is ill-formed with no diagnostic required.
-
-    2. Otherwise, `lazy_when_all(s...)`.
-
-3. The name `execution::lazy_when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, or the number of the
-    arguments <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1, `execution::lazy_when_all` is ill-formed. Otherwise, the expression `execution::lazy_when_all(s...)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete
-        with `set_value`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, constructs a sender `s`. When `s` is connected with some receiver `out_r`, it:
 
@@ -1801,7 +2188,7 @@ namespace std::execution {
         4. Returns an operation state `op_state` that contains each operation state <code>op_state<sub><i>i</i></sub></code>. When `execution::start(op_state)` is called, calls <code>execution::start(op_state<sub><i>i</i></sub>)</code> for each
             <code>op_state<sub><i>i</i></sub></code>.
 
-4. The name `execution::when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
+3. The name `execution::when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
     `execution::when_all_with_variant` is ill-formed. Otherwise, the expression `execution::when_all_with_variant(s...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::when_all_with_variant, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends the types
@@ -1809,23 +2196,17 @@ namespace std::execution {
 
     2. Otherwise, `execution::when_all(execution::into_variant(s)...)`.
 
-5. The name `execution::lazy_when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
-    `execution::lazy_when_all_with_variant` is ill-formed. Otherwise, the expression `execution::lazy_when_all_with_variant(s...)` is expression-equivalent to:
+4. Adaptors defined in this subclause are strictly lazy.
 
-    1. `tag_invoke(execution::lazy_when_all_with_variant, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends the types
-        <code><i>into-variant-type</i>&lt;S>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
-
-    2. Otherwise, `execution::lazy_when_all(execution::into_variant(s)...)`.
-
-6. Senders returned from adaptors defined in this subclause shall not expose the sender queries `get_completion_scheduler<CPO>`.
+5. Senders returned from adaptors defined in this subclause shall not expose the sender queries `get_completion_scheduler<CPO>`.
 
 7. `tag_invoke` expressions used in the definitions of the sender adaptors in this subclause shall not consider member functions of their first non-tag arguments.
 
 #### Reschedule_when_all adaptor <b>[execution.sender.adaptors.reschedule_when_all]</b> #### {#spec-execution.sender.adaptor.reschedule_when_all}
 
-1. `execution::when_all` and `execution::lazy_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure that they complete on the
-    specified scheduler. `execution::reschedule_when_all_with_variant` and `execution::lazy_reschedule_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, which may have one or
-    more sets of sent values. [<i>Note:</i> this can allow for better customization of the algorithm. --<i>end note</i>]
+1. `execution::reschedule_when_all` and `execution::lazy_reschedule_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
+    that they complete on the specified scheduler. `execution::reschedule_when_all_with_variant` and `execution::lazy_reschedule_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input
+    senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the algorithm. --<i>end note</i>]
 
 2. The name `execution::reschedule_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type <code>S<i><sub>i</sub></i></code>
     in `S...` does not satisfy `execution::typed_sender`,  or the number of the arguments <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1 `execution::reschedule_when_all` is ill-formed.
@@ -1844,7 +2225,7 @@ namespace std::execution {
         they all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic
         required.
 
-    2. Otherwise, `lazy_reschedule(lazy_when_all(s...), sch)`.
+    2. Otherwise, `lazy_reschedule(when_all(s...), sch)`.
 
 4. The name `execution::reschedule_when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
     `execution::reschedule_when_all_with_variant` is ill-formed. Otherwise, the expression `execution::reschedule_when_all_with_variant(s...)` is expression-equivalent to:
