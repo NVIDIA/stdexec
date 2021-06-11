@@ -1001,9 +1001,9 @@ short list:
 
 Much of this wording follows the wording of [[P0443R14]].
 
-[[#spec-thread]] is meant to be a diff relative to the wording of the <b>[thread]</b> clause of [[N4885]]. This diff imports changes from [[P2175R0]].
-
 [[#spec-utilities]] is meant to be a diff relative to the wording of the <b>[utilities]</b> clause of [[N4885]]. This diff imports changes from [[P1895R0]].
+
+[[#spec-thread]] is meant to be a diff relative to the wording of the <b>[thread]</b> clause of [[N4885]]. This diff imports changes from [[P2175R0]].
 
 [[#spec-execution]] is meant to be added as a new library clause to the working draft of C++.
 
