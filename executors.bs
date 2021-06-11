@@ -118,8 +118,8 @@ See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]] for 
 This paper describes a design for a complete, self-contained library providing precise control for code execution on varying execution contexts in C++. This paper should be considered as a full design on its own, based heavily on prior papers that have been seen and
 discussed by the committee.
 
-Together with the paper, we are presenting a full, standalone, implementation of the design detailed in this paper, one that should satisfy the requirements of the prior papers that have been seen by the committee, but one that has also been validated to satisfy a
-good part of the requirements of accelerator runtimes such as CUDA; our work to provide an efficient CUDA implementation of the sender/receiver model has directly driven most of the novel changes proposed here.
+Before this proposal is approved, we will present a full, standalone, implementation of the design detailed in this paper, one that should satisfy the requirements of the prior papers that have been seen by the committee, but one that has also been validated to
+satisfy a good part of the requirements of accelerator runtimes such as CUDA; our work to provide an efficient CUDA implementation of the sender/receiver model has directly driven most of the novel changes proposed here.
 
 We are aiming at satisfying all the promises that have been given when the sender/receiver model has been proposed and adopted by SG1, most importantly that:
 
