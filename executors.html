@@ -2222,7 +2222,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#design-contexts"><span class="secno">4.1</span> <span class="content">Execution contexts describe the place of execution</span></a>
       <li><a href="#design-schedulers"><span class="secno">4.2</span> <span class="content">Schedulers represent execution contexts</span></a>
       <li><a href="#design-senders"><span class="secno">4.3</span> <span class="content">Senders describe work</span></a>
-      <li><a href="#design-propagation"><span class="secno">4.4</span> <span class="content">Senders may be bound to schedulers</span></a>
+      <li><a href="#design-propagation"><span class="secno">4.4</span> <span class="content">Senders can propagate completion schedulers</span></a>
       <li><a href="#design-transitions"><span class="secno">4.5</span> <span class="content">Execution context transitions are explicit</span></a>
       <li><a href="#design-fork"><span class="secno">4.6</span> <span class="content">Senders are forkable</span></a>
       <li><a href="#design-join"><span class="secno">4.7</span> <span class="content">Senders are joinable</span></a>
@@ -2442,11 +2442,11 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>We have implemented the SG1 direction to remove executors and base all of the proposed functionalities on senders and schedulers.</p>
     <li data-md>
-     <p>Senders now advertise what scheduler, if any, they are bound to.</p>
+     <p>Senders now advertise what scheduler, if any, their operations will complete on.</p>
     <li data-md>
      <p>Users now have a choice between using a strictly lazy vs a possibly eager version of most algorithms.</p>
     <li data-md>
-     <p>The places of execution of user code in P0443 weren’t precisely defined, whereas they are in this paper. See <a href="#design-propagation">§ 4.4 Senders may be bound to schedulers</a>.</p>
+     <p>The places of execution of user code in P0443 weren’t precisely defined, whereas they are in this paper. See <a href="#design-propagation">§ 4.4 Senders can propagate completion schedulers</a>.</p>
     <li data-md>
      <p>P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See <a href="#design-factories">§ 4.8 Proposed set of user-facing sender factories</a>, <a href="#design-adapters">§ 4.9 Proposed set of user-facing sender adapters</a>, and <a href="#design-algorithms">§ 4.10 Proposed set of user-facing sender algorithms</a>.</p>
     <li data-md>
@@ -2496,7 +2496,7 @@ it directly. The way user code is expected to interact with senders is by using 
 <c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>cont</c-><c- p>);</c->
 <c- c1>// at this point, the work described by `cont` has been submitted to the thread pool</c->
 </pre>
-   <h3 class="heading settled" data-level="4.4" id="design-propagation"><span class="secno">4.4. </span><span class="content">Senders may be bound to schedulers</span><a class="self-link" href="#design-propagation"></a></h3>
+   <h3 class="heading settled" data-level="4.4" id="design-propagation"><span class="secno">4.4. </span><span class="content">Senders can propagate completion schedulers</span><a class="self-link" href="#design-propagation"></a></h3>
    <p>One of the less clear aspects of <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> has been the set of requirements for the <i>place of execution</i> of any given piece of code. This underspecification is problematic, especially in case of systems where not all execution agents are created equal,
 and not all functions can be run on all execution agents. Having precise control over the execution context used for any given function call being submitted is very important on such systems, and the users of standard execution facilities will expect to be able
 to express such (binding) requirements.</p>
@@ -2509,8 +2509,8 @@ of the work described by a sender, but we have found those algorithms to be insu
      <p>forcibly interleaving two adjacent execution graph nodes that are both executing on an accelerator with glue code that runs on the CPU; this operation is prohibitively expensive on runtimes such as CUDA.</p>
    </ol>
    <p>Neither of these implementation strategies is acceptable for accelerator runtimes. Therefore, in addition to the <code class="highlight"><c- n>on</c-></code> algorithm from <a data-link-type="biblio" href="#biblio-p1897r3">[P1897R3]</a>, we are proposing to add a standardized way for senders to advertise what scheduler (and by extension - what execution
-context) any work (save for explicit transitions) attached to them will execute on. Any given sender <b>may</b> have <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="completion-schedulers">completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals,
-see <a href="#design-receivers">§ 5.1 Receivers serve as glue between senders</a>). When further work is attached to that sender by invoking sender algorithms, that work will also execute on the appropriate completion scheduler.</p>
+context) they will complete on. Any given sender <b>may</b> have <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="completion-schedulers">completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see <a href="#design-receivers">§ 5.1 Receivers serve as glue between senders</a>). When further work is
+attached to that sender by invoking sender algorithms, that work will also complete on the appropriate completion scheduler.</p>
    <p>There exists a function to retrieve the <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers">completion scheduler</a> from a sender, called <code class="highlight"><c- n>get_completion_scheduler</c-></code>. Calling this function on a sender that does not have an completion scheduler is ill-formed. If a scheduler advertises its completion scheduler in this
 way, that sender <b>must</b> ensure that it <a data-link-type="dfn" href="#send" id="ref-for-send">sends</a> its values on an execution agent belonging to an execution context represented by a scheduler returned from this function.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>new_thread_scheduler</c-><c- p>{};</c->
@@ -2908,7 +2908,7 @@ interact with operation states directly are authors of senders and authors of se
 <c- c1>// kept alive until the operation finishes</c->
 </pre>
    <h3 class="heading settled" data-level="5.4" id="design-customization"><span class="secno">5.4. </span><span class="content">Sender algorithms are customizable</span><a class="self-link" href="#design-customization"></a></h3>
-   <p>Senders being able to be bound to schedulers, and being able to advertise what their <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑨">completion scheduler</a> is, fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler it will execute on.</p>
+   <p>Senders being able to advertise what their <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑨">completion scheduler</a> is fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler any operations it depends on will complete on.</p>
    <p>The simple way to provide customizations for functions like <code class="highlight"><c- n>then</c-></code>, that is for <a data-link-type="dfn" href="#sender-adapter" id="ref-for-sender-adapter">sender adapters</a> and <a data-link-type="dfn" href="#sender-algorithm" id="ref-for-sender-algorithm">algorithms</a>, is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
 the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>sender</c-><c- p>,</c-> <c- n>invocable</c-><c- p>)</c-></code> to be equivalent to:</p>
    <ol>
@@ -4796,7 +4796,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <aside class="dfn-panel" data-for="send">
    <b><a href="#send">#send</a></b><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-send">4.4. Senders may be bound to schedulers</a>
+    <li><a href="#ref-for-send">4.4. Senders can propagate completion schedulers</a>
     <li><a href="#ref-for-send①">4.7. Senders are joinable</a>
     <li><a href="#ref-for-send②">4.8.2. execution::just</a>
     <li><a href="#ref-for-send③">4.8.3. execution::reschedule_just</a>
@@ -4810,7 +4810,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <aside class="dfn-panel" data-for="completion-schedulers">
    <b><a href="#completion-schedulers">#completion-schedulers</a></b><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-completion-schedulers">4.4. Senders may be bound to schedulers</a>
+    <li><a href="#ref-for-completion-schedulers">4.4. Senders can propagate completion schedulers</a>
     <li><a href="#ref-for-completion-schedulers①">4.5. Execution context transitions are explicit</a>
     <li><a href="#ref-for-completion-schedulers②">4.7. Senders are joinable</a>
     <li><a href="#ref-for-completion-schedulers③">4.8.2. execution::just</a>
