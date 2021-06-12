@@ -86,11 +86,9 @@ div.newnumbered li:before {
 
 This paper proposes a self-contained design for an C++ executors, a series of abstractions for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in [[P0443R14]] and its companion papers.
 
-## Code example ## {#design-code}
+## Compelling examples ## {#compelling-examples}
 
-Using the facilities in this paper, an end user can write code such as this:
-
-<pre highlight="c++">
+```c++
 using namespace std::execution;
 
 // get a scheduler from somewhere, e.g. a thread pool
@@ -108,7 +106,42 @@ sender auto work = then(hi_again, [](int arg) { return arg + 42; });
 // block the current thread until its completion
 // the return value is a tuple of values being the result of the sender chain
 auto [i] = std::this_thread::sync_wait(work);
-</pre>
+```
+
+```c++
+sender auto async_inclusive_scan(std::span<double> input,
+                                 std::span<double> output,
+                                 double init,
+                                 std::size_t tile_count)
+{
+  std::size_t const tile_size  = (input.size() + tile_count - 1) / tile_count;
+
+  std::vector<double> partials(tile_count + 1);
+  partials[0] = init;
+
+  return reschedule_just(sch, std::move(partials))
+       | bulk(tile_count,
+           [=](std::size_t i, std::vector<int>& partials) {
+             auto start = begin(data) + i * tile_size;
+             auto end   = begin(data) + std::min(input.size(), (i + 1)*tile_size);
+             partials[i+1] = *--std::inclusive_scan(start, end, start);
+           })
+       | then(
+           [](std::vector<int>& partials) {
+             std::inclusive_scan(begin(partials), end(partials), begin(partials));
+             return std::move(partials);
+           })
+       | bulk(input.size(),
+           [=](int i, std::vector<int>& partials) {
+              int tile = i / tile_size;
+              output[i] += std::move(partials[tile]);
+           })
+       | then(
+           [=](std::vector<int>& partials) {
+              return output;
+           };
+}
+```
 
 See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]] for short explanations of the algorithms used in this code example.
 
@@ -143,6 +176,20 @@ essential when writing user code using standard execution concepts; we have also
 7. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
 8. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
 9. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-fork]].
+
+## Use case priorities ## {#use-case-priorities}
+
+The space of asynchronous, concurrent, and parallel execution management is large and spans many use cases.
+During the development of this proposal, we focused on satisfying the following user-centric needs:
+
+* Lazy execution models
+  * Avoiding unnecessary allocations.
+* Eager execution models
+* Parallelism
+  * Accelerators
+* Cancellation
+* Fire-and-forget
+* Customization of control transfer
 
 ## Prior art ## {#prior-art}
 
