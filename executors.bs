@@ -830,9 +830,8 @@ runtime that will eventually execute said work, and should thus have the final s
 Therefore, we are proposing the following customization scheme (also modified to take [[#design-dispatch]] into account): the expression `execution::<algorithm>(sender, args...)`, for any given algorithm (accepting a sender as its first argument), should be
 equivalent to:
 
-  1. <code>get_completion_scheduler&lt;<i>Signal</i>>(sender).&lt;algorithm>(sender, args...)</code>, if that expression is well-formed; otherwise
-  2. `sender.<algorithm>(args...)`, if that expression is well-formed; otherwise
-  3. `<algorithm>(sender, args...)`, performed in a context where this call always performs ADL, if that expression is well formed; otherwise
+  1. <code>tag_invoke(&lt;algorithm>, get_completion_scheduler&lt;<i>Signal</i>>(sender), sender, args...)</code>, if that expression is well-formed; otherwise
+  2. `tag_invoke(<algorithm>, sender, args...)`, if that expression is well-formed; otherwise
   4. a default implementation, if there exists a default implementation of the given algorithm.
 
 where <code><i>Signal</i></code> is one of `set_value`, `set_error`, or `set_done`; for most algorithms, the completion scheduler for `set_value` would be used, but for some (like `upon_error` or `let_done`), one of the others would be used.
