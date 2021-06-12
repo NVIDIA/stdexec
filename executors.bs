@@ -2439,6 +2439,9 @@ namespace std::execution {
 
     3. Otherwise, `execution::sync_wait(execution::into_variant(s))`.
 
+4. Any receiver `r` created by an implementation of `sync_wait` and `sync_wait_with_variant` should implement the `get_scheduler` receiver query. The scheduler returned from the query for the receiver created by the default implementation shall return an
+    implementation-defined scheduler that is driven by the waiting thread, such that scheduled tasks run on the thread of the caller.
+
 ## One-way execution <b>[execution.execute]</b> ## {#spec-execution.execute}
 
 1. `execution::execute` is used to create fire-and-forget tasks on a specified scheduler.
