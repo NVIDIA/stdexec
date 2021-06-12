@@ -1338,9 +1338,9 @@ namespace std::execution {
     inline constexpr lazy_bulk_t lazy_bulk{};
 
     struct split_t;
-    inline constexpr split_t split{}; // TODO
+    inline constexpr split_t split{};
     struct lazy_split_t;
-    inline constexpr lazy_split_t lazy_split{}; // TODO
+    inline constexpr lazy_split_t lazy_split{};
     struct when_all_t;
     inline constexpr when_all_t when_all{};
     struct when_all_with_variant_t;
@@ -1615,6 +1615,8 @@ namespace std::execution {
         is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::connect(s, r)` is ill-formed.
+
+3. Standard sender types shall always expose an rvalue-qualified overload of a customization of `execution::connect`. Standard sender types shall only expose an lvalue-qualified overload of a customization of `execution::connect` if they are copyable.
 
 ### Sender queries <b>[execution.sender.queries]</b> ### {#spec-execution.sender.queries}
 
@@ -2160,6 +2162,48 @@ namespace std::execution {
 
     If the function selected above does not return a sender which invokes `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when the predecessor sender sends values `args...`, or does not propagate the values of the signals sent by the predecessor to
         a connected receiver, the program is ill-formed with no diagnostic required.
+
+#### Split adaptor <b>[execution.sender.adaptors.split]</b> #### {#spec-execution.sender.adaptors.split}
+
+1. `execution::split` and `execution::lazy_split` are used to adapt an arbitrary sender into a sender that can be connected multiple times.
+
+2. The name `execution::split` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::split` is ill-formed. Otherwise, the expression `execution::split(s)` is
+    expression-equivalent to:
+
+    1. `tag_invoke(execution::split, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::split, s)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, `lazy_split(s)`.
+
+    If the function selected above does not return a sender which sends references to values sent by `s`, propagating the other channels, the program is ill-formed with no diagnostic required.
+
+2. The name `execution::lazy_split` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::lazy_split` is ill-formed. Otherwise, the expression
+    `execution::lazy_split(s)` is expression-equivalent to:
+
+    1. `tag_invoke(execution::lazy_split, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::lazy_split, s)`, if that expression is valid and its type satisfies `execution::sender`.
+
+    3. Otherwise, constructs a sender `s2`, which:
+
+        1. Creates an object `sh_state`. The lifetime of `sh_state` shall last for at least as long as the lifetime of the last operation state object returned from `execution::connect(s, some_r)` for some receiver `some_r`.
+
+        2. Constructs a receiver `r`:
+
+            1. When `execution::set_value(r, args...)` is called, saves the expressions `args...` as subobjects of `sh_state`.
+
+            2. When `execution::set_error(r, e)` is called, saves the expression `e` as a subobject of `sh_state`.
+
+            3. When `execution::set_done(r)` is called, saves this fact in `sh_state`.
+
+        3. Calls `execution::connect(s, r)`, resulting in an operation state `op_state2`. `op_state2` is saved as a subobject of `sh_state`.
+
+        4. When `s2` is connected with a receiver `out_r`, it returns an operation state object `op_state`. When `execution::start(op_state)` is called, it calls `execution::start(op_state2)`, if this is the first time this expression would be evaluated. When both
+            `execution::start(op_state)` and <code><i>Signal</i>(r, args...)</code> have been called, calls <code><i>Signal</i>(out_r, args2...)</code>, where `args2...` is a pack of lvalues referencing the subobjects of `sh_state` that have been saved by the
+            original call to <code><i>Signal</i>(r, args...)</code>.
+
+    If the function selected above does not return a sender which sends references to values sent by `s`, propagating the other channels, the program is ill-formed with no diagnostic required.
 
 #### When_all adaptor <b>[execution.sender.adaptors.when_all]</b> #### {#spec-execution.sender.adaptor.when_all}
 
