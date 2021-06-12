@@ -4609,6 +4609,9 @@ those queries.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>.</p>
      </ol>
+    <li data-md>
+     <p>Any receiver <code class="highlight"><c- n>r</c-></code> created by an implementation of <code class="highlight"><c- n>sync_wait</c-></code> and <code class="highlight"><c- n>sync_wait_with_variant</c-></code> should implement the <code class="highlight"><c- n>get_scheduler</c-></code> receiver query. The scheduler returned from the query for the receiver created by the default implementation shall return an
+implementation-defined scheduler that is driven by the waiting thread, such that scheduled tasks run on the thread of the caller.</p>
    </ol>
    <h3 class="heading settled" data-level="10.7" id="spec-execution.execute"><span class="secno">10.7. </span><span class="content">One-way execution <b>[execution.execute]</b></span><a class="self-link" href="#spec-execution.execute"></a></h3>
    <ol>
