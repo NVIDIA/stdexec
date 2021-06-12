@@ -2962,11 +2962,9 @@ runtime that will eventually execute said work, and should thus have the final s
 equivalent to:</p>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><i><c- n>Signal</c-></i><c- o>></c-><c- p>(</c-><c- n>sender</c-><c- p>).</c-><c- o>&lt;</c-><c- n>algorithm</c-><c- o>></c-><c- p>(</c-><c- n>sender</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code>, if that expression is well-formed; otherwise</p>
+     <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- o>&lt;</c-><c- n>algorithm</c-><c- o>></c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><i><c- n>Signal</c-></i><c- o>></c-><c- p>(</c-><c- n>sender</c-><c- p>),</c-> <c- n>sender</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code>, if that expression is well-formed; otherwise</p>
     <li data-md>
-     <p><code class="highlight"><c- n>sender</c-><c- p>.</c-><c- o>&lt;</c-><c- n>algorithm</c-><c- o>></c-><c- p>(</c-><c- n>args</c-><c- p>...)</c-></code>, if that expression is well-formed; otherwise</p>
-    <li data-md>
-     <p><code class="highlight"><c- o>&lt;</c-><c- n>algorithm</c-><c- o>></c-><c- p>(</c-><c- n>sender</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code>, performed in a context where this call always performs ADL, if that expression is well formed; otherwise</p>
+     <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- o>&lt;</c-><c- n>algorithm</c-><c- o>></c-><c- p>,</c-> <c- n>sender</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code>, if that expression is well-formed; otherwise</p>
     <li data-md>
      <p>a default implementation, if there exists a default implementation of the given algorithm.</p>
    </ol>
