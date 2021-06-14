@@ -404,7 +404,7 @@ that also does not have an associated scheduler.
 
 ## Proposed set of user-facing sender factories ## {#design-factories}
 
-A <dfn>sender factory</dfn> is a function which creates new senders, without requiring an input sender.
+A <dfn>sender factory</dfn> is a function that returns a sender and does not take any input senders.
 
 ### `execution::schedule` ### {#design-factory-schedule}
 
