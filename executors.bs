@@ -302,21 +302,20 @@ execution::sync_wait(cont);
 
 ## Senders can propagate completion schedulers ## {#design-propagation}
 
-One of the less clear aspects of [[P0443R14]] has been the set of requirements for the <i>place of execution</i> of any given piece of code. This underspecification is problematic, especially in case of systems where not all execution agents are created equal,
-and not all functions can be run on all execution agents. Having precise control over the execution context used for any given function call being submitted is very important on such systems, and the users of standard execution facilities will expect to be able
-to express such (binding) requirements.
+One of the less clear aspects of [[P0443R14]] has been the set of requirements for the <i>place of execution</i> of any given piece of code. This underspecification is problematic, especially in the case of systems where not all execution agents are created equal and not all functions can be run on all execution agents.
+Having precise control over the execution context used for any given function call being submitted is important on such systems, and the users of standard execution facilities will expect to be able to express such requirements.
 
-Such precise control was present in the two-way execution API, but it has so far been missing from the senders design. There has been a proposal ([[P1897R3]]) to provide a number of algorithms that would enforce certain rules on the places of execution
+Such precise control was present in the two-way execution API present in earlier executor designs, but it has so far been missing from the senders design. There has been a proposal ([[P1897R3]]) to provide a number of algorithms that would enforce certain rules on the places of execution
 of the work described by a sender, but we have found those algorithms to be insufficient for achieving the best performance on all platforms that are of interest to us. The implementation strategies that we are aware of result in one of the following situations:
 
-  1. trying to submit work to CPU execution contexts (e.g. a thread pool) from an accelerator (e.g. a GPU), which assumes that the accelerator threads of execution are as capable as the CPU threads of execution (which they aren't); or
-  2. forcibly interleaving two adjacent execution graph nodes that are both executing on an accelerator with glue code that runs on the CPU; this operation is prohibitively expensive on runtimes such as CUDA.
+  1. Trying to submit work to CPU execution contexts (e.g. a thread pool) from an accelerator (e.g. a GPU), which assumes that the accelerator threads of execution are as capable as the CPU threads of execution (which they aren't); or
+  2. Forcibly interleaving two adjacent execution graph nodes that are both executing on an accelerator with glue code that runs on the CPU; this operation is prohibitively expensive on runtimes such as CUDA.
 
-Neither of these implementation strategies is acceptable for accelerator runtimes. Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing to add a standardized way for senders to advertise what scheduler (and by extension - what execution
+Neither of these implementation strategies is acceptable for many classes of parallel runtimes, including accelerator runtimes. Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing a way for senders to advertise what scheduler (and by extension what execution
 context) they will complete on. Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see [[#design-receivers]]). When further work is
 attached to that sender by invoking sender algorithms, that work will also complete on the appropriate completion scheduler.
 
-There exists a function to retrieve the [=completion scheduler=] from a sender, called `get_completion_scheduler`. Calling this function on a sender that does not have an completion scheduler is ill-formed. If a scheduler advertises its completion scheduler in this
+`get_completion_scheduler` is an operation that retrieves the [=completion scheduler=] from a sender. Calling `get_completion_scheduler` on a sender that does not have an completion scheduler is ill-formed. If a scheduler advertises its completion scheduler in this
 way, that sender <b>must</b> ensure that it [=send|sends=] its values on an execution agent belonging to an execution context represented by a scheduler returned from this function.
 
 <pre highlight="c++">
