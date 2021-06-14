@@ -202,15 +202,15 @@ essential when writing user code using standard execution concepts; we have also
 
 ## What are the major design changes compared to P0443? ## {#abstract-compare}
 
-1. This proposal does not propose any specific type erasure facilities; it does, however, discuss type erasure to an extent in [[#design-dispatch]].
-2. Properties are not included in this paper; we see them as a possible future extension, if the committee gets more comfortable with them.
-3. This paper does not include a specific thread pool implementation, per prior committee direction to propose it separately.
-4. We have implemented the SG1 direction to remove executors and base all of the proposed functionalities on senders and schedulers.
-5. Senders now advertise what scheduler, if any, their operations will complete on.
-6. Users now have a choice between using a strictly lazy vs a possibly eager version of most algorithms.
-7. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
-8. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
-9. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-fork]].
+1. The `executor` concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.
+2. Properties are not included in this paper. We see them as a possible future extension, if the committee gets more comfortable with them.
+3. Users now have a choice between using a strictly lazy vs a possibly eager version of most algorithms.
+4. Senders now advertise what scheduler, if any, their operations will complete on.
+5. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
+6. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
+7. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-fork]].
+8. Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in [[#design-dispatch]].
+9. A specific thread pool implementation is omitted, as per LEWG direction.
 
 ## Prior art ## {#prior-art}
 
