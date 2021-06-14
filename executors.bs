@@ -86,7 +86,7 @@ div.newnumbered li:before {
 
 This paper proposes a self-contained design for an C++ executors, a series of abstractions for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in [[P0443R14]] and its companion papers.
 
-## Examples ## {#examples}
+## Examples ## {#example}
 
 See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]] for short explanations of the algorithms used in these code examples.
 
