@@ -2201,7 +2201,13 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
     <li>
      <a href="#abstract"><span class="secno">1</span> <span class="content">Abstract</span></a>
      <ol class="toc">
-      <li><a href="#examples"><span class="secno">1.1</span> <span class="content">Examples</span></a>
+      <li>
+       <a href="#examples"><span class="secno">1.1</span> <span class="content">Examples</span></a>
+       <ol class="toc">
+        <li><a href="#example-hello-world"><span class="secno">1.1.1</span> <span class="content">Hello world</span></a>
+        <li><a href="#example-async-inclusive-scan"><span class="secno">1.1.2</span> <span class="content">Asynchronous inclusive scan</span></a>
+        <li><a href="#async-dynamically-sized-read"><span class="secno">1.1.3</span> <span class="content">Asynchronous dynamically-sized read</span></a>
+       </ol>
       <li><a href="#abstract-is"><span class="secno">1.2</span> <span class="content">What this proposal is</span></a>
       <li><a href="#abstract-is-not"><span class="secno">1.3</span> <span class="content">What this proposal is <strong>not</strong></span></a>
       <li><a href="#abstract-compare"><span class="secno">1.4</span> <span class="content">What are the major design changes compared to P0443?</span></a>
@@ -2395,6 +2401,8 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <h2 class="heading settled" data-level="1" id="abstract"><span class="secno">1. </span><span class="content">Abstract</span><a class="self-link" href="#abstract"></a></h2>
    <p>This paper proposes a self-contained design for an C++ executors, a series of abstractions for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> and its companion papers.</p>
    <h3 class="heading settled" data-level="1.1" id="examples"><span class="secno">1.1. </span><span class="content">Examples</span><a class="self-link" href="#examples"></a></h3>
+   <p>See <a href="#design-factories">§ 4.8 Proposed set of user-facing sender factories</a>, <a href="#design-adapters">§ 4.9 Proposed set of user-facing sender adapters</a>, and <a href="#design-algorithms">§ 4.10 Proposed set of user-facing sender algorithms</a> for short explanations of the algorithms used in these code examples.</p>
+   <h4 class="heading settled" data-level="1.1.1" id="example-hello-world"><span class="secno">1.1.1. </span><span class="content">Hello world</span><a class="self-link" href="#example-hello-world"></a></h4>
 <pre class="language-c++ highlight"><c- n>using</c-> <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
 
 <c- c1>// get a scheduler from somewhere, e.g. a thread pool</c->
@@ -2403,7 +2411,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <c- c1>// describe a chain of dependent work</c->
 <c- n>sender</c-> <c- k>auto</c-> <c- n>begin</c-> <c- o>=</c-> <c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->
 <c- n>sender</c-> <c- k>auto</c-> <c- n>hi_again</c-> <c- o>=</c-> <c- n>then</c-><c- p>(</c-><c- n>begin</c-><c- p>,</c-> <c- p>[]{</c->
-    <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- s>"Hi again! Have an int."</c-><c- p>;</c->
+    <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- s>"Hello world! Have an int."</c-><c- p>;</c->
     <c- k>return</c-> <c- mi>13</c-><c- p>;</c->
 <c- p>});</c->
 <c- n>sender</c-> <c- k>auto</c-> <c- n>work</c-> <c- o>=</c-> <c- n>then</c-><c- p>(</c-><c- n>hi_again</c-><c- p>,</c-> <c- p>[](</c-><c- b>int</c-> <c- n>arg</c-><c- p>)</c-> <c- p>{</c-> <c- k>return</c-> <c- n>arg</c-> <c- o>+</c-> <c- mi>42</c-><c- p>;</c-> <c- p>});</c->
@@ -2413,6 +2421,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
 <c- c1>// the return value is a tuple of values being the result of the sender chain</c->
 <c- k>auto</c-> <c- p>[</c-><c- n>i</c-><c- p>]</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>work</c-><c- p>);</c->
 </pre>
+   <h4 class="heading settled" data-level="1.1.2" id="example-async-inclusive-scan"><span class="secno">1.1.2. </span><span class="content">Asynchronous inclusive scan</span><a class="self-link" href="#example-async-inclusive-scan"></a></h4>
 <pre class="language-c++ highlight"><c- n>sender</c-> <c- k>auto</c-> <c- n>async_inclusive_scan</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>span</c-><c- o>&lt;</c-><c- b>double</c-><c- o>></c-> <c- n>input</c-><c- p>,</c->
                                  <c- n>std</c-><c- o>::</c-><c- n>span</c-><c- o>&lt;</c-><c- b>double</c-><c- o>></c-> <c- n>output</c-><c- p>,</c->
                                  <c- b>double</c-> <c- n>init</c-><c- p>,</c->
@@ -2446,7 +2455,34 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
            <c- p>};</c->
 <c- p>}</c->
 </pre>
-   <p>See <a href="#design-factories">§ 4.8 Proposed set of user-facing sender factories</a>, <a href="#design-adapters">§ 4.9 Proposed set of user-facing sender adapters</a>, and <a href="#design-algorithms">§ 4.10 Proposed set of user-facing sender algorithms</a> for short explanations of the algorithms used in this code example.</p>
+   <h4 class="heading settled" data-level="1.1.3" id="async-dynamically-sized-read"><span class="secno">1.1.3. </span><span class="content">Asynchronous dynamically-sized read</span><a class="self-link" href="#async-dynamically-sized-read"></a></h4>
+<pre class="language-c++ highlight"><c- n>sender</c-> <c- k>auto</c-> <c- n>async_read</c-><c- p>(</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>buffer</c-><c- p>,</c-> <c- k>auto</c-> <c- n>handle</c-><c- p>);</c->
+
+<c- k>struct</c-> <c- nc>dynamic_buffer</c-> <c- p>{</c->
+  <c- n>std</c-><c- o>::</c-><c- n>unique_ptr</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>byte</c-><c- p>[]</c-><c- o>></c-> <c- n>data</c-><c- p>;</c->
+  <c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>size</c-><c- p>;</c->
+<c- p>};</c->
+
+<c- n>sender</c-> <c- k>auto</c-> <c- n>async_read_array</c-><c- p>(</c-><c- k>auto</c-> <c- n>handle</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>return</c-> <c- nf>let_value</c-><c- p>(</c-><c- n>just</c-><c- p>(</c-><c- n>dynamic_buffer</c-><c- p>{}),</c->
+    <c- p>[]</c-> <c- p>(</c-><c- n>dynamic_buffer</c-><c- o>&amp;</c-> <c- n>buffer</c-><c- p>)</c-> <c- p>{</c->
+      <c- k>return</c-> <c- n>just</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>span</c-><c- p>(</c-><c- o>&amp;</c-><c- n>buffer</c-><c- p>.</c-><c- n>size</c-><c- p>,</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>buffer</c-><c- p>.</c-><c- n>size</c-><c- p>))</c->
+           <c- o>|</c-> <c- n>async_read</c-><c- p>(</c-><c- n>handle</c-><c- p>)</c->
+           <c- o>|</c-> <c- n>then</c-><c- p>(</c->
+               <c- p>[</c-><c- o>&amp;</c-><c- p>]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>bytes_read</c-><c- p>)</c-> <c- p>{</c->
+                 <c- n>assert</c-><c- p>(</c-><c- n>bytes_read</c-> <c- o>==</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>buffer</c-><c- p>.</c-><c- n>size</c-><c- p>));</c->
+                 <c- n>buffer</c-><c- p>.</c-><c- n>data</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>make_unique</c-><c- p>(</c-><c- n>new</c-> <c- n>std</c-><c- o>::</c-><c- n>byte</c-><c- p>[</c-><c- n>buffer</c-><c- p>.</c-><c- n>size</c-><c- p>]);</c->
+                 <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>span</c-><c- p>(</c-><c- n>buffer</c-><c- p>.</c-><c- n>data</c-><c- p>.</c-><c- n>get</c-><c- p>(),</c-> <c- n>buffer</c-><c- p>.</c-><c- n>size</c-><c- p>);</c->
+               <c- p>}</c->
+           <c- o>|</c-> <c- n>async_read</c-><c- p>(</c-><c- n>handle</c-><c- p>)</c->
+           <c- o>|</c-> <c- n>then</c-><c- p>(</c->
+               <c- p>[</c-><c- o>&amp;</c-><c- p>]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>bytes_read</c-><c- p>)</c-> <c- p>{</c->
+                 <c- n>assert</c-><c- p>(</c-><c- n>bytes_read</c-> <c- o>==</c-> <c- n>buffer</c-><c- p>.</c-><c- n>size</c-><c- p>);</c->
+                 <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>buffer</c-><c- p>.</c-><c- n>data</c-><c- p>);</c->
+               <c- p>}</c->
+  <c- p>});</c->
+<c- p>}</c->
+</pre>
    <h3 class="heading settled" data-level="1.2" id="abstract-is"><span class="secno">1.2. </span><span class="content">What this proposal is</span><a class="self-link" href="#abstract-is"></a></h3>
    <p>This paper describes a design for a complete, self-contained library providing precise control for code execution on varying execution contexts in C++. This paper should be considered as a full design on its own, based heavily on prior papers that have been seen and
 discussed by the committee.</p>
