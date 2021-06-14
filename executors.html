@@ -2627,10 +2627,10 @@ way, that sender <b>must</b> ensure that it <a data-link-type="dfn" href="#send"
 <c- c1>// both continuations will run on the same thread created by the scheduler</c->
 </pre>
    <h3 class="heading settled" data-level="4.5" id="design-transitions"><span class="secno">4.5. </span><span class="content">Execution context transitions are explicit</span><a class="self-link" href="#design-transitions"></a></h3>
-   <p><a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> does not contain any mechanisms for performing an execution context transition. The only algorithm that can create a sender that will move execution to a specific* execution context is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code>, which does not take an imput sender, which
-means that there’s no way to construct sender chains that traverse different execution contexts. This is necessary to fulfill the promise of senders being able to replace two-way executors, which had this capability.</p>
+   <p><a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> does not contain any mechanisms for performing an execution context transition. The only algorithm that can create a sender that will move execution to a <em>specific</em> execution context is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code>, which does not take an input sender.
+That means that there’s no way to construct sender chains that traverse different execution contexts. This is necessary to fulfill the promise of senders being able to replace two-way executors, which had this capability.</p>
    <p>We propose that, for senders advertising their <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers①">completion scheduler</a>, all execution context transitions <b>must</b> be explicit; running user code anywhere but where they defined it to run <b>must</b> be considered a bug.</p>
-   <p>We propose a new user-facing algorithm, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code>, for performing transitions from one execution context to another:</p>
+   <p>The <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code> operation performs a transition from one execution context to another:</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch1</c-> <c- o>=</c-> <c- p>...;</c->
 <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch2</c-> <c- o>=</c-> <c- p>...;</c->
 
