@@ -129,8 +129,8 @@ sender auto async_inclusive_scan(std::span<double> input,
        | bulk(tile_count,
            [=](std::size_t i, std::vector<double>& partials) {
              auto start = begin(data) + i * tile_size;
-             auto end   = begin(data) + std::min(input.size(), (i + 1)*tile_size);
-             partials[i+1] = *--std::inclusive_scan(start, end, start);
+             auto end   = begin(data) + std::min(input.size(), (i + 1) * tile_size);
+             partials[i + 1] = *--std::inclusive_scan(start, end, start);
            })
        | then(
            [](std::vector<double>& partials) {
