@@ -241,21 +241,20 @@ Initial revision, still in progress.
 
 # Proposed design - introduction # {#design-intro}
 
-The following four sections describe the entirety of the proposed design. [[#design-intro]] describes the conventions used through the rest of the design sections, as well as an example illustrating how we envision code will be written using this proposal.
+The following four sections describe the entirety of the proposed design.
 
-[[#design-user]] describes all the functionality from the perspective we intend for users: it describes the various concepts they will interact with, and what their programming model is. [[#design-implementer]] describes the machinery that allows for
-that programming model to function, and the information contained there is necessary for people implementing senders and sender algorithms (including the standard library ones) - but is not necessary to use senders productively.
-
-Finally, [[#design-api]] discusses API decisions and questions that we believe reflect on the code that will need to be written to implement and use senders, but not on the programming model of senders in general.
-
-Note: none of the algorithm names proposed here are names that we are particularly attached to; consider the names of the algorithms to be reasonable placeholders that can freely be changed, should the committee want to do so.
+* [[#design-intro]] describes the conventions used through the rest of the design sections, as well as an example illustrating how we envision code will be written using this proposal.
+* [[#design-user]] describes all the functionality from the perspective we intend for users: it describes the various concepts they will interact with, and what their programming model is.
+* [[#design-implementer]] describes the machinery that allows for that programming model to function, and the information contained there is necessary for people implementing senders and sender algorithms (including the standard library ones) - but is not necessary to use senders productively.
+* [[#design-api]] discusses API decisions and questions that we believe reflect on the code that will need to be written to implement and use senders, but not on the programming model of senders in general.
 
 ## Conventions ## {#design-conventions}
 
 The following conventions are used throughout the design section:
 
-  1. Universal references and explicit calls to `std::move`/`std::forward` are omitted in code samples and signatures for simplicity; assume universal references and perfect forwarding unless stated otherwise.
-  2. The namespace proposed in this paper is the same as in [[P0443R14]]: `std::execution`; however, for brevity, the `std::` part of this name is omitted. When you see `execution::foo`, treat that as `std::execution::foo`.
+  1. The namespace proposed in this paper is the same as in [[P0443R14]]: `std::execution`; however, for brevity, the `std::` part of this name is omitted. When you see `execution::foo`, treat that as `std::execution::foo`.
+  2. Universal references and explicit calls to `std::move`/`std::forward` are omitted in code samples and signatures for simplicity; assume universal references and perfect forwarding unless stated otherwise.
+  3. None of the algorithm names proposed here are names that we are particularly attached to; consider the names of the algorithms to be reasonable placeholders that can freely be changed, should the committee want to do so.
 
 # Proposed design - user side # {#design-user}
 
@@ -266,8 +265,9 @@ don't need to have a representation in code; they are simply a term describing c
 
 ## Schedulers represent execution contexts ## {#design-schedulers}
 
-A <dfn>scheduler</dfn> is a lightweight handle to an *execution context*, which allows describing work that will be executed on an execution agent belonging to that context. Since execution contexts don't necessarily manifest in C++ code, it's not possible to program
-directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single operation, `schedule`, which creates a description of work on its associated execution context, materialized in the form of a sender.
+A <dfn>scheduler</dfn> is a lightweight handle that represents a strategy for scheduling work onto an *execution context*. Since execution contexts don't necessarily manifest in C++ code, it's not possible to program
+directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single operation, `schedule`, which returns a sender that will complete on an execution context determined
+by the scheduler. Logic that you want to run on that context can be placed in the receiver's completion-signalling method.
 
 <pre highlight="c++">
 execution::scheduler auto sch = get_thread_pool().scheduler();
