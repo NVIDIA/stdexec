@@ -2600,9 +2600,9 @@ Having precise control over the execution context used for any given function ca
 of the work described by a sender, but we have found those algorithms to be insufficient for achieving the best performance on all platforms that are of interest to us. The implementation strategies that we are aware of result in one of the following situations:</p>
    <ol>
     <li data-md>
-     <p>Trying to submit work to CPU execution contexts (e.g. a thread pool) from an accelerator (e.g. a GPU), which assumes that the accelerator threads of execution are as capable as the CPU threads of execution (which they aren’t); or</p>
+     <p>trying to submit work to CPU execution contexts (e.g. a thread pool) from an accelerator (e.g. a GPU), which assumes that the accelerator threads of execution are as capable as the CPU threads of execution (which they aren’t); or</p>
     <li data-md>
-     <p>Forcibly interleaving two adjacent execution graph nodes that are both executing on an accelerator with glue code that runs on the CPU; this operation is prohibitively expensive on runtimes such as CUDA.</p>
+     <p>forcibly interleaving two adjacent execution graph nodes that are both executing on an accelerator with glue code that runs on the CPU; this operation is prohibitively expensive on runtimes such as CUDA.</p>
    </ol>
    <p>Neither of these implementation strategies is acceptable for many classes of parallel runtimes, including accelerator runtimes. Therefore, in addition to the <code class="highlight"><c- n>on</c-></code> algorithm from <a data-link-type="biblio" href="#biblio-p1897r3">[P1897R3]</a>, we are proposing a way for senders to advertise what scheduler (and by extension what execution
 context) they will complete on. Any given sender <b>may</b> have <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="completion-schedulers">completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see <a href="#design-receivers">§ 5.1 Receivers serve as glue between senders</a>). When further work is
