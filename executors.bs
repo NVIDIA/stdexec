@@ -286,7 +286,7 @@ it directly.
 
 The way user code is expected to interact with senders is by using said sender algorithms.
 This paper proposes an initial set of such algorithms, which are described in [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
-For example, here is how a user can ensure that work is started (and will eventually complete if no errors happen), but without waiting for it to finish:
+For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:
 
 <pre highlight="c++">
 execution::scheduler auto sch = get_thread_pool().scheduler();
@@ -296,8 +296,8 @@ execution::sender auto cont = execution::then(snd, []{
     file << compute_result;
 });
 
-execution::start_detached(cont);
-// at this point, the work described by \`cont\` has been submitted to the thread pool
+execution::sync_wait(cont);
+// at this point, `cont` has completed execution
 </pre>
 
 ## Senders can propagate completion schedulers ## {#design-propagation}
