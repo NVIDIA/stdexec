@@ -2678,7 +2678,7 @@ merged into a single one in an asynchronous fashion.</p>
 that also does not have an associated scheduler.</p>
    <p><code class="highlight"><c- n>reschedule_when_all</c-></code> accepts an additional scheduler argument. It returns a sender whose <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers②">completion scheduler</a> is the scheduler provided as an argument, but otherwise behaves the same as <code class="highlight"><c- n>when_all</c-></code>. You can think of it as a composition of <code class="highlight"><c- n>transform</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>inputs</c-><c- p>...),</c-> <c- n>scheduler</c-><c- p>)</c-></code>, but one that allows for better efficiency through customization.</p>
    <h3 class="heading settled" data-level="4.8" id="design-factories"><span class="secno">4.8. </span><span class="content">Proposed set of user-facing sender factories</span><a class="self-link" href="#design-factories"></a></h3>
-   <p>A <dfn data-dfn-type="dfn" data-noexport id="sender-factory">sender factory<a class="self-link" href="#sender-factory"></a></dfn> is a function which creates new senders, without requiring an input sender.</p>
+   <p>A <dfn data-dfn-type="dfn" data-noexport id="sender-factory">sender factory<a class="self-link" href="#sender-factory"></a></dfn> is a function that returns a sender and does not take any input senders.</p>
    <h4 class="heading settled" data-level="4.8.1" id="design-factory-schedule"><span class="secno">4.8.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code></span><a class="self-link" href="#design-factory-schedule"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>schedule</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>scheduler</c->
@@ -2692,7 +2692,7 @@ that also does not have an associated scheduler.</p>
 </pre>
    <h4 class="heading settled" data-level="4.8.2" id="design-factory-just"><span class="secno">4.8.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code></span><a class="self-link" href="#design-factory-just"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>just</c-><c- p>(</c->
-    <c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>...</c-><c- n>values</c->
+    <c- k>auto</c-> <c- p>...</c-><c- o>&amp;&amp;</c-> <c- n>values</c->
 <c- p>);</c->
 </pre>
    <p>Returns a sender with no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers③">completion scheduler</a>, which <a data-link-type="dfn" href="#send" id="ref-for-send②">sends</a> the provided values. If a provided value is an lvalue reference, a copy is made inside the returned sender and a non-const lvalue reference to the copy is sent. If the provided value is an rvalue reference, it is moved into the returned sender and an rvalue reference to it is sent.</p>
@@ -2725,7 +2725,7 @@ that also does not have an associated scheduler.</p>
    <h4 class="heading settled" data-level="4.8.3" id="design-factory-reschedule_just"><span class="secno">4.8.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-></code></span><a class="self-link" href="#design-factory-reschedule_just"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>reschedule_just</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>scheduler</c-><c- p>,</c->
-    <c- k>auto</c-> <c- p>...</c-><c- n>values</c->
+    <c- k>auto</c-> <c- p>...</c-><c- o>&amp;&amp;</c-> <c- n>values</c->
 <c- p>);</c->
 </pre>
    <p>Returns a sender whose <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers④">completion scheduler</a> is the provided scheduler, which <a data-link-type="dfn" href="#send" id="ref-for-send③">sends</a> copies of the provided values.</p>
