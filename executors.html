@@ -2502,23 +2502,23 @@ essential when writing user code using standard execution concepts; we have also
    <h3 class="heading settled" data-level="1.4" id="abstract-compare"><span class="secno">1.4. </span><span class="content">What are the major design changes compared to P0443?</span><a class="self-link" href="#abstract-compare"></a></h3>
    <ol>
     <li data-md>
-     <p>This proposal does not propose any specific type erasure facilities; it does, however, discuss type erasure to an extent in <a href="#design-dispatch">§ 6.3 Ranges-style CPOs vs tag_invoke</a>.</p>
+     <p>The <code class="highlight"><c- n>executor</c-></code> concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.</p>
     <li data-md>
-     <p>Properties are not included in this paper; we see them as a possible future extension, if the committee gets more comfortable with them.</p>
-    <li data-md>
-     <p>This paper does not include a specific thread pool implementation, per prior committee direction to propose it separately.</p>
-    <li data-md>
-     <p>We have implemented the SG1 direction to remove executors and base all of the proposed functionalities on senders and schedulers.</p>
-    <li data-md>
-     <p>Senders now advertise what scheduler, if any, their operations will complete on.</p>
+     <p>Properties are not included in this paper. We see them as a possible future extension, if the committee gets more comfortable with them.</p>
     <li data-md>
      <p>Users now have a choice between using a strictly lazy vs a possibly eager version of most algorithms.</p>
+    <li data-md>
+     <p>Senders now advertise what scheduler, if any, their operations will complete on.</p>
     <li data-md>
      <p>The places of execution of user code in P0443 weren’t precisely defined, whereas they are in this paper. See <a href="#design-propagation">§ 4.4 Senders can propagate completion schedulers</a>.</p>
     <li data-md>
      <p>P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See <a href="#design-factories">§ 4.8 Proposed set of user-facing sender factories</a>, <a href="#design-adapters">§ 4.9 Proposed set of user-facing sender adapters</a>, and <a href="#design-algorithms">§ 4.10 Proposed set of user-facing sender algorithms</a>.</p>
     <li data-md>
      <p>P0443 did not specify the semantics of variously qualified <code class="highlight"><c- n>connect</c-></code> overloads; this paper does. See <a href="#design-fork">§ 4.6 Senders are forkable</a>.</p>
+    <li data-md>
+     <p>Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in <a href="#design-dispatch">§ 6.3 Ranges-style CPOs vs tag_invoke</a>.</p>
+    <li data-md>
+     <p>A specific thread pool implementation is omitted, as per LEWG direction.</p>
    </ol>
    <h3 class="heading settled" data-level="1.5" id="prior-art"><span class="secno">1.5. </span><span class="content">Prior art</span><a class="self-link" href="#prior-art"></a></h3>
    <p>This proposal builds upon years of prior art and field experience with asynchronous and parallel programming frameworks in C++.</p>
