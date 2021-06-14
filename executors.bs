@@ -339,12 +339,12 @@ std::this_thread::sync_wait(last);
 
 ## Execution context transitions are explicit ## {#design-transitions}
 
-[[P0443R14]] does not contain any mechanisms for performing an execution context transition. The only algorithm that can create a sender that will move execution to a specific* execution context is `execution::schedule`, which does not take an imput sender, which
-means that there's no way to construct sender chains that traverse different execution contexts. This is necessary to fulfill the promise of senders being able to replace two-way executors, which had this capability.
+[[P0443R14]] does not contain any mechanisms for performing an execution context transition. The only algorithm that can create a sender that will move execution to a *specific* execution context is `execution::schedule`, which does not take an input sender.
+That means that there's no way to construct sender chains that traverse different execution contexts. This is necessary to fulfill the promise of senders being able to replace two-way executors, which had this capability.
 
 We propose that, for senders advertising their [=completion scheduler=], all execution context transitions <b>must</b> be explicit; running user code anywhere but where they defined it to run <b>must</b> be considered a bug.
 
-We propose a new user-facing algorithm, `execution::reschedule`, for performing transitions from one execution context to another:
+The `execution::reschedule` operation performs a transition from one execution context to another:
 
 <pre highlight="c++">
 execution::scheduler auto sch1 = ...;
