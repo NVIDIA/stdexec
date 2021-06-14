@@ -427,7 +427,7 @@ execution::sender auto snd1 = execution::schedule(sch1);
 
 <pre highlight="c++">
 execution::sender auto just(
-    auto&& ...values
+    auto ...&& values
 );
 </pre>
 
@@ -466,7 +466,7 @@ auto&& [v4] = std::this_thread::sync_wait(then4);
 <pre highlight="c++">
 execution::sender auto reschedule_just(
     execution::scheduler auto scheduler,
-    auto ...values
+    auto ...&& values
 );
 </pre>
 
