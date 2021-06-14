@@ -208,7 +208,7 @@ essential when writing user code using standard execution concepts; we have also
 4. Senders now advertise what scheduler, if any, their operations will complete on.
 5. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
 6. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
-7. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-fork]].
+7. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-shot]].
 8. Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in [[#design-dispatch]].
 9. A specific thread pool implementation is omitted, as per LEWG direction.
 
@@ -363,31 +363,40 @@ execution::sender auto then2 = execution::then(snd2, []{
 std::this_thread::sync_wait(then2);
 </pre>
 
-## Senders are forkable ## {#design-fork}
+## Senders can be either multi-shot or single-shot ## {#design-shot}
 
-Any non-trivial program will eventually want to fork a chain of senders into independent streams of work; an incoming event to a middleware system may be required to trigger events on more than one downstream system, for instance. This requires that senders provide
-well defined mechanisms for making sure that attaching multiple continuations to a sender is possible and correct.
+Some senders may only support sending a signal a single time for correctness and efficiency.
+For example, a sender may contain a `unique_ptr` that it will transferring ownership of to its attached receiver.
+This requires that sender algorithms support move-only senders.
 
-There are two parts of what we are proposing in this area. One is a semantic requirement on both senders and sender algorithms: if you invoke a sender algorithm with an lvalue sender, that sender must remain valid after such an algorithm invocation. If your algorithm
-accepts an lvalue sender, it must not invalidate the lvalue it has received. It must be possible to invoke sender algorithms with rvalue senders, but lvalues must not be invalidated other than by turning them into rvalues ("moving" them).
+A <dfn>single-shot sender</dfn> can only send its signal once, which means it can only have oone receiver connected to it.
+When a sender algorithm accepts a sender as an rvalue, that sender shall be treated as if it was a single-shot sender by the algorithm, and the caller must treat the sender as a moved-from object.
+The sender must not be copied, so the algorithm must connect it as an rvalue and must connect it at most once.
 
-The consequences of the above requirement are as follows:
+All algorithms have to accept rvalue senders to facilitate senders that can only send a value once.
 
- * single-shot senders should only work with rvalue-qualified overloads of sender algorithms;
- * multi-shot senders should work with at least some lvalue-qualified algorithms; and
- * multi-shot senders can still have operations that require moving them into an algorithm call.
+A <dfn>multi-shot sender</dfn> can send its signal multiple times, which means it may have multiple receivers connected to it.
+If a sender algorithm accepts a sender as an lvalue, that sender shall be treated as if it was a multi-shot sender by the algorithm.
+The sender must remain valid after such an algorithm invocation, so the algorithm must connect it as an lvalue, although it may connect it multiple times.
 
-To facilitate attaching multiple continuations to the same sender multiple times regardless of whether it is single-shot or multi-shot, we are also proposing a new sender algorithm: `split`.
+## Senders are forkable ## {#design-forkable}
+
+Any non-trivial program will eventually want to fork a chain of senders into independent streams of work, regardless of whether they are single-shot or multi-shot.
+For instance, an incoming event to a middleware system may be required to trigger events on more than one downstream system.
+This requires that we provide well defined mechanisms for making sure that connecting multiple receivers to a sender is possible and correct.
+
+The `split` operation facilitates attaching multiple receivers to the same sender regardless of whether it is single-shot or multi-shot:
 
 <pre highlight=c++>
-auto some_algorithm(execution::sender auto input) {
-    // here, we can test whether the input sender is multi-shot
-    // (for the purposes of the algorithms being used in this function)
-
-    // but we can also turn the input into a multi-shot sender:
-
+auto some_algorithm(execution::sender auto&& input) {
     execution::sender auto multi_shot = split(input);
-    // multi_shot is guaranteed to be multi-shot
+    // "multi_shot" is guaranteed to be multi-shot,
+    // regardless of whether "input" was multi-shot or not
+
+    return when_all(
+      then(multi_shot, [] { std::cout << "First continuation\n"; }),
+      then(multi_shot, [] { std::cout << "Second continuation\n"; })
+    );
 }
 </pre>
 
@@ -690,7 +699,7 @@ execution::sender auto split(execution::sender auto sender);
 execution::sender auto lazy_split(execution::sender auto sender);
 </pre>
 
-If the provided sender is a multi-shot sender, returns that sender. Otherwise, returns a multi-shot sender which sends values equivalent to the values sent by the provided sender. See [[#design-fork]].
+If the provided sender is a multi-shot sender, returns that sender. Otherwise, returns a multi-shot sender which sends values equivalent to the values sent by the provided sender. See [[#design-shot]].
 
 ### `execution::when_all` ### {#design-adapter-when_all}
 
