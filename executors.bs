@@ -404,7 +404,7 @@ that also does not have an associated scheduler.
 
 ## Proposed set of user-facing sender factories ## {#design-factories}
 
-A <dfn>sender factory</dfn> is a function that returns a sender and does not take any input senders.
+A <dfn>sender factory</dfn> is a function that takes no senders as parameters and returns a sender.
 
 ### `execution::schedule` ### {#design-factory-schedule}
 
@@ -487,7 +487,7 @@ This algorithm is included, as it greatly simplifies lifting values into senders
 
 ## Proposed set of user-facing sender adapters ## {#design-adapters}
 
-A <dfn>sender adapter</dfn> is a function which accepts one or more senders, and possibly other algorithms, and returns a sender, whose completion is related to the sender arguments it has received.
+A <dfn>sender adapter</dfn> is a function that takes one or more senders as parameters and returns a sender, whose completion is related to the sender arguments it has received.
 
 Many sender adapters come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
 the returned sender being started. Sender algorithms such as [[#design-adapter-ensure_started]], [[#design-algorithm-start_detached]], and [[#design-algorithm-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**,
@@ -774,7 +774,7 @@ XXX TODO: provide an example
 
 ## Proposed set of user-facing sender algorithms ## {#design-algorithms}
 
-A <dfn>sender algorithm</dfn> is a function that accepts one or more senders.
+A <dfn>sender algorithm</dfn> is a function that takes one or more senders as parameters and does not return a sender.
 
 ### `execution::start_detached` ### {#design-algorithm-start_detached}
 
