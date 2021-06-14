@@ -88,6 +88,10 @@ This paper proposes a self-contained design for an C++ executors, a series of ab
 
 ## Examples ## {#examples}
 
+See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]] for short explanations of the algorithms used in these code examples.
+
+### Hello world ### {#example-hello-world}
+
 ```c++
 using namespace std::execution;
 
@@ -97,7 +101,7 @@ executor auto sch = get_thread_pool().scheduler();
 // describe a chain of dependent work
 sender auto begin = schedule(sch);
 sender auto hi_again = then(begin, []{
-    std::cout << "Hi again! Have an int.";
+    std::cout << "Hello world! Have an int.";
     return 13;
 });
 sender auto work = then(hi_again, [](int arg) { return arg + 42; });
@@ -107,6 +111,8 @@ sender auto work = then(hi_again, [](int arg) { return arg + 42; });
 // the return value is a tuple of values being the result of the sender chain
 auto [i] = std::this_thread::sync_wait(work);
 ```
+
+### Asynchronous inclusive scan ### {#example-async-inclusive-scan}
 
 ```c++
 sender auto async_inclusive_scan(std::span<double> input,
@@ -143,7 +149,36 @@ sender auto async_inclusive_scan(std::span<double> input,
 }
 ```
 
-See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]] for short explanations of the algorithms used in this code example.
+### Asynchronous dynamically-sized read ### {#async-dynamically-sized-read}
+
+```c++
+sender auto async_read(sender auto buffer, auto handle);
+
+struct dynamic_buffer {
+  std::unique_ptr<std::byte[]> data;
+  std::size_t size;
+};
+
+sender auto async_read_array(auto handle) {
+  return let_value(just(dynamic_buffer{}),
+    [] (dynamic_buffer& buffer) {
+      return just(std::span(&buffer.size, sizeof(buffer.size))
+           | async_read(handle)
+           | then(
+               [&] (std::size_t bytes_read) {
+                 assert(bytes_read == sizeof(buffer.size));
+                 buffer.data = std::make_unique(new std::byte[buffer.size]);
+                 return std::span(buffer.data.get(), buffer.size);
+               }
+           | async_read(handle)
+           | then(
+               [&] (std::size_t bytes_read) {
+                 assert(bytes_read == buffer.size);
+                 return std::move(buffer.data);
+               }
+  });
+}
+```
 
 ## What this proposal is ## {#abstract-is}
 
