@@ -86,7 +86,7 @@ div.newnumbered li:before {
 
 This paper proposes a self-contained design for an C++ executors, a series of abstractions for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in [[P0443R14]] and its companion papers.
 
-## Compelling examples ## {#compelling-examples}
+## Examples ## {#examples}
 
 ```c++
 using namespace std::execution;
@@ -176,20 +176,6 @@ essential when writing user code using standard execution concepts; we have also
 7. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
 8. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
 9. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-fork]].
-
-## Use case priorities ## {#use-case-priorities}
-
-The space of asynchronous, concurrent, and parallel execution management is large and spans many use cases.
-During the development of this proposal, we focused on satisfying the following user-centric needs:
-
-* Lazy execution models
-  * Avoiding unnecessary allocations.
-* Eager execution models
-* Parallelism
-  * Accelerators
-* Cancellation
-* Fire-and-forget
-* Customization of control transfer
 
 ## Prior art ## {#prior-art}
 
