@@ -2640,7 +2640,6 @@ That means that there’s no way to construct sender chains that traverse differ
 <c- p>});</c->
 
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd2</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-><c- p>(</c-><c- n>then1</c-><c- p>,</c-> <c- n>sch2</c-><c- p>);</c->
-
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then2</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd2</c-><c- p>,</c-> <c- p>[]{</c->
     <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- s>"I am running on sch2!</c-><c- se>\n</c-><c- s>"</c-><c- p>;</c->
 <c- p>});</c->
@@ -2693,11 +2692,36 @@ that also does not have an associated scheduler.</p>
 </pre>
    <h4 class="heading settled" data-level="4.8.2" id="design-factory-just"><span class="secno">4.8.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code></span><a class="self-link" href="#design-factory-just"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>just</c-><c- p>(</c->
-    <c- k>auto</c-> <c- p>...</c-><c- n>values</c->
+    <c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>...</c-><c- n>values</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender with no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers③">completion scheduler</a>, which <a data-link-type="dfn" href="#send" id="ref-for-send②">sends</a> copies of the provided values.</p>
-   <p>TODO: example</p>
+   <p>Returns a sender with no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers③">completion scheduler</a>, which <a data-link-type="dfn" href="#send" id="ref-for-send②">sends</a> the provided values. If a provided value is an lvalue reference, a copy is made inside the returned sender and a non-const lvalue reference to the copy is sent. If the provided value is an rvalue reference, it is moved into the returned sender and an rvalue reference to it is sent.</p>
+<pre class="language-c++ highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- mf>3.14</c-><c- p>);</c->
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd1</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- b>double</c-> <c- n>d</c-><c- p>)</c-> <c- p>{</c->
+  <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- n>d</c-> <c- o>&lt;&lt;</c-> <c- s>"</c-><c- se>\n</c-><c- s>"</c-><c- p>;</c->
+<c- p>});</c->
+
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd2</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- mf>3.14</c-><c- p>,</c-> <c- mi>42</c-><c- p>);</c->
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then2</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd1</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- b>double</c-> <c- n>d</c-><c- p>,</c-> <c- b>int</c-> <c- n>i</c-><c- p>)</c-> <c- p>{</c->
+  <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- n>d</c-> <c- o>&lt;&lt;</c-> <c- s>", "</c-> <c- o>&lt;&lt;</c-> <c- n>i</c-> <c- o>&lt;&lt;</c-> <c- s>"</c-><c- se>\n</c-><c- s>"</c-><c- p>;</c->
+<c- p>});</c->
+
+<c- n>std</c-><c- o>::</c-><c- n>vector</c-> <c- n>v3</c-><c- p>{</c-><c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c-><c- p>,</c-> <c- mi>4</c-><c- p>,</c-> <c- mi>5</c-><c- p>};</c->
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd3</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>v3</c-><c- p>);</c->
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then3</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd3</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>>&amp;</c-> <c- n>v3copy</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>for</c-> <c- p>(</c-><c- k>auto</c-><c- o>&amp;&amp;</c-> <c- nl>e</c-> <c- p>:</c-> <c- n>v3copy</c-><c- p>)</c-> <c- p>{</c-> <c- n>e</c-> <c- o>*=</c-> <c- mi>2</c-><c- p>;</c-> <c- p>}</c-> <c- k>return</c-> <c- n>v3copy</c-><c- p>;</c->
+<c- p>}</c->
+<c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>[</c-><c- n>v3copy</c-><c- p>]</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>then3</c-><c- p>);</c->
+<c- c1>// &lt;code data-opaque bs-autolink-syntax='`v3`'>v3&lt;/code> contains &lt;code data-opaque bs-autolink-syntax='`{1, 2, 3, 4, 5}`'>{1, 2, 3, 4, 5}&lt;/code>; &lt;code data-opaque bs-autolink-syntax='`v3copy`'>v3copy&lt;/code> will contain &lt;code data-opaque bs-autolink-syntax='`{2, 4, 6, 8, 10}`'>{2, 4, 6, 8, 10}&lt;/code>.</c->
+
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- p>{</c-><c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c-><c- p>,</c-> <c- mi>4</c-><c- p>,</c-> <c- mi>5</c-><c- p>});</c->
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd4</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>>&amp;&amp;</c-> <c- n>v4</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>for</c-> <c- p>(</c-><c- k>auto</c-><c- o>&amp;&amp;</c-> <c- nl>e</c-> <c- p>:</c-> <c- n>v4</c-><c- p>)</c-> <c- p>{</c-> <c- n>e</c-> <c- o>*=</c-> <c- mi>2</c-><c- p>;</c-> <c- p>}</c->
+  <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>v4</c-><c- p>);</c->
+<c- p>});</c->
+<c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>[</c-><c- n>v4</c-><c- p>]</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>then4</c-><c- p>);</c->
+<c- c1>// &lt;code data-opaque bs-autolink-syntax='`v4`'>v4&lt;/code> contains &lt;code data-opaque bs-autolink-syntax='`{2, 4, 6, 8, 10}`'>{2, 4, 6, 8, 10}&lt;/code>.</c->
+</pre>
    <h4 class="heading settled" data-level="4.8.3" id="design-factory-reschedule_just"><span class="secno">4.8.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-></code></span><a class="self-link" href="#design-factory-reschedule_just"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>reschedule_just</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>scheduler</c-><c- p>,</c->
