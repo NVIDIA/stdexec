@@ -282,8 +282,11 @@ A <dfn>sender</dfn> is an object that describes work. Senders are similar to fut
 sender is said to <dfn>send</dfn> some values if a receiver connected (see [[#design-connect]]) to that sender will eventually *receive* said values.
 
 The primary defining operation of senders is [[#design-connect]]; this function, however, is not a user-facing API; it is used to facilitate communication between senders and various sender algorithms (or other senders), but end user code is not expected to invoke
-it directly. The way user code is expected to interact with senders is by using said sender algorithms; the opening example of the design section already contains a sample of sender algorithms, and the ones we are proposing as a part of this paper are described in
-[[#design-factories]], [[#design-adapters]], and [[#design-algorithms]]. Here is how a user can ensure that work is started (and will eventually complete if no errors happen), but without waiting for it to finish:
+it directly.
+
+The way user code is expected to interact with senders is by using said sender algorithms.
+This paper proposes an initial set of such algorithms, which are described in [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
+For example, here is how a user can ensure that work is started (and will eventually complete if no errors happen), but without waiting for it to finish:
 
 <pre highlight="c++">
 execution::scheduler auto sch = get_thread_pool().scheduler();
