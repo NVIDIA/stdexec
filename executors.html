@@ -2582,7 +2582,7 @@ sender is said to <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id=
 it directly.</p>
    <p>The way user code is expected to interact with senders is by using said sender algorithms.
 This paper proposes an initial set of such algorithms, which are described in <a href="#design-factories">§ 4.8 Proposed set of user-facing sender factories</a>, <a href="#design-adapters">§ 4.9 Proposed set of user-facing sender adapters</a>, and <a href="#design-algorithms">§ 4.10 Proposed set of user-facing sender algorithms</a>.
-For example, here is how a user can ensure that work is started (and will eventually complete if no errors happen), but without waiting for it to finish:</p>
+For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>cont</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd</c-><c- p>,</c-> <c- p>[]{</c->
@@ -2590,8 +2590,8 @@ For example, here is how a user can ensure that work is started (and will eventu
     <c- n>file</c-> <c- o>&lt;&lt;</c-> <c- n>compute_result</c-><c- p>;</c->
 <c- p>});</c->
 
-<c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>cont</c-><c- p>);</c->
-<c- c1>// at this point, the work described by `cont` has been submitted to the thread pool</c->
+<c- n>execution</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>cont</c-><c- p>);</c->
+<c- c1>// at this point, </c-><code class="highlight"><c- c1><c- n>cont</c-></c-></code><c- c1> has completed execution</c->
 </pre>
    <h3 class="heading settled" data-level="4.4" id="design-propagation"><span class="secno">4.4. </span><span class="content">Senders can propagate completion schedulers</span><a class="self-link" href="#design-propagation"></a></h3>
    <p>One of the less clear aspects of <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> has been the set of requirements for the <i>place of execution</i> of any given piece of code. This underspecification is problematic, especially in case of systems where not all execution agents are created equal,
