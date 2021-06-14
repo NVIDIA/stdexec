@@ -127,23 +127,23 @@ sender auto async_inclusive_scan(std::span<double> input,
 
   return reschedule_just(sch, std::move(partials))
        | bulk(tile_count,
-           [=](std::size_t i, std::vector<int>& partials) {
+           [=](std::size_t i, std::vector<double>& partials) {
              auto start = begin(data) + i * tile_size;
              auto end   = begin(data) + std::min(input.size(), (i + 1)*tile_size);
              partials[i+1] = *--std::inclusive_scan(start, end, start);
            })
        | then(
-           [](std::vector<int>& partials) {
+           [](std::vector<double>& partials) {
              std::inclusive_scan(begin(partials), end(partials), begin(partials));
              return std::move(partials);
            })
        | bulk(input.size(),
-           [=](int i, std::vector<int>& partials) {
+           [=](int i, std::vector<double>& partials) {
               int tile = i / tile_size;
               output[i] = std::move(partials[tile]) + output[i];
            })
        | then(
-           [=](std::vector<int>& partials) {
+           [=](std::vector<double>& partials) {
               return output;
            };
 }
