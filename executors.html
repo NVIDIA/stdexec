@@ -2541,26 +2541,35 @@ essential when writing user code using standard execution concepts; we have also
    <h3 class="heading settled" data-level="2.1" id="r0"><span class="secno">2.1. </span><span class="content">R0</span><a class="self-link" href="#r0"></a></h3>
    <p>Initial revision, still in progress.</p>
    <h2 class="heading settled" data-level="3" id="design-intro"><span class="secno">3. </span><span class="content">Proposed design - introduction</span><a class="self-link" href="#design-intro"></a></h2>
-   <p>The following four sections describe the entirety of the proposed design. <a href="#design-intro">§ 3 Proposed design - introduction</a> describes the conventions used through the rest of the design sections, as well as an example illustrating how we envision code will be written using this proposal.</p>
-   <p><a href="#design-user">§ 4 Proposed design - user side</a> describes all the functionality from the perspective we intend for users: it describes the various concepts they will interact with, and what their programming model is. <a href="#design-implementer">§ 5 Proposed design - implementer side</a> describes the machinery that allows for
-that programming model to function, and the information contained there is necessary for people implementing senders and sender algorithms (including the standard library ones) - but is not necessary to use senders productively.</p>
-   <p>Finally, <a href="#design-api">§ 6 Proposed design - API specifics</a> discusses API decisions and questions that we believe reflect on the code that will need to be written to implement and use senders, but not on the programming model of senders in general.</p>
-   <p class="note" role="note"><span>Note:</span> none of the algorithm names proposed here are names that we are particularly attached to; consider the names of the algorithms to be reasonable placeholders that can freely be changed, should the committee want to do so.</p>
+   <p>The following four sections describe the entirety of the proposed design.</p>
+   <ul>
+    <li data-md>
+     <p><a href="#design-intro">§ 3 Proposed design - introduction</a> describes the conventions used through the rest of the design sections, as well as an example illustrating how we envision code will be written using this proposal.</p>
+    <li data-md>
+     <p><a href="#design-user">§ 4 Proposed design - user side</a> describes all the functionality from the perspective we intend for users: it describes the various concepts they will interact with, and what their programming model is.</p>
+    <li data-md>
+     <p><a href="#design-implementer">§ 5 Proposed design - implementer side</a> describes the machinery that allows for that programming model to function, and the information contained there is necessary for people implementing senders and sender algorithms (including the standard library ones) - but is not necessary to use senders productively.</p>
+    <li data-md>
+     <p><a href="#design-api">§ 6 Proposed design - API specifics</a> discusses API decisions and questions that we believe reflect on the code that will need to be written to implement and use senders, but not on the programming model of senders in general.</p>
+   </ul>
    <h3 class="heading settled" data-level="3.1" id="design-conventions"><span class="secno">3.1. </span><span class="content">Conventions</span><a class="self-link" href="#design-conventions"></a></h3>
    <p>The following conventions are used throughout the design section:</p>
    <ol>
     <li data-md>
+     <p>The namespace proposed in this paper is the same as in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>: <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code>; however, for brevity, the <code class="highlight"><c- n>std</c-><c- o>::</c-></code> part of this name is omitted. When you see <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>foo</c-></code>, treat that as <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>foo</c-></code>.</p>
+    <li data-md>
      <p>Universal references and explicit calls to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>move</c-></code>/<code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>forward</c-></code> are omitted in code samples and signatures for simplicity; assume universal references and perfect forwarding unless stated otherwise.</p>
     <li data-md>
-     <p>The namespace proposed in this paper is the same as in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>: <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code>; however, for brevity, the <code class="highlight"><c- n>std</c-><c- o>::</c-></code> part of this name is omitted. When you see <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>foo</c-></code>, treat that as <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>foo</c-></code>.</p>
+     <p>None of the algorithm names proposed here are names that we are particularly attached to; consider the names of the algorithms to be reasonable placeholders that can freely be changed, should the committee want to do so.</p>
    </ol>
    <h2 class="heading settled" data-level="4" id="design-user"><span class="secno">4. </span><span class="content">Proposed design - user side</span><a class="self-link" href="#design-user"></a></h2>
    <h3 class="heading settled" data-level="4.1" id="design-contexts"><span class="secno">4.1. </span><span class="content">Execution contexts describe the place of execution</span><a class="self-link" href="#design-contexts"></a></h3>
    <p>An <dfn data-dfn-type="dfn" data-noexport id="execution-context">execution context<a class="self-link" href="#execution-context"></a></dfn> is a resource that represents the <em>place</em> where execution will happen. This could be a concrete resource - like a specific thread pool object, or a GPU - or a more abstract one, like the current thread of execution. Execution contexts
 don’t need to have a representation in code; they are simply a term describing certain properties of execution of a function.</p>
    <h3 class="heading settled" data-level="4.2" id="design-schedulers"><span class="secno">4.2. </span><span class="content">Schedulers represent execution contexts</span><a class="self-link" href="#design-schedulers"></a></h3>
-   <p>A <dfn data-dfn-type="dfn" data-noexport id="scheduler">scheduler<a class="self-link" href="#scheduler"></a></dfn> is a lightweight handle to an <em>execution context</em>, which allows describing work that will be executed on an execution agent belonging to that context. Since execution contexts don’t necessarily manifest in C++ code, it’s not possible to program
-directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single operation, <code class="highlight"><c- n>schedule</c-></code>, which creates a description of work on its associated execution context, materialized in the form of a sender.</p>
+   <p>A <dfn data-dfn-type="dfn" data-noexport id="scheduler">scheduler<a class="self-link" href="#scheduler"></a></dfn> is a lightweight handle that represents a strategy for scheduling work onto an <em>execution context</em>. Since execution contexts don’t necessarily manifest in C++ code, it’s not possible to program
+directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single operation, <code class="highlight"><c- n>schedule</c-></code>, which returns a sender that will complete on an execution context determined
+by the scheduler. Logic that you want to run on that context can be placed in the receiver’s completion-signalling method.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->
 <c- c1>// snd is a sender (see below) describing the creation of a new execution resource</c->
