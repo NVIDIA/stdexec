@@ -2313,11 +2313,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <ol class="toc">
       <li><a href="#spec-execution.syn"><span class="secno">10.1</span> <span class="content">Header <code class="highlight"><c- o>&lt;</c-><c- n>execution</c-><c- o>></c-></code> synopsis <b>[execution.syn]</b></span></a>
       <li><a href="#spec-execution.helpers"><span class="secno">10.2</span> <span class="content">Helper concepts <b>[execution.helpers]</b></span></a>
-      <li>
-       <a href="#spec-execution.scheduler"><span class="secno">10.3</span> <span class="content">Schedulers <b>[execution.scheduler] </b></span></a>
-       <ol class="toc">
-        <li><a href="#spec-execution.scheduler.queries"><span class="secno">10.3.1</span> <span class="content">Scheduler queries <b>[execution.scheduler.queries]</b></span></a>
-       </ol>
+      <li><a href="#spec-execution.scheduler"><span class="secno">10.3</span> <span class="content">Schedulers <b>[execution.scheduler] </b></span></a>
       <li>
        <a href="#spec-execution.receiver"><span class="secno">10.4</span> <span class="content">Receivers <b>[execution.receiver]</b></span></a>
        <ol class="toc">
@@ -3438,12 +3434,6 @@ the shared stop state.</p>
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>scheduler</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
-  <c- c1>// [execution.scheduler.queries], scheduler queries</c->
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
-    <c- k>struct</c-> <c- nc>get_forward_progress_guarantee_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_forward_progress_guarantee_t</c-> <c- n>get_forward_progress_guarantee</c-><c- p>{};</c-> <c- c1>// TODO</c->
-  <c- p>}</c->
-
   <c- c1>// [execution.receiver], receivers</c->
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>exception_ptr</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>receiver</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
@@ -3639,7 +3629,7 @@ the shared stop state.</p>
     <li data-md>
      <p>None of a scheduler’s copy constructor, destructor, equality comparison, or <code class="highlight"><c- n>swap</c-></code> operations shall exit via an exception.</p>
     <li data-md>
-     <p>None of these operations, nor a scheduler type’s <code class="highlight"><c- n>schedule</c-></code> function, or a call to a scheduler type’s query functions (<a href="#spec-execution.scheduler.queries">§ 10.3.1 Scheduler queries [execution.scheduler.queries]</a>) shall introduce data races as a result of concurrent invocations of thos functions from different
+     <p>None of these operations, nor a scheduler type’s <code class="highlight"><c- n>schedule</c-></code> function, or a call to a scheduler type’s query functions (<a href="#spec-execution.scheduler.queries"></a>) shall introduce data races as a result of concurrent invocations of thos functions from different
 threads.</p>
     <li data-md>
      <p>For any two (possibly const) values <code class="highlight"><c- n>s1</c-></code> and <code class="highlight"><c- n>s2</c-></code> of some scheduler type <code class="highlight"><c- n>S</c-></code>, <code class="highlight"><c- n>s1</c-> <c- o>==</c-> <c- n>s2</c-></code> shall return <code class="highlight">true</code> only if both <code class="highlight"><c- n>s1</c-></code> and <code class="highlight"><c- n>s2</c-></code> are handles to the same associated execution context.</p>
@@ -3647,7 +3637,6 @@ threads.</p>
      <p>A scheduler type’s destructor shall not block pending completion of any receivers connected to the sender objects returned from <code class="highlight"><c- n>schedule</c-></code>. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
 context of the scheduler. <i>—end note</i>]</p>
    </ol>
-   <h4 class="heading settled" data-level="10.3.1" id="spec-execution.scheduler.queries"><span class="secno">10.3.1. </span><span class="content">Scheduler queries <b>[execution.scheduler.queries]</b></span><a class="self-link" href="#spec-execution.scheduler.queries"></a></h4>
    <h3 class="heading settled" data-level="10.4" id="spec-execution.receiver"><span class="secno">10.4. </span><span class="content">Receivers <b>[execution.receiver]</b></span><a class="self-link" href="#spec-execution.receiver"></a></h3>
    <ol>
     <li data-md>
