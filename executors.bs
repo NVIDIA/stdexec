@@ -295,7 +295,7 @@ execution::sender auto cont = execution::then(snd, []{
 });
 
 execution::sync_wait(cont);
-// at this point, `cont` has completed execution
+// at this point, "cont" has completed execution
 </pre>
 
 ## Senders can propagate completion schedulers ## {#design-propagation}
