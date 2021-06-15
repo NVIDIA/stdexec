@@ -302,7 +302,7 @@ execution::sender auto cont = execution::then(snd, []{
 });
 
 std::this_thread::sync_wait(cont);
-// at this point, "cont" has completed execution
+// at this point, cont has completed execution
 </pre>
 
 ## Senders can propagate completion schedulers ## {#design-propagation}
@@ -468,7 +468,7 @@ execution::sender auto then3 = execution::then(snd3, [] (std::vector<int>& v3cop
   for (auto&& e : v3copy) { e *= 2; } return v3copy;
 }
 auto&& [v3copy] = *std::this_thread::sync_wait(then3);
-// `v3` contains `{1, 2, 3, 4, 5}`; `v3copy` will contain `{2, 4, 6, 8, 10}`.
+// v3 contains {1, 2, 3, 4, 5}; v3copy will contain {2, 4, 6, 8, 10}.
 
 execution::sender auto snd4 = execution::just(std::vector{1, 2, 3, 4, 5});
 execution::sender auto then4 = execution::then(snd4, [] (std::vector<int>&& v4) {
@@ -476,7 +476,7 @@ execution::sender auto then4 = execution::then(snd4, [] (std::vector<int>&& v4) 
   return std::move(v4);
 });
 auto&& [v4] = *std::this_thread::sync_wait(then4);
-// `v4` contains `{2, 4, 6, 8, 10}`.
+// v4 contains {2, 4, 6, 8, 10}.
 ```
 
 ### `execution::reschedule_just` ### {#design-factory-reschedule_just}
