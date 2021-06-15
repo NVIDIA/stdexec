@@ -2598,7 +2598,7 @@ For example, here is how a user can create a new sender on a scheduler, attach a
 <c- p>});</c->
 
 <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>cont</c-><c- p>);</c->
-<c- c1>// at this point, "cont" has completed execution</c->
+<c- c1>// at this point, cont has completed execution</c->
 </pre>
    <h3 class="heading settled" data-level="4.4" id="design-propagation"><span class="secno">4.4. </span><span class="content">Senders can propagate completion schedulers</span><a class="self-link" href="#design-propagation"></a></h3>
    <p>One of the goals of executors is to support a diverse set of execution contexts, including traditional thread pools, task and fiber frameworks (like <a href="https://github.com/STEllAR-GROUP/hpx">\HPX</a> and <a href="https://github.com/StanfordLegion/legion">Legion</a>), and GPUs and other accelerators (managed by runtimes such as CUDA or SYCL).
@@ -2726,7 +2726,7 @@ that also does not have an associated scheduler.</p>
   <c- k>for</c-> <c- p>(</c-><c- k>auto</c-><c- o>&amp;&amp;</c-> <c- nl>e</c-> <c- p>:</c-> <c- n>v3copy</c-><c- p>)</c-> <c- p>{</c-> <c- n>e</c-> <c- o>*=</c-> <c- mi>2</c-><c- p>;</c-> <c- p>}</c-> <c- k>return</c-> <c- n>v3copy</c-><c- p>;</c->
 <c- p>}</c->
 <c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>[</c-><c- n>v3copy</c-><c- p>]</c-> <c- o>=</c-> <c- o>*</c-><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>then3</c-><c- p>);</c->
-<c- c1>// &lt;code data-opaque bs-autolink-syntax='`v3`'>v3&lt;/code> contains &lt;code data-opaque bs-autolink-syntax='`{1, 2, 3, 4, 5}`'>{1, 2, 3, 4, 5}&lt;/code>; &lt;code data-opaque bs-autolink-syntax='`v3copy`'>v3copy&lt;/code> will contain &lt;code data-opaque bs-autolink-syntax='`{2, 4, 6, 8, 10}`'>{2, 4, 6, 8, 10}&lt;/code>.</c->
+<c- c1>// v3 contains {1, 2, 3, 4, 5}; v3copy will contain {2, 4, 6, 8, 10}.</c->
 
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- p>{</c-><c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c-><c- p>,</c-> <c- mi>4</c-><c- p>,</c-> <c- mi>5</c-><c- p>});</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd4</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>>&amp;&amp;</c-> <c- n>v4</c-><c- p>)</c-> <c- p>{</c->
@@ -2734,7 +2734,7 @@ that also does not have an associated scheduler.</p>
   <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>v4</c-><c- p>);</c->
 <c- p>});</c->
 <c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>[</c-><c- n>v4</c-><c- p>]</c-> <c- o>=</c-> <c- o>*</c-><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>then4</c-><c- p>);</c->
-<c- c1>// &lt;code data-opaque bs-autolink-syntax='`v4`'>v4&lt;/code> contains &lt;code data-opaque bs-autolink-syntax='`{2, 4, 6, 8, 10}`'>{2, 4, 6, 8, 10}&lt;/code>.</c->
+<c- c1>// v4 contains {2, 4, 6, 8, 10}.</c->
 </pre>
    <h4 class="heading settled" data-level="4.9.3" id="design-factory-reschedule_just"><span class="secno">4.9.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-></code></span><a class="self-link" href="#design-factory-reschedule_just"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>reschedule_just</c-><c- p>(</c->
