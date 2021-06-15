@@ -115,7 +115,8 @@ auto [i] = std::this_thread::sync_wait(work);
 ### Asynchronous inclusive scan ### {#example-async-inclusive-scan}
 
 ```c++
-sender auto async_inclusive_scan(std::span<double> input,
+sender auto async_inclusive_scan(scheduler auto sch,
+                                 std::span<const double> input,
                                  std::span<double> output,
                                  double init,
                                  std::size_t tile_count)
@@ -128,9 +129,11 @@ sender auto async_inclusive_scan(std::span<double> input,
   return reschedule_just(sch, std::move(partials))
        | bulk(tile_count,
            [=](std::size_t i, std::vector<double>& partials) {
-             auto start = begin(data) + i * tile_size;
-             auto end   = begin(data) + std::min(input.size(), (i + 1) * tile_size);
-             partials[i + 1] = *--std::inclusive_scan(start, end, start);
+             auto beginOffset = i * tile_size;
+             auto endOffset = tileOffset + std::min(tile_size, input.size() - beginOffset);
+             partials[i + 1] = *--std::inclusive_scan(input.data() + beginOffset,
+                                                      input.data() + endOffset,
+                                                      output.data() + beginOffset);
            })
        | then(
            [](std::vector<double>& partials) {
@@ -138,20 +141,24 @@ sender auto async_inclusive_scan(std::span<double> input,
              return std::move(partials);
            })
        | bulk(input.size(),
-           [=](int i, std::vector<double>& partials) {
-              int tile = i / tile_size;
+           [=](std::size_t i, std::vector<double>& partials) {
+              std::size_t tile = i / tile_size;
               output[i] = partials[tile] + output[i];
            })
        | then(
            [=](std::vector<double>& partials) {
               return output;
-           };
+           });
 }
 ```
 
 ### Asynchronous dynamically-sized read ### {#async-dynamically-sized-read}
 
 ```c++
+// `async_read` takes an input sender which sends a std::span<std::byte> buffer
+// to be filled, and returns a sender that completes when the buffer is filled
+// and sends the number of bytes. It's a pipeable sender adapter CPO with the
+// following signature:
 sender auto async_read(sender auto buffer, auto handle);
 
 struct dynamic_buffer {
@@ -162,7 +169,7 @@ struct dynamic_buffer {
 sender auto async_read_array(auto handle) {
   return let_value(just(dynamic_buffer{}),
     [] (dynamic_buffer& buffer) {
-      return just(std::span(&buffer.size, sizeof(buffer.size))
+      return just(std::as_writeable_bytes(std::span(&buffer.size, 1))
            | async_read(handle)
            | then(
                [&] (std::size_t bytes_read) {
