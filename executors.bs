@@ -803,7 +803,7 @@ auto sync_wait(
     -> std::optional&lt;std::tuple&lt;<i>values-sent-by</i>(sender)>>;
 </pre>
 
-`std::this_thread::sync_wait` is an algorithm that submits the work described by the provided sender for execution, similarly to `ensure_started`, execept that it blocks <b>the current `std::thread` or thread of `main`</b> until the work is completed, and returns
+`std::this_thread::sync_wait` is an algorithm that submits the work described by the provided sender for execution, similarly to `ensure_started`, except that it blocks <b>the current `std::thread` or thread of `main`</b> until the work is completed, and returns
 an optional tuple of values that were sent by the provided sender on its completion of work. Where [[#design-factory-schedule]] and [[#design-factory-reschedule_just]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of
 senders, retrieving the result of the task graph.
 
@@ -820,7 +820,7 @@ to block in a non-deadlock manner).
 
 ## `execution::execute` ## {#design-execute}
 
-In addition to the three categories of functions presented above, we also propose to include a convenience function for fire-and-forget eager one-way submission of an invocable to a scheduler, to fullfil the role of one-way executors from P0443.
+In addition to the three categories of functions presented above, we also propose to include a convenience function for fire-and-forget eager one-way submission of an invocable to a scheduler, to fulfil the role of one-way executors from P0443.
 
 <pre highlight="c++">
 void execution::execute(
