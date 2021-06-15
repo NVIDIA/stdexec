@@ -2206,7 +2206,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <ol class="toc">
         <li><a href="#example-hello-world"><span class="secno">1.1.1</span> <span class="content">Hello world</span></a>
         <li><a href="#example-async-inclusive-scan"><span class="secno">1.1.2</span> <span class="content">Asynchronous inclusive scan</span></a>
-        <li><a href="#async-dynamically-sized-read"><span class="secno">1.1.3</span> <span class="content">Asynchronous dynamically-sized read</span></a>
+        <li><a href="#example-async-dynamically-sized-read"><span class="secno">1.1.3</span> <span class="content">Asynchronous dynamically-sized read</span></a>
        </ol>
       <li><a href="#abstract-is"><span class="secno">1.2</span> <span class="content">What this proposal is</span></a>
       <li><a href="#abstract-is-not"><span class="secno">1.3</span> <span class="content">What this proposal is <strong>not</strong></span></a>
@@ -2459,7 +2459,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
            <c- p>});</c->
 <c- p>}</c->
 </pre>
-   <h4 class="heading settled" data-level="1.1.3" id="async-dynamically-sized-read"><span class="secno">1.1.3. </span><span class="content">Asynchronous dynamically-sized read</span><a class="self-link" href="#async-dynamically-sized-read"></a></h4>
+   <h4 class="heading settled" data-level="1.1.3" id="example-async-dynamically-sized-read"><span class="secno">1.1.3. </span><span class="content">Asynchronous dynamically-sized read</span><a class="self-link" href="#example-async-dynamically-sized-read"></a></h4>
 <pre class="language-c++ highlight"><c- c1>// &lt;code data-opaque bs-autolink-syntax='`async_read`'>async_read&lt;/code> takes an input sender which sends a std::span&lt;std::byte> buffer</c->
 <c- c1>// to be filled, and returns a sender that completes when the buffer is filled</c->
 <c- c1>// and sends the number of bytes. It’s a pipeable sender adapter CPO with the</c->
