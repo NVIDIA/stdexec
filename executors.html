@@ -2448,7 +2448,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <c- o>|</c-> <c- n>bulk</c-><c- p>(</c-><c- n>input</c-><c- p>.</c-><c- n>size</c-><c- p>(),</c->
            <c- p>[</c-><c- o>=</c-><c- p>](</c-><c- b>int</c-> <c- n>i</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>double</c-><c- o>>&amp;</c-> <c- n>partials</c-><c- p>)</c-> <c- p>{</c->
               <c- b>int</c-> <c- n>tile</c-> <c- o>=</c-> <c- n>i</c-> <c- o>/</c-> <c- n>tile_size</c-><c- p>;</c->
-              <c- n>output</c-><c- p>[</c-><c- n>i</c-><c- p>]</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>partials</c-><c- p>[</c-><c- n>tile</c-><c- p>])</c-> <c- o>+</c-> <c- n>output</c-><c- p>[</c-><c- n>i</c-><c- p>];</c->
+              <c- n>output</c-><c- p>[</c-><c- n>i</c-><c- p>]</c-> <c- o>=</c-> <c- n>partials</c-><c- p>[</c-><c- n>tile</c-><c- p>]</c-> <c- o>+</c-> <c- n>output</c-><c- p>[</c-><c- n>i</c-><c- p>];</c->
            <c- p>})</c->
        <c- o>|</c-> <c- n>then</c-><c- p>(</c->
            <c- p>[</c-><c- o>=</c-><c- p>](</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>double</c-><c- o>>&amp;</c-> <c- n>partials</c-><c- p>)</c-> <c- p>{</c->
