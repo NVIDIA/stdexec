@@ -109,7 +109,7 @@ sender auto work = then(hi_again, [](int arg) { return arg + 42; });
 // submit the work for execution on the pool
 // block the current thread until its completion
 // the return value is a tuple of values being the result of the sender chain
-auto [i] = std::this_thread::sync_wait(work);
+auto [i] = *std::this_thread::sync_wait(work);
 ```
 
 ### Asynchronous inclusive scan ### {#example-async-inclusive-scan}
@@ -301,7 +301,7 @@ execution::sender auto cont = execution::then(snd, []{
     file << compute_result;
 });
 
-this_thread::sync_wait(cont);
+std::this_thread::sync_wait(cont);
 // at this point, "cont" has completed execution
 </pre>
 
@@ -467,7 +467,7 @@ execution::sender auto snd3 = execution::just(v3);
 execution::sender auto then3 = execution::then(snd3, [] (std::vector<int>& v3copy) {
   for (auto&& e : v3copy) { e *= 2; } return v3copy;
 }
-auto&& [v3copy] = std::this_thread::sync_wait(then3);
+auto&& [v3copy] = *std::this_thread::sync_wait(then3);
 // `v3` contains `{1, 2, 3, 4, 5}`; `v3copy` will contain `{2, 4, 6, 8, 10}`.
 
 execution::sender auto snd4 = execution::just(std::vector{1, 2, 3, 4, 5});
@@ -475,7 +475,7 @@ execution::sender auto then4 = execution::then(snd4, [] (std::vector<int>&& v4) 
   for (auto&& e : v4) { e *= 2; }
   return std::move(v4);
 });
-auto&& [v4] = std::this_thread::sync_wait(then4);
+auto&& [v4] = *std::this_thread::sync_wait(then4);
 // `v4` contains `{2, 4, 6, 8, 10}`.
 ```
 
@@ -1008,7 +1008,7 @@ auto work = execution::schedule(get_thread_pool())
     | execution::then([](int i){ return 123 * 5; })
     | execution::reschedule(get_thread_pool())
     | execution::then([](int i){ return i - 5; });
-auto [result] = std::this_thread::sync_wait(work);
+auto [result] = *std::this_thread::sync_wait(work);
 // result == 610
 </pre>
 
@@ -1037,7 +1037,7 @@ execution::sender auto sends_1 = ...;
 execution::sender auto sends_2 = ...;
 execution::sender auto sends_3 = ...;
 
-auto [a, b, c] = std::this_thread::sync_wait(
+auto [a, b, c] = *std::this_thread::sync_wait(
     execution::reschedule_when_all(
         execution::get_completion_scheduler<execution::set_value>s(sends_1),
         sends_1,
