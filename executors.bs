@@ -1330,12 +1330,6 @@ namespace std::execution {
   template&lt;class S>
     concept scheduler = <i>see-below</i>;
 
-  // [execution.scheduler.queries], scheduler queries
-  inline namespace <i>unspecified</i> {
-    struct get_forward_progress_guarantee_t;
-    inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{}; // TODO
-  }
-
   // [execution.receiver], receivers
   template&lt;class T, class E = exception_ptr>
     concept receiver = <i>see-below</i>;
@@ -1543,8 +1537,6 @@ namespace std::execution {
 
 5. A scheduler type's destructor shall not block pending completion of any receivers connected to the sender objects returned from `schedule`. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
     context of the scheduler. <i>—end note</i>]
-
-### Scheduler queries <b>[execution.scheduler.queries]</b> ### {#spec-execution.scheduler.queries}
 
 ## Receivers <b>[execution.receiver]</b> ## {#spec-execution.receiver}
 
