@@ -10,7 +10,7 @@ Editor: Lewis Baker, lewissbaker@gmail.com
 Editor: Lee Howes, xrikcus@gmail.com
 Editor: Michael Garland, mgarland@nvidia.com
 Editor: Eric Niebler, eric.niebler@gmail.com
-Editor: Bryce Adelstein Lelbach, brycelelblach@gmail.com
+Editor: Bryce Adelstein Lelbach, brycelelbach@gmail.com
 URL: https://wg21.link/P2300
 Metadata Order: Editor, This Version, Source, Issue Tracking, Project, Audience
 Markup Shorthands: markdown yes
