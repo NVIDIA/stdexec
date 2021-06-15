@@ -999,7 +999,7 @@ execution::start(state);
 
 Senders being able to advertise what their [=completion schedulers=] are fulfills one of the promises of senders: that of being able to customize an implementation of a sender algorithm based on what scheduler any work it depends on will complete on.
 
-The simple way to provide customizations for functions like `then`, that is for [=sender adaptors=] and [=sender consumers=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
+The simple way to provide customizations for functions like `then`, that is for [=sender adaptors=] and [=sender consumers=], is to follow the customization scheme that has been adopted for C++20 ranges library; to do that, we would define
 the expression `execution::then(sender, invocable)` to be equivalent to:
 
   1. `sender.then(invocable)`, if that expression is well formed; otherwise
@@ -1196,13 +1196,46 @@ auto sync_wait(
 
 ## Ranges-style CPOs vs `tag_invoke` ## {#design-dispatch}
 
-XXX TODO: describe pros and cons of both; make the argument for using `tag_invoke`
+The contemporary technique for customization in the Standard Library is customization point objects. A customization point object, will it look for member functions and then for nonmember functions with the same name as the customization point, and calls those if
+they match. This is the technique used by the C++20 ranges library, and previous executors proposals ([[P0443R14]] and [[P1897R3]]) intended to use it as well. However, it has several unfortunate consequences:
 
-short list:
-1. allows for propagation of all specializations to a wrapped object, without having to know them all;
-2. in the future provides what is necessary for a polymorphic wrapper that is supposed to perform well;
-3. because we anticipate multiple versions of `sync_wait`, for different runtimes (`std::this_thread` vs `std::this_fiber`, for instance), the specializations for it must happen not by a global name (because otherwise it'd need to be something like
-    `std_this_thread_sync_wait`), but rather by a namespaced name, and `tag_invoke` provides a way to do this
+1. It does not allow for easy propagation of customization points unknown to the adaptor to a wrapped object, which makes writing universal adapter types much harder - and this proposal uses quite a lot of those.
+
+2. It effectively reserves names globally. Because neither member names nor ADL-found functions can be qualified with a namespace, every customization point object that uses the ranges scheme reserves the name for all types in all namespaces. This is unfortunate
+    due to the sheer number of customization points already in the paper, but also ones that we are envisioning in the future. It's also a big problem for one of the operations being proposed already: `sync_wait`. We imagine that if, in the future, C++ was to
+    gain fibers support, we would want to also have `std::this_fiber::sync_wait`, in addition to `std::this_thread::sync_wait`. However, because we would want the names to be the same in both cases, we would need to make the names of the customizations not match the
+    names of the customization points. This is undesirable.
+
+This paper proposes to instead use the mechanism described in [[P1895R0]]: `tag_invoke`; the wording for `tag_invoke` has been incorporated into the proposed specification in this paper.
+
+In short, instead of using globally reserved names, `tag_invoke` uses the <i>type</i> of the customization point object itself as the mechanism to find customizations. It globally reserves only a single name - `tag_invoke` - which itself is used the same way that
+ranges-style customization points are used. All other customization points are defined in terms of `tag_invoke`. For example, the customization for `std::this_thread::sync_wait(s)` will call `tag_invoke(std::this_thread::sync_wait, s)`, instead of attempting
+to call `s.sync_wait()`, and then `sync_wait(s)` if the member call is not valid.
+
+Using `tag_invoke` has the following benefits:
+
+1. It reserves only a single global name, instead of reserving a global name for every customization point object we define.
+
+2. It is possible to propagate customizations to a subobject, because the information of which customization point is being resolved is in the type of an argument, and not in the name of the function:
+
+    <pre highlight=c++>
+    // forward most customizations to a subobject
+    template&lt;typename Tag, typename ...Args>
+    friend auto tag_invoke(Tag && tag, wrapper & self, Args &&... args) {
+        return std::forward&lt;Tag>(tag)(self.subobject, std::forward&lt;Args>(args)...);
+    }
+
+    // but override one of them with a specific value
+    friend auto tag_invoke(specific_customization_point_t, wrapper & self) {
+        return self.some_value;
+    }
+    </pre>
+
+3. It is possible to pass those as template arguments to types, because the information of which customization point is being resolved is in the type. Similarly to how [[P0443R14]] defines a polymorphic executor wrapper which accepts a list of properties it
+    supports, we can imagine scheduler and sender wrappers that accept a list of queries and operations they support. That list can contain the types of the customization point objects, and the polymorphic wrappers can then specialize those customization points on
+    themselves using `tag_invoke`, dispatching to manually constructed vtables containing pointers to specialized implementations for the wrapped objects. For an example of such a polymorphic wrapper, see
+    <code>[unifex::any_unique](https://github.com/facebookexperimental/libunifex/blob/1a6fbfc9cc3829356ccbdcf9e8d1f3cc33a6d9e0/include/unifex/any_unique.hpp)</code>
+    ([example](https://github.com/facebookexperimental/libunifex/blob/1a6fbfc9cc3829356ccbdcf9e8d1f3cc33a6d9e0/examples/any_unique.cpp)).
 
 # Specification # {#spec}
 
