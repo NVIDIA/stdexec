@@ -173,9 +173,9 @@ sender auto async_read_array(auto handle) {
           buffer.data = std::make_unique<std::byte[]>(buffer.size);
           return
             async_read(handle, std::span{buffer.data.get(), buffer.size})
-            | let_value([&](std::size_t bytes_read) {
+            | then([&](std::size_t bytes_read) {
               assert(bytes_read == buffer.size);
-              return just(std::move(buffer));
+              return std::move(buffer);
             });
         });
     });
