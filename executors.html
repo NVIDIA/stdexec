@@ -2199,7 +2199,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <h2 class="no-num no-toc no-ref" id="contents">Table of Contents</h2>
    <ol class="toc" role="directory">
     <li>
-     <a href="#abstract"><span class="secno">1</span> <span class="content">Abstract</span></a>
+     <a href="#intro"><span class="secno">1</span> <span class="content">Introduction</span></a>
      <ol class="toc">
       <li>
        <a href="#example"><span class="secno">1.1</span> <span class="content">Examples</span></a>
@@ -2208,11 +2208,11 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#example-async-inclusive-scan"><span class="secno">1.1.2</span> <span class="content">Asynchronous inclusive scan</span></a>
         <li><a href="#example-async-dynamically-sized-read"><span class="secno">1.1.3</span> <span class="content">Asynchronous dynamically-sized read</span></a>
        </ol>
-      <li><a href="#abstract-is"><span class="secno">1.2</span> <span class="content">What this proposal is</span></a>
-      <li><a href="#abstract-is-not"><span class="secno">1.3</span> <span class="content">What this proposal is <strong>not</strong></span></a>
-      <li><a href="#abstract-compare"><span class="secno">1.4</span> <span class="content">What are the major design changes compared to P0443?</span></a>
-      <li><a href="#prior-art"><span class="secno">1.5</span> <span class="content">Prior art</span></a>
-      <li><a href="#field-experience"><span class="secno">1.6</span> <span class="content">Field experience</span></a>
+      <li><a href="#intro-is"><span class="secno">1.2</span> <span class="content">What this proposal is</span></a>
+      <li><a href="#intro-is-not"><span class="secno">1.3</span> <span class="content">What this proposal is <strong>not</strong></span></a>
+      <li><a href="#intro-compare"><span class="secno">1.4</span> <span class="content">What are the major design changes compared to P0443?</span></a>
+      <li><a href="#intro-prior-art"><span class="secno">1.5</span> <span class="content">Prior art</span></a>
+      <li><a href="#intro-field-experience"><span class="secno">1.6</span> <span class="content">Field experience</span></a>
      </ol>
     <li>
      <a href="#revisions"><span class="secno">2</span> <span class="content">Revision history</span></a>
@@ -2399,7 +2399,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    </ol>
   </nav>
   <main>
-   <h2 class="heading settled" data-level="1" id="abstract"><span class="secno">1. </span><span class="content">Abstract</span><a class="self-link" href="#abstract"></a></h2>
+   <h2 class="heading settled" data-level="1" id="intro"><span class="secno">1. </span><span class="content">Introduction</span><a class="self-link" href="#intro"></a></h2>
    <p>This paper proposes a self-contained design for an C++ executors, a series of abstractions for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> and its companion papers.</p>
    <h3 class="heading settled" data-level="1.1" id="example"><span class="secno">1.1. </span><span class="content">Examples</span><a class="self-link" href="#example"></a></h3>
    <p>See <a href="#design-factories">§ 4.9 Proposed set of user-facing sender factories</a>, <a href="#design-adapters">§ 4.10 Proposed set of user-facing sender adapters</a>, and <a href="#design-algorithms">§ 4.11 Proposed set of user-facing sender algorithms</a> for short explanations of the algorithms used in these code examples.</p>
@@ -2491,7 +2491,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <c- p>});</c->
 <c- p>}</c->
 </pre>
-   <h3 class="heading settled" data-level="1.2" id="abstract-is"><span class="secno">1.2. </span><span class="content">What this proposal is</span><a class="self-link" href="#abstract-is"></a></h3>
+   <h3 class="heading settled" data-level="1.2" id="intro-is"><span class="secno">1.2. </span><span class="content">What this proposal is</span><a class="self-link" href="#intro-is"></a></h3>
    <p>This paper describes a design for a complete, self-contained library providing precise control for code execution on varying execution contexts in C++. This paper should be considered as a full design on its own, based heavily on prior papers that have been seen and
 discussed by the committee.</p>
    <p>We are aiming at satisfying all the promises that have been given when the sender/receiver model has been proposed and adopted by SG1, most importantly that:</p>
@@ -2502,12 +2502,12 @@ discussed by the committee.</p>
      <p>the sender/receiver model is a replacement for two-way executors, which provided precise controls over places of execution of user code.</p>
    </ol>
    <p>We believe that this aim has been achieved by the design proposed here.</p>
-   <h3 class="heading settled" data-level="1.3" id="abstract-is-not"><span class="secno">1.3. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#abstract-is-not"></a></h3>
+   <h3 class="heading settled" data-level="1.3" id="intro-is-not"><span class="secno">1.3. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#intro-is-not"></a></h3>
    <p>This paper is not a patch on top of <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
 to standardize any further facilities.</p>
    <p>This paper is not an alternative design to <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; rather, we have taken the design in the current executors paper, and applied targeted fixes to allow it to fulfill the promises of the sender/receiver model, as well as provide all the facilities we consider
 essential when writing user code using standard execution concepts; we have also applied the guidance of removing one-way executors from the paper entirely, and instead provided an algorithm based around senders that serves the same purpose.</p>
-   <h3 class="heading settled" data-level="1.4" id="abstract-compare"><span class="secno">1.4. </span><span class="content">What are the major design changes compared to P0443?</span><a class="self-link" href="#abstract-compare"></a></h3>
+   <h3 class="heading settled" data-level="1.4" id="intro-compare"><span class="secno">1.4. </span><span class="content">What are the major design changes compared to P0443?</span><a class="self-link" href="#intro-compare"></a></h3>
    <ol>
     <li data-md>
      <p>The <code class="highlight"><c- n>executor</c-></code> concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.</p>
@@ -2528,12 +2528,12 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>A specific thread pool implementation is omitted, as per LEWG direction.</p>
    </ol>
-   <h3 class="heading settled" data-level="1.5" id="prior-art"><span class="secno">1.5. </span><span class="content">Prior art</span><a class="self-link" href="#prior-art"></a></h3>
+   <h3 class="heading settled" data-level="1.5" id="intro-prior-art"><span class="secno">1.5. </span><span class="content">Prior art</span><a class="self-link" href="#intro-prior-art"></a></h3>
    <p>This proposal builds upon years of prior art and field experience with asynchronous and parallel programming frameworks in C++.</p>
    <p>Futures, as traditionally realized, require the dynamic allocation and management of a shared state, synchronization, and typically type-erasure of work and continuation. Many of these costs are inherent in the nature of “future” as a handle to an operation that is already scheduled for execution. These expenses rule out the future abstraction for many uses and makes it a poor choice for a basis of a Generic mechanism.</p>
    <p>Coroutines suffer many of the same problems but can avoid synchronizing when chaining dependent work because they typically start suspended. In many cases, coroutine frames require unavoidable dynamic allocation. Consequently, coroutines in embedded or heterogeneous environments require great attention to detail. Neither are coroutines good candidates for cancellation because the early and safe termination of coordinating coroutines requires unsatisfying solutions. On the one hand, exceptions are inefficient and disallowed in many environments. Alternatively, clumsy ad hoc mechanisms, whereby co_yield returns a status code, hinder correctness. P1662 provides a complete discussion.</p>
    <p>Callbacks are the simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities, but the lack of a standard obstructs generic design. Additionally, few of these possibilities accomodate cancellation signals when the user requests upstream work to stop and clean up.</p>
-   <h3 class="heading settled" data-level="1.6" id="field-experience"><span class="secno">1.6. </span><span class="content">Field experience</span><a class="self-link" href="#field-experience"></a></h3>
+   <h3 class="heading settled" data-level="1.6" id="intro-field-experience"><span class="secno">1.6. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
    <p>This proposal draws heavily from our experience with the <a href="https://github.com/facebookexperimental/libunifex">libunifex</a> and <a href="https://github.com/agency-library/agency">Agency</a> libraries. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:</p>
    <ul>
     <li data-md>
