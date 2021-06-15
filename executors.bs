@@ -82,7 +82,7 @@ div.newnumbered li:before {
 }
 </style>
 
-# Abstract # {#abstract}
+# Introduction # {#intro}
 
 This paper proposes a self-contained design for an C++ executors, a series of abstractions for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in [[P0443R14]] and its companion papers.
 
@@ -187,7 +187,7 @@ sender auto async_read_array(auto handle) {
 }
 ```
 
-## What this proposal is ## {#abstract-is}
+## What this proposal is ## {#intro-is}
 
 This paper describes a design for a complete, self-contained library providing precise control for code execution on varying execution contexts in C++. This paper should be considered as a full design on its own, based heavily on prior papers that have been seen and
 discussed by the committee.
@@ -199,7 +199,7 @@ We are aiming at satisfying all the promises that have been given when the sende
 
 We believe that this aim has been achieved by the design proposed here.
 
-## What this proposal is **not** ## {#abstract-is-not}
+## What this proposal is **not** ## {#intro-is-not}
 
 This paper is not a patch on top of [[P0443R14]]; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
 to standardize any further facilities.
@@ -207,7 +207,7 @@ to standardize any further facilities.
 This paper is not an alternative design to [[P0443R14]]; rather, we have taken the design in the current executors paper, and applied targeted fixes to allow it to fulfill the promises of the sender/receiver model, as well as provide all the facilities we consider
 essential when writing user code using standard execution concepts; we have also applied the guidance of removing one-way executors from the paper entirely, and instead provided an algorithm based around senders that serves the same purpose.
 
-## What are the major design changes compared to P0443? ## {#abstract-compare}
+## What are the major design changes compared to P0443? ## {#intro-compare}
 
 1. The `executor` concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.
 2. Properties are not included in this paper. We see them as a possible future extension, if the committee gets more comfortable with them.
@@ -219,7 +219,7 @@ essential when writing user code using standard execution concepts; we have also
 8. Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in [[#design-dispatch]].
 9. A specific thread pool implementation is omitted, as per LEWG direction.
 
-## Prior art ## {#prior-art}
+## Prior art ## {#intro-prior-art}
 
 This proposal builds upon years of prior art and field experience with asynchronous and parallel programming frameworks in C++.
 
@@ -229,7 +229,7 @@ Coroutines suffer many of the same problems but can avoid synchronizing when cha
 
 Callbacks are the simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities, but the lack of a standard obstructs generic design. Additionally, few of these possibilities accomodate cancellation signals when the user requests upstream work to stop and clean up.
 
-## Field experience ## {#field-experience}
+## Field experience ## {#intro-field-experience}
 
 This proposal draws heavily from our experience with the [libunifex](https://github.com/facebookexperimental/libunifex) and [Agency](https://github.com/agency-library/agency) libraries. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:
 * [\HPX](https://github.com/STEllAR-GROUP/hpx)
