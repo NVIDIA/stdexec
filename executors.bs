@@ -653,7 +653,7 @@ Returns a sender which, when started, will start the provided sender on an execu
 ### `execution::into_variant` ### {#design-adapter-into_variant}
 
 <pre highlight=c++>
-execution:;sender into_variant(
+execution::sender into_variant(
     execution::sender auto snd
 );
 </pre>
@@ -1618,10 +1618,10 @@ namespace std::execution {
 1. `execution::get_scheduler` is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
 
-2. The name `execution::get_scheduler` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_scheduler` is ill-formed. Otherwise, `execution:;get_scheduler(r)` is
+2. The name `execution::get_scheduler` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_scheduler` is ill-formed. Otherwise, `execution::get_scheduler(r)` is
     expression equivalent to:
 
-    1. `tag_invoke(execution:;get_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::get_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
 
     2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
 
@@ -1630,10 +1630,10 @@ namespace std::execution {
 1. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
 
-2. The name `execution::get_allocator` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_allocator` is ill-formed. Otherwise, `execution:;get_allocator(r)` is
+2. The name `execution::get_allocator` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_allocator` is ill-formed. Otherwise, `execution::get_allocator(r)` is
     expression equivalent to:
 
-    1. `tag_invoke(execution:;get_allocator, as_const(r))`, if this expression is well formed and models <i>Allocator</i>, and is `noexcept`.
+    1. `tag_invoke(execution::get_allocator, as_const(r))`, if this expression is well formed and models <i>Allocator</i>, and is `noexcept`.
 
     2. Otherwise, `execution::get_allocator(r)` is ill-formed.
 
@@ -1642,10 +1642,10 @@ namespace std::execution {
 1. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to
     use its result. --<i>end note</i>]
 
-2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_stop_token` is ill-formed. Otherwise, `execution:;get_stop_token(r)`
+2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_stop_token` is ill-formed. Otherwise, `execution::get_stop_token(r)`
     is expression equivalent to:
 
-    1. `tag_invoke(execution:;get_stop_token, as_const(r))`, if this expression is well formed and satisfies `stoppable_token`, and is `noexcept`.
+    1. `tag_invoke(execution::get_stop_token, as_const(r))`, if this expression is well formed and satisfies `stoppable_token`, and is `noexcept`.
 
     2. Otherwise, `never_stop_token{}`.
 
@@ -1742,10 +1742,10 @@ namespace std::execution {
 1. `execution::get_completion_scheduler` is used to ask a sender object for the <i>completion scheduler</i> for one of its signals.
 
 2. The name `execution::get_completion_scheduler` denotes a customization point object template. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::get_completion_scheduler` is ill-formed. If the template
-    argument `CPO` in `execution::get_completion_scheduler<CPO>` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution:;set_done_t`, `execution::get_completion_scheduler<CPO>` is ill-formed. Otherwise,
+    argument `CPO` in `execution::get_completion_scheduler<CPO>` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution::set_done_t`, `execution::get_completion_scheduler<CPO>` is ill-formed. Otherwise,
     `execution::get_completion_scheduler<CPO>(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution:;get_completion_scheduler<CPO>, as_const(s))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::get_completion_scheduler<CPO>, as_const(s))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
 
     2. Otherwise, `execution::get_completion_scheduler<CPO>(s)` is ill-formed.
 
@@ -2149,11 +2149,11 @@ namespace std::execution {
         1. Constructs a receiver `r`.
 
             1. When `execution::set_value(r, args...)` is called, copies `args...` into `op_state2` as `args2...`, then calls `invoke(f, args2...)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state
-                `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution:;start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution:;set_error(out_r, current_exception())`.
+                `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
-            2. When `execution::set_error(r, e)` is called, calls `execution:;set_error(out_r, e)`.
+            2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
-            3. When `execution:;set_done(r, e)` is called, calls `execution::set_done(out_r)`.
+            3. When `execution::set_done(r, e)` is called, calls `execution::set_done(out_r)`.
 
         2. Calls `execution::connect(s, r)`. which results in an operation state `op_state2`.
 
@@ -2189,12 +2189,12 @@ namespace std::execution {
 
         1. Constructs a receiver `r`.
 
-            1. When `execution::set_value(r, args...)` is called, calls `execution:;set_value(out_r, args...)`.
+            1. When `execution::set_value(r, args...)` is called, calls `execution::set_value(out_r, args...)`.
 
             2. When `execution::set_error(r, e)` is called, copies `e` into `op_statee2` as `e`, then calls `invoke(f, e)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved
-                as a part of `op_state2`. It then calls `execution:;start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution:;set_error(out_r, current_exception())`.
+                as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
-            3. When `execution:;set_done(r, e)` is called, calls `execution::set_done(out_r)`.
+            3. When `execution::set_done(r, e)` is called, calls `execution::set_done(out_r)`.
 
         2. Calls `execution::connect(s, r)`. which results in an operation state `op_state2`.
 
@@ -2230,12 +2230,12 @@ namespace std::execution {
 
         1. Constructs a receiver `r`.
 
-            1. When `execution:;set_value(r, args...)` is called, calls `execution::set_value(out_r, args...)`.
+            1. When `execution::set_value(r, args...)` is called, calls `execution::set_value(out_r, args...)`.
 
-            2. When `execution::set_error(r, e)` is called, calls `execution:;set_error(out_r, e)`.
+            2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
             3. When `execution::set_done(r)` is called, calls `invoke(f)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved as a part of `op_state2`.
-                It then calls `execution:;start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution:;set_error(out_r, current_exception())`.
+                It then calls `execution::start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
         2. Calls `execution::connect(s, r)`. which results in an operation state `op_state2`.
 
@@ -2429,9 +2429,9 @@ namespace std::execution {
 
     1. Constructs a receiver `r`:
 
-        1. If `execution::set_value(r, ts...)` is called, calls <code>execution:;set_value(out_r, <i>into-variant-type</i>&lt;S>(make_tuple(ts...)))</code>.
+        1. If `execution::set_value(r, ts...)` is called, calls <code>execution::set_value(out_r, <i>into-variant-type</i>&lt;S>(make_tuple(ts...)))</code>.
 
-        2. If `execution::set_error(r, e)` is called, calls `execution:;set_error(out_r, e)`.
+        2. If `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
         3. If `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
 
