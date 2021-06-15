@@ -308,8 +308,13 @@ of the work described by a sender, but we have found those algorithms to be insu
 
   1. trying to submit work to CPU execution contexts (e.g. a thread pool) from an accelerator (e.g. a GPU), which assumes that the accelerator threads of execution are as capable as the CPU threads of execution (which they aren't); or
   2. forcibly interleaving two adjacent execution graph nodes that are both executing on an accelerator with glue code that runs on the CPU; this operation is prohibitively expensive on runtimes such as CUDA.
+  3. having to customise each [=fundamental algorithm=] you want to use to compose operations that use an accelerator so that you can
+     avoid problems described in 1. and 2.
 
-Neither of these implementation strategies is acceptable for many classes of parallel runtimes, including accelerator runtimes. Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing a way for senders to advertise what scheduler (and by extension what execution
+A <dfn>fundamental algorithm</dfn> is an algorithm whose default implementation requires the use of receivers
+and `execution::connect()` internally rather than simply being a composition of other algorithms.
+
+None of these implementation strategies are acceptable for many classes of parallel runtimes, including accelerator runtimes. Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing a way for senders to advertise what scheduler (and by extension what execution
 context) they will complete on. Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see [[#design-receivers]]). When further work is
 attached to that sender by invoking sender algorithms, that work will also complete on the appropriate completion scheduler.
 
