@@ -140,7 +140,7 @@ sender auto async_inclusive_scan(std::span<double> input,
        | bulk(input.size(),
            [=](int i, std::vector<double>& partials) {
               int tile = i / tile_size;
-              output[i] = std::move(partials[tile]) + output[i];
+              output[i] = partials[tile] + output[i];
            })
        | then(
            [=](std::vector<double>& partials) {
