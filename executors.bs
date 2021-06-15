@@ -324,7 +324,7 @@ Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing 
 Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
 When further work is attached to that sender by invoking sender algorithms, that work will also complete on the appropriate completion scheduler.
 
-`get_completion_scheduler` is an operation that retrieves the [=completion scheduler=] from a sender. Calling `get_completion_scheduler` on a sender that does not have an completion scheduler is ill-formed. If a scheduler advertises its completion scheduler in this
+`get_completion_scheduler` is a query that retrieves the [=completion scheduler=] from a sender. Calling `get_completion_scheduler` on a sender that does not have an completion scheduler is ill-formed. If a scheduler advertises its completion scheduler in this
 way, that sender <b>must</b> ensure that it [=send|sends=] its values on an execution agent belonging to an execution context represented by a scheduler returned from this function.
 
 <pre highlight="c++">
