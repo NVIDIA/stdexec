@@ -2869,21 +2869,18 @@ but not guaranteed, to start senders.</p>
 <c- p>);</c->
 </pre>
    <p>Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender does not have a <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑤">completion scheduler</a>.</p>
-   <p>TODO: example</p>
    <h4 class="heading settled" data-level="4.10.5" id="design-adapter-into_variant"><span class="secno">4.10.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code></span><a class="self-link" href="#design-adapter-into_variant"></a></h4>
 <pre class="highlight"><c- nl>execution</c-><c- p>:;</c-><c- n>sender</c-> <c- nf>into_variant</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
 <c- p>);</c->
 </pre>
    <p>Returns a sender which sends a variant of tuples of all the possible sets of types sent by the input sender. Senders can send multiple sets of values depending on runtime conditions; this is a helper function that turns them into a single variant value.</p>
-   <p>TODO: example</p>
    <h4 class="heading settled" data-level="4.10.6" id="design-adapter-unschedule"><span class="secno">4.10.6. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>unschedule</c-></code></span><a class="self-link" href="#design-adapter-unschedule"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- n>unschedule</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
 <c- p>);</c->
 </pre>
    <p>Returns a sender which <a data-link-type="dfn" href="#send" id="ref-for-send⑥">sends</a> values equivalent to values sent by the provided sender, but does not have an <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑥">completion scheduler</a>.</p>
-   <p>TODO: example</p>
    <h4 class="heading settled" data-level="4.10.7" id="design-adapter-bulk"><span class="secno">4.10.7. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span><a class="self-link" href="#design-adapter-bulk"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>bulk</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
@@ -2900,7 +2897,6 @@ but not guaranteed, to start senders.</p>
    <p>Returns a sender describing the task of invoking the provided function with the values <a data-link-type="dfn" href="#send" id="ref-for-send⑦">sent</a> by the input sender for every index in the provided shape.</p>
    <p>In this paper, only integral types satisfy the concept of a shape, but future papers will explore bulk shapes of different kinds in more detail.</p>
    <p><code class="highlight"><c- n>lazy_bulk</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
-   <p>XXX TODO: provide an example</p>
    <h4 class="heading settled" data-level="4.10.8" id="design-adapter-split"><span class="secno">4.10.8. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code></span><a class="self-link" href="#design-adapter-split"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>split</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sender</c-><c- p>);</c->
 
@@ -2966,7 +2962,6 @@ but not guaranteed, to start senders.</p>
 </pre>
    <p>Once <code class="highlight"><c- n>ensure_started</c-></code> returns, it is known that the provided sender has been <a data-link-type="dfn" href="#connect" id="ref-for-connect">connected</a> and <code class="highlight"><c- n>start</c-></code> has been called on the resulting operation state (see <a href="#design-states">§ 5.2 Operation states represents work</a>); in other words, the work described by the provided sender has been submitted
 for execution on the appropriate execution contexts. Returns a sender which completes when the provided sender completes and sends values equivalent to those of the provided sender.</p>
-   <p>XXX TODO: provide an example</p>
    <h3 class="heading settled" data-level="4.11" id="design-algorithms"><span class="secno">4.11. </span><span class="content">Proposed set of user-facing sender algorithms</span><a class="self-link" href="#design-algorithms"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-algorithm">sender algorithm</dfn> is a function that takes one or more senders as parameters and does not return a sender.</p>
    <h4 class="heading settled" data-level="4.11.1" id="design-algorithm-start_detached"><span class="secno">4.11.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code></span><a class="self-link" href="#design-algorithm-start_detached"></a></h4>
@@ -2987,7 +2982,6 @@ senders, retrieving the result of the task graph.</p>
    <p>If the provided sender sends an error instead of values, <code class="highlight"><c- n>sync_wait</c-></code> throws that error as an exception, or rethrows the original exception if the error is of type <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-></code>.</p>
    <p>If the provided sender sends the "done" signal instead of values, <code class="highlight"><c- n>sync_wait</c-></code> returns an empty optional.</p>
    <p>For an explanation of the <code class="highlight"><c- k>requires</c-></code> clause, see <a href="#design-typed-issue">§ 6.2.1 Design issue: value_types</a>. That clause also explains another algorithm, built on top of <code class="highlight"><c- n>sync_wait</c-></code>: <code class="highlight"><c- n>sync_wait_with_variant</c-></code>.</p>
-   <p>XXX TODO: provide an example</p>
    <p class="note" role="note"><span>Note:</span> Notice that this function is specified inside <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-></code>, and not inside <code class="highlight"><c- n>execution</c-></code>. This is because <code class="highlight"><c- n>sync_wait</c-></code> has to block the <i>current</i> execution agent, but determining what the current execution agent is is not reliable. Since the standard
 does not specify any functions on the current execution agent other than those in <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-></code>, this is the flavor of this function that is being proposed. If C++ ever obtains fibers, for instance, we expect that a variant of this function called <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_fiber</c-><c- o>::</c-><c- n>sync_wait</c-></code> would be provided. We also expect that runtimes with execution agents that use different synchronization mechanisms than <code class="highlight"><c- n>std</c-><c- o>::</c-><c- kr>thread</c-></code>'s will provide their own flavors of <code class="highlight"><c- n>sync_wait</c-></code> as well (assuming their execution agents have the means
 to block in a non-deadlock manner).</p>
@@ -3003,7 +2997,6 @@ to block in a non-deadlock manner).</p>
 <c- k>auto</c-> <c- n>work</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd</c-><c- p>,</c-> <c- n>fn</c-><c- p>);</c->
 <c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>work</c-><c- p>);</c->
 </pre>
-   <p>TODO: example</p>
    <h2 class="heading settled" data-level="5" id="design-implementer"><span class="secno">5. </span><span class="content">Proposed design - implementer side</span><a class="self-link" href="#design-implementer"></a></h2>
    <h3 class="heading settled" data-level="5.1" id="design-receivers"><span class="secno">5.1. </span><span class="content">Receivers serve as glue between senders</span><a class="self-link" href="#design-receivers"></a></h3>
    <p>A <dfn data-dfn-type="dfn" data-noexport id="receiver">receiver<a class="self-link" href="#receiver"></a></dfn> is a callback that supports more than one channel. In fact, it supports three of them:</p>
@@ -3104,7 +3097,6 @@ equivalent to:</p>
    </ol>
    <p>where <code class="highlight"><i><c- n>Signal</c-></i></code> is one of <code class="highlight"><c- n>set_value</c-></code>, <code class="highlight"><c- n>set_error</c-></code>, or <code class="highlight"><c- n>set_done</c-></code>; for most algorithms, the completion scheduler for <code class="highlight"><c- n>set_value</c-></code> would be used, but for some (like <code class="highlight"><c- n>upon_error</c-></code> or <code class="highlight"><c- n>let_done</c-></code>), one of the others would be used.</p>
    <p>For algorithms which accept concepts other than <code class="highlight"><c- n>sender</c-></code> as their first argument, we propose that the customization scheme remains as it has been in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> so far, except it should also use <code class="highlight"><c- n>tag_invoke</c-></code>.</p>
-   <p>TODO: more example</p>
    <h3 class="heading settled" data-level="5.5" id="design-laziness"><span class="secno">5.5. </span><span class="content">Laziness of operations is defined by algorithms</span><a class="self-link" href="#design-laziness"></a></h3>
    <p>We distinguish two different guarantees about <em>when</em> work is submitted to an execution context:</p>
    <ul>
