@@ -294,7 +294,7 @@ execution::sender auto cont = execution::then(snd, []{
     file << compute_result;
 });
 
-execution::sync_wait(cont);
+this_thread::sync_wait(cont);
 // at this point, "cont" has completed execution
 </pre>
 
@@ -2561,7 +2561,7 @@ namespace std::execution {
 
     2. Otherwise, `tag_invoke(this_thread::sync_wait_with_variant, s)`, if this expression is valid and its type is <code><i>sync-wait-with-variant-type</i>&lt;S></code>.
 
-    3. Otherwise, `execution::sync_wait(execution::into_variant(s))`.
+    3. Otherwise, `this_thread::sync_wait(execution::into_variant(s))`.
 
 4. Any receiver `r` created by an implementation of `sync_wait` and `sync_wait_with_variant` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for the receiver created by the default implementation shall return an
     implementation-defined scheduler that is driven by the waiting thread, such that scheduled tasks run on the thread of the caller.
