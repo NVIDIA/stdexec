@@ -2742,7 +2742,7 @@ that also does not have an associated scheduler.</p>
     <c- k>auto</c-> <c- p>...</c-><c- o>&amp;&amp;</c-> <c- n>values</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender whose <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers④">completion scheduler</a> is the provided scheduler, which <a data-link-type="dfn" href="#send" id="ref-for-send③">sends</a> copies of the provided values.</p>
+   <p>Returns a sender whose <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers④">completion scheduler</a> is the provided scheduler, which <a data-link-type="dfn" href="#send" id="ref-for-send③">sends</a> the provided values in the same manner as <code class="highlight"><c- n>just</c-></code>.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>vals</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-><c- p>(</c->
     <c- n>get_system_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>(),</c->
     <c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c->
