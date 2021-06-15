@@ -488,7 +488,7 @@ execution::sender auto reschedule_just(
 );
 </pre>
 
-Returns a sender whose [=completion scheduler=] is the provided scheduler, which [=send|sends=] copies of the provided values.
+Returns a sender whose [=completion scheduler=] is the provided scheduler, which [=send|sends=] the provided values in the same manner as `just`.
 
 <pre highlight="c++">
 execution::sender auto vals = execution::reschedule_just(
