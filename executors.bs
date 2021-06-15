@@ -650,8 +650,6 @@ execution::sender auto lazy_on(
 
 Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender does not have a [=completion scheduler=].
 
-TODO: example
-
 ### `execution::into_variant` ### {#design-adapter-into_variant}
 
 <pre highlight=c++>
@@ -662,8 +660,6 @@ execution:;sender into_variant(
 
 Returns a sender which sends a variant of tuples of all the possible sets of types sent by the input sender. Senders can send multiple sets of values depending on runtime conditions; this is a helper function that turns them into a single variant value.
 
-TODO: example
-
 ### `execution::unschedule` ### {#design-adapter-unschedule}
 
 <pre highlight="c++">
@@ -673,8 +669,6 @@ execution::sender unschedule(
 </pre>
 
 Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but does not have an [=completion scheduler=].
-
-TODO: example
 
 ### `execution::bulk` ### {#design-adapter-bulk}
 
@@ -697,8 +691,6 @@ Returns a sender describing the task of invoking the provided function with the 
 In this paper, only integral types satisfy the concept of a shape, but future papers will explore bulk shapes of different kinds in more detail.
 
 `lazy_bulk` is **guaranteed** to not begin executing `function` until the returned sender is started.
-
-XXX TODO: provide an example
 
 ### `execution::split` ### {#design-adapter-split}
 
@@ -788,8 +780,6 @@ execution::sender auto ensure_started(
 Once `ensure_started` returns, it is known that the provided sender has been [=connect|connected=] and `start` has been called on the resulting operation state (see [[#design-states]]); in other words, the work described by the provided sender has been submitted
 for execution on the appropriate execution contexts. Returns a sender which completes when the provided sender completes and sends values equivalent to those of the provided sender.
 
-XXX TODO: provide an example
-
 ## Proposed set of user-facing sender algorithms ## {#design-algorithms}
 
 A <dfn>sender algorithm</dfn> is a function that takes one or more senders as parameters and does not return a sender.
@@ -823,8 +813,6 @@ If the provided sender sends the "done" signal instead of values, `sync_wait` re
 
 For an explanation of the `requires` clause, see [[#design-typed-issue]]. That clause also explains another algorithm, built on top of `sync_wait`: `sync_wait_with_variant`.
 
-XXX TODO: provide an example
-
 Note: Notice that this function is specified inside `std::this_thread`, and not inside `execution`. This is because `sync_wait` has to block the <i>current</i> execution agent, but determining what the current execution agent is is not reliable. Since the standard
 does not specify any functions on the current execution agent other than those in `std::this_thread`, this is the flavor of this function that is being proposed. If C++ ever obtains fibers, for instance, we expect that a variant of this function called
 `std::this_fiber::sync_wait` would be provided. We also expect that runtimes with execution agents that use different synchronization mechanisms than `std::thread`'s will provide their own flavors of `sync_wait` as well (assuming their execution agents have the means
@@ -848,8 +836,6 @@ auto snd = execution::schedule(sched);
 auto work = execution::then(snd, fn);
 execution::start_detached(work);
 </pre>
-
-TODO: example
 
 # Proposed design - implementer side # {#design-implementer}
 
@@ -967,8 +953,6 @@ equivalent to:
 where <code><i>Signal</i></code> is one of `set_value`, `set_error`, or `set_done`; for most algorithms, the completion scheduler for `set_value` would be used, but for some (like `upon_error` or `let_done`), one of the others would be used.
 
 For algorithms which accept concepts other than `sender` as their first argument, we propose that the customization scheme remains as it has been in [[P0443R14]] so far, except it should also use `tag_invoke`.
-
-TODO: more example
 
 ## Laziness of operations is defined by algorithms ## {#design-laziness}
 
