@@ -152,7 +152,7 @@ sender auto async_inclusive_scan(scheduler auto sch,
 }
 ```
 
-### Asynchronous dynamically-sized read ### {#async-dynamically-sized-read}
+### Asynchronous dynamically-sized read ### {#example-async-dynamically-sized-read}
 
 ```c++
 // `async_read` takes an input sender which sends a std::span<std::byte> buffer
