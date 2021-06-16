@@ -2219,7 +2219,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#example-async-dynamically-sized-read"><span class="secno">1.3.3</span> <span class="content">Asynchronous dynamically-sized read</span></a>
        </ol>
       <li><a href="#intro-is-not"><span class="secno">1.4</span> <span class="content">What this proposal is <strong>not</strong></span></a>
-      <li><a href="#intro-compare"><span class="secno">1.5</span> <span class="content">What are the major design changes compared to P0443?</span></a>
+      <li><a href="#intro-compare"><span class="secno">1.5</span> <span class="content">Design changes from P0443</span></a>
       <li><a href="#intro-prior-art"><span class="secno">1.6</span> <span class="content">Prior art</span></a>
       <li><a href="#intro-field-experience"><span class="secno">1.7</span> <span class="content">Field experience</span></a>
      </ol>
@@ -2617,7 +2617,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
 to standardize any further facilities.</p>
    <p>This paper is not an alternative design to <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; rather, we have taken the design in the current executors paper, and applied targeted fixes to allow it to fulfill the promises of the sender/receiver model, as well as provide all the facilities we consider
 essential when writing user code using standard execution concepts; we have also applied the guidance of removing one-way executors from the paper entirely, and instead provided an algorithm based around senders that serves the same purpose.</p>
-   <h3 class="heading settled" data-level="1.5" id="intro-compare"><span class="secno">1.5. </span><span class="content">What are the major design changes compared to P0443?</span><a class="self-link" href="#intro-compare"></a></h3>
+   <h3 class="heading settled" data-level="1.5" id="intro-compare"><span class="secno">1.5. </span><span class="content">Design changes from P0443</span><a class="self-link" href="#intro-compare"></a></h3>
    <ol>
     <li data-md>
      <p>The <code class="highlight"><c- n>executor</c-></code> concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.</p>
