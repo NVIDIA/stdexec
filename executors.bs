@@ -130,98 +130,140 @@ See [[#design-sender-factories]], [[#design-sender-adaptors]], and [[#design-sen
 ```c++
 using namespace std::execution;
 
-// get a scheduler from somewhere, e.g. a thread pool
-executor auto sch = get_thread_pool().scheduler();
+executor auto sch = get_thread_pool().scheduler();                            // 1
 
-// describe a chain of dependent work
-sender auto begin = schedule(sch);
-sender auto hi_again = then(begin, []{
-    std::cout << "Hello world! Have an int.";
-    return 13;
-});
-sender auto work = then(hi_again, [](int arg) { return arg + 42; });
+sender auto begin = schedule(sch);                                            // 2
+sender auto hi_again = then(begin, []{                                        // 3
+    std::cout << "Hello world! Have an int.";                                 // 3
+    return 13;                                                                // 3
+});                                                                           // 3
+sender auto add_42 = then(hi_again, [](int arg) { return arg + 42; });        // 4
 
-// submit the work for execution on the pool
-// block the current thread until its completion
-// the return value is a tuple of values being the result of the sender chain
-auto [i] = std::this_thread::sync_wait(work).value();
+auto [i] = std::this_thread::sync_wait(add_42).value();                       // 5
 ```
+
+This example demonstrates the basics of schedulers, senders, and receivers:
+
+1. First we need to get a scheduler from somewhere, such as a thead pool. A scheduler is a lightweight handle to an execution resource.
+2. To start a chain of work on a scheduler, we call [[#design-sender-factory-schedule]], which returns a sender that completes on the scheduler.  sender describes asynchronous work and sends a signal (value, error, or cancellation) to some recipient(s) when that work completes.
+3. We use sender algorithms to produce senders and compose asynchronous work. [[#design-sender-adaptor-then]] is a sender adaptor that takes an input sender and a `std::invocable`, and calls the `std::invocable` on the signal sent by the input sender. The sender returned by `then` sends the result of that invocation. In this case, the input sender came from `schedule`, so its `void`, meaning it won't send us a value, so our `std::invocable` takes no parameters. But we return an `int`, which will be sent to the next recipient.
+4. Now, we add another operation to the chain, again using [[#design-sender-adaptor-then]]. This time, we get sent a value - the `int` from the previous step. We add `42` to it, and then return the result.
+5. Finally, we're ready to submit the entire asynchronous pipeline and wait for its completion. Everything up until this point has been completely asynchronous; the work may not have even started yet. To ensure the work has started and then block pending its completion, we use [[#design-sender-consumer-sync_wait]], which will either return a `std::optional<std::tuple<...>>` with the value sent by the last sender, or an empty `std::optional` if the last sender was cancelled, or it throws an exception if the last sender sent an error.
 
 ### Asynchronous inclusive scan ### {#example-async-inclusive-scan}
 
 ```c++
-sender auto async_inclusive_scan(scheduler auto sch,
-                                 std::span<const double> input,
-                                 std::span<double> output,
-                                 double init,
-                                 std::size_t tile_count)
+using namespace std::execution;
+
+sender auto async_inclusive_scan(scheduler auto sch,                          // 2
+                                 std::span<const double> input,               // 1
+                                 std::span<double> output,                    // 1
+                                 double init,                                 // 1
+                                 std::size_t tile_count)                      // 3
 {
-  std::size_t const tile_size  = (input.size() + tile_count - 1) / tile_count;
+  std::size_t const tile_size = (input.size() + tile_count - 1) / tile_count;
 
-  std::vector<double> partials(tile_count + 1);
-  partials[0] = init;
+  std::vector<double> partials(tile_count + 1);                               // 4
+  partials[0] = init;                                                         // 4
 
-  return transfer_just(sch, std::move(partials))
-       | bulk(tile_count,
-           [=](std::size_t i, std::vector<double>& partials) {
-             auto beginOffset = i * tile_size;
-             auto endOffset = tileOffset + std::min(tile_size, input.size() - beginOffset);
-             partials[i + 1] = *--std::inclusive_scan(input.data() + beginOffset,
-                                                      input.data() + endOffset,
-                                                      output.data() + beginOffset);
-           })
-       | then(
+  return reschedule_just(sch, std::move(partials))                            // 5
+       | bulk(tile_count,                                                     // 6
+           [=](std::size_t i, std::vector<double>& partials) {                // 7
+             auto start = i * tile_size;                                      // 8
+             auto end   = std::min(input.size(), (i + 1) * tile_size);        // 8
+             partials[i + 1] = *--std::inclusive_scan(begin(input) + start,   // 9
+                                                      begin(input) + end,     // 9
+                                                      begin(output) + start); // 9
+           })                                                                 // 10
+       | then(                                                                // 11
            [](std::vector<double>& partials) {
-             std::inclusive_scan(begin(partials), end(partials), begin(partials));
-             return std::move(partials);
+             std::inclusive_scan(begin(partials), end(partials),              // 12
+                                 begin(partials));                            // 12
+             return std::move(partials);                                      // 13
            })
-       | bulk(input.size(),
-           [=](std::size_t i, std::vector<double>& partials) {
-              std::size_t tile = i / tile_size;
-              output[i] = partials[tile] + output[i];
+       | bulk(tile_count,                                                     // 14
+           [=](std::size_t i, std::vector<double>& partials) {                // 14
+             auto start = i * tile_size;                                      // 14
+             auto end   = std::min(input.size(), (i + 1) * tile_size);        // 14
+             std::for_each(output + start, output + end,                      // 14
+               [=] (double& e) { e = partials[i] + e; }                       // 14
+             );
            })
-       | then(
-           [=](std::vector<double>& partials) {
-              return output;
-           });
+       | then(                                                                // 15
+           [=](std::vector<double>& partials) {                               // 15
+             return output;                                                   // 15
+           });                                                                // 15
 }
 ```
+
+This example builds an asynchronous computation of an inclusive scan:
+
+1. It scans a sequence of `double`s (represented as the `std::span<const double>` `input`) and stores the result in another sequence of `double`s (repesented as `std::span<double>` `output`).
+2. It takes a scheduler, which specifies what execution context the scan should be launched on.
+3. It also takes a `tile_count` parameter that controls the number of execution agents that will be spawned.
+4. First we need to allocate temporary storage needed for the algorithm, which we'll do with a `std::vector`, `partials`. We need one `double` of temporary storage for each execution agent we create.
+5. Next we'll create our initial sender with [[#design-sender-factory-reschedule_just]]. This sender will send the temporary storage, which we've moved into the sender. The sender has a completion scheduler of `sch`, which means the next item in the chain will use `sch`.
+6. Senders and sender adaptors support composition via `operator|`, similar to C++ ranges. We'll use `operator|` to attach the next piece of work, which will spawn `tile_count` execution agents using [[#design-sender-adaptor-bulk]] (see [[#design-pipeable]] for details).
+7. Each agent will call a `std::invocable`, passing it two arguments. The first is the agent's index (`i`) in the [[#design-sender-adaptor-bulk]] operation, in this case a unique integer in `[0, tile_count)`. The second argument is what the input sender sent - the temporary storage.
+8. We start by computing the start and end of the range of input and output elements that this agent is responsible for, based on our agent index.
+9. Then we do a sequential `std::inclusive_scan` over our elements. We store the scan result for our last element, which is the sum of all of our elements, in our temporary storage `partials`.
+10. After all computation in that initial [[#design-sender-adaptor-bulk]] pass has completed, every one of the spawned execution agents will have written the sum of its elements into its slot in `partials`.
+11. Now we need to scan all of the values in `partials`. We'll do that with a single execution agent which will execute after the [[#design-sender-adaptor-bulk]] completes. We create that execution agent with [[#design-sender-adaptor-then]].
+12. [[#design-sender-adaptor-then]] takes an input sender and an `std::invocable` and calls the `std::invocable` with the value sent by the input sender. Inside our `std::invocable`, we call `std::inclusive_scan` on `partials`, which the input senders will send to us.
+13. Then we return `partials`, which the next phase will need.
+14. Finally we do another [[#design-sender-adaptor-bulk]] of the same shape as before. In this [[#design-sender-adaptor-bulk]], we will use the scanned values in `partials` to integrate the sums from other tiles into our elements, completing the inclusive scan.
+15. `async_inclusive_scan` returns a sender that sends the output `std::span<double>`. A consumer of the algorithm can chain additional work that uses the scan result. At the point at which `async_inclusive_scan` returns, the computation may not have completed. In fact, it may not have even started.
 
 ### Asynchronous dynamically-sized read ### {#example-async-dynamically-sized-read}
 
 ```c++
-// `async_read` takes an input sender which sends a std::span<std::byte> buffer
-// to be filled, and returns a sender that completes when the buffer is filled
-// and sends the number of bytes. It's a pipeable sender adaptor CPO with the
-// following signature:
-sender auto async_read(sender auto buffer, auto handle);
+using namespace std::execution;
 
-struct dynamic_buffer {
-  std::unique_ptr<std::byte[]> data;
-  std::size_t size;
-};
+sender auto async_read(sender auto buffer, auto handle);                      // 1
 
-sender auto async_read_array(auto handle) {
-  return let_value(just(dynamic_buffer{}),
-    [] (dynamic_buffer& buffer) {
-      return just(std::as_writeable_bytes(std::span(&buffer.size, 1))
-           | async_read(handle)
-           | then(
-               [&] (std::size_t bytes_read) {
-                 assert(bytes_read == sizeof(buffer.size));
-                 buffer.data = std::make_unique(new std::byte[buffer.size]);
-                 return std::span(buffer.data.get(), buffer.size);
-               }
-           | async_read(handle)
-           | then(
-               [&] (std::size_t bytes_read) {
-                 assert(bytes_read == buffer.size);
-                 return std::move(buffer.data);
-               }
-  });
+struct dynamic_buffer {                                                       // 3
+  std::unique_ptr<std::byte[]> data;                                          // 3
+  std::size_t size;                                                           // 3
+};                                                                            // 3
+
+sender auto async_read_array(auto handle) {                                   // 2
+  return just(dynamic_buffer{})                                               // 4
+       | let_value([] (dynamic_buffer& buf) {                                 // 5
+           return just(std::as_writeable_bytes(std::span(&buf.size, 1))       // 6
+                | async_read(handle)                                          // 7
+                | then(                                                       // 8
+                    [&] (std::size_t bytes_read) {                            // 9
+                      assert(bytes_read == sizeof(buf.size));                 // 10
+                      buf.data = std::make_unique(new std::byte[buf.size]);   // 11
+                      return std::span(buf.data.get(), buf.size);             // 12
+                    }
+                | async_read(handle)                                          // 13
+                | then(
+                    [&] (std::size_t bytes_read) {
+                      assert(bytes_read == buf.size);                         // 14
+                      return std::move(buf);                                  // 15
+                    }
+       });
 }
 ```
 
+This example demonstrates a common asynchronous I/O pattern - reading a payload of a dynamic size by first reading the size, then reading the number of bytes specified by the size:
+
+1. `async_read` is a pipeable sender adaptor. It's a customization point object, but this is what it's call signature looks like. It takes a sender parameter which must send an input buffer in the form of a `std::span<std::byte>`, and a handle to an I/O context. It will asynchronously read into the input buffer, up to the size of the `std::span`. It returns a sender which will send the number of bytes read once the read completes.
+2. `async_read_array` takes an I/O handle and reads a size from it, and then a buffer of that many bytes. It returns a sender that sends a `dynamic_buffer` object that owns the data that was sent.
+3. `dynamic_buffer` is an aggregate struct that contains a `std::unique_ptr<std::byte[]>` and a size.
+4. The first thing we do inside of `async_read_array` is create a sender that will send a new, empty `dynamic_array` object using [[#design-sender-factory-just]]. We can attach more work to the pipeline using `operator|` composition (see [[#design-pipeable]] for details).
+5. We need the lifetime of this `dynamic_array` object to last for the entire pipeline. So, we use [[#design-adaptor-let_value]], which takes an input sender and a `std::invocable` that must return a sender itself. [[#design-adaptor-let_value]] sends the value from the input sender to the `std::invocable`. Critically, the lifetime of the sent object will last until the sender returned by the `std::invocable` completes.
+6. Inside of the [[#design-adaptor-let_value]] `std::invocable`, we have the rest of our logic. First, we want to initiate an `async_read` of the buffer size. To do that, we need to send a `std::span` pointing to `buf.size`. We can do that with [[#design-sender-factory-just]].
+7. We chain the `async_read` onto the [[#design-sender-factory-just]] sender with `operator|`.
+8. Next, we pipe a `std::invocable` that will be invoked after the `async_read` completes using [[#design-sender-adaptor-then]].
+9. That `std::invocable` gets sent the number of bytes read.
+10. We need to check that the number of bytes read is what we expected.
+11. Now that we have read the size of the data, we can allocate storage for it.
+12. We return a `std::span<std::byte>` to the storage for the data from the `std::invocable`. This will be sent to the next recipient in the pipeline.
+13. And that recipient will be another `async_read`, which will read the data.
+14. Once the data has been read, in another [[#design-sender-adaptor-then]], we confirm that we read the right number of bytes.
+15. Finally, we move out of and return our `dynamic_buffer` object. It will get sent by the sender returned by `async_read_array`. We can attach more things to that sender to use the data in the buffer.
 
 ## What this proposal is **not** ## {#intro-is-not}
 
@@ -752,7 +794,7 @@ execution::sender auto lazy_let_error(
 </pre>
 
 `let_value` is very similar to `then`: when it is started, it invokes the provided function with the values [=send|sent=] by the input sender as arguments. However, where the sender returned from `then` sends exactly what that function ends up returning -
-`let_value` requires that the function return a sender, and the sender returned by `let_value` sends the values sent by the sender returned from the callback. (In the futures world, we would call this "future unwrapping".)
+`let_value` requires that the function return a sender, and the sender returned by `let_value` sends the values sent by the sender returned from the callback. This is similar to the notion of "future unwrapping" in future/promise-based frameworks.
 
 `lazy_let_value` is **guaranteed** to not begin executing `function` until the returned sender is started.
 
