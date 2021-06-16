@@ -1376,7 +1376,7 @@ Insert this section as a new subclause between Header `<stop_token>` synopsis <b
 <blockquote>
 1. The `stoppable_token` concept checks for the basic interface of a “stop token” which is copyable and allows polling to see if stop has been requested and also whether a stop request is possible. It also requires an associated nested template-type-alias,
     `T::callback_type<CB>`, that identifies the stop-callback type to use to register a callback to be executed if a stop-request is ever made on a stoppable_token of type, `T`. The `stoppable_token_for` concept checks for a stop token type compatible with a given
-    callback type. The `unstoppable_token` concept checks for a stop token type that does not allow stopiing.
+    callback type. The `unstoppable_token` concept checks for a stop token type that does not allow stopping.
 
 <pre>
 template&lt;typename T>
