@@ -2267,8 +2267,8 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <ol class="toc">
         <li><a href="#design-sender-adaptor-transfer"><span class="secno">4.12.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span></a>
         <li><a href="#design-sender-adaptor-then"><span class="secno">4.12.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-let"><span class="secno">4.12.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-let①"><span class="secno">4.12.4</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-upon"><span class="secno">4.12.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-let"><span class="secno">4.12.4</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span></a>
         <li><a href="#design-sender-adaptor-on"><span class="secno">4.12.5</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code></span></a>
         <li><a href="#design-sender-adaptor-into_variant"><span class="secno">4.12.6</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code></span></a>
         <li><a href="#design-sender-adaptor-unschedule"><span class="secno">4.12.7</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>unschedule</c-></code></span></a>
@@ -3031,7 +3031,7 @@ but not guaranteed, to start senders.</p>
 <c- c1>// followed by printing all of the values sent by pred</c->
 </pre>
    <p>This adaptor is included as it is necessary for writing any sender code that actually performs a useful function.</p>
-   <h4 class="heading settled" data-level="4.12.3" id="design-sender-adaptor-let"><span class="secno">4.12.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span><a class="self-link" href="#design-sender-adaptor-let"></a></h4>
+   <h4 class="heading settled" data-level="4.12.3" id="design-sender-adaptor-upon"><span class="secno">4.12.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span><a class="self-link" href="#design-sender-adaptor-upon"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>upon_error</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>errors</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
@@ -3053,7 +3053,7 @@ but not guaranteed, to start senders.</p>
 <c- p>);</c->
 </pre>
    <p><code class="highlight"><c- n>upon_error</c-></code> and <code class="highlight"><c- n>upon_done</c-></code> are similar to <code class="highlight"><c- n>then</c-></code>, but where <code class="highlight"><c- n>then</c-></code> works with values sent by the input sender, <code class="highlight"><c- n>upon_error</c-></code> works with errors, and <code class="highlight"><c- n>upon_done</c-></code> is invoked when the "done" signal is sent.</p>
-   <h4 class="heading settled" data-level="4.12.4" id="design-sender-adaptor-let①"><span class="secno">4.12.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span><a class="self-link" href="#design-sender-adaptor-let①"></a></h4>
+   <h4 class="heading settled" data-level="4.12.4" id="design-sender-adaptor-let"><span class="secno">4.12.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span><a class="self-link" href="#design-sender-adaptor-let"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>let_value</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
