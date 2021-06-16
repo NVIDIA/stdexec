@@ -3641,7 +3641,7 @@ the shared stop state.</p>
     <li data-md>
      <p>None of a scheduler’s copy constructor, destructor, equality comparison, or <code class="highlight"><c- n>swap</c-></code> operations shall exit via an exception.</p>
     <li data-md>
-     <p>None of these operations, nor a scheduler type’s <code class="highlight"><c- n>schedule</c-></code> function, or a call to a scheduler type’s query functions (<a href="#spec-execution.scheduler.queries"></a>) shall introduce data races as a result of concurrent invocations of thos functions from different
+     <p>None of these operations, nor a scheduler type’s <code class="highlight"><c- n>schedule</c-></code> function, shall introduce data races as a result of concurrent invocations of thos functions from different
 threads.</p>
     <li data-md>
      <p>For any two (possibly const) values <code class="highlight"><c- n>s1</c-></code> and <code class="highlight"><c- n>s2</c-></code> of some scheduler type <code class="highlight"><c- n>S</c-></code>, <code class="highlight"><c- n>s1</c-> <c- o>==</c-> <c- n>s2</c-></code> shall return <code class="highlight">true</code> only if both <code class="highlight"><c- n>s1</c-></code> and <code class="highlight"><c- n>s2</c-></code> are handles to the same associated execution context.</p>
