@@ -2274,7 +2274,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#design-adapter-ensure_started"><span class="secno">4.13.11</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code></span></a>
        </ol>
       <li>
-       <a href="#design-algorithms"><span class="secno">4.14</span> <span class="content">Proposed user-facing sender algorithms</span></a>
+       <a href="#design-sender-consumers"><span class="secno">4.14</span> <span class="content">Proposed user-facing sender consumers</span></a>
        <ol class="toc">
         <li><a href="#design-algorithm-start_detached"><span class="secno">4.14.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code></span></a>
         <li><a href="#design-algorithm-sync_wait"><span class="secno">4.14.2</span> <span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code></span></a>
@@ -2413,7 +2413,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <h2 class="heading settled" data-level="1" id="intro"><span class="secno">1. </span><span class="content">Introduction</span><a class="self-link" href="#intro"></a></h2>
    <p>This paper proposes a self-contained design for an C++ executors, a series of abstractions for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> and its companion papers.</p>
    <h3 class="heading settled" data-level="1.1" id="example"><span class="secno">1.1. </span><span class="content">Examples</span><a class="self-link" href="#example"></a></h3>
-   <p>See <a href="#design-factories">§ 4.12 Proposed user-facing sender factories</a>, <a href="#design-adapters">§ 4.13 Proposed user-facing sender adapters</a>, and <a href="#design-algorithms">§ 4.14 Proposed user-facing sender algorithms</a> for short explanations of the algorithms used in these code examples.</p>
+   <p>See <a href="#design-factories">§ 4.12 Proposed user-facing sender factories</a>, <a href="#design-adapters">§ 4.13 Proposed user-facing sender adapters</a>, and <a href="#design-sender-consumers">§ 4.14 Proposed user-facing sender consumers</a> for short explanations of the algorithms used in these code examples.</p>
    <h4 class="heading settled" data-level="1.1.1" id="example-hello-world"><span class="secno">1.1.1. </span><span class="content">Hello world</span><a class="self-link" href="#example-hello-world"></a></h4>
 <pre class="language-c++ highlight"><c- n>using</c-> <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
 
@@ -2531,7 +2531,7 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>The places of execution of user code in P0443 weren’t precisely defined, whereas they are in this paper. See <a href="#design-propagation">§ 4.4 Senders can propagate completion schedulers</a>.</p>
     <li data-md>
-     <p>P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See <a href="#design-factories">§ 4.12 Proposed user-facing sender factories</a>, <a href="#design-adapters">§ 4.13 Proposed user-facing sender adapters</a>, and <a href="#design-algorithms">§ 4.14 Proposed user-facing sender algorithms</a>.</p>
+     <p>P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See <a href="#design-factories">§ 4.12 Proposed user-facing sender factories</a>, <a href="#design-adapters">§ 4.13 Proposed user-facing sender adapters</a>, and <a href="#design-sender-consumers">§ 4.14 Proposed user-facing sender consumers</a>.</p>
     <li data-md>
      <p>P0443 did not specify the semantics of variously qualified <code class="highlight"><c- n>connect</c-></code> overloads; this paper does. See <a href="#design-shot">§ 4.6 Senders can be either multi-shot or single-shot</a>.</p>
     <li data-md>
@@ -2602,7 +2602,7 @@ sender is said to <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id=
    <p>The primary defining operation of senders is <a href="#design-connect">§ 5.3 execution::connect</a>; this function, however, is not a user-facing API; it is used to facilitate communication between senders and various sender algorithms (or other senders), but end user code is not expected to invoke
 it directly.</p>
    <p>The way user code is expected to interact with senders is by using said sender algorithms.
-This paper proposes an initial set of such algorithms, which are described in <a href="#design-factories">§ 4.12 Proposed user-facing sender factories</a>, <a href="#design-adapters">§ 4.13 Proposed user-facing sender adapters</a>, and <a href="#design-algorithms">§ 4.14 Proposed user-facing sender algorithms</a>.
+This paper proposes an initial set of such algorithms, which are described in <a href="#design-factories">§ 4.12 Proposed user-facing sender factories</a>, <a href="#design-adapters">§ 4.13 Proposed user-facing sender adapters</a>, and <a href="#design-sender-consumers">§ 4.14 Proposed user-facing sender consumers</a>.
 For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->
@@ -3083,7 +3083,7 @@ but not guaranteed, to start senders.</p>
 </pre>
    <p>Once <code class="highlight"><c- n>ensure_started</c-></code> returns, it is known that the provided sender has been <a data-link-type="dfn" href="#connect" id="ref-for-connect">connected</a> and <code class="highlight"><c- n>start</c-></code> has been called on the resulting operation state (see <a href="#design-states">§ 5.2 Operation states represents work</a>); in other words, the work described by the provided sender has been submitted
 for execution on the appropriate execution contexts. Returns a sender which completes when the provided sender completes and sends values equivalent to those of the provided sender.</p>
-   <h3 class="heading settled" data-level="4.14" id="design-algorithms"><span class="secno">4.14. </span><span class="content">Proposed user-facing sender algorithms</span><a class="self-link" href="#design-algorithms"></a></h3>
+   <h3 class="heading settled" data-level="4.14" id="design-sender-consumers"><span class="secno">4.14. </span><span class="content">Proposed user-facing sender consumers</span><a class="self-link" href="#design-sender-consumers"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-consumer">sender consumer</dfn> is an operation that takes one or more senders, which it may <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, as parameters, and does not return a sender.</p>
    <h4 class="heading settled" data-level="4.14.1" id="design-algorithm-start_detached"><span class="secno">4.14.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code></span><a class="self-link" href="#design-algorithm-start_detached"></a></h4>
 <pre class="highlight"><c- b>void</c-> <c- k>auto</c-> <c- n>start_detached</c-><c- p>(</c->
