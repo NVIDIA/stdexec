@@ -955,8 +955,8 @@ A <dfn>receiver</dfn> is a callback that supports more than one channel. In fact
 
 * `set_value`, which is the moral equivalent of an `operator()` or a function call, which signals successful completion of the operation its execution depends on;
 * `set_error`, which signals that an error has happened during scheduling of the current work, executing the current work, or at some earlier point in the sender chain; and
-* `set_done`, which signals that the *operation its execution depends on* requests that any work that has not started yet should not start, because it is not needed (this is cancellation, but propagating from the root of the execution tree down to its leaf nodes, as
-    opposed to propagating from the leaf nodes up to the root - so **not** `some_sender.cancel()`).
+* `set_done`, which signals that the operation completed without succeeding (`set_value`) and without failing (`set_error`). This result is often used to indicate that the operation stopped early, typically because it was asked to do so because the result is no
+    longer needed.
 
 Exactly one of these channels must be successfully (i.e. without an exception being thrown) invoked on a receiver before it is destroyed; if a call to `set_value` failed with an exception, either `set_error` or `set_done` must be invoked on the same receiver. These
 requirements are know as the <dfn>receiver contract</dfn>.
@@ -1082,7 +1082,7 @@ As has been described in [[#design-sender-adaptors]], whether a sender adaptor i
 Because lazy senders fundamentally *describe* work, instead of describing or representing the submission of said work to an execution context, and thanks to the flexibility of the customization of most sender algorithms, they provide an opportunity for fusing
 multiple algorithms in a sender chain together, into a single function that can later be submitted for execution by an execution context. There are two ways this can happen.
 
-The first (and most common) way for such optimizations to happen is thanks to the structure of the implementation: because all the work is done within callbacks invoked on the completion of an earlier sender, recursively up to the root of computation,
+The first (and most common) way for such optimizations to happen is thanks to the structure of the implementation: because all the work is done within callbacks invoked on the completion of an earlier sender, recursively up to the original source of computation,
 the compiler is able to see a chain of work described using senders as a tree of tail calls, allowing for inlining and removal of most of the sender machinery. In fact, when work is not submitted to execution contexts outside of the current thread of execution,
 compilers are capable of removing the senders abstraction entirely, while still allowing for composition of functions across different parts of a program.
 
