@@ -1568,6 +1568,14 @@ pre {
   margin-top: 0px;
   margin-bottom: 0px;
 }
+table, th, tr, td {
+  border: 2px solid black !important;
+}
+@media (prefers-color-scheme: dark) {
+  table, th, tr, td {
+    border: 2px solid white !important;
+  }
+}
 .ins, ins, ins *, span.ins, span.ins * {
   background-color: rgb(200, 250, 200);
   color: rgb(0, 136, 0);
@@ -2223,6 +2231,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <a href="#design-intro"><span class="secno">3</span> <span class="content">Proposed design - introduction</span></a>
      <ol class="toc">
       <li><a href="#design-conventions"><span class="secno">3.1</span> <span class="content">Conventions</span></a>
+      <li><a href="#design-queries-and-operations"><span class="secno">3.2</span> <span class="content">Queries and operations</span></a>
      </ol>
     <li>
      <a href="#design-user"><span class="secno">4</span> <span class="content">Proposed design - user side</span></a>
@@ -2565,6 +2574,9 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>None of the algorithm names proposed here are names that we are particularly attached to; consider the names of the algorithms to be reasonable placeholders that can freely be changed, should the committee want to do so.</p>
    </ol>
+   <h3 class="heading settled" data-level="3.2" id="design-queries-and-operations"><span class="secno">3.2. </span><span class="content">Queries and operations</span><a class="self-link" href="#design-queries-and-operations"></a></h3>
+   <p>A <dfn data-dfn-type="dfn" data-noexport id="query">query<a class="self-link" href="#query"></a></dfn> is a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> that takes some set of objects (usually one) as parameters and returns facts about those objects without modifying them. Queries are usually customization point objects, but in some cases may be functions.</p>
+   <p>A <dfn data-dfn-type="dfn" data-noexport id="operation">operation<a class="self-link" href="#operation"></a></dfn> is a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> that takes some set of objects as parameters and causes those objects to do something. Operations are usually customization point objects, but in some cases may be functions.</p>
    <h2 class="heading settled" data-level="4" id="design-user"><span class="secno">4. </span><span class="content">Proposed design - user side</span><a class="self-link" href="#design-user"></a></h2>
    <h3 class="heading settled" data-level="4.1" id="design-contexts"><span class="secno">4.1. </span><span class="content">Execution contexts describe the place of execution</span><a class="self-link" href="#design-contexts"></a></h3>
    <p>An <dfn data-dfn-type="dfn" data-noexport id="execution-context">execution context<a class="self-link" href="#execution-context"></a></dfn> is a resource that represents the <em>place</em> where execution will happen. This could be a concrete resource - like a specific thread pool object, or a GPU - or a more abstract one, like the current thread of execution. Execution contexts
@@ -4882,8 +4894,10 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
    <li><a href="#connect">connect</a><span>, in §5.3</span>
    <li><a href="#execution-context">execution context</a><span>, in §4.1</span>
    <li><a href="#multi-shot-sender">multi-shot sender</a><span>, in §4.6</span>
+   <li><a href="#operation">operation</a><span>, in §3.2</span>
    <li><a href="#operation-state">operation state</a><span>, in §5.2</span>
    <li><a href="#potentially-eager-submission">potentially eager submission</a><span>, in §5.5</span>
+   <li><a href="#query">query</a><span>, in §3.2</span>
    <li><a href="#receiver">receiver</a><span>, in §5.1</span>
    <li><a href="#receiver-contract">receiver contract</a><span>, in §5.1</span>
    <li><a href="#scheduler">scheduler</a><span>, in §4.2</span>
