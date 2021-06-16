@@ -1241,9 +1241,9 @@ Using `tag_invoke` has the following benefits:
 
 Much of this wording follows the wording of [[P0443R14]].
 
-[[#spec-utilities]] is meant to be a diff relative to the wording of the <b>[utilities]</b> clause of [[N4885]]. This diff imports changes from [[P1895R0]].
+[[#spec-utilities]] is meant to be a diff relative to the wording of the <b>[utilities]</b> clause of [[N4885]]. This diff applies changes from [[P1895R0]].
 
-[[#spec-thread]] is meant to be a diff relative to the wording of the <b>[thread]</b> clause of [[N4885]]. This diff imports changes from [[P2175R0]].
+[[#spec-thread]] is meant to be a diff relative to the wording of the <b>[thread]</b> clause of [[N4885]]. This diff applies changes from [[P2175R0]].
 
 [[#spec-execution]] is meant to be added as a new library clause to the working draft of C++.
 
@@ -1304,6 +1304,9 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
 </ins>
 
 # Thread support library <b>[thread]</b> # {#spec-thread}
+
+Note: The specification in this section is incomplete; it does not provide an API specification for the new types added into `<stop_token>`. For a less formal specification of the missing pieces, see the "Proposed Changes" section of [[P2175R0]]. A future revision
+of this paper will contain a full specification for the new types.
 
 ## Stop tokens <b>[thread.stoptoken]</b> ## {#spec-thread.stoptoken}
 
