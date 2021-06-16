@@ -93,7 +93,33 @@ div.newnumbered li:before {
 
 # Introduction # {#intro}
 
-This paper proposes a self-contained design for a Standard C++ framework for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in [[P0443R14]] and its companion papers.
+This paper proposes a self-contained design for a Standard C++ framework for managing asynchronous execution on generic execution contexts. It is based on the ideas in [[P0443R14]] and its companion papers.
+
+## Motivation ## {#motivation}
+
+Today, C++ software is increasingly asynchronous and parallelism, a trend that is likely to only continue going forward.
+Asynchrony and parallelism appears everywhere, from processor hardware interfaces, to networking, to file I/O, to GUIs, to accelerators.
+Every C++ domain and every platform need to deal with asynchrony and parallelism, from scientific computing to video games to financial services, from the smallest mobile devices to your laptop to GPUs in the world's fastest supercomputer.
+
+While the C++ Standard Library has a rich set concurrency primitives (`std::atomic`, `std::mutex`, `std::counting_semaphore`, etc) and lower level building blocks (`std::thread`, etc), we lack a Standard vocabulary and framework for asynchrony and parallelism that C++ programmers desperately need.
+`std::async`/`std::future`/`std::promise, C++11's intended exposure for asynchrony, is inefficient, hard to use correctly, and severely lacking in genericity, making it unusable in many contexts.
+We introduced parallel algorithms to the C++ Standard Library in C++17, and while they are an excellent start, they are all inherently synchronous and not composable.
+
+This paper proposes a Standard C++ model for asynchrony, based around three key abstractions: schedulers, senders, and receivers, and a set of customizable asynchronous algorithms.
+
+## Priorities ## {#priorities}
+
+* Be composable and generic, allowing users to write code that can be used with many different types of execution contexts.
+* Encapsulate common asynchronous patterns in customizable and reusable algorithms, so users don't have to invent things themselves.
+* Make it easy to be correct by construction.
+* Support both lazy and eager execution in a way that does not compromise the efficiency of either and allows users to write code that is agnostic to eagerness.
+* Support the diversity of execution contexts and execution agents, because not all execution agents are created equal; some are less capable than others, but not less important.
+* Allow everything to be customized by an execution context, including transfer to other execution contexts, but don't require that execution contexts customize everything.
+* Care about all reasonable use cases, domains and platforms.
+* Errors must be propagated, but error handling must not present a burden.
+* Support cancellation, which is not an error.
+* Have clear and concise answers for where things execute.
+* Be able to manage and terminate the lifetimes of objects asynchronously.
 
 ## Examples ## {#example}
 
@@ -196,17 +222,6 @@ sender auto async_read_array(auto handle) {
 }
 ```
 
-## What this proposal is ## {#intro-is}
-
-This paper describes a design for a complete, self-contained library providing precise control for code execution on varying execution contexts in C++. This paper should be considered as a full design on its own, based heavily on prior papers that have been seen and
-discussed by the committee.
-
-We are aiming at satisfying all the promises that have been given when the sender/receiver model has been proposed and adopted by SG1, most importantly that:
-
-1. sender algorithms will allow for customization of their behavior based on the scheduler they are invoked for; and
-2. the sender/receiver model is a replacement for two-way executors, which provided precise controls over places of execution of user code.
-
-We believe that this aim has been achieved by the design proposed here.
 
 ## What this proposal is **not** ## {#intro-is-not}
 
