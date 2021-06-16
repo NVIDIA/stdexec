@@ -1468,8 +1468,12 @@ namespace std::execution {
     concept typed_sender = <i>see-below</i>;
 
   // [execution.sender.traits], sender traits
+  inline namespace <i>unspecified</i> {
+    struct sender_base {};
+  }
+
   template&lt;class S>
-    struct sender_traits; // TODO
+    struct sender_traits;
 
   inline namespace <i>unspecified</i> {
     // [execution.sender.connect], the connect sender algorithm
@@ -1789,8 +1793,8 @@ namespace std::execution {
     template&lt;class S>
       concept <i>has-sender-types</i> = // exposition only
         requires {
-          typename has-value-types&lt;S::template value_types>;
-          typename has-error-types&lt;S::template error_types>;
+          typename <i>has-value-types</i>&lt;S::template value_types>;
+          typename <i>has-error-types</i>&lt;S::template error_types>;
           typename bool_constant&lt;S::sends_done>;
         };
 
@@ -1801,6 +1805,54 @@ namespace std::execution {
     </pre>
 
 ### Sender traits <b>[execution.sender.traits]</b> ### {#spec-execution.sender.traits}
+
+1. The class `sender_base` is used as a base class to tag sender types which do not expose member templates `value_types`, `error_types`, and a static member constant expression `sends_done`.
+
+2. The class template `sender_traits` is used to query a sender type for facts associated with the signal it sends.
+
+3. The primary class template `sender_traits<S>` is defined as if inheriting from an implementation-defined class template <code><i>sender-traits-base</i>&lt;S></code> defined as follows:
+
+    1. If <code><i>has-sender-types</i>&lt;S></code> is `true`, then <code><i>sender-traits-base</i>&lt;S></code> is equivalent to:
+
+        <pre highlight=c++>
+        template&lt;class S>
+          struct <i>sender-traits-base</i> {
+            template&lt;template&lt;class...> class Tuple, template&lt;class...> class Variant>
+              using value_types = typename S::template value_types&lt;Tuple, Variant>;
+
+            template&lt;template&lt;class...> class Variant>
+              using error_types = typename S::template error_types&lt;Variant>;
+
+            static constexpr bool sends_done = S::sends_done;
+          };
+        </pre>
+
+    2. Otherwise, if `derived_from<S, sender_base>` is `true`, then <code><i>sender-traits-base&lt;S></i></code> is equivalent to
+
+        <pre highlight=c++>
+        template&lt;class S>
+          struct <i>sender-traits-base</i> {};
+        </pre>
+
+    3. Otherwise, <code><i>sender-traits-base</i>&lt;S></code> is equivalent to
+
+        <pre highlight=c++>
+        template&lt;class S>
+          struct <i>sender-traits-base</i> {
+            using __unspecialized = void; // exposition only
+          };
+        </pre>
+
+4. If `sender_traits<S>::value_types<Tuple, Variant>` for some sender type `S` is well formed, it shall be a type `Variant<Tuple<Args0..., Args1..., ..., ArgsN...>>`, where the type packs `Args0` through `ArgsN` are the packs of types the sender `S` passes as
+    arguments to `execution::set_value` after a receiver object. If such sender `S` invokes `execution::set_value(r, args...)` for some receiver `r`, where `decltype(args)` is not one of the type packs `Args0` through `ArgsN`, the program is ill-formed with no
+    diagnostic required.
+
+5. If `sender_traits<S>::error_types<Variant>` for some sender type `S` is well formed, it shall be a type `Variant<E0, E1, ..., EN>`, where the types `E0` through `EN` are the types the sender `S` passes as arguments to `execution::set_error` after a receiver
+    object. If such sender `S` invokes `execution::set_error(r, e)` for some receiver `r`, where `decltype(e)` is not one of the types `E0` through `EN`, the program is ill-formed with no diagnostic required.
+
+6. If `sender_traits<S>::sends_done` is well formed and `true`, and such sender `S` invokes `execution::set_done(r)` for some receiver `r`, the program is ill-formed with no diagnostic required.
+
+7. Users may specialize `sender_traits` on program-defined types.
 
 ### Connect sender algorithm <b>[execution.sender.connect]</b> ### {#spec-execution.sender.connect}
 
