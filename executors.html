@@ -3311,7 +3311,7 @@ parameters of a type):</p>
 <c- p>{</c->
     <c- c1>// return a cuda sender representing a bulk kernel launch</c->
 <c- p>}</c->
-<c- p>}</c->
+<c- p>}</c-> <c- c1>// namespace cuda::for_adl_purposes</c->
 </pre>
    <p>However, if the input sender is not just a <code class="highlight"><c- n>then_sender_adaptor</c-></code> like in the example above, but another sender that overrides <code class="highlight"><c- n>bulk</c-></code> by itself, as a member function, because its author believes they know an optimization for bulk - the specialization above will no
 longer be selected, because a member function of the first argument is a better match than the ADL-found overload.</p>
