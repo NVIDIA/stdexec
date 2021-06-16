@@ -747,7 +747,7 @@ execution::sender auto gpu_task = execution::transfer(cpu_task, gpu_sched);
 // gpu_task describes the transition of the task graph described by cpu_task to the gpu
 </pre>
 
-### `execution::then`, `execution::upon_error`, `execution::upon_done` ### {#design-sender-adaptor-then}
+### `execution::then` ### {#design-sender-adaptor-then}
 
 <pre highlight="c++">
 execution::sender auto then(
@@ -759,33 +759,11 @@ execution::sender auto lazy_then(
     execution::sender auto input,
     std::invocable<<i>values-sent-by(input)</i>...> function
 );
-
-execution::sender auto upon_error(
-    execution::sender auto input,
-    std::invocable<<i>errors-sent-by(input)</i>...> function
-);
-
-execution::sender auto lazy_upon_error(
-    execution::sender auto input,
-    std::invocable<<i>errors-sent-by(input)</i>...> function
-);
-
-execution::sender auto upon_error(
-    execution::sender auto input,
-    std::invocable<> function
-);
-
-execution::sender auto lazy_upon_error(
-    execution::sender auto input,
-    std::invocable<> function
-);
 </pre>
 
 `then` returns a sender describing the task graph described by the input sender, with an added node of invoking the provided function with the values [=send|sent=] by the input sender as arguments.
 
 `lazy_then` is **guaranteed** to not begin executing `function` until the returned sender is started.
-
-`upon_error` and `upon_done` are similar to `then`, but where `then` works with values sent by the input sender, `upon_error` works with errors, and `upon_done` is invoked when the "done" signal is sent.
 
 <pre highlight="c++">
 execution::sender auto input = get_input();
@@ -798,7 +776,33 @@ execution::sender auto snd = execution::then(input, [](auto... args) {
 
 This adaptor is included as it is necessary for writing any sender code that actually performs a useful function.
 
-### `execution::let_value`, `execution::let_error`, `execution::let_done` ### {#design-sender-adaptor-let}
+### `execution::upon_*` ### {#design-sender-adaptor-let}
+
+<pre highlight="c++">
+execution::sender auto upon_error(
+    execution::sender auto input,
+    std::invocable<<i>errors-sent-by(input)</i>...> function
+);
+
+execution::sender auto lazy_upon_error(
+    execution::sender auto input,
+    std::invocable<<i>errors-sent-by(input)</i>...> function
+);
+
+execution::sender auto upon_error(
+    execution::sender auto input,
+    std::invocable<> function
+);
+
+execution::sender auto lazy_upon_error(
+    execution::sender auto input,
+    std::invocable<> function
+);
+</pre>
+
+`upon_error` and `upon_done` are similar to `then`, but where `then` works with values sent by the input sender, `upon_error` works with errors, and `upon_done` is invoked when the "done" signal is sent.
+
+### `execution::let_*` ### {#design-sender-adaptor-let}
 
 <pre highlight="c++">
 execution::sender auto let_value(
