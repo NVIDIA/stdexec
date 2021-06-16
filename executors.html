@@ -2285,7 +2285,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <a href="#design-implementer"><span class="secno">5</span> <span class="content">Design - implementer side</span></a>
      <ol class="toc">
       <li><a href="#design-receivers"><span class="secno">5.1</span> <span class="content">Receivers serve as glue between senders</span></a>
-      <li><a href="#design-states"><span class="secno">5.2</span> <span class="content">Operation states represents work</span></a>
+      <li><a href="#design-states"><span class="secno">5.2</span> <span class="content">Operation states represent work</span></a>
       <li><a href="#design-connect"><span class="secno">5.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code></span></a>
       <li><a href="#design-customization"><span class="secno">5.4</span> <span class="content">Sender algorithms are customizable</span></a>
       <li><a href="#design-laziness"><span class="secno">5.5</span> <span class="content">Laziness is defined by sender adaptors</span></a>
@@ -3185,7 +3185,7 @@ It is guaranteed to not start any of the input senders until the returned sender
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sender</c->
 <c- p>);</c->
 </pre>
-   <p>Once <code class="highlight"><c- n>ensure_started</c-></code> returns, it is known that the provided sender has been <a data-link-type="dfn" href="#connect" id="ref-for-connect">connected</a> and <code class="highlight"><c- n>start</c-></code> has been called on the resulting operation state (see <a href="#design-states">§ 5.2 Operation states represents work</a>); in other words, the work described by the provided sender has been submitted
+   <p>Once <code class="highlight"><c- n>ensure_started</c-></code> returns, it is known that the provided sender has been <a data-link-type="dfn" href="#connect" id="ref-for-connect">connected</a> and <code class="highlight"><c- n>start</c-></code> has been called on the resulting operation state (see <a href="#design-states">§ 5.2 Operation states represent work</a>); in other words, the work described by the provided sender has been submitted
 for execution on the appropriate execution contexts. Returns a sender which completes when the provided sender completes and sends values equivalent to those of the provided sender.</p>
    <h3 class="heading settled" data-level="4.13" id="design-sender-consumers"><span class="secno">4.13. </span><span class="content">User-facing sender consumers</span><a class="self-link" href="#design-sender-consumers"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-consumer">sender consumer</dfn> is an <a data-link-type="dfn" href="#algorithm" id="ref-for-algorithm②">algorithm</a> that takes one or more senders, which it may <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, as parameters, and does not return a sender.</p>
@@ -3239,7 +3239,7 @@ requirements are know as the <dfn class="dfn-paneled" data-dfn-type="dfn" data-n
    <p>While the receiver interface may look novel, it is in fact very similar to the interface of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>promise</c-></code>, which provides the first two signals as <code class="highlight"><c- n>set_value</c-></code> and <code class="highlight"><c- n>set_error</c-></code>, and it’s possible to emulate the third channel with lifetime management of the promise.</p>
    <p>Receivers are not a part of the end-user-facing API of this proposal; they are necessary to allow unrelated senders communicate with each other, but the only users who will interact with receivers directly are authors of senders.</p>
    <p>Receivers are what is passed as the second argument to <a href="#design-connect">§ 5.3 execution::connect</a>.</p>
-   <h3 class="heading settled" data-level="5.2" id="design-states"><span class="secno">5.2. </span><span class="content">Operation states represents work</span><a class="self-link" href="#design-states"></a></h3>
+   <h3 class="heading settled" data-level="5.2" id="design-states"><span class="secno">5.2. </span><span class="content">Operation states represent work</span><a class="self-link" href="#design-states"></a></h3>
    <p>An <dfn data-dfn-type="dfn" data-noexport id="operation-state">operation state<a class="self-link" href="#operation-state"></a></dfn> is an object that represents work. Unlike senders, it is not a chaining mechanism; instead, it is a concrete object that packages the work described by a full sender chain, ready to be executed. An operation state is neither movable nor
 copyable, and its interface consists of a single algorithm: <code class="highlight"><c- n>start</c-></code>, which serves as the submission point of the work represented by a given operation state.</p>
    <p>Operation states are not a part of the user-facing API of this proposal; they are necessary for implementing sender consumers like <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code> and <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code>, and the knowledge of them is necessary to implement senders, so the only users who will
