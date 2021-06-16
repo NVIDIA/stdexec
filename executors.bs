@@ -422,20 +422,23 @@ execution::scheduler auto cpu_sched = new_thread_scheduler{};
 execution::scheduler auto gpu_sched = cuda::scheduler();
 
 execution::sender auto snd0 = execution::schedule(cpu_sched);
-execution::scheduler auto completion_sch0 = execution::get_completion_scheduler(snd0);
+execution::scheduler auto completion_sch0 =
+  execution::get_completion_scheduler<execution::set_value_t>(snd0);
 // completion_sch0 is equivalent to cpu_sched
 
 execution::sender auto snd1 = execution::then(snd0, []{
     std::cout << "I am running on cpu_sched!\n";
 });
-execution::scheduler auto completion_sch1 = execution::get_completion_scheduler(snd1);
+execution::scheduler auto completion_sch1 =
+  execution::get_completion_scheduler<execution::set_value_t>(snd1);
 // completion_sch1 is equivalent to cpu_sched
 
 execution::sender auto snd2 = execution::transfer(snd1, gpu_sched);
 execution::sender auto snd3 = execution::then(snd2, []{
     std::cout << "I am running on gpu_sched!\n";
 });
-execution::scheduler auto completion_sch3 = execution::get_completion_scheduler(then3);
+execution::scheduler auto completion_sch3 =
+  execution::get_completion_scheduler<execution::set_value_t>(then3);
 // completion_sch3 is equivalent to cpu_sched
 </pre>
 
@@ -2166,7 +2169,7 @@ namespace std::execution {
 2. The name `execution::transfer` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`. or `S` does not satisfy `execution::sender`,
     `execution::transfer` is ill-formed. Otherwise, the expression `execution::transfer(s, sch)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::transfer, get_completion_scheduler<set_value>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::transfer, get_completion_scheduler<set_value_t>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::transfer, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2177,7 +2180,7 @@ namespace std::execution {
 3. The name `execution::lazy_transfer` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`. or `S` does not satisfy
     `execution::sender`, `execution::lazy_transfer` is ill-formed. Otherwise, the expression `execution::lazy_transfer(s, sch)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_transfer, get_completion_scheduler<set_value>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_transfer, get_completion_scheduler<set_value_t>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_transfer, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2234,7 +2237,7 @@ namespace std::execution {
 2. The name `execution::then` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::then` is ill-formed. Otherwise, the expression `execution::then(s, f)` is
     expression-equivalent to:
 
-    1. `tag_invoke(execution::then, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::then, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2246,7 +2249,7 @@ namespace std::execution {
 2. The name `execution::lazy_then` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_then` is ill-formed. Otherwise, the expression
     `execution::lazy_then(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_then, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_then, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2275,7 +2278,7 @@ namespace std::execution {
 2. The name `execution::upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_error` is ill-formed. Otherwise, the expression
     `execution::upon_error(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::upon_error, get_completion_scheduler<set_error>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::upon_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2287,7 +2290,7 @@ namespace std::execution {
 2. The name `execution::lazy_upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_error` is ill-formed. Otherwise, the expression
     `execution::lazy_upon_error(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_upon_error, get_completion_scheduler<set_error>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_upon_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2316,7 +2319,7 @@ namespace std::execution {
 2. The name `execution::upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_done` is ill-formed. Otherwise, the expression
     `execution::upon_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::upon_done, get_completion_scheduler<set_done>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::upon_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2328,7 +2331,7 @@ namespace std::execution {
 2. The name `execution::lazy_upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_done` is ill-formed. Otherwise, the expression
     `execution::lazy_upon_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_upon_done, get_completion_scheduler<set_done>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_upon_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2356,7 +2359,7 @@ namespace std::execution {
 2. The name `execution::let_value` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::let_value` is ill-formed. Otherwise, the expression
     `execution::let_value(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::let_value, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::let_value, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::let_value, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2368,7 +2371,7 @@ namespace std::execution {
 2. The name `execution::lazy_let_value` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_let_value` is ill-formed. Otherwise, the expression
     `execution::lazy_let_value(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_let_value, get_completion_scheduler<set_value>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_let_value, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_let_value, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2397,7 +2400,7 @@ namespace std::execution {
 2. The name `execution::let_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::let_error` is ill-formed. Otherwise, the expression
     `execution::let_error(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::let_error, get_completion_scheduler<set_error>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::let_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::let_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2409,7 +2412,7 @@ namespace std::execution {
 2. The name `execution::lazy_let_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_let_error` is ill-formed. Otherwise, the expression
     `execution::lazy_let_error(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_let_error, get_completion_scheduler<set_error>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_let_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_let_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2438,7 +2441,7 @@ namespace std::execution {
 2. The name `execution::let_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::let_done` is ill-formed. Otherwise, the expression
     `execution::let_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::let_done, get_completion_scheduler<set_done>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::let_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::let_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2450,7 +2453,7 @@ namespace std::execution {
 2. The name `execution::lazy_let_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_let_done` is ill-formed. Otherwise, the expression
     `execution::lazy_let_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_let_done, get_completion_scheduler<set_done>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_let_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_let_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2479,7 +2482,7 @@ namespace std::execution {
 2. The name `execution::bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape` does not
     satisfy `integral`, `execution::bulk` is ill-formed. Otherwise, the expression `execution::bulk(s, shape, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value_t>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2488,7 +2491,7 @@ namespace std::execution {
 2. The name `execution::lazy_bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape`
     does not satisfy `integral`, `execution::bulk` is ill-formed. Otherwise, the expression `execution::bulk(s, shape, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value_t>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2517,7 +2520,7 @@ namespace std::execution {
 2. The name `execution::split` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::split` is ill-formed. Otherwise, the expression `execution::split(s)` is
     expression-equivalent to:
 
-    1. `tag_invoke(execution::split, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::split, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::split, s)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2528,7 +2531,7 @@ namespace std::execution {
 2. The name `execution::lazy_split` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::lazy_split` is ill-formed. Otherwise, the expression
     `execution::lazy_split(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_split, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::lazy_split, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::lazy_split, s)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2692,7 +2695,7 @@ namespace std::execution {
 2. The name `execution::ensure_started` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::ensure_started` is ill-formed. Otherwise, the expression
     `execution::ensure_started(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::ensure_started, get_completion_scheduler<set_value>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::ensure_started, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::ensure_started, s)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2721,7 +2724,7 @@ namespace std::execution {
 2. The name `execution::start_detached` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::start_detached` is ill-formed. Otherwise, the expression
     `execution::start_detached(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::start_detached, get_completion_scheduler(s), s)`, if that expression is valid and its type is `void`.
+    1. `tag_invoke(execution::start_detached, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if that expression is valid and its type is `void`.
 
     2. Otherwise, `tag_invoke(execution::start_detached, s)`, if that expression is valid and its type is `void`.
 
@@ -2759,7 +2762,7 @@ namespace std::execution {
 3. The name `this_thread::sync_wait` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, or the number of the arguments `sender_traits<S>::value_types` passes into the
     `Variant` template parameter is not 1, `this_thread::sync_wait` is ill-formed. Otherwise, `this_thread::sync_wait` is expression-equivalent to:
 
-    1. `tag_invoke(this_thread::sync_wait, get_completion_scheduler(s), s)`, if this expression is valid and its type is <code><i>sync-wait-type</i>&lt;S></code>.
+    1. `tag_invoke(this_thread::sync_wait, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid and its type is <code><i>sync-wait-type</i>&lt;S></code>.
 
     2. Otherwise, `tag_invoke(this_thread::sync_wait, s)`, if this expression is valid and its type is <code><i>sync-wait-type</i>&lt;S></code>.
 
@@ -2780,7 +2783,7 @@ namespace std::execution {
 3. The name `this_thread::sync_wait_with_variant` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `this_thread::sync_wait_with_variant` is ill-formed. Otherwise,
     `this_thread::sync_wait_with_variant` is expression-equivalent to:
 
-    1. `tag_invoke(this_thread::sync_wait_with_variant, get_completion_scheduler(s), s)`, if this expression is valid and its type is <code><i>sync-wait-with-variant-type</i>&lt;S></code>.
+    1. `tag_invoke(this_thread::sync_wait_with_variant, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid and its type is <code><i>sync-wait-with-variant-type</i>&lt;S></code>.
 
     2. Otherwise, `tag_invoke(this_thread::sync_wait_with_variant, s)`, if this expression is valid and its type is <code><i>sync-wait-with-variant-type</i>&lt;S></code>.
 
