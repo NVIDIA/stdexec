@@ -2385,7 +2385,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
           <li><a href="#spec-execution.sender.adaptor.reschedule_when_all"><span class="secno">10.6.5.15</span> <span class="content">Reschedule_when_all adaptor <b>[execution.sender.adaptors.reschedule_when_all]</b></span></a>
           <li><a href="#spec-execution.sender.adaptors.into_variant"><span class="secno">10.6.5.16</span> <span class="content">Into_variant adaptor <b>[execution.sender.adaptors.into_variant]</b></span></a>
           <li><a href="#spec-execution.sender.adaptors.unschedule"><span class="secno">10.6.5.17</span> <span class="content">Unschedule adaptor <b>[execution.sender.adaptors.unschedule]</b></span></a>
-          <li><a href="#spec-execution.sender.adaptors.unschedule①"><span class="secno">10.6.5.18</span> <span class="content">Ensure_started adaptor <b>[execution.sender.adaptors.ensure_started]</b></span></a>
+          <li><a href="#spec-execution.sender.adaptors.ensure_started"><span class="secno">10.6.5.18</span> <span class="content">Ensure_started adaptor <b>[execution.sender.adaptors.ensure_started]</b></span></a>
          </ol>
         <li>
          <a href="#spec-execution.sender.consumers"><span class="secno">10.6.6</span> <span class="content">Sender consumers <b>[execution.sender.consumers]</b></span></a>
@@ -3246,7 +3246,7 @@ tuple, like here:</p>
 
 <c- k>auto</c-> <c- p>[</c-><c- n>a</c-><c- p>,</c-> <c- n>b</c-><c- p>,</c-> <c- n>c</c-><c- p>]</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>reschedule_when_all</c-><c- p>(</c->
-        <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><executionU0003AU0003Aset_value><c- n>s</c-><c- p>(</c-><c- n>sends_1</c-><c- p>),</c->
+        <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- o>></c-><c- n>s</c-><c- p>(</c-><c- n>sends_1</c-><c- p>),</c->
         <c- n>sends_1</c-><c- p>,</c->
         <c- n>sends_2</c-><c- p>,</c->
         <c- n>sends_3</c->
@@ -3254,7 +3254,7 @@ tuple, like here:</p>
 <c- c1>// a == 1</c->
 <c- c1>// b == 2</c->
 <c- c1>// c == 3</c->
-</executionU0003AU0003Aset_value></pre>
+</pre>
    <p>This works well for senders that always send the same set of arguments. If we ignore the possibility of having a sender that sends different sets of arguments into a receiver, we can specify the "canonical" (i.e. required to be followed by all senders) form of <code class="highlight"><c- n>value_types</c-></code> of a sender which sends <code class="highlight"><c- n>Types</c-><c- p>...</c-></code> to be as follows:</p>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>typename</c-> <c- p>...</c-><c- o>></c-> <c- k>typename</c-> <c- nc>TupleLike</c-><c- o>></c->
 <c- k>using</c-> <c- n>value_types</c-> <c- o>=</c-> <c- n>TupleLike</c-><types...><c- p>;</c->
@@ -4781,7 +4781,7 @@ those queries.</p>
 <pre class="highlight"><c- n>is_nothrow_constructible_v</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>,</c-> <c- n>S</c-><c- o>></c->
 </pre>
    </ol>
-   <h5 class="heading settled" data-level="10.6.5.18" id="spec-execution.sender.adaptors.unschedule①"><span class="secno">10.6.5.18. </span><span class="content">Ensure_started adaptor <b>[execution.sender.adaptors.ensure_started]</b></span><a class="self-link" href="#spec-execution.sender.adaptors.unschedule①"></a></h5>
+   <h5 class="heading settled" data-level="10.6.5.18" id="spec-execution.sender.adaptors.ensure_started"><span class="secno">10.6.5.18. </span><span class="content">Ensure_started adaptor <b>[execution.sender.adaptors.ensure_started]</b></span><a class="self-link" href="#spec-execution.sender.adaptors.ensure_started"></a></h5>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code> is used to eagerly start the execution of a sender, while also providing a way to attach further work to execute once it has completed.</p>
