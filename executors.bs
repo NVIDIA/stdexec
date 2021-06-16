@@ -96,7 +96,7 @@ This paper proposes a self-contained design for an C++ executors, a series of ab
 
 ## Examples ## {#example}
 
-See [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]] for short explanations of the algorithms used in these code examples.
+See [[#design-sender-factories]], [[#design-sender-adaptors]], and [[#design-sender-consumers]] for short explanations of the algorithms used in these code examples.
 
 ### Hello world ### {#example-hello-world}
 
@@ -165,7 +165,7 @@ sender auto async_inclusive_scan(scheduler auto sch,
 ```c++
 // `async_read` takes an input sender which sends a std::span<std::byte> buffer
 // to be filled, and returns a sender that completes when the buffer is filled
-// and sends the number of bytes. It's a pipeable sender adapter CPO with the
+// and sends the number of bytes. It's a pipeable sender adaptor CPO with the
 // following signature:
 sender auto async_read(sender auto buffer, auto handle);
 
@@ -222,7 +222,7 @@ essential when writing user code using standard execution concepts; we have also
 3. Users now have a choice between using a strictly lazy vs a possibly eager version of most sender algorithms.
 4. Senders now advertise what scheduler, if any, their evaluation will complete on.
 5. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
-6. P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]].
+6. P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See [[#design-sender-factories]], [[#design-sender-adaptors]], and [[#design-sender-consumers]].
 7. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-shot]].
 8. Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in [[#design-dispatch]].
 9. A specific thread pool implementation is omitted, as per LEWG direction.
@@ -304,7 +304,7 @@ The primary defining sender algorithm is [[#design-connect]]; this function, how
 it directly.
 
 The way user code is expected to interact with senders is by using [=sender algorithms=].
-This paper proposes an initial set of such sender algorithms, which are described in [[#design-composable]], [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]].
+This paper proposes an initial set of such sender algorithms, which are described in [[#design-composable]], [[#design-sender-factories]], [[#design-sender-adaptors]], and [[#design-sender-consumers]].
 For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:
 
 <pre highlight="c++">
@@ -329,7 +329,7 @@ With senders, users can describe generic execution pipelines and graphs, and the
 Senders are composed using <dfn>sender algorithms</dfn>:
 
 * [=sender factories=], algorithms that take no senders and return a sender.
-* [=sender adapters=], algorithms that take (and potentially `execution::connect`) senders and return a sender.
+* [=sender adaptors=], algorithms that take (and potentially `execution::connect`) senders and return a sender.
 * [=sender consumers=], algorithms that take (and potentially `execution::connect`) senders and do not return a sender.
 
 ## Senders can propagate completion schedulers ## {#design-propagation}
@@ -388,7 +388,7 @@ That means that there's no way to construct sender chains that traverse differen
 
 We propose that, for senders advertising their [=completion scheduler=], all execution context transitions <b>must</b> be explicit; running user code anywhere but where they defined it to run <b>must</b> be considered a bug.
 
-The `execution::reschedule` sender adapter performs a transition from one execution context to another:
+The `execution::reschedule` sender adaptor performs a transition from one execution context to another:
 
 <pre highlight="c++">
 execution::scheduler auto sch1 = ...;
@@ -429,7 +429,7 @@ Any non-trivial program will eventually want to fork a chain of senders into ind
 For instance, an incoming event to a middleware system may be required to trigger events on more than one downstream system.
 This requires that we provide well defined mechanisms for making sure that connecting a sender multiple times is possible and correct.
 
-The `split` sender adapter facilitates connecting to a sender multiple times, regardless of whether it is single-shot or multi-shot:
+The `split` sender adaptor facilitates connecting to a sender multiple times, regardless of whether it is single-shot or multi-shot:
 
 <pre highlight=c++>
 auto some_algorithm(execution::sender auto&& input) {
@@ -449,18 +449,18 @@ auto some_algorithm(execution::sender auto&& input) {
 Similarly to how it's hard to write a complex program that will eventually want to fork sender chains into independent streams, it's also hard to write a program that does not want to eventually create join nodes, where multiple independent streams of execution are
 merged into a single one in an asynchronous fashion.
 
-`when_all` is a sender adapter that returns a sender that completes when the last of the input senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the input senders, in order. `when_all` returns a sender that also does not have an associated scheduler.
+`when_all` is a sender adaptor that returns a sender that completes when the last of the input senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the input senders, in order. `when_all` returns a sender that also does not have an associated scheduler.
 
 `reschedule_when_all` accepts an additional scheduler argument. It returns a sender whose value [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
 `transform(when_all(inputs...), scheduler)`, but one that allows for better efficiency through customization.
 
-## Most sender adapters are pipeable ## {#design-pipeable}
+## Most sender adaptors are pipeable ## {#design-pipeable}
 
-To facilitate an intuitive syntax for composition, most sender adapters are <dfn>pipeable</dfn>; they can be composed (<dfn>piped</dfn>) together with `operator|`.
-This mechanism is similar to the `operator|` composition that C++ range adapters support and draws inspiration from piping in *nix shells.
-Pipeable sender adapters take a sender as their first parameter and have no other sender parameters.
+To facilitate an intuitive syntax for composition, most sender adaptors are <dfn>pipeable</dfn>; they can be composed (<dfn>piped</dfn>) together with `operator|`.
+This mechanism is similar to the `operator|` composition that C++ range adaptors support and draws inspiration from piping in *nix shells.
+Pipeable sender adaptors take a sender as their first parameter and have no other sender parameters.
 
-`a | b` will pass the sender `a` as the first argument to the pipeable sender adapter `b`. Pipeable sender adapters support partial application of the parameters after the first. For example, all of the following are equivalent:
+`a | b` will pass the sender `a` as the first argument to the pipeable sender adaptor `b`. Pipeable sender adaptors support partial application of the parameters after the first. For example, all of the following are equivalent:
 
 <pre highlight=c++>
 execution::bulk(snd, N, [] (std::size_t i, auto d) {});
@@ -519,10 +519,10 @@ auto [result] = std::this_thread::sync_wait(snd).value();
 </pre>
 </table>
 
-Certain sender adapters are not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the adapters involved. Specifically, the following sender adapters are not pipeable.
+Certain sender adaptors are not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the adaptors involved. Specifically, the following sender adaptors are not pipeable.
 
-* `execution::when_all` and `execution::when_all_with_variant`: Since this sender adapter takes a variadic pack of senders, a partially applied form would be ambiguous with a non partially applied form with an arity of one less.
-* `execution::on` and `execution::lazy_on`: This sender adapter changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `reschedule`.
+* `execution::when_all` and `execution::when_all_with_variant`: Since this sender adaptor takes a variadic pack of senders, a partially applied form would be ambiguous with a non partially applied form with an arity of one less.
+* `execution::on` and `execution::lazy_on`: This sender adaptor changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `reschedule`.
 
 Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
@@ -609,21 +609,21 @@ execution::sender auto snd = execution::then(pred, [](auto... args) {
 // when snd is executed, it will print "123"
 </pre>
 
-This adapter is included as it greatly simplifies lifting values into senders.
+This adaptor is included as it greatly simplifies lifting values into senders.
 
-## Proposed user-facing sender adapters ## {#design-sender-adapters}
+## Proposed user-facing sender adaptors ## {#design-sender-adaptors}
 
-A <dfn>sender adapter</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
+A <dfn>sender adaptor</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
 
-Many sender adapters come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
-the returned sender being started. Sender consumers such as [[#design-sender-adapter-ensure_started]], [[#design-sender-consumer-start_detached]], and [[#design-sender-consumer-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**,
+Many sender adaptors come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
+the returned sender being started. Sender consumers such as [[#design-sender-adaptor-ensure_started]], [[#design-sender-consumer-start_detached]], and [[#design-sender-consumer-sync_wait]] start senders; the implementations of non-lazy versions of the sender adaptors are **allowed**,
 but not guaranteed, to start senders.
 
-The strictly lazy versions of the adapters below (that is, all the versions whose names start with `lazy_`) are guaranteed to not start any input senders passed into them.
+The strictly lazy versions of the adaptors below (that is, all the versions whose names start with `lazy_`) are guaranteed to not start any input senders passed into them.
 
 For more implementer-centric description of starting senders, see [[#design-laziness]].
 
-### `execution::reschedule` ### {#design-sender-adapter-reschedule}
+### `execution::reschedule` ### {#design-sender-adaptor-reschedule}
 
 <pre highlight="c++">
 execution::sender auto reschedule(
@@ -650,7 +650,7 @@ execution::sender auto gpu_task = execution::reschedule(cpu_task, gpu_sched);
 // gpu_task describes the transition of the task graph described by cpu_task to the gpu
 </pre>
 
-### `execution::then`, `execution::upon_error`, `execution::upon_done` ### {#design-sender-adapter-then}
+### `execution::then`, `execution::upon_error`, `execution::upon_done` ### {#design-sender-adaptor-then}
 
 <pre highlight="c++">
 execution::sender auto then(
@@ -699,9 +699,9 @@ execution::sender auto snd = execution::then(input, [](auto... args) {
 // followed by printing all of the values sent by pred
 </pre>
 
-This adapter is included as it is necessary for writing any sender code that actually performs a useful function.
+This adaptor is included as it is necessary for writing any sender code that actually performs a useful function.
 
-### `execution::let_value`, `execution::let_error`, `execution::let_done` ### {#design-sender-adapter-let}
+### `execution::let_value`, `execution::let_error`, `execution::let_done` ### {#design-sender-adaptor-let}
 
 <pre highlight="c++">
 execution::sender auto let_value(
@@ -742,7 +742,7 @@ execution::sender auto lazy_let_error(
 
 `let_error` and `let_done` are similar to `let_value`, but where `let_value` works with values sent by the input sender, `let_error` works with errors, and `let_done` is invoked when the "done" signal is sent.
 
-### `execution::on` ### {#design-sender-adapter-on}
+### `execution::on` ### {#design-sender-adaptor-on}
 
 <pre highlight="c++">
 execution::sender auto on(
@@ -758,7 +758,7 @@ execution::sender auto lazy_on(
 
 Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender has no [=completion scheduler|completion schedulers=].
 
-### `execution::into_variant` ### {#design-sender-adapter-into_variant}
+### `execution::into_variant` ### {#design-sender-adaptor-into_variant}
 
 <pre highlight=c++>
 execution::sender into_variant(
@@ -768,7 +768,7 @@ execution::sender into_variant(
 
 Returns a sender which sends a variant of tuples of all the possible sets of types sent by the input sender. Senders can send multiple sets of values depending on runtime conditions; this is a helper function that turns them into a single variant value.
 
-### `execution::unschedule` ### {#design-sender-adapter-unschedule}
+### `execution::unschedule` ### {#design-sender-adaptor-unschedule}
 
 <pre highlight="c++">
 execution::sender unschedule(
@@ -778,7 +778,7 @@ execution::sender unschedule(
 
 Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but has no [=completion scheduler|completion schedulers=].
 
-### `execution::bulk` ### {#design-sender-adapter-bulk}
+### `execution::bulk` ### {#design-sender-adaptor-bulk}
 
 <pre highlight="c++">
 execution::sender auto bulk(
@@ -800,7 +800,7 @@ In this paper, only integral types satisfy the concept of a shape, but future pa
 
 `lazy_bulk` is **guaranteed** to not begin executing `function` until the returned sender is started.
 
-### `execution::split` ### {#design-sender-adapter-split}
+### `execution::split` ### {#design-sender-adaptor-split}
 
 <pre highlight="c++">
 execution::sender auto split(execution::sender auto sender);
@@ -810,7 +810,7 @@ execution::sender auto lazy_split(execution::sender auto sender);
 
 If the provided sender is a multi-shot sender, returns that sender. Otherwise, returns a multi-shot sender which sends values equivalent to the values sent by the provided sender. See [[#design-shot]].
 
-### `execution::when_all` ### {#design-sender-adapter-when_all}
+### `execution::when_all` ### {#design-sender-adaptor-when_all}
 
 <pre highlight="c++">
 execution::sender auto when_all(
@@ -828,7 +828,7 @@ execution::sender auto when_all_with_variant(
 
 The returned sender has no [=completion scheduler|completion schedulers=].
 
-`when_all` is a strictly lazy adapter.
+`when_all` is a strictly lazy adaptor.
 It is guaranteed to not start any of the input senders until the returned sender is started.
 
 See [[#design-join]].
@@ -850,7 +850,7 @@ execution::sender auto final = execution::then(both, [](auto... args){
 // when final executes, it will print "the two args: 1, abc"
 </pre>
 
-### `execution::reschedule_when_all` ### {#design-sender-adapter-reschedule_when_all}
+### `execution::reschedule_when_all` ### {#design-sender-adaptor-reschedule_when_all}
 
 <pre highlight="c++">
 execution::sender auto reschedule_when_all(
@@ -874,11 +874,11 @@ execution::sender auto lazy_reschedule_when_all_with_variant(
 );
 </pre>
 
-Similar to [[#design-sender-adapter-when_all]], but returns a sender whose value [=completion scheduler=] is the provided scheduler.
+Similar to [[#design-sender-adaptor-when_all]], but returns a sender whose value [=completion scheduler=] is the provided scheduler.
 
 See [[#design-join]].
 
-### `execution::ensure_started` ### {#design-sender-adapter-ensure_started}
+### `execution::ensure_started` ### {#design-sender-adaptor-ensure_started}
 
 <pre highlight="c++">
 execution::sender auto ensure_started(
@@ -998,16 +998,16 @@ execution::start(state);
 
 Senders being able to advertise what their [=completion schedulers=] are fulfills one of the promises of senders: that of being able to customize an implementation of a sender algorithm based on what scheduler any work it depends on will complete on.
 
-The simple way to provide customizations for functions like `then`, that is for [=sender adapters=] and [=sender consumers=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
+The simple way to provide customizations for functions like `then`, that is for [=sender adaptors=] and [=sender consumers=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
 the expression `execution::then(sender, invocable)` to be equivalent to:
 
   1. `sender.then(invocable)`, if that expression is well formed; otherwise
   2. `then(sender, invocable)`, performed in a context where this call always performs ADL, if that expression is well formed; otherwise
-  3. a default implementation of `then`, which returns a sender adapter, and then define the exact semantics of said adapter.
+  3. a default implementation of `then`, which returns a sender adaptor, and then define the exact semantics of said adaptor.
 
-However, this definition is problematic. Imagine another sender adapter, `bulk`, which is a structured abstraction for a loop over an index space. Its default implementation is just a for loop. However, for accelerator runtimes like CUDA, we would like sender algorithms
+However, this definition is problematic. Imagine another sender adaptor, `bulk`, which is a structured abstraction for a loop over an index space. Its default implementation is just a for loop. However, for accelerator runtimes like CUDA, we would like sender algorithms
 like `bulk` to have specialized behavior, which invokes a kernel of more than one thread (with its size defined by the call to `bulk`); therefore, we would like to customize `bulk` for CUDA senders to achieve this. However, there's no reason for CUDA kernels to
-necessarily customize the `then` sender adapter, as the generic implementation is perfectly sufficient. This creates a problem, though; consider the following snippet:
+necessarily customize the `then` sender adaptor, as the generic implementation is perfectly sufficient. This creates a problem, though; consider the following snippet:
 
 <pre highlight="c++">
 execution::scheduler auto cuda_sch = cuda_scheduler{};
@@ -1017,14 +1017,14 @@ execution::sender auto initial = execution::schedule(cuda_sch);
 // let's call it cuda::schedule_sender&lt;>
 
 execution::sender auto next = execution::then(cuda_sch, []{ return 1; });
-// the type of next is a standard-library implementation-defined sender adapter
+// the type of next is a standard-library implementation-defined sender adaptor
 // that wraps the cuda sender
-// let's call it execution::then_sender_adapter&lt;cuda::schedule_sender&lt;>>
+// let's call it execution::then_sender_adaptor&lt;cuda::schedule_sender&lt;>>
 
 execution::sender auto kernel_sender = execution::bulk(next, shape, [](int i){ ... });
 </pre>
 
-How can we specialize the `bulk` sender adapter for our wrapped `schedule_sender`? Well, here's one possible approach, taking advantage of ADL (and the fact that the definition of "associated namespace" also recursively enumerates the associated namespaces of all template
+How can we specialize the `bulk` sender adaptor for our wrapped `schedule_sender`? Well, here's one possible approach, taking advantage of ADL (and the fact that the definition of "associated namespace" also recursively enumerates the associated namespaces of all template
 parameters of a type):
 
 <pre highlight="c++">
@@ -1045,7 +1045,7 @@ execution::sender auto bulk(
 }
 </pre>
 
-However, if the input sender is not just a `then_sender_adapter` like in the example above, but another sender that overrides `bulk` by itself, as a member function, because its author believes they know an optimization for bulk - the specialization above will no
+However, if the input sender is not just a `then_sender_adaptor` like in the example above, but another sender that overrides `bulk` by itself, as a member function, because its author believes they know an optimization for bulk - the specialization above will no
 longer be selected, because a member function of the first argument is a better match than the ADL-found overload.
 
 This means that well-meant specialization of sender algorithms that are entirely scheduler-agnostic can have negative consequences.
@@ -1064,17 +1064,17 @@ where <code><i>Signal</i></code> is one of `set_value`, `set_error`, or `set_don
 
 For sender algorithms which accept concepts other than `sender` as their first argument, we propose that the customization scheme remains as it has been in [[P0443R14]] so far, except it should also use `tag_invoke`.
 
-## Laziness is defined by sender adapters ## {#design-laziness}
+## Laziness is defined by sender adaptors ## {#design-laziness}
 
 We distinguish two different guarantees about *when* work is submitted to an execution context:
 
  * <dfn>strictly lazy submission</dfn>, which means that there is a guarantee that no work is submitted to an execution context before a receiver is connected to a sender, and `execution::start` is called on the resulting operation state;
  * <dfn>potentially eager submission</dfn>, which means that work may be submitted to an execution context as soon as all the information necessary to perform it is provided.
 
-If a sender adapter requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adapters are specified
+If a sender adaptor requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adaptors are specified
 to dispatch to the strictly lazy ones; for an author of a specific sender, it is sufficient to specialize the strictly lazy version, to also achieve a specialization of the potentially eager one.
 
-As has been described in [[#design-sender-adapters]], whether a sender adapter is guaranteed to perform strictly lazy submission or not is defined by the adapter used to perform it; the adapters whose names begin with `lazy_` provide the strictly lazy guarantee.
+As has been described in [[#design-sender-adaptors]], whether a sender adaptor is guaranteed to perform strictly lazy submission or not is defined by the adaptor used to perform it; the adaptors whose names begin with `lazy_` provide the strictly lazy guarantee.
 
 ## Lazy senders provide optimization opportunities ## {#design-fusion}
 
@@ -1085,8 +1085,8 @@ The first (and most common) way for such optimizations to happen is thanks to th
 the compiler is able to see a chain of work described using senders as a tree of tail calls, allowing for inlining and removal of most of the sender machinery. In fact, when work is not submitted to execution contexts outside of the current thread of execution,
 compilers are capable of removing the senders abstraction entirely, while still allowing for composition of functions across different parts of a program.
 
-The second way for this to occur is when a sender algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, [[#design-sender-adapter-ensure_started]] will be an identity transformation,
-because the sender algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy [[#design-sender-adapter-bulk]]s of compatible shapes, and merge them together into a single submission of a GPU kernel.
+The second way for this to occur is when a sender algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, [[#design-sender-adaptor-ensure_started]] will be an identity transformation,
+because the sender algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy [[#design-sender-adaptor-bulk]]s of compatible shapes, and merge them together into a single submission of a GPU kernel.
 
 ## Execution context transitions are two-step ## {#design-transition-details}
 
@@ -1098,7 +1098,7 @@ This, however, is a problem: because customization of sender algorithms must be 
 scheduler may itself represent a specialized execution context, which requires additional work to be performed to transition <i>to</i> it. GPUs and remote node schedulers are once again good examples of such schedulers: executing code on their execution contexts
 requires making runtime API calls for work submission, and quite possibly for the data movement of the values being sent by the input sender passed into `reschedule`.
 
-To allow for such customization from both ends, we propose the inclusion of a secondary transitioning sender adapter, called `schedule_from`. This adapter is a form of `schedule`, but takes an additional, second argument: the input sender. This adapter is not
+To allow for such customization from both ends, we propose the inclusion of a secondary transitioning sender adaptor, called `schedule_from`. This adaptor is a form of `schedule`, but takes an additional, second argument: the input sender. This adaptor is not
 meant to be invoked manually by the end users; they are always supposed to invoke `reschedule`, to ensure that both schedulers have a say in how the transitions are made. Any scheduler that specializes `reschedule(snd, sch)` shall ensure that the
 return value of their customization is equivalent to `schedule_from(sch, snd2)`, where `snd2` is a successor of `snd` that sends values equivalent to those sent by `snd`.
 
@@ -1108,7 +1108,7 @@ The default implementation of `reschedule(snd, sched)` is `schedule_from(sched, 
 
 ## Most senders are typed ## {#design-typed}
 
-All senders should advertise the types they will [=send=] when they complete. This is necessary for a number of features, and writing code in a way that's agnostic of whether an imput sender is typed or not in common sender adapters such as `execution::then` is
+All senders should advertise the types they will [=send=] when they complete. This is necessary for a number of features, and writing code in a way that's agnostic of whether an imput sender is typed or not in common sender adaptors such as `execution::then` is
 hard.
 
 The mechanism for this advertisement is the same as in [[P0443R14]]; the way to query the types is through `sender_traits::value_types<tuple_like, variant_like>`.
@@ -1492,7 +1492,7 @@ namespace std::execution {
     struct reschedule_just_t;
     inline constexpr reschedule_just_t reschedule_just{};
 
-    // [execution.sender.adapters], sender adapters
+    // [execution.sender.adaptors], sender adaptors
     struct on_t;
     inline constexpr on_t on{};
     struct lazy_on_t;
@@ -2451,7 +2451,7 @@ namespace std::execution {
 
 1. `execution::reschedule_when_all` and `execution::lazy_reschedule_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
     that they complete on the specified scheduler. `execution::reschedule_when_all_with_variant` and `execution::lazy_reschedule_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input
-    senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the adapter. --<i>end note</i>]
+    senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the adaptor. --<i>end note</i>]
 
 2. The name `execution::reschedule_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type <code>S<i><sub>i</sub></i></code>
     in `S...` does not satisfy `execution::typed_sender`,  or the number of the arguments <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1 `execution::reschedule_when_all` is ill-formed.
