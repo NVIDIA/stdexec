@@ -1023,7 +1023,7 @@ If the provided sender sends an error instead of values, `sync_wait` throws that
 
 If the provided sender sends the "done" signal instead of values, `sync_wait` returns an empty optional.
 
-For an explanation of the `requires` clause, see [[#design-typed-issue]]. That clause also explains another sender consumer, built on top of `sync_wait`: `sync_wait_with_variant`.
+For an explanation of the `requires` clause, see [[#design-typed]]. That clause also explains another sender consumer, built on top of `sync_wait`: `sync_wait_with_variant`.
 
 Note: Notice that this function is specified inside `std::this_thread`, and not inside `execution`. This is because `sync_wait` has to block the <i>current</i> execution agent, but determining what the current execution agent is is not reliable. Since the standard
 does not specify any functions on the current execution agent other than those in `std::this_thread`, this is the flavor of this function that is being proposed. If C++ ever obtains fibers, for instance, we expect that a variant of this function called
