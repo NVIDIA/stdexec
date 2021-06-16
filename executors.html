@@ -2228,13 +2228,13 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#r0"><span class="secno">2.1</span> <span class="content">R0</span></a>
      </ol>
     <li>
-     <a href="#design-intro"><span class="secno">3</span> <span class="content">Proposed design - introduction</span></a>
+     <a href="#design-intro"><span class="secno">3</span> <span class="content">Design - introduction</span></a>
      <ol class="toc">
       <li><a href="#design-conventions"><span class="secno">3.1</span> <span class="content">Conventions</span></a>
       <li><a href="#design-queries-and-algorithms"><span class="secno">3.2</span> <span class="content">Queries and algorithms</span></a>
      </ol>
     <li>
-     <a href="#design-user"><span class="secno">4</span> <span class="content">Proposed design - user side</span></a>
+     <a href="#design-user"><span class="secno">4</span> <span class="content">Design - user side</span></a>
      <ol class="toc">
       <li><a href="#design-contexts"><span class="secno">4.1</span> <span class="content">Execution contexts describe the place of execution</span></a>
       <li><a href="#design-schedulers"><span class="secno">4.2</span> <span class="content">Schedulers represent execution contexts</span></a>
@@ -2251,14 +2251,14 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#design-join"><span class="secno">4.9</span> <span class="content">Senders are joinable</span></a>
       <li><a href="#design-pipeable"><span class="secno">4.10</span> <span class="content">Most sender adaptors are pipeable</span></a>
       <li>
-       <a href="#design-sender-factories"><span class="secno">4.11</span> <span class="content">Proposed user-facing sender factories</span></a>
+       <a href="#design-sender-factories"><span class="secno">4.11</span> <span class="content">User-facing sender factories</span></a>
        <ol class="toc">
         <li><a href="#design-sender-factory-schedule"><span class="secno">4.11.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code></span></a>
         <li><a href="#design-sender-factory-just"><span class="secno">4.11.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code></span></a>
         <li><a href="#design-sender-factory-reschedule_just"><span class="secno">4.11.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-></code></span></a>
        </ol>
       <li>
-       <a href="#design-sender-adaptors"><span class="secno">4.12</span> <span class="content">Proposed user-facing sender adaptors</span></a>
+       <a href="#design-sender-adaptors"><span class="secno">4.12</span> <span class="content">User-facing sender adaptors</span></a>
        <ol class="toc">
         <li><a href="#design-sender-adaptor-reschedule"><span class="secno">4.12.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code></span></a>
         <li><a href="#design-sender-adaptor-then"><span class="secno">4.12.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-></code></span></a>
@@ -2273,7 +2273,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#design-sender-adaptor-ensure_started"><span class="secno">4.12.11</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code></span></a>
        </ol>
       <li>
-       <a href="#design-sender-consumers"><span class="secno">4.13</span> <span class="content">Proposed user-facing sender consumers</span></a>
+       <a href="#design-sender-consumers"><span class="secno">4.13</span> <span class="content">User-facing sender consumers</span></a>
        <ol class="toc">
         <li><a href="#design-sender-consumer-start_detached"><span class="secno">4.13.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code></span></a>
         <li><a href="#design-sender-consumer-sync_wait"><span class="secno">4.13.2</span> <span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code></span></a>
@@ -2281,7 +2281,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#design-execute"><span class="secno">4.14</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code></span></a>
      </ol>
     <li>
-     <a href="#design-implementer"><span class="secno">5</span> <span class="content">Proposed design - implementer side</span></a>
+     <a href="#design-implementer"><span class="secno">5</span> <span class="content">Design - implementer side</span></a>
      <ol class="toc">
       <li><a href="#design-receivers"><span class="secno">5.1</span> <span class="content">Receivers serve as glue between senders</span></a>
       <li><a href="#design-states"><span class="secno">5.2</span> <span class="content">Operation states represents work</span></a>
@@ -2292,7 +2292,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#design-transition-details"><span class="secno">5.7</span> <span class="content">Execution context transitions are two-step</span></a>
      </ol>
     <li>
-     <a href="#design-api"><span class="secno">6</span> <span class="content">Proposed design - API specifics</span></a>
+     <a href="#design-api"><span class="secno">6</span> <span class="content">Design - API specifics</span></a>
      <ol class="toc">
       <li>
        <a href="#design-typed"><span class="secno">6.1</span> <span class="content">Most senders are typed</span></a>
@@ -2412,7 +2412,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <h2 class="heading settled" data-level="1" id="intro"><span class="secno">1. </span><span class="content">Introduction</span><a class="self-link" href="#intro"></a></h2>
    <p>This paper proposes a self-contained design for a Standard C++ framework for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> and its companion papers.</p>
    <h3 class="heading settled" data-level="1.1" id="example"><span class="secno">1.1. </span><span class="content">Examples</span><a class="self-link" href="#example"></a></h3>
-   <p>See <a href="#design-sender-factories">§ 4.11 Proposed user-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.12 Proposed user-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.13 Proposed user-facing sender consumers</a> for short explanations of the algorithms used in these code examples.</p>
+   <p>See <a href="#design-sender-factories">§ 4.11 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.12 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.13 User-facing sender consumers</a> for short explanations of the algorithms used in these code examples.</p>
    <h4 class="heading settled" data-level="1.1.1" id="example-hello-world"><span class="secno">1.1.1. </span><span class="content">Hello world</span><a class="self-link" href="#example-hello-world"></a></h4>
 <pre class="language-c++ highlight"><c- n>using</c-> <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
 
@@ -2530,7 +2530,7 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>The places of execution of user code in P0443 weren’t precisely defined, whereas they are in this paper. See <a href="#design-propagation">§ 4.5 Senders can propagate completion schedulers</a>.</p>
     <li data-md>
-     <p>P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See <a href="#design-sender-factories">§ 4.11 Proposed user-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.12 Proposed user-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.13 Proposed user-facing sender consumers</a>.</p>
+     <p>P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See <a href="#design-sender-factories">§ 4.11 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.12 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.13 User-facing sender consumers</a>.</p>
     <li data-md>
      <p>P0443 did not specify the semantics of variously qualified <code class="highlight"><c- n>connect</c-></code> overloads; this paper does. See <a href="#design-shot">§ 4.7 Senders can be either multi-shot or single-shot</a>.</p>
     <li data-md>
@@ -2557,17 +2557,17 @@ essential when writing user code using standard execution concepts; we have also
    <h2 class="heading settled" data-level="2" id="revisions"><span class="secno">2. </span><span class="content">Revision history</span><a class="self-link" href="#revisions"></a></h2>
    <h3 class="heading settled" data-level="2.1" id="r0"><span class="secno">2.1. </span><span class="content">R0</span><a class="self-link" href="#r0"></a></h3>
    <p>Initial revision, still in progress.</p>
-   <h2 class="heading settled" data-level="3" id="design-intro"><span class="secno">3. </span><span class="content">Proposed design - introduction</span><a class="self-link" href="#design-intro"></a></h2>
+   <h2 class="heading settled" data-level="3" id="design-intro"><span class="secno">3. </span><span class="content">Design - introduction</span><a class="self-link" href="#design-intro"></a></h2>
    <p>The following four sections describe the entirety of the proposed design.</p>
    <ul>
     <li data-md>
-     <p><a href="#design-intro">§ 3 Proposed design - introduction</a> describes the conventions used through the rest of the design sections, as well as an example illustrating how we envision code will be written using this proposal.</p>
+     <p><a href="#design-intro">§ 3 Design - introduction</a> describes the conventions used through the rest of the design sections, as well as an example illustrating how we envision code will be written using this proposal.</p>
     <li data-md>
-     <p><a href="#design-user">§ 4 Proposed design - user side</a> describes all the functionality from the perspective we intend for users: it describes the various concepts they will interact with, and what their programming model is.</p>
+     <p><a href="#design-user">§ 4 Design - user side</a> describes all the functionality from the perspective we intend for users: it describes the various concepts they will interact with, and what their programming model is.</p>
     <li data-md>
-     <p><a href="#design-implementer">§ 5 Proposed design - implementer side</a> describes the machinery that allows for that programming model to function, and the information contained there is necessary for people implementing senders and sender algorithms (including the standard library ones) - but is not necessary to use senders productively.</p>
+     <p><a href="#design-implementer">§ 5 Design - implementer side</a> describes the machinery that allows for that programming model to function, and the information contained there is necessary for people implementing senders and sender algorithms (including the standard library ones) - but is not necessary to use senders productively.</p>
     <li data-md>
-     <p><a href="#design-api">§ 6 Proposed design - API specifics</a> discusses API decisions and questions that we believe reflect on the code that will need to be written to implement and use senders, but not on the programming model of senders in general.</p>
+     <p><a href="#design-api">§ 6 Design - API specifics</a> discusses API decisions and questions that we believe reflect on the code that will need to be written to implement and use senders, but not on the programming model of senders in general.</p>
    </ul>
    <h3 class="heading settled" data-level="3.1" id="design-conventions"><span class="secno">3.1. </span><span class="content">Conventions</span><a class="self-link" href="#design-conventions"></a></h3>
    <p>The following conventions are used throughout the design section:</p>
@@ -2582,7 +2582,7 @@ essential when writing user code using standard execution concepts; we have also
    <h3 class="heading settled" data-level="3.2" id="design-queries-and-algorithms"><span class="secno">3.2. </span><span class="content">Queries and algorithms</span><a class="self-link" href="#design-queries-and-algorithms"></a></h3>
    <p>A <dfn data-dfn-type="dfn" data-noexport id="query">query<a class="self-link" href="#query"></a></dfn> is a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> that takes some set of objects (usually one) as parameters and returns facts about those objects without modifying them. Queries are usually customization point objects, but in some cases may be functions.</p>
    <p>An <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="algorithm">algorithm</dfn> is a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> that takes some set of objects as parameters and causes those objects to do something. Algorithms are usually customization point objects, but in some cases may be functions.</p>
-   <h2 class="heading settled" data-level="4" id="design-user"><span class="secno">4. </span><span class="content">Proposed design - user side</span><a class="self-link" href="#design-user"></a></h2>
+   <h2 class="heading settled" data-level="4" id="design-user"><span class="secno">4. </span><span class="content">Design - user side</span><a class="self-link" href="#design-user"></a></h2>
    <h3 class="heading settled" data-level="4.1" id="design-contexts"><span class="secno">4.1. </span><span class="content">Execution contexts describe the place of execution</span><a class="self-link" href="#design-contexts"></a></h3>
    <p>An <dfn data-dfn-type="dfn" data-noexport id="execution-context">execution context<a class="self-link" href="#execution-context"></a></dfn> is a resource that represents the <em>place</em> where execution will happen. This could be a concrete resource - like a specific thread pool object, or a GPU - or a more abstract one, like the current thread of execution. Execution contexts
 don’t need to have a representation in code; they are simply a term describing certain properties of execution of a function.</p>
@@ -2601,7 +2601,7 @@ sender is said to <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id=
    <p>The primary defining sender algorithm is <a href="#design-connect">§ 5.3 execution::connect</a>; this function, however, is not a user-facing API; it is used to facilitate communication between senders and various sender algorithms, but end user code is not expected to invoke
 it directly.</p>
    <p>The way user code is expected to interact with senders is by using <a data-link-type="dfn" href="#sender-algorithms" id="ref-for-sender-algorithms">sender algorithms</a>.
-This paper proposes an initial set of such sender algorithms, which are described in <a href="#design-composable">§ 4.4 Senders are composable through sender algorithms</a>, <a href="#design-sender-factories">§ 4.11 Proposed user-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.12 Proposed user-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.13 Proposed user-facing sender consumers</a>.
+This paper proposes an initial set of such sender algorithms, which are described in <a href="#design-composable">§ 4.4 Senders are composable through sender algorithms</a>, <a href="#design-sender-factories">§ 4.11 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.12 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.13 User-facing sender consumers</a>.
 For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->
@@ -2792,7 +2792,7 @@ Consider the following example where we want to execute first on a CPU thread po
    <p>Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
 We believe sender consumers read better with function call syntax.</p>
-   <h3 class="heading settled" data-level="4.11" id="design-sender-factories"><span class="secno">4.11. </span><span class="content">Proposed user-facing sender factories</span><a class="self-link" href="#design-sender-factories"></a></h3>
+   <h3 class="heading settled" data-level="4.11" id="design-sender-factories"><span class="secno">4.11. </span><span class="content">User-facing sender factories</span><a class="self-link" href="#design-sender-factories"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-factory">sender factory</dfn> is an <a data-link-type="dfn" href="#algorithm" id="ref-for-algorithm">algorithm</a> that takes no senders as parameters and returns a sender.</p>
    <h4 class="heading settled" data-level="4.11.1" id="design-sender-factory-schedule"><span class="secno">4.11.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code></span><a class="self-link" href="#design-sender-factory-schedule"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>schedule</c-><c- p>(</c->
@@ -2854,7 +2854,7 @@ We believe sender consumers read better with function call syntax.</p>
 <c- c1>// when snd is executed, it will print "123"</c->
 </pre>
    <p>This adaptor is included as it greatly simplifies lifting values into senders.</p>
-   <h3 class="heading settled" data-level="4.12" id="design-sender-adaptors"><span class="secno">4.12. </span><span class="content">Proposed user-facing sender adaptors</span><a class="self-link" href="#design-sender-adaptors"></a></h3>
+   <h3 class="heading settled" data-level="4.12" id="design-sender-adaptors"><span class="secno">4.12. </span><span class="content">User-facing sender adaptors</span><a class="self-link" href="#design-sender-adaptors"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-adaptor">sender adaptor</dfn> is an <a data-link-type="dfn" href="#algorithm" id="ref-for-algorithm①">algorithm</a> that takes one or more senders, which it may <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.</p>
    <p>Many sender adaptors come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn data-dfn-type="dfn" data-lt="start" data-noexport id="start">started<a class="self-link" href="#start"></a></dfn> later on, and a potentially eager one, which is allowed to submit work prior to
 the returned sender being started. Sender consumers such as <a href="#design-sender-adaptor-ensure_started">§ 4.12.11 execution::ensure_started</a>, <a href="#design-sender-consumer-start_detached">§ 4.13.1 execution::start_detached</a>, and <a href="#design-sender-consumer-sync_wait">§ 4.13.2 std::this_thread::sync_wait</a> start senders; the implementations of non-lazy versions of the sender adaptors are <strong>allowed</strong>,
@@ -3064,7 +3064,7 @@ It is guaranteed to not start any of the input senders until the returned sender
 </pre>
    <p>Once <code class="highlight"><c- n>ensure_started</c-></code> returns, it is known that the provided sender has been <a data-link-type="dfn" href="#connect" id="ref-for-connect">connected</a> and <code class="highlight"><c- n>start</c-></code> has been called on the resulting operation state (see <a href="#design-states">§ 5.2 Operation states represents work</a>); in other words, the work described by the provided sender has been submitted
 for execution on the appropriate execution contexts. Returns a sender which completes when the provided sender completes and sends values equivalent to those of the provided sender.</p>
-   <h3 class="heading settled" data-level="4.13" id="design-sender-consumers"><span class="secno">4.13. </span><span class="content">Proposed user-facing sender consumers</span><a class="self-link" href="#design-sender-consumers"></a></h3>
+   <h3 class="heading settled" data-level="4.13" id="design-sender-consumers"><span class="secno">4.13. </span><span class="content">User-facing sender consumers</span><a class="self-link" href="#design-sender-consumers"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-consumer">sender consumer</dfn> is an <a data-link-type="dfn" href="#algorithm" id="ref-for-algorithm②">algorithm</a> that takes one or more senders, which it may <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, as parameters, and does not return a sender.</p>
    <h4 class="heading settled" data-level="4.13.1" id="design-sender-consumer-start_detached"><span class="secno">4.13.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code></span><a class="self-link" href="#design-sender-consumer-start_detached"></a></h4>
 <pre class="highlight"><c- b>void</c-> <c- k>auto</c-> <c- n>start_detached</c-><c- p>(</c->
@@ -3099,7 +3099,7 @@ to block in a non-deadlock manner).</p>
 <c- k>auto</c-> <c- n>work</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd</c-><c- p>,</c-> <c- n>fn</c-><c- p>);</c->
 <c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>work</c-><c- p>);</c->
 </pre>
-   <h2 class="heading settled" data-level="5" id="design-implementer"><span class="secno">5. </span><span class="content">Proposed design - implementer side</span><a class="self-link" href="#design-implementer"></a></h2>
+   <h2 class="heading settled" data-level="5" id="design-implementer"><span class="secno">5. </span><span class="content">Design - implementer side</span><a class="self-link" href="#design-implementer"></a></h2>
    <h3 class="heading settled" data-level="5.1" id="design-receivers"><span class="secno">5.1. </span><span class="content">Receivers serve as glue between senders</span><a class="self-link" href="#design-receivers"></a></h3>
    <p>A <dfn data-dfn-type="dfn" data-noexport id="receiver">receiver<a class="self-link" href="#receiver"></a></dfn> is a callback that supports more than one channel. In fact, it supports three of them:</p>
    <ul>
@@ -3210,7 +3210,7 @@ equivalent to:</p>
    </ul>
    <p>If a sender adaptor requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adaptors are specified
 to dispatch to the strictly lazy ones; for an author of a specific sender, it is sufficient to specialize the strictly lazy version, to also achieve a specialization of the potentially eager one.</p>
-   <p>As has been described in <a href="#design-sender-adaptors">§ 4.12 Proposed user-facing sender adaptors</a>, whether a sender adaptor is guaranteed to perform strictly lazy submission or not is defined by the adaptor used to perform it; the adaptors whose names begin with <code class="highlight"><c- n>lazy_</c-></code> provide the strictly lazy guarantee.</p>
+   <p>As has been described in <a href="#design-sender-adaptors">§ 4.12 User-facing sender adaptors</a>, whether a sender adaptor is guaranteed to perform strictly lazy submission or not is defined by the adaptor used to perform it; the adaptors whose names begin with <code class="highlight"><c- n>lazy_</c-></code> provide the strictly lazy guarantee.</p>
    <h3 class="heading settled" data-level="5.6" id="design-fusion"><span class="secno">5.6. </span><span class="content">Lazy senders provide optimization opportunities</span><a class="self-link" href="#design-fusion"></a></h3>
    <p>Because lazy senders fundamentally <em>describe</em> work, instead of describing or representing the submission of said work to an execution context, and thanks to the flexibility of the customization of most sender algorithms, they provide an opportunity for fusing
 multiple algorithms in a sender chain together, into a single function that can later be submitted for execution by an execution context. There are two ways this can happen.</p>
@@ -3230,7 +3230,7 @@ requires making runtime API calls for work submission, and quite possibly for th
 meant to be invoked manually by the end users; they are always supposed to invoke <code class="highlight"><c- n>reschedule</c-></code>, to ensure that both schedulers have a say in how the transitions are made. Any scheduler that specializes <code class="highlight"><c- n>reschedule</c-><c- p>(</c-><c- n>snd</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code> shall ensure that the
 return value of their customization is equivalent to <code class="highlight"><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>snd2</c-><c- p>)</c-></code>, where <code class="highlight"><c- n>snd2</c-></code> is a successor of <code class="highlight"><c- n>snd</c-></code> that sends values equivalent to those sent by <code class="highlight"><c- n>snd</c-></code>.</p>
    <p>The default implementation of <code class="highlight"><c- n>reschedule</c-><c- p>(</c-><c- n>snd</c-><c- p>,</c-> <c- n>sched</c-><c- p>)</c-></code> is <code class="highlight"><c- n>schedule_from</c-><c- p>(</c-><c- n>sched</c-><c- p>,</c-> <c- n>snd</c-><c- p>)</c-></code>.</p>
-   <h2 class="heading settled" data-level="6" id="design-api"><span class="secno">6. </span><span class="content">Proposed design - API specifics</span><a class="self-link" href="#design-api"></a></h2>
+   <h2 class="heading settled" data-level="6" id="design-api"><span class="secno">6. </span><span class="content">Design - API specifics</span><a class="self-link" href="#design-api"></a></h2>
    <h3 class="heading settled" data-level="6.1" id="design-typed"><span class="secno">6.1. </span><span class="content">Most senders are typed</span><a class="self-link" href="#design-typed"></a></h3>
    <p>All senders should advertise the types they will <a data-link-type="dfn" href="#send" id="ref-for-send⑧">send</a> when they complete. This is necessary for a number of features, and writing code in a way that’s agnostic of whether an imput sender is typed or not in common sender adaptors such as <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> is
 hard.</p>
@@ -5059,9 +5059,9 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <aside class="dfn-panel" data-for="algorithm">
    <b><a href="#algorithm">#algorithm</a></b><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-algorithm">4.11. Proposed user-facing sender factories</a>
-    <li><a href="#ref-for-algorithm①">4.12. Proposed user-facing sender adaptors</a>
-    <li><a href="#ref-for-algorithm②">4.13. Proposed user-facing sender consumers</a>
+    <li><a href="#ref-for-algorithm">4.11. User-facing sender factories</a>
+    <li><a href="#ref-for-algorithm①">4.12. User-facing sender adaptors</a>
+    <li><a href="#ref-for-algorithm②">4.13. User-facing sender consumers</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="send">
