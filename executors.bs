@@ -96,7 +96,7 @@ This paper proposes a self-contained design for an C++ executors, a series of ab
 
 ## Examples ## {#example}
 
-See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]] for short explanations of the algorithms used in these code examples.
+See [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]] for short explanations of the algorithms used in these code examples.
 
 ### Hello world ### {#example-hello-world}
 
@@ -222,7 +222,7 @@ essential when writing user code using standard execution concepts; we have also
 3. Users now have a choice between using a strictly lazy vs a possibly eager version of most algorithms.
 4. Senders now advertise what scheduler, if any, their evaluation will complete on.
 5. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
-6. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
+6. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]].
 7. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-shot]].
 8. Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in [[#design-dispatch]].
 9. A specific thread pool implementation is omitted, as per LEWG direction.
@@ -304,7 +304,7 @@ The primary defining operation of senders is [[#design-connect]]; this function,
 it directly.
 
 The way user code is expected to interact with senders is by using said sender algorithms.
-This paper proposes an initial set of such algorithms, which are described in [[#design-factories]], [[#design-adapters]], and [[#design-algorithms]].
+This paper proposes an initial set of such algorithms, which are described in [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]].
 For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:
 
 <pre highlight="c++">
@@ -550,11 +550,11 @@ execution::scheduler auto completion_sch3 = execution::get_completion_scheduler(
 // completion_sch3 is equivalent to cpu_sched
 </pre>
 
-## Proposed user-facing sender factories ## {#design-factories}
+## Proposed user-facing sender factories ## {#design-sender-factories}
 
 A <dfn>sender factory</dfn> is an operation that takes no senders as parameters and returns a sender.
 
-### `execution::schedule` ### {#design-factory-schedule}
+### `execution::schedule` ### {#design-sender-factory-schedule}
 
 <pre highlight="c++">
 execution::sender auto schedule(
@@ -571,7 +571,7 @@ execution::sender auto snd1 = execution::schedule(sch1);
 // snd1 describes the creation of a new task on the system thread pool
 </pre>
 
-### `execution::just` ### {#design-factory-just}
+### `execution::just` ### {#design-sender-factory-just}
 
 <pre highlight="c++">
 execution::sender auto just(
@@ -609,7 +609,7 @@ auto&& [v4] = std::this_thread::sync_wait(then4).value();
 // v4 contains {2, 4, 6, 8, 10}.
 ```
 
-### `execution::reschedule_just` ### {#design-factory-reschedule_just}
+### `execution::reschedule_just` ### {#design-sender-factory-reschedule_just}
 
 <pre highlight="c++">
 execution::sender auto reschedule_just(
@@ -633,19 +633,19 @@ execution::sender auto snd = execution::then(pred, [](auto... args) {
 
 This algorithm is included, as it greatly simplifies lifting values into senders.
 
-## Proposed user-facing sender adapters ## {#design-adapters}
+## Proposed user-facing sender adapters ## {#design-sender-adapters}
 
 A <dfn>sender adapter</dfn> is an operation that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
 
 Many sender adapters come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
-the returned sender being started. Sender algorithms such as [[#design-adapter-ensure_started]], [[#design-algorithm-start_detached]], and [[#design-algorithm-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**,
+the returned sender being started. Sender algorithms such as [[#design-sender-adapter-ensure_started]], [[#design-sender-consumer-start_detached]], and [[#design-sender-consumer-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**,
 but not guaranteed, to start senders.
 
 The strictly lazy versions of the adapters below (that is, all the versions whose names start with `lazy_`) are guaranteed to not start any input senders passed into them.
 
 For more implementer-centric description of starting senders, see [[#design-laziness]].
 
-### `execution::reschedule` ### {#design-adapter-reschedule}
+### `execution::reschedule` ### {#design-sender-adapter-reschedule}
 
 <pre highlight="c++">
 execution::sender auto reschedule(
@@ -672,7 +672,7 @@ execution::sender auto gpu_task = execution::reschedule(cpu_task, gpu_sched);
 // gpu_task describes the transition of the task graph described by cpu_task to the gpu
 </pre>
 
-### `execution::then`, `execution::upon_error`, `execution::upon_done` ### {#design-adapter-then}
+### `execution::then`, `execution::upon_error`, `execution::upon_done` ### {#design-sender-adapter-then}
 
 <pre highlight="c++">
 execution::sender auto then(
@@ -723,7 +723,7 @@ execution::sender auto snd = execution::then(input, [](auto... args) {
 
 This algorithm is included, as it is necessary for writing any sender code that actually performs a useful function.
 
-### `execution::let_value`, `execution::let_error`, `execution::let_done` ### {#design-adapter-let}
+### `execution::let_value`, `execution::let_error`, `execution::let_done` ### {#design-sender-adapter-let}
 
 <pre highlight="c++">
 execution::sender auto let_value(
@@ -764,7 +764,7 @@ execution::sender auto lazy_let_error(
 
 `let_error` and `let_done` are similar to `let_value`, but where `let_value` works with values sent by the input sender, `let_error` works with errors, and `let_done` is invoked when the "done" signal is sent.
 
-### `execution::on` ### {#design-adapter-on}
+### `execution::on` ### {#design-sender-adapter-on}
 
 <pre highlight="c++">
 execution::sender auto on(
@@ -780,7 +780,7 @@ execution::sender auto lazy_on(
 
 Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender has no [=completion scheduler|completion schedulers=].
 
-### `execution::into_variant` ### {#design-adapter-into_variant}
+### `execution::into_variant` ### {#design-sender-adapter-into_variant}
 
 <pre highlight=c++>
 execution::sender into_variant(
@@ -790,7 +790,7 @@ execution::sender into_variant(
 
 Returns a sender which sends a variant of tuples of all the possible sets of types sent by the input sender. Senders can send multiple sets of values depending on runtime conditions; this is a helper function that turns them into a single variant value.
 
-### `execution::unschedule` ### {#design-adapter-unschedule}
+### `execution::unschedule` ### {#design-sender-adapter-unschedule}
 
 <pre highlight="c++">
 execution::sender unschedule(
@@ -800,7 +800,7 @@ execution::sender unschedule(
 
 Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but has no [=completion scheduler|completion schedulers=].
 
-### `execution::bulk` ### {#design-adapter-bulk}
+### `execution::bulk` ### {#design-sender-adapter-bulk}
 
 <pre highlight="c++">
 execution::sender auto bulk(
@@ -822,7 +822,7 @@ In this paper, only integral types satisfy the concept of a shape, but future pa
 
 `lazy_bulk` is **guaranteed** to not begin executing `function` until the returned sender is started.
 
-### `execution::split` ### {#design-adapter-split}
+### `execution::split` ### {#design-sender-adapter-split}
 
 <pre highlight="c++">
 execution::sender auto split(execution::sender auto sender);
@@ -832,7 +832,7 @@ execution::sender auto lazy_split(execution::sender auto sender);
 
 If the provided sender is a multi-shot sender, returns that sender. Otherwise, returns a multi-shot sender which sends values equivalent to the values sent by the provided sender. See [[#design-shot]].
 
-### `execution::when_all` ### {#design-adapter-when_all}
+### `execution::when_all` ### {#design-sender-adapter-when_all}
 
 <pre highlight="c++">
 execution::sender auto when_all(
@@ -871,7 +871,7 @@ execution::sender auto final = execution::then(both, [](auto... args){
 // when final executes, it will print "the two args: 1, abc"
 </pre>
 
-### `execution::reschedule_when_all` ### {#design-adapter-reschedule_when_all}
+### `execution::reschedule_when_all` ### {#design-sender-adapter-reschedule_when_all}
 
 <pre highlight="c++">
 execution::sender auto reschedule_when_all(
@@ -895,11 +895,11 @@ execution::sender auto lazy_reschedule_when_all_with_variant(
 );
 </pre>
 
-Similar to [[#design-adapter-when_all]], but returns a sender whose value [=completion scheduler=] is the provided scheduler.
+Similar to [[#design-sender-adapter-when_all]], but returns a sender whose value [=completion scheduler=] is the provided scheduler.
 
 See [[#design-join]].
 
-### `execution::ensure_started` ### {#design-adapter-ensure_started}
+### `execution::ensure_started` ### {#design-sender-adapter-ensure_started}
 
 <pre highlight="c++">
 execution::sender auto ensure_started(
@@ -910,11 +910,11 @@ execution::sender auto ensure_started(
 Once `ensure_started` returns, it is known that the provided sender has been [=connect|connected=] and `start` has been called on the resulting operation state (see [[#design-states]]); in other words, the work described by the provided sender has been submitted
 for execution on the appropriate execution contexts. Returns a sender which completes when the provided sender completes and sends values equivalent to those of the provided sender.
 
-## Proposed user-facing sender algorithms ## {#design-algorithms}
+## Proposed user-facing sender consumers ## {#design-sender-consumers}
 
 A <dfn>sender consumer</dfn> is an operation that takes one or more senders, which it may `execution::connect`, as parameters, and does not return a sender.
 
-### `execution::start_detached` ### {#design-algorithm-start_detached}
+### `execution::start_detached` ### {#design-sender-consumer-start_detached}
 
 <pre highlight="c++">
 void auto start_detached(
@@ -924,7 +924,7 @@ void auto start_detached(
 
 Like `ensure_started`, but does not return a value; if the provided sender sends an error instead of a value, `std::terminate` is called.
 
-### `std::this_thread::sync_wait` ### {#design-algorithm-sync_wait}
+### `std::this_thread::sync_wait` ### {#design-sender-consumer-sync_wait}
 
 <pre highlight="c++">
 auto sync_wait(
@@ -934,7 +934,7 @@ auto sync_wait(
 </pre>
 
 `std::this_thread::sync_wait` is an algorithm that submits the work described by the provided sender for execution, similarly to `ensure_started`, except that it blocks <b>the current `std::thread` or thread of `main`</b> until the work is completed, and returns
-an optional tuple of values that were sent by the provided sender on its completion of work. Where [[#design-factory-schedule]] and [[#design-factory-reschedule_just]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of
+an optional tuple of values that were sent by the provided sender on its completion of work. Where [[#design-sender-factory-schedule]] and [[#design-sender-factory-reschedule_just]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of
 senders, retrieving the result of the task graph.
 
 If the provided sender sends an error instead of values, `sync_wait` throws that error as an exception, or rethrows the original exception if the error is of type `std::exception_ptr`.
@@ -1094,7 +1094,7 @@ We distinguish two different guarantees about *when* work is submitted to an exe
 If an operation requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adapters are specified
 to dispatch to the strictly lazy ones; for an author of a specific sender, it is sufficient to specialize the strictly lazy version, to also achieve a specialization of the potentially eager one.
 
-As has been described in [[#design-adapters]], whether an operation is guaranteed to perform strictly lazy submission or not is defined by the adapter used to perform it; the adapters whose names begin with `lazy_` provide the strictly lazy guarantee.
+As has been described in [[#design-sender-adapters]], whether an operation is guaranteed to perform strictly lazy submission or not is defined by the adapter used to perform it; the adapters whose names begin with `lazy_` provide the strictly lazy guarantee.
 
 ## Lazy senders provide optimization opportunities ## {#design-fusion}
 
@@ -1105,8 +1105,8 @@ The first (and most common) way for such optimizations to happen is thanks to th
 the compiler is able to see a chain of work described using senders as a tree of tail calls, allowing for inlining and removal of most of the sender machinery. In fact, when work is not submitted to execution contexts outside of the current thread of execution,
 compilers are capable of removing the senders abstraction entirely, while still allowing for composition of functions across different parts of a program.
 
-The second way for this to occur is when an algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, [[#design-adapter-ensure_started]] will be an identity transformation,
-because the algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy [[#design-adapter-bulk]] operations of compatible shapes, and merge them together into a single submission of a GPU kernel.
+The second way for this to occur is when an algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, [[#design-sender-adapter-ensure_started]] will be an identity transformation,
+because the algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy [[#design-sender-adapter-bulk]] operations of compatible shapes, and merge them together into a single submission of a GPU kernel.
 
 ## Execution context transitions are two-step ## {#design-transition-details}
 
@@ -1138,7 +1138,7 @@ The mechanism for this advertisement is the same as in [[P0443R14]]; the way to 
 `sender_traits::value_types` is a template that takes two arguments: one is a tuple-like template, the other is a variant-like template. The tuple-like argument is required to represent senders sending more than one value (such as `when_all`). The variant-like
 argument is required to represent senders that choose which specific values to send at runtime.
 
-There's a choice made in the specification of [[#design-algorithm-sync_wait]]: it returns a tuple of values sent by the sender passed to it, wrapped in `std::optional` to handle the `set_done` signal. However, this assumes that those values can be represented as a
+There's a choice made in the specification of [[#design-sender-consumer-sync_wait]]: it returns a tuple of values sent by the sender passed to it, wrapped in `std::optional` to handle the `set_done` signal. However, this assumes that those values can be represented as a
 tuple, like here:
 
 <pre highlight=c++>
