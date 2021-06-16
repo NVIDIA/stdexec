@@ -230,17 +230,17 @@ essential when writing user code using standard execution concepts; we have also
 
 ## Prior art ## {#intro-prior-art}
 
-This proposal builds upon years of prior art and field experience with asynchronous and parallel programming frameworks in C++.
+This proposal builds upon and learns from years of prior art with asynchronous and parallel programming frameworks in C++.
 
-Futures, as traditionally realized, require the dynamic allocation and management of a shared state, synchronization, and typically type-erasure of work and continuation. Many of these costs are inherent in the nature of "future" as a handle to work that is already scheduled for execution. These expenses rule out the future abstraction for many uses and makes it a poor choice for a basis of a Generic mechanism.
+Futures, as traditionally realized, require the dynamic allocation and management of a shared state, synchronization, and typically type-erasure of work and continuation. Many of these costs are inherent in the nature of "future" as a handle to work that is already scheduled for execution. These expenses rule out the future abstraction for many uses and makes it a poor choice for a basis of a generic mechanism.
 
-Coroutines suffer many of the same problems but can avoid synchronizing when chaining dependent work because they typically start suspended. In many cases, coroutine frames require unavoidable dynamic allocation. Consequently, coroutines in embedded or heterogeneous environments require great attention to detail. Neither are coroutines good candidates for cancellation because the early and safe termination of coordinating coroutines requires unsatisfying solutions. On the one hand, exceptions are inefficient and disallowed in many environments. Alternatively, clumsy ad hoc mechanisms, whereby co_yield returns a status code, hinder correctness. P1662 provides a complete discussion.
+Coroutines suffer many of the same problems, but can avoid synchronizing when chaining dependent work because they typically start suspended. In many cases, coroutine frames require unavoidable dynamic allocation. Consequently, coroutines in embedded or heterogeneous environments require great attention to detail. Nor are coroutines good candidates for cancellation because the early and safe termination of coroutines requires unsatisfying solutions. On the one hand, exceptions are inefficient and disallowed in many environments. Alternatively, clumsy ad hoc mechanisms, whereby `co_yield` returns a status code, hinder correctness. See [[P1662R0]] for a complete discussion.
 
 Callbacks are the simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities, but the lack of a standard obstructs generic design. Additionally, few of these possibilities accomodate cancellation signals when the user requests upstream work to stop and clean up.
 
 ## Field experience ## {#intro-field-experience}
 
-This proposal draws heavily from our experience with the [libunifex](https://github.com/facebookexperimental/libunifex) and [Agency](https://github.com/agency-library/agency) libraries. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:
+This proposal draws heavily from our field experience with [libunifex](https://github.com/facebookexperimental/libunifex), [Thrust](https://github.com/NVIDIA/thrust), and [Agency](https://github.com/agency-library/agency). It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:
 * \[HPX](https://github.com/STEllAR-GROUP/hpx)
 * [Folly](https://github.com/facebook/folly/blob/master/folly/docs/Futures.md)
 * [stlab](https://stlab.cc/libraries/concurrency/)
