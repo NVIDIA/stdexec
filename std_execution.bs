@@ -4,6 +4,7 @@ H1: <code>std::execution</code>
 Shortname: D2300
 Revision: 0
 Status: D
+Date: 2021-06-15
 Group: WG21
 Audience: SG1, LEWG
 Editor: Michał Dominiak, griwes@griwes.info
@@ -168,7 +169,7 @@ sender auto async_inclusive_scan(scheduler auto sch,                          //
   std::vector<double> partials(tile_count + 1);                               // 4
   partials[0] = init;                                                         // 4
 
-  return reschedule_just(sch, std::move(partials))                            // 5
+  return transfer_just(sch, std::move(partials))                              // 5
        | bulk(tile_count,                                                     // 6
            [=](std::size_t i, std::vector<double>& partials) {                // 7
              auto start = i * tile_size;                                      // 8
@@ -204,7 +205,7 @@ This example builds an asynchronous computation of an inclusive scan:
 2. It takes a scheduler, which specifies what execution context the scan should be launched on.
 3. It also takes a `tile_count` parameter that controls the number of execution agents that will be spawned.
 4. First we need to allocate temporary storage needed for the algorithm, which we'll do with a `std::vector`, `partials`. We need one `double` of temporary storage for each execution agent we create.
-5. Next we'll create our initial sender with [[#design-sender-factory-reschedule_just]]. This sender will send the temporary storage, which we've moved into the sender. The sender has a completion scheduler of `sch`, which means the next item in the chain will use `sch`.
+5. Next we'll create our initial sender with [[#design-sender-factory-transfer_just]]. This sender will send the temporary storage, which we've moved into the sender. The sender has a completion scheduler of `sch`, which means the next item in the chain will use `sch`.
 6. Senders and sender adaptors support composition via `operator|`, similar to C++ ranges. We'll use `operator|` to attach the next piece of work, which will spawn `tile_count` execution agents using [[#design-sender-adaptor-bulk]] (see [[#design-pipeable]] for details).
 7. Each agent will call a `std::invocable`, passing it two arguments. The first is the agent's index (`i`) in the [[#design-sender-adaptor-bulk]] operation, in this case a unique integer in `[0, tile_count)`. The second argument is what the input sender sent - the temporary storage.
 8. We start by computing the start and end of the range of input and output elements that this agent is responsible for, based on our agent index.
