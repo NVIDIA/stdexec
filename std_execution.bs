@@ -1,9 +1,9 @@
 <pre class='metadata'>
 Title: `std::execution`
 H1: <code>std::execution</code>
-Shortname: D2300
+Shortname: P2300
 Revision: 0
-Status: D
+Status: P
 Date: 2021-06-15
 Group: WG21
 Audience: SG1, LEWG
