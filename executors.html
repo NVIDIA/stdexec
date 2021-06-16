@@ -2808,16 +2808,31 @@ That means that there’s no way to construct sender chains that traverse differ
 <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>then2</c-><c- p>);</c->
 </pre>
    <h3 class="heading settled" data-level="4.7" id="design-shot"><span class="secno">4.7. </span><span class="content">Senders can be either multi-shot or single-shot</span><a class="self-link" href="#design-shot"></a></h3>
-   <p>Some senders may only support sending a signal a single time for correctness and efficiency.
-For example, a sender may contain a <code class="highlight"><c- n>unique_ptr</c-></code> that it will transferring ownership to its recipient
-This requires that sender algorithms support move-only senders.</p>
-   <p>A <dfn data-dfn-type="dfn" data-noexport id="single-shot-sender">single-shot sender<a class="self-link" href="#single-shot-sender"></a></dfn> can only send its signal once, which means it can only be connected once.
-When a sender algorithm accepts a sender as an rvalue, that sender shall be treated as if it was a single-shot sender by the algorithm, and the caller must treat the sender as a moved-from object.
-The sender must not be copied, so the algorithm must connect it as an rvalue and must connect it at most once.</p>
-   <p>All algorithms have to accept rvalue senders to facilitate senders that can only send a value once.</p>
-   <p>A <dfn data-dfn-type="dfn" data-noexport id="multi-shot-sender">multi-shot sender<a class="self-link" href="#multi-shot-sender"></a></dfn> can send its signal multiple times, which means it may be connected multiple times.
-If a sender algorithm accepts a sender as an lvalue, that sender shall be treated as if it was a multi-shot sender by the algorithm.
-The sender must remain valid after such an algorithm invocation, so the algorithm must connect it as an lvalue, although it may connect it multiple times.</p>
+   <p>Some senders may only support launching their operation a single time, while others may be repeatable
+and support being launched multiple times. Executing the operation may consume resources owned by the
+sender.</p>
+   <p>For example, a sender may contain a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>unique_ptr</c-></code> that it will be transferring ownership of to the
+operation-state returned by a call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> so that the operation has access to
+this resource. In such a sender, calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> consumes the sender such that after
+the call the input sender is no longer valid. Such a sender will also typically be move-only so that
+it can maintain unique ownership of that resource.</p>
+   <p>A <dfn data-dfn-type="dfn" data-noexport id="single-shot-sender">single-shot sender<a class="self-link" href="#single-shot-sender"></a></dfn> can only be connected to a receiver at most once. Its implementation of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> only has overloads for an rvalue-qualified sender. Callers must pass the sender
+as an rvalue to the call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, indicating that the call consumes the sender.</p>
+   <p>A <dfn data-dfn-type="dfn" data-noexport id="multi-shot-sender">multi-shot sender<a class="self-link" href="#multi-shot-sender"></a></dfn> can be connected to multiple receivers and can be launched multiple
+times. Mult-shot senders customise <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> to accept an lvalue reference to the
+sender. Callers can indicate that they want the sender to remain valid after the call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> by passing an lvalue reference to the sender to call these overloads. Multi-shot senders should also define
+overloads of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> that accept rvalue-qualified enders to allow the sender to be also used in places
+where only a single-shot sender is required.</p>
+   <p>If the user of a sender does not require the sender to remain valid after connecting it to a
+receiver then it can pass an rvalue-reference to the sender to the call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>.
+Such usages should be able to accept either single-shot or multi-shot senders.</p>
+   <p>If the caller does wish for the sender to remain valid after the call then it can pass an lvalue-qualified sender
+to the call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>. Such usages will only accept multi-shot senders.</p>
+   <p>Algorithms that accept senders will typically either decay-copy an input sender and store it somewhere
+for later usage (for example as a data-member of the returned sender) or will immediately call <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> on the input sender, such as in <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code> or <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code>.</p>
+   <p>Some multi-use sender algorithms may require that an input sender be copy-constructible but will only call <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>()</c-></code> on an rvalue of each copy, which still results in effectively executing the operation multiple times.
+Other multi-use sender algorithms may require that the sender is move-constructible but will invoke <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> on an lvalue reference to the sender.</p>
+   <p>For a sender to be usable in both multi-use scenarios, it will generally be required to be both copy-constructible and lvalue-connectable.</p>
    <h3 class="heading settled" data-level="4.8" id="design-forkable"><span class="secno">4.8. </span><span class="content">Senders are forkable</span><a class="self-link" href="#design-forkable"></a></h3>
    <p>Any non-trivial program will eventually want to fork a chain of senders into independent streams of work, regardless of whether they are single-shot or multi-shot.
 For instance, an incoming event to a middleware system may be required to trigger events on more than one downstream system.
