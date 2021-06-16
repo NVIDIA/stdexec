@@ -1225,7 +1225,7 @@ execution::sender auto sends_3 = ...;
 
 auto [a, b, c] = std::this_thread::sync_wait(
     execution::transfer_when_all(
-        execution::get_completion_scheduler&lt;execution::set_value>s(sends_1),
+        execution::get_completion_scheduler&lt;execution::set_value_t>(sends_1),
         sends_1,
         sends_2,
         sends_3
