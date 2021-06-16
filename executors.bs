@@ -1129,7 +1129,7 @@ execution::sender auto sends_3 = ...;
 
 auto [a, b, c] = std::this_thread::sync_wait(
     execution::reschedule_when_all(
-        execution::get_completion_scheduler<execution::set_value>s(sends_1),
+        execution::get_completion_scheduler&lt;execution::set_value>s(sends_1),
         sends_1,
         sends_2,
         sends_3
@@ -2628,7 +2628,7 @@ namespace std::execution {
         is_nothrow_constructible_v&lt;remove_cvref_t&lt;S>, S>
     </pre>
 
-#### Ensure_started adaptor <b>[execution.sender.adaptors.ensure_started]</b> #### {#spec-execution.sender.adaptors.unschedule}
+#### Ensure_started adaptor <b>[execution.sender.adaptors.ensure_started]</b> #### {#spec-execution.sender.adaptors.ensure_started}
 
 1. `execution::ensure_started` is used to eagerly start the execution of a sender, while also providing a way to attach further work to execute once it has completed.
 
