@@ -102,7 +102,7 @@ Asynchrony and parallelism appears everywhere, from processor hardware interface
 Every C++ domain and every platform need to deal with asynchrony and parallelism, from scientific computing to video games to financial services, from the smallest mobile devices to your laptop to GPUs in the world's fastest supercomputer.
 
 While the C++ Standard Library has a rich set concurrency primitives (`std::atomic`, `std::mutex`, `std::counting_semaphore`, etc) and lower level building blocks (`std::thread`, etc), we lack a Standard vocabulary and framework for asynchrony and parallelism that C++ programmers desperately need.
-`std::async`/`std::future`/`std::promise, C++11's intended exposure for asynchrony, is inefficient, hard to use correctly, and severely lacking in genericity, making it unusable in many contexts.
+`std::async`/`std::future`/`std::promise`, C++11's intended exposure for asynchrony, is inefficient, hard to use correctly, and severely lacking in genericity, making it unusable in many contexts.
 We introduced parallel algorithms to the C++ Standard Library in C++17, and while they are an excellent start, they are all inherently synchronous and not composable.
 
 This paper proposes a Standard C++ model for asynchrony, based around three key abstractions: schedulers, senders, and receivers, and a set of customizable asynchronous algorithms.
