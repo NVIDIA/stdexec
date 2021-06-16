@@ -1063,7 +1063,7 @@ Receivers are not a part of the end-user-facing API of this proposal; they are n
 
 Receivers are what is passed as the second argument to [[#design-connect]].
 
-## Operation states represents work ## {#design-states}
+## Operation states represent work ## {#design-states}
 
 An <dfn>operation state</dfn> is an object that represents work. Unlike senders, it is not a chaining mechanism; instead, it is a concrete object that packages the work described by a full sender chain, ready to be executed. An operation state is neither movable nor
 copyable, and its interface consists of a single algorithm: `start`, which serves as the submission point of the work represented by a given operation state.
