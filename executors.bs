@@ -2536,7 +2536,7 @@ namespace std::execution {
 
 7. `tag_invoke` expressions used in the definitions of the sender adaptors in this subclause shall not consider member functions of their first non-tag arguments.
 
-#### transfer_when_all adaptor <b>[execution.sender.adaptors.transfer_when_all]</b> #### {#spec-execution.sender.adaptor.transfer_when_all}
+#### Transfer_when_all adaptor <b>[execution.sender.adaptors.transfer_when_all]</b> #### {#spec-execution.sender.adaptor.transfer_when_all}
 
 1. `execution::transfer_when_all` and `execution::lazy_transfer_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
     that they complete on the specified scheduler. `execution::transfer_when_all_with_variant` and `execution::lazy_transfer_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input
