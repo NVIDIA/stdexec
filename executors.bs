@@ -322,10 +322,10 @@ of the work described by a sender, but we have found those algorithms to be insu
 None of these implementation strategies are acceptable for many classes of parallel runtimes, such as task frameworks (like [\HPX](https://github.com/STEllAR-GROUP/hpx)) or accelerator runtimes (like CUDA or SYCL).
 Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
 Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
-When further work is attached to that sender by invoking sender algorithms, that work will also complete on the appropriate completion scheduler.
+When further work is attached to that sender by invoking sender algorithms, that work will also complete on an appropriate completion scheduler.
 
-`get_completion_scheduler` is a query that retrieves the [=completion scheduler=] from a sender. Calling `get_completion_scheduler` on a sender that does not have an completion scheduler is ill-formed. If a scheduler advertises its completion scheduler in this
-way, that sender <b>must</b> ensure that it [=send|sends=] its values on an execution agent belonging to an execution context represented by a scheduler returned from this function.
+`get_completion_scheduler` is a query that retrieves the [=completion scheduler=] for a specific completion signal from a sender. Calling `get_completion_scheduler` on a sender that does not have a completion scheduler for a given signal is ill-formed. If a scheduler advertises a completion scheduler for a signal in this
+way, that sender <b>must</b> ensure that it [=send|sends=] that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.
 
 <pre highlight="c++">
 execution::scheduler auto sch = new_thread_scheduler{};
@@ -417,7 +417,7 @@ merged into a single one in an asynchronous fashion.
 `when_all` is a sender algorithm that returns a sender that completes when the last of the input senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the input senders, in order. The `when_all` algorithm returns a sender
 that also does not have an associated scheduler.
 
-`reschedule_when_all` accepts an additional scheduler argument. It returns a sender whose [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
+`reschedule_when_all` accepts an additional scheduler argument. It returns a sender whose value [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
 `transform(when_all(inputs...), scheduler)`, but one that allows for better efficiency through customization.
 
 ## Proposed set of user-facing sender factories ## {#design-factories}
@@ -449,7 +449,7 @@ execution::sender auto just(
 );
 </pre>
 
-Returns a sender with no [=completion scheduler=], which [=send|sends=] the provided values. If a provided value is an lvalue reference, a copy is made inside the returned sender and a non-const lvalue reference to the copy is sent. If the provided value is an rvalue reference, it is moved into the returned sender and an rvalue reference to it is sent.
+Returns a sender with no [=completion scheduler|completion schedulers=], which [=send|sends=] the provided values. If a provided value is an lvalue reference, a copy is made inside the returned sender and a non-const lvalue reference to the copy is sent. If the provided value is an rvalue reference, it is moved into the returned sender and an rvalue reference to it is sent.
 
 ```c++
 execution::sender auto snd1 = execution::just(3.14);
@@ -488,7 +488,7 @@ execution::sender auto reschedule_just(
 );
 </pre>
 
-Returns a sender whose [=completion scheduler=] is the provided scheduler, which [=send|sends=] the provided values in the same manner as `just`.
+Returns a sender whose value [=completion scheduler=] is the provided scheduler, which [=send|sends=] the provided values in the same manner as `just`.
 
 <pre highlight="c++">
 execution::sender auto vals = execution::reschedule_just(
@@ -648,7 +648,7 @@ execution::sender auto lazy_on(
 );
 </pre>
 
-Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender does not have a [=completion scheduler=].
+Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender has no [=completion scheduler|completion schedulers=].
 
 ### `execution::into_variant` ### {#design-adapter-into_variant}
 
@@ -668,7 +668,7 @@ execution::sender unschedule(
 );
 </pre>
 
-Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but does not have an [=completion scheduler=].
+Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but has no [=completion scheduler|completion schedulers=].
 
 ### `execution::bulk` ### {#design-adapter-bulk}
 
@@ -718,7 +718,7 @@ execution::sender auto when_all_with_variant(
 
 `when_all_with_variant` does the same, but it adapts all the input senders using `into_variant`.
 
-The returned sender does not have a [=completion scheduler=].
+The returned sender has no [=completion scheduler|completion schedulers=].
 
 `when_all` is a strictly lazy algorithm; it is guaranteed to not start any of the input senders until the returned sender is started.
 
@@ -765,7 +765,7 @@ execution::sender auto lazy_reschedule_when_all_with_variant(
 );
 </pre>
 
-Similar to [[#design-adapter-when_all]], but returns a sender whose [=completion scheduler=] is the provided scheduler.
+Similar to [[#design-adapter-when_all]], but returns a sender whose value [=completion scheduler=] is the provided scheduler.
 
 See [[#design-join]].
 
@@ -887,7 +887,7 @@ execution::start(state);
 
 ## Sender algorithms are customizable ## {#design-customization}
 
-Senders being able to advertise what their [=completion scheduler=] is fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler any operations it depends on will complete on.
+Senders being able to advertise what their [=completion schedulers=] are fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler any operations it depends on will complete on.
 
 The simple way to provide customizations for functions like `then`, that is for [=sender adapter|sender adapters=] and [=sender algorithm|algorithms=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
 the expression `execution::then(sender, invocable)` to be equivalent to:
@@ -1757,7 +1757,7 @@ namespace std::execution {
 2. The name `execution::schedule` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::scheduler`, `execution::schedule` is ill-formed. Otherwise, the expression `execution::schedule(s)`
     is expression-equivalent to:
 
-    1. `tag_invoke(execution::schedule, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s`, the program is ill-formed with no
+    1. `tag_invoke(execution::schedule, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s`, the program is ill-formed with no
         diagnostic required.
 
     2. Otherwise, `execution::schedule(s)` is ill-formed.
@@ -1832,7 +1832,7 @@ namespace std::execution {
 2. The name `execution::reschedule_just` denotes a customization point object. For some subexpressions `s` and `vs...`, let `S` be `decltype((s))` and `Vs...` be `decltype((vs))`. If `S` does not satisfy `execution::scheduler`, or any type `V` in `Vs` does not
     satisfy `<i>moveable-value</i>`, `execution::reschedule_just(s, vs...)` is ill-formed. Otherwise, `execution::reschedule_just(s, vs...)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::reschedule_just, s, vs...)`, if that expression is valid and its type satisfies `execution::typed_sender`. If the function selected by `tag_invoke` does not return a sender whose completion scheduler is equivalent to `s` and sends
+    1. `tag_invoke(execution::reschedule_just, s, vs...)`, if that expression is valid and its type satisfies `execution::typed_sender`. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s` and sends
         values equivalent to `vs...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::reschedule(execution::just(vs...), s)`.
@@ -1925,7 +1925,7 @@ namespace std::execution {
 
 #### Reschedule adaptor <b>[execution.sender.adaptors.reschedule]</b> #### {#spec-execution.sender.adaptors.reschedule}
 
-1. `execution::reschedule` and `execution::lazy_reschedule` are used to adapt a sender into a sender with a different associated completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]
+1. `execution::reschedule` and `execution::lazy_reschedule` are used to adapt a sender into a sender with a different associated `set_value` completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]
 
 2. The name `execution::reschedule` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`. or `S` does not satisfy `execution::sender`,
     `execution::reschedule` is ill-formed. Otherwise, the expression `execution::reschedule(s, sch)` is expression-equivalent to:
