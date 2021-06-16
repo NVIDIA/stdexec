@@ -334,12 +334,10 @@ of the work described by a sender, but we have found those algorithms to be insu
   3. having to customise most or all sender operations to support an execution context, so that you can avoid problems described in 1. and 2, which we believe is impractical and brittle based on months of field experience attempting this in [Agency](https://github.com/agency-library/agency).
 
 None of these implementation strategies are acceptable for many classes of parallel runtimes, such as task frameworks (like [\HPX](https://github.com/STEllAR-GROUP/hpx)) or accelerator runtimes (like CUDA or SYCL).
-Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
+
+Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing [#design-queries-get_completion_scheduler], a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
 Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
 When further work is attached to that sender by invoking sender algorithms, that work will also complete on an appropriate completion scheduler.
-
-`get_completion_scheduler` is a query that retrieves the [=completion scheduler=] for a specific completion signal from a sender. Calling `get_completion_scheduler` on a sender that does not have a completion scheduler for a given signal is ill-formed. If a scheduler advertises a completion scheduler for a signal in this
-way, that sender <b>must</b> ensure that it [=send|sends=] that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.
 
 <pre highlight="c++">
 execution::scheduler auto sch = new_thread_scheduler{};
@@ -434,9 +432,127 @@ that also does not have an associated scheduler.
 `reschedule_when_all` accepts an additional scheduler argument. It returns a sender whose value [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
 `transform(when_all(inputs...), scheduler)`, but one that allows for better efficiency through customization.
 
-## Proposed set of user-facing sender factories ## {#design-factories}
+## Senders are composable through operations ## {#design-composable}
 
-A <dfn>sender factory</dfn> is a function that takes no senders as parameters and returns a sender.
+Asynchronous programming often departs from traditional code structure and control flow that we are familiar with.
+A successful asynchronous framework must provide an intuitive story for composition of asynchronous work: expressing dependencies, passing objects, managing object lifetimes, etc.
+
+The true power and utility of senders is in their composability.
+With senders, users can describe generic execution pipelines and graphs, and then run them on and across a variety of different schedulers.
+Senders are composed using <dfn>sender operations</dfn>:
+
+* [=sender factories=], operations that take no senders and return a sender.
+* [=sender adapters=], operations that take (and potentially `execution::connect`) senders and return a sender.
+* [=sender consumers=], operations that take (and potentially `execution::connect`) senders and do not return a sender.
+
+## Most sender adapters are pipeable ## {#design-pipeable}
+
+To facilitate an intuitive syntax for composition, most sender adapters are <dfn>pipeable</dfn>; they can be composed (<dfn>piped</dfn>) together with `operator|`.
+This mechanism is similar to the `operator|` composition that C++ range adapters support and draws inspiration from piping in *nix shells.
+Pipeable sender adapters take a sender as their first parameter and have no other sender parameters.
+
+`a | b` will pass the sender `a` as the first argument to the pipeable sender adapter `b`. Pipeable sender adapters support partial application of the parameters after the first. For example, all of the following are equivalent:
+
+<pre highlight=c++>
+execution::bulk(snd, N, [] (std::size_t i, auto d) {});
+execution::bulk(snd)(N, [] (std::size_t i, auto d) {});
+snd | execution::bulk(N, [] (std::size_t i, auto d) {});
+</pre>
+
+Piping enables you to compose together senders with a linear syntax.
+Without it, you'd have to use either nested function call syntax, which would cause a syntactic inversion of the direction of control flow, or you'd have to introduce a temporary variable for each stage of the pipeline.
+Consider the following example where we want to execute first on a CPU thread pool, then on a CUDA GPU, then back on the CPU thread pool:
+
+<table>
+<tr>
+<th>Syntax Style
+<th>Example
+<tr>
+<th>Function call <br/> (nested)
+<td><pre highlight=c++>
+auto snd = execution::then(
+             execution::reschedule(
+               execution::then(
+                 execution::reschedule(
+                   execution::then(
+                     execution::schedule(get_thread_pool_scheduler())
+                     []{ return 123; }),
+                   cuda::new_stream_scheduler()),
+                 [](int i){ return 123 * 5; }),
+               get_thread_pool()),
+             [](int i){ return i - 5; });
+auto [result] = std::this_thread::sync_wait(snd).value();
+// result == 610
+</pre>
+<tr>
+<th>Function call <br/> (named temporaries)
+<td><pre highlight=c++>
+auto snd0 = execution::schedule(get_thread_pool_scheduler());
+auto snd1 = execution::then(snd0, []{ return 123; });
+auto snd2 = execution::reschedule(snd1, cuda::new_stream_scheduler());
+auto snd3 = execution::then(snd2, [](int i){ return 123 * 5; })
+auto snd4 = execution::reschedule(snd3, get_thread_pool())
+auto snd5 = execution::then(snd4, [](int i){ return i - 5; });
+auto [result] = *std::this_thread::sync_wait(snd4);
+// result == 610
+</pre>
+<tr>
+<th>Pipe
+<td><pre highlight=c++>
+auto snd = execution::schedule(get_thread_pool_scheduler())
+         | execution::then([]{ return 123; })
+         | execution::reschedule(cuda::new_stream_scheduler())
+         | execution::then([](int i){ return 123 * 5; })
+         | execution::reschedule(get_thread_pool())
+         | execution::then([](int i){ return i - 5; });
+auto [result] = std::this_thread::sync_wait(snd).value();
+// result == 610
+</pre>
+</table>
+
+Certain sender adapters are not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the operations involved. Specifically, the following operations are not pipeable.
+
+* `execution::when_all` and `execution::when_all_with_variant`: Since this operation takes a variadic pack of senders, a partially applied form would be ambiguous with a non partially applied form with an arity of one less.
+* `execution::on` and `execution::lazy_on`: This operation changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `reschedule`.
+
+Sender consumers could be made pipeable, but we have chosen to not do so.
+However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
+We believe sender consumers read better with function call syntax.
+
+## Proposed user-facing sender queries ## {#design-queries}
+
+### `execution::get_completion_scheduler` ### {#design-queries-get_completion_scheduler}
+
+`get_completion_scheduler` is a query that retrieves the [=completion scheduler=] for a specific completion signal from a sender.
+Calling `get_completion_scheduler` on a sender that does not have a completion scheduler for a given signal is ill-formed.
+If a scheduler advertises a completion scheduler for a signal in this way, that sender <b>must</b> ensure that it [=send|sends=] that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.
+See [[#design-propagation]] for more details.
+
+<pre highlight="c++">
+execution::scheduler auto cpu_sched = new_thread_scheduler{};
+execution::scheduler auto gpu_sched = cuda::scheduler();
+
+execution::sender auto snd0 = execution::schedule(cpu_sched);
+execution::scheduler auto completion_sch0 = execution::get_completion_scheduler(snd0);
+// completion_sch0 is equivalent to cpu_sched
+
+execution::sender auto snd1 = execution::then(snd0, []{
+    std::cout << "I am running on cpu_sched!\n";
+});
+execution::scheduler auto completion_sch1 = execution::get_completion_scheduler(snd1);
+// completion_sch1 is equivalent to cpu_sched
+
+execution::sender auto snd2 = execution::reschedule(snd1, gpu_sched);
+execution::sender auto snd3 = execution::then(snd2, []{
+    std::cout << "I am running on gpu_sched!\n";
+});
+execution::scheduler auto completion_sch3 = execution::get_completion_scheduler(then3);
+// completion_sch3 is equivalent to cpu_sched
+</pre>
+
+## Proposed user-facing sender factories ## {#design-factories}
+
+A <dfn>sender factory</dfn> is an operation that takes no senders as parameters and returns a sender.
 
 ### `execution::schedule` ### {#design-factory-schedule}
 
@@ -517,7 +633,7 @@ execution::sender auto snd = execution::then(pred, [](auto... args) {
 
 This algorithm is included, as it greatly simplifies lifting values into senders.
 
-## Proposed set of user-facing sender adapters ## {#design-adapters}
+## Proposed user-facing sender adapters ## {#design-adapters}
 
 A <dfn>sender adapter</dfn> is an operation that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
 
@@ -794,9 +910,9 @@ execution::sender auto ensure_started(
 Once `ensure_started` returns, it is known that the provided sender has been [=connect|connected=] and `start` has been called on the resulting operation state (see [[#design-states]]); in other words, the work described by the provided sender has been submitted
 for execution on the appropriate execution contexts. Returns a sender which completes when the provided sender completes and sends values equivalent to those of the provided sender.
 
-## Proposed set of user-facing sender algorithms ## {#design-algorithms}
+## Proposed user-facing sender algorithms ## {#design-algorithms}
 
-A <dfn>sender algorithm</dfn> is an operation that takes one or more senders, which it may `execution::connect`, as parameters, and does not return a sender.
+A <dfn>sender consumer</dfn> is an operation that takes one or more senders, which it may `execution::connect`, as parameters, and does not return a sender.
 
 ### `execution::start_detached` ### {#design-algorithm-start_detached}
 
@@ -1009,27 +1125,6 @@ return value of their customization is equivalent to `schedule_from(sch, snd2)`,
 The default implementation of `reschedule(snd, sched)` is `schedule_from(sched, snd)`.
 
 # Proposed design - API specifics # {#design-api}
-
-## Senders are pipeable ## {#design-pipelines}
-
-Almost all sender algorithms that take a single input sender that we are proposing here take the input sender as the first argument. This is not an accident; in line with prior proposals, we are proposing that senders and sender algorithms use the familiar pipeline
-syntax for chaining, just like C++20 ranges do. Therefore, a user could write the following to represent a sequence of tasks to execute first on the CPU, then on a CUDA GPU, then on a CPU again, retrieving the result at the end:
-
-<pre highlight=c++>
-auto work = execution::schedule(get_thread_pool())
-    | execution::then([]{ return 123; })
-    | execution::reschedule(cuda::new_stream_scheduler())
-    | execution::then([](int i){ return 123 * 5; })
-    | execution::reschedule(get_thread_pool())
-    | execution::then([](int i){ return i - 5; });
-auto [result] = std::this_thread::sync_wait(work).value();
-// result == 610
-</pre>
-
-Certain functions should not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the algorithms involved. Specifically, the following algorithms should not be pipeable:
-
- * `sync_wait`: rather than being a terminal node in a pipeline, it <b>consumes</b> a pipeline, and reads better as a function call;
- * `on` and `lazy_on`: the `on` algorithm changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `reschedule`.
 
 ## Most senders are typed ## {#design-typed}
 
