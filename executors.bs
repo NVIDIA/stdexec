@@ -1544,7 +1544,7 @@ namespace std::execution {
 
 2. None of a scheduler's copy constructor, destructor, equality comparison, or `swap` operations shall exit via an exception.
 
-3. None of these operations, nor a scheduler type's `schedule` function, or a call to a scheduler type's query functions ([[#spec-execution.scheduler.queries]]) shall introduce data races as a result of concurrent invocations of thos functions from different
+3. None of these operations, nor a scheduler type's `schedule` function, shall introduce data races as a result of concurrent invocations of thos functions from different
     threads.
 
 4. For any two (possibly const) values `s1` and `s2` of some scheduler type `S`, `s1 == s2` shall return `true` only if both `s1` and `s2` are handles to the same associated execution context.
