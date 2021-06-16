@@ -3108,8 +3108,8 @@ to block in a non-deadlock manner).</p>
     <li data-md>
      <p><code class="highlight"><c- n>set_error</c-></code>, which signals that an error has happened during scheduling of the current work, executing the current work, or at some earlier point in the sender chain; and</p>
     <li data-md>
-     <p><code class="highlight"><c- n>set_done</c-></code>, which signals that the <em>operation its execution depends on</em> requests that any work that has not started yet should not start, because it is not needed (this is cancellation, but propagating from the root of the execution tree down to its leaf nodes, as
-opposed to propagating from the leaf nodes up to the root - so <strong>not</strong> <code class="highlight"><c- n>some_sender</c-><c- p>.</c-><c- n>cancel</c-><c- p>()</c-></code>).</p>
+     <p><code class="highlight"><c- n>set_done</c-></code>, which signals that the operation completed without succeeding (<code class="highlight"><c- n>set_value</c-></code>) and without failing (<code class="highlight"><c- n>set_error</c-></code>). This result is often used to indicate that the operation stopped early, typically because it was asked to do so because the result is no
+longer needed.</p>
    </ul>
    <p>Exactly one of these channels must be successfully (i.e. without an exception being thrown) invoked on a receiver before it is destroyed; if a call to <code class="highlight"><c- n>set_value</c-></code> failed with an exception, either <code class="highlight"><c- n>set_error</c-></code> or <code class="highlight"><c- n>set_done</c-></code> must be invoked on the same receiver. These
 requirements are know as the <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="receiver-contract">receiver contract</dfn>.</p>
@@ -3214,7 +3214,7 @@ to dispatch to the strictly lazy ones; for an author of a specific sender, it is
    <h3 class="heading settled" data-level="5.6" id="design-fusion"><span class="secno">5.6. </span><span class="content">Lazy senders provide optimization opportunities</span><a class="self-link" href="#design-fusion"></a></h3>
    <p>Because lazy senders fundamentally <em>describe</em> work, instead of describing or representing the submission of said work to an execution context, and thanks to the flexibility of the customization of most sender algorithms, they provide an opportunity for fusing
 multiple algorithms in a sender chain together, into a single function that can later be submitted for execution by an execution context. There are two ways this can happen.</p>
-   <p>The first (and most common) way for such optimizations to happen is thanks to the structure of the implementation: because all the work is done within callbacks invoked on the completion of an earlier sender, recursively up to the root of computation,
+   <p>The first (and most common) way for such optimizations to happen is thanks to the structure of the implementation: because all the work is done within callbacks invoked on the completion of an earlier sender, recursively up to the original source of computation,
 the compiler is able to see a chain of work described using senders as a tree of tail calls, allowing for inlining and removal of most of the sender machinery. In fact, when work is not submitted to execution contexts outside of the current thread of execution,
 compilers are capable of removing the senders abstraction entirely, while still allowing for composition of functions across different parts of a program.</p>
    <p>The second way for this to occur is when a sender algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, <a href="#design-sender-adaptor-ensure_started">§ 4.12.11 execution::ensure_started</a> will be an identity transformation,
