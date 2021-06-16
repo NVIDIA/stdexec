@@ -421,7 +421,7 @@ Therefore, in addition to the `on` sender algorithm from [[P1897R3]], we are pro
 Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
 When further work is attached to that sender by invoking sender algorithms, that work will also complete on an appropriate completion scheduler.
 
-### `execution::get_completion_scheduler` ### {#design-query-get_completion_scheduler}
+### `execution::get_completion_scheduler` ### {#design-sender-query-get_completion_scheduler}
 
 `get_completion_scheduler` is a query that retrieves the [=completion scheduler=] for a specific completion signal from a sender.
 Calling `get_completion_scheduler` on a sender that does not have a completion scheduler for a given signal is ill-formed.
@@ -434,14 +434,14 @@ execution::scheduler auto gpu_sched = cuda::scheduler();
 
 execution::sender auto snd0 = execution::schedule(cpu_sched);
 execution::scheduler auto completion_sch0 =
-  execution::get_completion_scheduler<execution::set_value_t>(snd0);
+  execution::get_completion_scheduler&lt;execution::set_value_t>(snd0);
 // completion_sch0 is equivalent to cpu_sched
 
 execution::sender auto snd1 = execution::then(snd0, []{
     std::cout << "I am running on cpu_sched!\n";
 });
 execution::scheduler auto completion_sch1 =
-  execution::get_completion_scheduler<execution::set_value_t>(snd1);
+  execution::get_completion_scheduler&lt;execution::set_value_t>(snd1);
 // completion_sch1 is equivalent to cpu_sched
 
 execution::sender auto snd2 = execution::transfer(snd1, gpu_sched);
@@ -449,7 +449,7 @@ execution::sender auto snd3 = execution::then(snd2, []{
     std::cout << "I am running on gpu_sched!\n";
 });
 execution::scheduler auto completion_sch3 =
-  execution::get_completion_scheduler<execution::set_value_t>(then3);
+  execution::get_completion_scheduler&lt;execution::set_value_t>(then3);
 // completion_sch3 is equivalent to cpu_sched
 </pre>
 
