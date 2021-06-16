@@ -319,6 +319,19 @@ std::this_thread::sync_wait(cont);
 // at this point, cont has completed execution
 </pre>
 
+## Senders are composable through sender algorithms ## {#design-composable}
+
+Asynchronous programming often departs from traditional code structure and control flow that we are familiar with.
+A successful asynchronous framework must provide an intuitive story for composition of asynchronous work: expressing dependencies, passing objects, managing object lifetimes, etc.
+
+The true power and utility of senders is in their composability.
+With senders, users can describe generic execution pipelines and graphs, and then run them on and across a variety of different schedulers.
+Senders are composed using <dfn>sender algorithms</dfn>:
+
+* [=sender factories=], algorithms that take no senders and return a sender.
+* [=sender adapters=], algorithms that take (and potentially `execution::connect`) senders and return a sender.
+* [=sender consumers=], algorithms that take (and potentially `execution::connect`) senders and do not return a sender.
+
 ## Senders can propagate completion schedulers ## {#design-propagation}
 
 One of the goals of executors is to support a diverse set of execution contexts, including traditional thread pools, task and fiber frameworks (like [\HPX](https://github.com/STEllAR-GROUP/hpx) and [Legion](https://github.com/StanfordLegion/legion)), and GPUs and other accelerators (managed by runtimes such as CUDA or SYCL).
@@ -440,19 +453,6 @@ merged into a single one in an asynchronous fashion.
 
 `reschedule_when_all` accepts an additional scheduler argument. It returns a sender whose value [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
 `transform(when_all(inputs...), scheduler)`, but one that allows for better efficiency through customization.
-
-## Senders are composable through sender algorithms ## {#design-composable}
-
-Asynchronous programming often departs from traditional code structure and control flow that we are familiar with.
-A successful asynchronous framework must provide an intuitive story for composition of asynchronous work: expressing dependencies, passing objects, managing object lifetimes, etc.
-
-The true power and utility of senders is in their composability.
-With senders, users can describe generic execution pipelines and graphs, and then run them on and across a variety of different schedulers.
-Senders are composed using <dfn>sender algorithms</dfn>:
-
-* [=sender factories=], algorithms that take no senders and return a sender.
-* [=sender adapters=], algorithms that take (and potentially `execution::connect`) senders and return a sender.
-* [=sender consumers=], algorithms that take (and potentially `execution::connect`) senders and do not return a sender.
 
 ## Most sender adapters are pipeable ## {#design-pipeable}
 
