@@ -219,10 +219,10 @@ essential when writing user code using standard execution concepts; we have also
 
 1. The `executor` concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.
 2. Properties are not included in this paper. We see them as a possible future extension, if the committee gets more comfortable with them.
-3. Users now have a choice between using a strictly lazy vs a possibly eager version of most algorithms.
+3. Users now have a choice between using a strictly lazy vs a possibly eager version of most sender algorithms.
 4. Senders now advertise what scheduler, if any, their evaluation will complete on.
 5. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
-6. P0443 did not propose a suite of algorithms necessary for writing sender code; this paper does. See [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]].
+6. P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]].
 7. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-shot]].
 8. Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in [[#design-dispatch]].
 9. A specific thread pool implementation is omitted, as per LEWG direction.
@@ -267,13 +267,13 @@ The following conventions are used throughout the design section:
 
   1. The namespace proposed in this paper is the same as in [[P0443R14]]: `std::execution`; however, for brevity, the `std::` part of this name is omitted. When you see `execution::foo`, treat that as `std::execution::foo`.
   2. Universal references and explicit calls to `std::move`/`std::forward` are omitted in code samples and signatures for simplicity; assume universal references and perfect forwarding unless stated otherwise.
-  3. None of the algorithm names proposed here are names that we are particularly attached to; consider the names of the algorithms to be reasonable placeholders that can freely be changed, should the committee want to do so.
+  3. None of the names proposed here are names that we are particularly attached to; consider the names to be reasonable placeholders that can freely be changed, should the committee want to do so.
 
-## Queries and operations ## {#design-queries-and-operations}
+## Queries and algorithms ## {#design-queries-and-algorithms}
 
 A <dfn>query</dfn> is a `std::invocable` that takes some set of objects (usually one) as parameters and returns facts about those objects without modifying them. Queries are usually customization point objects, but in some cases may be functions.
 
-A <dfn>operation</dfn> is a `std::invocable` that takes some set of objects as parameters and causes those objects to do something. Operations are usually customization point objects, but in some cases may be functions.
+An <dfn>algorithm</dfn> is a `std::invocable` that takes some set of objects as parameters and causes those objects to do something. Algorithms are usually customization point objects, but in some cases may be functions.
 
 # Proposed design - user side # {#design-user}
 
@@ -285,7 +285,7 @@ don't need to have a representation in code; they are simply a term describing c
 ## Schedulers represent execution contexts ## {#design-schedulers}
 
 A <dfn>scheduler</dfn> is a lightweight handle that represents a strategy for scheduling work onto an *execution context*. Since execution contexts don't necessarily manifest in C++ code, it's not possible to program
-directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single operation, `schedule`, which returns a sender that will complete on an execution context determined
+directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single sender algorithm, `schedule`, which returns a sender that will complete on an execution context determined
 by the scheduler. Logic that you want to run on that context can be placed in the receiver's completion-signalling method.
 
 <pre highlight="c++">
@@ -300,11 +300,11 @@ execution::sender auto snd = execution::schedule(sch);
 A <dfn>sender</dfn> is an object that describes work. Senders are similar to futures in existing asynchrony designs, but unlike futures, the work that is being done to arrive at the values they will *send* is also directly described by the sender object itself. A
 sender is said to <dfn>send</dfn> some values if a receiver connected (see [[#design-connect]]) to that sender will eventually *receive* said values.
 
-The primary defining operation of senders is [[#design-connect]]; this function, however, is not a user-facing API; it is used to facilitate communication between senders and various sender algorithms (or other senders), but end user code is not expected to invoke
+The primary defining sender algorithm is [[#design-connect]]; this function, however, is not a user-facing API; it is used to facilitate communication between senders and various sender algorithms, but end user code is not expected to invoke
 it directly.
 
-The way user code is expected to interact with senders is by using said sender algorithms.
-This paper proposes an initial set of such algorithms, which are described in [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]].
+The way user code is expected to interact with senders is by using [=sender algorithms=].
+This paper proposes an initial set of such sender algorithms, which are described in [[#design-composable]], [[#design-sender-factories]], [[#design-sender-adapters]], and [[#design-sender-consumers]].
 For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:
 
 <pre highlight="c++">
@@ -326,16 +326,16 @@ On many of these systems, not all execution agents are created equal and not all
 Having precise control over the execution context used for any given function call being submitted is important on such systems, and the users of standard execution facilities will expect to be able to express such requirements.
 
 [[P0443R14]] was not always clear about the <i>place of execution</i> of any given piece of code.
-Precise control was present in the two-way execution API present in earlier executor designs, but it has so far been missing from the senders design. There has been a proposal ([[P1897R3]]) to provide a number of algorithms that would enforce certain rules on the places of execution
-of the work described by a sender, but we have found those algorithms to be insufficient for achieving the best performance on all platforms that are of interest to us. The implementation strategies that we are aware of result in one of the following situations:
+Precise control was present in the two-way execution API present in earlier executor designs, but it has so far been missing from the senders design. There has been a proposal ([[P1897R3]]) to provide a number of sender algorithms that would enforce certain rules on the places of execution
+of the work described by a sender, but we have found those sender algorithms to be insufficient for achieving the best performance on all platforms that are of interest to us. The implementation strategies that we are aware of result in one of the following situations:
 
   1. trying to submit work to one execution context (such as a CPU thread pool) from another execution context (such as a GPU or a task framework), which assumes that all execution agents are as capable as a `std::thread` (which they aren't).
   2. forcibly interleaving two adjacent execution graph nodes that are both executing on one execution context (such as a GPU) with glue code that runs on another execution context (such as a CPU), which is prohibitively expensive for some execution contexts (such as CUDA or SYCL).
-  3. having to customise most or all sender operations to support an execution context, so that you can avoid problems described in 1. and 2, which we believe is impractical and brittle based on months of field experience attempting this in [Agency](https://github.com/agency-library/agency).
+  3. having to customise most or all sender algorithms to support an execution context, so that you can avoid problems described in 1. and 2, which we believe is impractical and brittle based on months of field experience attempting this in [Agency](https://github.com/agency-library/agency).
 
 None of these implementation strategies are acceptable for many classes of parallel runtimes, such as task frameworks (like [\HPX](https://github.com/STEllAR-GROUP/hpx)) or accelerator runtimes (like CUDA or SYCL).
 
-Therefore, in addition to the `on` algorithm from [[P1897R3]], we are proposing [#design-queries-get_completion_scheduler], a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
+Therefore, in addition to the `on` sender algorithm from [[P1897R3]], we are proposing [#design-queries-get_completion_scheduler], a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
 Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
 When further work is attached to that sender by invoking sender algorithms, that work will also complete on an appropriate completion scheduler.
 
@@ -360,12 +360,12 @@ std::this_thread::sync_wait(last);
 
 ## Execution context transitions are explicit ## {#design-transitions}
 
-[[P0443R14]] does not contain any mechanisms for performing an execution context transition. The only algorithm that can create a sender that will move execution to a *specific* execution context is `execution::schedule`, which does not take an input sender.
+[[P0443R14]] does not contain any mechanisms for performing an execution context transition. The only sender algorithm that can create a sender that will move execution to a *specific* execution context is `execution::schedule`, which does not take an input sender.
 That means that there's no way to construct sender chains that traverse different execution contexts. This is necessary to fulfill the promise of senders being able to replace two-way executors, which had this capability.
 
 We propose that, for senders advertising their [=completion scheduler=], all execution context transitions <b>must</b> be explicit; running user code anywhere but where they defined it to run <b>must</b> be considered a bug.
 
-The `execution::reschedule` operation performs a transition from one execution context to another:
+The `execution::reschedule` sender adapter performs a transition from one execution context to another:
 
 <pre highlight="c++">
 execution::scheduler auto sch1 = ...;
@@ -387,16 +387,16 @@ std::this_thread::sync_wait(then2);
 ## Senders can be either multi-shot or single-shot ## {#design-shot}
 
 Some senders may only support sending a signal a single time for correctness and efficiency.
-For example, a sender may contain a `unique_ptr` that it will transferring ownership of to its attached receiver.
+For example, a sender may contain a `unique_ptr` that it will transferring ownership to its recipient
 This requires that sender algorithms support move-only senders.
 
-A <dfn>single-shot sender</dfn> can only send its signal once, which means it can only have oone receiver connected to it.
+A <dfn>single-shot sender</dfn> can only send its signal once, which means it can only be connected once.
 When a sender algorithm accepts a sender as an rvalue, that sender shall be treated as if it was a single-shot sender by the algorithm, and the caller must treat the sender as a moved-from object.
 The sender must not be copied, so the algorithm must connect it as an rvalue and must connect it at most once.
 
 All algorithms have to accept rvalue senders to facilitate senders that can only send a value once.
 
-A <dfn>multi-shot sender</dfn> can send its signal multiple times, which means it may have multiple receivers connected to it.
+A <dfn>multi-shot sender</dfn> can send its signal multiple times, which means it may be connected multiple times.
 If a sender algorithm accepts a sender as an lvalue, that sender shall be treated as if it was a multi-shot sender by the algorithm.
 The sender must remain valid after such an algorithm invocation, so the algorithm must connect it as an lvalue, although it may connect it multiple times.
 
@@ -404,9 +404,9 @@ The sender must remain valid after such an algorithm invocation, so the algorith
 
 Any non-trivial program will eventually want to fork a chain of senders into independent streams of work, regardless of whether they are single-shot or multi-shot.
 For instance, an incoming event to a middleware system may be required to trigger events on more than one downstream system.
-This requires that we provide well defined mechanisms for making sure that connecting multiple receivers to a sender is possible and correct.
+This requires that we provide well defined mechanisms for making sure that connecting a sender multiple times is possible and correct.
 
-The `split` operation facilitates attaching multiple receivers to the same sender regardless of whether it is single-shot or multi-shot:
+The `split` sender adapter facilitates connecting to a sender multiple times, regardless of whether it is single-shot or multi-shot:
 
 <pre highlight=c++>
 auto some_algorithm(execution::sender auto&& input) {
@@ -426,24 +426,23 @@ auto some_algorithm(execution::sender auto&& input) {
 Similarly to how it's hard to write a complex program that will eventually want to fork sender chains into independent streams, it's also hard to write a program that does not want to eventually create join nodes, where multiple independent streams of execution are
 merged into a single one in an asynchronous fashion.
 
-`when_all` is a sender algorithm that returns a sender that completes when the last of the input senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the input senders, in order. The `when_all` algorithm returns a sender
-that also does not have an associated scheduler.
+`when_all` is a sender adapter that returns a sender that completes when the last of the input senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the input senders, in order. `when_all` returns a sender that also does not have an associated scheduler.
 
 `reschedule_when_all` accepts an additional scheduler argument. It returns a sender whose value [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
 `transform(when_all(inputs...), scheduler)`, but one that allows for better efficiency through customization.
 
-## Senders are composable through operations ## {#design-composable}
+## Senders are composable through sender algorithms ## {#design-composable}
 
 Asynchronous programming often departs from traditional code structure and control flow that we are familiar with.
 A successful asynchronous framework must provide an intuitive story for composition of asynchronous work: expressing dependencies, passing objects, managing object lifetimes, etc.
 
 The true power and utility of senders is in their composability.
 With senders, users can describe generic execution pipelines and graphs, and then run them on and across a variety of different schedulers.
-Senders are composed using <dfn>sender operations</dfn>:
+Senders are composed using <dfn>sender algorithms</dfn>:
 
-* [=sender factories=], operations that take no senders and return a sender.
-* [=sender adapters=], operations that take (and potentially `execution::connect`) senders and return a sender.
-* [=sender consumers=], operations that take (and potentially `execution::connect`) senders and do not return a sender.
+* [=sender factories=], algorithms that take no senders and return a sender.
+* [=sender adapters=], algorithms that take (and potentially `execution::connect`) senders and return a sender.
+* [=sender consumers=], algorithms that take (and potentially `execution::connect`) senders and do not return a sender.
 
 ## Most sender adapters are pipeable ## {#design-pipeable}
 
@@ -510,10 +509,10 @@ auto [result] = std::this_thread::sync_wait(snd).value();
 </pre>
 </table>
 
-Certain sender adapters are not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the operations involved. Specifically, the following operations are not pipeable.
+Certain sender adapters are not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the adapters involved. Specifically, the following sender adapters are not pipeable.
 
-* `execution::when_all` and `execution::when_all_with_variant`: Since this operation takes a variadic pack of senders, a partially applied form would be ambiguous with a non partially applied form with an arity of one less.
-* `execution::on` and `execution::lazy_on`: This operation changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `reschedule`.
+* `execution::when_all` and `execution::when_all_with_variant`: Since this sender adapter takes a variadic pack of senders, a partially applied form would be ambiguous with a non partially applied form with an arity of one less.
+* `execution::on` and `execution::lazy_on`: This sender adapter changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `reschedule`.
 
 Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
@@ -552,7 +551,7 @@ execution::scheduler auto completion_sch3 = execution::get_completion_scheduler(
 
 ## Proposed user-facing sender factories ## {#design-sender-factories}
 
-A <dfn>sender factory</dfn> is an operation that takes no senders as parameters and returns a sender.
+A <dfn>sender factory</dfn> is an [=algorithm=] that takes no senders as parameters and returns a sender.
 
 ### `execution::schedule` ### {#design-sender-factory-schedule}
 
@@ -631,14 +630,14 @@ execution::sender auto snd = execution::then(pred, [](auto... args) {
 // when snd is executed, it will print "123"
 </pre>
 
-This algorithm is included, as it greatly simplifies lifting values into senders.
+This adapter is included as it greatly simplifies lifting values into senders.
 
 ## Proposed user-facing sender adapters ## {#design-sender-adapters}
 
-A <dfn>sender adapter</dfn> is an operation that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
+A <dfn>sender adapter</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
 
 Many sender adapters come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
-the returned sender being started. Sender algorithms such as [[#design-sender-adapter-ensure_started]], [[#design-sender-consumer-start_detached]], and [[#design-sender-consumer-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**,
+the returned sender being started. Sender consumers such as [[#design-sender-adapter-ensure_started]], [[#design-sender-consumer-start_detached]], and [[#design-sender-consumer-sync_wait]] start senders; the implementations of non-lazy versions of the sender adapters are **allowed**,
 but not guaranteed, to start senders.
 
 The strictly lazy versions of the adapters below (that is, all the versions whose names start with `lazy_`) are guaranteed to not start any input senders passed into them.
@@ -721,7 +720,7 @@ execution::sender auto snd = execution::then(input, [](auto... args) {
 // followed by printing all of the values sent by pred
 </pre>
 
-This algorithm is included, as it is necessary for writing any sender code that actually performs a useful function.
+This adapter is included as it is necessary for writing any sender code that actually performs a useful function.
 
 ### `execution::let_value`, `execution::let_error`, `execution::let_done` ### {#design-sender-adapter-let}
 
@@ -850,7 +849,8 @@ execution::sender auto when_all_with_variant(
 
 The returned sender has no [=completion scheduler|completion schedulers=].
 
-`when_all` is a strictly lazy algorithm; it is guaranteed to not start any of the input senders until the returned sender is started.
+`when_all` is a strictly lazy adapter.
+It is guaranteed to not start any of the input senders until the returned sender is started.
 
 See [[#design-join]].
 
@@ -912,7 +912,7 @@ for execution on the appropriate execution contexts. Returns a sender which comp
 
 ## Proposed user-facing sender consumers ## {#design-sender-consumers}
 
-A <dfn>sender consumer</dfn> is an operation that takes one or more senders, which it may `execution::connect`, as parameters, and does not return a sender.
+A <dfn>sender consumer</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and does not return a sender.
 
 ### `execution::start_detached` ### {#design-sender-consumer-start_detached}
 
@@ -933,7 +933,7 @@ auto sync_wait(
     -> std::optional&lt;std::tuple&lt;<i>values-sent-by</i>(sender)>>;
 </pre>
 
-`std::this_thread::sync_wait` is an algorithm that submits the work described by the provided sender for execution, similarly to `ensure_started`, except that it blocks <b>the current `std::thread` or thread of `main`</b> until the work is completed, and returns
+`std::this_thread::sync_wait` is a sender consumer that submits the work described by the provided sender for execution, similarly to `ensure_started`, except that it blocks <b>the current `std::thread` or thread of `main`</b> until the work is completed, and returns
 an optional tuple of values that were sent by the provided sender on its completion of work. Where [[#design-sender-factory-schedule]] and [[#design-sender-factory-reschedule_just]] are meant to <i>enter</i> the domain of senders, `sync_wait` is meant to <i>exit</i> the domain of
 senders, retrieving the result of the task graph.
 
@@ -941,7 +941,7 @@ If the provided sender sends an error instead of values, `sync_wait` throws that
 
 If the provided sender sends the "done" signal instead of values, `sync_wait` returns an empty optional.
 
-For an explanation of the `requires` clause, see [[#design-typed-issue]]. That clause also explains another algorithm, built on top of `sync_wait`: `sync_wait_with_variant`.
+For an explanation of the `requires` clause, see [[#design-typed-issue]]. That clause also explains another sender consumer, built on top of `sync_wait`: `sync_wait_with_variant`.
 
 Note: Notice that this function is specified inside `std::this_thread`, and not inside `execution`. This is because `sync_wait` has to block the <i>current</i> execution agent, but determining what the current execution agent is is not reliable. Since the standard
 does not specify any functions on the current execution agent other than those in `std::this_thread`, this is the flavor of this function that is being proposed. If C++ ever obtains fibers, for instance, we expect that a variant of this function called
@@ -990,9 +990,9 @@ Receivers are what is passed as the second argument to [[#design-connect]].
 ## Operation states represents work ## {#design-states}
 
 An <dfn>operation state</dfn> is an object that represents work. Unlike senders, it is not a chaining mechanism; instead, it is a concrete object that packages the work described by a full sender chain, ready to be executed. An operation state is neither movable nor
-copyable, and its interface consists of a single operation: `start`, which serves as the submission point of the work represented by a given operation state.
+copyable, and its interface consists of a single algorithm: `start`, which serves as the submission point of the work represented by a given operation state.
 
-Operation states are not a part of the user-facing API of this proposal; they are necessary for implementing algorithms like `ensure_started` and `std::this_thread::sync_wait`, and the knowledge of them is necessary to implement senders, so the only users who will
+Operation states are not a part of the user-facing API of this proposal; they are necessary for implementing sender consumers like `execution::ensure_started` and `std::this_thread::sync_wait`, and the knowledge of them is necessary to implement senders, so the only users who will
 interact with operation states directly are authors of senders and authors of sender algorithms.
 
 The return value of [[#design-connect]] must satisfy the operation state concept.
@@ -1017,18 +1017,18 @@ execution::start(state);
 
 ## Sender algorithms are customizable ## {#design-customization}
 
-Senders being able to advertise what their [=completion schedulers=] are fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler any operations it depends on will complete on.
+Senders being able to advertise what their [=completion schedulers=] are fulfills one of the promises of senders: that of being able to customize an implementation of a sender algorithm based on what scheduler any work it depends on will complete on.
 
-The simple way to provide customizations for functions like `then`, that is for [=sender adapter|sender adapters=] and [=sender algorithm|algorithms=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
+The simple way to provide customizations for functions like `then`, that is for [=sender adapters=] and [=sender consumers=], is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
 the expression `execution::then(sender, invocable)` to be equivalent to:
 
   1. `sender.then(invocable)`, if that expression is well formed; otherwise
   2. `then(sender, invocable)`, performed in a context where this call always performs ADL, if that expression is well formed; otherwise
   3. a default implementation of `then`, which returns a sender adapter, and then define the exact semantics of said adapter.
 
-However, this definition is problematic. Imagine another sender algorithm, `bulk`, which is a structured abstraction for a loop over an index space. Its default implementation is just a for loop. However, for accelerator runtimes like CUDA, we would like operations
+However, this definition is problematic. Imagine another sender adapter, `bulk`, which is a structured abstraction for a loop over an index space. Its default implementation is just a for loop. However, for accelerator runtimes like CUDA, we would like sender algorithms
 like `bulk` to have specialized behavior, which invokes a kernel of more than one thread (with its size defined by the call to `bulk`); therefore, we would like to customize `bulk` for CUDA senders to achieve this. However, there's no reason for CUDA kernels to
-necessarily customize the `then` algorithm, as the generic implementation is perfectly sufficient. This creates a problem, though; consider the following snippet:
+necessarily customize the `then` sender adapter, as the generic implementation is perfectly sufficient. This creates a problem, though; consider the following snippet:
 
 <pre highlight="c++">
 execution::scheduler auto cuda_sch = cuda_scheduler{};
@@ -1045,7 +1045,7 @@ execution::sender auto next = execution::then(cuda_sch, []{ return 1; });
 execution::sender auto kernel_sender = execution::bulk(next, shape, [](int i){ ... });
 </pre>
 
-How can we specialize the `bulk` algorithm for our wrapped `schedule_sender`? Well, here's one possible approach, taking advantage of ADL (and the fact that the definition of "associated namespace" also recursively enumerates the associated namespaces of all template
+How can we specialize the `bulk` sender adapter for our wrapped `schedule_sender`? Well, here's one possible approach, taking advantage of ADL (and the fact that the definition of "associated namespace" also recursively enumerates the associated namespaces of all template
 parameters of a type):
 
 <pre highlight="c++">
@@ -1069,44 +1069,45 @@ execution::sender auto bulk(
 However, if the input sender is not just a `then_sender_adapter` like in the example above, but another sender that overrides `bulk` by itself, as a member function, because its author believes they know an optimization for bulk - the specialization above will no
 longer be selected, because a member function of the first argument is a better match than the ADL-found overload.
 
-This means that well-meant specialization of algorithms on senders that are entirely scheduler-agnostic can have negative consequences; the scheduler-specific specialization - which is essential for good performance on platforms providing specialized ways to launch
-certain algorithms - would not be selected in such cases. But it's really the scheduler that should control the behavior of algorithms when a non-default implementation exists, not the sender. Senders merely describe work; schedulers, however, are the handle to the
+This means that well-meant specialization of sender algorithms that are entirely scheduler-agnostic can have negative consequences.
+The scheduler-specific specialization - which is essential for good performance on platforms providing specialized ways to launch certain sender algorithms - would not be selected in such cases.
+But it's really the scheduler that should control the behavior of sender algorithms when a non-default implementation exists, not the sender. Senders merely describe work; schedulers, however, are the handle to the
 runtime that will eventually execute said work, and should thus have the final say in *how* the work is going to be executed.
 
-Therefore, we are proposing the following customization scheme (also modified to take [[#design-dispatch]] into account): the expression `execution::<algorithm>(sender, args...)`, for any given algorithm (accepting a sender as its first argument), should be
+Therefore, we are proposing the following customization scheme (also modified to take [[#design-dispatch]] into account): the expression `execution::<sender-algorithm>(sender, args...)`, for any given sender algorithm that accepts a sender as its first argument, should be
 equivalent to:
 
-  1. <code>tag_invoke(&lt;algorithm>, get_completion_scheduler&lt;<i>Signal</i>>(sender), sender, args...)</code>, if that expression is well-formed; otherwise
-  2. `tag_invoke(<algorithm>, sender, args...)`, if that expression is well-formed; otherwise
-  4. a default implementation, if there exists a default implementation of the given algorithm.
+  1. <code>tag_invoke(&lt;sender-algorithm>, get_completion_scheduler&lt;<i>Signal</i>>(sender), sender, args...)</code>, if that expression is well-formed; otherwise
+  2. `tag_invoke(<sender-algorithm>, sender, args...)`, if that expression is well-formed; otherwise
+  4. a default implementation, if there exists a default implementation of the given sender algorithm.
 
-where <code><i>Signal</i></code> is one of `set_value`, `set_error`, or `set_done`; for most algorithms, the completion scheduler for `set_value` would be used, but for some (like `upon_error` or `let_done`), one of the others would be used.
+where <code><i>Signal</i></code> is one of `set_value`, `set_error`, or `set_done`; for most sender algorithms, the completion scheduler for `set_value` would be used, but for some (like `upon_error` or `let_done`), one of the others would be used.
 
-For algorithms which accept concepts other than `sender` as their first argument, we propose that the customization scheme remains as it has been in [[P0443R14]] so far, except it should also use `tag_invoke`.
+For sender algorithms which accept concepts other than `sender` as their first argument, we propose that the customization scheme remains as it has been in [[P0443R14]] so far, except it should also use `tag_invoke`.
 
-## Laziness of operations is defined by algorithms ## {#design-laziness}
+## Laziness is defined by sender adapters ## {#design-laziness}
 
 We distinguish two different guarantees about *when* work is submitted to an execution context:
 
  * <dfn>strictly lazy submission</dfn>, which means that there is a guarantee that no work is submitted to an execution context before a receiver is connected to a sender, and `execution::start` is called on the resulting operation state;
  * <dfn>potentially eager submission</dfn>, which means that work may be submitted to an execution context as soon as all the information necessary to perform it is provided.
 
-If an operation requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adapters are specified
+If a sender adapter requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adapters are specified
 to dispatch to the strictly lazy ones; for an author of a specific sender, it is sufficient to specialize the strictly lazy version, to also achieve a specialization of the potentially eager one.
 
-As has been described in [[#design-sender-adapters]], whether an operation is guaranteed to perform strictly lazy submission or not is defined by the adapter used to perform it; the adapters whose names begin with `lazy_` provide the strictly lazy guarantee.
+As has been described in [[#design-sender-adapters]], whether a sender adapter is guaranteed to perform strictly lazy submission or not is defined by the adapter used to perform it; the adapters whose names begin with `lazy_` provide the strictly lazy guarantee.
 
 ## Lazy senders provide optimization opportunities ## {#design-fusion}
 
 Because lazy senders fundamentally *describe* work, instead of describing or representing the submission of said work to an execution context, and thanks to the flexibility of the customization of most sender algorithms, they provide an opportunity for fusing
-multiple operations in a sender chain together, into a single function that can later be submitted for execution by an execution context. There are two ways this can happen.
+multiple algorithms in a sender chain together, into a single function that can later be submitted for execution by an execution context. There are two ways this can happen.
 
-The first (and most common) way for such optimizations to happen is thanks to the structure of the implementation: because all the work is done within callbacks invoked on the completion of an earlier operation, recursively up to the root of computation,
+The first (and most common) way for such optimizations to happen is thanks to the structure of the implementation: because all the work is done within callbacks invoked on the completion of an earlier sender, recursively up to the root of computation,
 the compiler is able to see a chain of work described using senders as a tree of tail calls, allowing for inlining and removal of most of the sender machinery. In fact, when work is not submitted to execution contexts outside of the current thread of execution,
 compilers are capable of removing the senders abstraction entirely, while still allowing for composition of functions across different parts of a program.
 
-The second way for this to occur is when an algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, [[#design-sender-adapter-ensure_started]] will be an identity transformation,
-because the algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy [[#design-sender-adapter-bulk]] operations of compatible shapes, and merge them together into a single submission of a GPU kernel.
+The second way for this to occur is when a sender algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, [[#design-sender-adapter-ensure_started]] will be an identity transformation,
+because the sender algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy [[#design-sender-adapter-bulk]]s of compatible shapes, and merge them together into a single submission of a GPU kernel.
 
 ## Execution context transitions are two-step ## {#design-transition-details}
 
@@ -1114,11 +1115,11 @@ Because `execution::reschedule` takes a sender as its first argument, it is not 
 transitioning away from a GPU in an efficient manner requires making runtime calls that are specific to the GPU in question, and the same is usually true for other kinds of accelerators too (or for scheduler running on remote systems). To avoid this problem,
 specialized schedulers like the ones mentioned here can still hook into the transition mechanism, and inject a sender which will perform a transition to the regular CPU execution context, so that any sender can be attached to it.
 
-This, however, is a problem: because customization of algorithms must be controlled by the scheduler they will run on (see [[#design-customization]]), the type of the sender returned from `reschedule` must be controllable by the target scheduler. Besides, the target
+This, however, is a problem: because customization of sender algorithms must be controlled by the scheduler they will run on (see [[#design-customization]]), the type of the sender returned from `reschedule` must be controllable by the target scheduler. Besides, the target
 scheduler may itself represent a specialized execution context, which requires additional work to be performed to transition <i>to</i> it. GPUs and remote node schedulers are once again good examples of such schedulers: executing code on their execution contexts
 requires making runtime API calls for work submission, and quite possibly for the data movement of the values being sent by the input sender passed into `reschedule`.
 
-To allow for such customization from both ends, we propose the inclusion of a secondary transitioning algorithm, called `schedule_from`. This algorithm is a form of `schedule`, but takes an additional, second argument: the input sender. This algorithm is not
+To allow for such customization from both ends, we propose the inclusion of a secondary transitioning sender adapter, called `schedule_from`. This adapter is a form of `schedule`, but takes an additional, second argument: the input sender. This adapter is not
 meant to be invoked manually by the end users; they are always supposed to invoke `reschedule`, to ensure that both schedulers have a say in how the transitions are made. Any scheduler that specializes `reschedule(snd, sch)` shall ensure that the
 return value of their customization is equivalent to `schedule_from(sch, snd2)`, where `snd2` is a successor of `snd` that sends values equivalent to those sent by `snd`.
 
@@ -1194,7 +1195,7 @@ This, however, introduces a couple of complications:
     less awkward with pattern matching, but even then it seems extremely heavyweight to involve variants in this API, and for the purpose of generic code, the kind of the return type of `sync_wait` must be the same across all sender types.
 
 One possible solution to (2) above is to place a requirement on `sync_wait` that it can only accept senders which send only a single set of values, therefore removing the need for `std::variant` to appear in its API; because of this, we propose to expose both
-`sync_wait`, which is a simple, user-friendly version of the algorithm, but requires that `value_types` have only one possible variant, and `sync_wait_with_variant`, which accepts any sender, but returns an optional whose value type is the variant of all the
+`sync_wait`, which is a simple, user-friendly version of the sender consumer, but requires that `value_types` have only one possible variant, and `sync_wait_with_variant`, which accepts any sender, but returns an optional whose value type is the variant of all the
 possible tuples sent by the input sender:
 
 <pre highlight=c++>
@@ -1492,7 +1493,7 @@ namespace std::execution {
     struct sender_traits; // TODO
 
   inline namespace <i>unspecified</i> {
-    // [execution.sender.connect], the connect algorithm
+    // [execution.sender.connect], the connect sender algorithm
     struct connect_t;
     inline constexpr connect_t connect{};
 
@@ -1582,10 +1583,11 @@ namespace std::execution {
       <i>see-below</i> into_variant(S &&);
     template&lt;sender S>
       <i>see-below</i> unschedule(S &&);
+
+    // [execution.sender.consumers], sender consumers
     struct ensure_started_t;
     inline constexpr ensure_started_t ensure_started{};
 
-    // [execution.sender.algorithms], sender algorithms
     struct start_detached_t;
     inline constexpr start_detached_t start_detached{};
   }
@@ -1637,9 +1639,9 @@ namespace std::execution {
         };
     </pre>
 
-2. None of a scheduler's copy constructor, destructor, equality comparison, or `swap` operations shall exit via an exception.
+2. None of a scheduler's copy constructor, destructor, equality comparison, or `swap` member functions shall exit via an exception.
 
-3. None of these operations, nor a scheduler type's `schedule` function, shall introduce data races as a result of concurrent invocations of thos functions from different
+3. None of these member functions, nor a scheduler type's `schedule` function, shall introduce data races as a result of concurrent invocations of thos functions from different
     threads.
 
 4. For any two (possibly const) values `s1` and `s2` of some scheduler type `S`, `s1 == s2` shall return `true` only if both `s1` and `s2` are handles to the same associated execution context.
@@ -1821,7 +1823,7 @@ namespace std::execution {
 
 ### Sender traits <b>[execution.sender.traits]</b> ### {#spec-execution.sender.traits}
 
-### Connect algorithm <b>[execution.sender.connect]</b> ### {#spec-execution.sender.connect}
+### Connect sender algorithm <b>[execution.sender.connect]</b> ### {#spec-execution.sender.connect}
 
 1. `execution::connect` is used to <i>connect</i> a sender with a receiver, producing an operation state object that represents the work that needs to be performed to satisfy the receiver contract of the receiver with values that are the result of the operations
     described by the sender.
@@ -2020,14 +2022,14 @@ namespace std::execution {
 
         1. Constructs a receiver `r`:
 
-            2. When `execution::set_value(r)` is called, it calls `execution::connect(s, out_r)`, which results in `op_state2`. It calls `execution::start(op_state2)`. If any of these operations throws an exception, it calls `execution::set_error` on `out_r`,
+            2. When `execution::set_value(r)` is called, it calls `execution::connect(s, out_r)`, which results in `op_state2`. It calls `execution::start(op_state2)`. If any of these throws an exception, it calls `execution::set_error` on `out_r`,
                 passing `current_exception()` as the second argument.
 
             3. When `execution::set_error(r, e)` is called, it calls `execution::set_error(out_r, e)`.
 
             4. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
 
-        2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`. If any of these operation throws an exception, it catches it and calls
+        2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls
             `execution::set_error(out_r, current_exception())`.
 
 4. Any receiver `r` created by an implementation of `on` and `lazy_on` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for all such receivers should be equivalent to the `sch` argument passed into the `on` or `lazy_on` call.
@@ -2083,7 +2085,7 @@ namespace std::execution {
 
         1. Constructs a receiver `r`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If any of these operations throws an exception, calls `execution::set_error` on `out_r`, passing `current_exception()` as the second argument.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If any of these throws an exception, calls `execution::set_error` on `out_r`, passing `current_exception()` as the second argument.
 
         3. When a receiver completion-signal <code><i>Signal</i>(r, args...)</code> is called, it constructs a receiver `r2`:
 
@@ -2093,7 +2095,7 @@ namespace std::execution {
 
             3. When `execution::done(r2)` is called, it calls `execution::set_done(out_r)`.
 
-            It then calls `execution::schedule(sch)`, resulting in a sender `s3`. It then calls `execution::connect(s3, r2)`, resulting in an operation state `op_state3`. It then calls `execution::start(op_state3)`. If any of these operations throws an exception,
+            It then calls `execution::schedule(sch)`, resulting in a sender `s3`. It then calls `execution::connect(s3, r2)`, resulting in an operation state `op_state3`. It then calls `execution::start(op_state3)`. If any of these throws an exception,
             it catches it and calls `execution::set_error(out_r, current_exception())`.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
@@ -2127,7 +2129,7 @@ namespace std::execution {
 
         1. Constructs a receiver `r`:
 
-            1. When `execution::set_value(r, args...)` is called, calls `invoke(f, args...)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these operations throws an exception, it catches it and calls
+            1. When `execution::set_value(r, args...)` is called, calls `invoke(f, args...)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these throws an exception, it catches it and calls
                 `execution::set_error(out_r, current_exception())`.
 
             2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
@@ -2170,7 +2172,7 @@ namespace std::execution {
 
             1. When `execution::set_value(r, args...)` is called, calls `execution::set_value(out_r, args...)`.
 
-            2. When `execution::set_error(r, e)` is called, calls `invoke(f, e)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these operations throws an exception, it catches it and calls
+            2. When `execution::set_error(r, e)` is called, calls `invoke(f, e)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these throws an exception, it catches it and calls
                 `execution::set_error(out_r, current_exception())`.
 
             3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
@@ -2213,7 +2215,7 @@ namespace std::execution {
 
             2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
-            3. When `execution::set_done(r)` is called, calls `invoke(f)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+            3. When `execution::set_done(r)` is called, calls `invoke(f)` and passes the result `v` to `execution::set_value(out_r, v)`. If any of these throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
         2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
@@ -2250,7 +2252,7 @@ namespace std::execution {
         1. Constructs a receiver `r`.
 
             1. When `execution::set_value(r, args...)` is called, copies `args...` into `op_state2` as `args2...`, then calls `invoke(f, args2...)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state
-                `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+                `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
             2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
@@ -2293,7 +2295,7 @@ namespace std::execution {
             1. When `execution::set_value(r, args...)` is called, calls `execution::set_value(out_r, args...)`.
 
             2. When `execution::set_error(r, e)` is called, copies `e` into `op_statee2` as `e`, then calls `invoke(f, e)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved
-                as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+                as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
             3. When `execution::set_done(r, e)` is called, calls `execution::set_done(out_r)`.
 
@@ -2336,7 +2338,7 @@ namespace std::execution {
             2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
             3. When `execution::set_done(r)` is called, calls `invoke(f)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved as a part of `op_state2`.
-                It then calls `execution::start(op_state3)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
+                It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
         2. Calls `execution::connect(s, r)`. which results in an operation state `op_state2`.
 
@@ -2369,7 +2371,7 @@ namespace std::execution {
 
         1. Constructs a receiver `r`:
 
-            1. When `execution::set_value(r, args...)` is called, calls `f(i, args...)` for each `i` of type `Shape` from `0` to `shape`, then calls `execution::set_value(out_r, args...)`. If any of these operations throws an exception, it catches it and calls
+            1. When `execution::set_value(r, args...)` is called, calls `f(i, args...)` for each `i` of type `Shape` from `0` to `shape`, then calls `execution::set_value(out_r, args...)`. If any of these throws an exception, it catches it and calls
                 `execution::set_error(out_r, current_exception())`.
 
             2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
@@ -2470,7 +2472,7 @@ namespace std::execution {
 
 1. `execution::reschedule_when_all` and `execution::lazy_reschedule_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
     that they complete on the specified scheduler. `execution::reschedule_when_all_with_variant` and `execution::lazy_reschedule_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input
-    senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the algorithm. --<i>end note</i>]
+    senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the adapter. --<i>end note</i>]
 
 2. The name `execution::reschedule_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type <code>S<i><sub>i</sub></i></code>
     in `S...` does not satisfy `execution::typed_sender`,  or the number of the arguments <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1 `execution::reschedule_when_all` is ill-formed.
@@ -2573,7 +2575,7 @@ namespace std::execution {
 
         1. Constructs a receiver `r`.
 
-        2. Calls `execution::connect(s, r)`, resulting in operation state `op_state`, and then calls `execution::start(op_state)`. If any of these operations throws an exception, it catches it and calls `execution::set_error(r, current_exception())`.
+        2. Calls `execution::connect(s, r)`, resulting in operation state `op_state`, and then calls `execution::start(op_state)`. If any of these throws an exception, it catches it and calls `execution::set_error(r, current_exception())`.
 
         3. Constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state2`. Once both `execution::start(op_state2)` and one of the receiver completion-signals has been called on `r`:
 
@@ -2585,9 +2587,9 @@ namespace std::execution {
 
     If the function selected above does not eagerly start the sender `s` and return a sender which propagates the signals sent by `s` once started, the program is ill-formed with no diagnostic required.
 
-### Sender algorithms <b>[execution.sender.algorithms]</b> ### {#spec-execution.sender.algorithms}
+### Sender consumers <b>[execution.sender.consumers]</b> ### {#spec-execution.sender.consumers}
 
-#### Start_detached algorithm <b>[execution.sender.algorithms.start_detached]</b> #### {#spec-execution.sender.algorithms.start_detached}
+#### Start_detached sender consumer <b>[execution.sender.consumer.start_detached]</b> #### {#spec-execution.sender.consumers.start_detached}
 
 1. `execution::start_detached` is used to eagerly start a sender without the caller needing to manage the lifetimes of any objects.
 
@@ -2613,7 +2615,7 @@ namespace std::execution {
     If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_done` signals and calls `std::terminate()` on the `set_error` signal, the program is ill-formed with no diagnostic
         required.
 
-#### Sync_wait algorithm <b>[execution.sender.algorithms.sync_wait]</b> #### {#spec-execution.sender.algorithms.sync_wait}
+#### Sync_wait sender consumer <b>[execution.sender.consumers.sync_wait]</b> #### {#spec-execution.sender.consumers.sync_wait}
 
 1. `this_thread::sync_wait` and `this_thread::sync_wait_with_variant` are used to block a current thread until a sender passed into it as an argument has completed, and to obtain the values (if any) it completed with.
 
