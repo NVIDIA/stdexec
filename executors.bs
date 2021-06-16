@@ -1201,16 +1201,12 @@ return value of their customization is equivalent to `schedule_from(sch, snd2)`,
 
 The default implementation of `transfer(snd, sched)` is `schedule_from(sched, snd)`.
 
-# Design - API specifics # {#design-api}
-
 ## Most senders are typed ## {#design-typed}
 
 All senders should advertise the types they will [=send=] when they complete. This is necessary for a number of features, and writing code in a way that's agnostic of whether an imput sender is typed or not in common sender adaptors such as `execution::then` is
 hard.
 
 The mechanism for this advertisement is the same as in [[P0443R14]]; the way to query the types is through `sender_traits::value_types<tuple_like, variant_like>`.
-
-### Design issue: `value_types` ### {#design-typed-issue}
 
 `sender_traits::value_types` is a template that takes two arguments: one is a tuple-like template, the other is a variant-like template. The tuple-like argument is required to represent senders sending more than one value (such as `when_all`). The variant-like
 argument is required to represent senders that choose which specific values to send at runtime.
