@@ -353,6 +353,17 @@ execution::sender auto snd = execution::schedule(sch);
 // on the execution context associated with sch
 </pre>
 
+Note that a particular scheduler type may provide other kinds of scheduling operations
+which are supported by its associated execution context. It is not limited to scheduling
+purely using the `execution::schedule()` API.
+
+Future papers will propose additional scheduler concepts that extend `scheduler`
+to add other capabilities. For example:
+* A `time_scheduler` concept that extends `scheduler` to support time-based scheduling.
+    Such a concept might provide access to `schedule_after(sched, duration)`, `schedule_at(sched, timePoint)` and `now(sched)` APIs.
+* Concepts that extend `scheduler` to support opening, reading and writing files asynchronously.
+* Concepts that extend `scheduler` to support connecting, sending data and receiving data over the network asynchronously.
+
 ## Senders describe work ## {#design-senders}
 
 A <dfn>sender</dfn> is an object that describes work. Senders are similar to futures in existing asynchrony designs, but unlike futures, the work that is being done to arrive at the values they will *send* is also directly described by the sender object itself. A
