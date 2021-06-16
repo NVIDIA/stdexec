@@ -2614,9 +2614,9 @@ of the work described by a sender, but we have found those algorithms to be insu
    <p>None of these implementation strategies are acceptable for many classes of parallel runtimes, such as task frameworks (like <a href="https://github.com/STEllAR-GROUP/hpx">\HPX</a>) or accelerator runtimes (like CUDA or SYCL).
 Therefore, in addition to the <code class="highlight"><c- n>on</c-></code> algorithm from <a data-link-type="biblio" href="#biblio-p1897r3">[P1897R3]</a>, we are proposing a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
 Any given sender <b>may</b> have <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="completion-schedulers">completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see <a href="#design-receivers">§ 5.1 Receivers serve as glue between senders</a>).
-When further work is attached to that sender by invoking sender algorithms, that work will also complete on the appropriate completion scheduler.</p>
-   <p><code class="highlight"><c- n>get_completion_scheduler</c-></code> is a query that retrieves the <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers">completion scheduler</a> from a sender. Calling <code class="highlight"><c- n>get_completion_scheduler</c-></code> on a sender that does not have an completion scheduler is ill-formed. If a scheduler advertises its completion scheduler in this
-way, that sender <b>must</b> ensure that it <a data-link-type="dfn" href="#send" id="ref-for-send">sends</a> its values on an execution agent belonging to an execution context represented by a scheduler returned from this function.</p>
+When further work is attached to that sender by invoking sender algorithms, that work will also complete on an appropriate completion scheduler.</p>
+   <p><code class="highlight"><c- n>get_completion_scheduler</c-></code> is a query that retrieves the <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers">completion scheduler</a> for a specific completion signal from a sender. Calling <code class="highlight"><c- n>get_completion_scheduler</c-></code> on a sender that does not have a completion scheduler for a given signal is ill-formed. If a scheduler advertises a completion scheduler for a signal in this
+way, that sender <b>must</b> ensure that it <a data-link-type="dfn" href="#send" id="ref-for-send">sends</a> that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>new_thread_scheduler</c-><c- p>{};</c->
 <c- c1>// sch is a scheduler that starts work on a new thread</c->
 
@@ -2686,7 +2686,7 @@ This requires that we provide well defined mechanisms for making sure that conne
 merged into a single one in an asynchronous fashion.</p>
    <p><code class="highlight"><c- n>when_all</c-></code> is a sender algorithm that returns a sender that completes when the last of the input senders completes. It <a data-link-type="dfn" href="#send" id="ref-for-send①">sends</a> a pack of values, where the elements of said pack are the values sent by the input senders, in order. The <code class="highlight"><c- n>when_all</c-></code> algorithm returns a sender
 that also does not have an associated scheduler.</p>
-   <p><code class="highlight"><c- n>reschedule_when_all</c-></code> accepts an additional scheduler argument. It returns a sender whose <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers②">completion scheduler</a> is the scheduler provided as an argument, but otherwise behaves the same as <code class="highlight"><c- n>when_all</c-></code>. You can think of it as a composition of <code class="highlight"><c- n>transform</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>inputs</c-><c- p>...),</c-> <c- n>scheduler</c-><c- p>)</c-></code>, but one that allows for better efficiency through customization.</p>
+   <p><code class="highlight"><c- n>reschedule_when_all</c-></code> accepts an additional scheduler argument. It returns a sender whose value <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers②">completion scheduler</a> is the scheduler provided as an argument, but otherwise behaves the same as <code class="highlight"><c- n>when_all</c-></code>. You can think of it as a composition of <code class="highlight"><c- n>transform</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>inputs</c-><c- p>...),</c-> <c- n>scheduler</c-><c- p>)</c-></code>, but one that allows for better efficiency through customization.</p>
    <h3 class="heading settled" data-level="4.9" id="design-factories"><span class="secno">4.9. </span><span class="content">Proposed set of user-facing sender factories</span><a class="self-link" href="#design-factories"></a></h3>
    <p>A <dfn data-dfn-type="dfn" data-noexport id="sender-factory">sender factory<a class="self-link" href="#sender-factory"></a></dfn> is a function that takes no senders as parameters and returns a sender.</p>
    <h4 class="heading settled" data-level="4.9.1" id="design-factory-schedule"><span class="secno">4.9.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code></span><a class="self-link" href="#design-factory-schedule"></a></h4>
@@ -2705,7 +2705,7 @@ that also does not have an associated scheduler.</p>
     <c- k>auto</c-> <c- p>...</c-><c- o>&amp;&amp;</c-> <c- n>values</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender with no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers③">completion scheduler</a>, which <a data-link-type="dfn" href="#send" id="ref-for-send②">sends</a> the provided values. If a provided value is an lvalue reference, a copy is made inside the returned sender and a non-const lvalue reference to the copy is sent. If the provided value is an rvalue reference, it is moved into the returned sender and an rvalue reference to it is sent.</p>
+   <p>Returns a sender with no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers③">completion schedulers</a>, which <a data-link-type="dfn" href="#send" id="ref-for-send②">sends</a> the provided values. If a provided value is an lvalue reference, a copy is made inside the returned sender and a non-const lvalue reference to the copy is sent. If the provided value is an rvalue reference, it is moved into the returned sender and an rvalue reference to it is sent.</p>
 <pre class="language-c++ highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- mf>3.14</c-><c- p>);</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd1</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- b>double</c-> <c- n>d</c-><c- p>)</c-> <c- p>{</c->
   <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- n>d</c-> <c- o>&lt;&lt;</c-> <c- s>"</c-><c- se>\n</c-><c- s>"</c-><c- p>;</c->
@@ -2738,7 +2738,7 @@ that also does not have an associated scheduler.</p>
     <c- k>auto</c-> <c- p>...</c-><c- o>&amp;&amp;</c-> <c- n>values</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender whose <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers④">completion scheduler</a> is the provided scheduler, which <a data-link-type="dfn" href="#send" id="ref-for-send③">sends</a> the provided values in the same manner as <code class="highlight"><c- n>just</c-></code>.</p>
+   <p>Returns a sender whose value <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers④">completion scheduler</a> is the provided scheduler, which <a data-link-type="dfn" href="#send" id="ref-for-send③">sends</a> the provided values in the same manner as <code class="highlight"><c- n>just</c-></code>.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>vals</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-><c- p>(</c->
     <c- n>get_system_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>(),</c->
     <c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c->
@@ -2864,7 +2864,7 @@ but not guaranteed, to start senders.</p>
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender does not have a <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑤">completion scheduler</a>.</p>
+   <p>Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender has no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑤">completion schedulers</a>.</p>
    <h4 class="heading settled" data-level="4.10.5" id="design-adapter-into_variant"><span class="secno">4.10.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code></span><a class="self-link" href="#design-adapter-into_variant"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- n>into_variant</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
@@ -2876,7 +2876,7 @@ but not guaranteed, to start senders.</p>
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender which <a data-link-type="dfn" href="#send" id="ref-for-send⑥">sends</a> values equivalent to values sent by the provided sender, but does not have an <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑥">completion scheduler</a>.</p>
+   <p>Returns a sender which <a data-link-type="dfn" href="#send" id="ref-for-send⑥">sends</a> values equivalent to values sent by the provided sender, but has no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑥">completion schedulers</a>.</p>
    <h4 class="heading settled" data-level="4.10.7" id="design-adapter-bulk"><span class="secno">4.10.7. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span><a class="self-link" href="#design-adapter-bulk"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>bulk</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
@@ -2910,7 +2910,7 @@ but not guaranteed, to start senders.</p>
 </pre>
    <p><code class="highlight"><c- n>when_all</c-></code> returns a sender which completes once all of the input senders have completed. The values send by this sender are the values sent by each of the input, in order of the arguments passed to <code class="highlight"><c- n>when_all</c-></code>.</p>
    <p><code class="highlight"><c- n>when_all_with_variant</c-></code> does the same, but it adapts all the input senders using <code class="highlight"><c- n>into_variant</c-></code>.</p>
-   <p>The returned sender does not have a <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑦">completion scheduler</a>.</p>
+   <p>The returned sender has no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑦">completion schedulers</a>.</p>
    <p><code class="highlight"><c- n>when_all</c-></code> is a strictly lazy algorithm; it is guaranteed to not start any of the input senders until the returned sender is started.</p>
    <p>See <a href="#design-join">§ 4.8 Senders are joinable</a>.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
@@ -2949,7 +2949,7 @@ but not guaranteed, to start senders.</p>
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- p>...</c-><c- n>inputs</c->
 <c- p>);</c->
 </pre>
-   <p>Similar to <a href="#design-adapter-when_all">§ 4.10.9 execution::when_all</a>, but returns a sender whose <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑧">completion scheduler</a> is the provided scheduler.</p>
+   <p>Similar to <a href="#design-adapter-when_all">§ 4.10.9 execution::when_all</a>, but returns a sender whose value <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑧">completion scheduler</a> is the provided scheduler.</p>
    <p>See <a href="#design-join">§ 4.8 Senders are joinable</a>.</p>
    <h4 class="heading settled" data-level="4.10.11" id="design-adapter-ensure_started"><span class="secno">4.10.11. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code></span><a class="self-link" href="#design-adapter-ensure_started"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>ensure_started</c-><c- p>(</c->
@@ -3031,7 +3031,7 @@ interact with operation states directly are authors of senders and authors of se
 <c- c1>// kept alive until the operation finishes</c->
 </pre>
    <h3 class="heading settled" data-level="5.4" id="design-customization"><span class="secno">5.4. </span><span class="content">Sender algorithms are customizable</span><a class="self-link" href="#design-customization"></a></h3>
-   <p>Senders being able to advertise what their <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑨">completion scheduler</a> is fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler any operations it depends on will complete on.</p>
+   <p>Senders being able to advertise what their <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑨">completion schedulers</a> are fulfills one of the promises of senders: that of being able to customize an implementation of an algorithm based on what scheduler any operations it depends on will complete on.</p>
    <p>The simple way to provide customizations for functions like <code class="highlight"><c- n>then</c-></code>, that is for <a data-link-type="dfn" href="#sender-adapter" id="ref-for-sender-adapter">sender adapters</a> and <a data-link-type="dfn" href="#sender-algorithm" id="ref-for-sender-algorithm">algorithms</a>, is to follow the customization scheme that has been adopted for C++20 Ranges library; to do that, we would define
 the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>sender</c-><c- p>,</c-> <c- n>invocable</c-><c- p>)</c-></code> to be equivalent to:</p>
    <ol>
@@ -3874,7 +3874,7 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no
 diagnostic required.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is ill-formed.</p>
@@ -3949,7 +3949,7 @@ diagnostic required.</p>
 satisfy <code class="highlight"><c- o>&lt;</c-><c- n>i</c-><c- o>></c-><c- n>moveable</c-><c- o>-</c-><c- n>value</c-><c- o>&lt;/</c-><c- n>i</c-><c- o>></c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code> and sends
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>reschedule_just</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code> and sends
 values equivalent to <code class="highlight"><c- n>vs</c-><c- p>...</c-></code> to a receiver connected to it, the program is ill-formed with no diagnostic required.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>vs</c-><c- p>...),</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
@@ -4041,7 +4041,7 @@ passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code>
    <h5 class="heading settled" data-level="10.6.5.4" id="spec-execution.sender.adaptors.reschedule"><span class="secno">10.6.5.4. </span><span class="content">Reschedule adaptor <b>[execution.sender.adaptors.reschedule]</b></span><a class="self-link" href="#spec-execution.sender.adaptors.reschedule"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule</c-></code> are used to adapt a sender into a sender with a different associated completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_reschedule</c-></code> are used to adapt a sender into a sender with a different associated <code class="highlight"><c- n>set_value</c-></code> completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>. or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>reschedule</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
