@@ -1139,7 +1139,7 @@ execution::sender auto bulk(
 {
     // return a cuda sender representing a bulk kernel launch
 }
-}
+} // namespace cuda::for_adl_purposes
 </pre>
 
 However, if the input sender is not just a `then_sender_adaptor` like in the example above, but another sender that overrides `bulk` by itself, as a member function, because its author believes they know an optimization for bulk - the specialization above will no
