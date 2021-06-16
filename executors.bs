@@ -240,7 +240,7 @@ Callbacks are the simplest, most powerful, and most efficient mechanism for crea
 ## Field experience ## {#intro-field-experience}
 
 This proposal draws heavily from our experience with the [libunifex](https://github.com/facebookexperimental/libunifex) and [Agency](https://github.com/agency-library/agency) libraries. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:
-* [\HPX](https://github.com/STEllAR-GROUP/hpx)
+* \[HPX](https://github.com/STEllAR-GROUP/hpx)
 * [Folly](https://github.com/facebook/folly/blob/master/folly/docs/Futures.md)
 * [stlab](https://stlab.cc/libraries/concurrency/)
 
