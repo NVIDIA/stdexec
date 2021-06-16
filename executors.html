@@ -2382,7 +2382,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
           <li><a href="#spec-execution.sender.adaptors.bulk"><span class="secno">10.6.5.12</span> <span class="content">Bulk adaptor <b>[execution.sender.adaptors.bulk]</b></span></a>
           <li><a href="#spec-execution.sender.adaptors.split"><span class="secno">10.6.5.13</span> <span class="content">Split adaptor <b>[execution.sender.adaptors.split]</b></span></a>
           <li><a href="#spec-execution.sender.adaptor.when_all"><span class="secno">10.6.5.14</span> <span class="content">When_all adaptor <b>[execution.sender.adaptors.when_all]</b></span></a>
-          <li><a href="#spec-execution.sender.adaptor.transfer_when_all"><span class="secno">10.6.5.15</span> <span class="content">transfer_when_all adaptor <b>[execution.sender.adaptors.transfer_when_all]</b></span></a>
+          <li><a href="#spec-execution.sender.adaptor.transfer_when_all"><span class="secno">10.6.5.15</span> <span class="content">Transfer_when_all adaptor <b>[execution.sender.adaptors.transfer_when_all]</b></span></a>
           <li><a href="#spec-execution.sender.adaptors.into_variant"><span class="secno">10.6.5.16</span> <span class="content">Into_variant adaptor <b>[execution.sender.adaptors.into_variant]</b></span></a>
           <li><a href="#spec-execution.sender.adaptors.unschedule"><span class="secno">10.6.5.17</span> <span class="content">Unschedule adaptor <b>[execution.sender.adaptors.unschedule]</b></span></a>
           <li><a href="#spec-execution.sender.adaptors.ensure_started"><span class="secno">10.6.5.18</span> <span class="content">Ensure_started adaptor <b>[execution.sender.adaptors.ensure_started]</b></span></a>
@@ -4688,7 +4688,7 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
     <li data-md>
      <p><code class="highlight"><c- n>tag_invoke</c-></code> expressions used in the definitions of the sender adaptors in this subclause shall not consider member functions of their first non-tag arguments.</p>
    </ol>
-   <h5 class="heading settled" data-level="10.6.5.15" id="spec-execution.sender.adaptor.transfer_when_all"><span class="secno">10.6.5.15. </span><span class="content">transfer_when_all adaptor <b>[execution.sender.adaptors.transfer_when_all]</b></span><a class="self-link" href="#spec-execution.sender.adaptor.transfer_when_all"></a></h5>
+   <h5 class="heading settled" data-level="10.6.5.15" id="spec-execution.sender.adaptor.transfer_when_all"><span class="secno">10.6.5.15. </span><span class="content">Transfer_when_all adaptor <b>[execution.sender.adaptors.transfer_when_all]</b></span><a class="self-link" href="#spec-execution.sender.adaptor.transfer_when_all"></a></h5>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all</c-></code> are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
