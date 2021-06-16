@@ -23,6 +23,14 @@ pre {
   margin-top: 0px;
   margin-bottom: 0px;
 }
+table, th, tr, td {
+  border: 2px solid black !important;
+}
+@media (prefers-color-scheme: dark) {
+  table, th, tr, td {
+    border: 2px solid white !important;
+  }
+}
 .ins, ins, ins *, span.ins, span.ins * {
   background-color: rgb(200, 250, 200);
   color: rgb(0, 136, 0);
