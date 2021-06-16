@@ -779,7 +779,7 @@ execution::sender auto snd = execution::then(input, [](auto... args) {
 
 This adaptor is included as it is necessary for writing any sender code that actually performs a useful function.
 
-### `execution::upon_*` ### {#design-sender-adaptor-let}
+### `execution::upon_*` ### {#design-sender-adaptor-upon}
 
 <pre highlight="c++">
 execution::sender auto upon_error(
