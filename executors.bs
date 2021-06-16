@@ -1,5 +1,6 @@
 <pre class='metadata'>
-Title: Completing the Design of Executors
+Title: `std::execution`
+H1: <code>std::execution</code>
 Shortname: D2300
 Revision: 0
 Status: D
