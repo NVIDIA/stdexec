@@ -253,7 +253,7 @@ Before this proposal is approved, we will present a new implementation of this p
 
 Initial revision, still in progress.
 
-# Proposed design - introduction # {#design-intro}
+# Design - introduction # {#design-intro}
 
 The following four sections describe the entirety of the proposed design.
 
@@ -276,7 +276,7 @@ A <dfn>query</dfn> is a `std::invocable` that takes some set of objects (usually
 
 An <dfn>algorithm</dfn> is a `std::invocable` that takes some set of objects as parameters and causes those objects to do something. Algorithms are usually customization point objects, but in some cases may be functions.
 
-# Proposed design - user side # {#design-user}
+# Design - user side # {#design-user}
 
 ## Execution contexts describe the place of execution ## {#design-contexts}
 
@@ -529,7 +529,7 @@ Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
 We believe sender consumers read better with function call syntax.
 
-## Proposed user-facing sender factories ## {#design-sender-factories}
+## User-facing sender factories ## {#design-sender-factories}
 
 A <dfn>sender factory</dfn> is an [=algorithm=] that takes no senders as parameters and returns a sender.
 
@@ -612,7 +612,7 @@ execution::sender auto snd = execution::then(pred, [](auto... args) {
 
 This adaptor is included as it greatly simplifies lifting values into senders.
 
-## Proposed user-facing sender adaptors ## {#design-sender-adaptors}
+## User-facing sender adaptors ## {#design-sender-adaptors}
 
 A <dfn>sender adaptor</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
 
@@ -890,7 +890,7 @@ execution::sender auto ensure_started(
 Once `ensure_started` returns, it is known that the provided sender has been [=connect|connected=] and `start` has been called on the resulting operation state (see [[#design-states]]); in other words, the work described by the provided sender has been submitted
 for execution on the appropriate execution contexts. Returns a sender which completes when the provided sender completes and sends values equivalent to those of the provided sender.
 
-## Proposed user-facing sender consumers ## {#design-sender-consumers}
+## User-facing sender consumers ## {#design-sender-consumers}
 
 A <dfn>sender consumer</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and does not return a sender.
 
@@ -947,7 +947,7 @@ auto work = execution::then(snd, fn);
 execution::start_detached(work);
 </pre>
 
-# Proposed design - implementer side # {#design-implementer}
+# Design - implementer side # {#design-implementer}
 
 ## Receivers serve as glue between senders ## {#design-receivers}
 
@@ -1105,7 +1105,7 @@ return value of their customization is equivalent to `schedule_from(sch, snd2)`,
 
 The default implementation of `reschedule(snd, sched)` is `schedule_from(sched, snd)`.
 
-# Proposed design - API specifics # {#design-api}
+# Design - API specifics # {#design-api}
 
 ## Most senders are typed ## {#design-typed}
 
