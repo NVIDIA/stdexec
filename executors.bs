@@ -335,27 +335,37 @@ of the work described by a sender, but we have found those sender algorithms to 
 
 None of these implementation strategies are acceptable for many classes of parallel runtimes, such as task frameworks (like [\HPX](https://github.com/STEllAR-GROUP/hpx)) or accelerator runtimes (like CUDA or SYCL).
 
-Therefore, in addition to the `on` sender algorithm from [[P1897R3]], we are proposing [#design-queries-get_completion_scheduler], a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
+Therefore, in addition to the `on` sender algorithm from [[P1897R3]], we are proposing a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
 Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
 When further work is attached to that sender by invoking sender algorithms, that work will also complete on an appropriate completion scheduler.
 
+### `execution::get_completion_scheduler` ### {#design-query-get_completion_scheduler}
+
+`get_completion_scheduler` is a query that retrieves the [=completion scheduler=] for a specific completion signal from a sender.
+Calling `get_completion_scheduler` on a sender that does not have a completion scheduler for a given signal is ill-formed.
+If a scheduler advertises a completion scheduler for a signal in this way, that sender <b>must</b> ensure that it [=send|sends=] that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.
+See [[#design-propagation]] for more details.
+
 <pre highlight="c++">
-execution::scheduler auto sch = new_thread_scheduler{};
-// sch is a scheduler that starts work on a new thread
+execution::scheduler auto cpu_sched = new_thread_scheduler{};
+execution::scheduler auto gpu_sched = cuda::scheduler();
 
-execution::sender auto initial = execution::schedule(sch);
-execution::sender auto next = execution::then(initial, []{
-    std::cout << "First continuation" << std::endl;
+execution::sender auto snd0 = execution::schedule(cpu_sched);
+execution::scheduler auto completion_sch0 = execution::get_completion_scheduler(snd0);
+// completion_sch0 is equivalent to cpu_sched
+
+execution::sender auto snd1 = execution::then(snd0, []{
+    std::cout << "I am running on cpu_sched!\n";
 });
-execution::sender auto last = execution::then(next, []{
-    std::cout << "Second continuation" << std::endl;
+execution::scheduler auto completion_sch1 = execution::get_completion_scheduler(snd1);
+// completion_sch1 is equivalent to cpu_sched
+
+execution::sender auto snd2 = execution::reschedule(snd1, gpu_sched);
+execution::sender auto snd3 = execution::then(snd2, []{
+    std::cout << "I am running on gpu_sched!\n";
 });
-
-execution::scheduler auto completion_sch = execution::get_completion_scheduler(last);
-// completion_sch is equivalent to sch
-
-std::this_thread::sync_wait(last);
-// both continuations will run on the same thread created by the scheduler
+execution::scheduler auto completion_sch3 = execution::get_completion_scheduler(then3);
+// completion_sch3 is equivalent to cpu_sched
 </pre>
 
 ## Execution context transitions are explicit ## {#design-transitions}
@@ -517,37 +527,6 @@ Certain sender adapters are not be pipeable, because using the pipeline syntax c
 Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
 We believe sender consumers read better with function call syntax.
-
-## Proposed user-facing sender queries ## {#design-queries}
-
-### `execution::get_completion_scheduler` ### {#design-queries-get_completion_scheduler}
-
-`get_completion_scheduler` is a query that retrieves the [=completion scheduler=] for a specific completion signal from a sender.
-Calling `get_completion_scheduler` on a sender that does not have a completion scheduler for a given signal is ill-formed.
-If a scheduler advertises a completion scheduler for a signal in this way, that sender <b>must</b> ensure that it [=send|sends=] that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.
-See [[#design-propagation]] for more details.
-
-<pre highlight="c++">
-execution::scheduler auto cpu_sched = new_thread_scheduler{};
-execution::scheduler auto gpu_sched = cuda::scheduler();
-
-execution::sender auto snd0 = execution::schedule(cpu_sched);
-execution::scheduler auto completion_sch0 = execution::get_completion_scheduler(snd0);
-// completion_sch0 is equivalent to cpu_sched
-
-execution::sender auto snd1 = execution::then(snd0, []{
-    std::cout << "I am running on cpu_sched!\n";
-});
-execution::scheduler auto completion_sch1 = execution::get_completion_scheduler(snd1);
-// completion_sch1 is equivalent to cpu_sched
-
-execution::sender auto snd2 = execution::reschedule(snd1, gpu_sched);
-execution::sender auto snd3 = execution::then(snd2, []{
-    std::cout << "I am running on gpu_sched!\n";
-});
-execution::scheduler auto completion_sch3 = execution::get_completion_scheduler(then3);
-// completion_sch3 is equivalent to cpu_sched
-</pre>
 
 ## Proposed user-facing sender factories ## {#design-sender-factories}
 
