@@ -13,6 +13,8 @@ Editor: Michael Garland, mgarland@nvidia.com
 Editor: Eric Niebler, eric.niebler@gmail.com
 Editor: Bryce Adelstein Lelbach, brycelelbach@gmail.com
 URL: https://wg21.link/P2300
+!Source: <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/main/std_execution.bs">GitHub</a>
+Issue Tracking: GitHub https://github.com/brycelelbach/wg21_p2300_std_execution/issues
 Metadata Order: Editor, This Version, Source, Issue Tracking, Project, Audience
 Markup Shorthands: markdown yes
 Toggle Diffs: no
