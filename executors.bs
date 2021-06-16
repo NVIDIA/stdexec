@@ -386,19 +386,46 @@ std::this_thread::sync_wait(then2);
 
 ## Senders can be either multi-shot or single-shot ## {#design-shot}
 
-Some senders may only support sending a signal a single time for correctness and efficiency.
-For example, a sender may contain a `unique_ptr` that it will transferring ownership to its recipient
-This requires that sender algorithms support move-only senders.
+Some senders may only support launching their operation a single time, while others may be repeatable
+and support being launched multiple times. Executing the operation may consume resources owned by the
+sender.
 
-A <dfn>single-shot sender</dfn> can only send its signal once, which means it can only be connected once.
-When a sender algorithm accepts a sender as an rvalue, that sender shall be treated as if it was a single-shot sender by the algorithm, and the caller must treat the sender as a moved-from object.
-The sender must not be copied, so the algorithm must connect it as an rvalue and must connect it at most once.
+For example, a sender may contain a `unique_ptr` that it will be transferring ownership of to the
+operation-state returned by a call to `execution::connect()` so that the operation has access to
+this resource. In such a sender, calling `execution::connect()` consumes the sender such that after
+the call the input sender is no longer valid. Such a sender will also typically be move-only so that
+it can maintain a single unique owner of that resource at any one time.
 
-All algorithms have to accept rvalue senders to facilitate senders that can only send a value once.
+A <dfn>single-shot sender</dfn> can only be connected to a receiver at most once. Its implementation of
+`execution::connect` only has overloads for an rvalue-qualified sender. Callers must pass the sender
+as an rvalue to the call to `execution::connect()`, indicating that the call consumes the sender.
 
-A <dfn>multi-shot sender</dfn> can send its signal multiple times, which means it may be connected multiple times.
-If a sender algorithm accepts a sender as an lvalue, that sender shall be treated as if it was a multi-shot sender by the algorithm.
-The sender must remain valid after such an algorithm invocation, so the algorithm must connect it as an lvalue, although it may connect it multiple times.
+A <dfn>multi-shot sender</dfn> can be connected to multiple receivers and can be launched/invoked multiple
+times. Mult-shot senders customise `execution::connect()` to accept an lvalue reference to the
+sender. Callers can indicate that they want the sender to remain valid after the call to `execution::connect()`
+by passing an lvalue reference to the sender to call these overloads. Multi-shot senders should also define
+overloads of `execution::connect()` that accept rvalue-senders to allow the sender to be also used in places
+where only a single-shot sender is required.
+
+
+If the consumer of a sender does not require the sender to remain valid after connecting it to a
+receiver then it can pass an rvalue-reference to the sender to the call to `execution::connect()`.
+Such usages should be able to accept either single-shot or multi-shot senders.
+
+If the caller does wish for the sender to remain valid after the call then it can pass an lvalue sender
+to the call to `execution::connect()`. Such usages will only accept multi-shot senders.
+
+Algorithms that accept senders will typically either decay-copy an input sender and store it somewhere
+for later usage, for example as a data-member of the returned sender, or will immediately call
+`execution::connect()` on the input sender, such as in `this_thread::sync_wait()` or `execution::start_detached()`.
+
+Some multi-use algorithms may require that an input sender be copy-constructible but will only call
+`execution::connect()` on an rvalue of each copy - which still results in effectively executing the operation multiple times.
+Whereas other multi-use algorithms may require that the sender is move-constructible but will invoke `execution::connect()`
+on an lvalue reference to the sender.
+
+For a sender to be usable in both multi-use scenarios will generally require it to be both copy-constructible and
+lvalue-connectable.
 
 ## Senders are forkable ## {#design-forkable}
 
