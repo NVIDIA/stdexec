@@ -269,6 +269,12 @@ The following conventions are used throughout the design section:
   2. Universal references and explicit calls to `std::move`/`std::forward` are omitted in code samples and signatures for simplicity; assume universal references and perfect forwarding unless stated otherwise.
   3. None of the algorithm names proposed here are names that we are particularly attached to; consider the names of the algorithms to be reasonable placeholders that can freely be changed, should the committee want to do so.
 
+## Queries and operations ## {#design-queries-and-operations}
+
+A <dfn>query</dfn> is a `std::invocable` that takes some set of objects (usually one) as parameters and returns facts about those objects without modifying them. Queries are usually customization point objects, but in some cases may be functions.
+
+A <dfn>operation</dfn> is a `std::invocable` that takes some set of objects as parameters and causes those objects to do something. Operations are usually customization point objects, but in some cases may be functions.
+
 # Proposed design - user side # {#design-user}
 
 ## Execution contexts describe the place of execution ## {#design-contexts}
