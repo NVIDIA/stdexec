@@ -92,7 +92,7 @@ div.newnumbered li:before {
 
 # Introduction # {#intro}
 
-This paper proposes a self-contained design for an C++ executors, a series of abstractions for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in [[P0443R14]] and its companion papers.
+This paper proposes a self-contained design for a Standard C++ framework for managing asynchronous and parallel execution on generic execution contexts. It is based on the ideas in [[P0443R14]] and its companion papers.
 
 ## Examples ## {#example}
 
