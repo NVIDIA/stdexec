@@ -132,7 +132,7 @@ See [[#design-sender-factories]], [[#design-sender-adaptors]], and [[#design-sen
 ```c++
 using namespace std::execution;
 
-executor auto sch = get_thread_pool().scheduler();                            // 1
+scheduler auto sch = get_thread_pool().scheduler();                            // 1
 
 sender auto begin = schedule(sch);                                            // 2
 sender auto hi_again = then(begin, []{                                        // 3
