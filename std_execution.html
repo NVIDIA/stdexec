@@ -2446,7 +2446,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
    <h4 class="heading settled" data-level="1.3.1" id="example-hello-world"><span class="secno">1.3.1. </span><span class="content">Hello world</span><a class="self-link" href="#example-hello-world"></a></h4>
 <pre class="language-c++ highlight"><c- n>using</c-> <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
 
-<c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->                            <c- c1>// 1</c->
+<c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->                           <c- c1>// 1</c->
 
 <c- n>sender</c-> <c- k>auto</c-> <c- n>begin</c-> <c- o>=</c-> <c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->                                            <c- c1>// 2</c->
 <c- n>sender</c-> <c- k>auto</c-> <c- n>hi_again</c-> <c- o>=</c-> <c- n>then</c-><c- p>(</c-><c- n>begin</c-><c- p>,</c-> <c- p>[]{</c->                                        <c- c1>// 3</c->
