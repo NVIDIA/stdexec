@@ -99,7 +99,7 @@ This paper proposes a self-contained design for a Standard C++ framework for man
 
 ## Motivation ## {#motivation}
 
-Today, C++ software is increasingly asynchronous and parallelism, a trend that is likely to only continue going forward.
+Today, C++ software is increasingly asynchronous and parallel, a trend that is likely to only continue going forward.
 Asynchrony and parallelism appears everywhere, from processor hardware interfaces, to networking, to file I/O, to GUIs, to accelerators.
 Every C++ domain and every platform need to deal with asynchrony and parallelism, from scientific computing to video games to financial services, from the smallest mobile devices to your laptop to GPUs in the world's fastest supercomputer.
 
