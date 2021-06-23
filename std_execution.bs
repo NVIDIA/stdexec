@@ -562,7 +562,7 @@ Pipeable sender adaptors take a sender as their first parameter and have no othe
 
 <pre highlight=c++>
 execution::bulk(snd, N, [] (std::size_t i, auto d) {});
-execution::bulk(snd)(N, [] (std::size_t i, auto d) {});
+execution::bulk(N, [] (std::size_t i, auto d) {})(snd);
 snd | execution::bulk(N, [] (std::size_t i, auto d) {});
 </pre>
 
