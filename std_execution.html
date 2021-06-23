@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R1<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-06-22">2021-06-22</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-06-23">2021-06-23</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2855,7 +2855,7 @@ This mechanism is similar to the <code class="highlight"><c- k>operator</c-><c- 
 Pipeable sender adaptors take a sender as their first parameter and have no other sender parameters.</p>
    <p><code class="highlight"><c- n>a</c-> <c- o>|</c-> <c- n>b</c-></code> will pass the sender <code class="highlight"><c- n>a</c-></code> as the first argument to the pipeable sender adaptor <code class="highlight"><c- n>b</c-></code>. Pipeable sender adaptors support partial application of the parameters after the first. For example, all of the following are equivalent:</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>snd</c-><c- p>,</c-> <c- n>N</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>i</c-><c- p>,</c-> <c- k>auto</c-> <c- n>d</c-><c- p>)</c-> <c- p>{});</c->
-<c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>snd</c-><c- p>)(</c-><c- n>N</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>i</c-><c- p>,</c-> <c- k>auto</c-> <c- n>d</c-><c- p>)</c-> <c- p>{});</c->
+<c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>N</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>i</c-><c- p>,</c-> <c- k>auto</c-> <c- n>d</c-><c- p>)</c-> <c- p>{})(</c-><c- n>snd</c-><c- p>);</c->
 <c- n>snd</c-> <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>N</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>i</c-><c- p>,</c-> <c- k>auto</c-> <c- n>d</c-><c- p>)</c-> <c- p>{});</c->
 </pre>
    <p>Piping enables you to compose together senders with a linear syntax.
