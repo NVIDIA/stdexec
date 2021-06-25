@@ -1576,7 +1576,7 @@ namespace std::execution {
     struct get_allocator_t;
     inline constexpr get_allocator_t get_allocator{};
     struct get_stop_token_t;
-    inline constesxpr get_stop_token_t get_stop_token{};
+    inline constexpr get_stop_token_t get_stop_token{};
   }
 
   // [execution.op_state], operation states
