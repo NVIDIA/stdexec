@@ -244,7 +244,7 @@ sender auto async_read_array(auto handle) {                                   //
                     [&] (std::size_t bytes_read) {
                       assert(bytes_read == buf.size);                         // 14
                       return std::move(buf);                                  // 15
-                    }
+                    });
        });
 }
 ```
