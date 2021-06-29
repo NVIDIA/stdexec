@@ -1382,7 +1382,7 @@ template&lt;class Tag, class... Args>
 </blockquote>
 </ins>
 
-### Tag_invoke <b>[func.tag_invoke]</b> ### {#spec-func.tag_invoke}
+### `execution::tag_invoke` <b>[func.tag_invoke]</b> ### {#spec-func.tag_invoke}
 
 Insert this section as a new subclause, between Searchers <b>[func.search]</b> and Class template `hash` <b>[unord.hash]</b>.
 
@@ -1802,7 +1802,7 @@ namespace std::execution {
 
 4. Once one of a receiver’s completion-signal operations has completed non-exceptionally, the receiver contract has been satisfied.
 
-### Set value algorithm <b>[execution.receiver.set_value]</b> ### {#spec-execution.receiver.set_value}
+### `execution::set_value` <b>[execution.receiver.set_value]</b> ### {#spec-execution.receiver.set_value}
 
 1. `execution::set_value` is used to send a <i>value completion signal</i> to a receiver.
 
@@ -1812,7 +1812,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::set_value(R, Vs...)` is ill-formed.
 
-### Set error algorithm <b>[execution.receiver.set_error]</b> ### {#spec-execution.receiver.set_error}
+### `execution::set_error` <b>[execution.receiver.set_error]</b> ### {#spec-execution.receiver.set_error}
 
 1. `execution::set_error` is used to send a <i>error signal</i> to a receiver.
 
@@ -1822,7 +1822,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::set_error(R, E)` is ill-formed.
 
-### Set done algorithm <b>[execution.receiver.set_done]</b> ### {#spec-execution.receiver.set_done}
+### `execution::set_done` <b>[execution.receiver.set_done]</b> ### {#spec-execution.receiver.set_done}
 
 1. `execution::set_done` is used to send a <i>done signal</i> to a receiver.
 
@@ -1834,7 +1834,7 @@ namespace std::execution {
 
 ### Receiver queries <b>[execution.receiver.queries]</b> ### {#spec-execution.receiver.queries}
 
-#### Scheduler receiver query <b>[execution.receiver.queries.scheduler]</b> #### {#spec-execution.receiver.queries.scheduler}
+#### `execution::get_scheduler` <b>[execution.receiver.queries.scheduler]</b> #### {#spec-execution.receiver.queries.scheduler}
 
 1. `execution::get_scheduler` is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
@@ -1846,7 +1846,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
 
-#### Allocator receiver query <b>[execution.receiver.queries.allocator]</b> #### {#spec-execution.receiver.queries.allocator}
+#### `execution::get_allocator` <b>[execution.receiver.queries.allocator]</b> #### {#spec-execution.receiver.queries.allocator}
 
 1. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
@@ -1858,7 +1858,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_allocator(r)` is ill-formed.
 
-#### Stop_token receiver query <b>[execution.receiver.queries.stop_token]</b> #### {#spec-execution.receiver.queries.stop_token}
+#### `execution::get_stop_token` <b>[execution.receiver.queries.stop_token]</b> #### {#spec-execution.receiver.queries.stop_token}
 
 1. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to
     use its result. --<i>end note</i>]
@@ -1884,7 +1884,7 @@ namespace std::execution {
         };
     </pre>
 
-### Start algorithm <b>[execution.op_state.start]</b> ### {#spec-execution.op_state.start}
+### `execution::start` <b>[execution.op_state.start]</b> ### {#spec-execution.op_state.start}
 
 1. `execution::start` is used to start work represented by an operation state object.
 
@@ -1989,7 +1989,7 @@ namespace std::execution {
 
 7. Users may specialize `sender_traits` on program-defined types.
 
-### Connect sender algorithm <b>[execution.sender.connect]</b> ### {#spec-execution.sender.connect}
+### `execution::connect` <b>[execution.sender.connect]</b> ### {#spec-execution.sender.connect}
 
 1. `execution::connect` is used to <i>connect</i> a sender with a receiver, producing an operation state object that represents the work that needs to be performed to satisfy the receiver contract of the receiver with values that are the result of the operations
     described by the sender.
@@ -2006,7 +2006,7 @@ namespace std::execution {
 
 ### Sender queries <b>[execution.sender.queries]</b> ### {#spec-execution.sender.queries}
 
-#### Scheduler sender query <b>[execution.sender.queries.scheduler]</b> #### {#spec-execution.sender.queries.scheduler}
+#### `execution::get_completion_scheduler` <b>[execution.sender.queries.scheduler]</b> #### {#spec-execution.sender.queries.scheduler}
 
 1. `execution::get_completion_scheduler` is used to ask a sender object for the <i>completion scheduler</i> for one of its signals.
 
@@ -2027,7 +2027,7 @@ namespace std::execution {
 
 1. Subclause [execution.sender.factories] defines <i>sender factories</i>, which are utilities that return senders without accepting senders as arguments.
 
-#### Schedule sender factory <b>[execution.sender.schedule]</b> #### {#spec-execution.sender.schedule}
+#### `execution::schedule` <b>[execution.sender.schedule]</b> #### {#spec-execution.sender.schedule}
 
 1. `execution::schedule` is used to obtain a sender associated with a scheduler, which can be used to describe work to be started on that scheduler's associated execution context.
 
@@ -2039,7 +2039,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::schedule(s)` is ill-formed.
 
-#### Just sender factory <b>[execution.sender.just]</b> #### {#spec-execution.sender.just}
+#### `execution::just` <b>[execution.sender.just]</b> #### {#spec-execution.sender.just}
 
 1. `execution::just` is used to create a sender that propagates a set of values to a connected receiver.
 
@@ -2102,7 +2102,7 @@ namespace std::execution {
     (is_nothrow_constructible_v&lt;remove_cvref_t&lt;Ts>, Ts> && ...)
     </pre>
 
-#### transfer_just sender factory <b>[execution.sender.transfer_just]</b> #### {#spec-execution.sender.transfer_just}
+#### `execution::transfer_just` <b>[execution.sender.transfer_just]</b> #### {#spec-execution.sender.transfer_just}
 
 1. `execution::transfer_just` is used to create a sender that propagates a set of values to a connected receiver on an execution agent belonging to the associated execution context of a specified scheduler.
 
@@ -2165,7 +2165,7 @@ namespace std::execution {
 
     In that case, <code><i>adaptor</i>(args...)</code> is a pipeable sender adaptor closure object.
 
-#### On adaptor <b>[execution.sender.adaptors.on]</b> #### {#spec-execution.sender.adaptors.on}
+#### `execution::on` <b>[execution.sender.adaptors.on]</b> #### {#spec-execution.sender.adaptors.on}
 
 1. `execution::on` and `execution::lazy_on` are used to adapt a sender in a sender that will start the input sender on an execution agent belonging to a specific execution context.
 
@@ -2200,7 +2200,7 @@ namespace std::execution {
 
 4. Any receiver `r` created by an implementation of `on` and `lazy_on` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for all such receivers should be equivalent to the `sch` argument passed into the `on` or `lazy_on` call.
 
-#### transfer adaptor <b>[execution.sender.adaptors.transfer]</b> #### {#spec-execution.sender.adaptors.transfer}
+#### `execution::transfer` <b>[execution.sender.adaptors.transfer]</b> #### {#spec-execution.sender.adaptors.transfer}
 
 1. `execution::transfer` and `execution::lazy_transfer` are used to adapt a sender into a sender with a different associated `set_value` completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]
 
@@ -2228,7 +2228,7 @@ namespace std::execution {
 
 4. Senders returned from `execution::transfer` and `execution::lazy_transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They shall return a sender equivalent to the `sch` argument from those queries.
 
-#### Schedule_from adaptor <b>[execution.sender.adaptors.schedule_from]</b> #### {#spec-execution.sender.adaptors.schedule_from}
+#### `execution::schedule_from` <b>[execution.sender.adaptors.schedule_from]</b> #### {#spec-execution.sender.adaptors.schedule_from}
 
 1. `execution::schedule_from` and `execution::lazy_schedule_from` are used to schedule work dependent on the completion of a sender onto a scheduler's associated execution context. [<i>Note</i>: `schedule_from` and `lazy_schedule_from` are not meant to be used in
     user code; they are used in the implementation of `transfer` and `lazy_transfer`. -<i>end note</i>]
@@ -2268,7 +2268,7 @@ namespace std::execution {
 
 4. Senders returned from `execution::transfer` and `execution::lazy_transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They shall return a scheduler equivalent to the `sch` argument from those queries.
 
-#### Then adaptor <b>[execution.sender.adaptors.then]</b> #### {#spec-execution.sender.adaptor.then}
+#### `execution::then` <b>[execution.sender.adaptors.then]</b> #### {#spec-execution.sender.adaptor.then}
 
 1. `execution::then` and `execution::lazy_then` are used to attach invocables as continuation for successful completion of the input sender.
 
@@ -2309,7 +2309,7 @@ namespace std::execution {
     If the function selected above does not return a sender which invokes `f` with the result of the `set_value` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### Upon_error adaptor <b>[execution.sender.adaptors.upon_error]</b> #### {#spec-execution.sender.adaptor.upon_error}
+#### `execution::upon_error` <b>[execution.sender.adaptors.upon_error]</b> #### {#spec-execution.sender.adaptor.upon_error}
 
 1. `execution::upon_error` and `execution::lazy_upon_error` are used to attach invocables as continuation for successful completion of the input sender.
 
@@ -2350,7 +2350,7 @@ namespace std::execution {
     If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### Upon_done adaptor <b>[execution.sender.adaptors.upon_done]</b> #### {#spec-execution.sender.adaptor.upon_done}
+#### `execution::upon_done` <b>[execution.sender.adaptors.upon_done]</b> #### {#spec-execution.sender.adaptor.upon_done}
 
 1. `execution::upon_done` and `execution::lazy_upon_done` are used to attach invocables as continuation for successful completion of the input sender.
 
@@ -2390,7 +2390,7 @@ namespace std::execution {
     If the function selected above does not return a sender which invokes `f` when the `set_done` signal of `s` is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### Let_value adaptor <b>[execution.sender.adaptors.let_value]</b> #### {#spec-execution.sender.adaptors.let_value}
+#### `execution::let_value` <b>[execution.sender.adaptors.let_value]</b> #### {#spec-execution.sender.adaptors.let_value}
 
 1. `execution::let_value` and `execution::lazy_let_value` are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
 
@@ -2431,7 +2431,7 @@ namespace std::execution {
     If the function selected above does not return a sender which invokes `f` when `set_value` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### Let_error adaptor <b>[execution.sender.adaptors.let_error]</b> #### {#spec-execution.sender.adaptors.let_error}
+#### `execution::let_error` <b>[execution.sender.adaptors.let_error]</b> #### {#spec-execution.sender.adaptors.let_error}
 
 1. `execution::let_error` and `execution::lazy_let_error` are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
 
@@ -2472,7 +2472,7 @@ namespace std::execution {
     If the function selected above does not return a sender which invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### Let_done adaptor <b>[execution.sender.adaptors.let_done]</b> #### {#spec-execution.sender.adaptors.let_done}
+#### `execution::let_done` <b>[execution.sender.adaptors.let_done]</b> #### {#spec-execution.sender.adaptors.let_done}
 
 1. `execution::let_done` and `execution::lazy_let_done` are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
 
@@ -2513,7 +2513,7 @@ namespace std::execution {
     If the function selected above does not return a sender which invokes `f` when `set_done` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### Bulk adaptor <b>[execution.sender.adaptors.bulk]</b> #### {#spec-execution.sender.adaptors.bulk}
+#### `execution::bulk` <b>[execution.sender.adaptors.bulk]</b> #### {#spec-execution.sender.adaptors.bulk}
 
 1. `execution::bulk` and `execution::lazy_bulk` are used to run a task repeatedly for every index in an index space.
 
@@ -2551,7 +2551,7 @@ namespace std::execution {
     If the function selected above does not return a sender which invokes `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when the input sender sends values `args...`, or does not propagate the values of the signals sent by the input sender to
         a connected receiver, the program is ill-formed with no diagnostic required.
 
-#### Split adaptor <b>[execution.sender.adaptors.split]</b> #### {#spec-execution.sender.adaptors.split}
+#### `execution::split` <b>[execution.sender.adaptors.split]</b> #### {#spec-execution.sender.adaptors.split}
 
 1. `execution::split` and `execution::lazy_split` are used to adapt an arbitrary sender into a sender that can be connected multiple times.
 
@@ -2593,7 +2593,7 @@ namespace std::execution {
 
     If the function selected above does not return a sender which sends references to values sent by `s`, propagating the other channels, the program is ill-formed with no diagnostic required.
 
-#### When_all adaptor <b>[execution.sender.adaptors.when_all]</b> #### {#spec-execution.sender.adaptor.when_all}
+#### `execution::when_all` <b>[execution.sender.adaptors.when_all]</b> #### {#spec-execution.sender.adaptor.when_all}
 
 1. `execution::when_all` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values. `execution::when_all_with_variant`
     is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, which may have one or more sets of sent values.
@@ -2634,7 +2634,7 @@ namespace std::execution {
 
 7. `tag_invoke` expressions used in the definitions of the sender adaptors in this subclause shall not consider member functions of their first non-tag arguments.
 
-#### Transfer_when_all adaptor <b>[execution.sender.adaptors.transfer_when_all]</b> #### {#spec-execution.sender.adaptor.transfer_when_all}
+#### `execution::transfer_when_all` <b>[execution.sender.adaptors.transfer_when_all]</b> #### {#spec-execution.sender.adaptor.transfer_when_all}
 
 1. `execution::transfer_when_all` and `execution::lazy_transfer_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
     that they complete on the specified scheduler. `execution::transfer_when_all_with_variant` and `execution::lazy_transfer_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input
@@ -2678,7 +2678,7 @@ namespace std::execution {
 4. Senders returned from `execution::transfer_when_all` and `execution::lazy_transfer_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to input senders. They shall return a scheduler equivalent to the `sch` argument from
     those queries.
 
-#### Into_variant adaptor <b>[execution.sender.adaptors.into_variant]</b> #### {#spec-execution.sender.adaptors.into_variant}
+#### `execution::into_variant` <b>[execution.sender.adaptors.into_variant]</b> #### {#spec-execution.sender.adaptors.into_variant}
 
 1. `execution::into_variant` can be used to turn a typed sender which sends multiple sets of values into a sender which sends a variant of all of those sets of values.
 
@@ -2708,7 +2708,7 @@ namespace std::execution {
 
     3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
-#### Unschedule adaptor <b>[execution.sender.adaptors.unschedule]</b> #### {#spec-execution.sender.adaptors.unschedule}
+#### `execution::unschedule` <b>[execution.sender.adaptors.unschedule]</b> #### {#spec-execution.sender.adaptors.unschedule}
 
 1. `execution::unschedule` can be used to remove the information about completion schedulers from a sender, in effect removing any scheduler-specific customizations of sender algorithms from that sender.
 
@@ -2726,7 +2726,7 @@ namespace std::execution {
         is_nothrow_constructible_v&lt;remove_cvref_t&lt;S>, S>
     </pre>
 
-#### Ensure_started adaptor <b>[execution.sender.adaptors.ensure_started]</b> #### {#spec-execution.sender.adaptors.ensure_started}
+#### `execution::ensure_started` <b>[execution.sender.adaptors.ensure_started]</b> #### {#spec-execution.sender.adaptors.ensure_started}
 
 1. `execution::ensure_started` is used to eagerly start the execution of a sender, while also providing a way to attach further work to execute once it has completed.
 
@@ -2755,7 +2755,7 @@ namespace std::execution {
 
 ### Sender consumers <b>[execution.sender.consumers]</b> ### {#spec-execution.sender.consumers}
 
-#### Start_detached sender consumer <b>[execution.sender.consumer.start_detached]</b> #### {#spec-execution.sender.consumers.start_detached}
+#### `execution::start_detached` <b>[execution.sender.consumer.start_detached]</b> #### {#spec-execution.sender.consumers.start_detached}
 
 1. `execution::start_detached` is used to eagerly start a sender without the caller needing to manage the lifetimes of any objects.
 
@@ -2781,7 +2781,7 @@ namespace std::execution {
     If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_done` signals and calls `std::terminate()` on the `set_error` signal, the program is ill-formed with no diagnostic
         required.
 
-#### Sync_wait sender consumer <b>[execution.sender.consumers.sync_wait]</b> #### {#spec-execution.sender.consumers.sync_wait}
+#### `this_thread::sync_wait` <b>[execution.sender.consumers.sync_wait]</b> #### {#spec-execution.sender.consumers.sync_wait}
 
 1. `this_thread::sync_wait` and `this_thread::sync_wait_with_variant` are used to block a current thread until a sender passed into it as an argument has completed, and to obtain the values (if any) it completed with.
 
@@ -2830,7 +2830,7 @@ namespace std::execution {
 4. Any receiver `r` created by an implementation of `sync_wait` and `sync_wait_with_variant` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for the receiver created by the default implementation shall return an
     implementation-defined scheduler that is driven by the waiting thread, such that scheduled tasks run on the thread of the caller.
 
-## One-way execution <b>[execution.execute]</b> ## {#spec-execution.execute}
+## `execution::execute` <b>[execution.execute]</b> ## {#spec-execution.execute}
 
 1. `execution::execute` is used to create fire-and-forget tasks on a specified scheduler.
 
