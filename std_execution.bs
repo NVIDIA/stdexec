@@ -451,8 +451,8 @@ execution::sender auto snd3 = execution::then(snd2, []{
     std::cout << "I am running on gpu_sched!\n";
 });
 execution::scheduler auto completion_sch3 =
-  execution::get_completion_scheduler&lt;execution::set_value_t>(then3);
-// completion_sch3 is equivalent to cpu_sched
+  execution::get_completion_scheduler&lt;execution::set_value_t>(snd3);
+// completion_sch3 is equivalent to gpu_sched
 </pre>
 
 ## Execution context transitions are explicit ## {#design-transitions}
