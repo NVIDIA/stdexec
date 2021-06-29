@@ -2780,8 +2780,8 @@ See <a href="#design-propagation">§ 4.5 Senders can propagate completion sche
     <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- s>"I am running on gpu_sched!</c-><c- se>\n</c-><c- s>"</c-><c- p>;</c->
 <c- p>});</c->
 <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>completion_sch3</c-> <c- o>=</c->
-  <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>then3</c-><c- p>);</c->
-<c- c1>// completion_sch3 is equivalent to cpu_sched</c->
+  <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>snd3</c-><c- p>);</c->
+<c- c1>// completion_sch3 is equivalent to gpu_sched</c->
 </pre>
    <h3 class="heading settled" data-level="4.6" id="design-transitions"><span class="secno">4.6. </span><span class="content">Execution context transitions are explicit</span><a class="self-link" href="#design-transitions"></a></h3>
    <p><a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> does not contain any mechanisms for performing an execution context transition. The only sender algorithm that can create a sender that will move execution to a <em>specific</em> execution context is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code>, which does not take an input sender.
