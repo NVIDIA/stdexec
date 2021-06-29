@@ -3621,7 +3621,7 @@ the shared stop state.</p>
         <li data-md>
          <p>Construction of a <code class="highlight"><c- n>T</c-><c- o>::</c-><c- n>callback_type</c-><c- o>&lt;</c-><c- n>CB</c-><c- o>></c-></code> instance shall only throw exceptions thrown by the initialization of the <code class="highlight"><c- n>CB</c-></code> instance from the value of type <code class="highlight"><c- n>Initializer</c-></code>.</p>
         <li data-md>
-         <p>Destruction of the <code class="highlight"><c- n>T</c-><c- o>::</c-><c- n>callback_type</c-><c- o>&lt;</c-><c- n>CB</c-><c- o>></c-></code> object, <code class="highlight"><c- n>cb</c-></code>, deregisters callback from the shared stop state such that <code class="highlight"><c- n>callback</c-></code> will not be invoked after the destructor returns.</p>
+         <p>Destruction of the <code class="highlight"><c- n>T</c-><c- o>::</c-><c- n>callback_type</c-><c- o>&lt;</c-><c- n>CB</c-><c- o>></c-></code> object, <code class="highlight"><c- n>cb</c-></code>, removes <code class="highlight"><c- n>callback</c-></code> from the shared stop state such that <code class="highlight"><c- n>callback</c-></code> will not be invoked after the destructor returns.</p>
          <ol>
           <li data-md>
            <p>If <code class="highlight"><c- n>callback</c-></code> is currently being invoked on another thread then the destructor of <code class="highlight"><c- n>cb</c-></code> will block until the invocation of <code class="highlight"><c- n>callback</c-></code> returns such that the return from the invocation of <code class="highlight"><c- n>callback</c-></code> strongly-happens-before the destruction of <code class="highlight"><c- n>callback</c-></code>.</p>
