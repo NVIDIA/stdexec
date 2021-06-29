@@ -2107,7 +2107,7 @@ namespace std::execution {
 1. `execution::transfer_just` is used to create a sender that propagates a set of values to a connected receiver on an execution agent belonging to the associated execution context of a specified scheduler.
 
 2. The name `execution::transfer_just` denotes a customization point object. For some subexpressions `s` and `vs...`, let `S` be `decltype((s))` and `Vs...` be `decltype((vs))`. If `S` does not satisfy `execution::scheduler`, or any type `V` in `Vs` does not
-    satisfy `<i>moveable-value</i>`, `execution::transfer_just(s, vs...)` is ill-formed. Otherwise, `execution::transfer_just(s, vs...)` is expression-equivalent to:
+    satisfy <code><i>moveable-value</i></code>, `execution::transfer_just(s, vs...)` is ill-formed. Otherwise, `execution::transfer_just(s, vs...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::transfer_just, s, vs...)`, if that expression is valid and its type satisfies `execution::typed_sender`. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s` and sends
         values equivalent to `vs...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
