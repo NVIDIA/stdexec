@@ -3522,16 +3522,16 @@ of this paper will contain a full specification for the new types.</p>
    <ins>
     <blockquote>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>typename</c-><c- o>></c-> <c- k>class</c-><c- o>></c->
-  <c- k>struct</c-> <c- o>&lt;</c-><c- n>i</c-><c- o>></c-><c- n>check</c-><c- o>-</c-><c- n>type</c-><c- o>-</c-><c- n>alias</c-><c- o>-</c-><c- n>exists</c-><c- o>&lt;/</c-><c- n>i</c-><c- o>></c-><c- p>;</c-> <c- c1>// exposition-only</c->
+  <c- k>struct</c-> <i><c- nc>check</c-><c- o>-</c-><c- n>type</c-><c- o>-</c-><c- n>alias</c-><c- o>-</c-><c- n>exists</c-></i><c- p>;</c-> <c- c1>// exposition-only</c->
 
 <c- k>template</c-><c- o>&lt;</c-><c- k>typename</c-> <c- nc>T</c-><c- o>></c->
-  <c- k>concept</c-> <c- nc>stoppable_token</c-> <c- o>=</c-> <c- o>&lt;</c-><c- n>i</c-><c- o>></c-><c- n>see</c-><c- o>-</c-><c- n>below</c-><c- o>&lt;/</c-><c- n>i</c-><c- o>></c-><c- p>;</c->
+  <c- k>concept</c-> <c- nc>stoppable_token</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
 <c- k>template</c-><c- o>&lt;</c-><c- k>typename</c-> <c- nc>T</c-><c- p>,</c-> <c- k>typename</c-> <c- nc>CB</c-><c- p>,</c-> <c- k>typename</c-> <c- nc>Initializer</c-> <c- o>=</c-> <c- n>CB</c-><c- o>></c->
-  <c- k>concept</c-> <c- nc>stoppable_token_for</c-> <c- o>=</c-> <c- o>&lt;</c-><c- n>i</c-><c- o>></c-><c- n>see</c-><c- o>-</c-><c- n>below</c-><c- o>&lt;/</c-><c- n>i</c-><c- o>></c-><c- p>;</c->
+  <c- k>concept</c-> <c- nc>stoppable_token_for</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
 <c- k>template</c-><c- o>&lt;</c-><c- k>typename</c-> <c- nc>T</c-><c- o>></c->
-  <c- k>concept</c-> <c- nc>unstoppable_token</c-> <c- o>=</c-> <c- o>&lt;</c-><c- n>i</c-><c- o>></c-><c- n>see</c-><c- o>-</c-><c- n>below</c-><c- o>&lt;/</c-><c- n>i</c-><c- o>></c-><c- p>;</c->
+  <c- k>concept</c-> <c- nc>unstoppable_token</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 </pre>
     </blockquote>
    </ins>
@@ -3572,7 +3572,7 @@ callback type. The <code class="highlight"><c- n>unstoppable_token</c-></code> c
     <c- k>requires</c-> <c- p>(</c-><c- k>const</c-> <c- n>T</c-><c- o>&amp;</c-> <c- n>token</c-><c- p>)</c-> <c- p>{</c->
       <c- p>{</c-> <c- n>token</c-><c- p>.</c-><c- n>stop_requested</c-><c- p>()</c-> <c- p>}</c-> <c- k>noexcept</c-> <c- o>-></c-> <c- n>boolean</c-><c- o>-</c-><c- n>testable</c-><c- p>;</c->
       <c- p>{</c-> <c- n>token</c-><c- p>.</c-><c- n>stop_possible</c-><c- p>()</c-> <c- p>}</c-> <c- k>noexcept</c-> <c- o>-></c-> <c- n>boolean</c-><c- o>-</c-><c- n>testable</c-><c- p>;</c->
-      <c- k>typename</c-> <c- nc>__check_type_alias_exists</c-><c- o>&lt;</c-><c- n>T</c-><c- o>::</c-><c- k>template</c-> <c- n>callback_type</c-><c- o>></c-><c- p>;</c->
+      <c- k>typename</c-> <i><c- nc>check</c-><c- o>-</c-><c- n>type</c-><c- o>-</c-><c- n>alias</c-><c- o>-</c-><c- n>exists</c-></i><c- o>&lt;</c-><c- n>T</c-><c- o>::</c-><c- k>template</c-> <c- n>callback_type</c-><c- o>></c-><c- p>;</c->
     <c- p>};</c->
 
 <c- k>template</c-><c- o>&lt;</c-><c- k>typename</c-> <c- nc>T</c-><c- p>,</c-> <c- k>typename</c-> <c- nc>CB</c-><c- p>,</c-> <c- k>typename</c-> <c- nc>Initializer</c-> <c- o>=</c-> <c- n>CB</c-><c- o>></c->
@@ -4240,7 +4240,7 @@ diagnostic required.</p>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code> is used to create a sender that propagates a set of values to a connected receiver on an execution agent belonging to the associated execution context of a specified scheduler.</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>vs</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code> and <code class="highlight"><c- n>Vs</c-><c- p>...</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>vs</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or any type <code class="highlight"><c- n>V</c-></code> in <code class="highlight"><c- n>Vs</c-></code> does not
-satisfy <code class="highlight"><c- o>&lt;</c-><c- n>i</c-><c- o>></c-><c- n>moveable</c-><c- o>-</c-><c- n>value</c-><c- o>&lt;/</c-><c- n>i</c-><c- o>></c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
+satisfy <code class="highlight"><i><c- n>moveable</c-><c- o>-</c-><c- n>value</c-></i></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code> and sends
