@@ -827,12 +827,12 @@ execution::sender auto lazy_let_error(
     std::invocable<<i>errors-sent-by(input)</i>...> function
 );
 
-execution::sender auto let_error(
+execution::sender auto let_done(
     execution::sender auto input,
     std::invocable<> function
 );
 
-execution::sender auto lazy_let_error(
+execution::sender auto lazy_let_done(
     execution::sender auto input,
     std::invocable<> function
 );
