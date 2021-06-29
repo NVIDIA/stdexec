@@ -1416,16 +1416,16 @@ At the beginning of this subclause, insert the following declarations into the s
 <blockquote>
 <pre>
 template&lt;template&lt;typename> class>
-  struct &lt;i>check-type-alias-exists&lt;/i>; // exposition-only
+  struct <i>check-type-alias-exists</i>; // exposition-only
 
 template&lt;typename T>
-  concept stoppable_token = &lt;i>see-below&lt;/i>;
+  concept stoppable_token = <i>see-below</i>;
 
 template&lt;typename T, typename CB, typename Initializer = CB>
-  concept stoppable_token_for = &lt;i>see-below&lt;/i>;
+  concept stoppable_token_for = <i>see-below</i>;
 
 template&lt;typename T>
-  concept unstoppable_token = &lt;i>see-below&lt;/i>;
+  concept unstoppable_token = <i>see-below</i>;
 </pre>
 </blockquote>
 </ins>
