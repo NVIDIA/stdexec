@@ -551,7 +551,7 @@ merged into a single one in an asynchronous fashion.
 `when_all` is a sender adaptor that returns a sender that completes when the last of the input senders completes. It [=send|sends=] a pack of values, where the elements of said pack are the values sent by the input senders, in order. `when_all` returns a sender that also does not have an associated scheduler.
 
 `transfer_when_all` accepts an additional scheduler argument. It returns a sender whose value [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
-`transform(when_all(inputs...), scheduler)`, but one that allows for better efficiency through customization.
+`transfer(when_all(inputs...), scheduler)`, but one that allows for better efficiency through customization.
 
 ## Most sender adaptors are pipeable ## {#design-pipeable}
 
