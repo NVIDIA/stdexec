@@ -1517,7 +1517,7 @@ template&lt;typename T>
 
     5. Construction of a `T::callback_type<CB>` instance shall only throw exceptions thrown by the initialization of the `CB` instance from the value of type `Initializer`.
 
-    6. Destruction of the `T::callback_type<CB>` object, `cb`, deregisters callback from the shared stop state such that `callback` will not be invoked after the destructor returns.
+    6. Destruction of the `T::callback_type<CB>` object, `cb`, removes `callback` from the shared stop state such that `callback` will not be invoked after the destructor returns.
 
         1. If `callback` is currently being invoked on another thread then the destructor of `cb` will block until the invocation of `callback` returns such that the return from the invocation of `callback` strongly-happens-before the destruction of `callback`.
 
