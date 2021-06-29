@@ -1472,7 +1472,7 @@ template&lt;typename T>
     requires (const T& token) {
       { token.stop_requested() } noexcept -> boolean-testable;
       { token.stop_possible() } noexcept -> boolean-testable;
-      typename __check_type_alias_exists&lt;T::template callback_type>;
+      typename <i>check-type-alias-exists</i>&lt;T::template callback_type>;
     };
 
 template&lt;typename T, typename CB, typename Initializer = CB>
