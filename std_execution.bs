@@ -189,7 +189,7 @@ sender auto async_inclusive_scan(scheduler auto sch,                          //
              auto start = i * tile_size;                                      // 14
              auto end   = std::min(input.size(), (i + 1) * tile_size);        // 14
              std::for_each(output + start, output + end,                      // 14
-               [=] (double& e) { e = partials[i] + e; }                       // 14
+               [&] (double& e) { e = partials[i] + e; }                       // 14
              );
            })
        | then(                                                                // 15
