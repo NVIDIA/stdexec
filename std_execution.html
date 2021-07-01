@@ -2693,7 +2693,7 @@ by the scheduler. Logic that you want to run on that context can be placed in th
 </pre>
    <p>Note that a particular scheduler type may provide other kinds of scheduling operations
 which are supported by its associated execution context. It is not limited to scheduling
-purely using the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>()</c-></code> API.</p>
+purely using the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code> API.</p>
    <p>Future papers will propose additional scheduler concepts that extend <code class="highlight"><c- n>scheduler</c-></code> to add other capabilities. For example:</p>
    <ul>
     <li data-md>
@@ -2826,7 +2826,7 @@ Such usages should be able to accept either single-shot or multi-shot senders.</
 to the call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>. Such usages will only accept multi-shot senders.</p>
    <p>Algorithms that accept senders will typically either decay-copy an input sender and store it somewhere
 for later usage (for example as a data-member of the returned sender) or will immediately call <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> on the input sender, such as in <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code> or <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code>.</p>
-   <p>Some multi-use sender algorithms may require that an input sender be copy-constructible but will only call <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>()</c-></code> on an rvalue of each copy, which still results in effectively executing the operation multiple times.
+   <p>Some multi-use sender algorithms may require that an input sender be copy-constructible but will only call <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> on an rvalue of each copy, which still results in effectively executing the operation multiple times.
 Other multi-use sender algorithms may require that the sender is move-constructible but will invoke <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> on an lvalue reference to the sender.</p>
    <p>For a sender to be usable in both multi-use scenarios, it will generally be required to be both copy-constructible and lvalue-connectable.</p>
    <h3 class="heading settled" data-level="4.8" id="design-forkable"><span class="secno">4.8. </span><span class="content">Senders are forkable</span><a class="self-link" href="#design-forkable"></a></h3>
@@ -3440,7 +3440,7 @@ names of the customization points. This is undesirable.</p>
    <p>This paper proposes to instead use the mechanism described in <a data-link-type="biblio" href="#biblio-p1895r0">[P1895R0]</a>: <code class="highlight"><c- n>tag_invoke</c-></code>; the wording for <code class="highlight"><c- n>tag_invoke</c-></code> has been incorporated into the proposed specification in this paper.</p>
    <p>In short, instead of using globally reserved names, <code class="highlight"><c- n>tag_invoke</c-></code> uses the <i>type</i> of the customization point object itself as the mechanism to find customizations. It globally reserves only a single name - <code class="highlight"><c- n>tag_invoke</c-></code> - which itself is used the same way that
 ranges-style customization points are used. All other customization points are defined in terms of <code class="highlight"><c- n>tag_invoke</c-></code>. For example, the customization for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> will call <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, instead of attempting
-to call <code class="highlight"><c- n>s</c-><c- p>.</c-><c- n>sync_wait</c-><c- p>()</c-></code>, and then <code class="highlight"><c- n>sync_wait</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> if the member call is not valid.</p>
+to invoke <code class="highlight"><c- n>s</c-><c- p>.</c-><c- n>sync_wait</c-><c- p>()</c-></code>, and then <code class="highlight"><c- n>sync_wait</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> if the member call is not valid.</p>
    <p>Using <code class="highlight"><c- n>tag_invoke</c-></code> has the following benefits:</p>
    <ol>
     <li data-md>
