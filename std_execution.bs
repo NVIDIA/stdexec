@@ -2772,13 +2772,13 @@ namespace std::execution {
 
             1. When `set_value(r, ts...)` is called, it does nothing.
 
-            2. When `set_error(r, e)` is called, it calls `std::terminate()`.
+            2. When `set_error(r, e)` is called, it calls `std::terminate`.
 
             3. When `set_done(r)` is called, it does nothing.
 
         2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`.
 
-    If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_done` signals and calls `std::terminate()` on the `set_error` signal, the program is ill-formed with no diagnostic
+    If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_done` signals and calls `std::terminate` on the `set_error` signal, the program is ill-formed with no diagnostic
         required.
 
 #### `this_thread::sync_wait` <b>[execution.sender.consumers.sync_wait]</b> #### {#spec-execution.sender.consumers.sync_wait}
@@ -2838,6 +2838,6 @@ namespace std::execution {
     `execution::execute` is ill-formed. Otherwise, `execution::execute` is expression-equivalent to:
 
     1. `tag_invoke(execution::execute, sch, f)`, if that expression is valid and its type is `void`. If the function selected by `tag_invoke` does not invoke the function `f` on an execution agent belonging to the associated execution context of `sch`, or if it
-        does not call `std::terminate()` if an error occurs after control is returned to the caller, the program is ill-formed with no diagnostic required.
+        does not call `std::terminate` if an error occurs after control is returned to the caller, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::start_detached(execution::then(execution::schedule(sch), f))`.
