@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R1<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-06-29">2021-06-29</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-06-30">2021-06-30</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4960,7 +4960,7 @@ those queries.</p>
           <li data-md>
            <p>When <code class="highlight"><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> is called, it does nothing.</p>
           <li data-md>
-           <p>When <code class="highlight"><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called, it calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-><c- p>()</c-></code>.</p>
+           <p>When <code class="highlight"><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called, it calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code>.</p>
           <li data-md>
            <p>When <code class="highlight"><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, it does nothing.</p>
          </ol>
@@ -4968,7 +4968,7 @@ those queries.</p>
          <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state</c-></code>, then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code>.</p>
        </ol>
      </ol>
-     <p>If the function selected above does not eagerly start the sender <code class="highlight"><c- n>s</c-></code> after connecting it with a receiver which ignores the <code class="highlight"><c- n>set_value</c-></code> and <code class="highlight"><c- n>set_done</c-></code> signals and calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-><c- p>()</c-></code> on the <code class="highlight"><c- n>set_error</c-></code> signal, the program is ill-formed with no diagnostic
+     <p>If the function selected above does not eagerly start the sender <code class="highlight"><c- n>s</c-></code> after connecting it with a receiver which ignores the <code class="highlight"><c- n>set_value</c-></code> and <code class="highlight"><c- n>set_done</c-></code> signals and calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> on the <code class="highlight"><c- n>set_error</c-></code> signal, the program is ill-formed with no diagnostic
     required.</p>
    </ol>
    <h5 class="heading settled" data-level="9.6.6.2" id="spec-execution.sender.consumers.sync_wait"><span class="secno">9.6.6.2. </span><span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code> <b>[execution.sender.consumers.sync_wait]</b></span><a class="self-link" href="#spec-execution.sender.consumers.sync_wait"></a></h5>
@@ -5034,7 +5034,7 @@ implementation-defined scheduler that is driven by the waiting thread, such that
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>execute</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type is <code class="highlight"><c- b>void</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not invoke the function <code class="highlight"><c- n>f</c-></code> on an execution agent belonging to the associated execution context of <code class="highlight"><c- n>sch</c-></code>, or if it
-does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-><c- p>()</c-></code> if an error occurs after control is returned to the caller, the program is ill-formed with no diagnostic required.</p>
+does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> if an error occurs after control is returned to the caller, the program is ill-formed with no diagnostic required.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>),</c-> <c- n>f</c-><c- p>))</c-></code>.</p>
      </ol>
