@@ -357,7 +357,7 @@ execution::sender auto snd = execution::schedule(sch);
 
 Note that a particular scheduler type may provide other kinds of scheduling operations
 which are supported by its associated execution context. It is not limited to scheduling
-purely using the `execution::schedule()` API.
+purely using the `execution::schedule` API.
 
 Future papers will propose additional scheduler concepts that extend `scheduler`
 to add other capabilities. For example:
@@ -516,7 +516,7 @@ for later usage (for example as a data-member of the returned sender) or will im
 `execution::connect` on the input sender, such as in `this_thread::sync_wait` or `execution::start_detached`.
 
 Some multi-use sender algorithms may require that an input sender be copy-constructible but will only call
-`execution::connect()` on an rvalue of each copy, which still results in effectively executing the operation multiple times.
+`execution::connect` on an rvalue of each copy, which still results in effectively executing the operation multiple times.
 Other multi-use sender algorithms may require that the sender is move-constructible but will invoke `execution::connect`
 on an lvalue reference to the sender.
 
@@ -1308,7 +1308,7 @@ This paper proposes to instead use the mechanism described in [[P1895R0]]: `tag_
 
 In short, instead of using globally reserved names, `tag_invoke` uses the <i>type</i> of the customization point object itself as the mechanism to find customizations. It globally reserves only a single name - `tag_invoke` - which itself is used the same way that
 ranges-style customization points are used. All other customization points are defined in terms of `tag_invoke`. For example, the customization for `std::this_thread::sync_wait(s)` will call `tag_invoke(std::this_thread::sync_wait, s)`, instead of attempting
-to call `s.sync_wait()`, and then `sync_wait(s)` if the member call is not valid.
+to invoke `s.sync_wait()`, and then `sync_wait(s)` if the member call is not valid.
 
 Using `tag_invoke` has the following benefits:
 
