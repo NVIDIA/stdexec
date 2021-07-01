@@ -1860,8 +1860,7 @@ namespace std::execution {
 
 #### `execution::get_stop_token` <b>[execution.receivers.queries.get_stop_token]</b> #### {#spec-execution.receivers.queries.get_stop_token}
 
-1. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to
-    use its result. --<i>end note</i>]
+1. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> to be used to send stop requests by a sender it is connected to.
 
 2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_stop_token` is ill-formed. Otherwise, `execution::get_stop_token(r)`
     is expression equivalent to:
