@@ -1834,7 +1834,7 @@ namespace std::execution {
 
 ### Receiver queries <b>[execution.receiver.queries]</b> ### {#spec-execution.receiver.queries}
 
-#### `execution::get_scheduler` <b>[execution.receiver.queries.scheduler]</b> #### {#spec-execution.receiver.queries.scheduler}
+#### `execution::get_scheduler` <b>[execution.receiver.queries.get_scheduler]</b> #### {#spec-execution.receiver.queries.get_scheduler}
 
 1. `execution::get_scheduler` is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
@@ -1846,7 +1846,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
 
-#### `execution::get_allocator` <b>[execution.receiver.queries.allocator]</b> #### {#spec-execution.receiver.queries.allocator}
+#### `execution::get_allocator` <b>[execution.receiver.queries.get_allocator]</b> #### {#spec-execution.receiver.queries.get_allocator}
 
 1. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
@@ -1858,7 +1858,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_allocator(r)` is ill-formed.
 
-#### `execution::get_stop_token` <b>[execution.receiver.queries.stop_token]</b> #### {#spec-execution.receiver.queries.stop_token}
+#### `execution::get_stop_token` <b>[execution.receiver.queries.get_stop_token]</b> #### {#spec-execution.receiver.queries.get_stop_token}
 
 1. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to
     use its result. --<i>end note</i>]
@@ -2006,7 +2006,7 @@ namespace std::execution {
 
 ### Sender queries <b>[execution.sender.queries]</b> ### {#spec-execution.sender.queries}
 
-#### `execution::get_completion_scheduler` <b>[execution.sender.queries.scheduler]</b> #### {#spec-execution.sender.queries.scheduler}
+#### `execution::get_completion_scheduler` <b>[execution.sender.queries.get_completion_scheduler]</b> #### {#spec-execution.sender.queries.get_completion_scheduler}
 
 1. `execution::get_completion_scheduler` is used to ask a sender object for the <i>completion scheduler</i> for one of its signals.
 
