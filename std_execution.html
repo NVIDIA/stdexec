@@ -3994,8 +3994,7 @@ expression equivalent to:</p>
    <h5 class="heading settled" data-level="9.4.4.3" id="spec-execution.receivers.queries.get_stop_token"><span class="secno">9.4.4.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> <b>[execution.receivers.queries.get_stop_token]</b></span><a class="self-link" href="#spec-execution.receivers.queries.get_stop_token"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> is used to ask a receiver object for an <i>associated stop token</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to
-use its result. --<i>end note</i>]</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> is used to ask a receiver object for an <i>associated stop token</i> to be used by a sender it is connected to send stop requests.</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, let <code class="highlight"><c- n>R</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>r</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>R</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression equivalent to:</p>
      <ol>
