@@ -1854,7 +1854,8 @@ namespace std::execution {
 
 #### `execution::get_stop_token` <b>[execution.receivers.queries.get_stop_token]</b> #### {#spec-execution.receivers.queries.get_stop_token}
 
-1. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> to be used to send stop requests by a sender it is connected to.
+1. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> of that receiver. A sender connected with that receiver can use this stop token to check whether a stop request has been made. [<i>Note</i>: such
+    a stop token being signalled does not bind the sender to actually cancel any work. --<i>end note</i>]
 
 2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_stop_token` is ill-formed. Otherwise, `execution::get_stop_token(r)`
     is expression equivalent to:
@@ -1862,6 +1863,10 @@ namespace std::execution {
     1. `tag_invoke(execution::get_stop_token, as_const(r))`, if this expression is well formed and satisfies `stoppable_token`, and is `noexcept`.
 
     2. Otherwise, `never_stop_token{}`.
+
+3. Let `r` be a receiver, `s` be a sender, and `op_state` be an operation state resulting from an `execution::connect(s, r)` call. Let `token` be a stop token resulting from an `execution::get_stop_token(r)` call. `token` must remain valid at least until a call to
+    a receiver completion-signal function of `r` returns successfully. [<i>Note</i>: this means that, unless it knows about further guarantees provided by the receiver `r`, the implementation of `op_state` should not use `token` after it makes a call to a receiver
+    completion-signal function of `r`. This also implies that stop callbacks registered on `token` by the implementation of `op_state` or `s` must be destroyed before such a call to a receiver completion-signal function of `r`. --<i>end note</i>]
 
 ## Operation states <b>[execution.op_state]</b> ## {#spec-execution.op_state}
 
