@@ -555,6 +555,18 @@ merged into a single one in an asynchronous fashion.
 `transfer_when_all` accepts an additional scheduler argument. It returns a sender whose value [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
 `transfer(when_all(inputs...), scheduler)`, but one that allows for better efficiency through customization.
 
+## Schedulers advertise their forward progress guarantees ## {#design-fpg}
+
+To decide whether a scheduler (and its associated execution context) is sufficient for a specific task, it may be necessary to know what kind of forward progress guarantees it provides for the execution agents it creates. The C++ Standard defines the following
+forward progress guarantees:
+
+* <i>concurrent</i>, which requires that a thread makes progress <i>eventually</i>;
+* <i>parallel</i>, which requires that a thread makes progress once it executes a step; and
+* <i>weakly parallel</i>, which does not require that the thread makes progress.
+
+This paper introduces a scheduler query function, `get_forward_progress_guarantee`, which returns one of the enumerators of a new `enum` type, `forward_progress_guarantee`. Each enumerator of `forward_progress_guarantee` corresponds to one of the aforementioned
+guarantees.
+
 ## Most sender adaptors are pipeable ## {#design-pipeable}
 
 To facilitate an intuitive syntax for composition, most sender adaptors are <dfn>pipeable</dfn>; they can be composed (<dfn>piped</dfn>) together with `operator|`.
@@ -1547,6 +1559,11 @@ namespace std::execution {
     concept scheduler = <i>see-below</i>;
 
   // [execution.schedulers.queries], scheduler queries
+  enum class forward_progress_guarantee;
+  inline namespace <i>unspecified</i> {
+    struct get_forward_progress_guarantee_t;
+    inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
+  }
 }
 
 namespace std::this_thread {
@@ -1775,6 +1792,28 @@ namespace std::execution {
     context of the scheduler. <i>—end note</i>]
 
 ### Scheduler queries <b>[execution.schedulers.queries]</b> ### {#spec-execution.schedulers.queries}
+
+#### `execution::get_forward_progress_guarantee` <b>[execution.schedulers.queries.get_forward_progress_guarantee]</b> #### {#spec-execution.schedulers.queries.get_forward_progress_guarantee}
+
+<pre highlight=c++>
+enum class forward_progress_guarantee {
+    concurrent,
+    parallel,
+    weakly_parallel
+};
+</pre>
+
+1. `execution::get_forward_progress_guarantee` is used to ask a scheduler about the forward progress guarantees of execution agents created by that scheduler.
+
+2. The name `execution::get_forward_progress_guarantee` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::scheduler`, `execution::get_forward_progress_guarantee` is ill-formed.
+    Otherwise, `execution::get_forward_progress_guarantee(s)` is expression equivalent to:
+
+    1. `tag_invoke(execution::get_forward_progress_guarantee, as_const(s))`, if this expression is well formed and its type is `execution::forward_progress_guarantee`, and is `noexcept`.
+
+    2. Otherwise, `execution::forward_progress_guarantee::weakly_parallel`.
+
+3. If `execution::get_forward_progress_guarantee(s)` for some scheduler `s` returns `execution::forward_progress_guarantee::concurrent`, all execution agents created by that scheduler shall provide the concurrent forward progress guarantee. If it returns
+    `execution::forward_progress_guarantee::parallel`, all execution agents created by that scheduler shall provide at least the parallel forward progress guarantee.
 
 #### `this_thread::execute_may_block_caller` <b>[execution.schedulers.queries.execute_may_block_caller</b> #### {#spec-execution.schedulers.queries.execute_may_block_caller}
 
