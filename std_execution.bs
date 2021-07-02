@@ -311,9 +311,19 @@ Before this proposal is approved, we will present a new implementation of this p
 
 # Revision history # {#revisions}
 
+## R1 ## {#r1}
+
+The changes since R0 are as follows:
+
+* Added a new concept, `sender_of`.
+* Added a new scheduler query, `this_thread::execute_may_block_caller`.
+* Added a new scheduler query, `get_forward_progress_guarantee`.
+* Removed the `unschedule` adaptor.
+* Various fixes of typos and bugs.
+
 ## R0 ## {#r0}
 
-Initial revision, still in progress.
+Initial revision.
 
 # Design - introduction # {#design-intro}
 
