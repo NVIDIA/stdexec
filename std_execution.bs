@@ -1547,6 +1547,17 @@ namespace std::execution {
   template&lt;class S>
     concept scheduler = <i>see-below</i>;
 
+  // [execution.schedulers.queries], scheduler queries
+}
+
+namespace std::this_thread {
+  inline namespace <i>unspecified</i> {
+    struct execute_may_block_caller_t;
+    inline constexpr execute_may_block_caller_t execute_may_block_caller{};
+  }
+}
+
+namespace std::execution {
   // [execution.receivers], receivers
   template&lt;class T, class E = exception_ptr>
     concept receiver = <i>see-below</i>;
@@ -1763,6 +1774,21 @@ namespace std::execution {
 
 5. A scheduler type's destructor shall not block pending completion of any receivers connected to the sender objects returned from `schedule`. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
     context of the scheduler. <i>—end note</i>]
+
+### Scheduler queries <b>[execution.schedulers.queries]</b> ### {#spec-execution.schedulers.queries}
+
+#### `this_thread::execute_may_block_caller` <b>[execution.schedulers.queries.execute_may_block_caller</b> #### {#spec-execution.schedulers.queries.execute_may_block_caller}
+
+1. `this_thread::execute_may_block_caller` is used to ask a scheduler `s` whether a call `execution::execute(s, f)` with any invocable `f` may block the thread where such a call occurs.
+
+2. The name `this_thread::execute_may_block_caller` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::scheduler`, `this_thread::execute_may_block_caller` is ill-formed. Otherwise,
+    `this_thread::execute_may_block_caller(s)` is expression equivalent to:
+
+    1. `tag_invoke(this_thread::execute_may_block_caller, as_const(s))`, if this expression is well formed and its type is `bool`, and is `noexcept`.
+
+    2. Otherwise, `true`.
+
+3. If `this_thread::execute_may_block_caller(s)` for some scheduler `s` returns `false`, no `execution::execute(s, f)` call with some invocable `f` shall block the calling thread.
 
 ## Receivers <b>[execution.receivers]</b> ## {#spec-execution.receivers}
 
