@@ -222,17 +222,16 @@ This example builds an asynchronous computation of an inclusive scan:
 ```c++
 using namespace std::execution;
 
-sender_of<std::size_t> auto                                                   // 1
-async_read(sender_of<std::span<std::byte>> auto buffer,                       // 1
-           auto handle);                                                      // 1
+sender_of<std::size_t> auto async_read(                                       // 1
+    sender_of<std::span<std::byte>> auto buffer,                              // 1
+    auto handle);                                                             // 1
 
 struct dynamic_buffer {                                                       // 3
   std::unique_ptr<std::byte[]> data;                                          // 3
   std::size_t size;                                                           // 3
 };                                                                            // 3
 
-sender_of<dynamic_buffer>
-auto async_read_array(auto handle) {                                          // 2
+sender_of<dynamic_buffer> auto async_read_array(auto handle) {                // 2
   return just(dynamic_buffer{})                                               // 4
        | let_value([] (dynamic_buffer& buf) {                                 // 5
            return just(std::as_writeable_bytes(std::span(&buf.size, 1))       // 6
