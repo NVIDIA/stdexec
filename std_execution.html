@@ -2325,7 +2325,15 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <ol class="toc">
       <li><a href="#spec-execution.syn"><span class="secno">9.1</span> <span class="content">Header <code class="highlight"><c- o>&lt;</c-><c- n>execution</c-><c- o>></c-></code> synopsis <b>[execution.syn]</b></span></a>
       <li><a href="#spec-execution.helpers"><span class="secno">9.2</span> <span class="content">Helper concepts <b>[execution.helpers]</b></span></a>
-      <li><a href="#spec-execution.schedulers"><span class="secno">9.3</span> <span class="content">Schedulers <b>[execution.schedulers] </b></span></a>
+      <li>
+       <a href="#spec-execution.schedulers"><span class="secno">9.3</span> <span class="content">Schedulers <b>[execution.schedulers] </b></span></a>
+       <ol class="toc">
+        <li>
+         <a href="#spec-execution.schedulers.queries"><span class="secno">9.3.1</span> <span class="content">Scheduler queries <b>[execution.schedulers.queries]</b></span></a>
+         <ol class="toc">
+          <li><a href="#spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.1</span> <span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller</b></span></a>
+         </ol>
+       </ol>
       <li>
        <a href="#spec-execution.receivers"><span class="secno">9.4</span> <span class="content">Receivers <b>[execution.receivers]</b></span></a>
        <ol class="toc">
@@ -3672,6 +3680,17 @@ the shared stop state.</p>
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>scheduler</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
+  <c- c1>// [execution.schedulers.queries], scheduler queries</c->
+<c- p>}</c->
+
+<c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-> <c- p>{</c->
+  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+    <c- k>struct</c-> <c- nc>execute_may_block_caller_t</c-><c- p>;</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>execute_may_block_caller_t</c-> <c- n>execute_may_block_caller</c-><c- p>{};</c->
+  <c- p>}</c->
+<c- p>}</c->
+
+<c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-> <c- p>{</c->
   <c- c1>// [execution.receivers], receivers</c->
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>exception_ptr</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>receiver</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
@@ -3883,6 +3902,22 @@ threads.</p>
     <li data-md>
      <p>A scheduler type’s destructor shall not block pending completion of any receivers connected to the sender objects returned from <code class="highlight"><c- n>schedule</c-></code>. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
 context of the scheduler. <i>—end note</i>]</p>
+   </ol>
+   <h4 class="heading settled" data-level="9.3.1" id="spec-execution.schedulers.queries"><span class="secno">9.3.1. </span><span class="content">Scheduler queries <b>[execution.schedulers.queries]</b></span><a class="self-link" href="#spec-execution.schedulers.queries"></a></h4>
+   <h5 class="heading settled" data-level="9.3.1.1" id="spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.1. </span><span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller</b></span><a class="self-link" href="#spec-execution.schedulers.queries.execute_may_block_caller"></a></h5>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> is used to ask a scheduler <code class="highlight"><c- n>s</c-></code> whether a call <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> with any invocable <code class="highlight"><c- n>f</c-></code> may block the thread where such a call occurs.</p>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression equivalent to:</p>
+     <ol>
+      <li data-md>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>, if this expression is well formed and its type is <code class="highlight"><c- b>bool</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight">true</code>.</p>
+     </ol>
+    <li data-md>
+     <p>If <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> for some scheduler <code class="highlight"><c- n>s</c-></code> returns <code class="highlight">false</code>, no <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> call with some invocable <code class="highlight"><c- n>f</c-></code> shall block the calling thread.</p>
    </ol>
    <h3 class="heading settled" data-level="9.4" id="spec-execution.receivers"><span class="secno">9.4. </span><span class="content">Receivers <b>[execution.receivers]</b></span><a class="self-link" href="#spec-execution.receivers"></a></h3>
    <ol>
