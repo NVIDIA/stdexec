@@ -553,6 +553,293 @@ merged into a single one in an asynchronous fashion.
 `transfer_when_all` accepts an additional scheduler argument. It returns a sender whose value [=completion scheduler=] is the scheduler provided as an argument, but otherwise behaves the same as `when_all`. You can think of it as a composition of
 `transfer(when_all(inputs...), scheduler)`, but one that allows for better efficiency through customization.
 
+## Senders support cancellation ## {#design-cancellation}
+
+Senders are often used in scenarios where the application may be concurrently executing
+multiple strategies for achieving some program goal. When one of these strategies succeeds
+(or fails) it may not make sense to continue pursuing the other strategies as their results
+are no longer useful.
+
+For example, we may want to try to simultaneously connect to multiple network servers and use
+whichever server responds first. Once the first server responds we no longer need to continue
+trying to connect to the other servers.
+
+Ideally, in these scenarios, we would somehow be able to request that those other strategies
+stop executing promptly so that their resources (e.g. cpu, memory, I/O bandwidth) can be
+released and used for other work.
+
+While the design of senders has support for cancelling an operation before it starts
+by simply destroying the sender or the operation-state returned from `execution::connect()`
+before calling `execution::start()`, there also needs to be a standard, generic mechanism
+to ask for an already-started operation to complete early.
+
+The ability to be able to cancel in-flight operations is fundamental to supporting some kinds
+of generic concurrency algorithms.
+
+For example:
+* a generic `timeout(src, duration)` algorithm needs to be able to cancel the `src` operation after the timeout duration has elapsed.
+* a `first_successful(ops...)` algorithm should cancel the other operations as soon as one operation completes successfuly
+* a `when_all(ops...)` algorithm should cancel other operations as soon as one operation fails
+* a `stop_when(src, trigger)` algorithm should cancel `src` if `trigger` completes first and cancel `trigger` if `src` completes first
+
+
+The mechanism used for communcating cancellation-requests, or stop-requests, needs to have a uniform interface
+so that generic algorithms that compose sender-based operations, such as the ones listed above, are able to
+communicate these cancellation requests to senders that they don't know anything about.
+
+The design is intended to be composable so that cancellation of higher-level operations can propagate
+those cancellation requests through intermediate layers to lower-level operations that need to actually
+respond to the cancellation requests.
+
+For example, we can compose the algorithms mentioned above so that child operations
+are cancelled when any one of the multiple cancellation conditions occurs:
+<pre highlight=c++>
+sender auto composed_cancellation_example(auto query) {
+  return stop_when(
+    timeout(
+      when_all(
+        first_successful(
+          query_server_a(query),
+          query_server_b(query)),
+        load_file("some_file.jpg")),
+      5s),
+    cancelButton.on_click());
+}
+</pre>
+
+In this example, if we take the operation returned by `query_server_b(query)`, this operation will
+receive a stop-request when any of the following happens:
+* `first_successful` algorithm will send a stop-request if `query_server_a(query)` completes successfully
+* `when_all` algorithm will send a stop-request if the `load_file("some_file.jpg")` operation completes with an error or done result.
+* `timeout` algorithm will send a stop-request if the operation does not complete within 5 seconds.
+* `stop_when` algorithm will send a stop-request if the user clicks on the "Cancel" button in the user-interface.
+* The parent operation consuming the `composed_cancellation_example()` sends a stop-request
+
+
+Note that within this code there is no explicit mention of cancellation, stop-tokens, callbacks, etc.
+yet the example fully supports and responds to the various cancellation sources.
+
+The intent of the design is that the common usage of cancellation in sender/receiver-based code is
+primarily through use of concurrency algorithms that manage the detailed plumbing of cancellation
+for you. Much like algorithms that compose senders relieve the user from having to write their own
+receiver types, algorithms that introduce concurrency and provide higher-level cancellation semantics
+relieve the user from having to deal with low-level details of cancellation.
+
+### Cancellation design summary ###
+
+The design of cancellation described in this paper is built on top of and extends the `std::stop_token`-based
+cancellation facilities added in C++20.
+
+At a high-level, the facilities proposed by this paper for supporting cancellation include:
+* Add `std::stoppable_token` and `std::stoppable_token_for` concepts that generalise the interface of `std::stop_token` type to allow other types with different implementation strategies.
+* Add `std::unstoppable_token` concept for detecting whether a `stoppable_token` can never receive a stop-request.
+* Add `std::in_place_stop_token`, `std::in_place_stop_source` and `std::in_place_stop_callback<CB>` types that provide a more efficient implementation of a stop-token for use in structured concurrency situations.
+* Add `std::never_stop_token` for use in places where you never want to issue a stop-request
+* Add `std::execution::get_stop_token()` CPO for querying the stop-token to use for an operation from its receiver.
+* Add `std::execution::stop_token_type_t<T>` for querying the type of a stop-token returned from `get_stop_token()`
+
+In addition, there are requirements added to some of the algorithms to specify what their cancellation
+behaviour is and what the requirements of customisations of those algorithms are with respect to
+cancellation.
+
+The key component that enables generic cancellation within sender-based operations is the `execution::get_stop_token()` CPO.
+This CPO takes a single parameter, which is the receiver passed to `execution::connect`, and returns a `std::stoppable_token`
+that the operation should use to check for stop-requests for that operation.
+
+As the caller of `execution::connect` typically has control over the receiver type it passes, it is able to customise
+the `execution::get_stop_token()` CPO for that receiver type to return a stop-token that it has control over and that
+it can use to communicate a stop-request to the operation once it has started.
+
+### Support for cancellation is optional ###
+
+Support for cancellation is optional, both on part of the author of the receiver and on part of the author of the sender.
+
+If the receiver does not customise the `execution::get_stop_token()` CPO then invoking the CPO on that receiver will
+invoke the default implementation which returns `std::never_stop_token`. This is a special `stoppable_token` type that
+is statically known to always return `false` from the `stop_possible()` method.
+
+Sender code that tries to use this stop-token will in general result in code that handles stop-requests being
+compiled out and having little to no run-time overhead.
+
+If the sender doesn't call `execution::get_stop_token()`, for example because the operation does not support
+cancellation, then it will simply not respond to stop-requests from the caller.
+
+Note that stop-requests are generally racy in nature as there is often a race betwen an operation completing
+naturally and the stop-request being made. If the operation has already completed or past the point at which
+it can be cancelled when the stop-request is sent then the stop-request may just be ignored. Thus an application
+will typically need to be able to cope with senders that might ignore a stop-request anyway.
+
+### Cancellation and eager operations ###
+
+TODO: Talk about limitations of using cancellation with operation that might execute eagerly.
+
+* Eager operations won't have access to the caller's stop-token before they start executing.
+  Will need to wait until the sender is connected/started before it can get access to the stop-token of the caller.
+* What happens if the destructor of an eager-sender is run before the operation is connected?
+* What happens if the destructor of an operation-state created from an eager-sender is run before `execution::start()` is called?
+* Should it be required that the return from the destructors strongly-happens after the completion of any execution of the corresponding operations launched by that sender?
+* Should it be required that the destructor issues a stop-request before blocking on completion of the operation?
+* Risks of this approach are deadlocks if the destructor is run on an execution context with weak forward progress.
+  e.g. a thread-pool with a maximum thread-count
+
+### Cancellation is inherently racy ###
+
+Usually, an operation will attach a stop-callback at some point inside the call to `execution::start()` so that
+a subsequent stop-requests will interrupt the logic.
+
+TODO: Finish describing this
+* stop-requests can be issued concurrently from another thread 
+* usually need to either start the operation or attach a stop-callback
+  * if stop-callback runs before launching the op then may need synchronisation to avoid cancelling the operation before it's started.
+  * if starting the operation befor launching then may need synchronisation to signal when the stop-callback has been subsequently registered so that if the operation completes on another thread it doesn't try to deregister the stop-callback before it's finished registering
+* For example of how this is solved see following async_read() example.
+
+
+### Cancellation Example: Socket async_read() ###
+
+To get a better feel for how this interface might be used by low-level operations see this example implementation
+of a cancellable `async_read()` operation for a Windows Socket.
+
+```c++
+struct operation_base : WSAOVERALAPPED {
+    using completion_fn = void(operation_base* op, DWORD bytesTransferred, int errorCode) noexcept;
+
+    // Assume IOCP event loop will call this when this OVERLAPPED structure is dequeued.
+    completion_fn* completed;
+};
+
+template<typename Receiver>
+struct recv_op : operation_base {
+    recv_op(SOCKET s, void* data, size_t len, Receiver r)
+    : receiver(std::move(r))
+    , sock(s) {
+        this->Internal = 0;
+        this->InternalHigh = 0;
+        this->Offset = 0;
+        this->OffsetHigh = 0;
+        this->hEvent = NULL;
+        this->completed = &recv_op::on_complete;
+        buffer.len = len;
+        buffer.buf = static_cast<CHAR*>(data);
+    }
+
+    void start() noexcept {
+        // Avoid even calling WSARecv() if operation already cancelled
+        auto st = execution::get_stop_token(receiver);
+        if (st.stop_requested()) {
+            execution::set_done(std::move(receiver));
+            return;
+        }
+
+        // Store and cache result here in case it changes during execution
+        const bool stopPossible = st.stop_possible();
+        if (!stopPossible) {
+            ready.store(true, std::memory_order_relaxed);
+        }
+
+        // Launch the operation
+        DWORD bytesTransferred = 0;
+        DWORD flags = 0;
+        int result = WSARecv(sock, &buffer, 1, &bytesTransferred, &flags, static_cast<WSAOVERLAPPED*>(this), NULL);
+        if (result == SOCKET_ERROR) {
+            int errorCode = WSAGetLastError();
+            if (errorCode != WSA_IO_PENDING)) {
+                if (errorCode == WSA_OPERATION_ABORTED) {
+                    execution::set_done(std::move(receiver));
+                } else {
+                    execution::set_error(std::move(receiver), std::error_code(errorCode, std::system_category()));
+                }
+                return;
+            }
+        } else {
+            // Completed synchronously (assuming FILE_SKIP_COMPLETION_PORT_ON_SUCCESS has been set)
+            execution::set_value(std::move(receiver), bytesTransferred);
+            return;
+        }
+
+        // If we get here then operation has launched successfully and will complete asynchronously.
+        // May be running concurrently on another thread already.
+        if (stopPossible) {
+            // Register the stop callback
+            stopCallback.emplace(std::move(st), cancel_cb{*this});
+
+            // Mark as 'completed'
+            if (ready.load(std::memory_order_acquire) || ready.exchange(true, std::memory_order_acq_rel)) {
+                // Already completed on another thread
+                stopCallback.reset();
+
+                BOOL ok = ::WSAGetOverlappedResult(sock, (WSAOVERLAPPED*)this, &bytesTransferred, FALSE, &flags);
+                if (ok) {
+                    execution::set_value(std::move(receiver), bytesTransferred);
+                } else {
+                    int errorCode = ::WSAGetLastError();
+                    execution::set_error(std::move(receiver), std::error_code(errorCode, std::system_category()));
+                }
+            }
+        }
+    }
+
+    struct cancel_cb {
+        recv_op& op;
+
+        void operator()() noexcept {
+            CancelIoEx((HANDLE)op.sock, (OVERLAPPED*)(WSAOVERLAPPED*)&op);
+        }
+    };
+
+    static void on_complete(operation_base* op, DWORD bytesTransferred, int errorCode) noexcept {
+        recv_op& self = *static_cast<recv_op*>(op);
+
+        if (ready.load(std::memory_order_acquire) || ready.exchange(true, std::memory_order_acq_rel)) {
+            // Unsubscribe any stop-callback so we know that CancelIoEx() is not accessing 'op' any more
+            stopCallback.reset();
+
+            if (errorCode == 0) {
+                execution::set_value(std::move(receiver), bytesTransferred);
+            } else {
+                execution::set_error(std::move(receiver), std::error_code(errorCode, std::system_category()));
+            }
+        }
+    }
+
+    Receiver receiver;
+    SOCKET sock;
+    WSABUF buffer;
+    std::optional<typename stop_callback_type_t<Receiver>::template callback_type<Receiver>> stopCallback;
+    std::atomic<bool> ready{false};
+};
+
+struct recv_sender {
+    SOCKET sock;
+    void* data;
+    size_t len;
+
+    template<typename Receiver>
+    recv_op<Receiver> connect(Receiver r) {
+        return recv_op<Receiver>{sock, data, len, std::move(r)};
+    }
+};
+
+recv_sender async_read(SOCKET s, void* data, size_t len) {
+    return recv_sender{s, data, len};
+}
+```
+
+### Cancellation design status ###
+
+This paper currently includes the design for cancellation as proposed in
+[P2175R0](https://wg21.link/P2175R0) - "Composable cancellation for sender-based async operations".
+P2175R0 contains more details on the background motivation and prior-art and design rationale of this design.
+
+It is important to note, however, that initial review of this design in the SG1 concurrency subgroup raised some concerns
+related to runtime overhead of the design in single-threaded scenarios and these concerns are still being investigated.
+
+The design of P2175R0 has been included in this paper for now, despite its potential to change, as we believe that
+support for cancellation is a fundamental requirement for an async model and is required in some form to be able to
+talk about the semantics of some of the algorithms proposed in this paper.
+
+This paper will be updated in future with any changes that arise from the investigations into P2175R0.
+
 ## Most sender adaptors are pipeable ## {#design-pipeable}
 
 To facilitate an intuitive syntax for composition, most sender adaptors are <dfn>pipeable</dfn>; they can be composed (<dfn>piped</dfn>) together with `operator|`.
