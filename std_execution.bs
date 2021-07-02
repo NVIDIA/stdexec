@@ -871,16 +871,6 @@ execution::sender into_variant(
 
 Returns a sender which sends a variant of tuples of all the possible sets of types sent by the input sender. Senders can send multiple sets of values depending on runtime conditions; this is a helper function that turns them into a single variant value.
 
-### `execution::unschedule` ### {#design-sender-adaptor-unschedule}
-
-<pre highlight="c++">
-execution::sender unschedule(
-    execution::sender auto snd
-);
-</pre>
-
-Returns a sender which [=send|sends=] values equivalent to values sent by the provided sender, but has no [=completion scheduler|completion schedulers=].
-
 ### `execution::bulk` ### {#design-sender-adaptor-bulk}
 
 <pre highlight="c++">
@@ -1699,8 +1689,6 @@ namespace std::execution {
       using <i>into-variant-type</i> = <i>see-below</i>; // exposition-only
     template&lt;typed_sender S>
       <i>see-below</i> into_variant(S &&);
-    template&lt;sender S>
-      <i>see-below</i> unschedule(S &&);
 
     // [execution.senders.consumers], sender consumers
     struct ensure_started_t;
@@ -2706,24 +2694,6 @@ namespace std::execution {
     2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state2`.
 
     3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
-
-#### `execution::unschedule` <b>[execution.senders.adaptors.unschedule]</b> #### {#spec-execution.senders.adaptors.unschedule}
-
-1. `execution::unschedule` can be used to remove the information about completion schedulers from a sender, in effect removing any scheduler-specific customizations of sender algorithms from that sender.
-
-    <pre highlight=c++>
-        template&lt;sender S>
-          <i>see-below</i> unschedule(S && s) noexcept(<i>see-below</i>);
-    </pre>
-
-2. <i>Effects:</i> If `S` provides none of the `get_completion_scheduler<CPO>` sender queries, returns `std::forward<S>(s)`. Otherwise, returns a sender adaptor `s2` containing a subobject of type `remove_cvref_t<S>`, initialized with `std::forward<S>(s)`. `s2`
-    propagates all customizations, except for `get_completion_scheduler<CPO>`, to `s`.
-
-3. <i>Remarks:</i> The expression in the `noexcept-specifier` is equivalent to
-
-    <pre highlight=c++>
-        is_nothrow_constructible_v&lt;remove_cvref_t&lt;S>, S>
-    </pre>
 
 #### `execution::ensure_started` <b>[execution.senders.adaptors.ensure_started]</b> #### {#spec-execution.senders.adaptors.ensure_started}
 
