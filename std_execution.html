@@ -2255,36 +2255,37 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#design-shot"><span class="secno">4.7</span> <span class="content">Senders can be either multi-shot or single-shot</span></a>
       <li><a href="#design-forkable"><span class="secno">4.8</span> <span class="content">Senders are forkable</span></a>
       <li><a href="#design-join"><span class="secno">4.9</span> <span class="content">Senders are joinable</span></a>
-      <li><a href="#design-pipeable"><span class="secno">4.10</span> <span class="content">Most sender adaptors are pipeable</span></a>
+      <li><a href="#design-fpg"><span class="secno">4.10</span> <span class="content">Schedulers advertise their forward progress guarantees</span></a>
+      <li><a href="#design-pipeable"><span class="secno">4.11</span> <span class="content">Most sender adaptors are pipeable</span></a>
       <li>
-       <a href="#design-sender-factories"><span class="secno">4.11</span> <span class="content">User-facing sender factories</span></a>
+       <a href="#design-sender-factories"><span class="secno">4.12</span> <span class="content">User-facing sender factories</span></a>
        <ol class="toc">
-        <li><a href="#design-sender-factory-schedule"><span class="secno">4.11.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code></span></a>
-        <li><a href="#design-sender-factory-just"><span class="secno">4.11.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code></span></a>
-        <li><a href="#design-sender-factory-transfer_just"><span class="secno">4.11.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code></span></a>
+        <li><a href="#design-sender-factory-schedule"><span class="secno">4.12.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code></span></a>
+        <li><a href="#design-sender-factory-just"><span class="secno">4.12.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code></span></a>
+        <li><a href="#design-sender-factory-transfer_just"><span class="secno">4.12.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code></span></a>
        </ol>
       <li>
-       <a href="#design-sender-adaptors"><span class="secno">4.12</span> <span class="content">User-facing sender adaptors</span></a>
+       <a href="#design-sender-adaptors"><span class="secno">4.13</span> <span class="content">User-facing sender adaptors</span></a>
        <ol class="toc">
-        <li><a href="#design-sender-adaptor-transfer"><span class="secno">4.12.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-then"><span class="secno">4.12.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-upon"><span class="secno">4.12.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-let"><span class="secno">4.12.4</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-on"><span class="secno">4.12.5</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-into_variant"><span class="secno">4.12.6</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-bulk"><span class="secno">4.12.7</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-split"><span class="secno">4.12.8</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-when_all"><span class="secno">4.12.9</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-transfer_when_all"><span class="secno">4.12.10</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code></span></a>
-        <li><a href="#design-sender-adaptor-ensure_started"><span class="secno">4.12.11</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-transfer"><span class="secno">4.13.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-then"><span class="secno">4.13.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-upon"><span class="secno">4.13.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-let"><span class="secno">4.13.4</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-on"><span class="secno">4.13.5</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-into_variant"><span class="secno">4.13.6</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-bulk"><span class="secno">4.13.7</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-split"><span class="secno">4.13.8</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-when_all"><span class="secno">4.13.9</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-transfer_when_all"><span class="secno">4.13.10</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code></span></a>
+        <li><a href="#design-sender-adaptor-ensure_started"><span class="secno">4.13.11</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code></span></a>
        </ol>
       <li>
-       <a href="#design-sender-consumers"><span class="secno">4.13</span> <span class="content">User-facing sender consumers</span></a>
+       <a href="#design-sender-consumers"><span class="secno">4.14</span> <span class="content">User-facing sender consumers</span></a>
        <ol class="toc">
-        <li><a href="#design-sender-consumer-start_detached"><span class="secno">4.13.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code></span></a>
-        <li><a href="#design-sender-consumer-sync_wait"><span class="secno">4.13.2</span> <span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code></span></a>
+        <li><a href="#design-sender-consumer-start_detached"><span class="secno">4.14.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code></span></a>
+        <li><a href="#design-sender-consumer-sync_wait"><span class="secno">4.14.2</span> <span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code></span></a>
        </ol>
-      <li><a href="#design-execute"><span class="secno">4.14</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code></span></a>
+      <li><a href="#design-execute"><span class="secno">4.15</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code></span></a>
      </ol>
     <li>
      <a href="#design-implementer"><span class="secno">5</span> <span class="content">Design - implementer side</span></a>
@@ -2331,7 +2332,8 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li>
          <a href="#spec-execution.schedulers.queries"><span class="secno">9.3.1</span> <span class="content">Scheduler queries <b>[execution.schedulers.queries]</b></span></a>
          <ol class="toc">
-          <li><a href="#spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.1</span> <span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller</b></span></a>
+          <li><a href="#spec-execution.schedulers.queries.get_forward_progress_guarantee"><span class="secno">9.3.1.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-></code> <b>[execution.schedulers.queries.get_forward_progress_guarantee]</b></span></a>
+          <li><a href="#spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.2</span> <span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller</b></span></a>
          </ol>
        </ol>
       <li>
@@ -2449,7 +2451,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
      <p>Be able to manage and terminate the lifetimes of objects asynchronously.</p>
    </ul>
    <h3 class="heading settled" data-level="1.3" id="example"><span class="secno">1.3. </span><span class="content">Examples</span><a class="self-link" href="#example"></a></h3>
-   <p>See <a href="#design-sender-factories">§ 4.11 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.12 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.13 User-facing sender consumers</a> for short explanations of the algorithms used in these code examples.</p>
+   <p>See <a href="#design-sender-factories">§ 4.12 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.13 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.14 User-facing sender consumers</a> for short explanations of the algorithms used in these code examples.</p>
    <h4 class="heading settled" data-level="1.3.1" id="example-hello-world"><span class="secno">1.3.1. </span><span class="content">Hello world</span><a class="self-link" href="#example-hello-world"></a></h4>
 <pre class="language-c++ highlight"><c- n>using</c-> <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
 
@@ -2469,13 +2471,13 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
     <li data-md>
      <p>First we need to get a scheduler from somewhere, such as a thread pool. A scheduler is a lightweight handle to an execution resource.</p>
     <li data-md>
-     <p>To start a chain of work on a scheduler, we call <a href="#design-sender-factory-schedule">§ 4.11.1 execution::schedule</a>, which returns a sender that completes on the scheduler.  sender describes asynchronous work and sends a signal (value, error, or done) to some recipient(s) when that work completes.</p>
+     <p>To start a chain of work on a scheduler, we call <a href="#design-sender-factory-schedule">§ 4.12.1 execution::schedule</a>, which returns a sender that completes on the scheduler.  sender describes asynchronous work and sends a signal (value, error, or done) to some recipient(s) when that work completes.</p>
     <li data-md>
-     <p>We use sender algorithms to produce senders and compose asynchronous work. <a href="#design-sender-adaptor-then">§ 4.12.2 execution::then</a> is a sender adaptor that takes an input sender and a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>, and calls the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> on the signal sent by the input sender. The sender returned by <code class="highlight"><c- n>then</c-></code> sends the result of that invocation. In this case, the input sender came from <code class="highlight"><c- n>schedule</c-></code>, so its <code class="highlight"><c- b>void</c-></code>, meaning it won’t send us a value, so our <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> takes no parameters. But we return an <code class="highlight"><c- b>int</c-></code>, which will be sent to the next recipient.</p>
+     <p>We use sender algorithms to produce senders and compose asynchronous work. <a href="#design-sender-adaptor-then">§ 4.13.2 execution::then</a> is a sender adaptor that takes an input sender and a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>, and calls the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> on the signal sent by the input sender. The sender returned by <code class="highlight"><c- n>then</c-></code> sends the result of that invocation. In this case, the input sender came from <code class="highlight"><c- n>schedule</c-></code>, so its <code class="highlight"><c- b>void</c-></code>, meaning it won’t send us a value, so our <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> takes no parameters. But we return an <code class="highlight"><c- b>int</c-></code>, which will be sent to the next recipient.</p>
     <li data-md>
-     <p>Now, we add another operation to the chain, again using <a href="#design-sender-adaptor-then">§ 4.12.2 execution::then</a>. This time, we get sent a value - the <code class="highlight"><c- b>int</c-></code> from the previous step. We add <code class="highlight"><c- mi>42</c-></code> to it, and then return the result.</p>
+     <p>Now, we add another operation to the chain, again using <a href="#design-sender-adaptor-then">§ 4.13.2 execution::then</a>. This time, we get sent a value - the <code class="highlight"><c- b>int</c-></code> from the previous step. We add <code class="highlight"><c- mi>42</c-></code> to it, and then return the result.</p>
     <li data-md>
-     <p>Finally, we’re ready to submit the entire asynchronous pipeline and wait for its completion. Everything up until this point has been completely asynchronous; the work may not have even started yet. To ensure the work has started and then block pending its completion, we use <a href="#design-sender-consumer-sync_wait">§ 4.13.2 this_thread::sync_wait</a>, which will either return a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- p>...</c-><c- o>>></c-></code> with the value sent by the last sender, or an empty <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>optional</c-></code> if the last sender sent a done signal, or it throws an exception if the last sender sent an error.</p>
+     <p>Finally, we’re ready to submit the entire asynchronous pipeline and wait for its completion. Everything up until this point has been completely asynchronous; the work may not have even started yet. To ensure the work has started and then block pending its completion, we use <a href="#design-sender-consumer-sync_wait">§ 4.14.2 this_thread::sync_wait</a>, which will either return a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- p>...</c-><c- o>>></c-></code> with the value sent by the last sender, or an empty <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>optional</c-></code> if the last sender sent a done signal, or it throws an exception if the last sender sent an error.</p>
    </ol>
    <h4 class="heading settled" data-level="1.3.2" id="example-async-inclusive-scan"><span class="secno">1.3.2. </span><span class="content">Asynchronous inclusive scan</span><a class="self-link" href="#example-async-inclusive-scan"></a></h4>
 <pre class="language-c++ highlight"><c- n>using</c-> <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
@@ -2531,25 +2533,25 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
     <li data-md>
      <p>First we need to allocate temporary storage needed for the algorithm, which we’ll do with a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>vector</c-></code>, <code class="highlight"><c- n>partials</c-></code>. We need one <code class="highlight"><c- b>double</c-></code> of temporary storage for each execution agent we create.</p>
     <li data-md>
-     <p>Next we’ll create our initial sender with <a href="#design-sender-factory-transfer_just">§ 4.11.3 execution::transfer_just</a>. This sender will send the temporary storage, which we’ve moved into the sender. The sender has a completion scheduler of <code class="highlight"><c- n>sch</c-></code>, which means the next item in the chain will use <code class="highlight"><c- n>sch</c-></code>.</p>
+     <p>Next we’ll create our initial sender with <a href="#design-sender-factory-transfer_just">§ 4.12.3 execution::transfer_just</a>. This sender will send the temporary storage, which we’ve moved into the sender. The sender has a completion scheduler of <code class="highlight"><c- n>sch</c-></code>, which means the next item in the chain will use <code class="highlight"><c- n>sch</c-></code>.</p>
     <li data-md>
-     <p>Senders and sender adaptors support composition via <code class="highlight"><c- k>operator</c-><c- o>|</c-></code>, similar to C++ ranges. We’ll use <code class="highlight"><c- k>operator</c-><c- o>|</c-></code> to attach the next piece of work, which will spawn <code class="highlight"><c- n>tile_count</c-></code> execution agents using <a href="#design-sender-adaptor-bulk">§ 4.12.7 execution::bulk</a> (see <a href="#design-pipeable">§ 4.10 Most sender adaptors are pipeable</a> for details).</p>
+     <p>Senders and sender adaptors support composition via <code class="highlight"><c- k>operator</c-><c- o>|</c-></code>, similar to C++ ranges. We’ll use <code class="highlight"><c- k>operator</c-><c- o>|</c-></code> to attach the next piece of work, which will spawn <code class="highlight"><c- n>tile_count</c-></code> execution agents using <a href="#design-sender-adaptor-bulk">§ 4.13.7 execution::bulk</a> (see <a href="#design-pipeable">§ 4.11 Most sender adaptors are pipeable</a> for details).</p>
     <li data-md>
-     <p>Each agent will call a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>, passing it two arguments. The first is the agent’s index (<code class="highlight"><c- n>i</c-></code>) in the <a href="#design-sender-adaptor-bulk">§ 4.12.7 execution::bulk</a> operation, in this case a unique integer in <code class="highlight"><c- p>[</c-><c- mi>0</c-><c- p>,</c-> <c- n>tile_count</c-><c- p>)</c-></code>. The second argument is what the input sender sent - the temporary storage.</p>
+     <p>Each agent will call a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>, passing it two arguments. The first is the agent’s index (<code class="highlight"><c- n>i</c-></code>) in the <a href="#design-sender-adaptor-bulk">§ 4.13.7 execution::bulk</a> operation, in this case a unique integer in <code class="highlight"><c- p>[</c-><c- mi>0</c-><c- p>,</c-> <c- n>tile_count</c-><c- p>)</c-></code>. The second argument is what the input sender sent - the temporary storage.</p>
     <li data-md>
      <p>We start by computing the start and end of the range of input and output elements that this agent is responsible for, based on our agent index.</p>
     <li data-md>
      <p>Then we do a sequential <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>inclusive_scan</c-></code> over our elements. We store the scan result for our last element, which is the sum of all of our elements, in our temporary storage <code class="highlight"><c- n>partials</c-></code>.</p>
     <li data-md>
-     <p>After all computation in that initial <a href="#design-sender-adaptor-bulk">§ 4.12.7 execution::bulk</a> pass has completed, every one of the spawned execution agents will have written the sum of its elements into its slot in <code class="highlight"><c- n>partials</c-></code>.</p>
+     <p>After all computation in that initial <a href="#design-sender-adaptor-bulk">§ 4.13.7 execution::bulk</a> pass has completed, every one of the spawned execution agents will have written the sum of its elements into its slot in <code class="highlight"><c- n>partials</c-></code>.</p>
     <li data-md>
-     <p>Now we need to scan all of the values in <code class="highlight"><c- n>partials</c-></code>. We’ll do that with a single execution agent which will execute after the <a href="#design-sender-adaptor-bulk">§ 4.12.7 execution::bulk</a> completes. We create that execution agent with <a href="#design-sender-adaptor-then">§ 4.12.2 execution::then</a>.</p>
+     <p>Now we need to scan all of the values in <code class="highlight"><c- n>partials</c-></code>. We’ll do that with a single execution agent which will execute after the <a href="#design-sender-adaptor-bulk">§ 4.13.7 execution::bulk</a> completes. We create that execution agent with <a href="#design-sender-adaptor-then">§ 4.13.2 execution::then</a>.</p>
     <li data-md>
-     <p><a href="#design-sender-adaptor-then">§ 4.12.2 execution::then</a> takes an input sender and an <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> and calls the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> with the value sent by the input sender. Inside our <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>, we call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>inclusive_scan</c-></code> on <code class="highlight"><c- n>partials</c-></code>, which the input senders will send to us.</p>
+     <p><a href="#design-sender-adaptor-then">§ 4.13.2 execution::then</a> takes an input sender and an <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> and calls the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> with the value sent by the input sender. Inside our <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>, we call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>inclusive_scan</c-></code> on <code class="highlight"><c- n>partials</c-></code>, which the input senders will send to us.</p>
     <li data-md>
      <p>Then we return <code class="highlight"><c- n>partials</c-></code>, which the next phase will need.</p>
     <li data-md>
-     <p>Finally we do another <a href="#design-sender-adaptor-bulk">§ 4.12.7 execution::bulk</a> of the same shape as before. In this <a href="#design-sender-adaptor-bulk">§ 4.12.7 execution::bulk</a>, we will use the scanned values in <code class="highlight"><c- n>partials</c-></code> to integrate the sums from other tiles into our elements, completing the inclusive scan.</p>
+     <p>Finally we do another <a href="#design-sender-adaptor-bulk">§ 4.13.7 execution::bulk</a> of the same shape as before. In this <a href="#design-sender-adaptor-bulk">§ 4.13.7 execution::bulk</a>, we will use the scanned values in <code class="highlight"><c- n>partials</c-></code> to integrate the sums from other tiles into our elements, completing the inclusive scan.</p>
     <li data-md>
      <p><code class="highlight"><c- n>async_inclusive_scan</c-></code> returns a sender that sends the output <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>span</c-><c- o>&lt;</c-><c- b>double</c-><c- o>></c-></code>. A consumer of the algorithm can chain additional work that uses the scan result. At the point at which <code class="highlight"><c- n>async_inclusive_scan</c-></code> returns, the computation may not have completed. In fact, it may not have even started.</p>
    </ol>
@@ -2594,15 +2596,15 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
     <li data-md>
      <p><code class="highlight"><c- n>dynamic_buffer</c-></code> is an aggregate struct that contains a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>unique_ptr</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>byte</c-><c- p>[]</c-><c- o>></c-></code> and a size.</p>
     <li data-md>
-     <p>The first thing we do inside of <code class="highlight"><c- n>async_read_array</c-></code> is create a sender that will send a new, empty <code class="highlight"><c- n>dynamic_array</c-></code> object using <a href="#design-sender-factory-just">§ 4.11.2 execution::just</a>. We can attach more work to the pipeline using <code class="highlight"><c- k>operator</c-><c- o>|</c-></code> composition (see <a href="#design-pipeable">§ 4.10 Most sender adaptors are pipeable</a> for details).</p>
+     <p>The first thing we do inside of <code class="highlight"><c- n>async_read_array</c-></code> is create a sender that will send a new, empty <code class="highlight"><c- n>dynamic_array</c-></code> object using <a href="#design-sender-factory-just">§ 4.12.2 execution::just</a>. We can attach more work to the pipeline using <code class="highlight"><c- k>operator</c-><c- o>|</c-></code> composition (see <a href="#design-pipeable">§ 4.11 Most sender adaptors are pipeable</a> for details).</p>
     <li data-md>
-     <p>We need the lifetime of this <code class="highlight"><c- n>dynamic_array</c-></code> object to last for the entire pipeline. So, we use <code class="highlight"><c- n>let_value</c-></code>, which takes an input sender and a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> that must return a sender itself (see <a href="#design-sender-adaptor-let">§ 4.12.4 execution::let_*</a> for details). <code class="highlight"><c- n>let_value</c-></code> sends the value from the input sender to the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>. Critically, the lifetime of the sent object will last until the sender returned by the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> completes.</p>
+     <p>We need the lifetime of this <code class="highlight"><c- n>dynamic_array</c-></code> object to last for the entire pipeline. So, we use <code class="highlight"><c- n>let_value</c-></code>, which takes an input sender and a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> that must return a sender itself (see <a href="#design-sender-adaptor-let">§ 4.13.4 execution::let_*</a> for details). <code class="highlight"><c- n>let_value</c-></code> sends the value from the input sender to the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>. Critically, the lifetime of the sent object will last until the sender returned by the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> completes.</p>
     <li data-md>
-     <p>Inside of the <code class="highlight"><c- n>let_value</c-></code> <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>, we have the rest of our logic. First, we want to initiate an <code class="highlight"><c- n>async_read</c-></code> of the buffer size. To do that, we need to send a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>span</c-></code> pointing to <code class="highlight"><c- n>buf</c-><c- p>.</c-><c- n>size</c-></code>. We can do that with <a href="#design-sender-factory-just">§ 4.11.2 execution::just</a>.</p>
+     <p>Inside of the <code class="highlight"><c- n>let_value</c-></code> <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>, we have the rest of our logic. First, we want to initiate an <code class="highlight"><c- n>async_read</c-></code> of the buffer size. To do that, we need to send a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>span</c-></code> pointing to <code class="highlight"><c- n>buf</c-><c- p>.</c-><c- n>size</c-></code>. We can do that with <a href="#design-sender-factory-just">§ 4.12.2 execution::just</a>.</p>
     <li data-md>
-     <p>We chain the <code class="highlight"><c- n>async_read</c-></code> onto the <a href="#design-sender-factory-just">§ 4.11.2 execution::just</a> sender with <code class="highlight"><c- k>operator</c-><c- o>|</c-></code>.</p>
+     <p>We chain the <code class="highlight"><c- n>async_read</c-></code> onto the <a href="#design-sender-factory-just">§ 4.12.2 execution::just</a> sender with <code class="highlight"><c- k>operator</c-><c- o>|</c-></code>.</p>
     <li data-md>
-     <p>Next, we pipe a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> that will be invoked after the <code class="highlight"><c- n>async_read</c-></code> completes using <a href="#design-sender-adaptor-then">§ 4.12.2 execution::then</a>.</p>
+     <p>Next, we pipe a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> that will be invoked after the <code class="highlight"><c- n>async_read</c-></code> completes using <a href="#design-sender-adaptor-then">§ 4.13.2 execution::then</a>.</p>
     <li data-md>
      <p>That <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> gets sent the number of bytes read.</p>
     <li data-md>
@@ -2614,7 +2616,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
     <li data-md>
      <p>And that recipient will be another <code class="highlight"><c- n>async_read</c-></code>, which will read the data.</p>
     <li data-md>
-     <p>Once the data has been read, in another <a href="#design-sender-adaptor-then">§ 4.12.2 execution::then</a>, we confirm that we read the right number of bytes.</p>
+     <p>Once the data has been read, in another <a href="#design-sender-adaptor-then">§ 4.13.2 execution::then</a>, we confirm that we read the right number of bytes.</p>
     <li data-md>
      <p>Finally, we move out of and return our <code class="highlight"><c- n>dynamic_buffer</c-></code> object. It will get sent by the sender returned by <code class="highlight"><c- n>async_read_array</c-></code>. We can attach more things to that sender to use the data in the buffer.</p>
    </ol>
@@ -2636,7 +2638,7 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>The places of execution of user code in P0443 weren’t precisely defined, whereas they are in this paper. See <a href="#design-propagation">§ 4.5 Senders can propagate completion schedulers</a>.</p>
     <li data-md>
-     <p>P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See <a href="#design-sender-factories">§ 4.11 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.12 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.13 User-facing sender consumers</a>.</p>
+     <p>P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See <a href="#design-sender-factories">§ 4.12 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.13 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.14 User-facing sender consumers</a>.</p>
     <li data-md>
      <p>P0443 did not specify the semantics of variously qualified <code class="highlight"><c- n>connect</c-></code> overloads; this paper does. See <a href="#design-shot">§ 4.7 Senders can be either multi-shot or single-shot</a>.</p>
     <li data-md>
@@ -2718,7 +2720,7 @@ sender is said to <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id=
    <p>The primary defining sender algorithm is <a href="#design-connect">§ 5.3 execution::connect</a>; this function, however, is not a user-facing API; it is used to facilitate communication between senders and various sender algorithms, but end user code is not expected to invoke
 it directly.</p>
    <p>The way user code is expected to interact with senders is by using <a data-link-type="dfn" href="#sender-algorithms" id="ref-for-sender-algorithms">sender algorithms</a>.
-This paper proposes an initial set of such sender algorithms, which are described in <a href="#design-composable">§ 4.4 Senders are composable through sender algorithms</a>, <a href="#design-sender-factories">§ 4.11 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.12 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.13 User-facing sender consumers</a>.
+This paper proposes an initial set of such sender algorithms, which are described in <a href="#design-composable">§ 4.4 Senders are composable through sender algorithms</a>, <a href="#design-sender-factories">§ 4.12 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.13 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.14 User-facing sender consumers</a>.
 For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->
@@ -2858,7 +2860,20 @@ This requires that we provide well defined mechanisms for making sure that conne
 merged into a single one in an asynchronous fashion.</p>
    <p><code class="highlight"><c- n>when_all</c-></code> is a sender adaptor that returns a sender that completes when the last of the input senders completes. It <a data-link-type="dfn" href="#send" id="ref-for-send①">sends</a> a pack of values, where the elements of said pack are the values sent by the input senders, in order. <code class="highlight"><c- n>when_all</c-></code> returns a sender that also does not have an associated scheduler.</p>
    <p><code class="highlight"><c- n>transfer_when_all</c-></code> accepts an additional scheduler argument. It returns a sender whose value <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers②">completion scheduler</a> is the scheduler provided as an argument, but otherwise behaves the same as <code class="highlight"><c- n>when_all</c-></code>. You can think of it as a composition of <code class="highlight"><c- n>transfer</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>inputs</c-><c- p>...),</c-> <c- n>scheduler</c-><c- p>)</c-></code>, but one that allows for better efficiency through customization.</p>
-   <h3 class="heading settled" data-level="4.10" id="design-pipeable"><span class="secno">4.10. </span><span class="content">Most sender adaptors are pipeable</span><a class="self-link" href="#design-pipeable"></a></h3>
+   <h3 class="heading settled" data-level="4.10" id="design-fpg"><span class="secno">4.10. </span><span class="content">Schedulers advertise their forward progress guarantees</span><a class="self-link" href="#design-fpg"></a></h3>
+   <p>To decide whether a scheduler (and its associated execution context) is sufficient for a specific task, it may be necessary to know what kind of forward progress guarantees it provides for the execution agents it creates. The C++ Standard defines the following
+forward progress guarantees:</p>
+   <ul>
+    <li data-md>
+     <p><i>concurrent</i>, which requires that a thread makes progress <i>eventually</i>;</p>
+    <li data-md>
+     <p><i>parallel</i>, which requires that a thread makes progress once it executes a step; and</p>
+    <li data-md>
+     <p><i>weakly parallel</i>, which does not require that the thread makes progress.</p>
+   </ul>
+   <p>This paper introduces a scheduler query function, <code class="highlight"><c- n>get_forward_progress_guarantee</c-></code>, which returns one of the enumerators of a new <code class="highlight"><c- k>enum</c-></code> type, <code class="highlight"><c- n>forward_progress_guarantee</c-></code>. Each enumerator of <code class="highlight"><c- n>forward_progress_guarantee</c-></code> corresponds to one of the aforementioned
+guarantees.</p>
+   <h3 class="heading settled" data-level="4.11" id="design-pipeable"><span class="secno">4.11. </span><span class="content">Most sender adaptors are pipeable</span><a class="self-link" href="#design-pipeable"></a></h3>
    <p>To facilitate an intuitive syntax for composition, most sender adaptors are <dfn data-dfn-type="dfn" data-noexport id="pipeable">pipeable<a class="self-link" href="#pipeable"></a></dfn>; they can be composed (<dfn data-dfn-type="dfn" data-noexport id="piped">piped<a class="self-link" href="#piped"></a></dfn>) together with <code class="highlight"><c- k>operator</c-><c- o>|</c-></code>.
 This mechanism is similar to the <code class="highlight"><c- k>operator</c-><c- o>|</c-></code> composition that C++ range adaptors support and draws inspiration from piping in *nix shells.
 Pipeable sender adaptors take a sender as their first parameter and have no other sender parameters.</p>
@@ -2927,9 +2942,9 @@ Consider the following example where we want to execute first on a CPU thread po
    <p>Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
 We believe sender consumers read better with function call syntax.</p>
-   <h3 class="heading settled" data-level="4.11" id="design-sender-factories"><span class="secno">4.11. </span><span class="content">User-facing sender factories</span><a class="self-link" href="#design-sender-factories"></a></h3>
+   <h3 class="heading settled" data-level="4.12" id="design-sender-factories"><span class="secno">4.12. </span><span class="content">User-facing sender factories</span><a class="self-link" href="#design-sender-factories"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-factory">sender factory</dfn> is an <a data-link-type="dfn" href="#algorithm" id="ref-for-algorithm">algorithm</a> that takes no senders as parameters and returns a sender.</p>
-   <h4 class="heading settled" data-level="4.11.1" id="design-sender-factory-schedule"><span class="secno">4.11.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code></span><a class="self-link" href="#design-sender-factory-schedule"></a></h4>
+   <h4 class="heading settled" data-level="4.12.1" id="design-sender-factory-schedule"><span class="secno">4.12.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code></span><a class="self-link" href="#design-sender-factory-schedule"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>schedule</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>scheduler</c->
 <c- p>);</c->
@@ -2940,7 +2955,7 @@ We believe sender consumers read better with function call syntax.</p>
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch1</c-><c- p>);</c->
 <c- c1>// snd1 describes the creation of a new task on the system thread pool</c->
 </pre>
-   <h4 class="heading settled" data-level="4.11.2" id="design-sender-factory-just"><span class="secno">4.11.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code></span><a class="self-link" href="#design-sender-factory-just"></a></h4>
+   <h4 class="heading settled" data-level="4.12.2" id="design-sender-factory-just"><span class="secno">4.12.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code></span><a class="self-link" href="#design-sender-factory-just"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>just</c-><c- p>(</c->
     <c- k>auto</c-> <c- p>...</c-><c- o>&amp;&amp;</c-> <c- n>values</c->
 <c- p>);</c->
@@ -2972,7 +2987,7 @@ We believe sender consumers read better with function call syntax.</p>
 <c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>[</c-><c- n>v4</c-><c- p>]</c-> <c- o>=</c-> <c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>then4</c-><c- p>).</c-><c- n>value</c-><c- p>();</c->
 <c- c1>// v4 contains {2, 4, 6, 8, 10}.</c->
 </pre>
-   <h4 class="heading settled" data-level="4.11.3" id="design-sender-factory-transfer_just"><span class="secno">4.11.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code></span><a class="self-link" href="#design-sender-factory-transfer_just"></a></h4>
+   <h4 class="heading settled" data-level="4.12.3" id="design-sender-factory-transfer_just"><span class="secno">4.12.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code></span><a class="self-link" href="#design-sender-factory-transfer_just"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>transfer_just</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>scheduler</c-><c- p>,</c->
     <c- k>auto</c-> <c- p>...</c-><c- o>&amp;&amp;</c-> <c- n>values</c->
@@ -2989,14 +3004,14 @@ We believe sender consumers read better with function call syntax.</p>
 <c- c1>// when snd is executed, it will print "123"</c->
 </pre>
    <p>This adaptor is included as it greatly simplifies lifting values into senders.</p>
-   <h3 class="heading settled" data-level="4.12" id="design-sender-adaptors"><span class="secno">4.12. </span><span class="content">User-facing sender adaptors</span><a class="self-link" href="#design-sender-adaptors"></a></h3>
+   <h3 class="heading settled" data-level="4.13" id="design-sender-adaptors"><span class="secno">4.13. </span><span class="content">User-facing sender adaptors</span><a class="self-link" href="#design-sender-adaptors"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-adaptor">sender adaptor</dfn> is an <a data-link-type="dfn" href="#algorithm" id="ref-for-algorithm①">algorithm</a> that takes one or more senders, which it may <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.</p>
    <p>Many sender adaptors come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn data-dfn-type="dfn" data-lt="start" data-noexport id="start">started<a class="self-link" href="#start"></a></dfn> later on, and a potentially eager one, which is allowed to submit work prior to
-the returned sender being started. Sender consumers such as <a href="#design-sender-adaptor-ensure_started">§ 4.12.11 execution::ensure_started</a>, <a href="#design-sender-consumer-start_detached">§ 4.13.1 execution::start_detached</a>, and <a href="#design-sender-consumer-sync_wait">§ 4.13.2 this_thread::sync_wait</a> start senders; the implementations of non-lazy versions of the sender adaptors are <strong>allowed</strong>,
+the returned sender being started. Sender consumers such as <a href="#design-sender-adaptor-ensure_started">§ 4.13.11 execution::ensure_started</a>, <a href="#design-sender-consumer-start_detached">§ 4.14.1 execution::start_detached</a>, and <a href="#design-sender-consumer-sync_wait">§ 4.14.2 this_thread::sync_wait</a> start senders; the implementations of non-lazy versions of the sender adaptors are <strong>allowed</strong>,
 but not guaranteed, to start senders.</p>
    <p>The strictly lazy versions of the adaptors below (that is, all the versions whose names start with <code class="highlight"><c- n>lazy_</c-></code>) are guaranteed to not start any input senders passed into them.</p>
    <p>For more implementer-centric description of starting senders, see <a href="#design-laziness">§ 5.5 Laziness is defined by sender adaptors</a>.</p>
-   <h4 class="heading settled" data-level="4.12.1" id="design-sender-adaptor-transfer"><span class="secno">4.12.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span><a class="self-link" href="#design-sender-adaptor-transfer"></a></h4>
+   <h4 class="heading settled" data-level="4.13.1" id="design-sender-adaptor-transfer"><span class="secno">4.13.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span><a class="self-link" href="#design-sender-adaptor-transfer"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>transfer</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>scheduler</c->
@@ -3017,7 +3032,7 @@ but not guaranteed, to start senders.</p>
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>gpu_task</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>cpu_task</c-><c- p>,</c-> <c- n>gpu_sched</c-><c- p>);</c->
 <c- c1>// gpu_task describes the transition of the task graph described by cpu_task to the gpu</c->
 </pre>
-   <h4 class="heading settled" data-level="4.12.2" id="design-sender-adaptor-then"><span class="secno">4.12.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code></span><a class="self-link" href="#design-sender-adaptor-then"></a></h4>
+   <h4 class="heading settled" data-level="4.13.2" id="design-sender-adaptor-then"><span class="secno">4.13.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code></span><a class="self-link" href="#design-sender-adaptor-then"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
@@ -3038,7 +3053,7 @@ but not guaranteed, to start senders.</p>
 <c- c1>// followed by printing all of the values sent by pred</c->
 </pre>
    <p>This adaptor is included as it is necessary for writing any sender code that actually performs a useful function.</p>
-   <h4 class="heading settled" data-level="4.12.3" id="design-sender-adaptor-upon"><span class="secno">4.12.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span><a class="self-link" href="#design-sender-adaptor-upon"></a></h4>
+   <h4 class="heading settled" data-level="4.13.3" id="design-sender-adaptor-upon"><span class="secno">4.13.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span><a class="self-link" href="#design-sender-adaptor-upon"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>upon_error</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>errors</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
@@ -3060,7 +3075,7 @@ but not guaranteed, to start senders.</p>
 <c- p>);</c->
 </pre>
    <p><code class="highlight"><c- n>upon_error</c-></code> and <code class="highlight"><c- n>upon_done</c-></code> are similar to <code class="highlight"><c- n>then</c-></code>, but where <code class="highlight"><c- n>then</c-></code> works with values sent by the input sender, <code class="highlight"><c- n>upon_error</c-></code> works with errors, and <code class="highlight"><c- n>upon_done</c-></code> is invoked when the "done" signal is sent.</p>
-   <h4 class="heading settled" data-level="4.12.4" id="design-sender-adaptor-let"><span class="secno">4.12.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span><a class="self-link" href="#design-sender-adaptor-let"></a></h4>
+   <h4 class="heading settled" data-level="4.13.4" id="design-sender-adaptor-let"><span class="secno">4.13.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span><a class="self-link" href="#design-sender-adaptor-let"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>let_value</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
@@ -3094,7 +3109,7 @@ but not guaranteed, to start senders.</p>
    <p><code class="highlight"><c- n>let_value</c-></code> is very similar to <code class="highlight"><c- n>then</c-></code>: when it is started, it invokes the provided function with the values <a data-link-type="dfn" href="#send" id="ref-for-send⑤">sent</a> by the input sender as arguments. However, where the sender returned from <code class="highlight"><c- n>then</c-></code> sends exactly what that function ends up returning - <code class="highlight"><c- n>let_value</c-></code> requires that the function return a sender, and the sender returned by <code class="highlight"><c- n>let_value</c-></code> sends the values sent by the sender returned from the callback. This is similar to the notion of "future unwrapping" in future/promise-based frameworks.</p>
    <p><code class="highlight"><c- n>lazy_let_value</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
    <p><code class="highlight"><c- n>let_error</c-></code> and <code class="highlight"><c- n>let_done</c-></code> are similar to <code class="highlight"><c- n>let_value</c-></code>, but where <code class="highlight"><c- n>let_value</c-></code> works with values sent by the input sender, <code class="highlight"><c- n>let_error</c-></code> works with errors, and <code class="highlight"><c- n>let_done</c-></code> is invoked when the "done" signal is sent.</p>
-   <h4 class="heading settled" data-level="4.12.5" id="design-sender-adaptor-on"><span class="secno">4.12.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code></span><a class="self-link" href="#design-sender-adaptor-on"></a></h4>
+   <h4 class="heading settled" data-level="4.13.5" id="design-sender-adaptor-on"><span class="secno">4.13.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code></span><a class="self-link" href="#design-sender-adaptor-on"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>on</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-><c- p>,</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
@@ -3106,13 +3121,13 @@ but not guaranteed, to start senders.</p>
 <c- p>);</c->
 </pre>
    <p>Returns a sender which, when started, will start the provided sender on an execution agent belonging to the execution context associated with the provided scheduler. This returned sender has no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑤">completion schedulers</a>.</p>
-   <h4 class="heading settled" data-level="4.12.6" id="design-sender-adaptor-into_variant"><span class="secno">4.12.6. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code></span><a class="self-link" href="#design-sender-adaptor-into_variant"></a></h4>
+   <h4 class="heading settled" data-level="4.13.6" id="design-sender-adaptor-into_variant"><span class="secno">4.13.6. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code></span><a class="self-link" href="#design-sender-adaptor-into_variant"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- n>into_variant</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
 <c- p>);</c->
 </pre>
    <p>Returns a sender which sends a variant of tuples of all the possible sets of types sent by the input sender. Senders can send multiple sets of values depending on runtime conditions; this is a helper function that turns them into a single variant value.</p>
-   <h4 class="heading settled" data-level="4.12.7" id="design-sender-adaptor-bulk"><span class="secno">4.12.7. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span><a class="self-link" href="#design-sender-adaptor-bulk"></a></h4>
+   <h4 class="heading settled" data-level="4.13.7" id="design-sender-adaptor-bulk"><span class="secno">4.13.7. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span><a class="self-link" href="#design-sender-adaptor-bulk"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>bulk</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>integral</c-> <c- k>auto</c-> <c- n>size</c-><c- p>,</c->
@@ -3128,13 +3143,13 @@ but not guaranteed, to start senders.</p>
    <p>Returns a sender describing the task of invoking the provided function with the values <a data-link-type="dfn" href="#send" id="ref-for-send⑥">sent</a> by the input sender for every index in the provided shape.</p>
    <p>In this paper, only integral types satisfy the concept of a shape, but future papers will explore bulk shapes of different kinds in more detail.</p>
    <p><code class="highlight"><c- n>lazy_bulk</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
-   <h4 class="heading settled" data-level="4.12.8" id="design-sender-adaptor-split"><span class="secno">4.12.8. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code></span><a class="self-link" href="#design-sender-adaptor-split"></a></h4>
+   <h4 class="heading settled" data-level="4.13.8" id="design-sender-adaptor-split"><span class="secno">4.13.8. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code></span><a class="self-link" href="#design-sender-adaptor-split"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>split</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sender</c-><c- p>);</c->
 
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_split</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sender</c-><c- p>);</c->
 </pre>
    <p>If the provided sender is a multi-shot sender, returns that sender. Otherwise, returns a multi-shot sender which sends values equivalent to the values sent by the provided sender. See <a href="#design-shot">§ 4.7 Senders can be either multi-shot or single-shot</a>.</p>
-   <h4 class="heading settled" data-level="4.12.9" id="design-sender-adaptor-when_all"><span class="secno">4.12.9. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code></span><a class="self-link" href="#design-sender-adaptor-when_all"></a></h4>
+   <h4 class="heading settled" data-level="4.13.9" id="design-sender-adaptor-when_all"><span class="secno">4.13.9. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code></span><a class="self-link" href="#design-sender-adaptor-when_all"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>when_all</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- p>...</c-><c- n>inputs</c->
 <c- p>);</c->
@@ -3164,7 +3179,7 @@ It is guaranteed to not start any of the input senders until the returned sender
 <c- p>});</c->
 <c- c1>// when final executes, it will print "the two args: 1, abc"</c->
 </pre>
-   <h4 class="heading settled" data-level="4.12.10" id="design-sender-adaptor-transfer_when_all"><span class="secno">4.12.10. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code></span><a class="self-link" href="#design-sender-adaptor-transfer_when_all"></a></h4>
+   <h4 class="heading settled" data-level="4.13.10" id="design-sender-adaptor-transfer_when_all"><span class="secno">4.13.10. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code></span><a class="self-link" href="#design-sender-adaptor-transfer_when_all"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>transfer_when_all</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-><c- p>,</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- p>...</c-><c- n>inputs</c->
@@ -3185,31 +3200,31 @@ It is guaranteed to not start any of the input senders until the returned sender
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- p>...</c-><c- n>inputs</c->
 <c- p>);</c->
 </pre>
-   <p>Similar to <a href="#design-sender-adaptor-when_all">§ 4.12.9 execution::when_all</a>, but returns a sender whose value <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑦">completion scheduler</a> is the provided scheduler.</p>
+   <p>Similar to <a href="#design-sender-adaptor-when_all">§ 4.13.9 execution::when_all</a>, but returns a sender whose value <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑦">completion scheduler</a> is the provided scheduler.</p>
    <p>See <a href="#design-join">§ 4.9 Senders are joinable</a>.</p>
-   <h4 class="heading settled" data-level="4.12.11" id="design-sender-adaptor-ensure_started"><span class="secno">4.12.11. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code></span><a class="self-link" href="#design-sender-adaptor-ensure_started"></a></h4>
+   <h4 class="heading settled" data-level="4.13.11" id="design-sender-adaptor-ensure_started"><span class="secno">4.13.11. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code></span><a class="self-link" href="#design-sender-adaptor-ensure_started"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>ensure_started</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sender</c->
 <c- p>);</c->
 </pre>
    <p>Once <code class="highlight"><c- n>ensure_started</c-></code> returns, it is known that the provided sender has been <a data-link-type="dfn" href="#connect" id="ref-for-connect">connected</a> and <code class="highlight"><c- n>start</c-></code> has been called on the resulting operation state (see <a href="#design-states">§ 5.2 Operation states represent work</a>); in other words, the work described by the provided sender has been submitted
 for execution on the appropriate execution contexts. Returns a sender which completes when the provided sender completes and sends values equivalent to those of the provided sender.</p>
-   <h3 class="heading settled" data-level="4.13" id="design-sender-consumers"><span class="secno">4.13. </span><span class="content">User-facing sender consumers</span><a class="self-link" href="#design-sender-consumers"></a></h3>
+   <h3 class="heading settled" data-level="4.14" id="design-sender-consumers"><span class="secno">4.14. </span><span class="content">User-facing sender consumers</span><a class="self-link" href="#design-sender-consumers"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-consumer">sender consumer</dfn> is an <a data-link-type="dfn" href="#algorithm" id="ref-for-algorithm②">algorithm</a> that takes one or more senders, which it may <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, as parameters, and does not return a sender.</p>
-   <h4 class="heading settled" data-level="4.13.1" id="design-sender-consumer-start_detached"><span class="secno">4.13.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code></span><a class="self-link" href="#design-sender-consumer-start_detached"></a></h4>
+   <h4 class="heading settled" data-level="4.14.1" id="design-sender-consumer-start_detached"><span class="secno">4.14.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code></span><a class="self-link" href="#design-sender-consumer-start_detached"></a></h4>
 <pre class="highlight"><c- b>void</c-> <c- k>auto</c-> <c- n>start_detached</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sender</c->
 <c- p>);</c->
 </pre>
    <p>Like <code class="highlight"><c- n>ensure_started</c-></code>, but does not return a value; if the provided sender sends an error instead of a value, <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> is called.</p>
-   <h4 class="heading settled" data-level="4.13.2" id="design-sender-consumer-sync_wait"><span class="secno">4.13.2. </span><span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code></span><a class="self-link" href="#design-sender-consumer-sync_wait"></a></h4>
+   <h4 class="heading settled" data-level="4.14.2" id="design-sender-consumer-sync_wait"><span class="secno">4.14.2. </span><span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code></span><a class="self-link" href="#design-sender-consumer-sync_wait"></a></h4>
 <pre class="highlight"><c- k>auto</c-> <c- nf>sync_wait</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sender</c->
 <c- p>)</c-> <c- k>requires</c-> <c- p>(</c-><i><c- n>always</c-><c- o>-</c-><c- n>sends</c-><c- o>-</c-><c- n>same</c-><c- o>-</c-><c- n>values</c-></i><c- p>(</c-><c- n>sender</c-><c- p>))</c->
     <c- o>-></c-> <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-></i><c- p>(</c-><c- n>sender</c-><c- p>)</c-><c- o>>></c-><c- p>;</c->
 </pre>
    <p><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code> is a sender consumer that submits the work described by the provided sender for execution, similarly to <code class="highlight"><c- n>ensure_started</c-></code>, except that it blocks <b>the current <code class="highlight"><c- n>std</c-><c- o>::</c-><c- kr>thread</c-></code> or thread of <code class="highlight"><c- n>main</c-></code></b> until the work is completed, and returns
-an optional tuple of values that were sent by the provided sender on its completion of work. Where <a href="#design-sender-factory-schedule">§ 4.11.1 execution::schedule</a> and <a href="#design-sender-factory-transfer_just">§ 4.11.3 execution::transfer_just</a> are meant to <i>enter</i> the domain of senders, <code class="highlight"><c- n>sync_wait</c-></code> is meant to <i>exit</i> the domain of
+an optional tuple of values that were sent by the provided sender on its completion of work. Where <a href="#design-sender-factory-schedule">§ 4.12.1 execution::schedule</a> and <a href="#design-sender-factory-transfer_just">§ 4.12.3 execution::transfer_just</a> are meant to <i>enter</i> the domain of senders, <code class="highlight"><c- n>sync_wait</c-></code> is meant to <i>exit</i> the domain of
 senders, retrieving the result of the task graph.</p>
    <p>If the provided sender sends an error instead of values, <code class="highlight"><c- n>sync_wait</c-></code> throws that error as an exception, or rethrows the original exception if the error is of type <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-></code>.</p>
    <p>If the provided sender sends the "done" signal instead of values, <code class="highlight"><c- n>sync_wait</c-></code> returns an empty optional.</p>
@@ -3217,7 +3232,7 @@ senders, retrieving the result of the task graph.</p>
    <p class="note" role="note"><span>Note:</span> This function is specified inside <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-></code>, and not inside <code class="highlight"><c- n>execution</c-></code>. This is because <code class="highlight"><c- n>sync_wait</c-></code> has to block the <i>current</i> execution agent, but determining what the current execution agent is is not reliable. Since the standard
 does not specify any functions on the current execution agent other than those in <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-></code>, this is the flavor of this function that is being proposed. If C++ ever obtains fibers, for instance, we expect that a variant of this function called <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_fiber</c-><c- o>::</c-><c- n>sync_wait</c-></code> would be provided. We also expect that runtimes with execution agents that use different synchronization mechanisms than <code class="highlight"><c- n>std</c-><c- o>::</c-><c- kr>thread</c-></code>'s will provide their own flavors of <code class="highlight"><c- n>sync_wait</c-></code> as well (assuming their execution agents have the means
 to block in a non-deadlock manner).</p>
-   <h3 class="heading settled" data-level="4.14" id="design-execute"><span class="secno">4.14. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code></span><a class="self-link" href="#design-execute"></a></h3>
+   <h3 class="heading settled" data-level="4.15" id="design-execute"><span class="secno">4.15. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code></span><a class="self-link" href="#design-execute"></a></h3>
    <p>In addition to the three categories of functions presented above, we also propose to include a convenience function for fire-and-forget eager one-way submission of an invocable to a scheduler, to fulfil the role of one-way executors from P0443.</p>
 <pre class="highlight"><c- b>void</c-> <c- n>execution</c-><c- o>::</c-><c- n>execute</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-> <c- k>auto</c-> <c- n>sched</c-><c- p>,</c->
@@ -3340,15 +3355,15 @@ equivalent to:</p>
    </ul>
    <p>If a sender adaptor requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adaptors are specified
 to dispatch to the strictly lazy ones; for an author of a specific sender, it is sufficient to specialize the strictly lazy version, to also achieve a specialization of the potentially eager one.</p>
-   <p>As has been described in <a href="#design-sender-adaptors">§ 4.12 User-facing sender adaptors</a>, whether a sender adaptor is guaranteed to perform strictly lazy submission or not is defined by the adaptor used to perform it; the adaptors whose names begin with <code class="highlight"><c- n>lazy_</c-></code> provide the strictly lazy guarantee.</p>
+   <p>As has been described in <a href="#design-sender-adaptors">§ 4.13 User-facing sender adaptors</a>, whether a sender adaptor is guaranteed to perform strictly lazy submission or not is defined by the adaptor used to perform it; the adaptors whose names begin with <code class="highlight"><c- n>lazy_</c-></code> provide the strictly lazy guarantee.</p>
    <h3 class="heading settled" data-level="5.6" id="design-fusion"><span class="secno">5.6. </span><span class="content">Lazy senders provide optimization opportunities</span><a class="self-link" href="#design-fusion"></a></h3>
    <p>Because lazy senders fundamentally <em>describe</em> work, instead of describing or representing the submission of said work to an execution context, and thanks to the flexibility of the customization of most sender algorithms, they provide an opportunity for fusing
 multiple algorithms in a sender chain together, into a single function that can later be submitted for execution by an execution context. There are two ways this can happen.</p>
    <p>The first (and most common) way for such optimizations to happen is thanks to the structure of the implementation: because all the work is done within callbacks invoked on the completion of an earlier sender, recursively up to the original source of computation,
 the compiler is able to see a chain of work described using senders as a tree of tail calls, allowing for inlining and removal of most of the sender machinery. In fact, when work is not submitted to execution contexts outside of the current thread of execution,
 compilers are capable of removing the senders abstraction entirely, while still allowing for composition of functions across different parts of a program.</p>
-   <p>The second way for this to occur is when a sender algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, <a href="#design-sender-adaptor-ensure_started">§ 4.12.11 execution::ensure_started</a> will be an identity transformation,
-because the sender algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy <a href="#design-sender-adaptor-bulk">§ 4.12.7 execution::bulk</a>s of compatible shapes, and merge them together into a single submission of a GPU kernel.</p>
+   <p>The second way for this to occur is when a sender algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, <a href="#design-sender-adaptor-ensure_started">§ 4.13.11 execution::ensure_started</a> will be an identity transformation,
+because the sender algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy <a href="#design-sender-adaptor-bulk">§ 4.13.7 execution::bulk</a>s of compatible shapes, and merge them together into a single submission of a GPU kernel.</p>
    <h3 class="heading settled" data-level="5.7" id="design-transition-details"><span class="secno">5.7. </span><span class="content">Execution context transitions are two-step</span><a class="self-link" href="#design-transition-details"></a></h3>
    <p>Because <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> takes a sender as its first argument, it is not actually directly customizable by the target scheduler. This is by design: the target scheduler may not know how to transition <i>from</i> a scheduler such as a CUDA scheduler;
 transitioning away from a GPU in an efficient manner requires making runtime calls that are specific to the GPU in question, and the same is usually true for other kinds of accelerators too (or for scheduler running on remote systems). To avoid this problem,
@@ -3366,7 +3381,7 @@ hard.</p>
    <p>The mechanism for this advertisement is the same as in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; the way to query the types is through <code class="highlight"><c- n>sender_traits</c-><c- o>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>tuple_like</c-><c- p>,</c-> <c- n>variant_like</c-><c- o>></c-></code>.</p>
    <p><code class="highlight"><c- n>sender_traits</c-><c- o>::</c-><c- n>value_types</c-></code> is a template that takes two arguments: one is a tuple-like template, the other is a variant-like template. The tuple-like argument is required to represent senders sending more than one value (such as <code class="highlight"><c- n>when_all</c-></code>). The variant-like
 argument is required to represent senders that choose which specific values to send at runtime.</p>
-   <p>There’s a choice made in the specification of <a href="#design-sender-consumer-sync_wait">§ 4.13.2 this_thread::sync_wait</a>: it returns a tuple of values sent by the sender passed to it, wrapped in <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>optional</c-></code> to handle the <code class="highlight"><c- n>set_done</c-></code> signal. However, this assumes that those values can be represented as a
+   <p>There’s a choice made in the specification of <a href="#design-sender-consumer-sync_wait">§ 4.14.2 this_thread::sync_wait</a>: it returns a tuple of values sent by the sender passed to it, wrapped in <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>optional</c-></code> to handle the <code class="highlight"><c- n>set_done</c-></code> signal. However, this assumes that those values can be represented as a
 tuple, like here:</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sends_1</c-> <c- o>=</c-> <c- p>...;</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sends_2</c-> <c- o>=</c-> <c- p>...;</c->
@@ -3680,6 +3695,11 @@ the shared stop state.</p>
     <c- k>concept</c-> <c- nc>scheduler</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
   <c- c1>// [execution.schedulers.queries], scheduler queries</c->
+  <c- k>enum</c-> <c- k>class</c-> <c- nc>forward_progress_guarantee</c-><c- p>;</c->
+  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+    <c- k>struct</c-> <c- nc>get_forward_progress_guarantee_t</c-><c- p>;</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_forward_progress_guarantee_t</c-> <c- n>get_forward_progress_guarantee</c-><c- p>{};</c->
+  <c- p>}</c->
 <c- p>}</c->
 
 <c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-> <c- p>{</c->
@@ -3903,7 +3923,29 @@ threads.</p>
 context of the scheduler. <i>—end note</i>]</p>
    </ol>
    <h4 class="heading settled" data-level="9.3.1" id="spec-execution.schedulers.queries"><span class="secno">9.3.1. </span><span class="content">Scheduler queries <b>[execution.schedulers.queries]</b></span><a class="self-link" href="#spec-execution.schedulers.queries"></a></h4>
-   <h5 class="heading settled" data-level="9.3.1.1" id="spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.1. </span><span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller</b></span><a class="self-link" href="#spec-execution.schedulers.queries.execute_may_block_caller"></a></h5>
+   <h5 class="heading settled" data-level="9.3.1.1" id="spec-execution.schedulers.queries.get_forward_progress_guarantee"><span class="secno">9.3.1.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-></code> <b>[execution.schedulers.queries.get_forward_progress_guarantee]</b></span><a class="self-link" href="#spec-execution.schedulers.queries.get_forward_progress_guarantee"></a></h5>
+<pre class="highlight"><c- k>enum</c-> <c- k>class</c-> <c- nc>forward_progress_guarantee</c-> <c- p>{</c->
+    <c- n>concurrent</c-><c- p>,</c->
+    <c- n>parallel</c-><c- p>,</c->
+    <c- n>weakly_parallel</c->
+<c- p>};</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-></code> is used to ask a scheduler about the forward progress guarantees of execution agents created by that scheduler.</p>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-></code> is ill-formed.
+Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression equivalent to:</p>
+     <ol>
+      <li data-md>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>, if this expression is well formed and its type is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forward_progress_guarantee</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forward_progress_guarantee</c-><c- o>::</c-><c- n>weakly_parallel</c-></code>.</p>
+     </ol>
+    <li data-md>
+     <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> for some scheduler <code class="highlight"><c- n>s</c-></code> returns <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forward_progress_guarantee</c-><c- o>::</c-><c- n>concurrent</c-></code>, all execution agents created by that scheduler shall provide the concurrent forward progress guarantee. If it returns <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forward_progress_guarantee</c-><c- o>::</c-><c- n>parallel</c-></code>, all execution agents created by that scheduler shall provide at least the parallel forward progress guarantee.</p>
+   </ol>
+   <h5 class="heading settled" data-level="9.3.1.2" id="spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.2. </span><span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller</b></span><a class="self-link" href="#spec-execution.schedulers.queries.execute_may_block_caller"></a></h5>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> is used to ask a scheduler <code class="highlight"><c- n>s</c-></code> whether a call <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> with any invocable <code class="highlight"><c- n>f</c-></code> may block the thread where such a call occurs.</p>
@@ -5214,8 +5256,8 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
    <li><a href="#execution-context">execution context</a><span>, in §4.1</span>
    <li><a href="#multi-shot-sender">multi-shot sender</a><span>, in §4.7</span>
    <li><a href="#operation-state">operation state</a><span>, in §5.2</span>
-   <li><a href="#pipeable">pipeable</a><span>, in §4.10</span>
-   <li><a href="#piped">piped</a><span>, in §4.10</span>
+   <li><a href="#pipeable">pipeable</a><span>, in §4.11</span>
+   <li><a href="#piped">piped</a><span>, in §4.11</span>
    <li><a href="#potentially-eager-submission">potentially eager submission</a><span>, in §5.5</span>
    <li><a href="#query">query</a><span>, in §3.2</span>
    <li><a href="#receiver">receiver</a><span>, in §5.1</span>
@@ -5223,12 +5265,12 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
    <li><a href="#scheduler">scheduler</a><span>, in §4.2</span>
    <li><a href="#send">send</a><span>, in §4.3</span>
    <li><a href="#sender">sender</a><span>, in §4.3</span>
-   <li><a href="#sender-adaptor">sender adaptor</a><span>, in §4.12</span>
+   <li><a href="#sender-adaptor">sender adaptor</a><span>, in §4.13</span>
    <li><a href="#sender-algorithms">sender algorithms</a><span>, in §4.4</span>
-   <li><a href="#sender-consumer">sender consumer</a><span>, in §4.13</span>
-   <li><a href="#sender-factory">sender factory</a><span>, in §4.11</span>
+   <li><a href="#sender-consumer">sender consumer</a><span>, in §4.14</span>
+   <li><a href="#sender-factory">sender factory</a><span>, in §4.12</span>
    <li><a href="#single-shot-sender">single-shot sender</a><span>, in §4.7</span>
-   <li><a href="#start">start</a><span>, in §4.12</span>
+   <li><a href="#start">start</a><span>, in §4.13</span>
    <li><a href="#strictly-lazy-submission">strictly lazy submission</a><span>, in §5.5</span>
   </ul>
   <h2 class="no-num no-ref heading settled" id="references"><span class="content">References</span><a class="self-link" href="#references"></a></h2>
@@ -5250,9 +5292,9 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <aside class="dfn-panel" data-for="algorithm">
    <b><a href="#algorithm">#algorithm</a></b><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-algorithm">4.11. User-facing sender factories</a>
-    <li><a href="#ref-for-algorithm①">4.12. User-facing sender adaptors</a>
-    <li><a href="#ref-for-algorithm②">4.13. User-facing sender consumers</a>
+    <li><a href="#ref-for-algorithm">4.12. User-facing sender factories</a>
+    <li><a href="#ref-for-algorithm①">4.13. User-facing sender adaptors</a>
+    <li><a href="#ref-for-algorithm②">4.14. User-facing sender consumers</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="send">
@@ -5260,11 +5302,11 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
    <ul>
     <li><a href="#ref-for-send">4.5.1. execution::get_completion_scheduler</a>
     <li><a href="#ref-for-send①">4.9. Senders are joinable</a>
-    <li><a href="#ref-for-send②">4.11.2. execution::just</a>
-    <li><a href="#ref-for-send③">4.11.3. execution::transfer_just</a>
-    <li><a href="#ref-for-send④">4.12.2. execution::then</a>
-    <li><a href="#ref-for-send⑤">4.12.4. execution::let_*</a>
-    <li><a href="#ref-for-send⑥">4.12.7. execution::bulk</a>
+    <li><a href="#ref-for-send②">4.12.2. execution::just</a>
+    <li><a href="#ref-for-send③">4.12.3. execution::transfer_just</a>
+    <li><a href="#ref-for-send④">4.13.2. execution::then</a>
+    <li><a href="#ref-for-send⑤">4.13.4. execution::let_*</a>
+    <li><a href="#ref-for-send⑥">4.13.7. execution::bulk</a>
     <li><a href="#ref-for-send⑦">5.8. Most senders are typed</a>
    </ul>
   </aside>
@@ -5280,11 +5322,11 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
     <li><a href="#ref-for-completion-schedulers">4.5.1. execution::get_completion_scheduler</a>
     <li><a href="#ref-for-completion-schedulers①">4.6. Execution context transitions are explicit</a>
     <li><a href="#ref-for-completion-schedulers②">4.9. Senders are joinable</a>
-    <li><a href="#ref-for-completion-schedulers③">4.11.2. execution::just</a>
-    <li><a href="#ref-for-completion-schedulers④">4.11.3. execution::transfer_just</a>
-    <li><a href="#ref-for-completion-schedulers⑤">4.12.5. execution::on</a>
-    <li><a href="#ref-for-completion-schedulers⑥">4.12.9. execution::when_all</a>
-    <li><a href="#ref-for-completion-schedulers⑦">4.12.10. execution::transfer_when_all</a>
+    <li><a href="#ref-for-completion-schedulers③">4.12.2. execution::just</a>
+    <li><a href="#ref-for-completion-schedulers④">4.12.3. execution::transfer_just</a>
+    <li><a href="#ref-for-completion-schedulers⑤">4.13.5. execution::on</a>
+    <li><a href="#ref-for-completion-schedulers⑥">4.13.9. execution::when_all</a>
+    <li><a href="#ref-for-completion-schedulers⑦">4.13.10. execution::transfer_when_all</a>
     <li><a href="#ref-for-completion-schedulers⑧">5.4. Sender algorithms are customizable</a>
    </ul>
   </aside>
@@ -5317,7 +5359,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <aside class="dfn-panel" data-for="connect">
    <b><a href="#connect">#connect</a></b><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-connect">4.12.11. execution::ensure_started</a>
+    <li><a href="#ref-for-connect">4.13.11. execution::ensure_started</a>
    </ul>
   </aside>
 <script>/* script-dfn-panel */
