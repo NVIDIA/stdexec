@@ -717,7 +717,7 @@ execution::sender auto vals = execution::transfer_just(
     1, 2, 3
 );
 execution::sender auto snd = execution::then(pred, [](auto... args) {
-    std::print(args..);
+    std::print(args...);
 });
 // when snd is executed, it will print "123"
 </pre>
@@ -784,7 +784,7 @@ execution::sender auto lazy_then(
 <pre highlight="c++">
 execution::sender auto input = get_input();
 execution::sender auto snd = execution::then(input, [](auto... args) {
-    std::print(args..);
+    std::print(args...);
 });
 // snd describes the work described by pred
 // followed by printing all of the values sent by pred
