@@ -671,16 +671,67 @@ will typically need to be able to cope with senders that might ignore a stop-req
 
 ### Cancellation and eager operations ###
 
-TODO: Talk about limitations of using cancellation with operation that might execute eagerly.
+Some of the algorithms proposed in this paper support executing their logic eagerly. i.e. before the
+returned sender has been connected to a receiver and started. This has a number of implications with
+respect to cancellation.
 
-* Eager operations won't have access to the caller's stop-token before they start executing.
-  Will need to wait until the sender is connected/started before it can get access to the stop-token of the caller.
-* What happens if the destructor of an eager-sender is run before the operation is connected?
-* What happens if the destructor of an operation-state created from an eager-sender is run before `execution::start()` is called?
-* Should it be required that the return from the destructors strongly-happens after the completion of any execution of the corresponding operations launched by that sender?
-* Should it be required that the destructor issues a stop-request before blocking on completion of the operation?
-* Risks of this approach are deadlocks if the destructor is run on an execution context with weak forward progress.
-  e.g. a thread-pool with a maximum thread-count
+One of the questions that arises with APIs that can potentially return eagerly-executing senders is
+"What happens when those senders are destructed without a call to `execution::connect`?" or similarly,
+"What happens if a call to `execution::connect` is made, but the returned operation-state is destroyed
+before `execution::start` is called on that operation-state"?
+
+In these cases, the operation represented by the sender is potentially executing concurrently in another
+thread at the time that the destructor of the sender and/or operation-state is running. In the case that
+the operation has not completed executing by the time that the destructor is run we need to decide what
+the semantics of the destructor is.
+
+There are three main strategies that can be adopted here:
+1. Make this undefined-behaviour - the caller must ensure that any eagerly-executing sender is always joined by connecting and starting that sender.
+   This approach is generally pretty hostile to programmers, particularly in the presence of exceptions, and is thus not recommended.
+2. Detach from the computation - let the operation continue in the background - like an implicit call to `std::thread::detach()`.
+   While this approach can work in some circumstances for some kinds of applications, in general it is also pretty user-hostile
+   as it makes it difficult to reason about the safe destruction of resources used by these eager operations. In general, you'll
+   need some kind of garbage collection, e.g. `std::shared_ptr`, to ensure resources are kept alive until the operations complete.
+3. Block in the destructor until the operation completes.
+   This approach is probably the safest to use as it preserves the structured nature of the concurrent operations,
+   but also introduces the potential for deadlocking the application if the completion of the operation depends on
+   the current thread making forward progress.
+
+The risk of deadlock might occur, for example, if a thread-pool with a small number of threads is executing
+code that creates a sender representing an eagerly-executing operation and then calls the destructor of that
+sender without joining it (e.g. because an exception was thrown). If the current thread blocks waiting for
+that eager operation to complete and that eager operation cannot complete until some entry enqueued to the
+thread-pool's queue of work is run then the thread may wait for an indefinite amount of time. If all thread
+of the thread-pool are simultaneously performing such blocking operations then deadlock can result.
+
+There are also minor variations on each of these choices. For example:
+1a. Call `std::terminate` if an eager sender is destructed without joining it.
+    This is the approach that `std::thread` destructor takes).
+2a. Request cancellation of the operation before detaching.
+    This reduces the changes of operations continuing to run indefinitely in the background
+    once they have been detached but does not solve the lifetime-related challenges.
+3a. Request cancellation of the operation before blocking on its completion.
+    This is the strategy that `std::jthread` uses for its destructor.
+    It reduces the risk of deadlock but does not eliminate it.
+
+
+Another implication of the use of eager operations with regards to cancellation is that the
+eagerly executing operation will not have access to the caller's stoppable-token until the
+sender is connected to a receiver. If we still want to be able to have the eager operation
+able to be cancelled then the eager operation will need to create a new stop-source and pass
+its associated stop-token down to child operations. Then when the returned sender is eventually
+connected it will 
+
+As the eager operation does not know at the time that it is launched what the type of the receiver
+is going to be, and thus whether or not the stop-token returned from `execution::get_stop_token`
+is an `std::unstoppable_token` or not, the eager operation is going to need to assume it might be
+later connected to a receiver with a stoppable-token that might actually issue a stop-request.
+Thus it needs to incur the runtime overhead of supporting cancellation, even if cancellation will
+never be requested by the caller.
+
+The eager operation will also need to do this to support sending a stop-request to the eager
+operation in the case that the sender representing the eager work is destroyed before it has
+been joined (assuming strategy 2a or 3a listed above is chosen).
 
 ### Cancellation is inherently racy ###
 
@@ -694,8 +745,9 @@ TODO: Finish describing this
   * if starting the operation befor launching then may need synchronisation to signal when the stop-callback has been subsequently registered so that if the operation completes on another thread it doesn't try to deregister the stop-callback before it's finished registering
 * For example of how this is solved see following async_read() example.
 
-
 ### Cancellation Example: Socket async_read() ###
+
+TODO: Move this code-example to an appendix rather than having it inline here.
 
 To get a better feel for how this interface might be used by low-level operations see this example implementation
 of a cancellable `async_read()` operation for a Windows Socket.
@@ -823,6 +875,107 @@ struct recv_sender {
 recv_sender async_read(SOCKET s, void* data, size_t len) {
     return recv_sender{s, data, len};
 }
+```
+
+### Cancellation example: Simplified OS call
+
+TODO: Consider using this simplified example showing the careful synchronisation needed
+for handling cancellation of low-level OS operations.
+Is it really much smaller than the above WSARecv example?
+
+```c++
+int begin_async_os_operation(int fd, void* buf, size_t len, void(*cb)(int, size_t, void*), void* data);
+void cancel_async_os_operation(int fd, void* data);
+
+template<typename Receiver>
+struct os_operation_state {
+
+  explicit os_operation_state(int fd, void* buf, size_t len, Receiver r)
+  : fd(fd), buf(buf), len(len), receiver(std::move(r)) {}
+
+private:
+  struct on_stop_requested {
+    os_operation_state& op;
+
+    void operator()() noexcept {
+      cancel_async_os_operation(op.fd, &op);
+    }
+  };
+
+  friend void tag_invoke(std::tag_t<std::execution::start>, os_operation_state& self) noexcept {
+    auto stopToken = std::execution::get_stop_token(self.receiver);
+    const bool stopPossible = stopToken.stop_possible();
+    if (!stopPossible) {
+      self.ready.store(true, std::memory_order_relaxed);
+    }
+
+    int err = begin_async_os_operation(self.fd, self.buf, self.len, &on_completion, static_cast<void*>(&self));
+    if (err != 0) {
+      // Failure to launch
+      self.bytesTransferred = 0;
+      self.resultCode = std::error_code{err, std::system_category()};
+      self.deliver_result();
+      return;
+    }
+
+    if (stopPossible) {
+      // Subscribe stop-callback only after we have finished launching the operation.
+      // Otherwise a stop-request issued concurrently on the other thread might miss
+      // cancelling the operation.
+      self.stopCallback.emplace(std::move(stopToken), on_stop_requested{self});
+
+      // Signal finished subscribing stop-callback
+      self.mark_ready();
+    }
+  }
+
+  static void on_completion(int errCode, size_t bytesTransferred, void* data) noexcept {
+    auto& self = *static_cast<os_operation_state*>(data);
+    self.bytesTransferred = bytesTransferred;
+    self.resultCode = std::error_code{errCode, std::system_category()};
+    self.mark_ready();
+  }
+
+  void mark_ready() noexcept {
+    if (self.ready.load(std::memory_order_acquire) ||
+        self.ready.exchange(true, std::memory_order_acq_rel)) {
+      self.stopCallback.reset();
+      self.deliver_result();
+    }
+  }
+
+  void deliver_result() noexcept {
+    if (self.resultCode && self.bytesTransferred == 0) {
+      if (self.resultCode == std::errc::operation_canceled) {
+        std::execution::set_done(std::move(self.receiver));
+      } else {
+        std::execution::set_error(std::move(self.receiver), self.resultCode);
+      }
+    } else {
+      std::execution::set_value(std::move(self.receiver), self.resultCode, self.bytesTransferred);
+    }
+  }
+
+  int fd;
+  void* buf;
+  size_t len;
+  Receiver receiver;
+  std::optional<typename std::execution::stop_token_type_t<Receiver>::template callback_type<on_stop_requested>> stopCallback;
+  std::atomic<bool> ready{false};
+  size_t bytesTransferred;
+  std::error_code resultCode;
+};
+
+struct os_operation_sender {
+  int fd;
+  void* buf;
+  size_t len;
+
+  template<typename Receiver>
+  friend os_operation_state<Receiver> tag_invoke(std::tag_t<std::execution::connect>, os_operation_sender&& sender, Receiver receiver) {
+    return os_operation_state<Receiver>{sender.fd, sender.buf, sender.len, std::move(receiver)};
+  }
+};
 ```
 
 ### Cancellation design status ###
