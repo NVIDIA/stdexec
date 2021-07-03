@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R1<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-07-01">2021-07-01</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-07-02">2021-07-02</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4027,7 +4027,8 @@ expression equivalent to:</p>
    <h5 class="heading settled" data-level="9.4.4.3" id="spec-execution.receivers.queries.get_stop_token"><span class="secno">9.4.4.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> <b>[execution.receivers.queries.get_stop_token]</b></span><a class="self-link" href="#spec-execution.receivers.queries.get_stop_token"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> is used to ask a receiver object for an <i>associated stop token</i> to be used to send stop requests by a sender it is connected to.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> is used to ask a receiver object for an <i>associated stop token</i> of that receiver. A sender connected with that receiver can use this stop token to check whether a stop request has been made. [<i>Note</i>: such
+a stop token being signalled does not bind the sender to actually cancel any work. --<i>end note</i>]</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, let <code class="highlight"><c- n>R</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>r</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>R</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression equivalent to:</p>
      <ol>
@@ -4036,6 +4037,10 @@ expression equivalent to:</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>never_stop_token</c-><c- p>{}</c-></code>.</p>
      </ol>
+    <li data-md>
+     <p>Let <code class="highlight"><c- n>r</c-></code> be a receiver, <code class="highlight"><c- n>s</c-></code> be a sender, and <code class="highlight"><c- n>op_state</c-></code> be an operation state resulting from an <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> call. Let <code class="highlight"><c- n>token</c-></code> be a stop token resulting from an <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> call. <code class="highlight"><c- n>token</c-></code> must remain valid at least until a call to
+a receiver completion-signal function of <code class="highlight"><c- n>r</c-></code> returns successfully. [<i>Note</i>: this means that, unless it knows about further guarantees provided by the receiver <code class="highlight"><c- n>r</c-></code>, the implementation of <code class="highlight"><c- n>op_state</c-></code> should not use <code class="highlight"><c- n>token</c-></code> after it makes a call to a receiver
+completion-signal function of <code class="highlight"><c- n>r</c-></code>. This also implies that stop callbacks registered on <code class="highlight"><c- n>token</c-></code> by the implementation of <code class="highlight"><c- n>op_state</c-></code> or <code class="highlight"><c- n>s</c-></code> must be destroyed before such a call to a receiver completion-signal function of <code class="highlight"><c- n>r</c-></code>. --<i>end note</i>]</p>
    </ol>
    <h3 class="heading settled" data-level="9.5" id="spec-execution.op_state"><span class="secno">9.5. </span><span class="content">Operation states <b>[execution.op_state]</b></span><a class="self-link" href="#spec-execution.op_state"></a></h3>
    <ol>
