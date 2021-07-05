@@ -429,7 +429,7 @@ When further work is attached to that sender by invoking sender algorithms, that
 
 `get_completion_scheduler` is a query that retrieves the [=completion scheduler=] for a specific completion signal from a sender.
 Calling `get_completion_scheduler` on a sender that does not have a completion scheduler for a given signal is ill-formed.
-If a scheduler advertises a completion scheduler for a signal in this way, that sender <b>must</b> ensure that it [=send|sends=] that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.
+If a sender advertises a completion scheduler for a signal in this way, that sender <b>must</b> ensure that it [=send|sends=] that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.
 See [[#design-propagation]] for more details.
 
 <pre highlight="c++">
