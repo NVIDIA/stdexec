@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R1<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-07-02">2021-07-02</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-07-05">2021-07-05</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2768,7 +2768,7 @@ When further work is attached to that sender by invoking sender algorithms, that
    <h4 class="heading settled" data-level="4.5.1" id="design-sender-query-get_completion_scheduler"><span class="secno">4.5.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-></code></span><a class="self-link" href="#design-sender-query-get_completion_scheduler"></a></h4>
    <p><code class="highlight"><c- n>get_completion_scheduler</c-></code> is a query that retrieves the <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers">completion scheduler</a> for a specific completion signal from a sender.
 Calling <code class="highlight"><c- n>get_completion_scheduler</c-></code> on a sender that does not have a completion scheduler for a given signal is ill-formed.
-If a scheduler advertises a completion scheduler for a signal in this way, that sender <b>must</b> ensure that it <a data-link-type="dfn" href="#send" id="ref-for-send">sends</a> that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.
+If a sender advertises a completion scheduler for a signal in this way, that sender <b>must</b> ensure that it <a data-link-type="dfn" href="#send" id="ref-for-send">sends</a> that signal on an execution agent belonging to an execution context represented by a scheduler returned from this function.
 See <a href="#design-propagation">§ 4.5 Senders can propagate completion schedulers</a> for more details.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>cpu_sched</c-> <c- o>=</c-> <c- n>new_thread_scheduler</c-><c- p>{};</c->
 <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>gpu_sched</c-> <c- o>=</c-> <c- n>cuda</c-><c- o>::</c-><c- n>scheduler</c-><c- p>();</c->
