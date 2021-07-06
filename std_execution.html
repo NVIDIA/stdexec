@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R1<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-07-05">2021-07-05</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-07-06">2021-07-06</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2231,7 +2231,8 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
     <li>
      <a href="#revisions"><span class="secno">2</span> <span class="content">Revision history</span></a>
      <ol class="toc">
-      <li><a href="#r0"><span class="secno">2.1</span> <span class="content">R0</span></a>
+      <li><a href="#r1"><span class="secno">2.1</span> <span class="content">R1</span></a>
+      <li><a href="#r0"><span class="secno">2.2</span> <span class="content">R0</span></a>
      </ol>
     <li>
      <a href="#design-intro"><span class="secno">3</span> <span class="content">Design - introduction</span></a>
@@ -2663,8 +2664,22 @@ essential when writing user code using standard execution concepts; we have also
    </ul>
    <p>Before this proposal is approved, we will present a new implementation of this proposal written from the specification and intended as a contribution to libc++. This implementation will demonstrate the viability of the design across the use cases and execution contexts that the committee has identified as essential.</p>
    <h2 class="heading settled" data-level="2" id="revisions"><span class="secno">2. </span><span class="content">Revision history</span><a class="self-link" href="#revisions"></a></h2>
-   <h3 class="heading settled" data-level="2.1" id="r0"><span class="secno">2.1. </span><span class="content">R0</span><a class="self-link" href="#r0"></a></h3>
-   <p>Initial revision, still in progress.</p>
+   <h3 class="heading settled" data-level="2.1" id="r1"><span class="secno">2.1. </span><span class="content">R1</span><a class="self-link" href="#r1"></a></h3>
+   <p>The changes since R0 are as follows:</p>
+   <ul>
+    <li data-md>
+     <p>Added a new concept, <code class="highlight"><c- n>sender_of</c-></code>.</p>
+    <li data-md>
+     <p>Added a new scheduler query, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code>.</p>
+    <li data-md>
+     <p>Added a new scheduler query, <code class="highlight"><c- n>get_forward_progress_guarantee</c-></code>.</p>
+    <li data-md>
+     <p>Removed the <code class="highlight"><c- n>unschedule</c-></code> adaptor.</p>
+    <li data-md>
+     <p>Various fixes of typos and bugs.</p>
+   </ul>
+   <h3 class="heading settled" data-level="2.2" id="r0"><span class="secno">2.2. </span><span class="content">R0</span><a class="self-link" href="#r0"></a></h3>
+   <p>Initial revision.</p>
    <h2 class="heading settled" data-level="3" id="design-intro"><span class="secno">3. </span><span class="content">Design - introduction</span><a class="self-link" href="#design-intro"></a></h2>
    <p>The following four sections describe the entirety of the proposed design.</p>
    <ul>
