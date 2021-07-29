@@ -2075,7 +2075,7 @@ enum class forward_progress_guarantee {
 5. If `sender_traits<S>::error_types<Variant>` for some sender type `S` is well formed, it shall be a type `Variant<E0, E1, ..., EN>`, where the types `E0` through `EN` are the types the sender `S` passes as arguments to `execution::set_error` after a receiver
     object. If such sender `S` invokes `execution::set_error(r, e)` for some receiver `r`, where `decltype(e)` is not one of the types `E0` through `EN`, the program is ill-formed with no diagnostic required.
 
-6. If `sender_traits<S>::sends_done` is well formed and `true`, and such sender `S` invokes `execution::set_done(r)` for some receiver `r`, the program is ill-formed with no diagnostic required.
+6. If `sender_traits<S>::sends_done` is well formed and `false`, and such sender `S` invokes `execution::set_done(r)` for some receiver `r`, the program is ill-formed with no diagnostic required.
 
 7. Users may specialize `sender_traits` on program-defined types.
 
