@@ -2167,14 +2167,14 @@ enum class forward_progress_guarantee {
 
       template&lt;receiver R>
         requires receiver_of&lt;R, Ts...> && (copyable&ltTs>... &&)
-      auto tag_invoke(execution::connect_t, R && r) const & {
-        return operation_state&lt;R>{ vs_, std::forward&lt;R>(r) };
+      friend auto tag_invoke(execution::connect_t, const <i>just-sender</i>& j, R && r) {
+        return operation_state&lt;R>{ j.vs_, std::forward&lt;R>(r) };
       }
 
       template&lt;receiver R>
         requires receiver_of&lt;R, Ts...>
-      auto tag_invoke(execution::connect_t, R && r) && {
-        return operation_state&lt;R>{ std::move(vs_), std::forward&lt;R>(r) };
+      friend auto tag_invoke(execution::connect_t, <i>just-sender</i>&& j, R && r) {
+        return operation_state&lt;R>{ std::move(j.vs_), std::forward&lt;R>(r) };
       }
     };
 
