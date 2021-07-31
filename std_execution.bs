@@ -2152,17 +2152,15 @@ enum class forward_progress_guarantee {
         std::tuple&lt;Ts...> vs_;
         R r_;
 
-        void tag_invoke(execution::start_t)
-          noexcept(noexcept(
-            execution::set_value(declval&lt;R>(), declval&lt;Ts>()...)
-          )) {
+        friend void tag_invoke(execution::start_t, operation_state& s)
+          noexcept {
           try {
-            apply([&](Ts &... values_) {
-              execution::set_value(move(r_), move(values_)...);
-            }, vs_);
+            apply([&s](Ts &... values_) {
+              execution::set_value(std::move(s.r_), std::move(values_)...);
+            }, s.vs_);
           }
           catch (...) {
-            execution::set_error(move(r_), current_exception());
+            execution::set_error(std::move(s.r_), current_exception());
           }
         }
       };
