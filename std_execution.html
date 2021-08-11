@@ -12,7 +12,7 @@
  *   - .toc for the Table of Contents (<ol class="toc">)
  *     + <span class="secno"> for the section numbers
  *   - #toc for the Table of Contents (<nav id="toc">)
- *   - ul.index for Indices (<a href="#ref">term</a><span>, in §N.M</span>)
+ *   - ul.index for Indices (<a href="#ref">term</a><span>, in § N.M</span>)
  *   - table.index for Index Tables (e.g. for properties or elements)
  *
  * Structural Markup
@@ -1560,7 +1560,7 @@ Possible extra rowspan handling
     blockquote c-[vi] { color: inherit; } /* Name.Variable.Instance */
     blockquote c-[il] { color: inherit; } /* Literal.Number.Integer.Long */
   </style>
-  <meta content="Bikeshed version 59d067506, updated Fri Jul 23 15:43:29 2021 -0700" name="generator">
+  <meta content="Bikeshed version 4f053d00e, updated Tue Aug 10 14:13:32 2021 -0700" name="generator">
   <link href="https://wg21.link/P2300" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
 <style>
@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R2<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-07-27">2021-07-27</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-08-11">2021-08-11</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -3014,7 +3014,7 @@ We believe sender consumers read better with function call syntax.</p>
     <c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c->
 <c- p>);</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>pred</c-><c- p>,</c-> <c- p>[](</c-><c- k>auto</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
-    <c- n>std</c-><c- o>::</c-><c- n>print</c-><c- p>(</c-><c- n>args</c-><c- p>..);</c->
+    <c- n>std</c-><c- o>::</c-><c- n>print</c-><c- p>(</c-><c- n>args</c-><c- p>...);</c->
 <c- p>});</c->
 <c- c1>// when snd is executed, it will print "123"</c->
 </pre>
@@ -3062,7 +3062,7 @@ but not guaranteed, to start senders.</p>
    <p><code class="highlight"><c- n>lazy_then</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-> <c- o>=</c-> <c- n>get_input</c-><c- p>();</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>input</c-><c- p>,</c-> <c- p>[](</c-><c- k>auto</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
-    <c- n>std</c-><c- o>::</c-><c- n>print</c-><c- p>(</c-><c- n>args</c-><c- p>..);</c->
+    <c- n>std</c-><c- o>::</c-><c- n>print</c-><c- p>(</c-><c- n>args</c-><c- p>...);</c->
 <c- p>});</c->
 <c- c1>// snd describes the work described by pred</c->
 <c- c1>// followed by printing all of the values sent by pred</c->
@@ -5265,44 +5265,44 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <h2 class="no-num no-ref heading settled" id="index"><span class="content">Index</span><a class="self-link" href="#index"></a></h2>
   <h3 class="no-num no-ref heading settled" id="index-defined-here"><span class="content">Terms defined by this specification</span><a class="self-link" href="#index-defined-here"></a></h3>
   <ul class="index">
-   <li><a href="#algorithm">algorithm</a><span>, in §3.2</span>
-   <li><a href="#completion-schedulers">completion schedulers</a><span>, in §4.5</span>
-   <li><a href="#connect">connect</a><span>, in §5.3</span>
-   <li><a href="#execution-context">execution context</a><span>, in §4.1</span>
-   <li><a href="#multi-shot-sender">multi-shot sender</a><span>, in §4.7</span>
-   <li><a href="#operation-state">operation state</a><span>, in §5.2</span>
-   <li><a href="#pipeable">pipeable</a><span>, in §4.11</span>
-   <li><a href="#piped">piped</a><span>, in §4.11</span>
-   <li><a href="#potentially-eager-submission">potentially eager submission</a><span>, in §5.5</span>
-   <li><a href="#query">query</a><span>, in §3.2</span>
-   <li><a href="#receiver">receiver</a><span>, in §5.1</span>
-   <li><a href="#receiver-contract">receiver contract</a><span>, in §5.1</span>
-   <li><a href="#scheduler">scheduler</a><span>, in §4.2</span>
-   <li><a href="#send">send</a><span>, in §4.3</span>
-   <li><a href="#sender">sender</a><span>, in §4.3</span>
-   <li><a href="#sender-adaptor">sender adaptor</a><span>, in §4.13</span>
-   <li><a href="#sender-algorithms">sender algorithms</a><span>, in §4.4</span>
-   <li><a href="#sender-consumer">sender consumer</a><span>, in §4.14</span>
-   <li><a href="#sender-factory">sender factory</a><span>, in §4.12</span>
-   <li><a href="#single-shot-sender">single-shot sender</a><span>, in §4.7</span>
-   <li><a href="#start">start</a><span>, in §4.13</span>
-   <li><a href="#strictly-lazy-submission">strictly lazy submission</a><span>, in §5.5</span>
+   <li><a href="#algorithm">algorithm</a><span>, in § 3.2</span>
+   <li><a href="#completion-schedulers">completion schedulers</a><span>, in § 4.5</span>
+   <li><a href="#connect">connect</a><span>, in § 5.3</span>
+   <li><a href="#execution-context">execution context</a><span>, in § 4.1</span>
+   <li><a href="#multi-shot-sender">multi-shot sender</a><span>, in § 4.7</span>
+   <li><a href="#operation-state">operation state</a><span>, in § 5.2</span>
+   <li><a href="#pipeable">pipeable</a><span>, in § 4.11</span>
+   <li><a href="#piped">piped</a><span>, in § 4.11</span>
+   <li><a href="#potentially-eager-submission">potentially eager submission</a><span>, in § 5.5</span>
+   <li><a href="#query">query</a><span>, in § 3.2</span>
+   <li><a href="#receiver">receiver</a><span>, in § 5.1</span>
+   <li><a href="#receiver-contract">receiver contract</a><span>, in § 5.1</span>
+   <li><a href="#scheduler">scheduler</a><span>, in § 4.2</span>
+   <li><a href="#send">send</a><span>, in § 4.3</span>
+   <li><a href="#sender">sender</a><span>, in § 4.3</span>
+   <li><a href="#sender-adaptor">sender adaptor</a><span>, in § 4.13</span>
+   <li><a href="#sender-algorithms">sender algorithms</a><span>, in § 4.4</span>
+   <li><a href="#sender-consumer">sender consumer</a><span>, in § 4.14</span>
+   <li><a href="#sender-factory">sender factory</a><span>, in § 4.12</span>
+   <li><a href="#single-shot-sender">single-shot sender</a><span>, in § 4.7</span>
+   <li><a href="#start">start</a><span>, in § 4.13</span>
+   <li><a href="#strictly-lazy-submission">strictly lazy submission</a><span>, in § 5.5</span>
   </ul>
   <h2 class="no-num no-ref heading settled" id="references"><span class="content">References</span><a class="self-link" href="#references"></a></h2>
   <h3 class="no-num no-ref heading settled" id="informative"><span class="content">Informative References</span><a class="self-link" href="#informative"></a></h3>
   <dl>
    <dt id="biblio-n4885">[N4885]
-   <dd>Thomas Köppe. <a href="https://wg21.link/n4885">Working Draft, Standard for Programming Language C++</a>. 17 March 2021. URL: <a href="https://wg21.link/n4885">https://wg21.link/n4885</a>
+   <dd>Thomas Köppe. <a href="https://wg21.link/n4885"><cite>Working Draft, Standard for Programming Language C++</cite></a>. 17 March 2021. URL: <a href="https://wg21.link/n4885">https://wg21.link/n4885</a>
    <dt id="biblio-p0443r14">[P0443R14]
-   <dd>Jared Hoberock, Michael Garland, Chris Kohlhoff, Chris Mysen, H. Carter Edwards, Gordon Brown, D. S. Hollman. <a href="https://wg21.link/p0443r14">A Unified Executors Proposal for C++</a>. 15 September 2020. URL: <a href="https://wg21.link/p0443r14">https://wg21.link/p0443r14</a>
+   <dd>Jared Hoberock, Michael Garland, Chris Kohlhoff, Chris Mysen, H. Carter Edwards, Gordon Brown, D. S. Hollman. <a href="https://wg21.link/p0443r14"><cite>A Unified Executors Proposal for C++</cite></a>. 15 September 2020. URL: <a href="https://wg21.link/p0443r14">https://wg21.link/p0443r14</a>
    <dt id="biblio-p1662r0">[P1662R0]
-   <dd>Lewis Baker. <a href="https://wg21.link/p1662r0">Adding async RAII support to coroutines</a>. 17 June 2019. URL: <a href="https://wg21.link/p1662r0">https://wg21.link/p1662r0</a>
+   <dd>Lewis Baker. <a href="https://wg21.link/p1662r0"><cite>Adding async RAII support to coroutines</cite></a>. 17 June 2019. URL: <a href="https://wg21.link/p1662r0">https://wg21.link/p1662r0</a>
    <dt id="biblio-p1895r0">[P1895R0]
-   <dd>Lewis Baker, Eric Niebler, Kirk Shoop. <a href="https://wg21.link/p1895r0">tag_invoke: A general pattern for supporting customisable functions</a>. 8 October 2019. URL: <a href="https://wg21.link/p1895r0">https://wg21.link/p1895r0</a>
+   <dd>Lewis Baker, Eric Niebler, Kirk Shoop. <a href="https://wg21.link/p1895r0"><cite>tag_invoke: A general pattern for supporting customisable functions</cite></a>. 8 October 2019. URL: <a href="https://wg21.link/p1895r0">https://wg21.link/p1895r0</a>
    <dt id="biblio-p1897r3">[P1897R3]
-   <dd>Lee Howes. <a href="https://wg21.link/p1897r3">Towards C++23 executors: A proposal for an initial set of algorithms</a>. 16 May 2020. URL: <a href="https://wg21.link/p1897r3">https://wg21.link/p1897r3</a>
+   <dd>Lee Howes. <a href="https://wg21.link/p1897r3"><cite>Towards C++23 executors: A proposal for an initial set of algorithms</cite></a>. 16 May 2020. URL: <a href="https://wg21.link/p1897r3">https://wg21.link/p1897r3</a>
    <dt id="biblio-p2175r0">[P2175R0]
-   <dd>Lewis Baker. <a href="https://wg21.link/p2175r0">Composable cancellation for sender-based async operations</a>. 15 December 2020. URL: <a href="https://wg21.link/p2175r0">https://wg21.link/p2175r0</a>
+   <dd>Lewis Baker. <a href="https://wg21.link/p2175r0"><cite>Composable cancellation for sender-based async operations</cite></a>. 15 December 2020. URL: <a href="https://wg21.link/p2175r0">https://wg21.link/p2175r0</a>
   </dl>
   <aside class="dfn-panel" data-for="algorithm">
    <b><a href="#algorithm">#algorithm</a></b><b>Referenced in:</b>
