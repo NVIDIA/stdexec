@@ -4303,31 +4303,29 @@ diagnostic required.</p>
     <c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-> <c- n>vs_</c-><c- p>;</c->
     <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
 
-    <c- b>void</c-> <c- nf>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start_t</c-><c- p>)</c->
-      <c- k>noexcept</c-><c- p>(</c-><c- k>noexcept</c-><c- p>(</c->
-        <c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(),</c-> <c- n>declval</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>()...)</c->
-      <c- p>))</c-> <c- p>{</c->
+    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c->
+      <c- k>noexcept</c-> <c- p>{</c->
       <c- k>try</c-> <c- p>{</c->
-        <c- n>apply</c-><c- p>([</c-><c- o>&amp;</c-><c- p>](</c-><c- n>Ts</c-> <c- o>&amp;</c-><c- p>...</c-> <c- n>values_</c-><c- p>)</c-> <c- p>{</c->
-          <c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>move</c-><c- p>(</c-><c- n>r_</c-><c- p>),</c-> <c- n>move</c-><c- p>(</c-><c- n>values_</c-><c- p>)...);</c->
-        <c- p>},</c-> <c- n>vs_</c-><c- p>);</c->
+        <c- n>apply</c-><c- p>([</c-><c- o>&amp;</c-><c- n>s</c-><c- p>](</c-><c- n>Ts</c-> <c- o>&amp;</c-><c- p>...</c-> <c- n>values_</c-><c- p>)</c-> <c- p>{</c->
+          <c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>values_</c-><c- p>)...);</c->
+        <c- p>},</c-> <c- n>s</c-><c- p>.</c-><c- n>vs_</c-><c- p>);</c->
       <c- p>}</c->
       <c- k>catch</c-> <c- p>(...)</c-> <c- p>{</c->
-        <c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>move</c-><c- p>(</c-><c- n>r_</c-><c- p>),</c-> <c- n>current_exception</c-><c- p>());</c->
+        <c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>current_exception</c-><c- p>());</c->
       <c- p>}</c->
     <c- p>}</c->
   <c- p>};</c->
 
   <c- k>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
     <c- k>requires</c-> <c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>Ts</c-><c- p>...</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- p>(</c-><c- n>copyable</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-> <c- o>&amp;&amp;</c-><c- p>)</c->
-  <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- k>const</c-> <c- o>&amp;</c-> <c- p>{</c->
-    <c- k>return</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>{</c-> <c- n>vs_</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
+  <c- k>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- k>const</c-> <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&amp;</c-> <c- n>j</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>{</c-> <c- n>j</c-><c- p>.</c-><c- n>vs_</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
   <c- p>}</c->
 
   <c- k>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
     <c- k>requires</c-> <c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>Ts</c-><c- p>...</c-><c- o>></c->
-  <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- o>&amp;&amp;</c-> <c- p>{</c->
-    <c- k>return</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>{</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>vs_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
+  <c- k>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&amp;&amp;</c-> <c- n>j</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>{</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>j</c-><c- p>.</c-><c- n>vs_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
   <c- p>}</c->
 <c- p>};</c->
 
