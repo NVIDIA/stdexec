@@ -2139,7 +2139,7 @@ enum class forward_progress_guarantee {
     {
       std::tuple&lt;Ts...> vs_;
 
-      template&lt;template&lt;class...> class Tuple, template&lt;class...> class Tuple>
+      template&lt;template&lt;class...> class Tuple, template&lt;class...> class Variant>
       using value_types = Variant&lt;Tuple&lt;Ts...>>;
 
       template&lt;template&lt;class...> class Variant>
