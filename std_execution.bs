@@ -1404,13 +1404,7 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
 <blockquote>
 
 1. The name `std::tag_invoke` denotes a customization point object. For some subexpressions `tag` and `args...`, `tag_invoke(tag, args...)` is expression-equivalent to an unqualified call to <code>tag_invoke(<i>decay-copy</i>(tag), args...)</code> with overload
-    resolution performed in a context that includes the declaration:
-
-    <pre>
-    void tag_invoke();
-    </pre>
-
-    and that does not include the the `std::tag_invoke` name.
+    resolution performed in a context that does not include the the `std::tag_invoke` name.
 
 </blockquote>
 </ins>
