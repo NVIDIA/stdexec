@@ -1,0 +1,41 @@
+#pragma once
+
+#include <execution.hpp>
+#include <type_traits>
+#include <exception>
+
+// A simple scheduler that executes its continuation inline, on the
+// thread of the caller of start().
+struct inline_scheduler {
+  template <class Rec>
+    struct __op {
+      [[no_unique_address]] Rec rec_;
+      friend void tag_invoke(std::execution::start_t, __op& op) noexcept try {
+        std::execution::set_value((Rec&&) op.rec_);
+      } catch(...) {
+        std::execution::set_error((Rec&&) op.rec_, std::current_exception());
+      }
+    };
+
+  struct __sender {
+    template <template <class...> class Tuple,
+              template <class...> class Variant>
+      using value_types = Variant<Tuple<>>;
+    template <template <class...> class Variant>
+      using error_types = Variant<std::exception_ptr>;
+    static constexpr bool sends_done = false;
+
+    template <std::execution::receiver_of Rec>
+      friend auto tag_invoke(std::execution::connect_t, __sender, Rec&& rec)
+        noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Rec>, Rec>)
+        -> __op<std::remove_cvref_t<Rec>> {
+        return {(Rec&&) rec};
+      }
+  };
+
+  friend __sender tag_invoke(std::execution::schedule_t, const inline_scheduler&) {
+    return {};
+  }
+
+  bool operator==(const inline_scheduler&) const = default;
+};
