@@ -106,15 +106,15 @@ namespace std::execution {
       move_constructible<remove_cvref_t<R>> &&
       constructible_from<remove_cvref_t<R>, R> &&
       requires(remove_cvref_t<R>&& r, E&& e) {
-        { execution::set_done(std::move(r)) } noexcept;
-        { execution::set_error(std::move(r), (E&&) e) } noexcept;
+        { set_done(std::move(r)) } noexcept;
+        { set_error(std::move(r), (E&&) e) } noexcept;
       };
 
   template<class R, class... An>
     concept receiver_of =
       receiver<R> &&
       requires(remove_cvref_t<R>&& r, An&&... an) {
-        execution::set_value(std::move(r), (An&&) an...);
+        set_value(std::move(r), (An&&) an...);
       };
 
   template<class R, class...As>
@@ -295,8 +295,9 @@ namespace std::execution {
   // [execution.senders.adaptors.then]
   inline namespace __then {
     namespace __impl {
-      template<receiver R, class F>
+      template<class R_, class F>
         struct __receiver {
+          using R = __t<R_>;
           [[no_unique_address]] R r_;
           [[no_unique_address]] F f_;
     
@@ -323,12 +324,13 @@ namespace std::execution {
             return ((Tag&&) tag)((R&&) r.r_, (As&&) as...);
           }
         };
-      template<sender S, class F>
-        struct __sender {    
+      template<class S_, class F>
+        struct __sender {
+          using S = __t<S_>;
           [[no_unique_address]] S s_;
           [[no_unique_address]] F f_;
     
-          template<receiver R, class R2 = remove_cvref_t<R>>
+          template<receiver R, class R2 = __id_t<remove_cvref_t<R>>>
             requires sender_to<S, __receiver<R2, F>>
           friend auto tag_invoke(connect_t, __sender&& self, R&& r)
             noexcept(/*todo*/ false)
@@ -349,14 +351,16 @@ namespace std::execution {
       }
       template<sender S, class F>
       sender auto operator()(S&& s, F f) const {
-        return __impl::__sender<remove_cvref_t<S>, F>{(S&&)s, (F&&)f};
+        return __impl::__sender<__id_t<remove_cvref_t<S>>, F>{(S&&)s, (F&&)f};
       }
     } lazy_then {};
   }
 
   // Make the lazy_then sender typed if the input sender is also typed.
-  template <typed_sender S, class F>
-  struct sender_traits<__then::__impl::__sender<S, F>> {
+  template <class S_, class F>
+    requires typed_sender<__t<S_>>
+  struct sender_traits<__then::__impl::__sender<S_, F>> {
+    using S = __t<S_>;
     template <template<class...> class Tuple, template<class...> class Variant>
       using value_types =
         typename sender_traits<S>::template value_types<

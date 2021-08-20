@@ -69,4 +69,17 @@ namespace std {
     using __member_t = decltype(
       (static_cast<Self&&(*)()>(0)()) .*
         std::__memptr<Member>(static_cast<Self&&(*)()>(0)()));
+
+  // For hiding a template type parameter from ADL
+  template <class T>
+    struct __id {
+      struct __t {
+        using type = T;
+      };
+    };
+  template <class T>
+    using __id_t = typename __id<T>::__t;
+
+  template <class T>
+    using __t = typename T::type;
 }

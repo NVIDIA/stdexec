@@ -7,13 +7,14 @@
 // A simple scheduler that executes its continuation inline, on the
 // thread of the caller of start().
 struct inline_scheduler {
-  template <class Rec>
+  template <class R_>
     struct __op {
-      [[no_unique_address]] Rec rec_;
+      using R = std::__t<R_>;
+      [[no_unique_address]] R rec_;
       friend void tag_invoke(std::execution::start_t, __op& op) noexcept try {
-        std::execution::set_value((Rec&&) op.rec_);
+        std::execution::set_value((R&&) op.rec_);
       } catch(...) {
-        std::execution::set_error((Rec&&) op.rec_, std::current_exception());
+        std::execution::set_error((R&&) op.rec_, std::current_exception());
       }
     };
 
@@ -28,7 +29,7 @@ struct inline_scheduler {
     template <std::execution::receiver_of Rec>
       friend auto tag_invoke(std::execution::connect_t, __sender, Rec&& rec)
         noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Rec>, Rec>)
-        -> __op<std::remove_cvref_t<Rec>> {
+        -> __op<__id_t<std::remove_cvref_t<Rec>>> {
         return {(Rec&&) rec};
       }
   };
