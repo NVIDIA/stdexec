@@ -26,17 +26,17 @@ struct inline_scheduler {
       using error_types = Variant<std::exception_ptr>;
     static constexpr bool sends_done = false;
 
-    template <std::execution::receiver_of Rec>
-      friend auto tag_invoke(std::execution::connect_t, __sender, Rec&& rec)
-        noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Rec>, Rec>)
-        -> __op<__id_t<std::remove_cvref_t<Rec>>> {
-        return {(Rec&&) rec};
+    template <std::execution::receiver_of R>
+      friend auto tag_invoke(std::execution::connect_t, __sender, R&& rec)
+        noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
+        -> __op<std::__id_t<std::remove_cvref_t<R>>> {
+        return {(R&&) rec};
       }
   };
 
-  friend __sender tag_invoke(std::execution::schedule_t, const inline_scheduler&) {
+  friend __sender tag_invoke(std::execution::schedule_t, const inline_scheduler&) noexcept {
     return {};
   }
 
-  bool operator==(const inline_scheduler&) const = default;
+  bool operator==(const inline_scheduler&) const noexcept = default;
 };

@@ -190,24 +190,27 @@ namespace std::execution {
   // TODO: turn this into start_detached
   inline namespace __submit {
     namespace __impl {
-      template<class S, class R>
+      template<class S, class R_>
         struct __rec {
+          using R = remove_cvref_t<R_>;
           struct __wrap {
             __rec* __this;
             // Forward all tag_invoke calls, including the receiver ops.
             template<__same_<__wrap> Self, class... As, invocable<__member_t<Self, R>, As...> Tag>
             friend decltype(auto) tag_invoke(Tag tag, Self&& self, As&&... as)
                 noexcept(is_nothrow_invocable_v<Tag, __member_t<Self, R>, As...>) {
-              ((Tag&&) tag)((__member_t<Self, R>&&) self.__this->__r, (As&&) as...);
-              // If we just completed the receiver contract, delete the state:
-              if constexpr (__one_of<Tag, set_value_t, set_error_t, set_done_t>)
-                delete self.__this;
+              // If we are about to complete the receiver contract, delete the state as cleanup:
+              struct _g_t {
+                __rec* r_;
+                ~_g_t() { delete r_; }
+              } _g{__one_of<Tag, set_value_t, set_error_t, set_done_t> ? self.__this : nullptr};
+              return ((Tag&&) tag)((__member_t<Self, R>&&) self.__this->__r, (As&&) as...);
             }
           };
-          remove_cvref_t<R> __r;
+          R __r;
           connect_result_t<S, __wrap> __state;
-          __rec(S&& s, R&& r)
-            : __r((R&&) r)
+          __rec(S&& s, R_&& r)
+            : __r((R_&&) r)
             , __state(connect((S&&) s, __wrap{this}))
           {}
         };
@@ -321,7 +324,7 @@ namespace std::execution {
           template <__same_<__receiver> Self, class... As, invocable<__member_t<Self, R>, As...> Tag>
           friend decltype(auto) tag_invoke(Tag tag, Self&& r, As&&... as)
             noexcept(is_nothrow_invocable_v<Tag, __member_t<Self, R>, As...>) {
-            return ((Tag&&) tag)((R&&) r.r_, (As&&) as...);
+            return ((Tag&&) tag)(((Self&&) r).r_, (As&&) as...);
           }
         };
       template<class S_, class F>
