@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R2<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-08-18">2021-08-18</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-08-20">2021-08-20</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2225,7 +2225,13 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        </ol>
       <li><a href="#intro-is-not"><span class="secno">1.4</span> <span class="content">What this proposal is <strong>not</strong></span></a>
       <li><a href="#intro-compare"><span class="secno">1.5</span> <span class="content">Design changes from P0443</span></a>
-      <li><a href="#intro-prior-art"><span class="secno">1.6</span> <span class="content">Prior art</span></a>
+      <li>
+       <a href="#intro-prior-art"><span class="secno">1.6</span> <span class="content">Prior art</span></a>
+       <ol class="toc">
+        <li><a href="#intro-prior-art-futures"><span class="secno">1.6.1</span> <span class="content">Futures</span></a>
+        <li><a href="#intro-prior-art-coroutines"><span class="secno">1.6.2</span> <span class="content">Coroutines</span></a>
+        <li><a href="#intro-prior-art-callbacks"><span class="secno">1.6.3</span> <span class="content">Callbacks</span></a>
+       </ol>
       <li><a href="#intro-field-experience"><span class="secno">1.7</span> <span class="content">Field experience</span></a>
      </ol>
     <li>
@@ -2648,10 +2654,19 @@ essential when writing user code using standard execution concepts; we have also
      <p>A specific thread pool implementation is omitted, as per LEWG direction.</p>
    </ol>
    <h3 class="heading settled" data-level="1.6" id="intro-prior-art"><span class="secno">1.6. </span><span class="content">Prior art</span><a class="self-link" href="#intro-prior-art"></a></h3>
-   <p>This proposal builds upon and learns from years of prior art with asynchronous and parallel programming frameworks in C++.</p>
+   <p>This proposal builds upon and learns from years of prior art with asynchronous and parallel programming frameworks in C++. In this section, we discuss async abstractions that have previously been suggested as a possible basis for asynchronous algorithms and why they fall short.</p>
+   <h4 class="heading settled" data-level="1.6.1" id="intro-prior-art-futures"><span class="secno">1.6.1. </span><span class="content">Futures</span><a class="self-link" href="#intro-prior-art-futures"></a></h4>
+   <p>A future is a handle to work that has already been scheduled for execution. It is one end of a communication channel; the other end is a promise, used to receive the result from the concurrent operation and to communicate it to the future.</p>
    <p>Futures, as traditionally realized, require the dynamic allocation and management of a shared state, synchronization, and typically type-erasure of work and continuation. Many of these costs are inherent in the nature of "future" as a handle to work that is already scheduled for execution. These expenses rule out the future abstraction for many uses and makes it a poor choice for a basis of a generic mechanism.</p>
-   <p>Coroutines suffer many of the same problems, but can avoid synchronizing when chaining dependent work because they typically start suspended. In many cases, coroutine frames require unavoidable dynamic allocation. Consequently, coroutines in embedded or heterogeneous environments require great attention to detail. Nor are coroutines good candidates for cancellation because the early and safe termination of coroutines requires unsatisfying solutions. On the one hand, exceptions are inefficient and disallowed in many environments. Alternatively, clumsy ad-hoc mechanisms, whereby <code class="highlight"><c- k>co_yield</c-></code> returns a status code, hinder correctness. See <a data-link-type="biblio" href="#biblio-p1662r0">[P1662R0]</a> for a complete discussion.</p>
-   <p>Callbacks are the simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities, but the lack of a standard obstructs generic design. Additionally, few of these possibilities accommodate cancellation signals when the user requests upstream work to stop and clean up.</p>
+   <h4 class="heading settled" data-level="1.6.2" id="intro-prior-art-coroutines"><span class="secno">1.6.2. </span><span class="content">Coroutines</span><a class="self-link" href="#intro-prior-art-coroutines"></a></h4>
+   <p>C++20 coroutines are frequently suggested as a basis for asynchronous algorithms. It’s fair to ask why, if we added coroutines to C++, are we suggesting the addition of a library-based abstraction for asynchrony. Certainly, coroutines come with huge syntactic and semantic advantages over the alternatives.</p>
+   <p>Although coroutines are lighter weight than futures, coroutines suffer many of the same problems. Since they typically start suspended, they can avoid synchronizing the chaining of dependent work. However in many cases, coroutine frames require an unavoidable dynamic allocation and indirect function calls. This is done to hide the layout of the coroutine frame from the C++ type system, which in turn makes possible the separate compilation of coroutines and certain compiler optimizations, such as optimization of the coroutine frame size.</p>
+   <p>Those advantages come at a cost, though. Because of the dynamic allocation of coroutine frames, coroutines in embedded or heterogeneous environments, which often lack support for dynamic allocation, require great attention to detail. And the allocations and indirections tend to complicate the job of the inliner, often resulting in sub-optimal codegen.</p>
+   <p>The coroutine language feature mitigates these shortcomings somewhat with the HALO optimization <a data-link-type="biblio" href="#biblio-p0981r0">[P0981R0]</a>, which leverages existing compiler optimizations such as allocation elision and devirtualization to inline the coroutine, completely eliminating the runtime overhead. However, HALO requires a sophisiticated compiler, and a fair number of stars need to align for the optimization to kick in. In our experience, more often than not in real-world code today’s compilers are not able to inline the coroutine, resulting in allocations and indirections in the generated code.</p>
+   <p>In a suite of generic async algorithms that are expected to be callable from hot code paths, the extra allocations and indirections are a deal-breaker. It is for these reasons that we consider coroutines a poor choise for a basis of all standard async.</p>
+   <h4 class="heading settled" data-level="1.6.3" id="intro-prior-art-callbacks"><span class="secno">1.6.3. </span><span class="content">Callbacks</span><a class="self-link" href="#intro-prior-art-callbacks"></a></h4>
+   <p>Callbacks are the oldest, simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities. The lack of a standard callback shape obstructs generic design.</p>
+   <p>Additionally, few of these possibilities accommodate cancellation signals when the user requests upstream work to stop and clean up.</p>
    <h3 class="heading settled" data-level="1.7" id="intro-field-experience"><span class="secno">1.7. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
    <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>, <a href="https://github.com/NVIDIA/thrust">Thrust</a>, and <a href="https://github.com/agency-library/agency">Agency</a>. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:</p>
    <ul>
@@ -5293,8 +5308,8 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
    <dd>Thomas Köppe. <a href="https://wg21.link/n4885"><cite>Working Draft, Standard for Programming Language C++</cite></a>. 17 March 2021. URL: <a href="https://wg21.link/n4885">https://wg21.link/n4885</a>
    <dt id="biblio-p0443r14">[P0443R14]
    <dd>Jared Hoberock, Michael Garland, Chris Kohlhoff, Chris Mysen, H. Carter Edwards, Gordon Brown, D. S. Hollman. <a href="https://wg21.link/p0443r14"><cite>A Unified Executors Proposal for C++</cite></a>. 15 September 2020. URL: <a href="https://wg21.link/p0443r14">https://wg21.link/p0443r14</a>
-   <dt id="biblio-p1662r0">[P1662R0]
-   <dd>Lewis Baker. <a href="https://wg21.link/p1662r0"><cite>Adding async RAII support to coroutines</cite></a>. 17 June 2019. URL: <a href="https://wg21.link/p1662r0">https://wg21.link/p1662r0</a>
+   <dt id="biblio-p0981r0">[P0981R0]
+   <dd>Richard Smith, Gor Nishanov. <a href="https://wg21.link/p0981r0"><cite>Halo: coroutine Heap Allocation eLision Optimization: the joint response</cite></a>. 18 March 2018. URL: <a href="https://wg21.link/p0981r0">https://wg21.link/p0981r0</a>
    <dt id="biblio-p1895r0">[P1895R0]
    <dd>Lewis Baker, Eric Niebler, Kirk Shoop. <a href="https://wg21.link/p1895r0"><cite>tag_invoke: A general pattern for supporting customisable functions</cite></a>. 8 October 2019. URL: <a href="https://wg21.link/p1895r0">https://wg21.link/p1895r0</a>
    <dt id="biblio-p1897r3">[P1897R3]
