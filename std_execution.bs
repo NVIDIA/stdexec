@@ -296,7 +296,7 @@ This proposal builds upon and learns from years of prior art with asynchronous a
 
 ### Futures ### {#intro-prior-art-futures}
 
-A future is a handle to work that has already been scheduled for execution. It is the receiving end of a communication channel. The other end is a promise, used by the concurrent operation to set the result.
+A future is a handle to work that has already been scheduled for execution. It is one end of a communication channel; the other end is a promise, used to receive the result from the concurrent operation and to communicate it to the future.
 
 Futures, as traditionally realized, require the dynamic allocation and management of a shared state, synchronization, and typically type-erasure of work and continuation. Many of these costs are inherent in the nature of "future" as a handle to work that is already scheduled for execution. These expenses rule out the future abstraction for many uses and makes it a poor choice for a basis of a generic mechanism.
 
@@ -308,9 +308,7 @@ Although coroutines are lighter weight than futures, coroutines suffer many of t
 
 Those advantages come at a cost, though. Because of the dynamic allocation of coroutine frames, coroutines in embedded or heterogeneous environments, which often lack support for dynamic allocation, require great attention to detail. And the allocations and indirections tend to complicate the job of the inliner, often resulting in sub-optimal codegen.
 
-The coroutine language feature mitigates these shortcomings somewhat with the HALO optimization [[P0981R0]], which leverages existing compiler optimizations such as allocation elision and devirtualization to inline the coroutine, completely eliminating the runtime overhead.
-
-However, HALO requires a sophisiticated compiler, and a fair number of stars need to align for the optimization to kick in. In our experience, more often than not in real-world code the compiler is not able to inline the coroutine, resulting in allocations and indirections in the generated code.
+The coroutine language feature mitigates these shortcomings somewhat with the HALO optimization [[P0981R0]], which leverages existing compiler optimizations such as allocation elision and devirtualization to inline the coroutine, completely eliminating the runtime overhead. However, HALO requires a sophisiticated compiler, and a fair number of stars need to align for the optimization to kick in. In our experience, more often than not in real-world code the compiler is not able to inline the coroutine, resulting in allocations and indirections in the generated code.
 
 In a suite of generic async algorithms that are expected to be callable from hot code paths, the extra allocations and indirections are a deal-breaker. It is for these reasons that we consider coroutines a poor choise for a basis of all standard async.
 
