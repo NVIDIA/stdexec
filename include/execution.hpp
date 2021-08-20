@@ -197,8 +197,9 @@ namespace std::execution {
             __rec* __this;
             // Forward all tag_invoke calls, including the receiver ops.
             template<__same_<__wrap> Self, class... As, invocable<__member_t<Self, R>, As...> Tag>
-            friend decltype(auto) tag_invoke(Tag tag, Self&& self, As&&... as)
-                noexcept(is_nothrow_invocable_v<Tag, __member_t<Self, R>, As...>) {
+            friend auto tag_invoke(Tag tag, Self&& self, As&&... as)
+                noexcept(is_nothrow_invocable_v<Tag, __member_t<Self, R>, As...>)
+                -> invoke_result_t<Tag, __member_t<Self, R>, As...> {
               // If we are about to complete the receiver contract, delete the state as cleanup:
               struct _g_t {
                 __rec* r_;
@@ -322,8 +323,9 @@ namespace std::execution {
           }
           // Forward all other tag_invoke CPOs.
           template <__same_<__receiver> Self, class... As, invocable<__member_t<Self, R>, As...> Tag>
-          friend decltype(auto) tag_invoke(Tag tag, Self&& r, As&&... as)
-            noexcept(is_nothrow_invocable_v<Tag, __member_t<Self, R>, As...>) {
+          friend auto tag_invoke(Tag tag, Self&& r, As&&... as)
+            noexcept(is_nothrow_invocable_v<Tag, __member_t<Self, R>, As...>)
+            -> invoke_result_t<Tag, __member_t<Self, R>, As...> {
             return ((Tag&&) tag)(((Self&&) r).r_, (As&&) as...);
           }
         };
