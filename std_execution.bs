@@ -2184,7 +2184,7 @@ enum class forward_progress_guarantee {
       };
 
       template&lt;receiver R>
-        requires receiver_of&lt;R, Ts...> && (copyable&ltTs>... &&)
+        requires receiver_of&lt;R, Ts...> && (copyable&ltTs> &&...)
       friend auto tag_invoke(execution::connect_t, const <i>just-sender</i>& j, R && r) {
         return operation_state&lt;R>{ j.vs_, std::forward&lt;R>(r) };
       }
