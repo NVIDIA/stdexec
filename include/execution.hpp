@@ -274,6 +274,65 @@ namespace std::execution {
     using __schedule_result_t = decltype(schedule(std::declval<S>()));
 
   /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.factories]
+  inline namespace __just {
+    namespace __impl {
+      template <class... Ts>
+        struct __sender {
+          tuple<Ts...> vs_;
+
+          template<template<class...> class Tuple,
+                   template<class...> class Variant>
+          using value_types = Variant<Tuple<Ts...>>;
+
+          template<template<class...> class Variant>
+          using error_types = Variant<exception_ptr>;
+
+          static const constexpr auto sends_done = false;
+
+          template<class R_>
+          struct __op {
+            using R = __t<R_>;
+            std::tuple<Ts...> vs_;
+            R r_;
+
+            friend void tag_invoke(start_t, __op& op) noexcept try {
+              std::apply([&op](Ts&... ts) {
+                set_value((R&&) op.r_, (Ts&&) ts...);
+              }, op.vs_);
+            } catch(...) {
+              set_error((R&&) op.r_, current_exception());
+            }
+          };
+
+          template<receiver_of<Ts...> R>
+            requires (copyable<Ts> &&...)
+          friend auto tag_invoke(connect_t, const __sender& s, R&& r)
+            noexcept((is_nothrow_copy_constructible_v<Ts> &&...))
+            -> __op<__id_t<remove_cvref_t<R>>> {
+            return {s.vs_, (R&&) r};
+          }
+
+          template<receiver_of<Ts...> R>
+          friend auto tag_invoke(connect_t, __sender&& s, R&& r)
+            noexcept((is_nothrow_move_constructible_v<Ts> &&...))
+            -> __op<__id_t<remove_cvref_t<R>>> {
+            return {((__sender&&) s).vs_, (R&&) r};
+          }
+        };
+    }
+
+    inline constexpr struct __just_t {
+      template <class... Ts>
+        requires (constructible_from<decay_t<Ts>, Ts> &&...)
+      __impl::__sender<decay_t<Ts>...> operator()(Ts&&... ts) const
+        noexcept((is_nothrow_constructible_v<decay_t<Ts>, Ts> &&...)) {
+        return {{(Ts&&) ts...}};
+      }
+    } just {};
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
   inline namespace __execute {
     namespace __impl {
