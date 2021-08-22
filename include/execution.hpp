@@ -26,6 +26,7 @@
 #include <__utility.hpp>
 #include <concepts.hpp>
 #include <functional.hpp>
+#include <coroutine.hpp>
 
 namespace std::execution {
   template<template<template<class...> class, template<class...> class> class>
@@ -57,6 +58,15 @@ namespace std::execution {
     static constexpr bool sends_done = true;
   };
 
+  template <bool SendsDone, class... Ts>
+    struct __sender_of {
+      template<template<class...> class Tuple, template<class...> class Variant>
+        using value_types = Variant<Tuple<Ts...>>;
+      template<template<class...> class Variant>
+        using error_types = Variant<std::exception_ptr>;
+      static constexpr bool sends_done = SendsDone;
+    };
+
   template<class S>
     struct __typed_sender {
       template<template<class...> class Tuple, template<class...> class Variant>
@@ -72,6 +82,12 @@ namespace std::execution {
       return __typed_sender<S>{};
     } else if constexpr (derived_from<S, sender_base>) {
       return sender_base{};
+    } else if constexpr (__awaitable<S>) { // NOT TO SPEC
+      if constexpr (is_void_v<__await_result_t<S>>) {
+        return __void_sender{};
+      } else {
+        return __sender_of<false, __await_result_t<S>>{};
+      }
     } else {
       return __no_sender_traits{};
     }
@@ -107,7 +123,7 @@ namespace std::execution {
     inline constexpr struct set_done_t {
       template<class R>
         requires tag_invocable<set_done_t, R>
-      void operator()(R&& r) const 
+      void operator()(R&& r) const
         noexcept(nothrow_tag_invocable<set_done_t, R>) {
         (void) tag_invoke(set_done_t{}, (R&&) r);
       }
@@ -174,6 +190,123 @@ namespace std::execution {
       };
 
   /////////////////////////////////////////////////////////////////////////////
+  // NOT TO SPEC: __connect_awaitable_
+  inline namespace __connect_awaitable_ {
+    namespace __impl {
+      template<class R_>
+        class __op {
+          using R = __t<R_>;
+        public:
+          struct promise_type {
+            template <class A>
+            explicit promise_type(A&, R& r) noexcept
+              : r_(r)
+            {}
+
+            __op get_return_object() noexcept {
+              return __op{
+                  coro::coroutine_handle<promise_type>::from_promise(
+                      *this)};
+            }
+            coro::suspend_always initial_suspend() noexcept {
+              return {};
+            }
+            [[noreturn]] coro::suspend_always final_suspend() noexcept {
+              terminate();
+            }
+            [[noreturn]] void unhandled_exception() noexcept {
+              terminate();
+            }
+            [[noreturn]] void return_void() noexcept {
+              terminate();
+            }
+
+            template <class Func>
+            auto yield_value(Func&& func) noexcept {
+              struct awaiter {
+                Func&& func_;
+                bool await_ready() noexcept {
+                  return false;
+                }
+                void await_suspend(coro::coroutine_handle<promise_type>) {
+                  ((Func &&) func_)();
+                }
+                [[noreturn]] void await_resume() noexcept {
+                  terminate();
+                }
+              };
+              return awaiter{(Func &&) func};
+            }
+
+            // Pass through receiver queries
+            template<__same_<promise_type> Self, invocable<__member_t<Self, R>> CPO>
+            friend auto tag_invoke(CPO cpo, Self&& self)
+              noexcept(is_nothrow_invocable_v<CPO, __member_t<Self, R>>)
+              -> invoke_result_t<CPO, R> {
+              return ((CPO&&) cpo)(((Self&&) self).r_);
+            }
+
+            R& r_;
+          };
+
+          coro::coroutine_handle<promise_type> coro_;
+
+          explicit __op(coro::coroutine_handle<promise_type> coro) noexcept
+            : coro_(coro) {}
+
+          __op(__op&& other) noexcept
+            : coro_(exchange(other.coro_, {})) {}
+
+          ~__op() {
+            if (coro_)
+              coro_.destroy();
+          }
+
+          friend void tag_invoke(start_t, __op& self) noexcept {
+            self.coro_.resume();
+          }
+        };
+    }
+
+    inline constexpr struct __fn {
+    private:
+      template <__awaitable A, receiver R>
+      static __impl::__op<__id_t<remove_cvref_t<R>>> __impl(A&& a, R&& r) {
+        exception_ptr ex;
+        try {
+          // This is a bit mind bending control-flow wise.
+          // We are first evaluating the co_await expression.
+          // Then the result of that is passed into invoke
+          // which curries a reference to the result into another
+          // lambda which is then returned to 'co_yield'.
+          // The 'co_yield' expression then invokes this lambda
+          // after the coroutine is suspended so that it is safe
+          // for the receiver to destroy the coroutine.
+          auto fn = [&](auto&&... result) {
+            return [&] {
+              set_value((R&&) r, (__await_result_t<A>&&) result...);
+            };
+          };
+          if constexpr (is_void_v<__await_result_t<A>>)
+            co_yield (co_await (A &&) a, fn());
+          else
+            co_yield fn(co_await (A &&) a);
+        } catch (...) {
+          ex = current_exception();
+        }
+        co_yield [&] {
+          set_error((R&&) r, (exception_ptr&&) ex);
+        };
+      }
+    public:
+      template <__awaitable A, receiver R>
+      __impl::__op<__id_t<remove_cvref_t<R>>> operator()(A&& a, R&& r) const {
+        return __impl((A&&) a, (R&&) r);
+      }
+    } __connect_awaitable{};
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
   inline namespace __connect {
     inline constexpr struct connect_t {
@@ -183,6 +316,12 @@ namespace std::execution {
       auto operator()(S&& s, R&& r) const
         noexcept(nothrow_tag_invocable<connect_t, S, R>) {
         return tag_invoke(connect_t{}, (S&&) s, (R&&) r);
+      }
+      // NOT TO SPEC:
+      template<__awaitable A, receiver R>
+        requires (!tag_invocable<connect_t, A, R>)
+      auto operator()(A&& a, R&& r) const {
+        return __connect_awaitable((A&&) a, (R&&) r);
       }
     } connect {};
   }
@@ -305,8 +444,9 @@ namespace std::execution {
             }
           };
 
+          // NOT TO SPEC: copy_constructible
           template<receiver_of<Ts...> R>
-            requires (copyable<Ts> &&...)
+            requires (copy_constructible<Ts> &&...)
           friend auto tag_invoke(connect_t, const __sender& s, R&& r)
             noexcept((is_nothrow_copy_constructible_v<Ts> &&...))
             -> __op<__id_t<remove_cvref_t<R>>> {
@@ -392,7 +532,7 @@ namespace std::execution {
           using R = __t<R_>;
           [[no_unique_address]] R r_;
           [[no_unique_address]] F f_;
-    
+
           // Customize set_value by invoking the callable and passing the result to the base class
           template<class... As>
             requires invocable<F, As...> &&
@@ -422,13 +562,13 @@ namespace std::execution {
           using S = __t<S_>;
           [[no_unique_address]] S s_;
           [[no_unique_address]] F f_;
-    
+
           template<receiver R, class R2 = __id_t<remove_cvref_t<R>>>
             requires sender_to<S, __receiver<R2, F>>
           friend auto tag_invoke(connect_t, __sender&& self, R&& r)
             noexcept(/*todo*/ false)
             -> connect_result_t<S, __receiver<R2, F>> {
-            return execution::connect(
+            return connect(
               (S&&) self.s_,
               __receiver<R2, F>{(R&&) r, (F&&) self.f_});
           }

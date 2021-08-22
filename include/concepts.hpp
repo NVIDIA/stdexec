@@ -24,6 +24,22 @@
 
 namespace std {
   // C++20 concepts
+  #if defined(__clang__)
+  template<class A, class B>
+    concept same_as = __is_same(A, B) && __is_same(B, A);
+  #elif defined(__GNUC__)
+  template<class A, class B>
+    concept same_as = __is_same_as(A, B) && __is_same_as(B, A);
+  #else
+  template<class A, class B>
+    inline constexpr bool __same_as_v = false;
+  template<class A>
+    inline constexpr bool __same_as_v<A, A> = true;
+
+  template<class A, class B>
+    concept same_as = __same_as_v<A, B> && __same_as_v<B, A>;
+  #endif
+
   template<class A, class B>
     concept derived_from =
       is_base_of_v<B, A> &&

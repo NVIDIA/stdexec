@@ -1,7 +1,7 @@
 BUILDDIR = build
 IDIR =../include
 CXX=clang++-12
-CXXFLAGS=-I$(IDIR) -std=c++20
+CXXFLAGS=-I$(IDIR) -std=c++20 -stdlib=libc++
 
 LIBS=-pthread
 
@@ -16,6 +16,9 @@ $(BUILDDIR)/%.o: %.cpp setup execution
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
 hello_world: $(BUILDDIR)/hello_world.o
+	$(CXX) -o $(BUILDDIR)/$@ $^ $(CXXFLAGS) $(LIBS)
+
+hello_coro: $(BUILDDIR)/hello_coro.o
 	$(CXX) -o $(BUILDDIR)/$@ $^ $(CXXFLAGS) $(LIBS)
 
 .PHONY: clean
