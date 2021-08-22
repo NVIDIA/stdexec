@@ -277,8 +277,8 @@ namespace std::execution {
         try {
           // This is a bit mind bending control-flow wise.
           // We are first evaluating the co_await expression.
-          // Then the result of that is passed into invoke
-          // which curries a reference to the result into another
+          // Then the result of that is passed into a lambda
+          // that curries a reference to the result into another
           // lambda which is then returned to 'co_yield'.
           // The 'co_yield' expression then invokes this lambda
           // after the coroutine is suspended so that it is safe
@@ -509,20 +509,89 @@ namespace std::execution {
     } execute {};
   }
 
+  // NOT TO SPEC:
+  template <class>
+    extern const bool is_sender_closure;
+
+  template <class T>
+    concept __sender_closure =
+      (is_sender_closure<remove_cvref_t<T>>) &&
+      move_constructible<remove_cvref_t<T>> &&
+      constructible_from<remove_cvref_t<T>, T>;
+
   namespace __pipe {
+    template <class A, class B>
+    struct __compose {
+      [[no_unique_address]] A a_;
+      [[no_unique_address]] B b_;
+
+      template <sender S>
+        requires invocable<A, S> && invocable<B, invoke_result_t<A, S>>
+      invoke_result_t<B, invoke_result_t<A, S>> operator()(S&& s) && {
+        return ((B&&) b_)(((A&&) a_)((S&&) s));
+      }
+
+      template <sender S>
+        requires invocable<const A&, S> && invocable<const B&, invoke_result_t<const A&, S>>
+      invoke_result_t<B, invoke_result_t<A, S>> operator()(S&& s) const & {
+        return b_(a_((S&&) s));
+      }
+    };
+
+    struct __sender_closure_tag {
+      using sender_closure = void;
+    };
+
+    template <__sender_closure A, __sender_closure B>
+    __compose<remove_cvref_t<A>, remove_cvref_t<B>> operator|(A&& a, B&& b) {
+      return {(A&&) a, (B&&) b};
+    }
+
+    template <sender S, __sender_closure C>
+      requires invocable<C, S>
+    invoke_result_t<C, S> operator|(S&& s, C&& c) {
+      return ((C&&) c)((S&&) s);
+    }
+
     template <class Fn, class... As>
-    struct __binder {
+    struct __closure {
       [[no_unique_address]] Fn fn;
       tuple<As...> as;
 
       template <sender S>
-      friend decltype(auto) operator|(S&& s, __binder b) {
-        return std::apply([&](As&... as) {
-            return ((Fn&&) b.fn)(s, (As&&) as...);
-          }, b.as);
+        requires invocable<Fn, S, As...>
+      invoke_result_t<Fn, S, As...> operator()(S&& s) &&
+        noexcept(is_nothrow_invocable_v<Fn, S, As...>) {
+        return std::apply([&s, this](As&... as) {
+            return ((Fn&&) fn)((S&&) s, (As&&) as...);
+          }, as);
+      }
+
+      template <sender S>
+        requires invocable<Fn, S, As...>
+      invoke_result_t<const Fn&, S, const As&...> operator()(S&& s) const &
+        noexcept(is_nothrow_invocable_v<const Fn&, S, const As&...>) {
+        return std::apply([&s, this](const As&... as) {
+            return fn((S&&) s, as...);
+          }, as);
       }
     };
   }
+
+  // NOT TO SPEC:
+  using sender_closure_tag = __pipe::__sender_closure_tag;
+
+  template <class T>
+    inline constexpr bool is_sender_closure =
+      requires {
+        typename T::sender_closure;
+      };
+
+  template <class Fn, class... As>
+    inline constexpr bool is_sender_closure<__pipe::__closure<Fn, As...>> = true;
+
+  template <class A, class B>
+    inline constexpr bool is_sender_closure<__pipe::__compose<A, B>> = true;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
@@ -588,7 +657,7 @@ namespace std::execution {
         return __impl::__sender<__id_t<remove_cvref_t<S>>, F>{(S&&)s, (F&&)f};
       }
       template <class F>
-      __pipe::__binder<lazy_then_t, F> operator()(F f) const {
+      __pipe::__closure<lazy_then_t, F> operator()(F f) const {
         return {{}, {(F&&) f}};
       }
     } lazy_then {};
@@ -605,7 +674,7 @@ namespace std::execution {
         return lazy_then((S&&) s, (F&&) f);
       }
       template <class F>
-      __pipe::__binder<then_t, F> operator()(F f) const {
+      __pipe::__closure<then_t, F> operator()(F f) const {
         return {{}, {(F&&) f}};
       }
     } then {};
