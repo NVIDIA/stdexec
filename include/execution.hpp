@@ -50,12 +50,13 @@ namespace std::execution {
     using __unspecialized = void;
   };
 
+  template <bool SendsDone>
   struct __void_sender {
     template<template<class...> class Tuple, template<class...> class Variant>
       using value_types = Variant<Tuple<>>;
     template<template<class...> class Variant>
       using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = true;
+    static constexpr bool sends_done = SendsDone;
   };
 
   template <bool SendsDone, class... Ts>
@@ -84,7 +85,7 @@ namespace std::execution {
       return sender_base{};
     } else if constexpr (__awaitable<S>) { // NOT TO SPEC
       if constexpr (is_void_v<__await_result_t<S>>) {
-        return __void_sender{};
+        return __void_sender<false>{};
       } else {
         return __sender_of<false, __await_result_t<S>>{};
       }
@@ -145,7 +146,7 @@ namespace std::execution {
     concept receiver_of =
       receiver<R> &&
       requires(remove_cvref_t<R>&& r, An&&... an) {
-        set_value(std::move(r), (An&&) an...);
+        set_value((remove_cvref_t<R>&&) r, (An&&) an...);
       };
 
   template<class R, class...As>
