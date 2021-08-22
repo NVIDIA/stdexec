@@ -351,8 +351,7 @@ namespace std::execution {
     }
     inline constexpr struct execute_t {
       template<scheduler Sch, class F>
-        requires invocable<F&> &&
-          move_constructible<F>
+        requires invocable<F&> && move_constructible<F>
       void operator()(Sch&& sch, F f) const
         noexcept(noexcept(
           submit(schedule((Sch&&) sch), __impl::__as_receiver<F>{(F&&) f}))) {
@@ -367,6 +366,21 @@ namespace std::execution {
         (void) tag_invoke(execute_t{}, (Sch&&) sch, (F&&) f);
       }
     } execute {};
+  }
+
+  namespace __pipe {
+    template <class Fn, class... As>
+    struct __binder {
+      [[no_unique_address]] Fn fn;
+      tuple<As...> as;
+
+      template <sender S>
+      friend decltype(auto) operator|(S&& s, __binder b) {
+        return std::apply([&](As&... as) {
+            return ((Fn&&) b.fn)(s, (As&&) as...);
+          }, b.as);
+      }
+    };
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -432,6 +446,10 @@ namespace std::execution {
       sender auto operator()(S&& s, F f) const {
         return __impl::__sender<__id_t<remove_cvref_t<S>>, F>{(S&&)s, (F&&)f};
       }
+      template <class F>
+      __pipe::__binder<lazy_then_t, F> operator()(F f) const {
+        return {{}, {(F&&) f}};
+      }
     } lazy_then {};
 
     inline constexpr struct then_t {
@@ -444,6 +462,10 @@ namespace std::execution {
       template<sender S, class F>
       sender auto operator()(S&& s, F f) const {
         return lazy_then((S&&) s, (F&&) f);
+      }
+      template <class F>
+      __pipe::__binder<then_t, F> operator()(F f) const {
+        return {{}, {(F&&) f}};
       }
     } then {};
   }
