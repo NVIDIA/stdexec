@@ -282,9 +282,9 @@ namespace std::execution {
           // The 'co_yield' expression then invokes this lambda
           // after the coroutine is suspended so that it is safe
           // for the receiver to destroy the coroutine.
-          auto fn = [&](auto&&... r) {
+          auto fn = [&](auto&&... as) {
             return [&] {
-              set_value((R&&) r, (add_rvalue_reference_t<__await_result_t<A>>) r...);
+              set_value((R&&) r, (add_rvalue_reference_t<__await_result_t<A>>) as...);
             };
           };
           if constexpr (is_void_v<__await_result_t<A>>)
