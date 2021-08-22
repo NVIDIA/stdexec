@@ -36,7 +36,13 @@ struct task {
     void await_resume() const noexcept {
     }
   };
-  struct promise_type {
+  struct _promise_base {
+    void return_value(T value) noexcept {
+      data_.template emplace<1>(std::move(value));
+    }
+    std::variant<std::monostate, T, std::exception_ptr> data_{};
+  };
+  struct promise_type : _promise_base {
     task get_return_object() noexcept {
       return task(coro::coroutine_handle<promise_type>::from_promise(*this));
     }
@@ -47,12 +53,8 @@ struct task {
       return {};
     }
     void unhandled_exception() noexcept {
-      data_.template emplace<2>(std::current_exception());
+      this->data_.template emplace<2>(std::current_exception());
     }
-    void return_value(T value) noexcept {
-      data_.template emplace<1>(std::move(value));
-    }
-    std::variant<std::monostate, T, std::exception_ptr> data_{};
     coro::coroutine_handle<> parent_{};
   };
 
@@ -77,7 +79,8 @@ struct task {
     T await_resume() const {
       if (t.coro_.promise().data_.index() == 2)
         std::rethrow_exception(std::get<2>(t.coro_.promise().data_));
-      return std::get<T>(t.coro_.promise().data_);
+      if constexpr (!std::is_void_v<T>)
+        return std::get<T>(t.coro_.promise().data_);
     }
   };
 
@@ -90,4 +93,13 @@ private:
     : coro_(coro)
   {}
   coro::coroutine_handle<promise_type> coro_;
+};
+
+template<>
+struct task<void>::_promise_base {
+  struct _void {};
+  void return_void() noexcept {
+    data_.template emplace<1>(_void{});
+  }
+  std::variant<std::monostate, _void, std::exception_ptr> data_{};
 };

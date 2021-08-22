@@ -5,7 +5,7 @@ CXXFLAGS=-I$(IDIR) -std=c++20 -stdlib=libc++
 
 LIBS=-pthread
 
-all: hello_world
+all: hello_world hello_coro
 
 execution: $(IDIR)/execution.hpp
 
