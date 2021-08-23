@@ -194,11 +194,60 @@ namespace std::execution {
   // NOT TO SPEC: __connect_awaitable_
   inline namespace __connect_awaitable_ {
     namespace __impl {
+      struct __op_base {
+        struct __promise_base {
+          coro::suspend_always initial_suspend() noexcept {
+            return {};
+          }
+          [[noreturn]] coro::suspend_always final_suspend() noexcept {
+            terminate();
+          }
+          [[noreturn]] void unhandled_exception() noexcept {
+            terminate();
+          }
+          [[noreturn]] void return_void() noexcept {
+            terminate();
+          }
+          template <class Func>
+          auto yield_value(Func&& func) noexcept {
+            struct awaiter {
+              Func&& func_;
+              bool await_ready() noexcept {
+                return false;
+              }
+              void await_suspend(coro::coroutine_handle<>) {
+                ((Func &&) func_)();
+              }
+              [[noreturn]] void await_resume() noexcept {
+                terminate();
+              }
+            };
+            return awaiter{(Func &&) func};
+          }
+        };
+
+        coro::coroutine_handle<> coro_;
+
+        explicit __op_base(coro::coroutine_handle<> coro) noexcept
+          : coro_(coro) {}
+
+        __op_base(__op_base&& other) noexcept
+          : coro_(exchange(other.coro_, {})) {}
+
+        ~__op_base() {
+          if (coro_)
+            coro_.destroy();
+        }
+
+        friend void tag_invoke(start_t, __op_base& self) noexcept {
+          self.coro_.resume();
+        }
+      };
       template<class R_>
-        class __op {
+        class __op : public __op_base {
           using R = __t<R_>;
         public:
-          struct promise_type {
+          struct promise_type : __promise_base {
             template <class A>
             explicit promise_type(A&, R& r) noexcept
               : r_(r)
@@ -206,37 +255,7 @@ namespace std::execution {
 
             __op get_return_object() noexcept {
               return __op{
-                  coro::coroutine_handle<promise_type>::from_promise(
-                      *this)};
-            }
-            coro::suspend_always initial_suspend() noexcept {
-              return {};
-            }
-            [[noreturn]] coro::suspend_always final_suspend() noexcept {
-              terminate();
-            }
-            [[noreturn]] void unhandled_exception() noexcept {
-              terminate();
-            }
-            [[noreturn]] void return_void() noexcept {
-              terminate();
-            }
-
-            template <class Func>
-            auto yield_value(Func&& func) noexcept {
-              struct awaiter {
-                Func&& func_;
-                bool await_ready() noexcept {
-                  return false;
-                }
-                void await_suspend(coro::coroutine_handle<promise_type>) {
-                  ((Func &&) func_)();
-                }
-                [[noreturn]] void await_resume() noexcept {
-                  terminate();
-                }
-              };
-              return awaiter{(Func &&) func};
+                coro::coroutine_handle<promise_type>::from_promise(*this)};
             }
 
             // Pass through receiver queries
@@ -250,22 +269,7 @@ namespace std::execution {
             R& r_;
           };
 
-          coro::coroutine_handle<promise_type> coro_;
-
-          explicit __op(coro::coroutine_handle<promise_type> coro) noexcept
-            : coro_(coro) {}
-
-          __op(__op&& other) noexcept
-            : coro_(exchange(other.coro_, {})) {}
-
-          ~__op() {
-            if (coro_)
-              coro_.destroy();
-          }
-
-          friend void tag_invoke(start_t, __op& self) noexcept {
-            self.coro_.resume();
-          }
+          using __op_base::__op_base;
         };
     }
 
@@ -627,6 +631,7 @@ namespace std::execution {
             return ((Tag&&) tag)(((Self&&) r).r_, (As&&) as...);
           }
         };
+
       template<class S_, class F>
         struct __sender {
           using S = __t<S_>;
