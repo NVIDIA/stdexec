@@ -20,12 +20,17 @@
 
 #include "./task.hpp"
 
-task<int> async_answer() {
-  co_return 42;
+using namespace std::execution;
+
+template <typed_sender S1, typed_sender S2>
+task<int> async_answer(S1 s1, S2 s2) {
+  // Senders are implicitly awaitable (int this coroutine type):
+  co_await (S2&&) s2;
+  co_return co_await (S1&&) s1;
 }
 
 int main() {
   // Awaitables are implicitly senders:
-  auto [i] = std::this_thread::sync_wait(async_answer()).value();
+  auto [i] = std::this_thread::sync_wait(async_answer(just(42), just())).value();
   std::cout << "The answer is " << i << '\n';
 }

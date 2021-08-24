@@ -36,13 +36,14 @@ struct task {
     void await_resume() const noexcept {
     }
   };
+  // In a base class so it can be specialized when T is void:
   struct _promise_base {
     void return_value(T value) noexcept {
       data_.template emplace<1>(std::move(value));
     }
     std::variant<std::monostate, T, std::exception_ptr> data_{};
   };
-  struct promise_type : _promise_base {
+  struct promise_type : _promise_base, std::execution::with_awaitable_senders<promise_type> {
     task get_return_object() noexcept {
       return task(coro::coroutine_handle<promise_type>::from_promise(*this));
     }
