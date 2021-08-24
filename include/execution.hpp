@@ -675,18 +675,22 @@ namespace std::execution {
   }
 
   // NOT TO SPEC:
-  template <class>
-    extern const bool is_sender_closure;
+  namespace __closure {
+    template <class D>
+      requires is_class_v<D> && same_as<D, remove_cvref_t<D>>
+      struct sender_adaptor_closure;
+  }
+  using __closure::sender_adaptor_closure;
 
   template <class T>
-    concept __sender_closure =
-      (is_sender_closure<remove_cvref_t<T>>) &&
+    concept __sender_adaptor_closure =
+      derived_from<remove_cvref_t<T>, sender_adaptor_closure<remove_cvref_t<T>>> &&
       move_constructible<remove_cvref_t<T>> &&
       constructible_from<remove_cvref_t<T>, T>;
 
-  namespace __pipe {
+  namespace __closure {
     template <class A, class B>
-    struct __compose {
+    struct __compose : sender_adaptor_closure<__compose<A, B>> {
       [[no_unique_address]] A a_;
       [[no_unique_address]] B b_;
 
@@ -703,23 +707,24 @@ namespace std::execution {
       }
     };
 
-    struct __sender_closure_tag {
-      using sender_closure = void;
-    };
+    template <class D>
+      requires is_class_v<D> && same_as<D, remove_cvref_t<D>>
+      struct sender_adaptor_closure
+      {};
 
-    template <__sender_closure A, __sender_closure B>
+    template <__sender_adaptor_closure A, __sender_adaptor_closure B>
     __compose<remove_cvref_t<A>, remove_cvref_t<B>> operator|(A&& a, B&& b) {
       return {(A&&) a, (B&&) b};
     }
 
-    template <sender S, __sender_closure C>
+    template <sender S, __sender_adaptor_closure C>
       requires invocable<C, S>
     invoke_result_t<C, S> operator|(S&& s, C&& c) {
       return ((C&&) c)((S&&) s);
     }
 
     template <class Fn, class... As>
-    struct __closure {
+    struct __binder_back : sender_adaptor_closure<__binder_back<Fn, As...>> {
       [[no_unique_address]] Fn fn;
       tuple<As...> as;
 
@@ -742,21 +747,6 @@ namespace std::execution {
       }
     };
   }
-
-  // NOT TO SPEC:
-  using sender_closure_tag = __pipe::__sender_closure_tag;
-
-  template <class T>
-    inline constexpr bool is_sender_closure =
-      requires {
-        typename T::sender_closure;
-      };
-
-  template <class Fn, class... As>
-    inline constexpr bool is_sender_closure<__pipe::__closure<Fn, As...>> = true;
-
-  template <class A, class B>
-    inline constexpr bool is_sender_closure<__pipe::__compose<A, B>> = true;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
@@ -823,8 +813,8 @@ namespace std::execution {
         return __impl::__sender<__id_t<remove_cvref_t<S>>, F>{(S&&)s, (F&&)f};
       }
       template <class F>
-      __pipe::__closure<lazy_then_t, F> operator()(F f) const {
-        return {{}, {(F&&) f}};
+      __closure::__binder_back<lazy_then_t, F> operator()(F f) const {
+        return {{}, {}, {(F&&) f}};
       }
     } lazy_then {};
 
@@ -840,8 +830,8 @@ namespace std::execution {
         return lazy_then((S&&) s, (F&&) f);
       }
       template <class F>
-      __pipe::__closure<then_t, F> operator()(F f) const {
-        return {{}, {(F&&) f}};
+      __closure::__binder_back<then_t, F> operator()(F f) const {
+        return {{}, {}, {(F&&) f}};
       }
     } then {};
   }
