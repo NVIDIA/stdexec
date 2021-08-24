@@ -4396,22 +4396,36 @@ expressions are equivalent and yield a <code class="highlight"><c- n>sender</c->
 <pre class="highlight"><c- n>C</c-><c- p>(</c-><c- n>S</c-><c- p>)</c->
 <c- n>S</c-> <c- o>|</c-> <c- n>C</c->
 </pre>
-     <p>Given an additional pipeable sender adaptor closure object <code class="highlight"><c- n>D</c-></code>, the expression <code class="highlight"><c- n>C</c-> <c- o>|</c-> <c- n>D</c-></code> is well-formed and produces another range adaptor closure object such that the following two expressions are equivalent:</p>
-<pre class="highlight"><c- n>S</c-> <c- o>|</c-> <c- n>C</c-> <c- o>|</c-> <c- n>D</c->
-<c- n>S</c-> <c- o>|</c-> <c- p>(</c-><c- n>C</c-> <c- o>|</c-> <c- n>D</c-><c- p>)</c->
-</pre>
+     <p>Given an additional pipeable sender adaptor closure object <code class="highlight"><c- n>D</c-></code>, the expression <code class="highlight"><c- n>C</c-> <c- o>|</c-> <c- n>D</c-></code> produces another pipeable sender adaptor closure object <code class="highlight"><c- n>E</c-></code>:</p>
+     <p><code class="highlight"><c- n>E</c-></code> is a perfect forwarding call wrapper ([func.require]) with the following properties:</p>
+     <ul>
+      <li data-md>
+       <p>Its target object is an object <code class="highlight"><c- n>d</c-></code> of type <code class="highlight"><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>((</c-><c- n>D</c-><c- p>))</c-><c- o>></c-></code> direct-non-list-initialized with <code class="highlight"><c- n>D</c-></code>.</p>
+      <li data-md>
+       <p>It has one bound argument entity, an object <code class="highlight"><c- n>c</c-></code> of type <code class="highlight"><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>((</c-><c- n>C</c-><c- p>))</c-><c- o>></c-></code> direct-non-list-initialized with <code class="highlight"><c- n>C</c-></code>.</p>
+      <li data-md>
+       <p>Its call pattern is <code class="highlight"><c- n>d</c-><c- p>(</c-><c- n>c</c-><c- p>(</c-><c- n>arg</c-><c- p>))</c-></code>, where <code class="highlight"><c- n>arg</c-></code> is the argument used in a function call expression of <code class="highlight"><c- n>E</c-></code>.</p>
+     </ul>
+     <p>The expression <code class="highlight"><c- n>C</c-> <c- o>|</c-> <c- n>D</c-></code> is well-formed if and only if the initializations of the state entities of <code class="highlight"><c- n>E</c-></code> are all well-formed.</p>
     <li data-md>
      <p>A <i>pipeable sender adaptor object</i> is a customization point object that accepts a <code class="highlight"><c- n>sender</c-></code> as its first argument and returns a <code class="highlight"><c- n>sender</c-></code>.</p>
     <li data-md>
      <p>If a pipeable sender adaptor object accepts only one argument, then it is a pipeable sender adaptor closure object.</p>
     <li data-md>
-     <p>If a pipeable sender adaptor object accepts more than one argument, then the following expressions are equivalent:</p>
-<pre class="highlight"><i><c- n>adaptor</c-></i><c- p>(</c-><c- n>sender</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c->
-<i><c- n>adaptor</c-></i><c- p>(</c-><c- n>args</c-><c- p>...)(</c-><c- n>sender</c-><c- p>)</c->
-<c- n>sender</c-> <c- o>|</c-> <i><c- n>adaptor</c-></i><c- p>(</c-><c- n>args</c-><c- p>...)</c->
-</pre>
-     <p>In that case, <code class="highlight"><i><c- n>adaptor</c-></i><c- p>(</c-><c- n>args</c-><c- p>...)</c-></code> is a pipeable sender adaptor closure object.</p>
+     <p>If a pipeable sender adaptor object <code class="highlight"><c- n>adaptor</c-></code> accepts more than one argument, then let <code class="highlight"><c- n>s</c-></code> be an expression such that <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code> models <code class="highlight"><c- n>sender</c-></code>,
+let <code class="highlight"><c- n>args</c-><c- p>...</c-></code> be arguments such that <code class="highlight"><c- n>adaptor</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is a well-formed expression as specified in the rest of this subclause
+([execution.senders.adaptor.objects]), and let <code class="highlight"><c- n>BoundArgs</c-></code> be a pack that denotes <code class="highlight"><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>((</c-><c- n>args</c-><c- p>))</c-><c- o>></c-><c- p>...</c-></code>. The expression <code class="highlight"><c- n>adaptor</c-><c- p>(</c-><c- n>args</c-><c- p>...)</c-></code> produces a pipeable sender adaptor closure object <code class="highlight"><c- n>f</c-></code> that is a perfect forwarding call wrapper with the following properties:</p>
+     <ul>
+      <li data-md>
+       <p>Its target object is a copy of <code class="highlight"><c- n>adaptor</c-></code>.</p>
+      <li data-md>
+       <p>Its bound argument entities <code class="highlight"><c- n>bound_args</c-></code> consist of objects of types <code class="highlight"><c- n>BoundArgs</c-><c- p>...</c-></code> direct-non-list-initialized with <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>((</c-><c- n>args</c-><c- p>))</c-><c- o>></c-><c- p>(</c-><c- n>args</c-><c- p>)...</c-></code>, respectively.</p>
+      <li data-md>
+       <p>Its call pattern is <code class="highlight"><c- n>adaptor</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>bound_args</c-><c- p>...)</c-></code>, where <code class="highlight"><c- n>r</c-></code> is the argument used in a function call expression of <code class="highlight"><c- n>f</c-></code>.</p>
+     </ul>
    </ol>
+   <p>The expression <code class="highlight"><c- n>adaptor</c-><c- p>(</c-><c- n>args</c-><c- p>...)</c-></code> is well-formed if and only if the initializations of the bound argument entities of the result, as specified above,
+are all well-formed.</p>
    <h5 class="heading settled" data-level="9.6.5.3" id="spec-execution.senders.adaptors.on"><span class="secno">9.6.5.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> <b>[execution.senders.adaptors.on]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.on"></a></h5>
    <ol>
     <li data-md>
