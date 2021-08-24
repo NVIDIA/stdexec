@@ -2273,8 +2273,7 @@ enum class forward_progress_guarantee {
 
     - Its target object is a copy of `adaptor`.
 
-    - Its bound argument entities `bound_args` consist of objects of types `BoundArgs...` direct-non-list-initialized with
-      `std::forward<decltype((args))>(args)...`, respectively.
+    - Its bound argument entities `bound_args` consist of objects of types `BoundArgs...` direct-non-list-initialized with `std::forward<decltype((args))>(args)...`, respectively.
 
     - Its call pattern is `adaptor(r, bound_args...)`, where `r` is the argument used in a function call expression of `f`.
 
