@@ -150,8 +150,9 @@ namespace std::execution {
         set_value((remove_cvref_t<R>&&) r, (An&&) an...);
       };
 
+  // NOT TO SPEC
   template<class R, class...As>
-    inline constexpr bool is_nothrow_receiver_of_v =
+    inline constexpr bool nothrow_receiver_of =
       receiver_of<R, As...> &&
       nothrow_tag_invocable<set_value_t, R, As...>;
 
@@ -235,7 +236,12 @@ namespace std::execution {
               bool await_ready() noexcept {
                 return false;
               }
-              void await_suspend(coro::coroutine_handle<>) {
+              void await_suspend(coro::coroutine_handle<>)
+                noexcept(is_nothrow_invocable_v<Func>) {
+                // If this throws, the runtime catches the exception,
+                // resumes the __connect_awaitable coroutine, and immediately
+                // rethrows the exception. The end result is that an
+                // exception_ptr to the exception gets passed to set_error.
                 ((Func &&) func_)();
               }
               [[noreturn]] void await_resume() noexcept {
@@ -279,11 +285,11 @@ namespace std::execution {
             }
 
             // Pass through receiver queries
-            template<__same_<promise_type> Self, invocable<__member_t<Self, R>> CPO>
-            friend auto tag_invoke(CPO cpo, Self&& self)
-              noexcept(is_nothrow_invocable_v<CPO, __member_t<Self, R>>)
-              -> invoke_result_t<CPO, R> {
-              return ((CPO&&) cpo)(((Self&&) self).r_);
+            template<class... As, invocable<R&, As...> CPO>
+            friend auto tag_invoke(CPO cpo, const promise_type& self, As&&... as)
+              noexcept(is_nothrow_invocable_v<CPO, R&, As...>)
+              -> invoke_result_t<CPO, R&, As...> {
+              return ((CPO&&) cpo)(self.r_, (As&&) as...);
             }
 
             R& r_;
@@ -295,8 +301,11 @@ namespace std::execution {
 
     inline constexpr struct __fn {
     private:
+      template <class R, class... Args>
+        using __nothrow_ = bool_constant<nothrow_receiver_of<R, Args...>>;
+
       template <class A, class R>
-      static __impl::__op<__id_t<remove_cvref_t<R>>> __impl(A&& a, R&& r) {
+      static __impl::__op<__id_t<remove_cvref_t<R>>> __impl(A&& a, R&& r) noexcept {
         exception_ptr ex;
         try {
           // This is a bit mind bending control-flow wise.
@@ -307,19 +316,19 @@ namespace std::execution {
           // The 'co_yield' expression then invokes this lambda
           // after the coroutine is suspended so that it is safe
           // for the receiver to destroy the coroutine.
-          auto fn = [&](auto&&... as) {
-            return [&] {
+          auto fn = [&]<bool Nothrow>(bool_constant<Nothrow>, auto&&... as) noexcept {
+            return [&]() noexcept(Nothrow) -> void {
               set_value((R&&) r, (add_rvalue_reference_t<__await_result_t<A>>) as...);
             };
           };
           if constexpr (is_void_v<__await_result_t<A>>)
-            co_yield (co_await (A &&) a, fn());
+            co_yield (co_await (A &&) a, fn(__nothrow_<R>{}));
           else
-            co_yield fn(co_await (A &&) a);
+            co_yield fn(__nothrow_<R, __await_result_t<A>>{}, co_await (A &&) a);
         } catch (...) {
           ex = current_exception();
         }
-        co_yield [&] {
+        co_yield [&]() noexcept -> void {
           set_error((R&&) r, (exception_ptr&&) ex);
         };
       }
