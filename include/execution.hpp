@@ -427,7 +427,7 @@ namespace std::execution {
               auto continuation = coro::coroutine_handle<Promise>::from_address(
                 self.continuation_.address());
               __member_t<Self, Promise>& p = continuation.promise();
-              return ((CPO&&) cpo)(p);
+              return ((CPO&&) cpo)(p, (As&&) as...);
             }
           };
 
