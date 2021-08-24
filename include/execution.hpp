@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cassert>
 #include <stdexcept>
 #include <type_traits>
 #include <tuple>
@@ -26,6 +27,7 @@
 #include <__utility.hpp>
 #include <concepts.hpp>
 #include <functional.hpp>
+#include <coroutine.hpp>
 
 namespace std::execution {
   template<template<template<class...> class, template<class...> class> class>
@@ -49,13 +51,23 @@ namespace std::execution {
     using __unspecialized = void;
   };
 
+  template <bool SendsDone>
   struct __void_sender {
     template<template<class...> class Tuple, template<class...> class Variant>
       using value_types = Variant<Tuple<>>;
     template<template<class...> class Variant>
       using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = true;
+    static constexpr bool sends_done = SendsDone;
   };
+
+  template <bool SendsDone, class... Ts>
+    struct __sender_of {
+      template<template<class...> class Tuple, template<class...> class Variant>
+        using value_types = Variant<Tuple<Ts...>>;
+      template<template<class...> class Variant>
+        using error_types = Variant<std::exception_ptr>;
+      static constexpr bool sends_done = SendsDone;
+    };
 
   template<class S>
     struct __typed_sender {
@@ -72,6 +84,12 @@ namespace std::execution {
       return __typed_sender<S>{};
     } else if constexpr (derived_from<S, sender_base>) {
       return sender_base{};
+    } else if constexpr (__awaitable<S>) { // NOT TO SPEC
+      if constexpr (is_void_v<__await_result_t<S>>) {
+        return __void_sender<false>{};
+      } else {
+        return __sender_of<false, __await_result_t<S>>{};
+      }
     } else {
       return __no_sender_traits{};
     }
@@ -107,7 +125,7 @@ namespace std::execution {
     inline constexpr struct set_done_t {
       template<class R>
         requires tag_invocable<set_done_t, R>
-      void operator()(R&& r) const 
+      void operator()(R&& r) const
         noexcept(nothrow_tag_invocable<set_done_t, R>) {
         (void) tag_invoke(set_done_t{}, (R&&) r);
       }
@@ -129,7 +147,7 @@ namespace std::execution {
     concept receiver_of =
       receiver<R> &&
       requires(remove_cvref_t<R>&& r, An&&... an) {
-        set_value(std::move(r), (An&&) an...);
+        set_value((remove_cvref_t<R>&&) r, (An&&) an...);
       };
 
   template<class R, class...As>
@@ -150,6 +168,25 @@ namespace std::execution {
     concept typed_sender =
       sender<S> &&
       __has_sender_types<sender_traits<remove_cvref_t<S>>>;
+
+  template <class... As>
+    using __back_t = decltype((static_cast<As(*)()>(0),...)());
+  template <class... As>
+    requires (sizeof...(As) == 1)
+    using __single_t = __back_t<As...>;
+  template <class... As>
+    requires (sizeof...(As) <= 1)
+    using __single_or_void_t = __back_t<void, As...>;
+
+  template<class S>
+    using __single_sender_result_t =
+      typename sender_traits<remove_cvref_t<S>>
+        ::template value_types<__single_or_void_t, __single_t>;
+
+  template<class S>
+    concept __single_typed_sender =
+      typed_sender<S> &&
+      requires { typename __single_sender_result_t<S>; };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
@@ -174,6 +211,127 @@ namespace std::execution {
       };
 
   /////////////////////////////////////////////////////////////////////////////
+  // NOT TO SPEC: __connect_awaitable_
+  inline namespace __connect_awaitable_ {
+    namespace __impl {
+      struct __op_base {
+        struct __promise_base {
+          coro::suspend_always initial_suspend() noexcept {
+            return {};
+          }
+          [[noreturn]] coro::suspend_always final_suspend() noexcept {
+            terminate();
+          }
+          [[noreturn]] void unhandled_exception() noexcept {
+            terminate();
+          }
+          [[noreturn]] void return_void() noexcept {
+            terminate();
+          }
+          template <class Func>
+          auto yield_value(Func&& func) noexcept {
+            struct awaiter {
+              Func&& func_;
+              bool await_ready() noexcept {
+                return false;
+              }
+              void await_suspend(coro::coroutine_handle<>) {
+                ((Func &&) func_)();
+              }
+              [[noreturn]] void await_resume() noexcept {
+                terminate();
+              }
+            };
+            return awaiter{(Func &&) func};
+          }
+        };
+
+        coro::coroutine_handle<> coro_;
+
+        explicit __op_base(coro::coroutine_handle<> coro) noexcept
+          : coro_(coro) {}
+
+        __op_base(__op_base&& other) noexcept
+          : coro_(exchange(other.coro_, {})) {}
+
+        ~__op_base() {
+          if (coro_)
+            coro_.destroy();
+        }
+
+        friend void tag_invoke(start_t, __op_base& self) noexcept {
+          self.coro_.resume();
+        }
+      };
+      template<class R_>
+        class __op : public __op_base {
+          using R = __t<R_>;
+        public:
+          struct promise_type : __promise_base {
+            template <class A>
+            explicit promise_type(A&, R& r) noexcept
+              : r_(r)
+            {}
+
+            __op get_return_object() noexcept {
+              return __op{
+                coro::coroutine_handle<promise_type>::from_promise(*this)};
+            }
+
+            // Pass through receiver queries
+            template<__same_<promise_type> Self, invocable<__member_t<Self, R>> CPO>
+            friend auto tag_invoke(CPO cpo, Self&& self)
+              noexcept(is_nothrow_invocable_v<CPO, __member_t<Self, R>>)
+              -> invoke_result_t<CPO, R> {
+              return ((CPO&&) cpo)(((Self&&) self).r_);
+            }
+
+            R& r_;
+          };
+
+          using __op_base::__op_base;
+        };
+    }
+
+    inline constexpr struct __fn {
+    private:
+      template <class A, class R>
+      static __impl::__op<__id_t<remove_cvref_t<R>>> __impl(A&& a, R&& r) {
+        exception_ptr ex;
+        try {
+          // This is a bit mind bending control-flow wise.
+          // We are first evaluating the co_await expression.
+          // Then the result of that is passed into a lambda
+          // that curries a reference to the result into another
+          // lambda which is then returned to 'co_yield'.
+          // The 'co_yield' expression then invokes this lambda
+          // after the coroutine is suspended so that it is safe
+          // for the receiver to destroy the coroutine.
+          auto fn = [&](auto&&... as) {
+            return [&] {
+              set_value((R&&) r, (add_rvalue_reference_t<__await_result_t<A>>) as...);
+            };
+          };
+          if constexpr (is_void_v<__await_result_t<A>>)
+            co_yield (co_await (A &&) a, fn());
+          else
+            co_yield fn(co_await (A &&) a);
+        } catch (...) {
+          ex = current_exception();
+        }
+        co_yield [&] {
+          set_error((R&&) r, (exception_ptr&&) ex);
+        };
+      }
+    public:
+      template <__awaitable A, receiver R>
+      __impl::__op<__id_t<remove_cvref_t<R>>> operator()(A&& a, R&& r) const {
+        return __impl((A&&) a, (R&&) r);
+      }
+    } __connect_awaitable{};
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
   inline namespace __connect {
     inline constexpr struct connect_t {
@@ -183,6 +341,12 @@ namespace std::execution {
       auto operator()(S&& s, R&& r) const
         noexcept(nothrow_tag_invocable<connect_t, S, R>) {
         return tag_invoke(connect_t{}, (S&&) s, (R&&) r);
+      }
+      // NOT TO SPEC:
+      template<__awaitable A, receiver R>
+        requires (!tag_invocable<connect_t, A, R>)
+      auto operator()(A&& a, R&& r) const {
+        return __connect_awaitable((A&&) a, (R&&) r);
       }
     } connect {};
   }
@@ -199,6 +363,145 @@ namespace std::execution {
 
   template<class S, class R>
     using connect_result_t = tag_invoke_result_t<connect_t, S, R>;
+
+  /////////////////////////////////////////////////////////////////////////////
+  // NOT TO SPEC: as_awaitable and with_awaitable_senders
+  inline namespace __with_awaitable_senders {
+    namespace __impl {
+      struct __void {};
+      template <class Value>
+        using __value_or_void_t =
+          conditional_t<is_void_v<Value>, __void, Value>;
+      template <class Value>
+        using __expected_t =
+          variant<monostate, __value_or_void_t<Value>, std::exception_ptr, set_done_t>;
+
+      template <class Value>
+        struct __rec_base {
+          explicit __rec_base(__expected_t<Value>* result, coro::coroutine_handle<> continuation) noexcept
+            : result_(result)
+            , continuation_(continuation)
+          {}
+
+          __rec_base(__rec_base&& r) noexcept
+            : result_(std::exchange(r.result_, nullptr))
+            , continuation_(std::exchange(r.continuation_, nullptr))
+          {}
+
+          template <class... Us>
+            requires constructible_from<Value, Us...> ||
+              (is_void_v<Value> && sizeof...(Us) == 0)
+          friend void tag_invoke(set_value_t, __rec_base&& self, Us&&... us)
+              noexcept(is_nothrow_constructible_v<Value, Us...> ||
+                  is_void_v<Value>) {
+            self.result_->template emplace<1>((Us&&) us...);
+            self.continuation_.resume();
+          }
+
+          friend void tag_invoke(set_error_t, __rec_base&& self, exception_ptr eptr) noexcept {
+            self.result_->template emplace<2>((exception_ptr&&) eptr);
+            self.continuation_.resume();
+          }
+
+          __expected_t<Value>* result_;
+          coro::coroutine_handle<> continuation_;
+        };
+
+      template <typename P_, typename Value>
+        struct __awaitable_base {
+          using Promise = __t<P_>;
+          struct __rec : __rec_base<Value> {
+            using __rec_base<Value>::__rec_base;
+
+            friend void tag_invoke(set_done_t, __rec&& self) noexcept {
+              self.result_->template emplace<3>(set_done);
+              self.continuation_.resume(); // TODO: propose unhandled_done() ?
+              //self.continuation_.promise().unhandled_done().resume();
+            }
+
+            // Forward other tag_invoke overloads to the promise
+            template <__same_<__rec> Self, class... As, invocable<__member_t<Self, Promise>&, As...> CPO>
+            friend auto tag_invoke(CPO cpo, Self&& self, As&&... as)
+                noexcept(is_nothrow_invocable_v<CPO, __member_t<Self, Promise>&, As...>)
+                -> invoke_result_t<CPO, __member_t<Self, Promise>&, As...> {
+              auto continuation = coro::coroutine_handle<Promise>::from_address(
+                self.continuation_.address());
+              __member_t<Self, Promise>& p = continuation.promise();
+              return ((CPO&&) cpo)(p);
+            }
+          };
+
+        bool await_ready() const noexcept {
+          return false;
+        }
+
+        Value await_resume() {
+          switch (result_.index()) {
+          case 0:
+            assert(!"Should never get here");
+            break;
+          case 1: // value
+            if constexpr (!is_void_v<Value>)
+              return (Value&&) std::get<1>(result_);
+            else
+              return;
+          case 2: // exception
+            std::rethrow_exception(std::get<2>(result_));
+          case 3: // done
+            assert(!"Not implemented yet");
+            break;
+          }
+          terminate();
+        }
+
+      protected:
+        __expected_t<Value> result_;
+      };
+
+      template <typename P_, typename S_>
+      struct __awaitable
+        : __awaitable_base<P_, __single_sender_result_t<__t<S_>>> {
+      private:
+        using Promise = __t<P_>;
+        using Sender = __t<S_>;
+        using Base = __awaitable_base<P_, __single_sender_result_t<Sender>>;
+        using __rec = typename Base::__rec;
+        connect_result_t<Sender, __rec> op_;
+      public:
+        __awaitable(Sender&& sender, coro::coroutine_handle<Promise> h)
+          noexcept(/* TODO: is_nothrow_connectable_v<Sender, __rec>*/ false)
+          : op_(connect((Sender&&)sender, __rec{&this->result_, h}))
+        {}
+
+        void await_suspend(coro::coroutine_handle<Promise>) noexcept {
+          start(op_);
+        }
+      };
+    }
+
+    inline constexpr struct as_awaitable_t {
+      template <__single_typed_sender S, class Promise>
+      auto operator()(S&& s, Promise& promise) const
+        noexcept(/*TODO*/ false)
+        -> __impl::__awaitable<__id_t<Promise>, __id_t<remove_cvref_t<S>>> {
+        auto h = coro::coroutine_handle<Promise>::from_promise(promise);
+        return {(S&&) s, h};
+      }
+    } as_awaitable{};
+
+    template <class Promise>
+    struct with_awaitable_senders {
+      template <class Value>
+      decltype(auto) await_transform(Value&& value) {
+        if constexpr (__awaitable<Value>)
+          return (Value&&) value;
+        else if constexpr (sender<Value>)
+          return as_awaitable((Value&&) value, static_cast<Promise&>(*this));
+        else
+          return (Value&&) value;
+      }
+    };
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumer.start_detached]
@@ -270,8 +573,9 @@ namespace std::execution {
         schedule((S&&) s);
       };
 
+  // NOT TO SPEC
   template <scheduler S>
-    using __schedule_result_t = decltype(schedule(std::declval<S>()));
+    using schedule_result_t = decltype(schedule(std::declval<S>()));
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
@@ -305,8 +609,9 @@ namespace std::execution {
             }
           };
 
+          // NOT TO SPEC: copy_constructible
           template<receiver_of<Ts...> R>
-            requires (copyable<Ts> &&...)
+            requires (copy_constructible<Ts> &&...)
           friend auto tag_invoke(connect_t, const __sender& s, R&& r)
             noexcept((is_nothrow_copy_constructible_v<Ts> &&...))
             -> __op<__id_t<remove_cvref_t<R>>> {
@@ -349,6 +654,7 @@ namespace std::execution {
           friend void tag_invoke(set_done_t, __as_receiver&&) noexcept {}
         };
     }
+
     inline constexpr struct execute_t {
       template<scheduler Sch, class F>
         requires invocable<F&> && move_constructible<F>
@@ -368,20 +674,89 @@ namespace std::execution {
     } execute {};
   }
 
+  // NOT TO SPEC:
+  template <class>
+    extern const bool is_sender_closure;
+
+  template <class T>
+    concept __sender_closure =
+      (is_sender_closure<remove_cvref_t<T>>) &&
+      move_constructible<remove_cvref_t<T>> &&
+      constructible_from<remove_cvref_t<T>, T>;
+
   namespace __pipe {
+    template <class A, class B>
+    struct __compose {
+      [[no_unique_address]] A a_;
+      [[no_unique_address]] B b_;
+
+      template <sender S>
+        requires invocable<A, S> && invocable<B, invoke_result_t<A, S>>
+      invoke_result_t<B, invoke_result_t<A, S>> operator()(S&& s) && {
+        return ((B&&) b_)(((A&&) a_)((S&&) s));
+      }
+
+      template <sender S>
+        requires invocable<const A&, S> && invocable<const B&, invoke_result_t<const A&, S>>
+      invoke_result_t<B, invoke_result_t<A, S>> operator()(S&& s) const & {
+        return b_(a_((S&&) s));
+      }
+    };
+
+    struct __sender_closure_tag {
+      using sender_closure = void;
+    };
+
+    template <__sender_closure A, __sender_closure B>
+    __compose<remove_cvref_t<A>, remove_cvref_t<B>> operator|(A&& a, B&& b) {
+      return {(A&&) a, (B&&) b};
+    }
+
+    template <sender S, __sender_closure C>
+      requires invocable<C, S>
+    invoke_result_t<C, S> operator|(S&& s, C&& c) {
+      return ((C&&) c)((S&&) s);
+    }
+
     template <class Fn, class... As>
-    struct __binder {
+    struct __closure {
       [[no_unique_address]] Fn fn;
       tuple<As...> as;
 
       template <sender S>
-      friend decltype(auto) operator|(S&& s, __binder b) {
-        return std::apply([&](As&... as) {
-            return ((Fn&&) b.fn)(s, (As&&) as...);
-          }, b.as);
+        requires invocable<Fn, S, As...>
+      invoke_result_t<Fn, S, As...> operator()(S&& s) &&
+        noexcept(is_nothrow_invocable_v<Fn, S, As...>) {
+        return std::apply([&s, this](As&... as) {
+            return ((Fn&&) fn)((S&&) s, (As&&) as...);
+          }, as);
+      }
+
+      template <sender S>
+        requires invocable<Fn, S, As...>
+      invoke_result_t<const Fn&, S, const As&...> operator()(S&& s) const &
+        noexcept(is_nothrow_invocable_v<const Fn&, S, const As&...>) {
+        return std::apply([&s, this](const As&... as) {
+            return fn((S&&) s, as...);
+          }, as);
       }
     };
   }
+
+  // NOT TO SPEC:
+  using sender_closure_tag = __pipe::__sender_closure_tag;
+
+  template <class T>
+    inline constexpr bool is_sender_closure =
+      requires {
+        typename T::sender_closure;
+      };
+
+  template <class Fn, class... As>
+    inline constexpr bool is_sender_closure<__pipe::__closure<Fn, As...>> = true;
+
+  template <class A, class B>
+    inline constexpr bool is_sender_closure<__pipe::__compose<A, B>> = true;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
@@ -392,7 +767,7 @@ namespace std::execution {
           using R = __t<R_>;
           [[no_unique_address]] R r_;
           [[no_unique_address]] F f_;
-    
+
           // Customize set_value by invoking the callable and passing the result to the base class
           template<class... As>
             requires invocable<F, As...> &&
@@ -417,18 +792,19 @@ namespace std::execution {
             return ((Tag&&) tag)(((Self&&) r).r_, (As&&) as...);
           }
         };
+
       template<class S_, class F>
         struct __sender {
           using S = __t<S_>;
           [[no_unique_address]] S s_;
           [[no_unique_address]] F f_;
-    
+
           template<receiver R, class R2 = __id_t<remove_cvref_t<R>>>
             requires sender_to<S, __receiver<R2, F>>
           friend auto tag_invoke(connect_t, __sender&& self, R&& r)
             noexcept(/*todo*/ false)
             -> connect_result_t<S, __receiver<R2, F>> {
-            return execution::connect(
+            return connect(
               (S&&) self.s_,
               __receiver<R2, F>{(R&&) r, (F&&) self.f_});
           }
@@ -447,7 +823,7 @@ namespace std::execution {
         return __impl::__sender<__id_t<remove_cvref_t<S>>, F>{(S&&)s, (F&&)f};
       }
       template <class F>
-      __pipe::__binder<lazy_then_t, F> operator()(F f) const {
+      __pipe::__closure<lazy_then_t, F> operator()(F f) const {
         return {{}, {(F&&) f}};
       }
     } lazy_then {};
@@ -464,7 +840,7 @@ namespace std::execution {
         return lazy_then((S&&) s, (F&&) f);
       }
       template <class F>
-      __pipe::__binder<then_t, F> operator()(F f) const {
+      __pipe::__closure<then_t, F> operator()(F f) const {
         return {{}, {(F&&) f}};
       }
     } then {};
@@ -499,16 +875,11 @@ namespace std::this_thread {
   // [execution.senders.consumers.sync_wait]
   inline namespace __sync_wait {
     namespace __impl {
-      template <class... As>
-        using __back_t = decltype((static_cast<As(*)()>(0),...)());
-      template <class... As>
-        requires (sizeof...(As) == 1)
-        using __single_t = __back_t<As...>;
       template <class S>
         using __sync_wait_result_t =
             typename execution::sender_traits<
               remove_cvref_t<S>
-            >::template value_types<tuple, __impl::__single_t>;
+            >::template value_types<tuple, execution::__single_t>;
 
       template <class Tuple>
         struct __state {
