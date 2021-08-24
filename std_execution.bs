@@ -2250,26 +2250,36 @@ enum class forward_progress_guarantee {
     S | C
     </pre>
 
-    Given an additional pipeable sender adaptor closure object `D`, the expression `C | D` is well-formed and produces another range adaptor closure object such that the following two expressions are equivalent:
+    Given an additional pipeable sender adaptor closure object `D`, the expression `C | D` produces another pipeable sender adaptor closure object `E`:
 
-    <pre highlight=c++>
-    S | C | D
-    S | (C | D)
-    </pre>
+    `E` is a perfect forwarding call wrapper ([func.require]) with the following properties:
+
+    - Its target object is an object `d` of type `decay_t<decltype((D))>` direct-non-list-initialized with `D`.
+
+    - It has one bound argument entity, an object `c` of type `decay_t<decltype((C))>` direct-non-list-initialized with `C`.
+
+    - Its call pattern is `d(c(arg))`, where `arg` is the argument used in a function call expression of `E`.
+
+    The expression `C | D` is well-formed if and only if the initializations of the state entities of `E` are all well-formed.
 
 2. A <i>pipeable sender adaptor object</i> is a customization point object that accepts a `sender` as its first argument and returns a `sender`.
 
 3. If a pipeable sender adaptor object accepts only one argument, then it is a pipeable sender adaptor closure object.
 
-4. If a pipeable sender adaptor object accepts more than one argument, then the following expressions are equivalent:
+4. If a pipeable sender adaptor object `adaptor` accepts more than one argument, then let `s` be an expression such that `decltype((s))` models `sender`,
+    let `args...` be arguments such that `adaptor(s, args...)` is a well-formed expression as specified in the rest of this subclause
+    ([execution.senders.adaptor.objects]), and let `BoundArgs` be a pack that denotes `decay_t<decltype((args))>...`. The expression `adaptor(args...)`
+    produces a pipeable sender adaptor closure object `f` that is a perfect forwarding call wrapper with the following properties:
 
-    <pre highlight=c++>
-    <i>adaptor</i>(sender, args...)
-    <i>adaptor</i>(args...)(sender)
-    sender | <i>adaptor</i>(args...)
-    </pre>
+    - Its target object is a copy of `adaptor`.
 
-    In that case, <code><i>adaptor</i>(args...)</code> is a pipeable sender adaptor closure object.
+    - Its bound argument entities `bound_args` consist of objects of types `BoundArgs...` direct-non-list-initialized with
+      `std::forward<decltype((args))>(args)...`, respectively.
+
+    - Its call pattern is `adaptor(r, bound_args...)`, where `r` is the argument used in a function call expression of `f`.
+
+The expression `adaptor(args...)` is well-formed if and only if the initializations of the bound argument entities of the result, as specified above,
+are all well-formed.
 
 #### `execution::on` <b>[execution.senders.adaptors.on]</b> #### {#spec-execution.senders.adaptors.on}
 
