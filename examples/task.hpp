@@ -30,8 +30,8 @@ struct task {
     bool await_ready() const noexcept {
       return false;
     }
-    auto await_suspend(coro::coroutine_handle<promise_type> h) const noexcept {
-      return h.promise().parent_;
+    coro::coroutine_handle<> await_suspend(coro::coroutine_handle<promise_type> h) const noexcept {
+      return h.promise().continuation();
     }
     void await_resume() const noexcept {
     }
@@ -56,7 +56,6 @@ struct task {
     void unhandled_exception() noexcept {
       this->data_.template emplace<2>(std::current_exception());
     }
-    coro::coroutine_handle<> parent_{};
   };
 
   task(task&& that) noexcept
@@ -73,8 +72,9 @@ struct task {
     bool await_ready() const noexcept {
       return false;
     }
-    auto await_suspend(coro::coroutine_handle<> parent) noexcept {
-      t.coro_.promise().parent_ = parent;
+    template <typename OtherPromise>
+    coro::coroutine_handle<> await_suspend(coro::coroutine_handle<OtherPromise> parent) noexcept {
+      t.coro_.promise().set_continuation(parent);
       return t.coro_;
     }
     T await_resume() const {

@@ -182,7 +182,7 @@ namespace std::execution {
   template<class S>
     using __single_sender_result_t =
       typename sender_traits<remove_cvref_t<S>>
-        ::template value_types<__single_or_void_t, __single_t>;
+        ::template value_types<__single_or_void_t, __single_or_void_t>;
 
   template<class S>
     concept __single_typed_sender =
@@ -278,6 +278,11 @@ namespace std::execution {
             explicit promise_type(A&, R& r) noexcept
               : r_(r)
             {}
+
+            coro::coroutine_handle<> unhandled_done() noexcept {
+              set_done(std::move(r_));
+              return coro::noop_coroutine();
+            }
 
             __op get_return_object() noexcept {
               return __op{
@@ -424,8 +429,9 @@ namespace std::execution {
 
             friend void tag_invoke(set_done_t, __rec&& self) noexcept {
               self.result_->template emplace<3>(set_done);
-              self.continuation_.resume(); // TODO: propose unhandled_done() ?
-              //self.continuation_.promise().unhandled_done().resume();
+              auto continuation = coro::coroutine_handle<Promise>::from_address(
+                self.continuation_.address());
+              continuation.promise().unhandled_done().resume();
             }
 
             // Forward other tag_invoke overloads to the promise
@@ -446,19 +452,18 @@ namespace std::execution {
 
         Value await_resume() {
           switch (result_.index()) {
-          case 0:
+          case 0: // receiver contract not satisfied
+            [[fallthrough]];
+          case 3: // set_done
             assert(!"Should never get here");
             break;
-          case 1: // value
+          case 1: // set_value
             if constexpr (!is_void_v<Value>)
               return (Value&&) std::get<1>(result_);
             else
               return;
-          case 2: // exception
+          case 2: // set_error
             std::rethrow_exception(std::get<2>(result_));
-          case 3: // done
-            assert(!"Not implemented yet");
-            break;
           }
           terminate();
         }
@@ -499,9 +504,39 @@ namespace std::execution {
     } as_awaitable{};
 
     template <class Promise>
-    struct with_awaitable_senders {
+    struct with_awaitable_senders;
+
+    struct with_awaitable_senders_base {
+      template <class OtherPromise>
+      void set_continuation(coro::coroutine_handle<OtherPromise> h) noexcept {
+        static_assert(!is_void_v<OtherPromise>);
+        continuation_ = h;
+        done_callback_ = [](void* address) noexcept -> coro::coroutine_handle<> {
+          return coro::coroutine_handle<OtherPromise>::from_address(address).promise().unhandled_done();
+        };
+      }
+
+      coro::coroutine_handle<> continuation() const noexcept {
+        return continuation_;
+      }
+
+      coro::coroutine_handle<> unhandled_done() noexcept {
+        return (*done_callback_)(continuation_.address());
+      }
+
+    private:
+      coro::coroutine_handle<> continuation_{};
+      coro::coroutine_handle<> (*done_callback_)(void*) noexcept =
+        [](void*) noexcept -> coro::coroutine_handle<> {
+          std::terminate();
+        };
+    };
+
+    template <class Promise>
+    struct with_awaitable_senders : with_awaitable_senders_base {
       template <class Value>
       decltype(auto) await_transform(Value&& value) {
+        static_assert(derived_from<Promise, with_awaitable_senders>);
         if constexpr (__awaitable<Value>)
           return (Value&&) value;
         else if constexpr (sender<Value>)
@@ -590,10 +625,8 @@ namespace std::execution {
   // [execution.senders.factories]
   inline namespace __just {
     namespace __impl {
-      template <class... Ts>
-        struct __sender {
-          tuple<Ts...> vs_;
-
+      template <class CPO, class... Ts>
+        struct __traits {
           template<template<class...> class Tuple,
                    template<class...> class Variant>
           using value_types = Variant<Tuple<Ts...>>;
@@ -602,6 +635,32 @@ namespace std::execution {
           using error_types = Variant<exception_ptr>;
 
           static const constexpr auto sends_done = false;
+        };
+      template<class Error>
+        struct __traits<set_error_t, Error> {
+          template<template<class...> class,
+                   template<class...> class Variant>
+          using value_types = Variant<>;
+
+          template<template<class...> class Variant>
+          using error_types = Variant<Error>;
+
+          static const constexpr auto sends_done = false;
+        };
+      template<>
+        struct __traits<set_done_t> {
+          template<template<class...> class,
+                   template<class...> class Variant>
+          using value_types = Variant<>;
+
+          template<template<class...> class Variant>
+          using error_types = Variant<>;
+
+          static const constexpr auto sends_done = true;
+        };
+      template <class CPO, class... Ts>
+        struct __sender : __traits<CPO, Ts...> {
+          tuple<Ts...> vs_;
 
           template<class R_>
           struct __op {
@@ -611,7 +670,7 @@ namespace std::execution {
 
             friend void tag_invoke(start_t, __op& op) noexcept try {
               std::apply([&op](Ts&... ts) {
-                set_value((R&&) op.r_, (Ts&&) ts...);
+                CPO{}((R&&) op.r_, (Ts&&) ts...);
               }, op.vs_);
             } catch(...) {
               set_error((R&&) op.r_, current_exception());
@@ -639,11 +698,26 @@ namespace std::execution {
     inline constexpr struct __just_t {
       template <class... Ts>
         requires (constructible_from<decay_t<Ts>, Ts> &&...)
-      __impl::__sender<decay_t<Ts>...> operator()(Ts&&... ts) const
+      __impl::__sender<set_value_t, decay_t<Ts>...> operator()(Ts&&... ts) const
         noexcept((is_nothrow_constructible_v<decay_t<Ts>, Ts> &&...)) {
-        return {{(Ts&&) ts...}};
+        return {{}, {(Ts&&) ts...}};
       }
     } just {};
+
+    inline constexpr struct __just_error_t {
+      template <class Error>
+        requires constructible_from<decay_t<Error>, Error>
+      __impl::__sender<set_error_t, Error> operator()(Error&& err) const
+        noexcept(is_nothrow_constructible_v<decay_t<Error>, Error>) {
+        return {{}, {(Error&&) err}};
+      }
+    } just_error {};
+
+    inline constexpr struct __just_done_t {
+      __impl::__sender<set_done_t> operator()() const noexcept {
+        return {{}, {}};
+      }
+    } just_done {};
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -874,6 +948,7 @@ namespace std::this_thread {
   // [execution.senders.consumers.sync_wait]
   inline namespace __sync_wait {
     namespace __impl {
+      // What should sync_wait(just_done()) return?
       template <class S>
         using __sync_wait_result_t =
             typename execution::sender_traits<
