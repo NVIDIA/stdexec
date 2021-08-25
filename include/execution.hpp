@@ -281,6 +281,9 @@ namespace std::execution {
 
             coro::coroutine_handle<> unhandled_done() noexcept {
               set_done(std::move(r_));
+              // Returning noop_coroutine here causes the __connect_awaitable
+              // coroutine to never resume past the point where it co_await's
+              // the awaitable.
               return coro::noop_coroutine();
             }
 
@@ -388,7 +391,7 @@ namespace std::execution {
           conditional_t<is_void_v<Value>, __void, Value>;
       template <class Value>
         using __expected_t =
-          variant<monostate, __value_or_void_t<Value>, std::exception_ptr, set_done_t>;
+          variant<monostate, __value_or_void_t<Value>, std::exception_ptr>;
 
       template <class Value>
         struct __rec_base {
@@ -428,7 +431,6 @@ namespace std::execution {
             using __rec_base<Value>::__rec_base;
 
             friend void tag_invoke(set_done_t, __rec&& self) noexcept {
-              self.result_->template emplace<3>(set_done);
               auto continuation = coro::coroutine_handle<Promise>::from_address(
                 self.continuation_.address());
               continuation.promise().unhandled_done().resume();
@@ -453,8 +455,6 @@ namespace std::execution {
         Value await_resume() {
           switch (result_.index()) {
           case 0: // receiver contract not satisfied
-            [[fallthrough]];
-          case 3: // set_done
             assert(!"Should never get here");
             break;
           case 1: // set_value
@@ -512,7 +512,11 @@ namespace std::execution {
         static_assert(!is_void_v<OtherPromise>);
         continuation_ = h;
         done_callback_ = [](void* address) noexcept -> coro::coroutine_handle<> {
-          return coro::coroutine_handle<OtherPromise>::from_address(address).promise().unhandled_done();
+          // This causes the rest of the coroutine (the part after the co_await
+          // of the sender) to be skipped and the parent coroutine to be resumed
+          // with an "unhandled_done".
+          return coro::coroutine_handle<OtherPromise>::from_address(address)
+              .promise().unhandled_done();
         };
       }
 
