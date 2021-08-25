@@ -339,8 +339,7 @@ namespace std::execution {
         return __impl((A&&) a, (R&&) r);
       }
       template <__awaitable A, receiver R>
-        requires same_as<void, __await_result_t<A>> &&
-          receiver_of<R, __await_result_t<A>>
+        requires same_as<void, __await_result_t<A>> && receiver_of<R>
       __impl::__op<__id_t<remove_cvref_t<R>>> operator()(A&& a, R&& r) const {
         return __impl((A&&) a, (R&&) r);
       }
