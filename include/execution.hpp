@@ -305,7 +305,7 @@ namespace std::execution {
         using __nothrow_ = bool_constant<nothrow_receiver_of<R, Args...>>;
 
       template <class A, class R>
-      static __impl::__op<__id_t<remove_cvref_t<R>>> __impl(A&& a, R&& r) noexcept {
+      static __impl::__op<__id_t<remove_cvref_t<R>>> __impl(A&& a, R&& r) {
         exception_ptr ex;
         try {
           // This is a bit mind bending control-flow wise.
@@ -334,6 +334,13 @@ namespace std::execution {
       }
     public:
       template <__awaitable A, receiver R>
+        requires receiver_of<R, __await_result_t<A>>
+      __impl::__op<__id_t<remove_cvref_t<R>>> operator()(A&& a, R&& r) const {
+        return __impl((A&&) a, (R&&) r);
+      }
+      template <__awaitable A, receiver R>
+        requires same_as<void, __await_result_t<A>> &&
+          receiver_of<R, __await_result_t<A>>
       __impl::__op<__id_t<remove_cvref_t<R>>> operator()(A&& a, R&& r) const {
         return __impl((A&&) a, (R&&) r);
       }

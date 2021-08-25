@@ -2148,10 +2148,10 @@ enum class forward_progress_guarantee {
     1. `tag_invoke(execution::connect, s, r)`, if that expression is valid and its type satisfies `execution::operation_state`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program
         is ill-formed with no diagnostic required.
 
-    2. Otherwise, <code><i>connect-awaitable</i>(s, r)</code> if <code><i>is-awaitable</i>&lt;S></code> is `true`, where <code><i>connect-awaitable</i></code> is a coroutine equivalent to the following:
+    2. Otherwise, <code><i>connect-awaitable</i>(s, r)</code> if <code><i>is-awaitable</i>&lt;S></code> is `true` and that expression is valid, where <code><i>connect-awaitable</i></code> is a coroutine equivalent to the following:
 
         <pre highlight="c++">
-        <i>operation-state-task</i> <i>connect-awaitable</i>(S&& s, R&& r) noexcept {
+        <i>operation-state-task</i> <i>connect-awaitable</i>(S&& s, R&& r) requires <i>see-below</i> {
           exception_ptr e;
           try {
             <i>set-value-expr</i>
@@ -2162,9 +2162,11 @@ enum class forward_progress_guarantee {
         }
         </pre>
 
-        where <code><i>connect-awaitable</i></code> starts suspended and:
+        where <code><i>connect-awaitable</i></code> starts suspended, and:
 
           - <i>set-value-expr</i> first evaluates `co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r)` if <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code>; otherwise, it evaluates `auto&& res = co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r, (decltype(res)) res)`.
+
+            If the call to `execution::set_value` exits with an exception, the coroutine is resumed and the exception is immediately propagated in the context of the coroutine.
 
             [<i>Note</i>: If the call to `execution::set_value` exits normally, then the <code><i>connect-awaitable</i></code> coroutine is never resumed. --<i>end note</i>]
 
@@ -2174,7 +2176,9 @@ enum class forward_progress_guarantee {
 
           - <code><i>operation-state-task</i></code> is a type that models `operation_state`. Its `execution::start` resumes the <code><i>connect-awaitable</i></code> coroutine, advancing it past the initial suspend point.
 
-          - Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine and let `c` be any `tag_invoke`-based customization point object. Then `c(p, as...)` is expression-equivalent to `c(r, as...)` for any set of arguments `as...`.
+          - Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine and let `c` be any customization point object. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `std::tag_invoke(c, r, as...)` for any set of arguments `as...`.
+
+        The operand of the <i>requires-clause</i> of <code><i>connect-awaitable</i></code> is equivalent to `receiver_of<R>` if <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code>; otherwise, it is <code>receiver_of&lt;R, <i>await-result-type</i>&lt;S>></code>.
 
     3. Otherwise, `execution::connect(s, r)` is ill-formed.
 
