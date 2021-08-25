@@ -1686,6 +1686,10 @@ namespace std::execution {
     inline constexpr transfer_just_t transfer_just{};
 
     // [execution.senders.adaptors], sender adaptors
+    template&lt;class D>
+      requires is_class_v&lt;D> && same_as&lt;D, remove_cvref_t&lt;D>>
+      struct sender_adaptor_closure { };
+
     struct on_t;
     inline constexpr on_t on{};
     struct lazy_on_t;
@@ -2262,11 +2266,19 @@ enum class forward_progress_guarantee {
 
     The expression `C | D` is well-formed if and only if the initializations of the state entities of `E` are all well-formed.
 
-2. A <i>pipeable sender adaptor object</i> is a customization point object that accepts a `sender` as its first argument and returns a `sender`.
+2. An object `t` of type `T` is a pipeable sender adaptor closure object if `T` models `derived_from<sender_adaptor_closure<T>>`, `T` has no other base
+    classes of type `range_adaptor_closure<U>` for any other type `U`, and `T` does not model `sender`.
 
-3. If a pipeable sender adaptor object accepts only one argument, then it is a pipeable sender adaptor closure object.
+3. The template parameter `D` for `sender_adaptor_closure` may be an incomplete type. Before any expression of type <code><i>cv</i> D</code> appears as
+    an operand to the `|` operator, `D` shall be complete and model `derived_from<range_adaptor_closure<D>>`. The behavior of an expression involving an
+    object of type <code><i>cv</i> D</code> as an operand to the `|` operator is undefined if overload resolution selects a program-defined `operator|`
+    function.
 
-4. If a pipeable sender adaptor object `adaptor` accepts more than one argument, then let `s` be an expression such that `decltype((s))` models `sender`,
+4. A <i>pipeable sender adaptor object</i> is a customization point object that accepts a `sender` as its first argument and returns a `sender`.
+
+5. If a pipeable sender adaptor object accepts only one argument, then it is a pipeable sender adaptor closure object.
+
+6. If a pipeable sender adaptor object `adaptor` accepts more than one argument, then let `s` be an expression such that `decltype((s))` models `sender`,
     let `args...` be arguments such that `adaptor(s, args...)` is a well-formed expression as specified in the rest of this subclause
     ([execution.senders.adaptor.objects]), and let `BoundArgs` be a pack that denotes `decay_t<decltype((args))>...`. The expression `adaptor(args...)`
     produces a pipeable sender adaptor closure object `f` that is a perfect forwarding call wrapper with the following properties:
