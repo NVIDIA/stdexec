@@ -511,13 +511,18 @@ namespace std::execution {
       void set_continuation(coro::coroutine_handle<OtherPromise> h) noexcept {
         static_assert(!is_void_v<OtherPromise>);
         continuation_ = h;
-        done_callback_ = [](void* address) noexcept -> coro::coroutine_handle<> {
-          // This causes the rest of the coroutine (the part after the co_await
-          // of the sender) to be skipped and the parent coroutine to be resumed
-          // with an "unhandled_done".
-          return coro::coroutine_handle<OtherPromise>::from_address(address)
-              .promise().unhandled_done();
-        };
+        if constexpr (requires(OtherPromise& other) { other.unhandled_done(); }) {
+          done_callback_ = [](void* address) noexcept -> coro::coroutine_handle<> {
+            // This causes the rest of the coroutine (the part after the co_await
+            // of the sender) to be skipped and the parent coroutine to be resumed
+            // with an "unhandled_done".
+            return coro::coroutine_handle<OtherPromise>::from_address(address)
+                .promise().unhandled_done();
+          };
+        }
+        // If OtherPromise doesn't implement unhandled_done(), then if a "done" unwind
+        // reaches this point, it's considered an unhandled exception and terminate()
+        // is called.
       }
 
       coro::coroutine_handle<> continuation() const noexcept {
