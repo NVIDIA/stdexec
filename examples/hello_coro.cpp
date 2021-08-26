@@ -29,8 +29,10 @@ task<int> async_answer(S1 s1, S2 s2) {
   co_return co_await (S1&&) s1;
 }
 
-int main() {
+int main() try {
   // Awaitables are implicitly senders:
   auto [i] = std::this_thread::sync_wait(async_answer(just(42), just())).value();
   std::cout << "The answer is " << i << '\n';
+} catch(std::exception & e) {
+  std::cout << e.what() << '\n';
 }
