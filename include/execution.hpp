@@ -171,13 +171,18 @@ namespace std::execution {
       __has_sender_types<sender_traits<remove_cvref_t<S>>>;
 
   template <class... As>
-    using __back_t = decltype((static_cast<As(*)()>(0),...)());
+    requires (sizeof...(As) != 0)
+    struct __front;
+  template <class A, class... As>
+    struct __front<A, As...> {
+      using type = A;
+    };
   template <class... As>
     requires (sizeof...(As) == 1)
-    using __single_t = __back_t<As...>;
+    using __single_t = __t<__front<As...>>;
   template <class... As>
     requires (sizeof...(As) <= 1)
-    using __single_or_void_t = __back_t<void, As...>;
+    using __single_or_void_t = __t<__front<As..., void>>;
 
   template<class S>
     using __single_sender_value_t =
@@ -402,16 +407,6 @@ namespace std::execution {
 
       template <class Value>
         struct __rec_base {
-          explicit __rec_base(__expected_t<Value>* result, coro::coroutine_handle<> continuation) noexcept
-            : result_(result)
-            , continuation_(continuation)
-          {}
-
-          __rec_base(__rec_base&& r) noexcept
-            : result_(std::exchange(r.result_, nullptr))
-            , continuation_(std::exchange(r.continuation_, nullptr))
-          {}
-
           template <class... Us>
             requires constructible_from<Value, Us...> ||
               (is_void_v<Value> && sizeof...(Us) == 0)
@@ -435,8 +430,6 @@ namespace std::execution {
         struct __awaitable_base {
           using Promise = __t<P_>;
           struct __rec : __rec_base<Value> {
-            using __rec_base<Value>::__rec_base;
-
             friend void tag_invoke(set_done_t, __rec&& self) noexcept {
               auto continuation = coro::coroutine_handle<Promise>::from_address(
                 self.continuation_.address());
@@ -444,14 +437,13 @@ namespace std::execution {
             }
 
             // Forward other tag_invoke overloads to the promise
-            template <__same_<__rec> Self, class... As, invocable<__member_t<Self, Promise>&, As...> CPO>
-            friend auto tag_invoke(CPO cpo, Self&& self, As&&... as)
-                noexcept(is_nothrow_invocable_v<CPO, __member_t<Self, Promise>&, As...>)
-                -> invoke_result_t<CPO, __member_t<Self, Promise>&, As...> {
+            template <class... As, invocable<Promise&, As...> CPO>
+            friend auto tag_invoke(CPO cpo, const __rec& self, As&&... as)
+                noexcept(is_nothrow_invocable_v<CPO, Promise&, As...>)
+                -> invoke_result_t<CPO, Promise&, As...> {
               auto continuation = coro::coroutine_handle<Promise>::from_address(
                 self.continuation_.address());
-              __member_t<Self, Promise>& p = continuation.promise();
-              return ((CPO&&) cpo)(p, (As&&) as...);
+              return ((CPO&&) cpo)(continuation.promise(), (As&&) as...);
             }
           };
 
@@ -489,12 +481,12 @@ namespace std::execution {
         using __rec = typename Base::__rec;
         connect_result_t<Sender, __rec> op_;
       public:
-        __awaitable(Sender&& sender, coro::coroutine_handle<Promise> h)
+        __awaitable(Sender&& sender, coro::coroutine_handle<> h)
           noexcept(/* TODO: is_nothrow_connectable_v<Sender, __rec>*/ false)
-          : op_(connect((Sender&&)sender, __rec{&this->result_, h}))
+          : op_(connect((Sender&&)sender, __rec{{&this->result_, h}}))
         {}
 
-        void await_suspend(coro::coroutine_handle<Promise>) noexcept {
+        void await_suspend(coro::coroutine_handle<>) noexcept {
           start(op_);
         }
       };
@@ -521,8 +513,8 @@ namespace std::execution {
         if constexpr (requires(OtherPromise& other) { other.unhandled_done(); }) {
           done_callback_ = [](void* address) noexcept -> coro::coroutine_handle<> {
             // This causes the rest of the coroutine (the part after the co_await
-            // of the sender) to be skipped and the parent coroutine to be resumed
-            // with an "unhandled_done".
+            // of the sender) to be skipped and invokes the calling coroutine's
+            // done handler.
             return coro::coroutine_handle<OtherPromise>::from_address(address)
                 .promise().unhandled_done();
           };
