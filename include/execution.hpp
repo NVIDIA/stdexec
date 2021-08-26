@@ -180,14 +180,14 @@ namespace std::execution {
     using __single_or_void_t = __back_t<void, As...>;
 
   template<class S>
-    using __single_sender_result_t =
+    using __single_sender_value_t =
       typename sender_traits<remove_cvref_t<S>>
         ::template value_types<__single_or_void_t, __single_or_void_t>;
 
   template<class S>
     concept __single_typed_sender =
       typed_sender<S> &&
-      requires { typename __single_sender_result_t<S>; };
+      requires { typename __single_sender_value_t<S>; };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
@@ -294,6 +294,7 @@ namespace std::execution {
 
             // Pass through receiver queries
             template<class... As, invocable<R&, As...> CPO>
+              requires (!__one_of<CPO, set_value_t, set_error_t, set_done_t>)
             friend auto tag_invoke(CPO cpo, const promise_type& self, As&&... as)
               noexcept(is_nothrow_invocable_v<CPO, R&, As...>)
               -> invoke_result_t<CPO, R&, As...> {
@@ -480,11 +481,11 @@ namespace std::execution {
 
       template <typename P_, typename S_>
       struct __awaitable
-        : __awaitable_base<P_, __single_sender_result_t<__t<S_>>> {
+        : __awaitable_base<P_, __single_sender_value_t<__t<S_>>> {
       private:
         using Promise = __t<P_>;
         using Sender = __t<S_>;
-        using Base = __awaitable_base<P_, __single_sender_result_t<Sender>>;
+        using Base = __awaitable_base<P_, __single_sender_value_t<Sender>>;
         using __rec = typename Base::__rec;
         connect_result_t<Sender, __rec> op_;
       public:

@@ -2130,12 +2130,12 @@ enum class forward_progress_guarantee {
           };
         </pre>
 
-5. If `sender_traits<S>::value_types<Tuple, Variant>` for some sender type `S` is well formed, it shall be a type `Variant<Tuple<Args0..., Args1..., ..., ArgsN...>>`, where the type packs `Args0` through `ArgsN` are the packs of types the sender `S` passes as
-    arguments to `execution::set_value` after a receiver object. If such sender `S` invokes `execution::set_value(r, args...)` for some receiver `r`, where `decltype(args)` is not one of the type packs `Args0` through `ArgsN`, the program is ill-formed with no
+5. If `sender_traits<S>::value_types<Tuple, Variant>` for some sender type `S` is well formed, it shall be a type <code>Variant&lt;Tuple&lt;Args<sub>0</sub>...>, Tuple&lt;Args<sub>1</sub>...>, ..., Tuple&lt;Args<sub>N</sub>...>>></code>, where the type packs <code>Args<sub>0</sub></code> through <code>Args<sub>N</sub></code> are the packs of types the sender `S` passes as
+    arguments to `execution::set_value` after a receiver object. If such sender `S` invokes `execution::set_value(r, args...)` for some receiver `r`, where `decltype(args)` is not one of the type packs <code>Args<sub>0</sub></code> through <code>Args<sub>N</sub></code>, the program is ill-formed with no
     diagnostic required.
 
-6. If `sender_traits<S>::error_types<Variant>` for some sender type `S` is well formed, it shall be a type `Variant<E0, E1, ..., EN>`, where the types `E0` through `EN` are the types the sender `S` passes as arguments to `execution::set_error` after a receiver
-    object. If such sender `S` invokes `execution::set_error(r, e)` for some receiver `r`, where `decltype(e)` is not one of the types `E0` through `EN`, the program is ill-formed with no diagnostic required.
+6. If `sender_traits<S>::error_types<Variant>` for some sender type `S` is well formed, it shall be a type <code>Variant&lt;E<sub>0</sub>, E<sub>1</sub>, ..., E<sub>N</sub>></code>, where the types <code>E<sub>0</sub></code> through <code>E<sub>N</sub></code> are the types the sender `S` passes as arguments to `execution::set_error` after a receiver
+    object. If such sender `S` invokes `execution::set_error(r, e)` for some receiver `r`, where `decltype(e)` is not one of the types <code>E<sub>0</sub></code> through <code>E<sub>N</sub></code>, the program is ill-formed with no diagnostic required.
 
 7. If `sender_traits<S>::sends_done` is well formed and `false`, and such sender `S` invokes `execution::set_done(r)` for some receiver `r`, the program is ill-formed with no diagnostic required.
 
@@ -2166,7 +2166,7 @@ enum class forward_progress_guarantee {
         }
         </pre>
 
-        where <code><i>connect-awaitable</i></code> starts suspended, and:
+        where <code><i>connect-awaitable</i></code> suspends at the <i>initial suspends point</i> ([dcl.fct.def.coroutine]), and:
 
           - <i>set-value-expr</i> first evaluates `co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r)` if <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code>; otherwise, it evaluates `auto&& res = co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r, (decltype(res)) res)`.
 
@@ -2180,7 +2180,7 @@ enum class forward_progress_guarantee {
 
           - <code><i>operation-state-task</i></code> is a type that models `operation_state`. Its `execution::start` resumes the <code><i>connect-awaitable</i></code> coroutine, advancing it past the initial suspend point.
 
-          - Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine and let `c` be any customization point object. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `std::tag_invoke(c, r, as...)` for any set of arguments `as...`.
+          - Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be an lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `std::tag_invoke(c, b, as...)` for any set of arguments `as...`.
 
         The operand of the <i>requires-clause</i> of <code><i>connect-awaitable</i></code> is equivalent to `receiver_of<R>` if <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code>; otherwise, it is <code>receiver_of&lt;R, <i>await-result-type</i>&lt;S>></code>.
 
