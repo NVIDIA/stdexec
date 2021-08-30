@@ -528,10 +528,10 @@ A <dfn>single-shot sender</dfn> can only be connected to a receiver at most once
 as an rvalue to the call to `execution::connect`, indicating that the call consumes the sender.
 
 A <dfn>multi-shot sender</dfn> can be connected to multiple receivers and can be launched multiple
-times. Mult-shot senders customise `execution::connect` to accept an lvalue reference to the
+times. Multi-shot senders customise `execution::connect` to accept an lvalue reference to the
 sender. Callers can indicate that they want the sender to remain valid after the call to `execution::connect`
 by passing an lvalue reference to the sender to call these overloads. Multi-shot senders should also define
-overloads of `execution::connect` that accept rvalue-qualified enders to allow the sender to be also used in places
+overloads of `execution::connect` that accept rvalue-qualified senders to allow the sender to be also used in places
 where only a single-shot sender is required.
 
 If the user of a sender does not require the sender to remain valid after connecting it to a
@@ -1241,7 +1241,7 @@ The default implementation of `transfer(snd, sched)` is `schedule_from(sched, sn
 
 ## Most senders are typed ## {#design-typed}
 
-All senders should advertise the types they will [=send=] when they complete. This is necessary for a number of features, and writing code in a way that's agnostic of whether an imput sender is typed or not in common sender adaptors such as `execution::then` is
+All senders should advertise the types they will [=send=] when they complete. This is necessary for a number of features, and writing code in a way that's agnostic of whether an input sender is typed or not in common sender adaptors such as `execution::then` is
 hard.
 
 The mechanism for this advertisement is the same as in [[P0443R14]]; the way to query the types is through `sender_traits::value_types<tuple_like, variant_like>`.
