@@ -40,11 +40,11 @@ namespace example {
     template <class Op>
     void _execute(task_base* t) noexcept {
       auto& self = *static_cast<Op*>(t);
-      auto token = std::execution::get_stop_token(self.receiver_);
-      if constexpr (std::unstoppable_token<decltype(token)>) {
+      using token_t = decltype(std::execution::get_stop_token(self.receiver_));
+      if constexpr (std::unstoppable_token<token_t>) {
         std::execution::set_value(std::move(self.receiver_));
       } else {
-        if (token.stop_requested()) {
+        if (std::execution::get_stop_token(self.receiver_).stop_requested()) {
           std::execution::set_done(std::move(self.receiver_));
         } else {
           std::execution::set_value(std::move(self.receiver_));
