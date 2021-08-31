@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R2<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-08-25">2021-08-25</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-08-30">2021-08-30</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -3028,7 +3028,7 @@ We believe sender consumers read better with function call syntax.</p>
     <c- n>get_system_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>(),</c->
     <c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c->
 <c- p>);</c->
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>pred</c-><c- p>,</c-> <c- p>[](</c-><c- k>auto</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>vals</c-><c- p>,</c-> <c- p>[](</c-><c- k>auto</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
     <c- n>std</c-><c- o>::</c-><c- n>print</c-><c- p>(</c-><c- n>args</c-><c- p>...);</c->
 <c- p>});</c->
 <c- c1>// when snd is executed, it will print "123"</c->
