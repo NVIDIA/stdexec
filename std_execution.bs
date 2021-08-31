@@ -744,7 +744,7 @@ execution::sender auto vals = execution::transfer_just(
     get_system_thread_pool().scheduler(),
     1, 2, 3
 );
-execution::sender auto snd = execution::then(pred, [](auto... args) {
+execution::sender auto snd = execution::then(vals, [](auto... args) {
     std::print(args...);
 });
 // when snd is executed, it will print "123"
