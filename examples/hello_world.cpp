@@ -20,14 +20,15 @@
 // Pull in the reference implementation of P2300:
 #include <execution.hpp>
 
-#include "./inline_scheduler.hpp"
+#include "./schedulers/single_thread_context.hpp"
 
 using namespace std::execution;
 using std::this_thread::sync_wait;
 
 int main() {
+  example::single_thread_context ctx;
+  scheduler auto sch = ctx.get_scheduler();
   //scheduler auto sch = get_thread_pool().scheduler();                     // 1
-  scheduler auto sch = inline_scheduler{};
 
   sender auto begin = schedule(sch);                                      // 2
   sender auto hi_again = begin | then([]{                                 // 3
