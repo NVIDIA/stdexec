@@ -108,7 +108,7 @@ namespace example {
 
     void run();
 
-    void stop();
+    void finish();
 
   private:
     void enqueue(detail::task_base* task);
@@ -143,7 +143,7 @@ namespace example {
     }
   }
 
-  inline void manual_event_loop::stop() {
+  inline void manual_event_loop::finish() {
     std::unique_lock lock{mutex_};
     stop_ = true;
     cv_.notify_all();

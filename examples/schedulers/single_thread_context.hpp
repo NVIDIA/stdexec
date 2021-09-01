@@ -33,7 +33,7 @@ namespace example {
     {}
 
     ~single_thread_context() {
-      loop_.stop();
+      loop_.finish();
       thread_.join();
     }
 
