@@ -764,6 +764,24 @@ The strictly lazy versions of the adaptors below (that is, all the versions whos
 
 For more implementer-centric description of starting senders, see [[#design-laziness]].
 
+The function signatures presented in this section are pseudo-code, but the intent should be clear. They are
+expressed in terms of the following pseudo-concepts when the sender `S` models the concept `typed_sender`:
+
+<pre highlight="c++">
+concept <i>invocable-with-tuple-values-of</i>(Fun, Tuple, Args...) =
+  std::invocable&lt;Fun, Args..., <i>tuple-elements-of</i>(Tuple)...>;
+
+concept <i>invocable-with-values-sent-by</i>(Fun, S, Args...) =
+  (<i>invocable-with-tuple-values-of</i>(Fun, <i>tuples-of-value-types</i>(S), Args...) &&...);
+
+concept <i>invocable-with-errors-sent-by</i>(Fun, S, Args...) =
+  (<i>std::invocable</i>&lt;Fun, Args..., <i>errors-sent-by</i>(S)> &&...);
+</pre>
+
+In addition, the pseudo-concepts <code><i>invocable-with-values-sent-by</i></code> and
+<code><i>invocable-with-errors-sent-by</i></code> are trivially true when the sender `S` models
+`sender` but not `typed_sender`.
+
 ### `execution::transfer` ### {#design-sender-adaptor-transfer}
 
 <pre highlight="c++">
@@ -796,12 +814,12 @@ execution::sender auto gpu_task = execution::transfer(cpu_task, gpu_sched);
 <pre highlight="c++">
 execution::sender auto then(
     execution::sender auto input,
-    std::invocable<<i>values-sent-by(input)</i>...> function
+    <i>invocable-with-values-sent-by</i>(<i>input</i>) function
 );
 
 execution::sender auto lazy_then(
     execution::sender auto input,
-    std::invocable<<i>values-sent-by(input)</i>...> function
+    <i>invocable-with-values-sent-by</i>(<i>input</i>) function
 );
 </pre>
 
@@ -825,58 +843,59 @@ This adaptor is included as it is necessary for writing any sender code that act
 <pre highlight="c++">
 execution::sender auto upon_error(
     execution::sender auto input,
-    std::invocable<<i>errors-sent-by(input)</i>...> function
+    <i>invocable-with-errors-sent-by</i>(<i>input</i>) function
 );
 
 execution::sender auto lazy_upon_error(
     execution::sender auto input,
-    std::invocable<<i>errors-sent-by(input)</i>...> function
+    <i>invocable-with-errors-sent-by</i>(<i>input</i>) function
 );
 
-execution::sender auto upon_error(
+execution::sender auto upon_done(
     execution::sender auto input,
-    std::invocable<> function
+    std::invocable auto function
 );
 
-execution::sender auto lazy_upon_error(
+execution::sender auto lazy_upon_done(
     execution::sender auto input,
-    std::invocable<> function
+    std::invocable auto function
 );
 </pre>
 
-`upon_error` and `upon_done` are similar to `then`, but where `then` works with values sent by the input sender, `upon_error` works with errors, and `upon_done` is invoked when the "done" signal is sent.
+`upon_error` and `upon_done` are similar to `then`, but where `then` works with values sent by the input sender, `upon_error` works with errors, and `upon_done` is invoked when the "done" signal is sent. Both translate their
+signal (error or done) into a value.
 
 ### `execution::let_*` ### {#design-sender-adaptor-let}
 
 <pre highlight="c++">
 execution::sender auto let_value(
     execution::sender auto input,
-    std::invocable<<i>values-sent-by(input)</i>...> function
+    <i>invocable-with-values-sent-by</i>(<i>input</i>) function
 );
 
 execution::sender auto lazy_let_value(
     execution::sender auto input,
-    std::invocable<<i>values-sent-by(input)</i>...> function
+    <i>invocable-with-values-sent-by</i>(<i>input</i>) function
 );
 
 execution::sender auto let_error(
     execution::sender auto input,
-    std::invocable<<i>errors-sent-by(input)</i>...> function
+    <i>invocable-with-errors-sent-by</i>(<i>input</i>) function
 );
 
 execution::sender auto lazy_let_error(
     execution::sender auto input,
-    std::invocable<<i>errors-sent-by(input)</i>...> function
+    <i>invocable-with-errors-sent-by</i>(<i>input</i>) function
 );
 
 execution::sender auto let_done(
     execution::sender auto input,
-    std::invocable<> function
+    std::invocable auto function
 );
 
 execution::sender auto lazy_let_done(
     execution::sender auto input,
-    std::invocable<> function
+    std::invocable auto function
 );
 </pre>
 
@@ -919,13 +938,13 @@ Returns a sender which sends a variant of tuples of all the possible sets of typ
 execution::sender auto bulk(
     execution::sender auto input,
     std::integral auto size,
-    invocable&lt;decltype(size), <i>values-sent-by(input)</i>...> function
+    <i>invocable-with-values-sent-by(input, size) function
 );
 
 execution::sender auto lazy_bulk(
     execution::sender auto input,
     std::integral auto size,
-    invocable&lt;decltype(size), <i>values-sent-by(input)</i>...> function
+    <i>invocable-with-values-sent-by(input, size) function
 );
 </pre>
 
