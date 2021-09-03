@@ -124,7 +124,7 @@ This paper proposes a Standard C++ model for asynchrony, based around three key 
 * Have clear and concise answers for where things execute.
 * Be able to manage and terminate the lifetimes of objects asynchronously.
 
-## End User Examples ## {#example-end-user}
+## Examples: End User ## {#example-end-user}
 
 In this section we demonstrate the end-user experience of asynchronous programming directly with the sender algorithms presented in this paper. See [[#design-sender-factories]], [[#design-sender-adaptors]], and [[#design-sender-consumers]] for short explanations of the algorithms used in these code examples.
 
@@ -270,7 +270,7 @@ This example demonstrates a common asynchronous I/O pattern - reading a payload 
 14. Once the data has been read, in another [[#design-sender-adaptor-then]], we confirm that we read the right number of bytes.
 15. Finally, we move out of and return our `dynamic_buffer` object. It will get sent by the sender returned by `async_read_array`. We can attach more things to that sender to use the data in the buffer.
 
-## Algorithm Implementation Examples ## {#example-algorithm}
+## Examples: Algorithms ## {#example-algorithm}
 
 In this section we show a few simple sender/receiver-based algorithm implementations.
 
@@ -439,6 +439,110 @@ This example does the following:
 
 7. Defines a `_retry_sender` that implements the `connect` customization point to return
     an operation state constructed from the passed-in sender and receiver.
+
+## Examples: Schedulers ## {#example-schedulers}
+
+In this section we look at some schedulers of varying complexity.
+
+### Inline scheduler ### {#example-schedulers-inline}
+
+```c++
+struct inline_scheduler {
+  template <class R>
+    struct _op {
+      [[no_unique_address]] R rec_;
+      friend void tag_invoke(std::execution::start_t, _op& op) noexcept try {
+        std::execution::set_value((R&&) op.rec_);
+      } catch(...) {
+        std::execution::set_error((R&&) op.rec_, std::current_exception());
+      }
+    };
+
+  struct _sender {
+    template <template <class...> class Tuple,
+              template <class...> class Variant>
+      using value_types = Variant<Tuple<>>;
+    template <template <class...> class Variant>
+      using error_types = Variant<std::exception_ptr>;
+    static constexpr bool sends_done = false;
+
+    template <std::execution::receiver_of R>
+      friend auto tag_invoke(std::execution::connect_t, _sender, R&& rec)
+        noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
+        -> _op<std::remove_cvref_t<R>> {
+        return {(R&&) rec};
+      }
+  };
+
+  friend _sender tag_invoke(std::execution::schedule_t, const inline_scheduler&) noexcept {
+    return {};
+  }
+
+  bool operator==(const inline_scheduler&) const noexcept = default;
+};
+```
+
+The inline scheduler is a trivial scheduler that completes immediately and synchronously on
+the thread that calls `std::execution::start` on the operation state produced by its sender.
+In other words, <code>start(connect(schedule(<i>inline-scheduler</i>), receiver))</code> is
+just a fancy way of saying `set_value(receiver)`, with the exception of the fact that `start`
+wants to be passed an lvalue.
+
+Although not a particularly useful scheduler, it serves to illustrate the basics of
+implementing one. The `inline_scheduler`:
+
+1. Customizes `execution::schedule` to return an instance of the sender type `_sender`.
+2. The `_sender` type models the `typed_sender` concept and provides the metadata needed
+    to describe it as a sender of no values (see `value_types`) that can send an
+    `exception_ptr` as an error (see `error_types`), and that never calls `set_done`
+    (see `sends_done`).
+3. The `_sender` type customizes `execution::connect` to accept a receiver of no values.
+    It returns an instance of type `_op` that holds the receiver by value.
+4. The operation state customizes `std::execution::start` to call `std::execution::set_value`
+    on the receiver, passing any exceptions to `std::execution::set_error` as an
+    `exception_ptr`.
+
+### single-thread-scheduler ### {#example-single-thread}
+
+This example shows how to create a scheduler for an execution context that consists of a single
+thread. It is implemented in terms of a lower-level execution context called `manual_event_loop`.
+
+```c++
+class single_thread_context {
+  manual_event_loop loop_;
+  std::thread thread_;
+
+public:
+  single_thread_context()
+    : loop_()
+    , thread_([this] { loop_.run(); })
+  {}
+
+  ~single_thread_context() {
+    loop_.finish();
+    thread_.join();
+  }
+
+  auto get_scheduler() noexcept {
+    return loop_.get_scheduler();
+  }
+
+  std::thread::id get_thread_id() const noexcept {
+    return thread_.get_id();
+  }
+};
+```
+
+The `single_thread_context` owns an event loop and a thread to drive it. In the destructor, it tells the event
+loop to finish up what it's doing and then joins the thread, blocking for the event loop to drain.
+
+The interesting bits are in the `manual_event_loop` context implementation. It is slightly too long to include
+here, so we only provide [a reference to it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/main/examples/schedulers/manual_event_loop.hpp),
+but there is one noteworthy detail about its implementation. It uses space in its operation state to build an
+intrusive linked list of work items. In structured concurrency patterns, the operation states of nested operations
+compose statically, and in an algorithm like `this_thread::sync_wait`, the composite operation state lives on the
+stack for the duration of the operation. The end result is that work can be scheduled onto this thread with zero
+allocations.
 
 ## What this proposal is **not** ## {#intro-is-not}
 
