@@ -3115,7 +3115,7 @@ are all well-formed.
 
           - `execution::set_done(r)` is expression-equivalent to `continuation_.promise().unhandled_done().resume()`.
 
-          - `std::tag_invoke(c, r, as...)` is expression-equivalent to `c(p, as...)`.
+          - `std::tag_invoke(c, r, as...)` is expression-equivalent to `c(p, as...)` when the type of `c` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution::set_done_t`.
 
     2. <b><code><i>sender-awaitable</i>::<i>sender-awaitable</i>(S&& s, P& p)</code></b>
 
