@@ -28,6 +28,7 @@
 #include <concepts.hpp>
 #include <functional.hpp>
 #include <coroutine.hpp>
+#include <stop_token.hpp>
 
 namespace std::execution {
   template<template<template<class...> class, template<class...> class> class>
@@ -193,6 +194,92 @@ namespace std::execution {
     concept __single_typed_sender =
       typed_sender<S> &&
       requires { typename __single_sender_value_t<S>; };
+<<<<<<< HEAD
+=======
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.schedule]
+  inline namespace __schedule {
+    inline constexpr struct schedule_t {
+      template<class S>
+        requires tag_invocable<schedule_t, S> &&
+          sender<tag_invoke_result_t<schedule_t, S>>
+      auto operator()(S&& s) const
+        noexcept(nothrow_tag_invocable<schedule_t, S>) {
+        return tag_invoke(schedule_t{}, (S&&) s);
+      }
+    } schedule {};
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.schedulers]
+  template<class S>
+    concept scheduler =
+      copy_constructible<remove_cvref_t<S>> &&
+      equality_comparable<remove_cvref_t<S>> &&
+      requires(S&& s) {
+        schedule((S&&) s);
+      };
+
+  // NOT TO SPEC
+  template <scheduler S>
+    using schedule_result_t = decltype(schedule(std::declval<S>()));
+
+  // [execution.receivers.queries], receiver queries
+  inline namespace __receiver_queries {
+    namespace __impl {
+      template <class T>
+        using __cref_t = const remove_reference_t<T>&;
+
+      // TODO: implement allocator concept
+      template <class A>
+        concept __allocator = true;
+
+      struct get_scheduler_t {
+        template <receiver R>
+          requires nothrow_tag_invocable<get_scheduler_t, __cref_t<R>> &&
+            scheduler<tag_invoke_result_t<get_scheduler_t, __cref_t<R>>>
+        tag_invoke_result_t<get_scheduler_t, __cref_t<R>> operator()(R&& r) const
+          noexcept(nothrow_tag_invocable<get_scheduler_t, __cref_t<R>>) {
+          return tag_invoke(get_scheduler_t{}, std::as_const(r));
+        }
+      };
+
+      struct get_allocator_t {
+        template <receiver R>
+          requires nothrow_tag_invocable<get_allocator_t, __cref_t<R>> &&
+            __allocator<tag_invoke_result_t<get_allocator_t, __cref_t<R>>>
+        tag_invoke_result_t<get_allocator_t, __cref_t<R>> operator()(R&& r) const
+          noexcept(nothrow_tag_invocable<get_allocator_t, __cref_t<R>>) {
+          return tag_invoke(get_allocator_t{}, std::as_const(r));
+        }
+      };
+
+      struct get_stop_token_t {
+        template <receiver R>
+          requires tag_invocable<get_stop_token_t, __cref_t<R>> &&
+            stoppable_token<tag_invoke_result_t<get_stop_token_t, __cref_t<R>>>
+        tag_invoke_result_t<get_stop_token_t, __cref_t<R>> operator()(R&& r) const
+          noexcept(nothrow_tag_invocable<get_stop_token_t, __cref_t<R>>) {
+          return tag_invoke(get_stop_token_t{}, std::as_const(r));
+        }
+        never_stop_token operator()(receiver auto&&) const noexcept {
+          return {};
+        }
+      };
+    }
+    using __impl::get_allocator_t;
+    using __impl::get_scheduler_t;
+    using __impl::get_stop_token_t;
+    inline constexpr get_scheduler_t get_scheduler{};
+    inline constexpr get_allocator_t get_allocator{};
+    inline constexpr get_stop_token_t get_stop_token{};
+  }
+
+  // NOT TO SPEC
+  template <class R>
+    using stop_token_type_t = remove_cvref_t<decltype(get_stop_token(std::declval<R>()))>;
+>>>>>>> origin/main
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
@@ -600,34 +687,6 @@ namespace std::execution {
       }
     } submit {};
   }
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.schedule]
-  inline namespace __schedule {
-    inline constexpr struct schedule_t {
-      template<class S>
-        requires tag_invocable<schedule_t, S> &&
-          sender<tag_invoke_result_t<schedule_t, S>>
-      auto operator()(S&& s) const
-        noexcept(nothrow_tag_invocable<schedule_t, S>) {
-        return tag_invoke(schedule_t{}, (S&&) s);
-      }
-    } schedule {};
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.schedulers]
-  template<class S>
-    concept scheduler =
-      copy_constructible<remove_cvref_t<S>> &&
-      equality_comparable<remove_cvref_t<S>> &&
-      requires(S&& s) {
-        schedule((S&&) s);
-      };
-
-  // NOT TO SPEC
-  template <scheduler S>
-    using schedule_result_t = decltype(schedule(std::declval<S>()));
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]

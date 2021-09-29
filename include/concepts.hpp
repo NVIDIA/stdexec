@@ -87,4 +87,9 @@ namespace std {
 
   template <class T, class... As>
     concept __one_of = (same_as<T, As> ||...);
+
+  // Not exactly right, but close.
+  template <class T>
+    concept __boolean_testable =
+      convertible_to<T, bool>;
 }
