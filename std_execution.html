@@ -1560,7 +1560,7 @@ Possible extra rowspan handling
     blockquote c-[vi] { color: inherit; } /* Name.Variable.Instance */
     blockquote c-[il] { color: inherit; } /* Literal.Number.Integer.Long */
   </style>
-  <meta content="Bikeshed version 4f053d00e, updated Tue Aug 10 14:13:32 2021 -0700" name="generator">
+  <meta content="Bikeshed version a210b7d86, updated Thu Sep 16 13:45:19 2021 -0700" name="generator">
   <link href="https://wg21.link/P2300" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
 <style>
@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R2<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-09-01">2021-09-01</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-09-29">2021-09-29</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4206,6 +4206,16 @@ to successfully return. [<i>Note:</i> this allows for the receiver to manage the
     <li data-md>
      <p>The class template <code class="highlight"><c- n>sender_traits</c-></code> is used to query a sender type for facts associated with the signal it sends.</p>
     <li data-md>
+     <p>The primary class template <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> also recognizes awaitables as typed senders. For this clause ([execution]):</p>
+     <ul>
+      <li data-md>
+       <p>An <i>awaitable</i> is an expression that would be well-formed as the operand of a <code class="highlight"><c- k>co_await</c-></code> expression within a coroutine that does not define an <code class="highlight"><c- n>await_transform</c-></code> member in its promise type.</p>
+      <li data-md>
+       <p>For any type <code class="highlight"><c- n>T</c-></code>, <code class="highlight"><i><c- n>is</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>&lt;</c-><c- n>T</c-><c- o>></c-></code> is <code class="highlight">true</code> if an expression of that type is an awaitable as described above; otherwise, <code class="highlight">false</code>.</p>
+      <li data-md>
+       <p>For an awaitable <code class="highlight"><c- n>a</c-></code> such that <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>a</c-><c- p>))</c-></code> is type <code class="highlight"><c- n>A</c-></code>, <code class="highlight"><i><c- n>await</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>A</c-><c- o>></c-></code> is an alias for <code class="highlight"><c- k>decltype</c-><c- p>(</c-><i><c- n>e</c-></i><c- p>)</c-></code>, where <code class="highlight"><i><c- n>e</c-></i></code> is <code class="highlight"><c- n>a</c-></code>'s <i>await-resume</i> expression ([expr.await]).</p>
+     </ul>
+    <li data-md>
      <p>The primary class template <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is defined as if inheriting from an implementation-defined class template <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>traits</c-><c- o>-</c-><c- n>base</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> defined as follows:</p>
      <ol>
       <li data-md>
@@ -4227,6 +4237,36 @@ to successfully return. [<i>Note:</i> this allows for the receiver to manage the
   <c- k>struct</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>traits</c-><c- o>-</c-><c- n>base</c-></i> <c- p>{};</c->
 </pre>
       <li data-md>
+       <p>Otherwise, if <code class="highlight"><i><c- n>is</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is <code class="highlight">true</code>, then</p>
+       <ul>
+        <li data-md>
+         <p>If <code class="highlight"><i><c- n>await</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is <code class="highlight"><i><c- n>cv</c-></i> <c- b>void</c-></code> then <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>traits</c-><c- o>-</c-><c- n>base</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></i></code> is equivalent to</p>
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
+  <c- k>struct</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>traits</c-><c- o>-</c-><c- n>base</c-></i> <c- p>{</c->
+    <c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Tuple</c-><c- p>,</c-> <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-><c- o>></c->
+      <c- k>using</c-> <c- n>value_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;>></c-><c- p>;</c->
+
+    <c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-><c- o>></c->
+      <c- k>using</c-> <c- n>error_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>exception_ptr</c-><c- o>></c-><c- p>;</c->
+
+    <c- k>static</c-> <c- k>constexpr</c-> <c- b>bool</c-> <c- n>sends_done</c-> <c- o>=</c-> false<c- p>;</c->
+  <c- p>};</c->
+</pre>
+        <li data-md>
+         <p>Otherwise, <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>traits</c-><c- o>-</c-><c- n>base</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></i></code> is equivalent to</p>
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
+  <c- k>struct</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>traits</c-><c- o>-</c-><c- n>base</c-></i> <c- p>{</c->
+    <c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Tuple</c-><c- p>,</c-> <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-><c- o>></c->
+      <c- k>using</c-> <c- n>value_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><i><c- n>await</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-><c- p>;</c->
+
+    <c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-><c- o>></c->
+      <c- k>using</c-> <c- n>error_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>exception_ptr</c-><c- o>></c-><c- p>;</c->
+
+    <c- k>static</c-> <c- k>constexpr</c-> <c- b>bool</c-> <c- n>sends_done</c-> <c- o>=</c-> false<c- p>;</c->
+  <c- p>};</c->
+</pre>
+       </ul>
+      <li data-md>
        <p>Otherwise, <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>traits</c-><c- o>-</c-><c- n>base</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is equivalent to</p>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
   <c- k>struct</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>traits</c-><c- o>-</c-><c- n>base</c-></i> <c- p>{</c->
@@ -4235,12 +4275,12 @@ to successfully return. [<i>Note:</i> this allows for the receiver to manage the
 </pre>
      </ol>
     <li data-md>
-     <p>If <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> for some sender type <code class="highlight"><c- n>S</c-></code> is well formed, it shall be a type <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args0</c-><c- p>...,</c-> <c- n>Args1</c-><c- p>...,</c-> <c- p>...,</c-> <c- n>ArgsN</c-><c- p>...</c-><c- o>>></c-></code>, where the type packs <code class="highlight"><c- n>Args0</c-></code> through <code class="highlight"><c- n>ArgsN</c-></code> are the packs of types the sender <code class="highlight"><c- n>S</c-></code> passes as
-arguments to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> after a receiver object. If such sender <code class="highlight"><c- n>S</c-></code> invokes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> for some receiver <code class="highlight"><c- n>r</c-></code>, where <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>args</c-><c- p>)</c-></code> is not one of the type packs <code class="highlight"><c- n>Args0</c-></code> through <code class="highlight"><c- n>ArgsN</c-></code>, the program is ill-formed with no
+     <p>If <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> for some sender type <code class="highlight"><c- n>S</c-></code> is well formed, it shall be a type <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args</c-><sub><c- n>0</c-></sub><c- p>...</c-><c- o>></c-><c- p>,</c-> <c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args</c-><sub><c- n>1</c-></sub><c- p>...</c-><c- o>></c-><c- p>,</c-> <c- p>...,</c-> <c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args</c-><sub><c- n>N</c-></sub><c- p>...</c-><c- o>>>></c-></code>, where the type packs <code class="highlight"><c- n>Args</c-><sub><c- n>0</c-></sub></code> through <code class="highlight"><c- n>Args</c-><sub><c- n>N</c-></sub></code> are the packs of types the sender <code class="highlight"><c- n>S</c-></code> passes as
+arguments to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> after a receiver object. If such sender <code class="highlight"><c- n>S</c-></code> invokes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> for some receiver <code class="highlight"><c- n>r</c-></code>, where <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>args</c-><c- p>)</c-></code> is not one of the type packs <code class="highlight"><c- n>Args</c-><sub><c- n>0</c-></sub></code> through <code class="highlight"><c- n>Args</c-><sub><c- n>N</c-></sub></code>, the program is ill-formed with no
 diagnostic required.</p>
     <li data-md>
-     <p>If <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>::</c-><c- n>error_types</c-><c- o>&lt;</c-><c- n>Variant</c-><c- o>></c-></code> for some sender type <code class="highlight"><c- n>S</c-></code> is well formed, it shall be a type <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>E0</c-><c- p>,</c-> <c- n>E1</c-><c- p>,</c-> <c- p>...,</c-> <c- n>EN</c-><c- o>></c-></code>, where the types <code class="highlight"><c- n>E0</c-></code> through <code class="highlight"><c- n>EN</c-></code> are the types the sender <code class="highlight"><c- n>S</c-></code> passes as arguments to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> after a receiver
-object. If such sender <code class="highlight"><c- n>S</c-></code> invokes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> for some receiver <code class="highlight"><c- n>r</c-></code>, where <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> is not one of the types <code class="highlight"><c- n>E0</c-></code> through <code class="highlight"><c- n>EN</c-></code>, the program is ill-formed with no diagnostic required.</p>
+     <p>If <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>::</c-><c- n>error_types</c-><c- o>&lt;</c-><c- n>Variant</c-><c- o>></c-></code> for some sender type <code class="highlight"><c- n>S</c-></code> is well formed, it shall be a type <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>E</c-><sub><c- n>0</c-></sub><c- p>,</c-> <c- n>E</c-><sub><c- n>1</c-></sub><c- p>,</c-> <c- p>...,</c-> <c- n>E</c-><sub><c- n>N</c-></sub><c- o>></c-></code>, where the types <code class="highlight"><c- n>E</c-><sub><c- n>0</c-></sub></code> through <code class="highlight"><c- n>E</c-><sub><c- n>N</c-></sub></code> are the types the sender <code class="highlight"><c- n>S</c-></code> passes as arguments to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> after a receiver
+object. If such sender <code class="highlight"><c- n>S</c-></code> invokes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> for some receiver <code class="highlight"><c- n>r</c-></code>, where <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> is not one of the types <code class="highlight"><c- n>E</c-><sub><c- n>0</c-></sub></code> through <code class="highlight"><c- n>E</c-><sub><c- n>N</c-></sub></code>, the program is ill-formed with no diagnostic required.</p>
     <li data-md>
      <p>If <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>::</c-><c- n>sends_done</c-></code> is well formed and <code class="highlight">false</code>, and such sender <code class="highlight"><c- n>S</c-></code> invokes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> for some receiver <code class="highlight"><c- n>r</c-></code>, the program is ill-formed with no diagnostic required.</p>
     <li data-md>
@@ -4257,6 +4297,33 @@ described by the sender.</p>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>operation_state</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return an operation state for which <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> starts work described by <code class="highlight"><c- n>s</c-></code>, the program
 is ill-formed with no diagnostic required.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> if <code class="highlight"><i><c- n>is</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is <code class="highlight">true</code> and that expression is valid, where <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> is a coroutine equivalent to the following:</p>
+<pre class="highlight"><i><c- n>operation</c-><c- o>-</c-><c- n>state</c-><c- o>-</c-><c- n>task</c-></i> <i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>R</c-><c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- k>requires</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- p>{</c->
+  <c- n>exception_ptr</c-> <c- n>e</c-><c- p>;</c->
+  <c- k>try</c-> <c- p>{</c->
+    <i><c- n>set</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>expr</c-></i>
+  <c- p>}</c-> <c- k>catch</c-><c- p>(...)</c-> <c- p>{</c->
+    <c- n>e</c-> <c- o>=</c-> <c- n>current_exception</c-><c- p>();</c->
+  <c- p>}</c->
+  <i><c- n>set</c-><c- o>-</c-><c- n>error</c-><c- o>-</c-><c- n>expr</c-></i>
+<c- p>}</c->
+</pre>
+       <p>where <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> suspends at the <i>initial suspends point</i> ([dcl.fct.def.coroutine]), and:</p>
+       <ul>
+        <li data-md>
+         <p><i>set-value-expr</i> first evaluates <code class="highlight"><c- k>co_await</c-> <c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-></code>, then suspends the coroutine and evaluates <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>)</c-></code> if <code class="highlight"><i><c- n>await</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is <code class="highlight"><i><c- n>cv</c-></i> <c- b>void</c-></code>; otherwise, it evaluates <code class="highlight"><c- k>auto</c-><c- o>&amp;&amp;</c-> <c- n>res</c-> <c- o>=</c-> <c- k>co_await</c-> <c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-></code>, then suspends the coroutine and evaluates <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>,</c-> <c- p>(</c-><c- k>decltype</c-><c- p>(</c-><c- n>res</c-><c- p>))</c-> <c- n>res</c-><c- p>)</c-></code>.</p>
+         <p>If the call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> exits with an exception, the coroutine is resumed and the exception is immediately propagated in the context of the coroutine.</p>
+         <p>[<i>Note</i>: If the call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> exits normally, then the <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine is never resumed. --<i>end note</i>]</p>
+        <li data-md>
+         <p><i>set-error-expr</i> first suspends the coroutine and then executes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>e</c-><c- p>))</c-></code>.</p>
+         <p>[<i>Note</i>: The <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine is never resumed after the call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code>. --<i>end note</i>]</p>
+        <li data-md>
+         <p><code class="highlight"><i><c- n>operation</c-><c- o>-</c-><c- n>state</c-><c- o>-</c-><c- n>task</c-></i></code> is a type that models <code class="highlight"><c- n>operation_state</c-></code>. Its <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> resumes the <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine, advancing it past the initial suspend point.</p>
+        <li data-md>
+         <p>Let <code class="highlight"><c- n>p</c-></code> be an lvalue reference to the promise of the <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine, let <code class="highlight"><c- n>b</c-></code> be an lvalue reference to the receiver <code class="highlight"><c- n>r</c-></code>, and let <code class="highlight"><c- n>c</c-></code> be any customization point object excluding those of type <code class="highlight"><c- n>set_value_t</c-></code>, <code class="highlight"><c- n>set_error_t</c-></code> and <code class="highlight"><c- n>set_done_t</c-></code>. Then <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>c</c-><c- p>,</c-> <c- n>p</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>c</c-><c- p>,</c-> <c- n>b</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> for any set of arguments <code class="highlight"><c- n>as</c-><c- p>...</c-></code>.</p>
+       </ul>
+       <p>The operand of the <i>requires-clause</i> of <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> is equivalent to <code class="highlight"><c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-></code> if <code class="highlight"><i><c- n>await</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is <code class="highlight"><i><c- n>cv</c-></i> <c- b>void</c-></code>; otherwise, it is <code class="highlight"><c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <i><c- n>await</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-></code>.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
