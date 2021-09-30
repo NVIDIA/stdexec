@@ -2649,8 +2649,9 @@ are all well-formed.
 
             4. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
 
-        2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls
-            `execution::set_error(out_r, current_exception())`.
+        2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`.
+
+        3. The lifetimes of `op_state2` and `op_state3`, once constructed, last until `op_state` is destroyed.
 
 4. Any receiver `r` created by an implementation of `on` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for all such receivers should be equivalent to the `sch` argument passed into the `on` call.
 
@@ -2686,7 +2687,7 @@ are all well-formed.
 
         1. Constructs a receiver `r`.
 
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`. If any of these throws an exception, calls `execution::set_error` on `out_r`, passing `current_exception()` as the second argument.
+        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
         3. When a receiver completion-signal <code><i>Signal</i>(r, args...)</code> is called, it constructs a receiver `r2`:
 
@@ -2699,7 +2700,7 @@ are all well-formed.
             It then calls `execution::schedule(sch)`, resulting in a sender `s3`. It then calls `execution::connect(s3, r2)`, resulting in an operation state `op_state3`. It then calls `execution::start(op_state3)`. If any of these throws an exception,
             it catches it and calls `execution::set_error(out_r, current_exception())`.
 
-        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`. The lifetime of `op_state3` ends when `op_state` is destroyed.
 
 4. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They shall return a scheduler equivalent to the `sch` argument from those queries.
 
@@ -3046,7 +3047,7 @@ are all well-formed.
 
         1. Constructs a receiver `r`.
 
-        2. Calls `execution::connect(s, r)`, resulting in operation state `op_state`, and then calls `execution::start(op_state)`. If any of these throws an exception, it catches it and calls `execution::set_error(r, current_exception())`.
+        2. Calls `execution::connect(s, r)`, resulting in operation state `op_state`, and then calls `execution::start(op_state)`.
 
         3. Constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state2`. Once both `execution::start(op_state2)` and one of the receiver completion-signals has been called on `r`:
 
@@ -3055,6 +3056,14 @@ are all well-formed.
             2. If `execution::set_error(r, e)` has been called, calls `execution::set_error(out_r, e)`.
 
             3. If `execution::set_done(r)` has been called, calls `execution::set_done(out_r)`.
+
+            The lifetime of `op_state` lasts until all three of the following have occured:
+
+                1. the lifetime of `op_state2` has ended,
+
+                2. the lifetime of `s2` has ended, and
+
+                3. a receiver completion-signal has been called on `r`.
 
     If the function selected above does not eagerly start the sender `s` and return a sender which propagates the signals sent by `s` once started, the program is ill-formed with no diagnostic required.
 
@@ -3081,7 +3090,7 @@ are all well-formed.
 
             3. When `set_done(r)` is called, it does nothing.
 
-        2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`.
+        2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`. The lifetime of `op_state` lasts until one of the receiver completion-signals of `r` is called.
 
     If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_done` signals and calls `std::terminate` on the `set_error` signal, the program is ill-formed with no diagnostic
         required.
