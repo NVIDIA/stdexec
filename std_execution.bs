@@ -871,12 +871,12 @@ This adaptor is included as it is necessary for writing any sender code that act
 <pre highlight="c++">
 execution::sender auto upon_error(
     execution::sender auto input,
-    std::invocable<<i>errors-sent-by(input)</i>...> function
+    std::invocable&lt;<i>errors-sent-by(input)</i>...> function
 );
 
-execution::sender auto upon_error(
+execution::sender auto upon_done(
     execution::sender auto input,
-    std::invocable<> function
+    std::invocable auto function
 );
 </pre>
 
@@ -897,7 +897,7 @@ execution::sender auto let_error(
 
 execution::sender auto let_done(
     execution::sender auto input,
-    std::invocable<> function
+    std::invocable auto function
 );
 </pre>
 
