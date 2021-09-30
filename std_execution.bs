@@ -955,6 +955,27 @@ Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
 We believe sender consumers read better with function call syntax.
 
+## A range of senders represents an async sequence of data {#design-range-of-senders}
+
+Senders represent a single unit of asynchronous work. In many cases though, what is being modelled is a sequence of data arriving asynchronously, and you want computation to happen on demand, when each element arrives. This requires nothing more than what is in this paper and the range support in C++20. A range of senders would allow you to model such input as keystrikes, mouse movements, sensor readings, or network requests.
+
+Given some expression <code><i>R</i></code> that is a range of senders, consider the following in a coroutine that returns an async generator type:
+
+    <pre highlight="c++">
+    for (auto snd : <i>R</i>) {
+      if (auto opt = co_await execution::done_as_optional(std::move(snd)))
+        co_yield fn(*std::move(opt));
+      else
+        break;
+    }
+    </pre>
+
+This transforms each element of the asynchronous sequence <code><i>R</i></code> with the function `fn` on demand, as the data arrives. The result is a new asynchronous sequence of the transformed values.
+
+Now imagine that <code><i>R</i></code> is the simple expression `views::iota(0) | views::transform(execution::just)`. This creates a lazy range of senders, each of which completes immediately with monotonically increasing integers. The above code churns through the range, generating a new infine asynchronous range of values [`fn(0)`, `fn(1)`, `fn(2)`, ...].
+
+Far more interesting would be if <code><i>R</i></code> were a range of senders representing, say, user actions in a UI. The above code gives a simple way to respond to user actions on demand.
+
 ## All awaitables are senders ## {#design-awaitables-are-senders}
 
 Since C++20 added coroutines to the standard, we expect that coroutines and awaitables will be how a great many will choose to express their asynchronous code. However, in this paper, we are proposing to add a suite of asynchronous algorithms that accept senders, not awaitables. One might wonder whether and how these algorithms will be accessible to those who choose coroutines instead of senders.
