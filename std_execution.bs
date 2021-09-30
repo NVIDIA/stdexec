@@ -2097,7 +2097,7 @@ enum class forward_progress_guarantee {
 
           - <code><i>operation-state-task</i></code> is a type that models `operation_state`. Its `execution::start` resumes the <code><i>connect-awaitable</i></code> coroutine, advancing it past the initial suspend point.
 
-          - Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be an lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
+          - Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
 
           - The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
 
@@ -2807,11 +2807,11 @@ are all well-formed.
 
     - `S` models the concept `typed_sender`, and
 
-    - It passes zero or one values of a unique type to `execution::set_value`, and
+    - It calls at most one overload of `execution::set_value` with zero or one argument, and
 
-    - It passes only objects of type `exception_ptr` to `exception::set_error`, and
+    - It calls at most one overload of `exception::set_error` with an argument of type `exception_ptr`, and
 
-    - The promise type of the awaiting coroutine implements a function called `unhandled_done` that takes no arguments and returns a `coroutine_handle<>`.
+    - Given an lvalue `p` to the promise type of an awaiting coroutine, `p.unhandled_done()` is well-formed, `noexcept`, and returns a type convertible to `coroutine_handle<>`.
 
     <pre highlight="c++">
     // exposition only
@@ -2868,7 +2868,7 @@ are all well-formed.
 
         Let `r` be an rvalue expression of type <code><i>awaitable-receiver</i></code>, let `v` be an expression of type `result_t`, let `e` be an expression of type `exception_ptr`, let `p` be an lvalue reference to the coroutine promise type, let `c` be a customization point object, and let `as...` be a pack of arguments. Then:
 
-          - If `value_t` is `void`, then `execution::set_value(r)` is expression-equivalent to  `(result_ptr_->emplace<1>(v), continuation_.resume())`; otherwise, `execution::set_value(r, v)` is expression-equivalent to `(result_ptr_->emplace<1>(v), continuation_.resume())`.
+          - If `value_t` is `void`, then `execution::set_value(r)` is expression-equivalent to  `(result_ptr_->emplace<1>(), continuation_.resume())`; otherwise, `execution::set_value(r, v)` is expression-equivalent to `(result_ptr_->emplace<1>(v), continuation_.resume())`.
 
           - `execution::set_error(r, e)` is expression-equivalent to `(result_ptr_->emplace<2>(e), continuation_.resume())`.
 
@@ -2915,9 +2915,13 @@ are all well-formed.
         <i>see-below</i> await_transform(Value&& value);
 
        private:
+        // exposition only
+        [[noreturn]] static coroutine_handle&lt;> default_unhandled_done(void*) noexcept {
+          terminate();
+        }
         coroutine_handle&lt;> continuation_{}; // exposition only
-        coroutine_handle&lt;> (*done_handler_)(void*) noexcept = // exposition only
-          [](void*) noexcept -> coroutine_handler&lt;> { terminate(); };
+        // exposition only
+        coroutine_handle&lt;> (*done_handler_)(void*) noexcept = &default_unhandled_done;
       };
     </pre>
 
@@ -2932,6 +2936,8 @@ are all well-formed.
             return coroutine_handle&lt;OtherPromise>::from_address(p)
               .promise().unhandled_done();
           };
+        } else {
+          done_handler_ = default_unhandled_done;
         }
         </pre>
 
