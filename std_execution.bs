@@ -115,7 +115,6 @@ This paper proposes a Standard C++ model for asynchrony, based around three key 
 * Be composable and generic, allowing users to write code that can be used with many different types of execution contexts.
 * Encapsulate common asynchronous patterns in customizable and reusable algorithms, so users don't have to invent things themselves.
 * Make it easy to be correct by construction.
-* Support both lazy and eager execution in a way that does not compromise the efficiency of either and allows users to write code that is agnostic to eagerness.
 * Support the diversity of execution contexts and execution agents, because not all execution agents are created equal; some are less capable than others, but not less important.
 * Allow everything to be customized by an execution context, including transfer to other execution contexts, but don't require that execution contexts customize everything.
 * Care about all reasonable use cases, domains and platforms.
@@ -282,13 +281,12 @@ essential when writing user code using standard execution concepts; we have also
 
 1. The `executor` concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.
 2. Properties are not included in this paper. We see them as a possible future extension, if the committee gets more comfortable with them.
-3. Users now have a choice between using a strictly lazy vs a possibly eager version of most sender algorithms.
-4. Senders now advertise what scheduler, if any, their evaluation will complete on.
-5. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
-6. P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See [[#design-sender-factories]], [[#design-sender-adaptors]], and [[#design-sender-consumers]].
-7. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-shot]].
-8. Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in [[#design-dispatch]].
-9. A specific thread pool implementation is omitted, as per LEWG direction.
+3. Senders now advertise what scheduler, if any, their evaluation will complete on.
+4. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
+5. P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See [[#design-sender-factories]], [[#design-sender-adaptors]], and [[#design-sender-consumers]].
+6. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-shot]].
+7. Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in [[#design-dispatch]].
+8. A specific thread pool implementation is omitted, as per LEWG direction.
 
 ## Prior art ## {#intro-prior-art}
 
@@ -663,7 +661,7 @@ auto [result] = this_thread::sync_wait(snd).value();
 Certain sender adaptors are not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the adaptors involved. Specifically, the following sender adaptors are not pipeable.
 
 * `execution::when_all` and `execution::when_all_with_variant`: Since this sender adaptor takes a variadic pack of senders, a partially applied form would be ambiguous with a non partially applied form with an arity of one less.
-* `execution::on` and `execution::lazy_on`: This sender adaptor changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `transfer`.
+* `execution::on`: This sender adaptor changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `transfer`.
 
 Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
@@ -756,11 +754,8 @@ This adaptor is included as it greatly simplifies lifting values into senders.
 
 A <dfn>sender adaptor</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
 
-Many sender adaptors come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and a potentially eager one, which is allowed to submit work prior to
-the returned sender being started. Sender consumers such as [[#design-sender-adaptor-ensure_started]], [[#design-sender-consumer-start_detached]], and [[#design-sender-consumer-sync_wait]] start senders; the implementations of non-lazy versions of the sender adaptors are **allowed**,
-but not guaranteed, to start senders.
-
-The strictly lazy versions of the adaptors below (that is, all the versions whose names start with `lazy_`) are guaranteed to not start any input senders passed into them.
+Sender adaptors are <i>lazy</i>, that is, they are never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and are also guaranteed to not start any input senders passed into them. Sender consumers
+such as [[#design-sender-adaptor-ensure_started]], [[#design-sender-consumer-start_detached]], and [[#design-sender-consumer-sync_wait]] start senders.
 
 For more implementer-centric description of starting senders, see [[#design-laziness]].
 
@@ -768,11 +763,6 @@ For more implementer-centric description of starting senders, see [[#design-lazi
 
 <pre highlight="c++">
 execution::sender auto transfer(
-    execution::sender auto input,
-    execution::scheduler auto scheduler
-);
-
-execution::sender auto lazy_transfer(
     execution::sender auto input,
     execution::scheduler auto scheduler
 );
@@ -798,16 +788,11 @@ execution::sender auto then(
     execution::sender auto input,
     std::invocable<<i>values-sent-by(input)</i>...> function
 );
-
-execution::sender auto lazy_then(
-    execution::sender auto input,
-    std::invocable<<i>values-sent-by(input)</i>...> function
-);
 </pre>
 
 `then` returns a sender describing the task graph described by the input sender, with an added node of invoking the provided function with the values [=send|sent=] by the input sender as arguments.
 
-`lazy_then` is **guaranteed** to not begin executing `function` until the returned sender is started.
+`then` is **guaranteed** to not begin executing `function` until the returned sender is started.
 
 <pre highlight="c++">
 execution::sender auto input = get_input();
@@ -828,17 +813,7 @@ execution::sender auto upon_error(
     std::invocable<<i>errors-sent-by(input)</i>...> function
 );
 
-execution::sender auto lazy_upon_error(
-    execution::sender auto input,
-    std::invocable<<i>errors-sent-by(input)</i>...> function
-);
-
 execution::sender auto upon_error(
-    execution::sender auto input,
-    std::invocable<> function
-);
-
-execution::sender auto lazy_upon_error(
     execution::sender auto input,
     std::invocable<> function
 );
@@ -854,17 +829,7 @@ execution::sender auto let_value(
     std::invocable<<i>values-sent-by(input)</i>...> function
 );
 
-execution::sender auto lazy_let_value(
-    execution::sender auto input,
-    std::invocable<<i>values-sent-by(input)</i>...> function
-);
-
 execution::sender auto let_error(
-    execution::sender auto input,
-    std::invocable<<i>errors-sent-by(input)</i>...> function
-);
-
-execution::sender auto lazy_let_error(
     execution::sender auto input,
     std::invocable<<i>errors-sent-by(input)</i>...> function
 );
@@ -873,17 +838,12 @@ execution::sender auto let_done(
     execution::sender auto input,
     std::invocable<> function
 );
-
-execution::sender auto lazy_let_done(
-    execution::sender auto input,
-    std::invocable<> function
-);
 </pre>
 
 `let_value` is very similar to `then`: when it is started, it invokes the provided function with the values [=send|sent=] by the input sender as arguments. However, where the sender returned from `then` sends exactly what that function ends up returning -
 `let_value` requires that the function return a sender, and the sender returned by `let_value` sends the values sent by the sender returned from the callback. This is similar to the notion of "future unwrapping" in future/promise-based frameworks.
 
-`lazy_let_value` is **guaranteed** to not begin executing `function` until the returned sender is started.
+`let_value` is **guaranteed** to not begin executing `function` until the returned sender is started.
 
 `let_error` and `let_done` are similar to `let_value`, but where `let_value` works with values sent by the input sender, `let_error` works with errors, and `let_done` is invoked when the "done" signal is sent.
 
@@ -891,11 +851,6 @@ execution::sender auto lazy_let_done(
 
 <pre highlight="c++">
 execution::sender auto on(
-    execution::scheduler auto sched,
-    execution::sender auto snd
-);
-
-execution::sender auto lazy_on(
     execution::scheduler auto sched,
     execution::sender auto snd
 );
@@ -921,26 +876,18 @@ execution::sender auto bulk(
     std::integral auto size,
     invocable&lt;decltype(size), <i>values-sent-by(input)</i>...> function
 );
-
-execution::sender auto lazy_bulk(
-    execution::sender auto input,
-    std::integral auto size,
-    invocable&lt;decltype(size), <i>values-sent-by(input)</i>...> function
-);
 </pre>
 
 Returns a sender describing the task of invoking the provided function with the values [=send|sent=] by the input sender for every index in the provided shape.
 
 In this paper, only integral types satisfy the concept of a shape, but future papers will explore bulk shapes of different kinds in more detail.
 
-`lazy_bulk` is **guaranteed** to not begin executing `function` until the returned sender is started.
+`bulk` is **guaranteed** to not begin executing `function` until the returned sender is started.
 
 ### `execution::split` ### {#design-sender-adaptor-split}
 
 <pre highlight="c++">
 execution::sender auto split(execution::sender auto sender);
-
-execution::sender auto lazy_split(execution::sender auto sender);
 </pre>
 
 If the provided sender is a multi-shot sender, returns that sender. Otherwise, returns a multi-shot sender which sends values equivalent to the values sent by the provided sender. See [[#design-shot]].
@@ -962,9 +909,6 @@ execution::sender auto when_all_with_variant(
 `when_all_with_variant` does the same, but it adapts all the input senders using `into_variant`.
 
 The returned sender has no [=completion scheduler|completion schedulers=].
-
-`when_all` is a strictly lazy adaptor.
-It is guaranteed to not start any of the input senders until the returned sender is started.
 
 See [[#design-join]].
 
@@ -994,16 +938,6 @@ execution::sender auto transfer_when_all(
 );
 
 execution::sender auto transfer_when_all_with_variant(
-    execution::scheduler auto sched,
-    execution::sender auto ...inputs
-);
-
-execution::sender auto lazy_transfer_when_all(
-    execution::scheduler auto sched,
-    execution::sender auto ...inputs
-);
-
-execution::sender auto lazy_transfer_when_all_with_variant(
     execution::scheduler auto sched,
     execution::sender auto ...inputs
 );
@@ -1199,17 +1133,12 @@ where <code><i>Signal</i></code> is one of `set_value`, `set_error`, or `set_don
 
 For sender algorithms which accept concepts other than `sender` as their first argument, we propose that the customization scheme remains as it has been in [[P0443R14]] so far, except it should also use `tag_invoke`.
 
-## Laziness is defined by sender adaptors ## {#design-laziness}
+## Sender adaptors are lazy ## {#design-laziness}
 
-We distinguish two different guarantees about *when* work is submitted to an execution context:
+Contrary to early revisions of this paper, we propose to make all sender adaptors perform strictly lazy submission, unless specified otherwise (the one notable exception in this paper is [[#design-sender-adaptor-ensure_started]], whose sole purpose is to start an
+input sender).
 
- * <dfn>strictly lazy submission</dfn>, which means that there is a guarantee that no work is submitted to an execution context before a receiver is connected to a sender, and `execution::start` is called on the resulting operation state;
- * <dfn>potentially eager submission</dfn>, which means that work may be submitted to an execution context as soon as all the information necessary to perform it is provided.
-
-If a sender adaptor requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adaptors are specified
-to dispatch to the strictly lazy ones; for an author of a specific sender, it is sufficient to specialize the strictly lazy version, to also achieve a specialization of the potentially eager one.
-
-As has been described in [[#design-sender-adaptors]], whether a sender adaptor is guaranteed to perform strictly lazy submission or not is defined by the adaptor used to perform it; the adaptors whose names begin with `lazy_` provide the strictly lazy guarantee.
+ <dfn>Strictly lazy submission</dfn> means that there is a guarantee that no work is submitted to an execution context before a receiver is connected to a sender, and `execution::start` is called on the resulting operation state.
 
 ## Lazy senders provide optimization opportunities ## {#design-fusion}
 
@@ -1221,7 +1150,7 @@ the compiler is able to see a chain of work described using senders as a tree of
 compilers are capable of removing the senders abstraction entirely, while still allowing for composition of functions across different parts of a program.
 
 The second way for this to occur is when a sender algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, [[#design-sender-adaptor-ensure_started]] will be an identity transformation,
-because the sender algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy [[#design-sender-adaptor-bulk]]s of compatible shapes, and merge them together into a single submission of a GPU kernel.
+because the sender algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent [[#design-sender-adaptor-bulk]]s of compatible shapes, and merge them together into a single submission of a GPU kernel.
 
 ## Execution context transitions are two-step ## {#design-transition-details}
 
@@ -1695,66 +1624,39 @@ namespace std::execution {
 
     struct on_t;
     inline constexpr on_t on{};
-    struct lazy_on_t;
-    inline constexpr lazy_on_t lazy_on{};
     struct transfer_t;
     inline constexpr transfer_t transfer{};
-    struct lazy_transfer_t;
-    inline constexpr lazy_transfer_t lazy_transfer{};
     struct schedule_from_t;
     inline constexpr schedule_from_t schedule_from{};
-    struct lazy_schedule_from_t;
-    inline constexpr lazy_schedule_from_t lazy_schedule_from{};
 
     struct then_t;
     inline constexpr then_t then{};
-    struct lazy_then_t;
-    inline constexpr lazy_then_t lazy_then{};
     struct upon_error_t;
     inline constexpr upon_error_t upon_error{};
-    struct lazy_upon_error_t;
-    inline constexpr lazy_upon_error_t lazy_upon_error{};
     struct upon_done_t;
     inline constexpr upon_done_t upon_done{};
-    struct lazy_upon_done_t;
-    inline constexpr lazy_upon_done_t lazy_upon_done{};
 
     struct let_value_t;
     inline constexpr let_value_t let_value{};
-    struct lazy_let_value_t;
-    inline constexpr lazy_let_value_t lazy_let_value{};
     struct let_error_t;
     inline constexpr let_error_t let_error{};
-    struct lazy_let_error_t;
-    inline constexpr lazy_let_error_t lazy_let_error{};
     struct let_done_t;
     inline constexpr let_done_t let_done{};
-    struct lazy_let_done_t;
-    inline constexpr lazy_let_done_t lazy_let_done{};
 
     struct bulk_t;
     inline constexpr bulk_t bulk{};
-    struct lazy_bulk_t;
-    inline constexpr lazy_bulk_t lazy_bulk{};
 
     struct split_t;
     inline constexpr split_t split{};
-    struct lazy_split_t;
-    inline constexpr lazy_split_t lazy_split{};
     struct when_all_t;
     inline constexpr when_all_t when_all{};
     struct when_all_with_variant_t;
     inline constexpr when_all_with_variant_t when_all_with_variant{};
     struct transfer_when_all_t;
     inline constexpr transfer_when_all_t transfer_when_all{};
-    struct lazy_transfer_when_all_t;
-    inline constexpr lazy_transfer_when_all_t lazy_transfer_when_all{};
     struct transfer_when_all_with_variant_t;
     inline constexpr transfer_when_all_with_variant_t
       transfer_when_all_with_variant{};
-    struct lazy_transfer_when_all_with_variant_t;
-    inline constexpr lazy_transfer_when_all_with_variant_t
-      lazy_transfer_when_all_with_variant{};
 
     template&lt;typed_sender S>
       using <i>into-variant-type</i> = <i>see-below</i>; // exposition-only
@@ -2321,17 +2223,14 @@ enum class forward_progress_guarantee {
 
 2. The bitwise OR operator is overloaded for the purpose of creating sender chains. The adaptors also support function call syntax with equivalent semantics.
 
-3. Most sender adaptors have two versions, an <i>potentially eager version</i>, and a <i>strictly lazy</i> version. For such sender adaptors, <code><i>adaptor</i></code> is the potentially eager version, and <code>lazy&lowbar;<i>adaptor</i></code> is the strictly
-    lazy version.
-
-4. A strictly lazy version of a sender adaptor is required to not begin executing any functions which would observe or modify any of the arguments of the adaptor before the returned sender is connected with a receiver using `execution::connect`, and
+3. Unless otherwise specified, a sender adaptor is required to not begin executing any functions which would observe or modify any of the arguments of the adaptor before the returned sender is connected with a receiver using `execution::connect`, and
     `execution::start` is called on the resulting operation state. This requirement applies to any function that is selected by the implementation of the sender adaptor.
 
-5. Unless otherwise specified, all sender adaptors which accept a single `sender` argument return sender objects that propagate sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
+4. Unless otherwise specified, all sender adaptors which accept a single `sender` argument return sender objects that propagate sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
     sender adaptor.
 
-6. Unless otherwise specified, whenever a strictly lazy sender adaptor constructs a receiver it passes to another sender's connect, that receiver shall propagate receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
-    applies to any sender returned from a function that is selected by the implementation of a strictly lazy sender adaptor.
+5. Unless otherwise specified, whenever a sender adaptor constructs a receiver it passes to another sender's connect, that receiver shall propagate receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
+    applies to any sender returned from a function that is selected by the implementation of such sender adaptor.
 
 #### Sender adaptor closure objects <b>[execution.senders.adaptor.objects]</b> #### {#spec-execution.senders.adaptor.objects}
 
@@ -2383,21 +2282,12 @@ are all well-formed.
 
 #### `execution::on` <b>[execution.senders.adaptors.on]</b> #### {#spec-execution.senders.adaptors.on}
 
-1. `execution::on` and `execution::lazy_on` are used to adapt a sender in a sender that will start the input sender on an execution agent belonging to a specific execution context.
+1. `execution::on` is used to adapt a sender in a sender that will start the input sender on an execution agent belonging to a specific execution context.
 
 2. The name `execution::on` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
     `execution::on` is ill-formed. Otherwise, the expression `execution::on(sch, s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `lazy_on(sch, s)`.
-
-    If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
-
-3. The name `execution::lazy_on` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
-    `execution::lazy_on` is ill-formed. Otherwise, the expression `execution::lazy_on(sch, s)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch` when
+    1. `tag_invoke(execution::on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch` when
         started, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
@@ -2414,14 +2304,14 @@ are all well-formed.
         2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls
             `execution::set_error(out_r, current_exception())`.
 
-4. Any receiver `r` created by an implementation of `on` and `lazy_on` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for all such receivers should be equivalent to the `sch` argument passed into the `on` or `lazy_on` call.
+4. Any receiver `r` created by an implementation of `on` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for all such receivers should be equivalent to the `sch` argument passed into the `on` call.
 
 #### `execution::transfer` <b>[execution.senders.adaptors.transfer]</b> #### {#spec-execution.senders.adaptors.transfer}
 
-1. `execution::transfer` and `execution::lazy_transfer` are used to adapt a sender into a sender with a different associated `set_value` completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]
+1. `execution::transfer` is used to adapt a sender into a sender with a different associated `set_value` completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]
 
-2. The name `execution::transfer` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
-    `execution::transfer` is ill-formed. Otherwise, the expression `execution::transfer(s, sch)` is expression-equivalent to:
+2. The name `execution::transfer` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
+    `execution::sender`, `execution::transfer` is ill-formed. Otherwise, the expression `execution::transfer(s, sch)` is expression-equivalent to:
 
     1. `tag_invoke(execution::transfer, get_completion_scheduler<set_value_t>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
 
@@ -2431,36 +2321,17 @@ are all well-formed.
 
     If the function selected above does not return a sender which is a result of a call to `execution::schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
 
-3. The name `execution::lazy_transfer` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
-    `execution::sender`, `execution::lazy_transfer` is ill-formed. Otherwise, the expression `execution::lazy_transfer(s, sch)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_transfer, get_completion_scheduler<set_value_t>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `tag_invoke(execution::lazy_transfer, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `lazy_schedule_from(sch, s)`.
-
-    If the function selected above does not return a sender which is a result of a call to `execution::lazy_schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
-
-4. Senders returned from `execution::transfer` and `execution::lazy_transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They shall return a sender equivalent to the `sch` argument from those queries.
+3. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They shall return a scheduler equivalent to the `sch` argument from those queries.
 
 #### `execution::schedule_from` <b>[execution.senders.adaptors.schedule_from]</b> #### {#spec-execution.senders.adaptors.schedule_from}
 
-1. `execution::schedule_from` and `execution::lazy_schedule_from` are used to schedule work dependent on the completion of a sender onto a scheduler's associated execution context. [<i>Note</i>: `schedule_from` and `lazy_schedule_from` are not meant to be used in
-    user code; they are used in the implementation of `transfer` and `lazy_transfer`. -<i>end note</i>]
+1. `execution::schedule_from` is used to schedule work dependent on the completion of a sender onto a scheduler's associated execution context. [<i>Note</i>: `schedule_from` is not meant to be used in user code; they are used in the implementation of
+    `transfer`. -<i>end note</i>]
 
-2. The name `execution::schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
+3. The name `execution::schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
     `execution::typed_sender`, `execution::schedule_from` is ill-formed. Otherwise, the expression `execution::schedule_from(sch, s)` is expression-equivalent to:
 
     1. `tag_invoke(execution::schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated
-        execution context of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
-
-    2. Otherwise, `lazy_schedule_from(sch, s)`.
-
-3. The name `execution::lazy_schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
-    `execution::typed_sender`, `execution::lazy_schedule_from` is ill-formed. Otherwise, the expression `execution::lazy_schedule_from(sch, s)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated
         execution context of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
@@ -2482,30 +2353,18 @@ are all well-formed.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
-4. Senders returned from `execution::transfer` and `execution::lazy_transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They shall return a scheduler equivalent to the `sch` argument from those queries.
+4. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They shall return a scheduler equivalent to the `sch` argument from those queries.
 
 #### `execution::then` <b>[execution.senders.adaptors.then]</b> #### {#spec-execution.senders.adaptor.then}
 
-1. `execution::then` and `execution::lazy_then` are used to attach invocables as continuation for successful completion of the input sender.
+1. `execution::then` is used to attach invocables as continuation for successful completion of the input sender.
 
-2. The name `execution::then` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::then` is ill-formed. Otherwise, the expression `execution::then(s, f)` is
-    expression-equivalent to:
+2. The name `execution::then` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::then` is ill-formed. Otherwise, the expression
+    `execution::then(s, f)` is expression-equivalent to:
 
     1. `tag_invoke(execution::then, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `lazy_then(s, f)`.
-
-    If the function selected above does not return a sender which invokes `f` with the result of the `set_value` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
-
-2. The name `execution::lazy_then` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_then` is ill-formed. Otherwise, the expression
-    `execution::lazy_then(s, f)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_then, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `tag_invoke(execution::lazy_then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -2527,7 +2386,7 @@ are all well-formed.
 
 #### `execution::upon_error` <b>[execution.senders.adaptors.upon_error]</b> #### {#spec-execution.senders.adaptor.upon_error}
 
-1. `execution::upon_error` and `execution::lazy_upon_error` are used to attach invocables as continuation for successful completion of the input sender.
+1. `execution::upon_error` is used to attach invocables as continuation for unsuccessul completion of the input sender.
 
 2. The name `execution::upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_error` is ill-formed. Otherwise, the expression
     `execution::upon_error(s, f)` is expression-equivalent to:
@@ -2535,18 +2394,6 @@ are all well-formed.
     1. `tag_invoke(execution::upon_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `lazy_upon_error(s, f)`.
-
-    If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
-
-2. The name `execution::lazy_upon_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_error` is ill-formed. Otherwise, the expression
-    `execution::lazy_upon_error(s, f)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_upon_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `tag_invoke(execution::lazy_upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -2568,7 +2415,7 @@ are all well-formed.
 
 #### `execution::upon_done` <b>[execution.senders.adaptors.upon_done]</b> #### {#spec-execution.senders.adaptor.upon_done}
 
-1. `execution::upon_done` and `execution::lazy_upon_done` are used to attach invocables as continuation for successful completion of the input sender.
+1. `execution::upon_done` is used to attach invocables as continuation for the completion of the input sender using the "done" channel.
 
 2. The name `execution::upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::upon_done` is ill-formed. Otherwise, the expression
     `execution::upon_done(s, f)` is expression-equivalent to:
@@ -2576,18 +2423,6 @@ are all well-formed.
     1. `tag_invoke(execution::upon_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `lazy_upon_done(s, f)`.
-
-    If the function selected above does not return a sender which invokes `f` when the `set_done` signal of `s` is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
-
-2. The name `execution::lazy_upon_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_upon_done` is ill-formed. Otherwise, the expression
-    `execution::lazy_upon_done(s, f)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_upon_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `tag_invoke(execution::lazy_upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -2608,7 +2443,7 @@ are all well-formed.
 
 #### `execution::let_value` <b>[execution.senders.adaptors.let_value]</b> #### {#spec-execution.senders.adaptors.let_value}
 
-1. `execution::let_value` and `execution::lazy_let_value` are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
+1. `execution::let_value` is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
 
 2. The name `execution::let_value` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::let_value` is ill-formed. Otherwise, the expression
     `execution::let_value(s, f)` is expression-equivalent to:
@@ -2616,18 +2451,6 @@ are all well-formed.
     1. `tag_invoke(execution::let_value, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::let_value, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `lazy_let_value(s, f)`.
-
-    If the function selected above does not return a sender which invokes `f` when `set_value` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
-
-2. The name `execution::lazy_let_value` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_let_value` is ill-formed. Otherwise, the expression
-    `execution::lazy_let_value(s, f)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_let_value, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `tag_invoke(execution::lazy_let_value, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -2649,7 +2472,7 @@ are all well-formed.
 
 #### `execution::let_error` <b>[execution.senders.adaptors.let_error]</b> #### {#spec-execution.senders.adaptors.let_error}
 
-1. `execution::let_error` and `execution::lazy_let_error` are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
+1. `execution::let_error` is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
 
 2. The name `execution::let_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::let_error` is ill-formed. Otherwise, the expression
     `execution::let_error(s, f)` is expression-equivalent to:
@@ -2657,18 +2480,6 @@ are all well-formed.
     1. `tag_invoke(execution::let_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::let_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `lazy_let_error(s, f)`.
-
-    If the function selected above does not return a sender which invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
-
-2. The name `execution::lazy_let_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_let_error` is ill-formed. Otherwise, the expression
-    `execution::lazy_let_error(s, f)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_let_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `tag_invoke(execution::lazy_let_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -2690,7 +2501,7 @@ are all well-formed.
 
 #### `execution::let_done` <b>[execution.senders.adaptors.let_done]</b> #### {#spec-execution.senders.adaptors.let_done}
 
-1. `execution::let_done` and `execution::lazy_let_done` are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
+1. `execution::let_done` is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
 
 2. The name `execution::let_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::let_done` is ill-formed. Otherwise, the expression
     `execution::let_done(s, f)` is expression-equivalent to:
@@ -2698,18 +2509,6 @@ are all well-formed.
     1. `tag_invoke(execution::let_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::let_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `lazy_let_done(s, f)`.
-
-    If the function selected above does not return a sender which invokes `f` when `set_done` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
-
-2. The name `execution::lazy_let_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::lazy_let_done` is ill-formed. Otherwise, the expression
-    `execution::lazy_let_done(s, f)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_let_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `tag_invoke(execution::lazy_let_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -2731,18 +2530,9 @@ are all well-formed.
 
 #### `execution::bulk` <b>[execution.senders.adaptors.bulk]</b> #### {#spec-execution.senders.adaptors.bulk}
 
-1. `execution::bulk` and `execution::lazy_bulk` are used to run a task repeatedly for every index in an index space.
+1. `execution::bulk` is used to run a task repeatedly for every index in an index space.
 
-2. The name `execution::bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape` does not
-    satisfy `integral`, `execution::bulk` is ill-formed. Otherwise, the expression `execution::bulk(s, shape, f)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value_t>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `tag_invoke(execution::bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `lazy_bulk(s, shape, f)`.
-
-2. The name `execution::lazy_bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape`
+2. The name `execution::bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape`
     does not satisfy `integral`, `execution::bulk` is ill-formed. Otherwise, the expression `execution::bulk(s, shape, f)` is expression-equivalent to:
 
     1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value_t>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
@@ -2769,25 +2559,14 @@ are all well-formed.
 
 #### `execution::split` <b>[execution.senders.adaptors.split]</b> #### {#spec-execution.senders.adaptors.split}
 
-1. `execution::split` and `execution::lazy_split` are used to adapt an arbitrary sender into a sender that can be connected multiple times.
+1. `execution::split` is used to adapt an arbitrary sender into a sender that can be connected multiple times.
 
-2. The name `execution::split` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::split` is ill-formed. Otherwise, the expression `execution::split(s)` is
-    expression-equivalent to:
+2. The name `execution::split` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::split` is ill-formed. Otherwise, the expression
+    `execution::split(s)` is expression-equivalent to:
 
     1. `tag_invoke(execution::split, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
 
     2. Otherwise, `tag_invoke(execution::split, s)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    3. Otherwise, `lazy_split(s)`.
-
-    If the function selected above does not return a sender which sends references to values sent by `s`, propagating the other channels, the program is ill-formed with no diagnostic required.
-
-2. The name `execution::lazy_split` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::lazy_split` is ill-formed. Otherwise, the expression
-    `execution::lazy_split(s)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_split, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
-
-    2. Otherwise, `tag_invoke(execution::lazy_split, s)`, if that expression is valid and its type satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`, which:
 
@@ -2844,38 +2623,27 @@ are all well-formed.
 
     2. Otherwise, `execution::when_all(execution::into_variant(s)...)`.
 
-4. Adaptors defined in this subclause are strictly lazy.
+4. Senders returned from adaptors defined in this subclause shall not expose the sender queries `get_completion_scheduler<CPO>`.
 
-5. Senders returned from adaptors defined in this subclause shall not expose the sender queries `get_completion_scheduler<CPO>`.
-
-7. `tag_invoke` expressions used in the definitions of the sender adaptors in this subclause shall not consider member functions of their first non-tag arguments.
+5. `tag_invoke` expressions used in the definitions of the sender adaptors in this subclause shall not consider member functions of their first non-tag arguments.
 
 #### `execution::transfer_when_all` <b>[execution.senders.adaptors.transfer_when_all]</b> #### {#spec-execution.senders.adaptor.transfer_when_all}
 
-1. `execution::transfer_when_all` and `execution::lazy_transfer_when_all` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
-    that they complete on the specified scheduler. `execution::transfer_when_all_with_variant` and `execution::lazy_transfer_when_all_with_variant` are used to join multiple sender chains and create a sender whose execution is dependent on all of the input
-    senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the adaptor. --<i>end note</i>]
+1. `execution::transfer_when_all` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
+    that they complete on the specified scheduler. `execution::transfer_when_all_with_variant` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input
+    senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the adaptors. --<i>end note</i>]
 
-2. The name `execution::transfer_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type <code>S<i><sub>i</sub></i></code>
-    in `S...` does not satisfy `execution::typed_sender`,  or the number of the arguments <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1 `execution::transfer_when_all` is ill-formed.
-    Otherwise, the expression `execution::transfer_when_all(sch, s...)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::transfer_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they
-        all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic required.
-
-    2. Otherwise, `transfer(when_all(s...), sch)`.
-
-3. The name `execution::lazy_transfer_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type
+2. The name `execution::transfer_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type
     <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, or the number of the arguments <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1,
-    `execution::lazy_transfer_when_all` is ill-formed. Otherwise, the expression `execution::lazy_transfer_when_all(sch, s...)` is expression-equivalent to:
+    `execution::transfer_when_all` is ill-formed. Otherwise, the expression `execution::transfer_when_all(sch, s...)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::lazy_transfer_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when
+    1. `tag_invoke(execution::transfer_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when
         they all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic
         required.
 
-    2. Otherwise, `lazy_transfer(when_all(s...), sch)`.
+    2. Otherwise, `transfer(when_all(s...), sch)`.
 
-4. The name `execution::transfer_when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
+3. The name `execution::transfer_when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
     `execution::transfer_when_all_with_variant` is ill-formed. Otherwise, the expression `execution::transfer_when_all_with_variant(s...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::transfer_when_all_with_variant, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends the types
@@ -2883,16 +2651,7 @@ are all well-formed.
 
     2. Otherwise, `execution::transfer_when_all(sch, execution::into_variant(s)...)`.
 
-5. The name `execution::lazy_transfer_when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
-    `execution::lazy_transfer_when_all_with_variant` is ill-formed. Otherwise, the expression `execution::lazy_transfer_when_all_with_variant(s...)` is expression-equivalent to:
-
-    1. `tag_invoke(execution::lazy_transfer_when_all_with_variant, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends the types
-        <code><i>into-variant-type</i>&lt;S>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
-
-    2. Otherwise, `execution::lazy_transfer_when_all(sch, execution::into_variant(s)...)`.
-
-4. Senders returned from `execution::transfer_when_all` and `execution::lazy_transfer_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to input senders. They shall return a scheduler equivalent to the `sch` argument from
-    those queries.
+4. Senders returned from `execution::transfer_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to input senders. They shall return a scheduler equivalent to the `sch` argument from those queries.
 
 #### `execution::into_variant` <b>[execution.senders.adaptors.into_variant]</b> #### {#spec-execution.senders.adaptors.into_variant}
 
