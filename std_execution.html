@@ -2184,7 +2184,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R2<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-09-29">2021-09-29</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-09-30">2021-09-30</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2301,7 +2301,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#design-states"><span class="secno">5.2</span> <span class="content">Operation states represent work</span></a>
       <li><a href="#design-connect"><span class="secno">5.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code></span></a>
       <li><a href="#design-customization"><span class="secno">5.4</span> <span class="content">Sender algorithms are customizable</span></a>
-      <li><a href="#design-laziness"><span class="secno">5.5</span> <span class="content">Laziness is defined by sender adaptors</span></a>
+      <li><a href="#design-laziness"><span class="secno">5.5</span> <span class="content">Sender adaptors are lazy</span></a>
       <li><a href="#design-fusion"><span class="secno">5.6</span> <span class="content">Lazy senders provide optimization opportunities</span></a>
       <li><a href="#design-transition-details"><span class="secno">5.7</span> <span class="content">Execution context transitions are two-step</span></a>
       <li><a href="#design-typed"><span class="secno">5.8</span> <span class="content">Most senders are typed</span></a>
@@ -2440,8 +2440,6 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
      <p>Encapsulate common asynchronous patterns in customizable and reusable algorithms, so users don’t have to invent things themselves.</p>
     <li data-md>
      <p>Make it easy to be correct by construction.</p>
-    <li data-md>
-     <p>Support both lazy and eager execution in a way that does not compromise the efficiency of either and allows users to write code that is agnostic to eagerness.</p>
     <li data-md>
      <p>Support the diversity of execution contexts and execution agents, because not all execution agents are created equal; some are less capable than others, but not less important.</p>
     <li data-md>
@@ -2638,8 +2636,6 @@ essential when writing user code using standard execution concepts; we have also
      <p>The <code class="highlight"><c- n>executor</c-></code> concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.</p>
     <li data-md>
      <p>Properties are not included in this paper. We see them as a possible future extension, if the committee gets more comfortable with them.</p>
-    <li data-md>
-     <p>Users now have a choice between using a strictly lazy vs a possibly eager version of most sender algorithms.</p>
     <li data-md>
      <p>Senders now advertise what scheduler, if any, their evaluation will complete on.</p>
     <li data-md>
@@ -2967,7 +2963,7 @@ Consider the following example where we want to execute first on a CPU thread po
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant</c-></code>: Since this sender adaptor takes a variadic pack of senders, a partially applied form would be ambiguous with a non partially applied form with an arity of one less.</p>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_on</c-></code>: This sender adaptor changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to <code class="highlight"><c- n>transfer</c-></code>.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code>: This sender adaptor changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to <code class="highlight"><c- n>transfer</c-></code>.</p>
    </ul>
    <p>Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
@@ -3036,18 +3032,11 @@ We believe sender consumers read better with function call syntax.</p>
    <p>This adaptor is included as it greatly simplifies lifting values into senders.</p>
    <h3 class="heading settled" data-level="4.13" id="design-sender-adaptors"><span class="secno">4.13. </span><span class="content">User-facing sender adaptors</span><a class="self-link" href="#design-sender-adaptors"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="sender-adaptor">sender adaptor</dfn> is an <a data-link-type="dfn" href="#algorithm" id="ref-for-algorithm①">algorithm</a> that takes one or more senders, which it may <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.</p>
-   <p>Many sender adaptors come in two versions: a strictly lazy one, which is never allowed to submit any work for execution prior to the returned sender being <dfn data-dfn-type="dfn" data-lt="start" data-noexport id="start">started<a class="self-link" href="#start"></a></dfn> later on, and a potentially eager one, which is allowed to submit work prior to
-the returned sender being started. Sender consumers such as <a href="#design-sender-adaptor-ensure_started">§ 4.13.11 execution::ensure_started</a>, <a href="#design-sender-consumer-start_detached">§ 4.14.1 execution::start_detached</a>, and <a href="#design-sender-consumer-sync_wait">§ 4.14.2 this_thread::sync_wait</a> start senders; the implementations of non-lazy versions of the sender adaptors are <strong>allowed</strong>,
-but not guaranteed, to start senders.</p>
-   <p>The strictly lazy versions of the adaptors below (that is, all the versions whose names start with <code class="highlight"><c- n>lazy_</c-></code>) are guaranteed to not start any input senders passed into them.</p>
-   <p>For more implementer-centric description of starting senders, see <a href="#design-laziness">§ 5.5 Laziness is defined by sender adaptors</a>.</p>
+   <p>Sender adaptors are <i>lazy</i>, that is, they are never allowed to submit any work for execution prior to the returned sender being <dfn data-dfn-type="dfn" data-lt="start" data-noexport id="start">started<a class="self-link" href="#start"></a></dfn> later on, and are also guaranteed to not start any input senders passed into them. Sender consumers
+such as <a href="#design-sender-adaptor-ensure_started">§ 4.13.11 execution::ensure_started</a>, <a href="#design-sender-consumer-start_detached">§ 4.14.1 execution::start_detached</a>, and <a href="#design-sender-consumer-sync_wait">§ 4.14.2 this_thread::sync_wait</a> start senders.</p>
+   <p>For more implementer-centric description of starting senders, see <a href="#design-laziness">§ 5.5 Sender adaptors are lazy</a>.</p>
    <h4 class="heading settled" data-level="4.13.1" id="design-sender-adaptor-transfer"><span class="secno">4.13.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span><a class="self-link" href="#design-sender-adaptor-transfer"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>transfer</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>scheduler</c->
-<c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_transfer</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>scheduler</c->
 <c- p>);</c->
@@ -3067,14 +3056,9 @@ but not guaranteed, to start senders.</p>
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
 <c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_then</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
-<c- p>);</c->
 </pre>
    <p><code class="highlight"><c- n>then</c-></code> returns a sender describing the task graph described by the input sender, with an added node of invoking the provided function with the values <a data-link-type="dfn" href="#send" id="ref-for-send④">sent</a> by the input sender as arguments.</p>
-   <p><code class="highlight"><c- n>lazy_then</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
+   <p><code class="highlight"><c- n>then</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-> <c- o>=</c-> <c- n>get_input</c-><c- p>();</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>input</c-><c- p>,</c-> <c- p>[](</c-><c- k>auto</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
     <c- n>std</c-><c- o>::</c-><c- n>print</c-><c- p>(</c-><c- n>args</c-><c- p>...);</c->
@@ -3089,17 +3073,7 @@ but not guaranteed, to start senders.</p>
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>errors</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
 <c- p>);</c->
 
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_upon_error</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>errors</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
-<c- p>);</c->
-
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>upon_error</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;></c-> <c- n>function</c->
-<c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_upon_error</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;></c-> <c- n>function</c->
 <c- p>);</c->
@@ -3111,17 +3085,7 @@ but not guaranteed, to start senders.</p>
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
 <c- p>);</c->
 
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_let_value</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
-<c- p>);</c->
-
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>let_error</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>errors</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
-<c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_let_error</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>errors</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
 <c- p>);</c->
@@ -3130,22 +3094,12 @@ but not guaranteed, to start senders.</p>
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;></c-> <c- n>function</c->
 <c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_let_done</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;></c-> <c- n>function</c->
-<c- p>);</c->
 </pre>
    <p><code class="highlight"><c- n>let_value</c-></code> is very similar to <code class="highlight"><c- n>then</c-></code>: when it is started, it invokes the provided function with the values <a data-link-type="dfn" href="#send" id="ref-for-send⑤">sent</a> by the input sender as arguments. However, where the sender returned from <code class="highlight"><c- n>then</c-></code> sends exactly what that function ends up returning - <code class="highlight"><c- n>let_value</c-></code> requires that the function return a sender, and the sender returned by <code class="highlight"><c- n>let_value</c-></code> sends the values sent by the sender returned from the callback. This is similar to the notion of "future unwrapping" in future/promise-based frameworks.</p>
-   <p><code class="highlight"><c- n>lazy_let_value</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
+   <p><code class="highlight"><c- n>let_value</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
    <p><code class="highlight"><c- n>let_error</c-></code> and <code class="highlight"><c- n>let_done</c-></code> are similar to <code class="highlight"><c- n>let_value</c-></code>, but where <code class="highlight"><c- n>let_value</c-></code> works with values sent by the input sender, <code class="highlight"><c- n>let_error</c-></code> works with errors, and <code class="highlight"><c- n>let_done</c-></code> is invoked when the "done" signal is sent.</p>
    <h4 class="heading settled" data-level="4.13.5" id="design-sender-adaptor-on"><span class="secno">4.13.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code></span><a class="self-link" href="#design-sender-adaptor-on"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>on</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-><c- p>,</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
-<c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_on</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-><c- p>,</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c->
 <c- p>);</c->
@@ -3163,20 +3117,12 @@ but not guaranteed, to start senders.</p>
     <c- n>std</c-><c- o>::</c-><c- n>integral</c-> <c- k>auto</c-> <c- n>size</c-><c- p>,</c->
     <c- n>invocable</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><c- n>size</c-><c- p>),</c-> <i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
 <c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_bulk</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>integral</c-> <c- k>auto</c-> <c- n>size</c-><c- p>,</c->
-    <c- n>invocable</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><c- n>size</c-><c- p>),</c-> <i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
-<c- p>);</c->
 </pre>
    <p>Returns a sender describing the task of invoking the provided function with the values <a data-link-type="dfn" href="#send" id="ref-for-send⑥">sent</a> by the input sender for every index in the provided shape.</p>
    <p>In this paper, only integral types satisfy the concept of a shape, but future papers will explore bulk shapes of different kinds in more detail.</p>
-   <p><code class="highlight"><c- n>lazy_bulk</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
+   <p><code class="highlight"><c- n>bulk</c-></code> is <strong>guaranteed</strong> to not begin executing <code class="highlight"><c- n>function</c-></code> until the returned sender is started.</p>
    <h4 class="heading settled" data-level="4.13.8" id="design-sender-adaptor-split"><span class="secno">4.13.8. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code></span><a class="self-link" href="#design-sender-adaptor-split"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>split</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sender</c-><c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_split</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sender</c-><c- p>);</c->
 </pre>
    <p>If the provided sender is a multi-shot sender, returns that sender. Otherwise, returns a multi-shot sender which sends values equivalent to the values sent by the provided sender. See <a href="#design-shot">§ 4.7 Senders can be either multi-shot or single-shot</a>.</p>
    <h4 class="heading settled" data-level="4.13.9" id="design-sender-adaptor-when_all"><span class="secno">4.13.9. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code></span><a class="self-link" href="#design-sender-adaptor-when_all"></a></h4>
@@ -3191,8 +3137,6 @@ but not guaranteed, to start senders.</p>
    <p><code class="highlight"><c- n>when_all</c-></code> returns a sender which completes once all of the input senders have completed. The values send by this sender are the values sent by each of the input, in order of the arguments passed to <code class="highlight"><c- n>when_all</c-></code>.</p>
    <p><code class="highlight"><c- n>when_all_with_variant</c-></code> does the same, but it adapts all the input senders using <code class="highlight"><c- n>into_variant</c-></code>.</p>
    <p>The returned sender has no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑥">completion schedulers</a>.</p>
-   <p><code class="highlight"><c- n>when_all</c-></code> is a strictly lazy adaptor.
-It is guaranteed to not start any of the input senders until the returned sender is started.</p>
    <p>See <a href="#design-join">§ 4.9 Senders are joinable</a>.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
 
@@ -3216,16 +3160,6 @@ It is guaranteed to not start any of the input senders until the returned sender
 <c- p>);</c->
 
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>transfer_when_all_with_variant</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-><c- p>,</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- p>...</c-><c- n>inputs</c->
-<c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_transfer_when_all</c-><c- p>(</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-><c- p>,</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- p>...</c-><c- n>inputs</c->
-<c- p>);</c->
-
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>lazy_transfer_when_all_with_variant</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-><c- p>,</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- p>...</c-><c- n>inputs</c->
 <c- p>);</c->
@@ -3375,17 +3309,10 @@ equivalent to:</p>
    </ol>
    <p>where <code class="highlight"><i><c- n>Signal</c-></i></code> is one of <code class="highlight"><c- n>set_value</c-></code>, <code class="highlight"><c- n>set_error</c-></code>, or <code class="highlight"><c- n>set_done</c-></code>; for most sender algorithms, the completion scheduler for <code class="highlight"><c- n>set_value</c-></code> would be used, but for some (like <code class="highlight"><c- n>upon_error</c-></code> or <code class="highlight"><c- n>let_done</c-></code>), one of the others would be used.</p>
    <p>For sender algorithms which accept concepts other than <code class="highlight"><c- n>sender</c-></code> as their first argument, we propose that the customization scheme remains as it has been in <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> so far, except it should also use <code class="highlight"><c- n>tag_invoke</c-></code>.</p>
-   <h3 class="heading settled" data-level="5.5" id="design-laziness"><span class="secno">5.5. </span><span class="content">Laziness is defined by sender adaptors</span><a class="self-link" href="#design-laziness"></a></h3>
-   <p>We distinguish two different guarantees about <em>when</em> work is submitted to an execution context:</p>
-   <ul>
-    <li data-md>
-     <p><dfn data-dfn-type="dfn" data-noexport id="strictly-lazy-submission">strictly lazy submission<a class="self-link" href="#strictly-lazy-submission"></a></dfn>, which means that there is a guarantee that no work is submitted to an execution context before a receiver is connected to a sender, and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on the resulting operation state;</p>
-    <li data-md>
-     <p><dfn data-dfn-type="dfn" data-noexport id="potentially-eager-submission">potentially eager submission<a class="self-link" href="#potentially-eager-submission"></a></dfn>, which means that work may be submitted to an execution context as soon as all the information necessary to perform it is provided.</p>
-   </ul>
-   <p>If a sender adaptor requires potentially eager submission, strictly lazy submission is acceptable as an implementation, because it does fulfill the potentially eager guarantee. This is why the default implementations for the non-strictly-lazy sender adaptors are specified
-to dispatch to the strictly lazy ones; for an author of a specific sender, it is sufficient to specialize the strictly lazy version, to also achieve a specialization of the potentially eager one.</p>
-   <p>As has been described in <a href="#design-sender-adaptors">§ 4.13 User-facing sender adaptors</a>, whether a sender adaptor is guaranteed to perform strictly lazy submission or not is defined by the adaptor used to perform it; the adaptors whose names begin with <code class="highlight"><c- n>lazy_</c-></code> provide the strictly lazy guarantee.</p>
+   <h3 class="heading settled" data-level="5.5" id="design-laziness"><span class="secno">5.5. </span><span class="content">Sender adaptors are lazy</span><a class="self-link" href="#design-laziness"></a></h3>
+   <p>Contrary to early revisions of this paper, we propose to make all sender adaptors perform strictly lazy submission, unless specified otherwise (the one notable exception in this paper is <a href="#design-sender-adaptor-ensure_started">§ 4.13.11 execution::ensure_started</a>, whose sole purpose is to start an
+input sender).</p>
+   <p><dfn data-dfn-type="dfn" data-noexport id="strictly-lazy-submission">Strictly lazy submission<a class="self-link" href="#strictly-lazy-submission"></a></dfn> means that there is a guarantee that no work is submitted to an execution context before a receiver is connected to a sender, and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on the resulting operation state.</p>
    <h3 class="heading settled" data-level="5.6" id="design-fusion"><span class="secno">5.6. </span><span class="content">Lazy senders provide optimization opportunities</span><a class="self-link" href="#design-fusion"></a></h3>
    <p>Because lazy senders fundamentally <em>describe</em> work, instead of describing or representing the submission of said work to an execution context, and thanks to the flexibility of the customization of most sender algorithms, they provide an opportunity for fusing
 multiple algorithms in a sender chain together, into a single function that can later be submitted for execution by an execution context. There are two ways this can happen.</p>
@@ -3393,7 +3320,7 @@ multiple algorithms in a sender chain together, into a single function that can 
 the compiler is able to see a chain of work described using senders as a tree of tail calls, allowing for inlining and removal of most of the sender machinery. In fact, when work is not submitted to execution contexts outside of the current thread of execution,
 compilers are capable of removing the senders abstraction entirely, while still allowing for composition of functions across different parts of a program.</p>
    <p>The second way for this to occur is when a sender algorithm is specialized for a specific set of arguments. For instance, we expect that, for senders which are known to have been started already, <a href="#design-sender-adaptor-ensure_started">§ 4.13.11 execution::ensure_started</a> will be an identity transformation,
-because the sender algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent lazy <a href="#design-sender-adaptor-bulk">§ 4.13.7 execution::bulk</a>s of compatible shapes, and merge them together into a single submission of a GPU kernel.</p>
+because the sender algorithm will be specialized for such senders. Similarly, an implementation could recognize two subsequent <a href="#design-sender-adaptor-bulk">§ 4.13.7 execution::bulk</a>s of compatible shapes, and merge them together into a single submission of a GPU kernel.</p>
    <h3 class="heading settled" data-level="5.7" id="design-transition-details"><span class="secno">5.7. </span><span class="content">Execution context transitions are two-step</span><a class="self-link" href="#design-transition-details"></a></h3>
    <p>Because <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> takes a sender as its first argument, it is not actually directly customizable by the target scheduler. This is by design: the target scheduler may not know how to transition <i>from</i> a scheduler such as a CUDA scheduler;
 transitioning away from a GPU in an efficient manner requires making runtime calls that are specific to the GPU in question, and the same is usually true for other kinds of accelerators too (or for scheduler running on remote systems). To avoid this problem,
@@ -3830,66 +3757,39 @@ the shared stop state.</p>
 
     <c- k>struct</c-> <c- nc>on_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>on_t</c-> <c- n>on</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_on_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_on_t</c-> <c- n>lazy_on</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>transfer_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_t</c-> <c- n>transfer</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_transfer_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_transfer_t</c-> <c- n>lazy_transfer</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>schedule_from_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>schedule_from_t</c-> <c- n>schedule_from</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_schedule_from_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_schedule_from_t</c-> <c- n>lazy_schedule_from</c-><c- p>{};</c->
 
     <c- k>struct</c-> <c- nc>then_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>then_t</c-> <c- n>then</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_then_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_then_t</c-> <c- n>lazy_then</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>upon_error_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>upon_error_t</c-> <c- n>upon_error</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_upon_error_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_upon_error_t</c-> <c- n>lazy_upon_error</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>upon_done_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>upon_done_t</c-> <c- n>upon_done</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_upon_done_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_upon_done_t</c-> <c- n>lazy_upon_done</c-><c- p>{};</c->
 
     <c- k>struct</c-> <c- nc>let_value_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>let_value_t</c-> <c- n>let_value</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_let_value_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_let_value_t</c-> <c- n>lazy_let_value</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>let_error_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>let_error_t</c-> <c- n>let_error</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_let_error_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_let_error_t</c-> <c- n>lazy_let_error</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>let_done_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>let_done_t</c-> <c- n>let_done</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_let_done_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_let_done_t</c-> <c- n>lazy_let_done</c-><c- p>{};</c->
 
     <c- k>struct</c-> <c- nc>bulk_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>bulk_t</c-> <c- n>bulk</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_bulk_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_bulk_t</c-> <c- n>lazy_bulk</c-><c- p>{};</c->
 
     <c- k>struct</c-> <c- nc>split_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>split_t</c-> <c- n>split</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_split_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_split_t</c-> <c- n>lazy_split</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>when_all_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>when_all_t</c-> <c- n>when_all</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>when_all_with_variant_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>when_all_with_variant_t</c-> <c- n>when_all_with_variant</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>transfer_when_all_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_when_all_t</c-> <c- n>transfer_when_all</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_transfer_when_all_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_transfer_when_all_t</c-> <c- n>lazy_transfer_when_all</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>transfer_when_all_with_variant_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_when_all_with_variant_t</c->
       <c- n>transfer_when_all_with_variant</c-><c- p>{};</c->
-    <c- k>struct</c-> <c- nc>lazy_transfer_when_all_with_variant_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>lazy_transfer_when_all_with_variant_t</c->
-      <c- n>lazy_transfer_when_all_with_variant</c-><c- p>{};</c->
 
     <c- k>template</c-><c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- o>></c->
       <c- k>using</c-> <i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c-> <c- c1>// exposition-only</c->
@@ -4448,16 +4348,13 @@ values equivalent to <code class="highlight"><c- n>vs</c-><c- p>...</c-></code> 
     <li data-md>
      <p>The bitwise OR operator is overloaded for the purpose of creating sender chains. The adaptors also support function call syntax with equivalent semantics.</p>
     <li data-md>
-     <p>Most sender adaptors have two versions, an <i>potentially eager version</i>, and a <i>strictly lazy</i> version. For such sender adaptors, <code class="highlight"><i><c- n>adaptor</c-></i></code> is the potentially eager version, and <code class="highlight"><c- n>lazy_</c-><i><c- n>adaptor</c-></i></code> is the strictly
-lazy version.</p>
-    <li data-md>
-     <p>A strictly lazy version of a sender adaptor is required to not begin executing any functions which would observe or modify any of the arguments of the adaptor before the returned sender is connected with a receiver using <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on the resulting operation state. This requirement applies to any function that is selected by the implementation of the sender adaptor.</p>
+     <p>Unless otherwise specified, a sender adaptor is required to not begin executing any functions which would observe or modify any of the arguments of the adaptor before the returned sender is connected with a receiver using <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on the resulting operation state. This requirement applies to any function that is selected by the implementation of the sender adaptor.</p>
     <li data-md>
      <p>Unless otherwise specified, all sender adaptors which accept a single <code class="highlight"><c- n>sender</c-></code> argument return sender objects that propagate sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
 sender adaptor.</p>
     <li data-md>
-     <p>Unless otherwise specified, whenever a strictly lazy sender adaptor constructs a receiver it passes to another sender’s connect, that receiver shall propagate receiver queries to a receiver accepted as an argument of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>. This requirements
-applies to any sender returned from a function that is selected by the implementation of a strictly lazy sender adaptor.</p>
+     <p>Unless otherwise specified, whenever a sender adaptor constructs a receiver it passes to another sender’s connect, that receiver shall propagate receiver queries to a receiver accepted as an argument of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>. This requirements
+applies to any sender returned from a function that is selected by the implementation of such sender adaptor.</p>
    </ol>
    <h5 class="heading settled" data-level="9.6.5.2" id="spec-execution.senders.adaptor.objects"><span class="secno">9.6.5.2. </span><span class="content">Sender adaptor closure objects <b>[execution.senders.adaptor.objects]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.objects"></a></h5>
    <ol>
@@ -4507,21 +4404,12 @@ are all well-formed.</p>
    <h5 class="heading settled" data-level="9.6.5.3" id="spec-execution.senders.adaptors.on"><span class="secno">9.6.5.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> <b>[execution.senders.adaptors.on]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.on"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_on</c-></code> are used to adapt a sender in a sender that will start the input sender on an execution agent belonging to a specific execution context.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> is used to adapt a sender in a sender that will start the input sender on an execution agent belonging to a specific execution context.</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
-     </ol>
-     <p>If the function selected above does not return a sender which starts <code class="highlight"><c- n>s</c-></code> on an execution agent of the associated execution context of <code class="highlight"><c- n>sch</c-></code>, the program is ill-formed with no diagnostic required.</p>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_on</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_on</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_on</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected above does not return a sender which starts <code class="highlight"><c- n>s</c-></code> on an execution agent of the associated execution context of <code class="highlight"><c- n>sch</c-></code> when
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected above does not return a sender which starts <code class="highlight"><c- n>s</c-></code> on an execution agent of the associated execution context of <code class="highlight"><c- n>sch</c-></code> when
 started, the program is ill-formed with no diagnostic required.</p>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it results in an operation state <code class="highlight"><c- n>op_state</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>, it:</p>
@@ -4542,12 +4430,12 @@ passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code>
        </ol>
      </ol>
     <li data-md>
-     <p>Any receiver <code class="highlight"><c- n>r</c-></code> created by an implementation of <code class="highlight"><c- n>on</c-></code> and <code class="highlight"><c- n>lazy_on</c-></code> shall implement the <code class="highlight"><c- n>get_scheduler</c-></code> receiver query. The scheduler returned from the query for all such receivers should be equivalent to the <code class="highlight"><c- n>sch</c-></code> argument passed into the <code class="highlight"><c- n>on</c-></code> or <code class="highlight"><c- n>lazy_on</c-></code> call.</p>
+     <p>Any receiver <code class="highlight"><c- n>r</c-></code> created by an implementation of <code class="highlight"><c- n>on</c-></code> shall implement the <code class="highlight"><c- n>get_scheduler</c-></code> receiver query. The scheduler returned from the query for all such receivers should be equivalent to the <code class="highlight"><c- n>sch</c-></code> argument passed into the <code class="highlight"><c- n>on</c-></code> call.</p>
    </ol>
    <h5 class="heading settled" data-level="9.6.5.4" id="spec-execution.senders.adaptors.transfer"><span class="secno">9.6.5.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> <b>[execution.senders.adaptors.transfer]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.transfer"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer</c-></code> are used to adapt a sender into a sender with a different associated <code class="highlight"><c- n>set_value</c-></code> completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> is used to adapt a sender into a sender with a different associated <code class="highlight"><c- n>set_value</c-></code> completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
@@ -4560,38 +4448,17 @@ passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code>
      </ol>
      <p>If the function selected above does not return a sender which is a result of a call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s2</c-><c- p>)</c-></code>, where <code class="highlight"><c- n>s2</c-></code> is a sender which sends equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
-     </ol>
-     <p>If the function selected above does not return a sender which is a result of a call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s2</c-><c- p>)</c-></code>, where <code class="highlight"><c- n>s2</c-></code> is a sender which sends equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
-    <li data-md>
-     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They shall return a sender equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
    </ol>
    <h5 class="heading settled" data-level="9.6.5.5" id="spec-execution.senders.adaptors.schedule_from"><span class="secno">9.6.5.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> <b>[execution.senders.adaptors.schedule_from]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.schedule_from"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_schedule_from</c-></code> are used to schedule work dependent on the completion of a sender onto a scheduler’s associated execution context. [<i>Note</i>: <code class="highlight"><c- n>schedule_from</c-></code> and <code class="highlight"><c- n>lazy_schedule_from</c-></code> are not meant to be used in
-user code; they are used in the implementation of <code class="highlight"><c- n>transfer</c-></code> and <code class="highlight"><c- n>lazy_transfer</c-></code>. -<i>end note</i>]</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> is used to schedule work dependent on the completion of a sender onto a scheduler’s associated execution context. [<i>Note</i>: <code class="highlight"><c- n>schedule_from</c-></code> is not meant to be used in user code; they are used in the implementation of <code class="highlight"><c- n>transfer</c-></code>. -<i>end note</i>]</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which completes on an execution agent belonging to the associated
-execution context of <code class="highlight"><c- n>sch</c-></code> and sends signals equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
-     </ol>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_schedule_from</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_schedule_from</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_schedule_from</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which completes on an execution agent belonging to the associated
 execution context of <code class="highlight"><c- n>sch</c-></code> and sends signals equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
@@ -4617,32 +4484,19 @@ it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-
        </ol>
      </ol>
     <li data-md>
-     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
    </ol>
    <h5 class="heading settled" data-level="9.6.5.6" id="spec-execution.senders.adaptor.then"><span class="secno">9.6.5.6. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> <b>[execution.senders.adaptors.then]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.then"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_then</c-></code> are used to attach invocables as continuation for successful completion of the input sender.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> is used to attach invocables as continuation for successful completion of the input sender.</p>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is
-expression-equivalent to:</p>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_then</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>.</p>
-     </ol>
-     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> with the result of the <code class="highlight"><c- n>set_value</c-></code> signal of <code class="highlight"><c- n>s</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_then</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_then</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_then</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_then</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_then</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -4668,7 +4522,7 @@ expression-equivalent to:</p>
    <h5 class="heading settled" data-level="9.6.5.7" id="spec-execution.senders.adaptor.upon_error"><span class="secno">9.6.5.7. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-></code> <b>[execution.senders.adaptors.upon_error]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.upon_error"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_error</c-></code> are used to attach invocables as continuation for successful completion of the input sender.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-></code> is used to attach invocables as continuation for unsuccessul completion of the input sender.</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
@@ -4676,18 +4530,6 @@ expression-equivalent to:</p>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_upon_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>.</p>
-     </ol>
-     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> with the result of the <code class="highlight"><c- n>set_error</c-></code> signal of <code class="highlight"><c- n>s</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_error</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_error</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_error</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_error</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -4713,7 +4555,7 @@ expression-equivalent to:</p>
    <h5 class="heading settled" data-level="9.6.5.8" id="spec-execution.senders.adaptor.upon_done"><span class="secno">9.6.5.8. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-></code> <b>[execution.senders.adaptors.upon_done]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.upon_done"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_done</c-></code> are used to attach invocables as continuation for successful completion of the input sender.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-></code> is used to attach invocables as continuation for the completion of the input sender using the "done" channel.</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
@@ -4721,18 +4563,6 @@ expression-equivalent to:</p>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_done_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_upon_done</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>.</p>
-     </ol>
-     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when the <code class="highlight"><c- n>set_done</c-></code> signal of <code class="highlight"><c- n>s</c-></code> is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_done</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_done</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_done</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_done</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_done_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_upon_done</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -4758,7 +4588,7 @@ expression-equivalent to:</p>
    <h5 class="heading settled" data-level="9.6.5.9" id="spec-execution.senders.adaptors.let_value"><span class="secno">9.6.5.9. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-></code> <b>[execution.senders.adaptors.let_value]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.let_value"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_value</c-></code> are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-></code> is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
@@ -4766,18 +4596,6 @@ expression-equivalent to:</p>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_let_value</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>.</p>
-     </ol>
-     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_value</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_value</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_value</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_value</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_value</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_value</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -4803,7 +4621,7 @@ expression-equivalent to:</p>
    <h5 class="heading settled" data-level="9.6.5.10" id="spec-execution.senders.adaptors.let_error"><span class="secno">9.6.5.10. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-></code> <b>[execution.senders.adaptors.let_error]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.let_error"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_error</c-></code> are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-></code> is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
@@ -4811,18 +4629,6 @@ expression-equivalent to:</p>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_let_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>.</p>
-     </ol>
-     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_error</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_error</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_error</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_error</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_error</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -4849,7 +4655,7 @@ as a part of <code class="highlight"><c- n>op_state2</c-></code>. It then calls 
    <h5 class="heading settled" data-level="9.6.5.11" id="spec-execution.senders.adaptors.let_done"><span class="secno">9.6.5.11. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-></code> <b>[execution.senders.adaptors.let_done]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.let_done"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_done</c-></code> are used to insert continuations creating more work dependent on the results of their input senders into a sender chain.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-></code> is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
@@ -4857,18 +4663,6 @@ as a part of <code class="highlight"><c- n>op_state2</c-></code>. It then calls 
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_done_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_let_done</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>.</p>
-     </ol>
-     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_done</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_done</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_done</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_done</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_done</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_done_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_let_done</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -4895,20 +4689,9 @@ It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sta
    <h5 class="heading settled" data-level="9.6.5.12" id="spec-execution.senders.adaptors.bulk"><span class="secno">9.6.5.12. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> <b>[execution.senders.adaptors.bulk]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.bulk"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_bulk</c-></code> are used to run a task repeatedly for every index in an index space.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> is used to run a task repeatedly for every index in an index space.</p>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code>, <code class="highlight"><c- n>shape</c-></code>, and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>, <code class="highlight"><c- n>Shape</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>shape</c-><c- p>))</c-></code>, and <code class="highlight"><c- n>F</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>f</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code> or <code class="highlight"><c- n>Shape</c-></code> does not
-satisfy <code class="highlight"><c- n>integral</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_bulk</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>.</p>
-     </ol>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_bulk</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code>, <code class="highlight"><c- n>shape</c-></code>, and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>, <code class="highlight"><c- n>Shape</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>shape</c-><c- p>))</c-></code>, and <code class="highlight"><c- n>F</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>f</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code> or <code class="highlight"><c- n>Shape</c-></code> does not satisfy <code class="highlight"><c- n>integral</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code>, <code class="highlight"><c- n>shape</c-></code>, and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>, <code class="highlight"><c- n>Shape</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>shape</c-><c- p>))</c-></code>, and <code class="highlight"><c- n>F</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>f</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code> or <code class="highlight"><c- n>Shape</c-></code> does not satisfy <code class="highlight"><c- n>integral</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
@@ -4939,26 +4722,14 @@ satisfy <code class="highlight"><c- n>integral</c-></code>, <code class="highlig
    <h5 class="heading settled" data-level="9.6.5.13" id="spec-execution.senders.adaptors.split"><span class="secno">9.6.5.13. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> <b>[execution.senders.adaptors.split]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.split"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_split</c-></code> are used to adapt an arbitrary sender into a sender that can be connected multiple times.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> is used to adapt an arbitrary sender into a sender that can be connected multiple times.</p>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is
-expression-equivalent to:</p>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_split</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code>.</p>
-     </ol>
-     <p>If the function selected above does not return a sender which sends references to values sent by <code class="highlight"><c- n>s</c-></code>, propagating the other channels, the program is ill-formed with no diagnostic required.</p>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_split</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_split</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_split</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_split</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_split</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>, which:</p>
        <ol>
@@ -5020,8 +4791,6 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>)...)</c-></code>.</p>
      </ol>
     <li data-md>
-     <p>Adaptors defined in this subclause are strictly lazy.</p>
-    <li data-md>
      <p>Senders returned from adaptors defined in this subclause shall not expose the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code>.</p>
     <li data-md>
      <p><code class="highlight"><c- n>tag_invoke</c-></code> expressions used in the definitions of the sender adaptors in this subclause shall not consider member functions of their first non-tag arguments.</p>
@@ -5029,28 +4798,18 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
    <h5 class="heading settled" data-level="9.6.5.15" id="spec-execution.senders.adaptor.transfer_when_all"><span class="secno">9.6.5.15. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> <b>[execution.senders.adaptors.transfer_when_all]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.transfer_when_all"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all</c-></code> are used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
-that they complete on the specified scheduler. <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all_with_variant</c-></code> are used to join multiple sender chains and create a sender whose execution is dependent on all of the input
-senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the adaptor. --<i>end note</i>]</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
+that they complete on the specified scheduler. <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-></code> is used to join multiple sender chains and create a sender whose execution is dependent on all of the input
+senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the adaptors. --<i>end note</i>]</p>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>scheduler</c-></code>, or any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>,  or the number of the arguments <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- o>>::</c-><c- n>value_types</c-></code> passes into the <code class="highlight"><c- n>Variant</c-></code> template parameter is not 1 <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> is ill-formed.
-Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>scheduler</c-></code>, or any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, or the number of the arguments <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- o>>::</c-><c- n>value_types</c-></code> passes into the <code class="highlight"><c- n>Variant</c-></code> template parameter is not 1, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when they
-all complete with <code class="highlight"><c- n>set_value</c-></code>, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of <code class="highlight"><c- n>sch</c-></code>, the program is ill-formed with no diagnostic required.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>transfer</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...),</c-> <c- n>sch</c-><c- p>)</c-></code>.</p>
-     </ol>
-    <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>scheduler</c-></code>, or any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, or the number of the arguments <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- o>>::</c-><c- n>value_types</c-></code> passes into the <code class="highlight"><c- n>Variant</c-></code> template parameter is not 1, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when
 they all complete with <code class="highlight"><c- n>set_value</c-></code>, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of <code class="highlight"><c- n>sch</c-></code>, the program is ill-formed with no diagnostic
 required.</p>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>lazy_transfer</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...),</c-> <c- n>sch</c-><c- p>)</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>transfer</c-><c- p>(</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...),</c-> <c- n>sch</c-><c- p>)</c-></code>.</p>
      </ol>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-><c- p>(</c-><c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
@@ -5061,16 +4820,7 @@ required.</p>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>)...)</c-></code>.</p>
      </ol>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all_with_variant</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all_with_variant</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all_with_variant</c-><c- p>(</c-><c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all_with_variant</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which sends the types <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no diagnostic required.</p>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>)...)</c-></code>.</p>
-     </ol>
-    <li data-md>
-     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>lazy_transfer_when_all</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to input senders. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from
-those queries.</p>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to input senders. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
    </ol>
    <h5 class="heading settled" data-level="9.6.5.16" id="spec-execution.senders.adaptors.into_variant"><span class="secno">9.6.5.16. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code> <b>[execution.senders.adaptors.into_variant]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.into_variant"></a></h5>
    <ol>
@@ -5378,7 +5128,6 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
    <li><a href="#operation-state">operation state</a><span>, in § 5.2</span>
    <li><a href="#pipeable">pipeable</a><span>, in § 4.11</span>
    <li><a href="#piped">piped</a><span>, in § 4.11</span>
-   <li><a href="#potentially-eager-submission">potentially eager submission</a><span>, in § 5.5</span>
    <li><a href="#query">query</a><span>, in § 3.2</span>
    <li><a href="#receiver">receiver</a><span>, in § 5.1</span>
    <li><a href="#receiver-contract">receiver contract</a><span>, in § 5.1</span>
@@ -5391,7 +5140,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
    <li><a href="#sender-factory">sender factory</a><span>, in § 4.12</span>
    <li><a href="#single-shot-sender">single-shot sender</a><span>, in § 4.7</span>
    <li><a href="#start">start</a><span>, in § 4.13</span>
-   <li><a href="#strictly-lazy-submission">strictly lazy submission</a><span>, in § 5.5</span>
+   <li><a href="#strictly-lazy-submission">Strictly lazy submission</a><span>, in § 5.5</span>
   </ul>
   <h2 class="no-num no-ref heading settled" id="references"><span class="content">References</span><a class="self-link" href="#references"></a></h2>
   <h3 class="no-num no-ref heading settled" id="informative"><span class="content">Informative References</span><a class="self-link" href="#informative"></a></h3>
