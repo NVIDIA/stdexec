@@ -995,6 +995,7 @@ if (auto opt = co_await done_as_optional(some_sender)) {
 } else {
   // some_sender completed with a cancellation signal.
 }
+```
 
 It is also easy to imagine a `done_as_exception()` algorithm that maps a done signal into a custom exception.
 
