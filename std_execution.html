@@ -3129,9 +3129,9 @@ such as <a href="#design-sender-adaptor-ensure_started">§ 4.15.11 `execution:
     <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;</c-><i><c- n>errors</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
 <c- p>);</c->
 
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>upon_error</c-><c- p>(</c->
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>upon_done</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;></c-> <c- n>function</c->
+    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-> <c- k>auto</c-> <c- n>function</c->
 <c- p>);</c->
 </pre>
    <p>`upon_error` and `upon_done` are similar to `then`, but where `then` works with values sent by the input sender, `upon_error` works with errors, and `upon_done` is invoked when the "done" signal is sent.</p>
@@ -3148,7 +3148,7 @@ such as <a href="#design-sender-adaptor-ensure_started">§ 4.15.11 `execution:
 
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>let_done</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-><c- o>&lt;></c-> <c- n>function</c->
+    <c- n>std</c-><c- o>::</c-><c- n>invocable</c-> <c- k>auto</c-> <c- n>function</c->
 <c- p>);</c->
 </pre>
    <p>`let_value` is very similar to `then`: when it is started, it invokes the provided function with the values <a data-link-type="dfn" href="#send" id="ref-for-send④">sent</a> by the input sender as arguments. However, where the sender returned from `then` sends exactly what that function ends up returning -
