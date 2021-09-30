@@ -2217,22 +2217,34 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#motivation"><span class="secno">1.1</span> <span class="content">Motivation</span></a>
       <li><a href="#priorities"><span class="secno">1.2</span> <span class="content">Priorities</span></a>
       <li>
-       <a href="#example"><span class="secno">1.3</span> <span class="content">Examples</span></a>
+       <a href="#example-end-user"><span class="secno">1.3</span> <span class="content">Examples: End User</span></a>
        <ol class="toc">
         <li><a href="#example-hello-world"><span class="secno">1.3.1</span> <span class="content">Hello world</span></a>
         <li><a href="#example-async-inclusive-scan"><span class="secno">1.3.2</span> <span class="content">Asynchronous inclusive scan</span></a>
         <li><a href="#example-async-dynamically-sized-read"><span class="secno">1.3.3</span> <span class="content">Asynchronous dynamically-sized read</span></a>
        </ol>
-      <li><a href="#intro-is-not"><span class="secno">1.4</span> <span class="content">What this proposal is <strong>not</strong></span></a>
-      <li><a href="#intro-compare"><span class="secno">1.5</span> <span class="content">Design changes from P0443</span></a>
       <li>
-       <a href="#intro-prior-art"><span class="secno">1.6</span> <span class="content">Prior art</span></a>
+       <a href="#example-algorithm"><span class="secno">1.4</span> <span class="content">Examples: Algorithms</span></a>
        <ol class="toc">
-        <li><a href="#intro-prior-art-futures"><span class="secno">1.6.1</span> <span class="content">Futures</span></a>
-        <li><a href="#intro-prior-art-coroutines"><span class="secno">1.6.2</span> <span class="content">Coroutines</span></a>
-        <li><a href="#intro-prior-art-callbacks"><span class="secno">1.6.3</span> <span class="content">Callbacks</span></a>
+        <li><a href="#example-then"><span class="secno">1.4.1</span> <span class="content">Example: <code class="highlight"><c- n>then</c-></code></span></a>
+        <li><a href="#example-retry"><span class="secno">1.4.2</span> <span class="content">Example: <code class="highlight"><c- n>retry</c-></code></span></a>
        </ol>
-      <li><a href="#intro-field-experience"><span class="secno">1.7</span> <span class="content">Field experience</span></a>
+      <li>
+       <a href="#example-schedulers"><span class="secno">1.5</span> <span class="content">Examples: Schedulers</span></a>
+       <ol class="toc">
+        <li><a href="#example-schedulers-inline"><span class="secno">1.5.1</span> <span class="content">Inline scheduler</span></a>
+        <li><a href="#example-single-thread"><span class="secno">1.5.2</span> <span class="content">single-thread-scheduler</span></a>
+       </ol>
+      <li><a href="#intro-is-not"><span class="secno">1.6</span> <span class="content">What this proposal is <strong>not</strong></span></a>
+      <li><a href="#intro-compare"><span class="secno">1.7</span> <span class="content">Design changes from P0443</span></a>
+      <li>
+       <a href="#intro-prior-art"><span class="secno">1.8</span> <span class="content">Prior art</span></a>
+       <ol class="toc">
+        <li><a href="#intro-prior-art-futures"><span class="secno">1.8.1</span> <span class="content">Futures</span></a>
+        <li><a href="#intro-prior-art-coroutines"><span class="secno">1.8.2</span> <span class="content">Coroutines</span></a>
+        <li><a href="#intro-prior-art-callbacks"><span class="secno">1.8.3</span> <span class="content">Callbacks</span></a>
+       </ol>
+      <li><a href="#intro-field-experience"><span class="secno">1.9</span> <span class="content">Field experience</span></a>
      </ol>
     <li>
      <a href="#revisions"><span class="secno">2</span> <span class="content">Revision history</span></a>
@@ -2461,8 +2473,8 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
     <li data-md>
      <p>Be able to manage and terminate the lifetimes of objects asynchronously.</p>
    </ul>
-   <h3 class="heading settled" data-level="1.3" id="example"><span class="secno">1.3. </span><span class="content">Examples</span><a class="self-link" href="#example"></a></h3>
-   <p>See <a href="#design-sender-factories"></a>, <a href="#design-sender-adaptors">§ 4.15 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.16 User-facing sender consumers</a> for short explanations of the algorithms used in these code examples.</p>
+   <h3 class="heading settled" data-level="1.3" id="example-end-user"><span class="secno">1.3. </span><span class="content">Examples: End User</span><a class="self-link" href="#example-end-user"></a></h3>
+   <p>In this section we demonstrate the end-user experience of asynchronous programming directly with the sender algorithms presented in this paper. See <a href="#design-sender-factories"></a>, <a href="#design-sender-adaptors">§ 4.15 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.16 User-facing sender consumers</a> for short explanations of the algorithms used in these code examples.</p>
    <h4 class="heading settled" data-level="1.3.1" id="example-hello-world"><span class="secno">1.3.1. </span><span class="content">Hello world</span><a class="self-link" href="#example-hello-world"></a></h4>
 <pre class="language-c++ highlight"><c- n>using</c-> <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
 
@@ -2631,12 +2643,270 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
     <li data-md>
      <p>Finally, we move out of and return our <code class="highlight"><c- n>dynamic_buffer</c-></code> object. It will get sent by the sender returned by <code class="highlight"><c- n>async_read_array</c-></code>. We can attach more things to that sender to use the data in the buffer.</p>
    </ol>
-   <h3 class="heading settled" data-level="1.4" id="intro-is-not"><span class="secno">1.4. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#intro-is-not"></a></h3>
+   <h3 class="heading settled" data-level="1.4" id="example-algorithm"><span class="secno">1.4. </span><span class="content">Examples: Algorithms</span><a class="self-link" href="#example-algorithm"></a></h3>
+   <p>In this section we show a few simple sender/receiver-based algorithm implementations.</p>
+   <h4 class="heading settled" data-level="1.4.1" id="example-then"><span class="secno">1.4.1. </span><span class="content">Example: <code class="highlight"><c- n>then</c-></code></span><a class="self-link" href="#example-then"></a></h4>
+<pre class="language-c++ highlight"><c- c1>// For emulating "deducing this"</c->
+<c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-> <c- n>A</c-><c- p>,</c-> <c- n>class</c-> <c- n>B</c-><c- o>></c->
+  <c- n>concept</c-> <c- n>__this</c-> <c- o>=</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>A</c-><c- o>></c-><c- p>,</c-> <c- n>B</c-><c- o>></c-><c- p>;</c->
+
+<c- n>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- p>,</c-> <c- n>class</c-> <c- n>F</c-><c- o>></c->
+<c- k>struct</c-> <c- nc>_then_receiver</c-> <c- p>{</c->
+  <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
+  <c- n>F</c-> <c- n>f_</c-><c- p>;</c->
+
+  <c- c1>// Customize set_value by invoking the callable and passing the result to the inner receiver</c->
+  <c- n>template</c-><c- o>&lt;</c-><c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
+    <c- n>requires</c-> <c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>F</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>>></c->
+  <c- n>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>_then_receiver</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- p>{</c->
+    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>r_</c-><c- p>,</c-> <c- n>invoke</c-><c- p>((</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>f_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...));</c->
+  <c- p>}</c->
+
+  <c- c1>// Forward all other tag_invoke-based CPOs (copy_cvref_t from P1450):</c->
+  <c- n>template</c-> <c- o>&lt;</c-><c- n>__this</c-><c- o>&lt;</c-><c- n>_then_receiver</c-><c- o>></c-> <c- n>Self</c-><c- p>,</c-> <c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- p>,</c-> <c- n>invocable</c-><c- o>&lt;</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- n>Tag</c-><c- o>></c->
+  <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- n>Self</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c->
+    <c- n>noexcept</c-><c- p>(</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
+    <c- o>-></c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
+    <c- k>return</c-> <c- p>((</c-><c- n>Tag</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>tag</c-><c- p>)(((</c-><c- n>Self</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>).</c-><c- n>r_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...);</c->
+  <c- p>}</c->
+<c- p>};</c->
+
+<c- n>template</c-><c- o>&lt;</c-><c- n>sender</c-> <c- n>S</c-><c- p>,</c-> <c- n>class</c-> <c- n>F</c-><c- o>></c->
+<c- k>struct</c-> <c- nc>_then_sender</c-> <c- o>:</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>sender_base</c-> <c- p>{</c->
+  <c- n>S</c-> <c- n>s_</c-><c- p>;</c->
+  <c- n>F</c-> <c- n>f_</c-><c- p>;</c->
+
+  <c- n>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
+    <c- n>requires</c-> <c- n>sender_to</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>_then_receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>F</c-><c- o>>></c->
+  <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>experimental</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>_then_sender</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c->
+    <c- o>-></c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>_then_receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>F</c-><c- o>>></c-> <c- p>{</c->
+      <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s_</c-><c- p>,</c-> <c- n>_then_receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>F</c-><c- o>></c-><c- p>{(</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>,</c-> <c- p>(</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>f_</c-><c- p>});</c->
+  <c- p>}</c->
+<c- p>};</c->
+
+<c- n>template</c-><c- o>&lt;</c-><c- n>sender</c-> <c- n>S</c-><c- p>,</c-> <c- n>class</c-> <c- n>F</c-><c- o>></c->
+<c- n>sender</c-> <c- k>auto</c-> <c- n>then</c-><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>,</c-> <c- n>F</c-> <c- n>f</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>return</c-> <c- n>_then_sender</c-><c- p>{{},</c-> <c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-><c- p>,</c-> <c- p>(</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>f</c-><c- p>};</c->
+<c- p>}</c->
+</pre>
+   <p>This code builds a <code class="highlight"><c- n>then</c-></code> algorithm that transforms the value(s) from the input sender
+with a transformation function. The result of the transformation becomes the new value.
+The other receiver functions (<code class="highlight"><c- n>set_error</c-></code> and <code class="highlight"><c- n>set_done</c-></code>), as well as all receiver queries,
+are passed through unchanged.</p>
+   <p>In detail, it does the following:</p>
+   <ol>
+    <li data-md>
+     <p>Defines a receiver that aggregates another receiver and an invocable which:</p>
+     <ul>
+      <li data-md>
+       <p>Defines a constrained <code class="highlight"><c- n>tag_invoke</c-></code> overload for transforming the value channel.</p>
+      <li data-md>
+       <p>Defines another constrained overload of <code class="highlight"><c- n>tag_invoke</c-></code> that passes all other customizations through unchanged.</p>
+     </ul>
+    <li data-md>
+     <p>Defines a sender that aggregates another sender and the invocable, which defines a <code class="highlight"><c- n>tag_invoke</c-></code> customization for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> that wraps the incoming receiver in the receiver from (1) and passes it and the incoming sender to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, returning the result.</p>
+   </ol>
+   <h4 class="heading settled" data-level="1.4.2" id="example-retry"><span class="secno">1.4.2. </span><span class="content">Example: <code class="highlight"><c- n>retry</c-></code></span><a class="self-link" href="#example-retry"></a></h4>
+<pre class="language-c++ highlight"><c- c1>// _conv needed so we can emplace construct non-movable types into</c->
+<c- c1>// a std::optional.</c->
+<c- n>template</c-><c- o>&lt;</c-><c- n>invocable</c-> <c- n>F</c-><c- o>></c->
+  <c- n>requires</c-> <c- n>std</c-><c- o>::</c-><c- n>is_nothrow_move_constructible_v</c-><c- o>&lt;</c-><c- n>F</c-><c- o>></c->
+<c- k>struct</c-> <c- nc>_conv</c-> <c- p>{</c->
+  <c- n>F</c-> <c- n>f_</c-><c- p>;</c->
+  <c- n>explicit</c-> <c- nf>_conv</c-><c- p>(</c-><c- n>F</c-> <c- n>f</c-><c- p>)</c-> <c- nl>noexcept</c-> <c- p>:</c-> <c- n>f_</c-><c- p>((</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>f</c-><c- p>)</c-> <c- p>{}</c->
+  <c- n>operator</c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>F</c-><c- o>></c-><c- p>()</c-> <c- o>&amp;&amp;</c-> <c- p>{</c->
+    <c- k>return</c-> <c- p>((</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>f_</c-><c- p>)();</c->
+  <c- p>}</c->
+<c- p>};</c->
+
+<c- c1>// pass through all customizations except set_error, which retries the operation.</c->
+<c- n>template</c-><c- o>&lt;</c-><c- n>class</c-> <c- n>O</c-><c- p>,</c-> <c- n>class</c-> <c- n>R</c-><c- o>></c->
+<c- k>struct</c-> <c- nc>_retry_receiver</c-> <c- p>{</c->
+  <c- n>O</c-><c- o>*</c-> <c- n>o_</c-><c- p>;</c->
+  <c- n>explicit</c-> <c- nf>_retry_receiver</c-><c- p>(</c-><c- n>O</c-><c- o>*</c-> <c- n>o</c-><c- p>)</c-> <c- o>:</c-> <c- n>o_</c-><c- p>(</c-><c- n>o</c-><c- p>)</c-> <c- p>{}</c->
+  <c- n>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- k>auto</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>noexcept</c-> <c- p>{</c->
+    <c- n>self</c-><c- p>.</c-><c- n>o_</c-><c- o>-></c-><c- n>_retry</c-><c- p>();</c-> <c- c1>// This causes the op to be retried</c->
+  <c- p>}</c->
+  <c- c1>// Forward all other tag_invoke-based CPOs (copy_cvref_t from P1450):</c->
+  <c- n>template</c-> <c- o>&lt;</c-><c- n>__this</c-><c- o>&lt;</c-><c- n>_retry_receiver</c-><c- o>></c-> <c- n>Self</c-><c- p>,</c-> <c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- p>,</c-> <c- n>invocable</c-><c- o>&lt;</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- n>Tag</c-><c- o>></c->
+  <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- n>Self</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c->
+    <c- n>noexcept</c-><c- p>(</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
+    <c- o>-></c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
+    <c- k>return</c-> <c- p>((</c-><c- n>Tag</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>tag</c-><c- p>)(((</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>o_</c-><c- o>-></c-><c- n>r_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...);</c->
+  <c- p>}</c->
+<c- p>};</c->
+
+<c- n>template</c-><c- o>&lt;</c-><c- n>sender</c-> <c- n>S</c-><c- o>></c->
+<c- k>struct</c-> <c- nc>_retry_sender</c-> <c- o>:</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>sender_base</c-> <c- p>{</c->
+  <c- n>S</c-> <c- n>s_</c-><c- p>;</c->
+  <c- n>explicit</c-> <c- nf>_retry_sender</c-><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>)</c-> <c- o>:</c-> <c- n>s_</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-><c- p>)</c-> <c- p>{}</c->
+
+  <c- c1>// Hold the nested operation state in an optional so we can</c->
+  <c- c1>// re-construct and re-start it if the operation fails.</c->
+  <c- n>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
+  <c- k>struct</c-> <c- nc>_op</c-> <c- p>{</c->
+    <c- n>S</c-> <c- n>s_</c-><c- p>;</c->
+    <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
+    <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>state_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&lt;</c-><c- n>_op</c-><c- p>,</c-> <c- n>R</c-><c- o>>>></c-> <c- n>o_</c-><c- p>;</c->
+
+    <c- n>_op</c-><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c-><c- o>:</c-> <c- n>s_</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-><c- n>s</c-><c- p>),</c-> <c- n>r_</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-><c- n>r</c-><c- p>),</c-> <c- n>o_</c-><c- p>{</c-><c- n>_connect</c-><c- p>()}</c-> <c- p>{}</c->
+    <c- n>_op</c-><c- p>(</c-><c- n>_op</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- o>=</c-> <c- n>delete</c-><c- p>;</c->
+
+    <c- k>auto</c-> <c- nf>_connect</c-><c- p>()</c-> <c- n>noexcept</c-> <c- p>{</c->
+      <c- k>return</c-> <c- n>_conv</c-><c- p>{[</c-><c- n>this</c-><c- p>]</c-> <c- p>{</c->
+        <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s_</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&lt;</c-><c- n>_op</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>{</c-><c- n>this</c-><c- p>});</c->
+      <c- p>}};</c->
+    <c- p>}</c->
+    <c- b>void</c-> <c- nf>_retry</c-><c- p>()</c-> <c- n>noexcept</c-> <c- n>try</c-> <c- p>{</c->
+      <c- n>o_</c-><c- p>.</c-><c- n>emplace</c-><c- p>(</c-><c- n>_connect</c-><c- p>());</c-> <c- c1>// potentially throwing</c->
+      <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- o>*</c-><c- n>o_</c-><c- p>);</c->
+    <c- p>}</c-> <c- n>catch</c-><c- p>(...)</c-> <c- p>{</c->
+      <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r_</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>current_exception</c-><c- p>());</c->
+    <c- p>}</c->
+    <c- n>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start_t</c-><c- p>,</c-> <c- n>_op</c-><c- o>&amp;</c-> <c- n>o</c-><c- p>)</c-> <c- n>noexcept</c-> <c- p>{</c->
+      <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- o>*</c-><c- n>o</c-><c- p>.</c-><c- n>o_</c-><c- p>);</c->
+    <c- p>}</c->
+  <c- p>};</c->
+
+  <c- n>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
+    <c- n>requires</c-> <c- n>sender_to</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&lt;</c-><c- n>_op</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>R</c-><c- o>>></c->
+  <c- n>friend</c-> <c- n>_op</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>_retry_sender</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>_op</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>{(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>s_</c-><c- p>,</c-> <c- p>(</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>};</c->
+  <c- p>}</c->
+<c- p>};</c->
+
+<c- n>template</c-><c- o>&lt;</c-><c- n>sender</c-> <c- n>S</c-><c- o>></c->
+<c- n>sender</c-> <c- k>auto</c-> <c- n>retry</c-><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>return</c-> <c- n>_retry_sender</c-><c- p>{(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-><c- p>};</c->
+<c- p>}</c->
+</pre>
+   <p>The <code class="highlight"><c- n>retry</c-></code> algorithm takes a multi-shot sender and causes it to repeat on error, passing
+through values and done signals. Each time the input sender is restarted, a new receiver
+is connected and the resulting operation state is stored in an <code class="highlight"><c- n>optional</c-></code>, which allows us
+to reinitialize it multiple times.</p>
+   <p>This example does the following:</p>
+   <ol>
+    <li data-md>
+     <p>Defines a <code class="highlight"><c- n>_conv</c-></code> utility that takes advantage of C++17’s guaranteed copy elision to
+emplace a non-movable type in a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>optional</c-></code>.</p>
+    <li data-md>
+     <p>Defines a <code class="highlight"><c- n>_retry_receiver</c-></code> that holds a pointer back to the operation state. It passes
+all customizations through unmodified to the inner receiver owned by the operation state
+except for <code class="highlight"><c- n>set_error</c-></code>, which causes a <code class="highlight"><c- n>_retry</c-><c- p>()</c-></code> function to be called instead.</p>
+    <li data-md>
+     <p>Defines an operation state that aggregates the input sender and receiver, and declares
+storage for the nested operation state in a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>optional</c-></code>. Constructing the operation
+state constructs a <code class="highlight"><c- n>_retry_receiver</c-></code> with a pointer to the (under construction) operation
+state and uses it to connect to the aggregated sender.</p>
+    <li data-md>
+     <p>Starting the operation state dispatches to <code class="highlight"><c- n>start</c-></code> on the inner operation state.</p>
+    <li data-md>
+     <p>The <code class="highlight"><c- n>_retry</c-><c- p>()</c-></code> function reinitializes the inner operation state by connecting the sender
+to a new receiver, holding a pointer back to the outer operation state as before.</p>
+    <li data-md>
+     <p>After reinitializing the inner operation state, <code class="highlight"><c- n>_retry</c-><c- p>()</c-></code> calls <code class="highlight"><c- n>start</c-></code> on it, causing
+the failed operation to be rescheduled.</p>
+    <li data-md>
+     <p>Defines a <code class="highlight"><c- n>_retry_sender</c-></code> that implements the <code class="highlight"><c- n>connect</c-></code> customization point to return
+an operation state constructed from the passed-in sender and receiver.</p>
+   </ol>
+   <h3 class="heading settled" data-level="1.5" id="example-schedulers"><span class="secno">1.5. </span><span class="content">Examples: Schedulers</span><a class="self-link" href="#example-schedulers"></a></h3>
+   <p>In this section we look at some schedulers of varying complexity.</p>
+   <h4 class="heading settled" data-level="1.5.1" id="example-schedulers-inline"><span class="secno">1.5.1. </span><span class="content">Inline scheduler</span><a class="self-link" href="#example-schedulers-inline"></a></h4>
+<pre class="language-c++ highlight"><c- k>struct</c-> <c- nc>inline_scheduler</c-> <c- p>{</c->
+  <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-> <c- n>R</c-><c- o>></c->
+    <c- k>struct</c-> <c- nc>_op</c-> <c- p>{</c->
+      <c- p>[[</c-><c- n>no_unique_address</c-><c- p>]]</c-> <c- n>R</c-> <c- n>rec_</c-><c- p>;</c->
+      <c- n>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start_t</c-><c- p>,</c-> <c- n>_op</c-><c- o>&amp;</c-> <c- n>op</c-><c- p>)</c-> <c- n>noexcept</c-> <c- n>try</c-> <c- p>{</c->
+        <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>op</c-><c- p>.</c-><c- n>rec_</c-><c- p>);</c->
+      <c- p>}</c-> <c- n>catch</c-><c- p>(...)</c-> <c- p>{</c->
+        <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>op</c-><c- p>.</c-><c- n>rec_</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>current_exception</c-><c- p>());</c->
+      <c- p>}</c->
+    <c- p>};</c->
+
+  <c- k>struct</c-> <c- nc>_sender</c-> <c- p>{</c->
+    <c- n>template</c-> <c- o>&lt;</c-><c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-><c- o>></c-> <c- n>class</c-> <c- n>Tuple</c-><c- p>,</c->
+              <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-><c- o>></c-> <c- n>class</c-> <c- n>Variant</c-><c- o>></c->
+      <c- n>using</c-> <c- n>value_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;>></c-><c- p>;</c->
+    <c- n>template</c-> <c- o>&lt;</c-><c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-><c- o>></c-> <c- n>class</c-> <c- n>Variant</c-><c- o>></c->
+      <c- n>using</c-> <c- n>error_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-><c- o>></c-><c- p>;</c->
+    <c- k>static</c-> <c- n>constexpr</c-> <c- b>bool</c-> <c- n>sends_done</c-> <c- o>=</c-> false<c- p>;</c->
+
+    <c- n>template</c-> <c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>receiver_of</c-> <c- n>R</c-><c- o>></c->
+      <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>_sender</c-><c- p>,</c-> <c- n>R</c-><c- o>&amp;&amp;</c-> <c- n>rec</c-><c- p>)</c->
+        <c- n>noexcept</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>is_nothrow_constructible_v</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>)</c->
+        <c- o>-></c-> <c- n>_op</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-> <c- p>{</c->
+        <c- k>return</c-> <c- p>{(</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>rec</c-><c- p>};</c->
+      <c- p>}</c->
+  <c- p>};</c->
+
+  <c- n>friend</c-> <c- n>_sender</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule_t</c-><c- p>,</c-> <c- k>const</c-> <c- n>inline_scheduler</c-><c- o>&amp;</c-><c- p>)</c-> <c- n>noexcept</c-> <c- p>{</c->
+    <c- k>return</c-> <c- p>{};</c->
+  <c- p>}</c->
+
+  <c- b>bool</c-> <c- n>operator</c-><c- o>==</c-><c- p>(</c-><c- k>const</c-> <c- n>inline_scheduler</c-><c- o>&amp;</c-><c- p>)</c-> <c- k>const</c-> <c- n>noexcept</c-> <c- o>=</c-> <c- k>default</c-><c- p>;</c->
+<c- p>};</c->
+</pre>
+   <p>The inline scheduler is a trivial scheduler that completes immediately and synchronously on
+the thread that calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> on the operation state produced by its sender.
+In other words, <code class="highlight"><c- n>start</c-><c- p>(</c-><c- n>connect</c-><c- p>(</c-><c- n>schedule</c-><c- p>(</c-><i><c- kr>inline</c-><c- o>-</c-><c- n>scheduler</c-></i><c- p>),</c-> <c- n>receiver</c-><c- p>))</c-></code> is
+just a fancy way of saying <code class="highlight"><c- n>set_value</c-><c- p>(</c-><c- n>receiver</c-><c- p>)</c-></code>, with the exception of the fact that <code class="highlight"><c- n>start</c-></code> wants to be passed an lvalue.</p>
+   <p>Although not a particularly useful scheduler, it serves to illustrate the basics of
+implementing one. The <code class="highlight"><c- n>inline_scheduler</c-></code>:</p>
+   <ol>
+    <li data-md>
+     <p>Customizes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code> to return an instance of the sender type <code class="highlight"><c- n>_sender</c-></code>.</p>
+    <li data-md>
+     <p>The <code class="highlight"><c- n>_sender</c-></code> type models the <code class="highlight"><c- n>typed_sender</c-></code> concept and provides the metadata needed
+to describe it as a sender of no values (see <code class="highlight"><c- n>value_types</c-></code>) that can send an <code class="highlight"><c- n>exception_ptr</c-></code> as an error (see <code class="highlight"><c- n>error_types</c-></code>), and that never calls <code class="highlight"><c- n>set_done</c-></code> (see <code class="highlight"><c- n>sends_done</c-></code>).</p>
+    <li data-md>
+     <p>The <code class="highlight"><c- n>_sender</c-></code> type customizes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> to accept a receiver of no values.
+It returns an instance of type <code class="highlight"><c- n>_op</c-></code> that holds the receiver by value.</p>
+    <li data-md>
+     <p>The operation state customizes <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> to call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> on the receiver, passing any exceptions to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> as an <code class="highlight"><c- n>exception_ptr</c-></code>.</p>
+   </ol>
+   <h4 class="heading settled" data-level="1.5.2" id="example-single-thread"><span class="secno">1.5.2. </span><span class="content">single-thread-scheduler</span><a class="self-link" href="#example-single-thread"></a></h4>
+   <p>This example shows how to create a scheduler for an execution context that consists of a single
+thread. It is implemented in terms of a lower-level execution context called <code class="highlight"><c- n>manual_event_loop</c-></code>.</p>
+<pre class="language-c++ highlight"><c- n>class</c-> <c- n>single_thread_context</c-> <c- p>{</c->
+  <c- n>manual_event_loop</c-> <c- n>loop_</c-><c- p>;</c->
+  <c- n>std</c-><c- o>::</c-><c- kr>thread</c-> <c- n>thread_</c-><c- p>;</c->
+
+<c- nl>public</c-><c- p>:</c->
+  <c- n>single_thread_context</c-><c- p>()</c->
+    <c- o>:</c-> <c- n>loop_</c-><c- p>()</c->
+    <c- p>,</c-> <c- n>thread_</c-><c- p>([</c-><c- n>this</c-><c- p>]</c-> <c- p>{</c-> <c- n>loop_</c-><c- p>.</c-><c- n>run</c-><c- p>();</c-> <c- p>})</c->
+  <c- p>{}</c->
+
+  <c- o>~</c-><c- n>single_thread_context</c-><c- p>()</c-> <c- p>{</c->
+    <c- n>loop_</c-><c- p>.</c-><c- n>finish</c-><c- p>();</c->
+    <c- n>thread_</c-><c- p>.</c-><c- n>join</c-><c- p>();</c->
+  <c- p>}</c->
+
+  <c- k>auto</c-> <c- n>get_scheduler</c-><c- p>()</c-> <c- n>noexcept</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>loop_</c-><c- p>.</c-><c- n>get_scheduler</c-><c- p>();</c->
+  <c- p>}</c->
+
+  <c- n>std</c-><c- o>::</c-><c- kr>thread</c-><c- o>::</c-><c- n>id</c-> <c- n>get_thread_id</c-><c- p>()</c-> <c- k>const</c-> <c- n>noexcept</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>thread_</c-><c- p>.</c-><c- n>get_id</c-><c- p>();</c->
+  <c- p>}</c->
+<c- p>};</c->
+</pre>
+   <p>The <code class="highlight"><c- n>single_thread_context</c-></code> owns an event loop and a thread to drive it. In the destructor, it tells the event
+loop to finish up what it’s doing and then joins the thread, blocking for the event loop to drain.</p>
+   <p>The interesting bits are in the <code class="highlight"><c- n>manual_event_loop</c-></code> context implementation. It is slightly too long to include
+here, so we only provide <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/main/examples/schedulers/manual_event_loop.hpp">a reference to it</a>,
+but there is one noteworthy detail about its implementation. It uses space in its operation state to build an
+intrusive linked list of work items. In structured concurrency patterns, the operation states of nested operations
+compose statically, and in an algorithm like <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code>, the composite operation state lives on the
+stack for the duration of the operation. The end result is that work can be scheduled onto this thread with zero
+allocations.</p>
+   <h3 class="heading settled" data-level="1.6" id="intro-is-not"><span class="secno">1.6. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#intro-is-not"></a></h3>
    <p>This paper is not a patch on top of <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
 to standardize any further facilities.</p>
    <p>This paper is not an alternative design to <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; rather, we have taken the design in the current executors paper, and applied targeted fixes to allow it to fulfill the promises of the sender/receiver model, as well as provide all the facilities we consider
 essential when writing user code using standard execution concepts; we have also applied the guidance of removing one-way executors from the paper entirely, and instead provided an algorithm based around senders that serves the same purpose.</p>
-   <h3 class="heading settled" data-level="1.5" id="intro-compare"><span class="secno">1.5. </span><span class="content">Design changes from P0443</span><a class="self-link" href="#intro-compare"></a></h3>
+   <h3 class="heading settled" data-level="1.7" id="intro-compare"><span class="secno">1.7. </span><span class="content">Design changes from P0443</span><a class="self-link" href="#intro-compare"></a></h3>
    <ol>
     <li data-md>
      <p>The <code class="highlight"><c- n>executor</c-></code> concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.</p>
@@ -2655,21 +2925,21 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>A specific thread pool implementation is omitted, as per LEWG direction.</p>
    </ol>
-   <h3 class="heading settled" data-level="1.6" id="intro-prior-art"><span class="secno">1.6. </span><span class="content">Prior art</span><a class="self-link" href="#intro-prior-art"></a></h3>
+   <h3 class="heading settled" data-level="1.8" id="intro-prior-art"><span class="secno">1.8. </span><span class="content">Prior art</span><a class="self-link" href="#intro-prior-art"></a></h3>
    <p>This proposal builds upon and learns from years of prior art with asynchronous and parallel programming frameworks in C++. In this section, we discuss async abstractions that have previously been suggested as a possible basis for asynchronous algorithms and why they fall short.</p>
-   <h4 class="heading settled" data-level="1.6.1" id="intro-prior-art-futures"><span class="secno">1.6.1. </span><span class="content">Futures</span><a class="self-link" href="#intro-prior-art-futures"></a></h4>
+   <h4 class="heading settled" data-level="1.8.1" id="intro-prior-art-futures"><span class="secno">1.8.1. </span><span class="content">Futures</span><a class="self-link" href="#intro-prior-art-futures"></a></h4>
    <p>A future is a handle to work that has already been scheduled for execution. It is one end of a communication channel; the other end is a promise, used to receive the result from the concurrent operation and to communicate it to the future.</p>
    <p>Futures, as traditionally realized, require the dynamic allocation and management of a shared state, synchronization, and typically type-erasure of work and continuation. Many of these costs are inherent in the nature of "future" as a handle to work that is already scheduled for execution. These expenses rule out the future abstraction for many uses and makes it a poor choice for a basis of a generic mechanism.</p>
-   <h4 class="heading settled" data-level="1.6.2" id="intro-prior-art-coroutines"><span class="secno">1.6.2. </span><span class="content">Coroutines</span><a class="self-link" href="#intro-prior-art-coroutines"></a></h4>
+   <h4 class="heading settled" data-level="1.8.2" id="intro-prior-art-coroutines"><span class="secno">1.8.2. </span><span class="content">Coroutines</span><a class="self-link" href="#intro-prior-art-coroutines"></a></h4>
    <p>C++20 coroutines are frequently suggested as a basis for asynchronous algorithms. It’s fair to ask why, if we added coroutines to C++, are we suggesting the addition of a library-based abstraction for asynchrony. Certainly, coroutines come with huge syntactic and semantic advantages over the alternatives.</p>
    <p>Although coroutines are lighter weight than futures, coroutines suffer many of the same problems. Since they typically start suspended, they can avoid synchronizing the chaining of dependent work. However in many cases, coroutine frames require an unavoidable dynamic allocation and indirect function calls. This is done to hide the layout of the coroutine frame from the C++ type system, which in turn makes possible the separate compilation of coroutines and certain compiler optimizations, such as optimization of the coroutine frame size.</p>
    <p>Those advantages come at a cost, though. Because of the dynamic allocation of coroutine frames, coroutines in embedded or heterogeneous environments, which often lack support for dynamic allocation, require great attention to detail. And the allocations and indirections tend to complicate the job of the inliner, often resulting in sub-optimal codegen.</p>
    <p>The coroutine language feature mitigates these shortcomings somewhat with the HALO optimization <a data-link-type="biblio" href="#biblio-p0981r0">[P0981R0]</a>, which leverages existing compiler optimizations such as allocation elision and devirtualization to inline the coroutine, completely eliminating the runtime overhead. However, HALO requires a sophisiticated compiler, and a fair number of stars need to align for the optimization to kick in. In our experience, more often than not in real-world code today’s compilers are not able to inline the coroutine, resulting in allocations and indirections in the generated code.</p>
    <p>In a suite of generic async algorithms that are expected to be callable from hot code paths, the extra allocations and indirections are a deal-breaker. It is for these reasons that we consider coroutines a poor choise for a basis of all standard async.</p>
-   <h4 class="heading settled" data-level="1.6.3" id="intro-prior-art-callbacks"><span class="secno">1.6.3. </span><span class="content">Callbacks</span><a class="self-link" href="#intro-prior-art-callbacks"></a></h4>
+   <h4 class="heading settled" data-level="1.8.3" id="intro-prior-art-callbacks"><span class="secno">1.8.3. </span><span class="content">Callbacks</span><a class="self-link" href="#intro-prior-art-callbacks"></a></h4>
    <p>Callbacks are the oldest, simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities. The lack of a standard callback shape obstructs generic design.</p>
    <p>Additionally, few of these possibilities accommodate cancellation signals when the user requests upstream work to stop and clean up.</p>
-   <h3 class="heading settled" data-level="1.7" id="intro-field-experience"><span class="secno">1.7. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
+   <h3 class="heading settled" data-level="1.9" id="intro-field-experience"><span class="secno">1.9. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
    <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>, <a href="https://github.com/NVIDIA/thrust">Thrust</a>, and <a href="https://github.com/agency-library/agency">Agency</a>. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:</p>
    <ul>
     <li data-md>
