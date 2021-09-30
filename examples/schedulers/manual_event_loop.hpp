@@ -41,14 +41,14 @@ namespace example {
     void _execute(task_base* t) noexcept {
       auto& self = *static_cast<Op*>(t);
       using token_t = decltype(std::execution::get_stop_token(self.receiver_));
-      if constexpr (std::unstoppable_token<token_t>) {
-        std::execution::set_value(std::move(self.receiver_));
-      } else {
+      try {
         if (std::execution::get_stop_token(self.receiver_).stop_requested()) {
           std::execution::set_done(std::move(self.receiver_));
         } else {
           std::execution::set_value(std::move(self.receiver_));
         }
+      } catch(...) {
+        std::execution::set_error(std::move(self.receiver_), std::current_exception());
       }
     }
 
@@ -75,7 +75,7 @@ namespace example {
         using value_types = Variant<Tuple<>>;
 
         template <template <class...> class Variant>
-        using error_types = Variant<>;
+        using error_types = Variant<std::exception_ptr>;
 
         static constexpr bool sends_done = true;
 
