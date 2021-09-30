@@ -671,7 +671,7 @@ We believe sender consumers read better with function call syntax.
 
 Since C++20 added coroutines to the standard, we expect that coroutines and awaitables will be how a great many will choose to express their asynchronous code. However, in this paper, we are proposing to add a suite of asynchronous algorithms that accept senders, not awaitables. One might wonder whether and how these algorithms will be accessible to those who choose coroutines instead of senders.
 
-In truth there will be no problem because all awaitable types automatically model the `typed_sender` concept. The adaptation is transparent and happens in the sender customization points, which are aware of awaitables.
+In truth there will be no problem because all generally awaitable types automatically model the `typed_sender` concept. The adaptation is transparent and happens in the sender customization points, which are aware of awaitables. (By "generally awaitable" we mean types that don't require custom `await_transform` trickery from a promise type to make them awaitable.)
 
 For an example, imagine a coroutine type called `task<T>` that knows nothing about senders. It doesn't implement any of the sender customization points. Despite that fact, and despite the fact that the `this_thread::sync_wait` algorithm is constrained with the `typed_sender` concept, the following would compile and do what the user wants:
 
@@ -695,7 +695,7 @@ For example, consider the following trivial implementation of the sender-based `
 <pre highlight="c++">
 template &lt;class S>
   requires <i>single-typed-sender</i>&lt;S&> // See <a href="#spec-execution.coro_utils.as_awaitable">[execution.coro_utils.as_awaitable]</a>
-task&lt;<i>single-sender-value-type</i>&lt;S>> retry(S& s) {
+task&lt;<i>single-sender-value-type</i>&lt;S>> retry(S s) {
   for (;;) {
     try {
       co_return co_await s;
@@ -713,7 +713,16 @@ When looking at the sender-based `retry` algorithm in the previous section, we c
 
 When your task type's promise inherits from `with_awaitable_senders`, what happens is this: the coroutine behaves as if an *uncatchable exception* had been thrown from the `co_await` expression. (It is not really an exception, but it's helpful to think of it that way.) Provided that the promise types of the calling coroutines also inherit from `with_awaitable_senders`, or more generally implement a member function called `unhandled_done`, the exception unwinds the chain of coroutines as if an exception were thrown except that it bypasses `catch(...)` clauses.
 
-In order to "catch" this uncatchable done exception, one of the calling coroutines in the stack would have to await a sender that maps the done channel into either a value or an error. That is achievable with either the `execution::let_done` or `execution::upon_done` sender adaptors.
+In order to "catch" this uncatchable done exception, one of the calling coroutines in the stack would have to await a sender that maps the done channel into either a value or an error. That is achievable with either the `execution::let_done` or `execution::upon_done` sender adaptors, or with a custom `done_as_optional` algorithm. `done_as_optional()` would map a sender of `T` into a sender of `optional<T>`, where the done signal is mapped to a value of `std::nullopt`, which could be used in a coroutine as follows to handle a sender that is cancelled:
+
+```c++
+if (auto opt = co_await done_as_optional(some_sender)) {
+  // OK, some_sender completed successfully, and opt contains the result.
+} else {
+  // some_sender completed with a cancellation signal.
+}
+
+It is also easy to imagine a `done_as_exception()` algorithm that maps a done signal into a custom exception.
 
 As described in the section <a href="#design-awaitables-are-senders">"All awaitables are senders"</a>, the sender customization points recognize awaitables and adapt them transparently to model the sender concept. When `connect`-ing an awaitable and a receiver, the adaptation layer awaits the awaitable within a coroutine that implements `unhandled_done` in its promise type. The effect of this is that an "uncatchable" done exception propagates seamlessly out of awaitables, causing `execution::set_done` to be called on the receiver.
 
