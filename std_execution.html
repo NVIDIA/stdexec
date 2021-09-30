@@ -2249,8 +2249,9 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
     <li>
      <a href="#revisions"><span class="secno">2</span> <span class="content">Revision history</span></a>
      <ol class="toc">
-      <li><a href="#r1"><span class="secno">2.1</span> <span class="content">R1</span></a>
-      <li><a href="#r0"><span class="secno">2.2</span> <span class="content">R0</span></a>
+      <li><a href="#r2"><span class="secno">2.1</span> <span class="content">R2</span></a>
+      <li><a href="#r1"><span class="secno">2.2</span> <span class="content">R1</span></a>
+      <li><a href="#r0"><span class="secno">2.3</span> <span class="content">R0</span></a>
      </ol>
     <li>
      <a href="#design-intro"><span class="secno">3</span> <span class="content">Design - introduction</span></a>
@@ -2954,7 +2955,25 @@ essential when writing user code using standard execution concepts; we have also
    </ul>
    <p>Before this proposal is approved, we will present a new implementation of this proposal written from the specification and intended as a contribution to libc++. This implementation will demonstrate the viability of the design across the use cases and execution contexts that the committee has identified as essential.</p>
    <h2 class="heading settled" data-level="2" id="revisions"><span class="secno">2. </span><span class="content">Revision history</span><a class="self-link" href="#revisions"></a></h2>
-   <h3 class="heading settled" data-level="2.1" id="r1"><span class="secno">2.1. </span><span class="content">R1</span><a class="self-link" href="#r1"></a></h3>
+   <h3 class="heading settled" data-level="2.1" id="r2"><span class="secno">2.1. </span><span class="content">R2</span><a class="self-link" href="#r2"></a></h3>
+   <p>The changes since R1 are as follows:</p>
+   <ul>
+    <li data-md>
+     <p>Remove the eagerly executing sender algorithms.</p>
+    <li data-md>
+     <p>Extend the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> customization point and the <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;></c-></code> template to recognize awaitables as <code class="highlight"><c- n>typed_sender</c-></code>s.</p>
+    <li data-md>
+     <p>Add utilities <code class="highlight"><c- n>as_awaitable</c-><c- p>()</c-></code> and <code class="highlight"><c- n>with_awaitable_senders</c-><c- o>&lt;></c-></code> so a coroutine type can trivially make senders awaitable with a coroutine.</p>
+    <li data-md>
+     <p>Add a section describing the design of the sender/awaitable interactions.</p>
+    <li data-md>
+     <p>Add a section showing examples of simple sender adaptor algorithms.</p>
+    <li data-md>
+     <p>Add a section showing examples of simple schedulers.</p>
+    <li data-md>
+     <p>Various fixes of typos and bugs.</p>
+   </ul>
+   <h3 class="heading settled" data-level="2.2" id="r1"><span class="secno">2.2. </span><span class="content">R1</span><a class="self-link" href="#r1"></a></h3>
    <p>The changes since R0 are as follows:</p>
    <ul>
     <li data-md>
@@ -2968,7 +2987,7 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>Various fixes of typos and bugs.</p>
    </ul>
-   <h3 class="heading settled" data-level="2.2" id="r0"><span class="secno">2.2. </span><span class="content">R0</span><a class="self-link" href="#r0"></a></h3>
+   <h3 class="heading settled" data-level="2.3" id="r0"><span class="secno">2.3. </span><span class="content">R0</span><a class="self-link" href="#r0"></a></h3>
    <p>Initial revision.</p>
    <h2 class="heading settled" data-level="3" id="design-intro"><span class="secno">3. </span><span class="content">Design - introduction</span><a class="self-link" href="#design-intro"></a></h2>
    <p>The following four sections describe the entirety of the proposed design.</p>
