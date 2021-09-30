@@ -2409,6 +2409,12 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
          </ol>
        </ol>
       <li><a href="#spec-execution.execute"><span class="secno">9.7</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code> <b>[execution.execute]</b></span></a>
+      <li>
+       <a href="#spec-execution.coro_utils"><span class="secno">9.8</span> <span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span></a>
+       <ol class="toc">
+        <li><a href="#spec-execution.coro_utils.as_awaitable"><span class="secno">9.8.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span></a>
+        <li><a href="#spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.8.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span></a>
+       </ol>
      </ol>
     <li>
      <a href="#index"><span class="secno"></span> <span class="content">Index</span></a>
@@ -3734,6 +3740,9 @@ the shared stop state.</p>
     <c- k>struct</c-> <c- nc>connect_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>connect_t</c-> <c- n>connect</c-><c- p>{};</c->
 
+    <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>R</c-><c- o>></c->
+      <c- k>using</c-> <c- n>connect_result_t</c-> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>connect</c-><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(),</c-> <c- n>declval</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>()));</c->
+
     <c- c1>// [execution.senders.queries], sender queries</c->
     <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>get_completion_scheduler_t</c-><c- p>;</c->
@@ -3825,6 +3834,18 @@ the shared stop state.</p>
     <c- k>struct</c-> <c- nc>execute_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>execute_t</c-> <c- n>execute</c-><c- p>{};</c->
   <c- p>}</c->
+
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
+    <c- k>concept</c-> <i><c- nc>single</c-><c- o>-</c-><c- n>typed</c-><c- o>-</c-><c- n>sender</c-></i> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+
+  <c- c1>// [execution.coro_utils.as_awaitable]</c->
+  <c- k>template</c-> <c- o>&lt;</c-><i><c- n>single</c-><c- o>-</c-><c- n>typed</c-><c- o>-</c-><c- n>sender</c-></i> <c- n>Sender</c-><c- p>,</c-> <c- k>class</c-> <c- nc>Promise</c-><c- o>></c->
+    <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- n>as_awaitable</c-><c- p>(</c-><c- n>Sender</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>Promise</c-><c- o>&amp;</c-> <c- n>p</c-><c- p>);</c->
+
+  <c- c1>// [execution.coro_utils.with_awaitable_senders]</c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Promise</c-><c- o>></c->
+    <c- k>requires</c-> <c- n>is_class_v</c-><c- o>&lt;</c-><c- n>Promise</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>Promise</c-><c- p>,</c-> <c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>Promise</c-><c- o>>></c->
+    <c- k>struct</c-> <c- nc>with_awaitable_senders</c-><c- p>;</c->
 <c- p>}</c->
 </pre>
    <h3 class="heading settled" data-level="9.2" id="spec-execution.helpers"><span class="secno">9.2. </span><span class="content">Helper concepts <b>[execution.helpers]</b></span><a class="self-link" href="#spec-execution.helpers"></a></h3>
@@ -4221,7 +4242,9 @@ is ill-formed with no diagnostic required.</p>
         <li data-md>
          <p><code class="highlight"><i><c- n>operation</c-><c- o>-</c-><c- n>state</c-><c- o>-</c-><c- n>task</c-></i></code> is a type that models <code class="highlight"><c- n>operation_state</c-></code>. Its <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> resumes the <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine, advancing it past the initial suspend point.</p>
         <li data-md>
-         <p>Let <code class="highlight"><c- n>p</c-></code> be an lvalue reference to the promise of the <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine, let <code class="highlight"><c- n>b</c-></code> be an lvalue reference to the receiver <code class="highlight"><c- n>r</c-></code>, and let <code class="highlight"><c- n>c</c-></code> be any customization point object excluding those of type <code class="highlight"><c- n>set_value_t</c-></code>, <code class="highlight"><c- n>set_error_t</c-></code> and <code class="highlight"><c- n>set_done_t</c-></code>. Then <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>c</c-><c- p>,</c-> <c- n>p</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>c</c-><c- p>,</c-> <c- n>b</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> for any set of arguments <code class="highlight"><c- n>as</c-><c- p>...</c-></code>.</p>
+         <p>Let <code class="highlight"><c- n>p</c-></code> be an lvalue reference to the promise of the <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine, let <code class="highlight"><c- n>b</c-></code> be a <code class="highlight"><c- k>const</c-></code> lvalue reference to the receiver <code class="highlight"><c- n>r</c-></code>, and let <code class="highlight"><c- n>c</c-></code> be any customization point object excluding those of type <code class="highlight"><c- n>set_value_t</c-></code>, <code class="highlight"><c- n>set_error_t</c-></code> and <code class="highlight"><c- n>set_done_t</c-></code>. Then <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>c</c-><c- p>,</c-> <c- n>p</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>c</c-><c- p>(</c-><c- n>b</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> for any set of arguments <code class="highlight"><c- n>as</c-><c- p>...</c-></code>.</p>
+        <li data-md>
+         <p>The expression <code class="highlight"><c- n>p</c-><c- p>.</c-><c- n>unhandled_done</c-><c- p>()</c-></code> is expression-equivalent to <code class="highlight"><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>),</c-> <c- n>noop_coroutine</c-><c- p>())</c-></code>.</p>
        </ul>
        <p>The operand of the <i>requires-clause</i> of <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> is equivalent to <code class="highlight"><c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-></code> if <code class="highlight"><i><c- n>await</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is <code class="highlight"><i><c- n>cv</c-></i> <c- b>void</c-></code>; otherwise, it is <code class="highlight"><c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <i><c- n>await</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-></code>.</p>
       <li data-md>
@@ -4986,6 +5009,162 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>),</c-> <c- n>f</c-><c- p>))</c-></code>.</p>
      </ol>
+   </ol>
+   <h3 class="heading settled" data-level="9.8" id="spec-execution.coro_utils"><span class="secno">9.8. </span><span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span><a class="self-link" href="#spec-execution.coro_utils"></a></h3>
+   <h4 class="heading settled" data-level="9.8.1" id="spec-execution.coro_utils.as_awaitable"><span class="secno">9.8.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span><a class="self-link" href="#spec-execution.coro_utils.as_awaitable"></a></h4>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>as_awaitable</c-></code> is used to wrap a sender into an object that is awaitable within a particular coroutine. A sender <code class="highlight"><c- n>s</c-></code> of type <code class="highlight"><c- n>S</c-></code> can be made awaitable if and only if:</p>
+     <ul>
+      <li data-md>
+       <p><code class="highlight"><c- n>S</c-></code> models the concept <code class="highlight"><c- n>typed_sender</c-></code>, and</p>
+      <li data-md>
+       <p>It calls at most one overload of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> with zero or one argument, and</p>
+      <li data-md>
+       <p>It calls at most one overload of <code class="highlight"><c- n>exception</c-><c- o>::</c-><c- n>set_error</c-></code> with an argument of type <code class="highlight"><c- n>exception_ptr</c-></code>, and</p>
+      <li data-md>
+       <p>Given an lvalue <code class="highlight"><c- n>p</c-></code> to the promise type of an awaiting coroutine, <code class="highlight"><c- n>p</c-><c- p>.</c-><c- n>unhandled_done</c-><c- p>()</c-></code> is well-formed, <code class="highlight"><c- k>noexcept</c-></code>, and returns a type convertible to <code class="highlight"><c- n>coroutine_handle</c-><c- o>&lt;></c-></code>.</p>
+     </ul>
+<pre class="highlight"><c- c1>// exposition only</c->
+<c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
+  <c- k>using</c-> <i><c- n>single</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+
+<c- c1>// exposition only</c->
+<c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
+  <c- k>concept</c-> <i><c- nc>single</c-><c- o>-</c-><c- n>typed</c-><c- o>-</c-><c- n>sender</c-></i> <c- o>=</c->
+    <c- n>typed_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-> <c- o>&amp;&amp;</c->
+    <c- k>requires</c-> <c- p>{</c-> <c- k>typename</c-> <i><c- nc>single</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>;</c-> <c- p>};</c->
+
+<c- k>template</c-><c- o>&lt;</c-><i><c- n>single</c-><c- o>-</c-><c- n>typed</c-><c- o>-</c-><c- n>sender</c-></i> <c- n>Sender</c-><c- p>,</c-> <c- k>class</c-> <c- nc>Promise</c-><c- o>></c->
+  <i><c- n>unspecified</c-></i> <c- n>as_awaitable</c-><c- p>(</c-><c- n>Sender</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>Promise</c-><c- o>&amp;</c-> <c- n>p</c-><c- p>);</c->
+</pre>
+    <li data-md>
+     <p>Alias template <i>single-sender-value-type</i> is defined as follows:</p>
+     <ul>
+      <li data-md>
+       <p>If <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> would have the form <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-></code>, then <code class="highlight"><i><c- n>single</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is an alias for type <code class="highlight"><c- n>T</c-></code>.</p>
+      <li data-md>
+       <p>Otherwise, if <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> would have the form <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;>></c-></code> or <code class="highlight"><c- n>Variant</c-><c- o>&lt;></c-></code>, then <code class="highlight"><i><c- n>single</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is an alias for type <code class="highlight"><c- b>void</c-></code>.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><i><c- n>single</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-></code> is ill-formed.</p>
+     </ul>
+    <li data-md>
+     <p>For some expressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>p</c-></code> such that <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code> is <code class="highlight"><c- n>S</c-></code> and <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>p</c-><c- p>))</c-></code> is <code class="highlight"><c- n>P</c-><c- o>&amp;</c-></code>, <code class="highlight"><c- n>as_awaitable</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>p</c-><c- p>)</c-></code> returns <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>{</c-><c- n>s</c-><c- p>,</c-> <c- n>p</c-><c- p>}</c-></code>, where <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i></code> is an unspecified class type equivalant to the following:</p>
+<pre class="highlight"><c- k>class</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>awaitable</c-></i> <c- p>{</c->
+  <c- k>struct</c-> <c- nc>unit</c-> <c- p>{};</c-> <c- c1>// exposition only</c->
+  <c- k>using</c-> <c- n>value_t</c-> <c- o>=</c-> <i><c- n>single</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>;</c->
+  <c- k>using</c-> <c- n>result_t</c-> <c- o>=</c-> <c- n>conditional_t</c-><c- o>&lt;</c-><c- n>is_void_v</c-><c- o>&lt;</c-><c- n>value_t</c-><c- o>></c-><c- p>,</c-> <c- n>unit</c-><c- p>,</c-> <c- n>value_t</c-><c- o>></c-><c- p>;</c->
+  <c- k>struct</c-> <i><c- nc>awaitable</c-><c- o>-</c-><c- n>receiver</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
+
+  <c- n>variant</c-><c- o>&lt;</c-><c- n>monostate</c-><c- p>,</c-> <c- n>result_t</c-><c- p>,</c-> <c- n>exception_ptr</c-><c- o>></c-> <c- n>result_</c-><c- p>{};</c-> <c- c1>// exposition only</c->
+  <c- n>connect_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>awaitable</c-><c- o>-</c-><c- n>receiver</c-></i><c- o>></c-> <c- n>state_</c-><c- p>;</c->  <c- c1>// exposition only</c->
+
+ <c- k>public</c-><c- o>:</c->
+  <i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>P</c-><c- o>&amp;</c-> <c- n>p</c-><c- p>);</c->
+  <c- b>bool</c-> <c- nf>await_ready</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- k>return</c-> false<c- p>;</c-> <c- p>}</c->
+  <c- b>void</c-> <c- nf>await_suspend</c-><c- p>(</c-><c- n>coro</c-><c- o>::</c-><c- n>coroutine_handle</c-><c- o>&lt;></c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- n>start</c-><c- p>(</c-><c- n>state_</c-><c- p>);</c-> <c- p>}</c->
+  <c- n>value_t</c-> <c- nf>await_resume</c-><c- p>();</c->
+<c- p>};</c->
+</pre>
+     <ol>
+      <li data-md>
+       <p><code class="highlight"><i><c- n>awaitable</c-><c- o>-</c-><c- n>receiver</c-></i></code> is a receiver type equivalent to the following:</p>
+<pre class="highlight"><c- k>struct</c-> <i><c- nc>awaitable</c-><c- o>-</c-><c- n>receiver</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
+  <c- n>variant</c-><c- o>&lt;</c-><c- n>monostate</c-><c- p>,</c-> <c- n>result_t</c-><c- p>,</c-> <c- n>exception_ptr</c-><c- o>>*</c-> <c- n>result_ptr_</c-><c- p>;</c->
+  <c- n>coroutine_handle</c-><c- o>&lt;</c-><c- n>P</c-><c- o>></c-> <c- n>continuation_</c-><c- p>;</c->
+  <c- c1>// ... </c-><i><c- c1>see below</c-></i>
+<c- p>};</c->
+</pre>
+       <p>Let <code class="highlight"><c- n>r</c-></code> be an rvalue expression of type <code class="highlight"><i><c- n>awaitable</c-><c- o>-</c-><c- n>receiver</c-></i></code>, let <code class="highlight"><c- n>v</c-></code> be an expression of type <code class="highlight"><c- n>result_t</c-></code>, let <code class="highlight"><c- n>e</c-></code> be an expression of type <code class="highlight"><c- n>exception_ptr</c-></code>, let <code class="highlight"><c- n>p</c-></code> be an lvalue reference to the coroutine promise type, let <code class="highlight"><c- n>c</c-></code> be a customization point object, and let <code class="highlight"><c- n>as</c-><c- p>...</c-></code> be a pack of arguments. Then:</p>
+       <ul>
+        <li data-md>
+         <p>If <code class="highlight"><c- n>value_t</c-></code> is <code class="highlight"><c- b>void</c-></code>, then <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- p>(</c-><c- n>result_ptr_</c-><c- o>-></c-><c- n>emplace</c-><c- o>&lt;</c-><c- mi>1</c-><c- o>></c-><c- p>(),</c-> <c- n>continuation_</c-><c- p>.</c-><c- n>resume</c-><c- p>())</c-></code>; otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>v</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- p>(</c-><c- n>result_ptr_</c-><c- o>-></c-><c- n>emplace</c-><c- o>&lt;</c-><c- mi>1</c-><c- o>></c-><c- p>(</c-><c- n>v</c-><c- p>),</c-> <c- n>continuation_</c-><c- p>.</c-><c- n>resume</c-><c- p>())</c-></code>.</p>
+        <li data-md>
+         <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- p>(</c-><c- n>result_ptr_</c-><c- o>-></c-><c- n>emplace</c-><c- o>&lt;</c-><c- mi>2</c-><c- o>></c-><c- p>(</c-><c- n>e</c-><c- p>),</c-> <c- n>continuation_</c-><c- p>.</c-><c- n>resume</c-><c- p>())</c-></code>.</p>
+        <li data-md>
+         <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>continuation_</c-><c- p>.</c-><c- n>promise</c-><c- p>().</c-><c- n>unhandled_done</c-><c- p>().</c-><c- n>resume</c-><c- p>()</c-></code>.</p>
+        <li data-md>
+         <p><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>c</c-><c- p>,</c-> <c- n>r</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>c</c-><c- p>(</c-><c- n>p</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> when the type of <code class="highlight"><c- n>c</c-></code> is not one of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-></code>, or <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done_t</c-></code>.</p>
+       </ul>
+      <li data-md>
+       <p><b><code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>::</c-><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>P</c-><c- o>&amp;</c-> <c- n>p</c-><c- p>)</c-></code></b></p>
+       <ul>
+        <li data-md>
+         <p><i>Effects:</i> initializes <code class="highlight"><c- n>state_</c-></code> with <code class="highlight"><c- n>connect</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-><c- p>,</c-> <i><c- n>awaitable</c-><c- o>-</c-><c- n>receiver</c-></i><c- p>{</c-><c- o>&amp;</c-><c- n>result_</c-><c- p>,</c-> <c- n>coroutine_handle</c-><c- o>&lt;</c-><c- n>P</c-><c- o>>::</c-><c- n>from_promise</c-><c- p>(</c-><c- n>p</c-><c- p>)})</c-></code>.</p>
+       </ul>
+      <li data-md>
+       <p><b><code class="highlight"><c- n>value_t</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>::</c-><c- n>await_resume</c-><c- p>()</c-></code></b></p>
+       <ul>
+        <li data-md>
+         <p><i>Effects:</i> equivalent to:</p>
+<pre class="highlight"><c- k>if</c-> <c- p>(</c-><c- n>result_</c-><c- p>.</c-><c- n>index</c-><c- p>())</c-> <c- o>==</c-> <c- mi>2</c-><c- p>)</c->
+  <c- n>rethrow_exception</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>get</c-><c- o>&lt;</c-><c- mi>2</c-><c- o>></c-><c- p>(</c-><c- n>result_</c-><c- p>));</c->
+<c- k>if</c-> <c- nf>constexpr</c-> <c- p>(</c-><c- o>!</c-><c- n>is_void_v</c-><c- o>&lt;</c-><c- n>value_t</c-><c- o>></c-><c- p>)</c->
+  <c- k>return</c-> <c- p>(</c-><c- n>value_t</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>std</c-><c- o>::</c-><c- n>get</c-><c- o>&lt;</c-><c- mi>1</c-><c- o>></c-><c- p>(</c-><c- n>result_</c-><c- p>);</c->
+</pre>
+       </ul>
+     </ol>
+   </ol>
+   <h4 class="heading settled" data-level="9.8.2" id="spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.8.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span><a class="self-link" href="#spec-execution.coro_utils.with_awaitable_senders"></a></h4>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>with_awaitable_senders</c-></code>, when used as the base class of a coroutine promise type, makes senders awaitable in that coroutine type.</p>
+     <p>In addition, it provides a default implementation of <code class="highlight"><c- n>unhandled_done</c-><c- p>()</c-></code> such that if a sender completes by calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-></code>, it is treated as if an uncatchable "done" exception were thrown from the <i>await-expression</i>. In practice, the coroutine is never resumed, and the <code class="highlight"><c- n>unhandled_done</c-></code> of the coroutine caller’s promise type is called.</p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Promise</c-><c- o>></c->
+  <c- k>requires</c-> <c- n>is_class_v</c-><c- o>&lt;</c-><c- n>Promise</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>Promise</c-><c- p>,</c-> <c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>Promise</c-><c- o>>></c->
+  <c- k>struct</c-> <c- nc>with_awaitable_senders</c-> <c- p>{</c->
+    <c- k>template</c-><c- o>&lt;</c-><c- n>OtherPromise</c-><c- o>></c->
+      <c- k>requires</c-> <c- p>(</c-><c- o>!</c-><c- n>same_as</c-><c- o>&lt;</c-><c- n>OtherPromise</c-><c- p>,</c-> <c- b>void</c-><c- o>></c-><c- p>)</c->
+    <c- b>void</c-> <c- n>set_continuation</c-><c- p>(</c-><c- n>coroutine_handle</c-><c- o>&lt;</c-><c- n>OtherPromise</c-><c- o>></c-> <c- n>h</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+
+    <c- n>coroutine_handle</c-><c- o>&lt;></c-> <c- n>continuation</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- k>return</c-> <c- n>continuation_</c-><c- p>;</c-> <c- p>}</c->
+
+    <c- n>coroutine_handle</c-><c- o>&lt;></c-> <c- n>unhandled_done</c-><c- p>()</c-> <c- k>noexcept</c-> <c- p>{</c->
+      <c- k>return</c-> <c- nf>done_handler_</c-><c- p>(</c-><c- n>continuation_</c-><c- p>.</c-><c- n>address</c-><c- p>());</c->
+    <c- p>}</c->
+
+    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>Value</c-><c- o>></c->
+    <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- n>await_transform</c-><c- p>(</c-><c- n>Value</c-><c- o>&amp;&amp;</c-> <c- n>value</c-><c- p>);</c->
+
+   <c- k>private</c-><c- o>:</c->
+    <c- c1>// exposition only</c->
+    <c- p>[[</c-><c- n>noreturn</c-><c- p>]]</c-> <c- k>static</c-> <c- n>coroutine_handle</c-><c- o>&lt;></c-> <c- n>default_unhandled_done</c-><c- p>(</c-><c- b>void</c-><c- o>*</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
+      <c- n>terminate</c-><c- p>();</c->
+    <c- p>}</c->
+    <c- n>coroutine_handle</c-><c- o>&lt;></c-> <c- n>continuation_</c-><c- p>{};</c-> <c- c1>// exposition only</c->
+    <c- c1>// exposition only</c->
+    <c- n>coroutine_handle</c-><c- o>&lt;></c-> <c- p>(</c-><c- o>*</c-><c- n>done_handler_</c-><c- p>)(</c-><c- b>void</c-><c- o>*</c-><c- p>)</c-> <c- k>noexcept</c-> <c- o>=</c-> <c- o>&amp;</c-><c- n>default_unhandled_done</c-><c- p>;</c->
+  <c- p>};</c->
+</pre>
+    <li data-md>
+     <p><b><code class="highlight"><c- b>void</c-> <c- n>set_continuation</c-><c- p>(</c-><c- n>coroutine_handle</c-><c- o>&lt;</c-><c- n>OtherPromise</c-><c- o>></c-> <c- n>h</c-><c- p>)</c-> <c- k>noexcept</c-></code></b></p>
+     <ul>
+      <li data-md>
+       <p><i>Effects:</i> equivalent to:</p>
+<pre class="highlight"><c- n>continuation_</c-> <c- o>=</c-> <c- n>h</c-><c- p>;</c->
+<c- k>if</c-> <c- nf>constexpr</c-> <c- p>(</c-> <c- k>requires</c-><c- p>(</c-><c- n>OtherPromise</c-><c- o>&amp;</c-> <c- n>other</c-><c- p>)</c-> <c- p>{</c-> <c- n>other</c-><c- p>.</c-><c- n>unhandled_done</c-><c- p>();</c-> <c- p>}</c-> <c- p>)</c-> <c- p>{</c->
+  <c- n>done_handler_</c-> <c- o>=</c-> <c- p>[](</c-><c- b>void</c-><c- o>*</c-> <c- n>p</c-><c- p>)</c-> <c- k>noexcept</c-> <c- o>-></c-> <c- n>coroutine_handle</c-><c- o>&lt;></c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>coroutine_handle</c-><c- o>&lt;</c-><c- n>OtherPromise</c-><c- o>>::</c-><c- n>from_address</c-><c- p>(</c-><c- n>p</c-><c- p>)</c->
+      <c- p>.</c-><c- n>promise</c-><c- p>().</c-><c- n>unhandled_done</c-><c- p>();</c->
+  <c- p>};</c->
+<c- p>}</c-> <c- k>else</c-> <c- p>{</c->
+  <c- n>done_handler_</c-> <c- o>=</c-> <c- n>default_unhandled_done</c-><c- p>;</c->
+<c- p>}</c->
+</pre>
+     </ul>
+    <li data-md>
+     <p><b><code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>)</c-> <c- n>await_transform</c-><c- p>(</c-><c- n>Value</c-><c- o>&amp;&amp;</c-> <c- n>value</c-><c- p>)</c-></code></b></p>
+     <ul>
+      <li data-md>
+       <p><i>Effects:</i> equivalent to:</p>
+<pre class="highlight"><c- k>if</c-> <c- nf>constexpr</c-> <c- p>(</c-><i><c- n>is</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>&lt;</c-><c- n>Value</c-><c- o>></c-><c- p>)</c->
+  <c- k>return</c-> <c- p>(</c-><c- n>Value</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>value</c-><c- p>;</c->
+<c- k>else</c-> <c- k>if</c-> <c- k>constexpr</c-> <c- p>(</c-><i><c- n>single</c-><c- o>-</c-><c- n>typed</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>Value</c-><c- o>></c-><c- p>)</c->
+  <c- k>return</c-> <c- n>as_awaitable</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Value</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>value</c-><c- p>),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Promise</c-><c- o>&amp;></c-><c- p>(</c-><c- o>*</c-><c- k>this</c-><c- p>));</c->
+<c- k>else</c->
+  <c- nf>return</c-> <c- p>(</c-><c- n>Value</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>value</c-><c- p>;</c->
+</pre>
+     </ul>
    </ol>
   </main>
 <script>
