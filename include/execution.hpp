@@ -194,8 +194,6 @@ namespace std::execution {
     concept __single_typed_sender =
       typed_sender<S> &&
       requires { typename __single_sender_value_t<S>; };
-<<<<<<< HEAD
-=======
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
@@ -279,6 +277,7 @@ namespace std::execution {
   // NOT TO SPEC
   template <class R>
     using stop_token_type_t = remove_cvref_t<decltype(get_stop_token(std::declval<R>()))>;
+>>>>>>> origin/main
 >>>>>>> origin/main
 
   /////////////////////////////////////////////////////////////////////////////
