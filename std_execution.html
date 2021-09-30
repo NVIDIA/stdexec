@@ -4781,7 +4781,9 @@ passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code>
            <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
          </ol>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code>, which results in <code class="highlight"><c- n>s3</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s3</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in <code class="highlight"><c- n>op_state3</c-></code>, and then it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state3</c-><c- p>)</c-></code>. If any of these throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code>, which results in <code class="highlight"><c- n>s3</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s3</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in <code class="highlight"><c- n>op_state3</c-></code>, and then it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state3</c-><c- p>)</c-></code>.</p>
+        <li data-md>
+         <p>The lifetimes of <code class="highlight"><c- n>op_state2</c-></code> and <code class="highlight"><c- n>op_state3</c-></code>, once constructed, last until <code class="highlight"><c- n>op_state</c-></code> is destroyed.</p>
        </ol>
      </ol>
     <li data-md>
@@ -4821,7 +4823,7 @@ execution context of <code class="highlight"><c- n>sch</c-></code> and sends sig
         <li data-md>
          <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>.</p>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>. If any of these throws an exception, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> on <code class="highlight"><c- n>out_r</c-></code>, passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code> as the second argument.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>.</p>
         <li data-md>
          <p>When a receiver completion-signal <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is called, it constructs a receiver <code class="highlight"><c- n>r2</c-></code>:</p>
          <ol>
@@ -4835,7 +4837,7 @@ execution context of <code class="highlight"><c- n>sch</c-></code> and sends sig
          <p>It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code>, resulting in a sender <code class="highlight"><c- n>s3</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s3</c-><c- p>,</c-> <c- n>r2</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state3</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state3</c-><c- p>)</c-></code>. If any of these throws an exception,
 it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
         <li data-md>
-         <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
+         <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>. The lifetime of <code class="highlight"><c- n>op_state3</c-></code> ends when <code class="highlight"><c- n>op_state</c-></code> is destroyed.</p>
        </ol>
      </ol>
     <li data-md>
@@ -5227,7 +5229,7 @@ required.</p>
         <li data-md>
          <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>.</p>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in operation state <code class="highlight"><c- n>op_state</c-></code>, and then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code>. If any of these throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code>.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in operation state <code class="highlight"><c- n>op_state</c-></code>, and then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code>.</p>
         <li data-md>
          <p>Constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it results in an operation state <code class="highlight"><c- n>op_state2</c-></code>. Once both <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code> and one of the receiver completion-signals has been called on <code class="highlight"><c- n>r</c-></code>:</p>
          <ol>
@@ -5237,6 +5239,15 @@ required.</p>
            <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> has been called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>.</p>
           <li data-md>
            <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> has been called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
+         </ol>
+         <p>The lifetime of <code class="highlight"><c- n>op_state</c-></code> lasts until all three of the following have occured:</p>
+         <ol>
+          <li data-md>
+           <p>the lifetime of <code class="highlight"><c- n>op_state2</c-></code> has ended,</p>
+          <li data-md>
+           <p>the lifetime of <code class="highlight"><c- n>s2</c-></code> has ended, and</p>
+          <li data-md>
+           <p>a receiver completion-signal has been called on <code class="highlight"><c- n>r</c-></code>.</p>
          </ol>
        </ol>
      </ol>
@@ -5268,7 +5279,7 @@ required.</p>
            <p>When <code class="highlight"><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, it does nothing.</p>
          </ol>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state</c-></code>, then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code>.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state</c-></code>, then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code>. The lifetime of <code class="highlight"><c- n>op_state</c-></code> lasts until one of the receiver completion-signals of <code class="highlight"><c- n>r</c-></code> is called.</p>
        </ol>
      </ol>
      <p>If the function selected above does not eagerly start the sender <code class="highlight"><c- n>s</c-></code> after connecting it with a receiver which ignores the <code class="highlight"><c- n>set_value</c-></code> and <code class="highlight"><c- n>set_done</c-></code> signals and calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> on the <code class="highlight"><c- n>set_error</c-></code> signal, the program is ill-formed with no diagnostic
