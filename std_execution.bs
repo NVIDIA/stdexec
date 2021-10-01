@@ -621,6 +621,8 @@ The changes since R1 are as follows:
 * Add a section describing the design of the sender/awaitable interactions.
 * Add a section showing examples of simple sender adaptor algorithms.
 * Add a section showing examples of simple schedulers.
+* Add a section describing how to use a range of senders to represent async sequences.
+* Add a section showing how to use senders to represent partial success.
 * Add sender factories `execution::just_error` and `execution::just_done`.
 * Add sender adaptors `execution::done_as_optional` and `execution::done_as_error`.
 * Document more production uses of sender/receiver at scale.
@@ -986,6 +988,56 @@ This transforms each element of the asynchronous sequence <code><i>R</i></code> 
 Now imagine that <code><i>R</i></code> is the simple expression `views::iota(0) | views::transform(execution::just)`. This creates a lazy range of senders, each of which completes immediately with monotonically increasing integers. The above code churns through the range, generating a new infine asynchronous range of values [`fn(0)`, `fn(1)`, `fn(2)`, ...].
 
 Far more interesting would be if <code><i>R</i></code> were a range of senders representing, say, user actions in a UI. The above code gives a simple way to respond to user actions on demand.
+
+## Senders can represent partial success ## {#design-partial-success}
+
+Receivers have three ways they can complete: with success, failure, or cancellation. This begs the question of how they can be used to represent async operations that *partially* succeed. For example, consider an API that reads from a socket. The connection could drop after the API has filled in some of the buffer. In cases like that, it makes sense to want to report both that the connection dropped and that some data has been successfully read.
+
+Often in the case of partial success, the error condition is not fatal nor does it mean the API has failed to satisfy its post-conditions. It is merely an extra piece of information about the nature of the completion. In those cases, "partial success" is another way of saying "success". As a result, it is sensible to pass both the error code and the result (if any) through the value channel, as shown below:
+
+    <pre highlight="c++">
+    // Capture a buffer for read_socket_async to fill in
+    execution::just(array&lt;byte, 1024>{})
+      | execution::let_value([socket](array&lt;byte, 1024>& buff) {
+          // read_socket_async completes with two values: an error_code and
+          // a count of bytes:
+          return read_socket_async(socket, span{buff})
+              // For success (partial and full), specify the next action:
+            | execution::let_value([](error_code err, size_t bytes_read) {
+                if (err != 0) {
+                  // OK, partial success. Decide how to deal with the partial results
+                } else {
+                  // OK, full success here.
+                }
+              });
+        })
+    </pre>
+
+In other cases, the partial success is more of a partial *failure*. That happens when the error condition indicates that in some way the function failed to satisfy its post-conditions. In those cases, sending the error through the value channel loses valuable contextual information. It's possible that bundling the error and the incomplete results into an object and passing it through the error channel makes more sense. In that way, generic algorithms will not miss the fact that a post-condition has not been met and react inappropriately.
+
+Another possibility is for an async API to return a *range* of senders: if the API completes with full success, full error, or cancellation, the returned range contains just one sender with the result. Otherwise, if the API partially fails (doesn't satisfy its post-conditions, but some incomplete result is available), the returned range would have *two* senders: the first containing the partial result, and the second containing the error. Such an API might be used in a coroutine as follows:
+
+    <pre highlight="c++">
+    // Declare a buffer for read_socket_async to fill in
+    array&lt;byte, 1024> buff;
+
+    for (auto snd : read_socket_async(socket, span{buff})) {
+      try {
+        if (optional&lt;size_t> bytes_read =
+              co_await execution::done_as_optional(std::move(snd)))
+          // OK, we read some bytes into buff. Process them here....
+        } else {
+          // The socket read was cancelled and returned no data. React
+          // appropriately.
+        }
+      } catch (...) {
+        // read_socket_async failed to meet its post-conditions.
+        // Do some cleanup and propagate the error...
+      }
+    }
+    </pre>
+
+Finally, it's possible to combine these two approaches when the API can both partially succeed (meeting its post-conditions) and partially fail (not meeting its post-conditions).
 
 ## All awaitables are senders ## {#design-awaitables-are-senders}
 
