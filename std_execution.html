@@ -2963,7 +2963,21 @@ essential when writing user code using standard execution concepts; we have also
    <p>Callbacks are the oldest, simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities. The lack of a standard callback shape obstructs generic design.</p>
    <p>Additionally, few of these possibilities accommodate cancellation signals when the user requests upstream work to stop and clean up.</p>
    <h3 class="heading settled" data-level="1.9" id="intro-field-experience"><span class="secno">1.9. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
-   <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>, <a href="https://github.com/NVIDIA/thrust">Thrust</a>, and <a href="https://github.com/agency-library/agency">Agency</a>. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:</p>
+   <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>. Libunifex has seen heavy production use at Facebook. As of October 2021, it is currently used in production within the following applications and platforms:</p>
+   <ul>
+    <li data-md>
+     <p>Facebook Messenger on iOS, Android, Windows, and macOS</p>
+    <li data-md>
+     <p>Instagram on iOS and Android</p>
+    <li data-md>
+     <p>Facebook on iOS and Android</p>
+    <li data-md>
+     <p>Portal</p>
+    <li data-md>
+     <p>An internal Facebook product that runs on Linux</p>
+   </ul>
+   <p>All of these applications are making direct use of the sender/receiver abstraction as presented in this paper. One product (Instagram on iOS) is making use of the sender/coroutine integration as presented. The monthly active users of these products number in the billions.</p>
+   <p>This proposal also draws heavily from our experience with <a href="https://github.com/NVIDIA/thrust">Thrust</a> and <a href="https://github.com/agency-library/agency">Agency</a>. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:</p>
    <ul>
     <li data-md>
      <p><a href="https://github.com/STEllAR-GROUP/hpx">HPX</a></p>
@@ -2993,6 +3007,8 @@ essential when writing user code using standard execution concepts; we have also
      <p>Add sender factories <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_done</c-></code>.</p>
     <li data-md>
      <p>Add sender adaptors <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>done_as_optional</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>done_as_error</c-></code>.</p>
+    <li data-md>
+     <p>Document more production uses of sender/receiver at scale.</p>
     <li data-md>
      <p>Various fixes of typos and bugs.</p>
    </ul>
