@@ -611,6 +611,8 @@ The changes since R1 are as follows:
 * Add a section describing the design of the sender/awaitable interactions.
 * Add a section showing examples of simple sender adaptor algorithms.
 * Add a section showing examples of simple schedulers.
+* Add sender factories `execution::just_error` and `execution::just_done`.
+* Add sender adaptors `execution::done_as_optional` and `execution::done_as_exception`.
 * Various fixes of typos and bugs.
 
 ## R1 ## {#r1}
@@ -999,17 +1001,15 @@ When looking at the sender-based `retry` algorithm in the previous section, we c
 
 When your task type's promise inherits from `with_awaitable_senders`, what happens is this: the coroutine behaves as if an *uncatchable exception* had been thrown from the `co_await` expression. (It is not really an exception, but it's helpful to think of it that way.) Provided that the promise types of the calling coroutines also inherit from `with_awaitable_senders`, or more generally implement a member function called `unhandled_done`, the exception unwinds the chain of coroutines as if an exception were thrown except that it bypasses `catch(...)` clauses.
 
-In order to "catch" this uncatchable done exception, one of the calling coroutines in the stack would have to await a sender that maps the done channel into either a value or an error. That is achievable with either the `execution::let_done` or `execution::upon_done` sender adaptors, or with a custom `done_as_optional` algorithm. `done_as_optional()` would map a sender of `T` into a sender of `optional<T>`, where the done signal is mapped to a value of `std::nullopt`, which could be used in a coroutine as follows to handle a sender that is cancelled:
+In order to "catch" this uncatchable done exception, one of the calling coroutines in the stack would have to await a sender that maps the done channel into either a value or an error. That is achievable with the `execution::let_done`, `execution::upon_done`, `execution::done_as_optional`, or `execution::done_as_exception` sender adaptors. For instance, we can use `execution::done_as_optional` as below to "catch" the done signal and map it into an empty optional as shown below:
 
 ```c++
-if (auto opt = co_await done_as_optional(some_sender)) {
+if (auto opt = co_await execution::done_as_optional(some_sender)) {
   // OK, some_sender completed successfully, and opt contains the result.
 } else {
   // some_sender completed with a cancellation signal.
 }
 ```
-
-It is also easy to imagine a `done_as_exception()` algorithm that maps a done signal into a custom exception.
 
 As described in the section <a href="#design-awaitables-are-senders">"All awaitables are senders"</a>, the sender customization points recognize awaitables and adapt them transparently to model the sender concept. When `connect`-ing an awaitable and a receiver, the adaptation layer awaits the awaitable within a coroutine that implements `unhandled_done` in its promise type. The effect of this is that an "uncatchable" done exception propagates seamlessly out of awaitables, causing `execution::set_done` to be called on the receiver.
 
@@ -1097,6 +1097,24 @@ execution::sender auto snd = execution::then(vals, [](auto... args) {
 </pre>
 
 This adaptor is included as it greatly simplifies lifting values into senders.
+
+### `execution::just_error` ### {#design-sender-factory-just_error}
+
+<pre highlight="c++">
+execution::sender auto just_error(
+    auto && error
+);
+</pre>
+
+Returns a sender with no [=completion scheduler|completion schedulers=], which completes with the specified error. If the provided error is an lvalue reference, a copy is made inside the returned sender and a non-const lvalue reference to the copy is sent to the receiver's `set_error`. If the provided value is an rvalue reference, it is moved into the returned sender and an rvalue reference to it is sent to the receiver's `set_error`.
+
+### `execution::just_done` ### {#design-sender-factory-just_done}
+
+<pre highlight="c++">
+execution::sender auto just_done();
+</pre>
+
+Returns a sender with no [=completion scheduler|completion schedulers=], which completes immediately by calling the receiver's `set_done`.
 
 ## User-facing sender adaptors ## {#design-sender-adaptors}
 
@@ -1209,12 +1227,33 @@ Returns a sender which, when started, will start the provided sender on an execu
 ### `execution::into_variant` ### {#design-sender-adaptor-into_variant}
 
 <pre highlight=c++>
-execution::sender into_variant(
+execution::sender auto into_variant(
     execution::sender auto snd
 );
 </pre>
 
 Returns a sender which sends a variant of tuples of all the possible sets of types sent by the input sender. Senders can send multiple sets of values depending on runtime conditions; this is a helper function that turns them into a single variant value.
+
+### `execution::done_as_optional` ### {#design-sender-adaptor-done_as_optional}
+
+<pre highlight=c++>
+execution::sender auto done_as_optional(
+    execution::sender auto snd
+);
+</pre>
+
+Returns a sender that maps the value channel from a `T` to an `optional<T>`, and maps the done channel to a value of an empty `optional<T>`.
+
+### `execution::done_as_exception` ### {#design-sender-adaptor-done_as_exception}
+
+<pre highlight=c++>
+template&lt;class Exception>
+execution::sender auto done_as_exception(
+    execution::sender auto snd
+);
+</pre>
+
+Returns a sender that maps the done channel to an error of `make_exception_ptr(Exception{})`.
 
 ### `execution::bulk` ### {#design-sender-adaptor-bulk}
 
@@ -1933,6 +1972,12 @@ namespace std::execution {
   template&lt;class S, class ...Ts>
     concept sender_of = <i>see-below</i>;
 
+  template&lt;class S>
+    using <i>single-sender-value-type</i> = <i>see below</i>; // exposition only
+
+  template &lt;class S>
+    concept <i>single-typed-sender</i> = <i>see below</i>; // exposition only
+
   // [execution.senders.traits], sender traits
   inline namespace <i>unspecified</i> {
     struct sender_base {};
@@ -2011,6 +2056,12 @@ namespace std::execution {
     template&lt;typed_sender S>
       <i>see-below</i> into_variant(S &&);
 
+    struct done_as_optional_t;
+    inline constexpr done_as_optional_t done_as_optional;
+
+    template&lt;default_initializable Exception, sender S>
+      <i>see-below</i> done_as_exception(S &&);
+
     // [execution.senders.consumers], sender consumers
     struct ensure_started_t;
     inline constexpr ensure_started_t ensure_started{};
@@ -2040,9 +2091,6 @@ namespace std::execution {
     struct execute_t;
     inline constexpr execute_t execute{};
   }
-
-  template &lt;class S>
-    concept <i>single-typed-sender</i> = <i>see below</i>;
 
   // [execution.coro_utils.as_awaitable]
   template &lt;<i>single-typed-sender</i> Sender, class Promise>
@@ -2563,6 +2611,100 @@ enum class forward_progress_guarantee {
 
     2. Otherwise, `execution::transfer(execution::just(vs...), s)`.
 
+#### `execution::just_error` <b>[execution.senders.just_error]</b> #### {#spec-execution.senders.just_error}
+
+1. `execution::just_error` is used to create a sender that propagates an error to a connected receiver.
+
+    <pre highlight=c++>
+    template&lt;class T>
+    struct <i>just-error-sender</i> // exposition only
+    {
+      T err_;
+
+      template&lt;template&lt;class...> class Tuple, template&lt;class...> class Variant>
+      using value_types = Variant&lt;>;
+
+      template&lt;template&lt;class...> class Variant>
+      using error_types = Variant&lt;T>;
+
+      static const constexpr auto sends_done = false;
+
+      template&lt;class R>
+      struct operation_state {
+        T err_;
+        R r_;
+
+        friend void tag_invoke(execution::start_t, operation_state& s)
+          noexcept {
+          try {
+            execution::set_error(std::move(s.r_), std::move(err_));
+          }
+          catch (...) {
+            execution::set_error(std::move(s.r_), current_exception());
+          }
+        }
+      };
+
+      template&lt;receiver&lt;T> R>
+        requires copyable&ltT>
+      friend auto tag_invoke(execution::connect_t, const <i>just-error-sender</i>& j, R && r) {
+        return operation_state&lt;R>{ j.err_, std::forward&lt;R>(r) };
+      }
+
+      template&lt;receiver&lt;T> R>
+      friend auto tag_invoke(execution::connect_t, <i>just-error-sender</i>&& j, R && r) {
+        return operation_state&lt;R>{ std::move(j.err_), std::forward&lt;R>(r) };
+      }
+    };
+
+    template&lt;<i>moveable-value</i> T>
+      <i>just-error-sender</i>&lt;remove_cvref_t&lt;T> just_error(T && t) noexcept(<i>see-below</i>);
+    </pre>
+
+1. <i>Effects</i>: Initializes `err_` with `std::forward<T>(t)`.
+
+2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
+
+    <pre highlight=c++>
+    is_nothrow_constructible_v&lt;remove_cvref_t&lt;T>, T>
+    </pre>
+
+#### `execution::just_done` <b>[execution.senders.just_done]</b> #### {#spec-execution.senders.just_done}
+
+1. `execution::just_done` is used to create a sender that propagates a done signal to a connected receiver.
+
+    <pre highlight=c++>
+    struct <i>just-done-sender</i> // exposition only
+    {
+      template&lt;template&lt;class...> class Tuple, template&lt;class...> class Variant>
+      using value_types = Variant&lt;>;
+
+      template&lt;template&lt;class...> class Variant>
+      using error_types = Variant&lt;>;
+
+      static const constexpr auto sends_done = true;
+
+      template&lt;class R>
+      struct operation_state {
+        R r_;
+
+        friend void tag_invoke(execution::start_t, operation_state& s)
+          noexcept {
+          execution::set_done(std::move(s.r_));
+        }
+      };
+
+      template&lt;receiver R>
+      friend auto tag_invoke(execution::connect_t, const <i>just-done-sender</i>& j, R && r) {
+        return operation_state&lt;R>{ std::forward&lt;R>(r) };
+      }
+    };
+
+    <i>just-done-sender</i> just_done() noexcept;
+    </pre>
+
+1. <i>Effects</i>: Equivalent to <code><i>just-done-sender</i>{}</code>.
+
 ### Sender adaptors <b>[execution.senders.adaptors]</b> ### {#spec-execution.senders.adaptors}
 
 #### General <b>[execution.senders.adaptors.general]</b> #### {#spec-execution.senders.adaptors.general}
@@ -3031,6 +3173,48 @@ are all well-formed.
     2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state2`.
 
     3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+
+#### `execution::done_as_optional` <b>[execution.senders.adaptors.done_as_optional]</b> #### {#spec-execution.senders.adaptors.done_as_optional}
+
+1. `execution::done_as_optional` is used to handle a done signal by mapping it into the value channel as an empty optional. The value channel is also converted into an optional. The result is a sender that never completes with done, reporting cancellation by completing with an empty optional.
+
+2. The name `execution::done_as_optional` denotes a customization point object. For some subexpression `s.`, let `S` be `decltype((s))`. If the type `S` does not satisfy <code><i>single-typed-sender</i></code>, `execution::done_as_optional(s)` is ill-formed. Otherwise, the expression `execution::done_as_optional(s)` is expression-equivalent to:
+
+    <pre highlight=c++>
+        execution::let_done(
+          execution::then(s, [](auto&& t) {
+              return optional&lt;<i>single-sender-value-type</i>&lt;S>>{
+                static_cast&lt;decltype(t)>(t)
+              };
+            }
+          ),
+          [] {
+            return execution::just(optional&lt;<i>single-sender-value-type</i>&lt;S>>{});
+          }
+        )
+    </pre>
+
+#### `execution::done_as_exception` <b>[execution.senders.adaptors.done_as_exception]</b> #### {#spec-execution.senders.adaptors.done_as_exception}
+
+1. `execution::done_as_exception` is used to handle a done signal by mapping it into the error channel as an `exception_ptr` that refers to a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
+
+2. The template <code><i>into-variant-type</i></code> is used to compute the type sent by a sender returned from `execution::into_variant`.
+
+    <pre highlight=c++>
+        template&lt;default_initializable Exception, sender S>
+          <i>see-below</i> done_as_exception(S && s);
+    </pre>
+
+3. <i>Effects:</i> Equivalent to:
+
+    <pre highlight=c++>
+        return execution::let_done(
+          s,
+          [] {
+            return execution::just_error(make_exception_ptr(Exception{}));
+          }
+        )
+    </pre>
 
 #### `execution::ensure_started` <b>[execution.senders.adaptors.ensure_started]</b> #### {#spec-execution.senders.adaptors.ensure_started}
 
