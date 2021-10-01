@@ -612,7 +612,7 @@ The changes since R1 are as follows:
 * Add a section showing examples of simple sender adaptor algorithms.
 * Add a section showing examples of simple schedulers.
 * Add sender factories `execution::just_error` and `execution::just_done`.
-* Add sender adaptors `execution::done_as_optional` and `execution::done_as_exception`.
+* Add sender adaptors `execution::done_as_optional` and `execution::done_as_error`.
 * Various fixes of typos and bugs.
 
 ## R1 ## {#r1}
@@ -1001,7 +1001,7 @@ When looking at the sender-based `retry` algorithm in the previous section, we c
 
 When your task type's promise inherits from `with_awaitable_senders`, what happens is this: the coroutine behaves as if an *uncatchable exception* had been thrown from the `co_await` expression. (It is not really an exception, but it's helpful to think of it that way.) Provided that the promise types of the calling coroutines also inherit from `with_awaitable_senders`, or more generally implement a member function called `unhandled_done`, the exception unwinds the chain of coroutines as if an exception were thrown except that it bypasses `catch(...)` clauses.
 
-In order to "catch" this uncatchable done exception, one of the calling coroutines in the stack would have to await a sender that maps the done channel into either a value or an error. That is achievable with the `execution::let_done`, `execution::upon_done`, `execution::done_as_optional`, or `execution::done_as_exception` sender adaptors. For instance, we can use `execution::done_as_optional` as below to "catch" the done signal and map it into an empty optional as shown below:
+In order to "catch" this uncatchable done exception, one of the calling coroutines in the stack would have to await a sender that maps the done channel into either a value or an error. That is achievable with the `execution::let_done`, `execution::upon_done`, `execution::done_as_optional`, or `execution::done_as_error` sender adaptors. For instance, we can use `execution::done_as_optional` to "catch" the done signal and map it into an empty optional as shown below:
 
 ```c++
 if (auto opt = co_await execution::done_as_optional(some_sender)) {
@@ -1238,22 +1238,23 @@ Returns a sender which sends a variant of tuples of all the possible sets of typ
 
 <pre highlight=c++>
 execution::sender auto done_as_optional(
-    execution::sender auto snd
+    <i>single-typed-sender</i> auto snd
 );
 </pre>
 
-Returns a sender that maps the value channel from a `T` to an `optional<T>`, and maps the done channel to a value of an empty `optional<T>`.
+Returns a sender that maps the value channel from a `T` to an `optional<decay_t<T>>`, and maps the done channel to a value of an empty `optional<decay_t<T>>`.
 
-### `execution::done_as_exception` ### {#design-sender-adaptor-done_as_exception}
+### `execution::done_as_error` ### {#design-sender-adaptor-done_as_error}
 
 <pre highlight=c++>
-template&lt;class Exception>
-execution::sender auto done_as_exception(
-    execution::sender auto snd
+template&lt;move_constructible Error>
+execution::sender auto done_as_error(
+    execution::sender auto snd,
+    Error err = Error{}
 );
 </pre>
 
-Returns a sender that maps the done channel to an error of `make_exception_ptr(Exception{})`.
+Returns a sender that maps the done channel to an error of `err`.
 
 ### `execution::bulk` ### {#design-sender-adaptor-bulk}
 
@@ -2059,8 +2060,8 @@ namespace std::execution {
     struct done_as_optional_t;
     inline constexpr done_as_optional_t done_as_optional;
 
-    template&lt;default_initializable Exception, sender S>
-      <i>see-below</i> done_as_exception(S &&);
+    template&lt;move_constructible Error, sender S>
+      <i>see-below</i> done_as_error(S &&, Error err = Error{});
 
     // [execution.senders.consumers], sender consumers
     struct ensure_started_t;
@@ -2625,7 +2626,7 @@ enum class forward_progress_guarantee {
       using value_types = Variant&lt;>;
 
       template&lt;template&lt;class...> class Variant>
-      using error_types = Variant&lt;T>;
+      using error_types = Variant&lt;T, exception_ptr>;
 
       static const constexpr auto sends_done = false;
 
@@ -2645,23 +2646,24 @@ enum class forward_progress_guarantee {
         }
       };
 
-      template&lt;receiver&lt;T> R>
-        requires copyable&ltT>
+      template&lt;receiver R>
+        requires receiver&lt;R, T> && copyable&lt;T>
       friend auto tag_invoke(execution::connect_t, const <i>just-error-sender</i>& j, R && r) {
-        return operation_state&lt;R>{ j.err_, std::forward&lt;R>(r) };
+        return operation_state&lt;remove_cvref_t&lt;R>>{ j.err_, std::forward&lt;R>(r) };
       }
 
-      template&lt;receiver&lt;T> R>
+      template&lt;receiver R>
+        requires receiver&lt;R, T>
       friend auto tag_invoke(execution::connect_t, <i>just-error-sender</i>&& j, R && r) {
-        return operation_state&lt;R>{ std::move(j.err_), std::forward&lt;R>(r) };
+        return operation_state&lt;remove_cvref_t&lt;R>>{ std::move(j.err_), std::forward&lt;R>(r) };
       }
     };
 
     template&lt;<i>moveable-value</i> T>
-      <i>just-error-sender</i>&lt;remove_cvref_t&lt;T> just_error(T && t) noexcept(<i>see-below</i>);
+      <i>just-error-sender</i>&lt;remove_cvref_t&lt;T>> just_error(T && t) noexcept(<i>see-below</i>);
     </pre>
 
-1. <i>Effects</i>: Initializes `err_` with `std::forward<T>(t)`.
+1. <i>Effects</i>: Returns a <code><i>just-error-sender</i>&lt;remove_cvref_t&lt;T>></code> with `err_` direct initialized with `static_cast<T&&>(t)`.
 
 2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
 
@@ -3183,35 +3185,35 @@ are all well-formed.
     <pre highlight=c++>
         execution::let_done(
           execution::then(s, [](auto&& t) {
-              return optional&lt;<i>single-sender-value-type</i>&lt;S>>{
+              return optional&lt;decay_t&lt;<i>single-sender-value-type</i>&lt;S>>>{
                 static_cast&lt;decltype(t)>(t)
               };
             }
           ),
-          [] {
-            return execution::just(optional&lt;<i>single-sender-value-type</i>&lt;S>>{});
+          [] () noexcept {
+            return execution::just(optional&lt;decay_t&lt;<i>single-sender-value-type</i>&lt;S>>>{});
           }
         )
     </pre>
 
-#### `execution::done_as_exception` <b>[execution.senders.adaptors.done_as_exception]</b> #### {#spec-execution.senders.adaptors.done_as_exception}
+#### `execution::done_as_error` <b>[execution.senders.adaptors.done_as_error]</b> #### {#spec-execution.senders.adaptors.done_as_error}
 
-1. `execution::done_as_exception` is used to handle a done signal by mapping it into the error channel as an `exception_ptr` that refers to a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
+1. `execution::done_as_error` is used to handle a done signal by mapping it into the error channel as an `exception_ptr` that refers to a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
 
 2. The template <code><i>into-variant-type</i></code> is used to compute the type sent by a sender returned from `execution::into_variant`.
 
     <pre highlight=c++>
-        template&lt;default_initializable Exception, sender S>
-          <i>see-below</i> done_as_exception(S && s);
+        template&lt;move_constructible Error, sender S>
+          <i>see-below</i> done_as_error(S && s, Error err = Error{});
     </pre>
 
 3. <i>Effects:</i> Equivalent to:
 
     <pre highlight=c++>
         return execution::let_done(
-          s,
-          [] {
-            return execution::just_error(make_exception_ptr(Exception{}));
+          static_cast<S&&>(s),
+          [err2 = std::move(err)] () {
+            return execution::just_error(std::move(err2));
           }
         )
     </pre>
@@ -3350,7 +3352,7 @@ are all well-formed.
 
     - It calls at most one overload of `execution::set_value` with zero or one argument, and
 
-    - It calls at most one overload of `exception::set_error` with an argument of type `exception_ptr`, and
+    - It calls at most one overload of `exception::set_error`, and
 
     - Given an lvalue `p` to the promise type of an awaiting coroutine, `p.unhandled_done()` is well-formed, `noexcept`, and returns a type convertible to `coroutine_handle<>`.
 
@@ -3407,11 +3409,17 @@ are all well-formed.
         };
         </pre>
 
-        Let `r` be an rvalue expression of type <code><i>awaitable-receiver</i></code>, let `v` be an expression of type `result_t`, let `e` be an expression of type `exception_ptr`, let `p` be an lvalue reference to the coroutine promise type, let `c` be a customization point object, and let `as...` be a pack of arguments. Then:
+        Let `r` be an rvalue expression of type <code><i>awaitable-receiver</i></code>, let `v` be an expression of type `result_t`, let `e` be an arbitrary expression of type `E`, let `p` be an lvalue reference to the coroutine promise type, let `c` be a customization point object, and let `as...` be a pack of arguments. Then:
 
           - If `value_t` is `void`, then `execution::set_value(r)` is expression-equivalent to  `(result_ptr_->emplace<1>(), continuation_.resume())`; otherwise, `execution::set_value(r, v)` is expression-equivalent to `(result_ptr_->emplace<1>(v), continuation_.resume())`.
 
-          - `execution::set_error(r, e)` is expression-equivalent to `(result_ptr_->emplace<2>(e), continuation_.resume())`.
+          - `execution::set_error(r, e)` is expression-equivalent to <code>(result_ptr_->emplace&lt;2>(<i>AS_EXCEPT_PTR</i>(e)), continuation_.resume())</code>, where <code><i>AS_EXCEPT_PTR</i>(e)</code> is:
+
+            - `e` if `decay_t<E>` names the same type as `exception_ptr`,
+
+            - Otherwise, `make_exception_ptr(system_error(e))` if `decay_t<E>` names the same type as `error_code`,
+
+            - Otherwise, `make_exception_ptr(e)`.
 
           - `execution::set_done(r)` is expression-equivalent to `continuation_.promise().unhandled_done().resume()`.
 
