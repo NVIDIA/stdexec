@@ -955,7 +955,7 @@ Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
 We believe sender consumers read better with function call syntax.
 
-## A range of senders represents an async sequence of data {#design-range-of-senders}
+## A range of senders represents an async sequence of data ## {#design-range-of-senders}
 
 Senders represent a single unit of asynchronous work. In many cases though, what is being modelled is a sequence of data arriving asynchronously, and you want computation to happen on demand, when each element arrives. This requires nothing more than what is in this paper and the range support in C++20. A range of senders would allow you to model such input as keystrikes, mouse movements, sensor readings, or network requests.
 
