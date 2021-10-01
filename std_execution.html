@@ -5403,7 +5403,7 @@ required.</p>
      <p><i>Effects:</i> Equivalent to:</p>
 <pre class="highlight"><c- k>return</c-> <c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>(</c->
   <c- k>static_cast</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>s</c-><c- p>),</c->
-  <c- p>[</c-><c- n>err2</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>err</c-><c- p>)]</c-> <c- p>()</c-> <c- p>{</c->
+  <c- p>[</c-><c- n>err2</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>err</c-><c- p>)]</c-> <c- p>()</c-> <c- k>mutable</c-> <c- p>{</c->
     <c- k>return</c-> <c- n>execution</c-><c- o>::</c-><c- n>just_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>err2</c-><c- p>));</c->
   <c- p>}</c->
 <c- p>)</c->
