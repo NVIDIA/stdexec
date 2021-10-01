@@ -2287,7 +2287,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#design-join"><span class="secno">4.9</span> <span class="content">Senders are joinable</span></a>
       <li><a href="#design-fpg"><span class="secno">4.10</span> <span class="content">Schedulers advertise their forward progress guarantees</span></a>
       <li><a href="#design-pipeable"><span class="secno">4.11</span> <span class="content">Most sender adaptors are pipeable</span></a>
-      <li><a href="#design-range-of-senders"><span class="secno">4.12</span> <span class="content">A range of senders represents an async sequence of data {#design-range-of-senders}</span></a>
+      <li><a href="#design-range-of-senders"><span class="secno">4.12</span> <span class="content">A range of senders represents an async sequence of data</span></a>
       <li><a href="#design-awaitables-are-senders"><span class="secno">4.13</span> <span class="content">All awaitables are senders</span></a>
       <li><a href="#design-senders-are-awaitable"><span class="secno">4.14</span> <span class="content">Many senders can be trivially made awaitable</span></a>
       <li><a href="#design-native-coro-unwind"><span class="secno">4.15</span> <span class="content">Cancellation of a sender can unwind a stack of coroutines</span></a>
@@ -3289,7 +3289,7 @@ Consider the following example where we want to execute first on a CPU thread po
    <p>Sender consumers could be made pipeable, but we have chosen to not do so.
 However, since these are terminal nodes in a pipeline and nothing can be piped after them, we believe a pipe syntax may be confusing as well as unnecessary, as consumers cannot be chained.
 We believe sender consumers read better with function call syntax.</p>
-   <h3 class="heading settled" data-level="4.12" id="design-range-of-senders"><span class="secno">4.12. </span><span class="content">A range of senders represents an async sequence of data {#design-range-of-senders}</span><a class="self-link" href="#design-range-of-senders"></a></h3>
+   <h3 class="heading settled" data-level="4.12" id="design-range-of-senders"><span class="secno">4.12. </span><span class="content">A range of senders represents an async sequence of data</span><a class="self-link" href="#design-range-of-senders"></a></h3>
    <p>Senders represent a single unit of asynchronous work. In many cases though, what is being modelled is a sequence of data arriving asynchronously, and you want computation to happen on demand, when each element arrives. This requires nothing more than what is in this paper and the range support in C++20. A range of senders would allow you to model such input as keystrikes, mouse movements, sensor readings, or network requests.</p>
    <p>Given some expression <code class="highlight"><i><c- n>R</c-></i></code> that is a range of senders, consider the following in a coroutine that returns an async generator type:</p>
 <pre class="highlight"><c- k>for</c-> <c- p>(</c-><c- k>auto</c-> <c- nl>snd</c-> <c- p>:</c-> <i><c- n>R</c-></i><c- p>)</c-> <c- p>{</c->
