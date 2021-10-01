@@ -2394,11 +2394,11 @@ enum class forward_progress_guarantee {
 
 3. The primary class template `sender_traits<S>` also recognizes awaitables as typed senders. For this clause ([execution]):
 
-    - An <i>awaitable</i> is an expression that would be well-formed as the operand of a `co_await` expression within a coroutine that does not define an `await_transform` member in its promise type.
+    1. An <i>awaitable</i> is an expression that would be well-formed as the operand of a `co_await` expression within a coroutine that does not define an `await_transform` member in its promise type.
 
-    - For any type `T`, <code><i>is-awaitable</i>&lt;T></code> is `true` if an expression of that type is an awaitable as described above; otherwise, `false`.
+    2. For any type `T`, <code><i>is-awaitable</i>&lt;T></code> is `true` if an expression of that type is an awaitable as described above; otherwise, `false`.
 
-    - For an awaitable `a` such that `decltype((a))` is type `A`, <code><i>await-result-type</i>&lt;A></code> is an alias for <code>decltype(<i>e</i>)</code>, where <code><i>e</i></code> is `a`'s <i>await-resume</i> expression ([expr.await]).
+    3. For an awaitable `a` such that `decltype((a))` is type `A`, <code><i>await-result-type</i>&lt;A></code> is an alias for <code>decltype(<i>e</i>)</code>, where <code><i>e</i></code> is `a`'s <i>await-resume</i> expression ([expr.await]).
 
 4. The primary class template `sender_traits<S>` is defined as if inheriting from an implementation-defined class template <code><i>sender-traits-base</i>&lt;S></code> defined as follows:
 
@@ -2426,7 +2426,7 @@ enum class forward_progress_guarantee {
 
     3. Otherwise, if <code><i>is-awaitable</i>&lt;S></code> is `true`, then
 
-        - If <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code> then <code><i>sender-traits-base&lt;S></i></code> is equivalent to
+        1. If <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code> then <code><i>sender-traits-base&lt;S></i></code> is equivalent to
 
             <pre highlight=c++>
             template&lt;class S>
@@ -2441,7 +2441,7 @@ enum class forward_progress_guarantee {
               };
             </pre>
 
-        - Otherwise, <code><i>sender-traits-base&lt;S></i></code> is equivalent to
+        2. Otherwise, <code><i>sender-traits-base&lt;S></i></code> is equivalent to
 
             <pre highlight=c++>
             template&lt;class S>
@@ -2503,21 +2503,21 @@ enum class forward_progress_guarantee {
 
         where <code><i>connect-awaitable</i></code> suspends at the <i>initial suspends point</i> ([dcl.fct.def.coroutine]), and:
 
-          - <i>set-value-expr</i> first evaluates `co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r)` if <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code>; otherwise, it evaluates `auto&& res = co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r, (decltype(res)) res)`.
+          1. <i>set-value-expr</i> first evaluates `co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r)` if <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code>; otherwise, it evaluates `auto&& res = co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r, (decltype(res)) res)`.
 
             If the call to `execution::set_value` exits with an exception, the coroutine is resumed and the exception is immediately propagated in the context of the coroutine.
 
             [<i>Note</i>: If the call to `execution::set_value` exits normally, then the <code><i>connect-awaitable</i></code> coroutine is never resumed. --<i>end note</i>]
 
-          - <i>set-error-expr</i> first suspends the coroutine and then executes `execution::set_error((R&&) r, std::move(e))`.
+          2. <i>set-error-expr</i> first suspends the coroutine and then executes `execution::set_error((R&&) r, std::move(e))`.
 
             [<i>Note</i>: The <code><i>connect-awaitable</i></code> coroutine is never resumed after the call to `execution::set_error`. --<i>end note</i>]
 
-          - <code><i>operation-state-task</i></code> is a type that models `operation_state`. Its `execution::start` resumes the <code><i>connect-awaitable</i></code> coroutine, advancing it past the initial suspend point.
+          3. <code><i>operation-state-task</i></code> is a type that models `operation_state`. Its `execution::start` resumes the <code><i>connect-awaitable</i></code> coroutine, advancing it past the initial suspend point.
 
-          - Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
+          4. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
 
-          - The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
+          5. The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
 
         The operand of the <i>requires-clause</i> of <code><i>connect-awaitable</i></code> is equivalent to `receiver_of<R>` if <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code>; otherwise, it is <code>receiver_of&lt;R, <i>await-result-type</i>&lt;S>></code>.
 
@@ -3394,11 +3394,11 @@ are all well-formed.
 
 2. Alias template <i>single-sender-value-type</i> is defined as follows:
 
-    - If `sender_traits<remove_cvref_t<S>>::value_types<Tuple, Variant>` would have the form `Variant<Tuple<T>>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `T`.
+    1. If `sender_traits<remove_cvref_t<S>>::value_types<Tuple, Variant>` would have the form `Variant<Tuple<T>>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `T`.
 
-    - Otherwise, if `sender_traits<remove_cvref_t<S>>::value_types<Tuple, Variant>` would have the form `Variant<Tuple<>>` or `Variant<>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `void`.
+    2. Otherwise, if `sender_traits<remove_cvref_t<S>>::value_types<Tuple, Variant>` would have the form `Variant<Tuple<>>` or `Variant<>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `void`.
 
-    - Otherwise, <code><i>single-sender-value-type</i>&lt;S</code> is ill-formed.
+    3. Otherwise, <code><i>single-sender-value-type</i>&lt;S</code> is ill-formed.
 
 3. For some expressions `s` and `p` such that `decltype((s))` is `S` and `decltype((p))` is `P&`, `as_awaitable(s, p)` returns <code><i>sender-awaitable</i>{s, p}</code>, where  <code><i>sender-awaitable</i></code> is an unspecified class type equivalant to the following:
 
@@ -3432,19 +3432,19 @@ are all well-formed.
 
         Let `r` be an rvalue expression of type <code><i>awaitable-receiver</i></code>, let `v` be an expression of type `result_t`, let `e` be an arbitrary expression of type `E`, let `p` be an lvalue reference to the coroutine promise type, let `c` be a customization point object, and let `as...` be a pack of arguments. Then:
 
-          - If `value_t` is `void`, then `execution::set_value(r)` is expression-equivalent to  `(result_ptr_->emplace<1>(), continuation_.resume())`; otherwise, `execution::set_value(r, v)` is expression-equivalent to `(result_ptr_->emplace<1>(v), continuation_.resume())`.
+          1. If `value_t` is `void`, then `execution::set_value(r)` is expression-equivalent to  `(result_ptr_->emplace<1>(), continuation_.resume())`; otherwise, `execution::set_value(r, v)` is expression-equivalent to `(result_ptr_->emplace<1>(v), continuation_.resume())`.
 
-          - `execution::set_error(r, e)` is expression-equivalent to <code>(result_ptr_->emplace&lt;2>(<i>AS_EXCEPT_PTR</i>(e)), continuation_.resume())</code>, where <code><i>AS_EXCEPT_PTR</i>(e)</code> is:
+          2. `execution::set_error(r, e)` is expression-equivalent to <code>(result_ptr_->emplace&lt;2>(<i>AS_EXCEPT_PTR</i>(e)), continuation_.resume())</code>, where <code><i>AS_EXCEPT_PTR</i>(e)</code> is:
 
-            - `e` if `decay_t<E>` names the same type as `exception_ptr`,
+            1. `e` if `decay_t<E>` names the same type as `exception_ptr`,
 
-            - Otherwise, `make_exception_ptr(system_error(e))` if `decay_t<E>` names the same type as `error_code`,
+            2. Otherwise, `make_exception_ptr(system_error(e))` if `decay_t<E>` names the same type as `error_code`,
 
-            - Otherwise, `make_exception_ptr(e)`.
+            3. Otherwise, `make_exception_ptr(e)`.
 
-          - `execution::set_done(r)` is expression-equivalent to `continuation_.promise().unhandled_done().resume()`.
+          3. `execution::set_done(r)` is expression-equivalent to `continuation_.promise().unhandled_done().resume()`.
 
-          - `std::tag_invoke(c, r, as...)` is expression-equivalent to `c(p, as...)` when the type of `c` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution::set_done_t`.
+          4. `std::tag_invoke(c, r, as...)` is expression-equivalent to `c(p, as...)` when the type of `c` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution::set_done_t`.
 
     2. <b><code><i>sender-awaitable</i>::<i>sender-awaitable</i>(S&& s, P& p)</code></b>
 
