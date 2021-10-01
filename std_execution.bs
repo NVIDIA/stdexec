@@ -1012,9 +1012,13 @@ Another possibility is for an async API to return a *range* of senders: if the A
 
     for (auto snd : read_socket_async(socket, span{buff})) {
       try {
-        size_t bytes_read = co_await std::move(snd);
-
-        // OK, we read some bytes into buff. Process them here....
+        if (optional&lt;size_t> bytes_read =
+              co_await execution::done_as_optional(std::move(snd)))
+          // OK, we read some bytes into buff. Process them here....
+        } else {
+          // The socket read was cancelled and returned no data. React
+          // appropriately.
+        }
       } catch (...) {
         // read_socket_async failed to meet its post-conditions.
         // Do some cleanup and propagate the error...
