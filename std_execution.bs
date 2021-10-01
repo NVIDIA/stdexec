@@ -3232,7 +3232,7 @@ are all well-formed.
 
     <pre highlight=c++>
         return execution::let_done(
-          static_cast<S&&>(s),
+          static_cast&lt;S&&>(s),
           [err2 = std::move(err)] () {
             return execution::just_error(std::move(err2));
           }
