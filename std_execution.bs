@@ -592,7 +592,17 @@ Additionally, few of these possibilities accommodate cancellation signals when t
 
 ## Field experience ## {#intro-field-experience}
 
-This proposal draws heavily from our field experience with [libunifex](https://github.com/facebookexperimental/libunifex), [Thrust](https://github.com/NVIDIA/thrust), and [Agency](https://github.com/agency-library/agency). It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:
+This proposal draws heavily from our field experience with [libunifex](https://github.com/facebookexperimental/libunifex). Libunifex has seen heavy production use at Facebook. As of October 2021, it is currently used in production within the following applications and platforms:
+
+* Facebook Messenger on iOS, Android, Windows, and macOS
+* Instagram on iOS and Android
+* Facebook on iOS and Android
+* Portal
+* An internal Facebook product that runs on Linux
+
+All of these applications are making direct use of the sender/receiver abstraction as presented in this paper. One product (Instagram on iOS) is making use of the sender/coroutine integration as presented. The monthly active users of these products number in the billions.
+
+This proposal also draws heavily from our experience with [Thrust](https://github.com/NVIDIA/thrust) and [Agency](https://github.com/agency-library/agency). It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:
 * <a href="https://github.com/STEllAR-GROUP/hpx">HPX</a>
 * [Folly](https://github.com/facebook/folly/blob/master/folly/docs/Futures.md)
 * [stlab](https://stlab.cc/libraries/concurrency/)
@@ -613,6 +623,7 @@ The changes since R1 are as follows:
 * Add a section showing examples of simple schedulers.
 * Add sender factories `execution::just_error` and `execution::just_done`.
 * Add sender adaptors `execution::done_as_optional` and `execution::done_as_error`.
+* Document more production uses of sender/receiver at scale.
 * Various fixes of typos and bugs.
 
 ## R1 ## {#r1}
