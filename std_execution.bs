@@ -1015,6 +1015,31 @@ As described in the section <a href="#design-awaitables-are-senders">"All awaita
 
 Obviously, `unhandled_done` is a library extension of the coroutine promise interface. Many promise types will not implement `unhandled_done`. When an uncatchable done exception tries to propagate through such a coroutine, it is treated as an unhandled exception and `terminate` is called. The solution, as described above, is to use a sender adaptor to handle the done exception before awaiting it. It goes without saying that any future Standard Library coroutine types ought to implement `unhandled_done`. The author of [[P1056R1]], which proposes a standard coroutine task type, is in agreement.
 
+## Composition with Parallel Algorithms ## {#design-parallel-algorithms}
+
+The C++ Standard Library provides a large number of algorithms that offer the potential for non-sequential execution via the use of execution policies. The set of algorithms with execution policy overloads are often referred to as "parallel algorithms", although
+additional policies are available.
+
+Existing policies, such as `execution::par`, give the implementation permission to execute the algorithm in parallel. However, the choice of execution resources used to perform the work is left to the implementation.
+
+We will propose a customization point for combining schedulers with policies in order to provide control over where work will execute.
+
+<pre highlight="c++">
+template&lt;class ExecutionPolicy>
+<i>implementation-defined</i> executing_on(
+    execution::scheduler auto scheduler,
+    ExecutionPolicy && policy
+);
+</pre>
+
+This function would return an object of an implementation-defined type which can be used in place of an execution policy as the first argument to one of the parallel algorithms. The overload selected by that object should execute its computation as requested by
+`policy` while using `scheduler` to create any work to be run. The expression may be ill-formed if `scheduler` is not able to support the given policy.
+
+The existing parallel algorithms are synchronous; all of the effects performed by the computation are complete before the algorithm returns to its caller. This remains unchanged with the `executing_on` customization point.
+
+In the future, we expect additional papers will propose asynchronous forms of the parallel algorithms which (1) return senders rather than values or `void` and (2) where a customization point pairing a sender with an execution policy would similarly be used to
+obtain an object of implementation-defined type to be provided as the first argument to the algorithm.
+
 ## User-facing sender factories ## {#design-sender-factories}
 
 A <dfn>sender factory</dfn> is an [=algorithm=] that takes no senders as parameters and returns a sender.
@@ -1226,11 +1251,17 @@ execution::sender auto bulk(
 );
 </pre>
 
-Returns a sender describing the task of invoking the provided function with the values [=send|sent=] by the input sender for every index in the provided shape.
+Returns a sender describing the task of invoking the provided function with every index in the provided shape along with the values sent by the input sender. The returned sender completes once all invocations have completed, or an error has occurred. If it completes
+by sending values, they are equivalent to those sent by the input sender.
 
-In this paper, only integral types satisfy the concept of a shape, but future papers will explore bulk shapes of different kinds in more detail.
+No instance of `function` will begin executing until the returned sender is started. Each invocation of `function` runs in an execution agent whose forward progress guarantees are determined by the scheduler on which they are run. All agents created by a single use
+of `bulk` execute with the same guarantee. This allows, for instance, a scheduler to execute all invocations of the function in parallel.
 
-`bulk` is **guaranteed** to not begin executing `function` until the returned sender is started.
+The `bulk` operation is intended to be used at the point where the number of agents to be created is known and provided to `bulk` via its `shape` parameter. For some parallel computations, the number of agents to be created may be a function of the input data or
+dynamic conditions of the execution environment. In such cases, `bulk` can be combined with additional operations such as `let_value` to deliver dynamic shape information to the `bulk` operation.
+
+In this proposal, only integral types are used to specify the shape of the bulk section. We expect that future papers may wish to explore extensions of the interface to explore additional kinds of shapes, such as multi-dimensional grids, that are commonly used for
+parallel computing tasks.
 
 ### `execution::split` ### {#design-sender-adaptor-split}
 
