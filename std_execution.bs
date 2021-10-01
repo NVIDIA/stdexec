@@ -3233,7 +3233,7 @@ are all well-formed.
     <pre highlight=c++>
         return execution::let_done(
           static_cast&lt;S&&>(s),
-          [err2 = std::move(err)] () {
+          [err2 = std::move(err)] () mutable {
             return execution::just_error(std::move(err2));
           }
         )
