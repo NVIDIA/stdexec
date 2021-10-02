@@ -1012,7 +1012,7 @@ for you. Much like algorithms that compose senders relieve the user from having 
 receiver types, algorithms that introduce concurrency and provide higher-level cancellation semantics
 relieve the user from having to deal with low-level details of cancellation.
 
-### Cancellation design summary ###
+### Cancellation design summary ### {#design-cancellation-summary}
 
 The design of cancellation described in this paper is built on top of and extends the `std::stop_token`-based
 cancellation facilities added in C++20, first proposed in [[P2175R0]].
@@ -1037,7 +1037,7 @@ As the caller of `execution::connect` typically has control over the receiver ty
 the `execution::get_stop_token()` CPO for that receiver type to return a stop-token that it has control over and that
 it can use to communicate a stop-request to the operation once it has started.
 
-### Support for cancellation is optional ###
+### Support for cancellation is optional ### {#design-cancellation-optional}
 
 Support for cancellation is optional, both on part of the author of the receiver and on part of the author of the sender.
 
@@ -1056,7 +1056,7 @@ naturally and the stop-request being made. If the operation has already complete
 it can be cancelled when the stop-request is sent then the stop-request may just be ignored. An application
 will typically need to be able to cope with senders that might ignore a stop-request anyway.
 
-### Cancellation is inherently racy ###
+### Cancellation is inherently racy ### {#design-cancellation-racy}
 
 Usually, an operation will attach a stop-callback at some point inside the call to `execution::start()` so that
 a subsequent stop-request will interrupt the logic.
@@ -1083,7 +1083,7 @@ receiver's completion-signalling operation to the `execution::start()` call (whi
 
 For an example of an implementation strategy for solving these data-races see the `async_recv()` example in Appendix A.
 
-### Cancellation design status ###
+### Cancellation design status ### {#design-cancellation-status}
 
 This paper currently includes the design for cancellation as proposed in
 [[P2175R0]] - "Composable cancellation for sender-based async operations".
@@ -3847,9 +3847,9 @@ from the operation before the operation completes.
         </pre>
 
 
-# Appendix A - Cancellation Examples
+# Appendix A - Cancellation Examples # {#appendix-a-cancellation-examples}
 
-## Cancellation Example: Socket `async_recv()` ###
+## Cancellation Example: Socket `async_recv()` ### {#appendix-a-async_recv}
 
 To get a better feel for how this interface might be used by low-level operations see this example implementation
 of a cancellable `async_recv()` operation for a Windows Socket.
