@@ -2232,6 +2232,13 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#example-hello-world"><span class="secno">1.3.1</span> <span class="content">Hello world</span></a>
         <li><a href="#example-async-inclusive-scan"><span class="secno">1.3.2</span> <span class="content">Asynchronous inclusive scan</span></a>
         <li><a href="#example-async-dynamically-sized-read"><span class="secno">1.3.3</span> <span class="content">Asynchronous dynamically-sized read</span></a>
+        <li>
+         <a href="#example-moar"><span class="secno">1.3.4</span> <span class="content">More end-user examples</span></a>
+         <ol class="toc">
+          <li><a href="#example-sudoku"><span class="secno">1.3.4.1</span> <span class="content">Sudoku solver</span></a>
+          <li><a href="#example-file-copy"><span class="secno">1.3.4.2</span> <span class="content">File copy</span></a>
+          <li><a href="#example-echo-server"><span class="secno">1.3.4.3</span> <span class="content">Echo server</span></a>
+         </ol>
        </ol>
       <li>
        <a href="#example-algorithm"><span class="secno">1.4</span> <span class="content">Examples: Algorithms</span></a>
@@ -2668,6 +2675,47 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
     <li data-md>
      <p>Finally, we move out of and return our <code class="highlight"><c- n>dynamic_buffer</c-></code> object. It will get sent by the sender returned by <code class="highlight"><c- n>async_read_array</c-></code>. We can attach more things to that sender to use the data in the buffer.</p>
    </ol>
+   <h4 class="heading settled" data-level="1.3.4" id="example-moar"><span class="secno">1.3.4. </span><span class="content">More end-user examples</span><a class="self-link" href="#example-moar"></a></h4>
+   <h5 class="heading settled" data-level="1.3.4.1" id="example-sudoku"><span class="secno">1.3.4.1. </span><span class="content">Sudoku solver</span><a class="self-link" href="#example-sudoku"></a></h5>
+   <p>This example comes from Kirk Shoop, who ported an example from TBB’s documentation to sender/receiver in his fork of the libunifex repo. It is a Sudoku solver that uses a configurable number of threads to explore the search space for solutions.</p>
+   <p>The sender/receiver-based Sudoku solver can be found <a href="https://github.com/kirkshoop/libunifex/blob/sudoku/examples/sudoku.cpp">here</a>. Some things that are worth noting about Kirk’s solution:</p>
+   <ol>
+    <li data-md>
+     <p>Although it schedules asychronous work onto a thread pool, and each unit of work will schedule more work, its use of structured concurrency patterns make reference counting unnecessary. The solution does not make use of <code class="highlight"><c- n>shared_ptr</c-></code>.</p>
+    <li data-md>
+     <p>In addition to eliminating the need for reference counting, the use of structured concurrency makes it easy to ensure that resources are cleaned up on all code paths. In contrast, the TBB example that inspired this one <a href="https://github.com/oneapi-src/oneTBB/issues/568">leaks memory</a>.</p>
+   </ol>
+   <p>For comparison, the TBB-based Sudoku solver can be found <a href="https://github.com/oneapi-src/oneTBB/blob/40a9a1060069d37d5f66912c6ee4cf165144774b/examples/task_group/sudoku/sudoku.cpp">here</a>.</p>
+   <h5 class="heading settled" data-level="1.3.4.2" id="example-file-copy"><span class="secno">1.3.4.2. </span><span class="content">File copy</span><a class="self-link" href="#example-file-copy"></a></h5>
+   <p>This example also comes from Kirk Shoop which uses sender/receiver to recursively copy the files a directory tree. It demonstrates how sender/receiver can be used to do IO, using a scheduler that schedules work on Linux’s io_uring.</p>
+   <p>As with the Sudoku example, this example obviates the need for reference counting by employing structured concurrency. It uses iteration with an upper limit to avoid having too many open file handles.</p>
+   <p>You can find the example <a href="https://github.com/kirkshoop/libunifex/blob/filecopy/examples/file_copy.cpp">here</a>.</p>
+   <h5 class="heading settled" data-level="1.3.4.3" id="example-echo-server"><span class="secno">1.3.4.3. </span><span class="content">Echo server</span><a class="self-link" href="#example-echo-server"></a></h5>
+   <p>Dietmar Kuehl has a hobby project that implements networking APIs on top of sender/receiver. He recently implemented an echo server as a demo. His echo server code can be found <a href="https://github.com/dietmarkuehl/kuhllib/blob/main/src/examples/echo_server.cpp">here</a>.</p>
+   <p>Below, I show the part of the echo server code. This code is executed for each client that connects to the echo server. In a loop, it reads input from a socket and echos the input back to the same socket. All of this, including the loop, is implemented with generic async algorithms.</p>
+<pre class="highlight"><c- n>outstanding</c-><c- p>.</c-><c- n>start</c-><c- p>(</c->
+    <c- n>EX</c-><c- o>::</c-><c- n>repeat_effect_until</c-><c- p>(</c->
+          <c- n>EX</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c->
+              <c- n>NN</c-><c- o>::</c-><c- n>async_read_some</c-><c- p>(</c-><c- n>ptr</c-><c- o>-></c-><c- n>d_socket</c-><c- p>,</c->
+                                  <c- n>context</c-><c- p>.</c-><c- n>scheduler</c-><c- p>(),</c->
+                                  <c- n>NN</c-><c- o>::</c-><c- n>buffer</c-><c- p>(</c-><c- n>ptr</c-><c- o>-></c-><c- n>d_buffer</c-><c- p>))</c->
+        <c- o>|</c-> <c- n>EX</c-><c- o>::</c-><c- n>then</c-><c- p>([</c-><c- n>ptr</c-><c- p>](</c-><c- o>::</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>n</c-><c- p>){</c->
+            <c- o>::</c-><c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- s>"read='"</c-> <c- o>&lt;&lt;</c-> <c- o>::</c-><c- n>std</c-><c- o>::</c-><c- n>string_view</c-><c- p>(</c-><c- n>ptr</c-><c- o>-></c-><c- n>d_buffer</c-><c- p>,</c-> <c- n>n</c-><c- p>)</c-> <c- o>&lt;&lt;</c-> <c- s>"'</c-><c- se>\n</c-><c- s>"</c-><c- p>;</c->
+            <c- n>ptr</c-><c- o>-></c-><c- n>d_done</c-> <c- o>=</c-> <c- n>n</c-> <c- o>==</c-> <c- mi>0</c-><c- p>;</c->
+            <c- k>return</c-> <c- n>n</c-><c- p>;</c->
+        <c- p>}),</c->
+          <c- p>[</c-><c- o>&amp;</c-><c- n>context</c-><c- p>,</c-> <c- n>ptr</c-><c- p>](</c-><c- o>::</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>n</c-><c- p>){</c->
+            <c- k>return</c-> <c- n>NN</c-><c- o>::</c-><c- n>async_write_some</c-><c- p>(</c-><c- n>ptr</c-><c- o>-></c-><c- n>d_socket</c-><c- p>,</c->
+                                        <c- n>context</c-><c- p>.</c-><c- n>scheduler</c-><c- p>(),</c->
+                                        <c- n>NN</c-><c- o>::</c-><c- n>buffer</c-><c- p>(</c-><c- n>ptr</c-><c- o>-></c-><c- n>d_buffer</c-><c- p>,</c-> <c- n>n</c-><c- p>));</c->
+          <c- p>})</c->
+        <c- o>|</c-> <c- n>EX</c-><c- o>::</c-><c- n>then</c-><c- p>([](</c-><c- k>auto</c-><c- o>&amp;&amp;</c-><c- p>...){})</c->
+        <c- p>,</c-> <c- p>[</c-><c- n>owner</c-> <c- o>=</c-> <c- o>::</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>owner</c-><c- p>)]{</c-> <c- k>return</c-> <c- n>owner</c-><c- o>-></c-><c- n>d_done</c-><c- p>;</c-> <c- p>}</c->
+    <c- p>)</c->
+<c- p>);</c->
+</pre>
+   <p>In this code, <code class="highlight"><c- n>NN</c-><c- o>::</c-><c- n>async_read_some</c-></code> and <code class="highlight"><c- n>NN</c-><c- o>::</c-><c- n>async_write_some</c-></code> are asynchronous socket-based networking APIs that return senders. <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>repeat_effect_until</c-></code>, <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>let_value</c-></code>, and <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>then</c-></code> and fully generic sender adaptor algorithms that accept and return senders.</p>
+   <p>This is a good example of seamless composition of async IO functions with non-IO operations. And by composing the senders in this structured way, all the state for the composite operation -- the <code class="highlight"><c- n>repeat_effect_until</c-></code> expression and all its child operations -- is stored altogether in a single object.</p>
    <h3 class="heading settled" data-level="1.4" id="example-algorithm"><span class="secno">1.4. </span><span class="content">Examples: Algorithms</span><a class="self-link" href="#example-algorithm"></a></h3>
    <p>In this section we show a few simple sender/receiver-based algorithm implementations.</p>
    <h4 class="heading settled" data-level="1.4.1" id="example-then"><span class="secno">1.4.1. </span><span class="content"><code class="highlight"><c- n>then</c-></code></span><a class="self-link" href="#example-then"></a></h4>
@@ -3005,6 +3053,10 @@ essential when writing user code using standard execution concepts; we have also
      <p>Add a section showing examples of simple sender adaptor algorithms.</p>
     <li data-md>
      <p>Add a section showing examples of simple schedulers.</p>
+    <li data-md>
+     <p>Add a few more examples: a sudoku solver, a parallel recursive file copy, and an echo server.</p>
+    <li data-md>
+     <p>Refined the forward progress guarantees on the <code class="highlight"><c- n>bulk</c-></code> algorithm.</p>
     <li data-md>
      <p>Add a section describing how to use a range of senders to represent async sequences.</p>
     <li data-md>
