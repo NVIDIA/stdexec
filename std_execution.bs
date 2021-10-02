@@ -1095,7 +1095,7 @@ The design of P2175R0 has been included in this paper for now, despite its poten
 support for cancellation is a fundamental requirement for an async model and is required in some form to be able to
 talk about the semantics of some of the algorithms proposed in this paper.
 
-This paper will be updated in future with any changes that arise from the investigations into P2175R0.
+This paper will be updated in the future with any changes that arise from the investigations into P2175R0.
 
 ## Schedulers advertise their forward progress guarantees ## {#design-fpg}
 
