@@ -3366,7 +3366,7 @@ receiver types, algorithms that introduce concurrency and provide higher-level c
 relieve the user from having to deal with low-level details of cancellation.</p>
    <h4 class="heading settled" data-level="4.10.1" id="cancellation-design-summary"><span class="secno">4.10.1. </span><span class="content">Cancellation design summary ###</span><a class="self-link" href="#cancellation-design-summary"></a></h4>
    <p>The design of cancellation described in this paper is built on top of and extends the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stop_token</c-></code>-based
-cancellation facilities added in C++20, first proposed in <a href="https://wg21.link/P2175R0">P2175R0</a>.</p>
+cancellation facilities added in C++20, first proposed in <a data-link-type="biblio" href="#biblio-p2175r0">[P2175R0]</a>.</p>
    <p>At a high-level, the facilities proposed by this paper for supporting cancellation include:</p>
    <ul>
     <li data-md>
@@ -3423,7 +3423,7 @@ check that variable and either call the completion-signalling operation or store
 receiver’s completion-signalling operation to the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>()</c-></code> call (which is still executing).</p>
    <p>For an example of an implementation strategy for solving these data-races see the <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></code> example in Appendix A.</p>
    <h4 class="heading settled" data-level="4.10.4" id="cancellation-design-status"><span class="secno">4.10.4. </span><span class="content">Cancellation design status ###</span><a class="self-link" href="#cancellation-design-status"></a></h4>
-   <p>This paper currently includes the design for cancellation as proposed in <a href="https://wg21.link/P2175R0">P2175R0</a> - "Composable cancellation for sender-based async operations".
+   <p>This paper currently includes the design for cancellation as proposed in <a data-link-type="biblio" href="#biblio-p2175r0">[P2175R0]</a> - "Composable cancellation for sender-based async operations".
 P2175R0 contains more details on the background motivation and prior-art and design rationale of this design.</p>
    <p>It is important to note, however, that initial review of this design in the SG1 concurrency subgroup raised some concerns
 related to runtime overhead of the design in single-threaded scenarios and these concerns are still being investigated.</p>
