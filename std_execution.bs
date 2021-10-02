@@ -269,6 +269,61 @@ This example demonstrates a common asynchronous I/O pattern - reading a payload 
 14. Once the data has been read, in another [[#design-sender-adaptor-then]], we confirm that we read the right number of bytes.
 15. Finally, we move out of and return our `dynamic_buffer` object. It will get sent by the sender returned by `async_read_array`. We can attach more things to that sender to use the data in the buffer.
 
+### More end-user examples ### {#example-moar}
+
+#### Sudoku solver #### {#example-sudoku}
+
+This example comes from Kirk Shoop, who ported an example from TBB's documentation to sender/receiver in his fork of the libunifex repo. It is a Sudoku solver that uses a configurable number of threads to explore the search space for solutions.
+
+The sender/receiver-based Sudoku solver can be found [here](https://github.com/kirkshoop/libunifex/blob/sudoku/examples/sudoku.cpp). Some things that are worth noting about Kirk's solution:
+
+1. Although it schedules asychronous work onto a thread pool, and each unit of work will schedule more work, its use of structured concurrency patterns make reference counting unnecessary. The solution does not make use of `shared_ptr`.
+
+2. In addition to eliminating the need for reference counting, the use of structured concurrency makes it easy to ensure that resources are cleaned up on all code paths. In contrast, the TBB example that inspired this one [leaks memory](https://github.com/oneapi-src/oneTBB/issues/568).
+
+For comparison, the TBB-based Sudoku solver can be found [here](https://github.com/oneapi-src/oneTBB/blob/40a9a1060069d37d5f66912c6ee4cf165144774b/examples/task_group/sudoku/sudoku.cpp).
+
+#### File copy #### {#example-file-copy}
+
+This example also comes from Kirk Shoop which uses sender/receiver to recursively copy the files a directory tree. It demonstrates how sender/receiver can be used to do IO, using a scheduler that schedules work on Linux's io_uring.
+
+As with the Sudoku example, this example obviates the need for reference counting by employing structured concurrency. It uses iteration with an upper limit to avoid having too many open file handles.
+
+You can find the example [here](https://github.com/kirkshoop/libunifex/blob/filecopy/examples/file_copy.cpp).
+
+#### Echo server #### {#example-echo-server}
+
+Dietmar Kuehl has a hobby project that implements networking APIs on top of sender/receiver. He recently implemented an echo server as a demo. His echo server code can be found [here](https://github.com/dietmarkuehl/kuhllib/blob/main/src/examples/echo_server.cpp).
+
+Below, I show the part of the echo server code. This code is executed for each client that connects to the echo server. In a loop, it reads input from a socket and echos the input back to the same socket. All of this, including the loop, is implemented with generic async algorithms. 
+
+    <pre highlight="c++">
+    outstanding.start(
+        EX::repeat_effect_until(
+              EX::let_value(
+                  NN::async_read_some(ptr->d_socket,
+                                      context.scheduler(),
+                                      NN::buffer(ptr->d_buffer))
+            | EX::then([ptr](::std::size_t n){
+                ::std::cout &lt;&lt; "read='" &lt;&lt; ::std::string_view(ptr->d_buffer, n) &lt;&lt; "'\n";
+                ptr->d_done = n == 0;
+                return n;
+            }),
+              [&context, ptr](::std::size_t n){
+                return NN::async_write_some(ptr->d_socket,
+                                            context.scheduler(),
+                                            NN::buffer(ptr->d_buffer, n));
+              })
+            | EX::then([](auto&&...){})
+            , [owner = ::std::move(owner)]{ return owner->d_done; }
+        )
+    );
+    </pre>
+
+In this code, `NN::async_read_some` and `NN::async_write_some` are asynchronous socket-based networking APIs that return senders. `EX::repeat_effect_until`, `EX::let_value`, and `EX::then` and fully generic sender adaptor algorithms that accept and return senders.
+
+This is a good example of seamless composition of async IO functions with non-IO operations. And by composing the senders in this structured way, all the state for the composite operation -- the `repeat_effect_until` expression and all its child operations -- is stored altogether in a single object.
+
 ## Examples: Algorithms ## {#example-algorithm}
 
 In this section we show a few simple sender/receiver-based algorithm implementations.
