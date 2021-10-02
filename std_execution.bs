@@ -678,6 +678,8 @@ The changes since R1 are as follows:
 * Add a section showing examples of simple schedulers.
 * Add a few more examples: a sudoku solver, a parallel recursive file copy, and an echo server.
 * Refined the forward progress guarantees on the `bulk` algorithm.
+* Add a section describing how to use a range of senders to represent async sequences.
+* Add a section showing how to use senders to represent partial success.
 * Add sender factories `execution::just_error` and `execution::just_done`.
 * Add sender adaptors `execution::done_as_optional` and `execution::done_as_error`.
 * Document more production uses of sender/receiver at scale.
@@ -1044,6 +1046,56 @@ Now imagine that <code><i>R</i></code> is the simple expression `views::iota(0) 
 
 Far more interesting would be if <code><i>R</i></code> were a range of senders representing, say, user actions in a UI. The above code gives a simple way to respond to user actions on demand.
 
+## Senders can represent partial success ## {#design-partial-success}
+
+Receivers have three ways they can complete: with success, failure, or cancellation. This begs the question of how they can be used to represent async operations that *partially* succeed. For example, consider an API that reads from a socket. The connection could drop after the API has filled in some of the buffer. In cases like that, it makes sense to want to report both that the connection dropped and that some data has been successfully read.
+
+Often in the case of partial success, the error condition is not fatal nor does it mean the API has failed to satisfy its post-conditions. It is merely an extra piece of information about the nature of the completion. In those cases, "partial success" is another way of saying "success". As a result, it is sensible to pass both the error code and the result (if any) through the value channel, as shown below:
+
+    <pre highlight="c++">
+    // Capture a buffer for read_socket_async to fill in
+    execution::just(array&lt;byte, 1024>{})
+      | execution::let_value([socket](array&lt;byte, 1024>& buff) {
+          // read_socket_async completes with two values: an error_code and
+          // a count of bytes:
+          return read_socket_async(socket, span{buff})
+              // For success (partial and full), specify the next action:
+            | execution::let_value([](error_code err, size_t bytes_read) {
+                if (err != 0) {
+                  // OK, partial success. Decide how to deal with the partial results
+                } else {
+                  // OK, full success here.
+                }
+              });
+        })
+    </pre>
+
+In other cases, the partial success is more of a partial *failure*. That happens when the error condition indicates that in some way the function failed to satisfy its post-conditions. In those cases, sending the error through the value channel loses valuable contextual information. It's possible that bundling the error and the incomplete results into an object and passing it through the error channel makes more sense. In that way, generic algorithms will not miss the fact that a post-condition has not been met and react inappropriately.
+
+Another possibility is for an async API to return a *range* of senders: if the API completes with full success, full error, or cancellation, the returned range contains just one sender with the result. Otherwise, if the API partially fails (doesn't satisfy its post-conditions, but some incomplete result is available), the returned range would have *two* senders: the first containing the partial result, and the second containing the error. Such an API might be used in a coroutine as follows:
+
+    <pre highlight="c++">
+    // Declare a buffer for read_socket_async to fill in
+    array&lt;byte, 1024> buff;
+
+    for (auto snd : read_socket_async(socket, span{buff})) {
+      try {
+        if (optional&lt;size_t> bytes_read =
+              co_await execution::done_as_optional(std::move(snd)))
+          // OK, we read some bytes into buff. Process them here....
+        } else {
+          // The socket read was cancelled and returned no data. React
+          // appropriately.
+        }
+      } catch (...) {
+        // read_socket_async failed to meet its post-conditions.
+        // Do some cleanup and propagate the error...
+      }
+    }
+    </pre>
+
+Finally, it's possible to combine these two approaches when the API can both partially succeed (meeting its post-conditions) and partially fail (not meeting its post-conditions).
+
 ## All awaitables are senders ## {#design-awaitables-are-senders}
 
 Since C++20 added coroutines to the standard, we expect that coroutines and awaitables will be how a great many will choose to express their asynchronous code. However, in this paper, we are proposing to add a suite of asynchronous algorithms that accept senders, not awaitables. One might wonder whether and how these algorithms will be accessible to those who choose coroutines instead of senders.
@@ -1103,6 +1155,31 @@ if (auto opt = co_await execution::done_as_optional(some_sender)) {
 As described in the section <a href="#design-awaitables-are-senders">"All awaitables are senders"</a>, the sender customization points recognize awaitables and adapt them transparently to model the sender concept. When `connect`-ing an awaitable and a receiver, the adaptation layer awaits the awaitable within a coroutine that implements `unhandled_done` in its promise type. The effect of this is that an "uncatchable" done exception propagates seamlessly out of awaitables, causing `execution::set_done` to be called on the receiver.
 
 Obviously, `unhandled_done` is a library extension of the coroutine promise interface. Many promise types will not implement `unhandled_done`. When an uncatchable done exception tries to propagate through such a coroutine, it is treated as an unhandled exception and `terminate` is called. The solution, as described above, is to use a sender adaptor to handle the done exception before awaiting it. It goes without saying that any future Standard Library coroutine types ought to implement `unhandled_done`. The author of [[P1056R1]], which proposes a standard coroutine task type, is in agreement.
+
+## Composition with Parallel Algorithms ## {#design-parallel-algorithms}
+
+The C++ Standard Library provides a large number of algorithms that offer the potential for non-sequential execution via the use of execution policies. The set of algorithms with execution policy overloads are often referred to as "parallel algorithms", although
+additional policies are available.
+
+Existing policies, such as `execution::par`, give the implementation permission to execute the algorithm in parallel. However, the choice of execution resources used to perform the work is left to the implementation.
+
+We will propose a customization point for combining schedulers with policies in order to provide control over where work will execute.
+
+<pre highlight="c++">
+template&lt;class ExecutionPolicy>
+<i>implementation-defined</i> executing_on(
+    execution::scheduler auto scheduler,
+    ExecutionPolicy && policy
+);
+</pre>
+
+This function would return an object of an implementation-defined type which can be used in place of an execution policy as the first argument to one of the parallel algorithms. The overload selected by that object should execute its computation as requested by
+`policy` while using `scheduler` to create any work to be run. The expression may be ill-formed if `scheduler` is not able to support the given policy.
+
+The existing parallel algorithms are synchronous; all of the effects performed by the computation are complete before the algorithm returns to its caller. This remains unchanged with the `executing_on` customization point.
+
+In the future, we expect additional papers will propose asynchronous forms of the parallel algorithms which (1) return senders rather than values or `void` and (2) where a customization point pairing a sender with an execution policy would similarly be used to
+obtain an object of implementation-defined type to be provided as the first argument to the algorithm.
 
 ## User-facing sender factories ## {#design-sender-factories}
 
@@ -1355,11 +1432,17 @@ execution::sender auto bulk(
 );
 </pre>
 
-Returns a sender describing the task of invoking the provided function with the values [=send|sent=] by the input sender for every index in the provided shape.
+Returns a sender describing the task of invoking the provided function with every index in the provided shape along with the values sent by the input sender. The returned sender completes once all invocations have completed, or an error has occurred. If it completes
+by sending values, they are equivalent to those sent by the input sender.
 
-In this paper, only integral types satisfy the concept of a shape, but future papers will explore bulk shapes of different kinds in more detail.
+No instance of `function` will begin executing until the returned sender is started. Each invocation of `function` runs in an execution agent whose forward progress guarantees are determined by the scheduler on which they are run. All agents created by a single use
+of `bulk` execute with the same guarantee. This allows, for instance, a scheduler to execute all invocations of the function in parallel.
 
-`bulk` is **guaranteed** to not begin executing `function` until the returned sender is started.
+The `bulk` operation is intended to be used at the point where the number of agents to be created is known and provided to `bulk` via its `shape` parameter. For some parallel computations, the number of agents to be created may be a function of the input data or
+dynamic conditions of the execution environment. In such cases, `bulk` can be combined with additional operations such as `let_value` to deliver dynamic shape information to the `bulk` operation.
+
+In this proposal, only integral types are used to specify the shape of the bulk section. We expect that future papers may wish to explore extensions of the interface to explore additional kinds of shapes, such as multi-dimensional grids, that are commonly used for
+parallel computing tasks.
 
 ### `execution::split` ### {#design-sender-adaptor-split}
 
