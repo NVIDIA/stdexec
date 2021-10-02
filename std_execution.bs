@@ -676,6 +676,8 @@ The changes since R1 are as follows:
 * Add a section describing the design of the sender/awaitable interactions.
 * Add a section showing examples of simple sender adaptor algorithms.
 * Add a section showing examples of simple schedulers.
+* Add a few more examples: a sudoku solver, a parallel recursive file copy, and an echo server.
+* Refined the forward progress guarantees on the `bulk` algorithm.
 * Add sender factories `execution::just_error` and `execution::just_done`.
 * Add sender adaptors `execution::done_as_optional` and `execution::done_as_error`.
 * Document more production uses of sender/receiver at scale.
