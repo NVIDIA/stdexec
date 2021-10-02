@@ -674,6 +674,7 @@ The changes since R1 are as follows:
 * Extend the `execution::connect` customization point and the `sender_traits<>` template to recognize awaitables as `typed_sender`s.
 * Add utilities `as_awaitable()` and `with_awaitable_senders<>` so a coroutine type can trivially make senders awaitable with a coroutine.
 * Add a section describing the design of the sender/awaitable interactions.
+* Add a section describing the design of the cancellation support in sender/receiver.
 * Add a section showing examples of simple sender adaptor algorithms.
 * Add a section showing examples of simple schedulers.
 * Add a few more examples: a sudoku solver, a parallel recursive file copy, and an echo server.
