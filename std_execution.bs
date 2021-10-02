@@ -1015,7 +1015,7 @@ relieve the user from having to deal with low-level details of cancellation.
 ### Cancellation design summary ###
 
 The design of cancellation described in this paper is built on top of and extends the `std::stop_token`-based
-cancellation facilities added in C++20, first proposed in [P2175R0](https://wg21.link/P2175R0).
+cancellation facilities added in C++20, first proposed in [[P2175R0]].
 
 At a high-level, the facilities proposed by this paper for supporting cancellation include:
 * Add `std::stoppable_token` and `std::stoppable_token_for` concepts that generalise the interface of `std::stop_token` type to allow other types with different implementation strategies.
@@ -1086,7 +1086,7 @@ For an example of an implementation strategy for solving these data-races see th
 ### Cancellation design status ###
 
 This paper currently includes the design for cancellation as proposed in
-[P2175R0](https://wg21.link/P2175R0) - "Composable cancellation for sender-based async operations".
+[[P2175R0]] - "Composable cancellation for sender-based async operations".
 P2175R0 contains more details on the background motivation and prior-art and design rationale of this design.
 
 It is important to note, however, that initial review of this design in the SG1 concurrency subgroup raised some concerns
