@@ -1,9 +1,9 @@
 <pre class='metadata'>
 Title: `std::execution`
 H1: <code>std::execution</code>
-Shortname: P2300
-Revision: 2
-Status: P
+Shortname: D2300
+Revision: 3
+Status: D
 Group: WG21
 Audience: SG1, LEWG
 Editor: Michał Dominiak, griwes@griwes.info
