@@ -1,9 +1,9 @@
 <pre class='metadata'>
 Title: `std::execution`
 H1: <code>std::execution</code>
-Shortname: D2300
+Shortname: P2300
 Revision: 2
-Status: D
+Status: P
 Group: WG21
 Audience: SG1, LEWG
 Editor: Michał Dominiak, griwes@griwes.info
@@ -295,7 +295,7 @@ You can find the example [here](https://github.com/kirkshoop/libunifex/blob/file
 
 Dietmar Kuehl has a hobby project that implements networking APIs on top of sender/receiver. He recently implemented an echo server as a demo. His echo server code can be found [here](https://github.com/dietmarkuehl/kuhllib/blob/main/src/examples/echo_server.cpp).
 
-Below, I show the part of the echo server code. This code is executed for each client that connects to the echo server. In a loop, it reads input from a socket and echos the input back to the same socket. All of this, including the loop, is implemented with generic async algorithms. 
+Below, I show the part of the echo server code. This code is executed for each client that connects to the echo server. In a loop, it reads input from a socket and echos the input back to the same socket. All of this, including the loop, is implemented with generic async algorithms.
 
     <pre highlight="c++">
     outstanding.start(
@@ -556,7 +556,7 @@ implementing one. The `inline_scheduler`:
     on the receiver, passing any exceptions to `std::execution::set_error` as an
     `exception_ptr`.
 
-### Single Thread Scheduler ### {#example-single-thread}
+### Single thread scheduler ### {#example-single-thread}
 
 This example shows how to create a scheduler for an execution context that consists of a single
 thread. It is implemented in terms of a lower-level execution context called `manual_event_loop`.
