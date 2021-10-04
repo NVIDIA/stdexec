@@ -2250,7 +2250,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <a href="#example-schedulers"><span class="secno">1.5</span> <span class="content">Examples: Schedulers</span></a>
        <ol class="toc">
         <li><a href="#example-schedulers-inline"><span class="secno">1.5.1</span> <span class="content">Inline scheduler</span></a>
-        <li><a href="#example-single-thread"><span class="secno">1.5.2</span> <span class="content">Single Thread Scheduler</span></a>
+        <li><a href="#example-single-thread"><span class="secno">1.5.2</span> <span class="content">Single thread scheduler</span></a>
        </ol>
       <li><a href="#intro-is-not"><span class="secno">1.6</span> <span class="content">What this proposal is <strong>not</strong></span></a>
       <li><a href="#intro-compare"><span class="secno">1.7</span> <span class="content">Design changes from P0443</span></a>
@@ -2951,7 +2951,7 @@ It returns an instance of type <code class="highlight"><c- n>_op</c-></code> tha
     <li data-md>
      <p>The operation state customizes <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> to call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> on the receiver, passing any exceptions to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> as an <code class="highlight"><c- n>exception_ptr</c-></code>.</p>
    </ol>
-   <h4 class="heading settled" data-level="1.5.2" id="example-single-thread"><span class="secno">1.5.2. </span><span class="content">Single Thread Scheduler</span><a class="self-link" href="#example-single-thread"></a></h4>
+   <h4 class="heading settled" data-level="1.5.2" id="example-single-thread"><span class="secno">1.5.2. </span><span class="content">Single thread scheduler</span><a class="self-link" href="#example-single-thread"></a></h4>
    <p>This example shows how to create a scheduler for an execution context that consists of a single
 thread. It is implemented in terms of a lower-level execution context called <code class="highlight"><c- n>manual_event_loop</c-></code>.</p>
 <pre class="language-c++ highlight"><c- n>class</c-> <c- n>single_thread_context</c-> <c- p>{</c->
