@@ -5895,7 +5895,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
  <c- k>public</c-><c- o>:</c->
   <i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>P</c-><c- o>&amp;</c-> <c- n>p</c-><c- p>);</c->
   <c- b>bool</c-> <c- nf>await_ready</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- k>return</c-> false<c- p>;</c-> <c- p>}</c->
-  <c- b>void</c-> <c- nf>await_suspend</c-><c- p>(</c-><c- n>coro</c-><c- o>::</c-><c- n>coroutine_handle</c-><c- o>&lt;></c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- n>start</c-><c- p>(</c-><c- n>state_</c-><c- p>);</c-> <c- p>}</c->
+  <c- b>void</c-> <c- nf>await_suspend</c-><c- p>(</c-><c- n>coro</c-><c- o>::</c-><c- n>coroutine_handle</c-><c- o>&lt;</c-><c- n>P</c-><c- o>></c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- n>start</c-><c- p>(</c-><c- n>state_</c-><c- p>);</c-> <c- p>}</c->
   <c- n>value_t</c-> <c- nf>await_resume</c-><c- p>();</c->
 <c- p>};</c->
 </pre>
