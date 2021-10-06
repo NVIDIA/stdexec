@@ -3737,7 +3737,7 @@ from the operation before the operation completes.
      public:
       <i>sender-awaitable</i>(S&& s, P& p);
       bool await_ready() const noexcept { return false; }
-      void await_suspend(coro::coroutine_handle&lt;>) noexcept { start(state_); }
+      void await_suspend(coro::coroutine_handle&lt;P>) noexcept { start(state_); }
       value_t await_resume();
     };
     </pre>

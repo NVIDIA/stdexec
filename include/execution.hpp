@@ -565,12 +565,12 @@ namespace std::execution {
         using __rec = typename Base::__rec;
         connect_result_t<Sender, __rec> op_;
       public:
-        __awaitable(Sender&& sender, coro::coroutine_handle<> h)
+        __awaitable(Sender&& sender, coro::coroutine_handle<Promise> h)
           noexcept(/* TODO: is_nothrow_connectable_v<Sender, __rec>*/ false)
           : op_(connect((Sender&&)sender, __rec{{&this->result_, h}}))
         {}
 
-        void await_suspend(coro::coroutine_handle<>) noexcept {
+        void await_suspend(coro::coroutine_handle<Promise>) noexcept {
           start(op_);
         }
       };
