@@ -277,8 +277,6 @@ namespace std::execution {
   // NOT TO SPEC
   template <class R>
     using stop_token_type_t = remove_cvref_t<decltype(get_stop_token(std::declval<R>()))>;
->>>>>>> origin/main
->>>>>>> origin/main
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
