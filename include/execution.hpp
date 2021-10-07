@@ -905,16 +905,19 @@ namespace std::execution {
       ((!same_as<T, Us>) &&...);
 
   namespace __tag_invoke_adaptors {
+    // A derived-to-base cast that works even when the base is not
+    // accessible from derived.
     template <class T, class U>
-      __member_t<U, T> __c_cast(U&& u) noexcept {
+      __member_t<U, T> __c_cast(U&& u) noexcept requires __same_<T, T> {
         static_assert(is_reference_v<__member_t<U, T>>);
+        static_assert(is_base_of_v<T, remove_reference_t<U>>);
         return (__member_t<U, T>) (U&&) u;
       }
 
     template <class Base>
     struct __adaptor {
       struct __t {
-        __t(Base base) : base_((Base&&) base) {}
+        explicit __t(Base base) : base_((Base&&) base) {}
 
       private:
         [[no_unique_address]] Base base_;
@@ -936,15 +939,7 @@ namespace std::execution {
 
     template <sender Base, __class Derived>
       struct __sender_adaptor {
-        struct __t : private __adaptor_base<Base> {
-          __t(Base base)
-            : __adaptor_base<Base>((Base&&) base)
-          {}
-
-        protected:
-          using __adaptor_base<Base>::base;
-
-        private:
+        class __t : __adaptor_base<Base> {
           template <__same_<Derived> Self, receiver R>
             requires __has_connect<Self, R>
           friend auto tag_invoke(connect_t, Self&& self, R&& r)
@@ -969,6 +964,14 @@ namespace std::execution {
             -> invoke_result_t<Tag, const Base&, As...> {
             return ((Tag&&) tag)(__c_cast<__t>(self).base(), (As&&) as...);
           }
+
+        protected:
+          using __adaptor_base<Base>::base;
+
+        public:
+          explicit __t(Base base)
+            : __adaptor_base<Base>((Base&&) base)
+          {}
         };
       };
 
@@ -992,15 +995,7 @@ namespace std::execution {
 
     template <receiver Base, __class Derived>
       struct __receiver_adaptor {
-        struct __t : private __adaptor_base<Base> {
-          __t(Base base)
-            : __adaptor_base<Base>((Base&&) base)
-          {}
-
-        protected:
-          using __adaptor_base<Base>::base;
-
-        private:
+        class __t : __adaptor_base<Base> {
           friend Derived;
 
           template <same_as<Derived> Self, class... As>
@@ -1051,6 +1046,14 @@ namespace std::execution {
             -> invoke_result_t<Tag, const Base&, As...> {
             return ((Tag&&) tag)(__c_cast<__t>(self).base(), (As&&) as...);
           }
+
+        protected:
+          using __adaptor_base<Base>::base;
+
+        public:
+          explicit __t(Base base)
+            : __adaptor_base<Base>((Base&&) base)
+          {}
         };
       };
 
@@ -1062,15 +1065,7 @@ namespace std::execution {
 
     template <operation_state Base, __class Derived>
       struct __operation_state_adaptor {
-        struct __t : private __adaptor_base<Base> {
-          __t(Base base)
-            : __adaptor_base<Base>((Base&&) base)
-          {}
-
-        protected:
-          using __adaptor_base<Base>::base;
-
-        private:
+        class __t : __adaptor_base<Base> {
           template <same_as<Derived> Self>
             requires __has_start<Self>
           friend void tag_invoke(start_t, Self& self) noexcept {
@@ -1091,6 +1086,14 @@ namespace std::execution {
             -> invoke_result_t<Tag, const Base&, As...> {
             return ((Tag&&) tag)(__c_cast<__t>(self).base(), (As&&) as...);
           }
+
+        protected:
+          using __adaptor_base<Base>::base;
+
+        public:
+          explicit __t(Base base)
+            : __adaptor_base<Base>((Base&&) base)
+          {}
         };
       };
 
@@ -1102,15 +1105,7 @@ namespace std::execution {
 
     template <scheduler Base, __class Derived>
       struct __scheduler_adaptor {
-        struct __t : private __adaptor_base<Base> {
-          __t(Base base)
-            : __adaptor_base<Base>((Base&&) base)
-          {}
-
-        protected:
-          using __adaptor_base<Base>::base;
-
-        private:
+        class __t : __adaptor_base<Base> {
           template <__same_<Derived> Self>
             requires __has_schedule<Self>
           friend auto tag_invoke(schedule_t, Self&& self)
@@ -1134,6 +1129,14 @@ namespace std::execution {
             -> invoke_result_t<Tag, const Base&, As...> {
             return ((Tag&&) tag)(__c_cast<__t>(self).base(), (As&&) as...);
           }
+
+        protected:
+          using __adaptor_base<Base>::base;
+
+        public:
+          explicit __t(Base base)
+            : __adaptor_base<Base>((Base&&) base)
+          {}
         };
       };
   }
