@@ -907,8 +907,8 @@ namespace std::execution {
   namespace __tag_invoke_adaptors {
     template <class T, class U>
       __member_t<U, T> __c_cast(U&& u) noexcept {
-        return static_cast<__member_t<U, T>>(
-          *(add_pointer_t<__member_t<U, T>>) &u);
+        static_assert(is_reference_v<__member_t<U, T>>);
+        return (__member_t<U, T>) (U&&) u;
       }
 
     template <class Base>
@@ -920,6 +920,7 @@ namespace std::execution {
         [[no_unique_address]] Base base_;
 
       protected:
+        Base& base() & noexcept { return base_; }
         const Base& base() const & noexcept { return base_; }
         Base&& base() && noexcept { return (Base&&) base_; }
       };
@@ -1052,6 +1053,89 @@ namespace std::execution {
           }
         };
       };
+
+    template <class OpState>
+      concept __has_start =
+        requires(OpState& op) {
+          op.start();
+        };
+
+    template <operation_state Base, __class Derived>
+      struct __operation_state_adaptor {
+        struct __t : private __adaptor_base<Base> {
+          __t(Base base)
+            : __adaptor_base<Base>((Base&&) base)
+          {}
+
+        protected:
+          using __adaptor_base<Base>::base;
+
+        private:
+          template <same_as<Derived> Self>
+            requires __has_start<Self>
+          friend void tag_invoke(start_t, Self& self) noexcept {
+            static_assert(noexcept(self.start()));
+            self.start();
+          }
+
+          template <same_as<Derived> Self>
+            requires (!__has_start<Self>) && operation_state<Base&>
+          friend void tag_invoke(start_t, Self& self) noexcept {
+            execution::start(__c_cast<__t>(self).base());
+          }
+
+          template <__none_of<start_t> Tag, same_as<Derived> Self, class... As>
+            requires invocable<Tag, const Base&, As...>
+          friend auto tag_invoke(Tag tag, const Self& self, As&&... as)
+            noexcept(is_nothrow_invocable_v<Tag, const Base&, As...>)
+            -> invoke_result_t<Tag, const Base&, As...> {
+            return ((Tag&&) tag)(__c_cast<__t>(self).base(), (As&&) as...);
+          }
+        };
+      };
+
+    template <class Sched>
+      concept __has_schedule =
+        requires(Sched&& sched) {
+          ((Sched&&) sched).schedule();
+        };
+
+    template <scheduler Base, __class Derived>
+      struct __scheduler_adaptor {
+        struct __t : private __adaptor_base<Base> {
+          __t(Base base)
+            : __adaptor_base<Base>((Base&&) base)
+          {}
+
+        protected:
+          using __adaptor_base<Base>::base;
+
+        private:
+          template <__same_<Derived> Self>
+            requires __has_schedule<Self>
+          friend auto tag_invoke(schedule_t, Self&& self)
+            noexcept(noexcept(((Self&&) self).schedule()))
+            -> decltype(((Self&&) self).schedule()) {
+            return ((Self&&) self).schedule();
+          }
+
+          template <__same_<Derived> Self>
+            requires (!__has_schedule<Self>) && scheduler<__member_t<Self, Base>>
+          friend auto tag_invoke(schedule_t, Self&& self)
+            noexcept(noexcept(execution::schedule(__declval<__member_t<Self, Base>>())))
+            -> schedule_result_t<Self> {
+            return execution::schedule(__c_cast<__t>((Self&&) self).base());
+          }
+
+          template <__none_of<schedule_t> Tag, same_as<Derived> Self, class... As>
+            requires invocable<Tag, const Base&, As...>
+          friend auto tag_invoke(Tag tag, const Self& self, As&&... as)
+            noexcept(is_nothrow_invocable_v<Tag, const Base&, As...>)
+            -> invoke_result_t<Tag, const Base&, As...> {
+            return ((Tag&&) tag)(__c_cast<__t>(self).base(), (As&&) as...);
+          }
+        };
+      };
   }
   template <sender Base, __class Derived>
     using sender_adaptor =
@@ -1060,6 +1144,14 @@ namespace std::execution {
   template <receiver Base, __class Derived>
     using receiver_adaptor =
       typename __tag_invoke_adaptors::__receiver_adaptor<Base, Derived>::__t;
+
+  template <operation_state Base, __class Derived>
+    using operation_state_adaptor =
+      typename __tag_invoke_adaptors::__operation_state_adaptor<Base, Derived>::__t;
+
+  template <scheduler Base, __class Derived>
+    using scheduler_adaptor =
+      typename __tag_invoke_adaptors::__scheduler_adaptor<Base, Derived>::__t;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
