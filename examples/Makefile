@@ -1,7 +1,7 @@
 BUILDDIR = build
 IDIR =../include
 CXX=clang++-12
-CXXFLAGS=-I$(IDIR) -std=c++20 -stdlib=libc++
+CXXFLAGS=-I$(IDIR) -std=c++20 -stdlib=libc++ -ftemplate-backtrace-limit=0
 
 LIBS=-pthread
 
