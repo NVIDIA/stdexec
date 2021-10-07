@@ -17,6 +17,9 @@
 
 namespace std {
   // Some utilities for manipulating lists of types at compile time
+  template <class...>
+    struct __types;
+
   template <template<class...> class List, template<class> class Fn>
     struct __transform {
       template <class... Args>
@@ -77,13 +80,15 @@ namespace std {
     };
 
   // For copying cvref from one type to another:
+  template <class T>
+  T&& __declval() noexcept;
+
   template <class Member, class Self>
-    Member Self::*__memptr(const Self&);
+  Member Self::*__memptr(const Self&);
 
   template <typename Self, typename Member>
-    using __member_t = decltype(
-      (static_cast<Self&&(*)()>(0)()) .*
-        std::__memptr<Member>(static_cast<Self&&(*)()>(0)()));
+  using __member_t = decltype(
+      (__declval<Self>() .* __memptr<Member>(__declval<Self>())));
 
   // For hiding a template type parameter from ADL
   template <class T>
