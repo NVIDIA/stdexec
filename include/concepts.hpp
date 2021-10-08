@@ -83,10 +83,20 @@ namespace std {
 
 namespace std {
   template<class T, class U>
-    concept __same_ = same_as<remove_cvref_t<T>, U>;
+    concept __decays_to =
+      same_as<decay_t<T>, U>;
+
+  template <class C>
+    concept __class =
+      is_class_v<C> && __decays_to<C, C>;
 
   template <class T, class... As>
-    concept __one_of = (same_as<T, As> ||...);
+    concept __one_of =
+      (same_as<T, As> ||...);
+
+  template <class T, class... Us>
+    concept __none_of =
+      ((!same_as<T, Us>) &&...);
 
   // Not exactly right, but close.
   template <class T>

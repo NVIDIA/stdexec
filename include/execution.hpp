@@ -650,7 +650,7 @@ namespace std::execution {
           struct __wrap {
             __rec* __this;
             // Forward all tag_invoke calls, including the receiver ops.
-            template<__same_<__wrap> Self, class... As, invocable<__member_t<Self, R>, As...> Tag>
+            template<__decays_to<__wrap> Self, class... As, invocable<__member_t<Self, R>, As...> Tag>
             friend auto tag_invoke(Tag tag, Self&& self, As&&... as)
                 noexcept(is_nothrow_invocable_v<Tag, __member_t<Self, R>, As...>)
                 -> invoke_result_t<Tag, __member_t<Self, R>, As...> {
@@ -896,19 +896,11 @@ namespace std::execution {
   }
 
   // NOT TO SPEC
-  template <class C>
-    concept __class =
-      (std::is_class_v<C>) && __same_<C, C>;
-
-  template <class T, class... Us>
-    concept __none_of =
-      ((!same_as<T, Us>) &&...);
-
   namespace __tag_invoke_adaptors {
     // A derived-to-base cast that works even when the base is not
     // accessible from derived.
     template <class T, class U>
-      __member_t<U, T> __c_cast(U&& u) noexcept requires __same_<T, T> {
+      __member_t<U, T> __c_cast(U&& u) noexcept requires __decays_to<T, T> {
         static_assert(is_reference_v<__member_t<U, T>>);
         static_assert(is_base_of_v<T, remove_reference_t<U>>);
         return (__member_t<U, T>) (U&&) u;
@@ -940,7 +932,7 @@ namespace std::execution {
     template <sender Base, __class Derived>
       struct __sender_adaptor {
         class __t : __adaptor_base<Base> {
-          template <__same_<Derived> Self, receiver R>
+          template <__decays_to<Derived> Self, receiver R>
             requires __has_connect<Self, R>
           friend auto tag_invoke(connect_t, Self&& self, R&& r)
             noexcept(noexcept(((Self&&) self).connect((R&&) r)))
@@ -948,7 +940,7 @@ namespace std::execution {
             return ((Self&&) self).connect((R&&) r);
           }
 
-          template <__same_<Derived> Self, receiver R>
+          template <__decays_to<Derived> Self, receiver R>
             requires (!__has_connect<Self, R>) &&
               sender_to<__member_t<Self, Base>, R>
           friend auto tag_invoke(connect_t, Self&& self, R&& r)
@@ -1106,7 +1098,7 @@ namespace std::execution {
     template <scheduler Base, __class Derived>
       struct __scheduler_adaptor {
         class __t : __adaptor_base<Base> {
-          template <__same_<Derived> Self>
+          template <__decays_to<Derived> Self>
             requires __has_schedule<Self>
           friend auto tag_invoke(schedule_t, Self&& self)
             noexcept(noexcept(((Self&&) self).schedule()))
@@ -1114,7 +1106,7 @@ namespace std::execution {
             return ((Self&&) self).schedule();
           }
 
-          template <__same_<Derived> Self>
+          template <__decays_to<Derived> Self>
             requires (!__has_schedule<Self>) && scheduler<__member_t<Self, Base>>
           friend auto tag_invoke(schedule_t, Self&& self)
             noexcept(noexcept(execution::schedule(__declval<__member_t<Self, Base>>())))
