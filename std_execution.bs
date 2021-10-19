@@ -135,11 +135,11 @@ using namespace std::execution;
 scheduler auto sch = get_thread_pool().scheduler();                           // 1
 
 sender auto begin = schedule(sch);                                            // 2
-sender auto hi_again = then(begin, []{                                        // 3
+sender auto hi = then(begin, []{                                              // 3
     std::cout << "Hello world! Have an int.";                                 // 3
     return 13;                                                                // 3
 });                                                                           // 3
-sender auto add_42 = then(hi_again, [](int arg) { return arg + 42; });        // 4
+sender auto add_42 = then(hi, [](int arg) { return arg + 42; });              // 4
 
 auto [i] = this_thread::sync_wait(add_42).value();                            // 5
 ```
