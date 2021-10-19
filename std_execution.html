@@ -1560,7 +1560,7 @@ Possible extra rowspan handling
     blockquote c-[vi] { color: inherit; } /* Name.Variable.Instance */
     blockquote c-[il] { color: inherit; } /* Literal.Number.Integer.Long */
   </style>
-  <meta content="Bikeshed version a210b7d86, updated Thu Sep 16 13:45:19 2021 -0700" name="generator">
+  <meta content="Bikeshed version d7036035b, updated Fri Oct 8 17:07:11 2021 -0700" name="generator">
   <link href="https://wg21.link/P2300" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
 <style>
@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-10-08">2021-10-08</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-10-19">2021-10-19</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2526,11 +2526,11 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
 <c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->                           <c- c1>// 1</c->
 
 <c- n>sender</c-> <c- k>auto</c-> <c- n>begin</c-> <c- o>=</c-> <c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->                                            <c- c1>// 2</c->
-<c- n>sender</c-> <c- k>auto</c-> <c- n>hi_again</c-> <c- o>=</c-> <c- n>then</c-><c- p>(</c-><c- n>begin</c-><c- p>,</c-> <c- p>[]{</c->                                        <c- c1>// 3</c->
+<c- n>sender</c-> <c- k>auto</c-> <c- n>hi</c-> <c- o>=</c-> <c- n>then</c-><c- p>(</c-><c- n>begin</c-><c- p>,</c-> <c- p>[]{</c->                                              <c- c1>// 3</c->
     <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- s>"Hello world! Have an int."</c-><c- p>;</c->                                 <c- c1>// 3</c->
     <c- k>return</c-> <c- mi>13</c-><c- p>;</c->                                                                <c- c1>// 3</c->
 <c- p>});</c->                                                                           <c- c1>// 3</c->
-<c- n>sender</c-> <c- k>auto</c-> <c- n>add_42</c-> <c- o>=</c-> <c- n>then</c-><c- p>(</c-><c- n>hi_again</c-><c- p>,</c-> <c- p>[](</c-><c- b>int</c-> <c- n>arg</c-><c- p>)</c-> <c- p>{</c-> <c- k>return</c-> <c- n>arg</c-> <c- o>+</c-> <c- mi>42</c-><c- p>;</c-> <c- p>});</c->        <c- c1>// 4</c->
+<c- n>sender</c-> <c- k>auto</c-> <c- n>add_42</c-> <c- o>=</c-> <c- n>then</c-><c- p>(</c-><c- n>hi</c-><c- p>,</c-> <c- p>[](</c-><c- b>int</c-> <c- n>arg</c-><c- p>)</c-> <c- p>{</c-> <c- k>return</c-> <c- n>arg</c-> <c- o>+</c-> <c- mi>42</c-><c- p>;</c-> <c- p>});</c->              <c- c1>// 4</c->
 
 <c- k>auto</c-> <c- p>[</c-><c- n>i</c-><c- p>]</c-> <c- o>=</c-> <c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>add_42</c-><c- p>).</c-><c- n>value</c-><c- p>();</c->                            <c- c1>// 5</c->
 </pre>
