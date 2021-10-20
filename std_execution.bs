@@ -1277,11 +1277,11 @@ auto snd = execution::then(
                execution::then(
                  execution::transfer(
                    execution::then(
-                     execution::schedule(get_thread_pool_scheduler())
+                     execution::schedule(get_thread_pool().scheduler())
                      []{ return 123; }),
                    cuda::new_stream_scheduler()),
                  [](int i){ return 123 * 5; }),
-               get_thread_pool()),
+               get_thread_pool().scheduler()),
              [](int i){ return i - 5; });
 auto [result] = this_thread::sync_wait(snd).value();
 // result == 610
@@ -1289,11 +1289,11 @@ auto [result] = this_thread::sync_wait(snd).value();
 <tr>
 <th>Function call <br/> (named temporaries)
 <td><pre highlight=c++>
-auto snd0 = execution::schedule(get_thread_pool_scheduler());
+auto snd0 = execution::schedule(get_thread_pool().scheduler());
 auto snd1 = execution::then(snd0, []{ return 123; });
 auto snd2 = execution::transfer(snd1, cuda::new_stream_scheduler());
 auto snd3 = execution::then(snd2, [](int i){ return 123 * 5; })
-auto snd4 = execution::transfer(snd3, get_thread_pool())
+auto snd4 = execution::transfer(snd3, get_thread_pool().scheduler())
 auto snd5 = execution::then(snd4, [](int i){ return i - 5; });
 auto [result] = *this_thread::sync_wait(snd4);
 // result == 610
@@ -1301,11 +1301,11 @@ auto [result] = *this_thread::sync_wait(snd4);
 <tr>
 <th>Pipe
 <td><pre highlight=c++>
-auto snd = execution::schedule(get_thread_pool_scheduler())
+auto snd = execution::schedule(get_thread_pool().scheduler())
          | execution::then([]{ return 123; })
          | execution::transfer(cuda::new_stream_scheduler())
          | execution::then([](int i){ return 123 * 5; })
-         | execution::transfer(get_thread_pool())
+         | execution::transfer(get_thread_pool().scheduler())
          | execution::then([](int i){ return i - 5; });
 auto [result] = this_thread::sync_wait(snd).value();
 // result == 610
