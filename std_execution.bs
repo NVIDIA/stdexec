@@ -269,6 +269,143 @@ This example demonstrates a common asynchronous I/O pattern - reading a payload 
 14. Once the data has been read, in another [[#design-sender-adaptor-then]], we confirm that we read the right number of bytes.
 15. Finally, we move out of and return our `dynamic_buffer` object. It will get sent by the sender returned by `async_read_array`. We can attach more things to that sender to use the data in the buffer.
 
+## Asynchronous Windows socket `recv` ## {#example-async-windows-socket-recv}
+
+To get a better feel for how this interface might be used by low-level operations see this example implementation
+of a cancellable `async_recv()` operation for a Windows Socket.
+
+```c++
+struct operation_base : WSAOVERALAPPED {
+    using completion_fn = void(operation_base* op, DWORD bytesTransferred, int errorCode) noexcept;
+
+    // Assume IOCP event loop will call this when this OVERLAPPED structure is dequeued.
+    completion_fn* completed;
+};
+
+template<typename Receiver>
+struct recv_op : operation_base {
+    recv_op(SOCKET s, void* data, size_t len, Receiver r)
+    : receiver(std::move(r))
+    , sock(s) {
+        this->Internal = 0;
+        this->InternalHigh = 0;
+        this->Offset = 0;
+        this->OffsetHigh = 0;
+        this->hEvent = NULL;
+        this->completed = &recv_op::on_complete;
+        buffer.len = len;
+        buffer.buf = static_cast<CHAR*>(data);
+    }
+
+    friend void tag_invoke(std::tag_t<std::execution::start>, recv_op& self) noexcept {
+        // Avoid even calling WSARecv() if operation already cancelled
+        auto st = std::execution::get_stop_token(self.receiver);
+        if (st.stop_requested()) {
+            std::execution::set_done(std::move(self.receiver));
+            return;
+        }
+
+        // Store and cache result here in case it changes during execution
+        const bool stopPossible = st.stop_possible();
+        if (!stopPossible) {
+            self.ready.store(true, std::memory_order_relaxed);
+        }
+
+        // Launch the operation
+        DWORD bytesTransferred = 0;
+        DWORD flags = 0;
+        int result = WSARecv(self.sock, &self.buffer, 1, &bytesTransferred, &flags,
+                             static_cast<WSAOVERLAPPED*>(&self), NULL);
+        if (result == SOCKET_ERROR) {
+            int errorCode = WSAGetLastError();
+            if (errorCode != WSA_IO_PENDING)) {
+                if (errorCode == WSA_OPERATION_ABORTED) {
+                    std::execution::set_done(std::move(self.receiver));
+                } else {
+                    std::execution::set_error(std::move(self.receiver),
+                                              std::error_code(errorCode, std::system_category()));
+                }
+                return;
+            }
+        } else {
+            // Completed synchronously (assuming FILE_SKIP_COMPLETION_PORT_ON_SUCCESS has been set)
+            execution::set_value(std::move(self.receiver), bytesTransferred);
+            return;
+        }
+
+        // If we get here then operation has launched successfully and will complete asynchronously.
+        // May be completing concurrently on another thread already.
+        if (stopPossible) {
+            // Register the stop callback
+            self.stopCallback.emplace(std::move(st), cancel_cb{self});
+
+            // Mark as 'completed'
+            if (self.ready.load(std::memory_order_acquire) ||
+                self.ready.exchange(true, std::memory_order_acq_rel)) {
+                // Already completed on another thread
+                self.stopCallback.reset();
+
+                BOOL ok = WSAGetOverlappedResult(self.sock, (WSAOVERLAPPED*)&self, &bytesTransferred, FALSE, &flags);
+                if (ok) {
+                    std::execution::set_value(std::move(self.receiver), bytesTransferred);
+                } else {
+                    int errorCode = WSAGetLastError();
+                    std::execution::set_error(std::move(self.receiver),
+                                              std::error_code(errorCode, std::system_category()));
+                }
+            }
+        }
+    }
+
+    struct cancel_cb {
+        recv_op& op;
+
+        void operator()() noexcept {
+            CancelIoEx((HANDLE)op.sock, (OVERLAPPED*)(WSAOVERLAPPED*)&op);
+        }
+    };
+
+    static void on_complete(operation_base* op, DWORD bytesTransferred, int errorCode) noexcept {
+        recv_op& self = *static_cast<recv_op*>(op);
+
+        if (ready.load(std::memory_order_acquire) || ready.exchange(true, std::memory_order_acq_rel)) {
+            // Unsubscribe any stop-callback so we know that CancelIoEx() is not accessing 'op' any more
+            stopCallback.reset();
+
+            if (errorCode == 0) {
+                std::execution::set_value(std::move(receiver), bytesTransferred);
+            } else {
+                std::execution::set_error(std::move(receiver),
+                                          std::error_code(errorCode, std::system_category()));
+            }
+        }
+    }
+
+    Receiver receiver;
+    SOCKET sock;
+    WSABUF buffer;
+    std::optional<typename stop_callback_type_t<Receiver>::template callback_type<cancel_cb>> stopCallback;
+    std::atomic<bool> ready{false};
+};
+
+struct recv_sender {
+    SOCKET sock;
+    void* data;
+    size_t len;
+
+    template<typename Receiver>
+    friend recv_op<Receiver> tag_invoke(std::tag_t<std::execution::connect>
+                                        const recv_sender& s,
+                                        Receiver r) {
+        return recv_op<Receiver>{s.sock, s.data, s.len, std::move(r)};
+    }
+};
+
+recv_sender async_recv(SOCKET s, void* data, size_t len) {
+    return recv_sender{s, data, len};
+}
+```
+
 ### More end-user examples ### {#example-moar}
 
 #### Sudoku solver #### {#example-sudoku}
@@ -1081,7 +1218,7 @@ an atomic variable once it has finished registering the stop-callback and having
 check that variable and either call the completion-signalling operation or store the result and defer calling the
 receiver's completion-signalling operation to the `execution::start()` call (which is still executing).
 
-For an example of an implementation strategy for solving these data-races see the `async_recv()` example in Appendix A.
+For an example of an implementation strategy for solving these data-races see [[#example-async-windows-socket-recv]].
 
 ### Cancellation design status ### {#design-cancellation-status}
 
@@ -3847,141 +3984,3 @@ from the operation before the operation completes.
         </pre>
 
 
-# Appendix A - Cancellation Examples # {#appendix-a-cancellation-examples}
-
-## Cancellation Example: Socket `async_recv()` ### {#appendix-a-async_recv}
-
-To get a better feel for how this interface might be used by low-level operations see this example implementation
-of a cancellable `async_recv()` operation for a Windows Socket.
-
-```c++
-struct operation_base : WSAOVERALAPPED {
-    using completion_fn = void(operation_base* op, DWORD bytesTransferred, int errorCode) noexcept;
-
-    // Assume IOCP event loop will call this when this OVERLAPPED structure is dequeued.
-    completion_fn* completed;
-};
-
-template<typename Receiver>
-struct recv_op : operation_base {
-    recv_op(SOCKET s, void* data, size_t len, Receiver r)
-    : receiver(std::move(r))
-    , sock(s) {
-        this->Internal = 0;
-        this->InternalHigh = 0;
-        this->Offset = 0;
-        this->OffsetHigh = 0;
-        this->hEvent = NULL;
-        this->completed = &recv_op::on_complete;
-        buffer.len = len;
-        buffer.buf = static_cast<CHAR*>(data);
-    }
-
-    friend void tag_invoke(std::tag_t<std::execution::start>, recv_op& self) noexcept {
-        // Avoid even calling WSARecv() if operation already cancelled
-        auto st = std::execution::get_stop_token(self.receiver);
-        if (st.stop_requested()) {
-            std::execution::set_done(std::move(self.receiver));
-            return;
-        }
-
-        // Store and cache result here in case it changes during execution
-        const bool stopPossible = st.stop_possible();
-        if (!stopPossible) {
-            self.ready.store(true, std::memory_order_relaxed);
-        }
-
-        // Launch the operation
-        DWORD bytesTransferred = 0;
-        DWORD flags = 0;
-        int result = WSARecv(self.sock, &self.buffer, 1, &bytesTransferred, &flags,
-                             static_cast<WSAOVERLAPPED*>(&self), NULL);
-        if (result == SOCKET_ERROR) {
-            int errorCode = WSAGetLastError();
-            if (errorCode != WSA_IO_PENDING)) {
-                if (errorCode == WSA_OPERATION_ABORTED) {
-                    std::execution::set_done(std::move(self.receiver));
-                } else {
-                    std::execution::set_error(std::move(self.receiver),
-                                              std::error_code(errorCode, std::system_category()));
-                }
-                return;
-            }
-        } else {
-            // Completed synchronously (assuming FILE_SKIP_COMPLETION_PORT_ON_SUCCESS has been set)
-            execution::set_value(std::move(self.receiver), bytesTransferred);
-            return;
-        }
-
-        // If we get here then operation has launched successfully and will complete asynchronously.
-        // May be completing concurrently on another thread already.
-        if (stopPossible) {
-            // Register the stop callback
-            self.stopCallback.emplace(std::move(st), cancel_cb{self});
-
-            // Mark as 'completed'
-            if (self.ready.load(std::memory_order_acquire) ||
-                self.ready.exchange(true, std::memory_order_acq_rel)) {
-                // Already completed on another thread
-                self.stopCallback.reset();
-
-                BOOL ok = WSAGetOverlappedResult(self.sock, (WSAOVERLAPPED*)&self, &bytesTransferred, FALSE, &flags);
-                if (ok) {
-                    std::execution::set_value(std::move(self.receiver), bytesTransferred);
-                } else {
-                    int errorCode = WSAGetLastError();
-                    std::execution::set_error(std::move(self.receiver),
-                                              std::error_code(errorCode, std::system_category()));
-                }
-            }
-        }
-    }
-
-    struct cancel_cb {
-        recv_op& op;
-
-        void operator()() noexcept {
-            CancelIoEx((HANDLE)op.sock, (OVERLAPPED*)(WSAOVERLAPPED*)&op);
-        }
-    };
-
-    static void on_complete(operation_base* op, DWORD bytesTransferred, int errorCode) noexcept {
-        recv_op& self = *static_cast<recv_op*>(op);
-
-        if (ready.load(std::memory_order_acquire) || ready.exchange(true, std::memory_order_acq_rel)) {
-            // Unsubscribe any stop-callback so we know that CancelIoEx() is not accessing 'op' any more
-            stopCallback.reset();
-
-            if (errorCode == 0) {
-                std::execution::set_value(std::move(receiver), bytesTransferred);
-            } else {
-                std::execution::set_error(std::move(receiver),
-                                          std::error_code(errorCode, std::system_category()));
-            }
-        }
-    }
-
-    Receiver receiver;
-    SOCKET sock;
-    WSABUF buffer;
-    std::optional<typename stop_callback_type_t<Receiver>::template callback_type<cancel_cb>> stopCallback;
-    std::atomic<bool> ready{false};
-};
-
-struct recv_sender {
-    SOCKET sock;
-    void* data;
-    size_t len;
-
-    template<typename Receiver>
-    friend recv_op<Receiver> tag_invoke(std::tag_t<std::execution::connect>
-                                        const recv_sender& s,
-                                        Receiver r) {
-        return recv_op<Receiver>{s.sock, s.data, s.len, std::move(r)};
-    }
-};
-
-recv_sender async_recv(SOCKET s, void* data, size_t len) {
-    return recv_sender{s, data, len};
-}
-```
