@@ -3601,11 +3601,11 @@ Consider the following example where we want to execute first on a CPU thread po
                <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c->
                  <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c->
                    <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c->
-                     <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>get_thread_pool_scheduler</c-><c- p>())</c->
+                     <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>())</c->
                      <c- p>[]{</c-> <c- k>return</c-> <c- mi>123</c-><c- p>;</c-> <c- p>}),</c->
                    <c- n>cuda</c-><c- o>::</c-><c- n>new_stream_scheduler</c-><c- p>()),</c->
                  <c- p>[](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- mi>123</c-> <c- o>*</c-> <c- mi>5</c-><c- p>;</c-> <c- p>}),</c->
-               <c- n>get_thread_pool</c-><c- p>()),</c->
+               <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>()),</c->
              <c- p>[](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- n>i</c-> <c- o>-</c-> <c- mi>5</c-><c- p>;</c-> <c- p>});</c->
 <c- k>auto</c-> <c- p>[</c-><c- n>result</c-><c- p>]</c-> <c- o>=</c-> <c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>snd</c-><c- p>).</c-><c- n>value</c-><c- p>();</c->
 <c- c1>// result == 610</c->
@@ -3613,11 +3613,11 @@ Consider the following example where we want to execute first on a CPU thread po
      <tr>
       <th>Function call <br> (named temporaries) 
       <td>
-<pre class="highlight"><c- k>auto</c-> <c- n>snd0</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>get_thread_pool_scheduler</c-><c- p>());</c->
+<pre class="highlight"><c- k>auto</c-> <c- n>snd0</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>());</c->
 <c- k>auto</c-> <c- n>snd1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd0</c-><c- p>,</c-> <c- p>[]{</c-> <c- k>return</c-> <c- mi>123</c-><c- p>;</c-> <c- p>});</c->
 <c- k>auto</c-> <c- n>snd2</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>snd1</c-><c- p>,</c-> <c- n>cuda</c-><c- o>::</c-><c- n>new_stream_scheduler</c-><c- p>());</c->
 <c- k>auto</c-> <c- n>snd3</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd2</c-><c- p>,</c-> <c- p>[](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- mi>123</c-> <c- o>*</c-> <c- mi>5</c-><c- p>;</c-> <c- p>})</c->
-<c- k>auto</c-> <c- n>snd4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>snd3</c-><c- p>,</c-> <c- n>get_thread_pool</c-><c- p>())</c->
+<c- k>auto</c-> <c- n>snd4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>snd3</c-><c- p>,</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>())</c->
 <c- k>auto</c-> <c- n>snd5</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd4</c-><c- p>,</c-> <c- p>[](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- n>i</c-> <c- o>-</c-> <c- mi>5</c-><c- p>;</c-> <c- p>});</c->
 <c- k>auto</c-> <c- p>[</c-><c- n>result</c-><c- p>]</c-> <c- o>=</c-> <c- o>*</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>snd4</c-><c- p>);</c->
 <c- c1>// result == 610</c->
@@ -3625,11 +3625,11 @@ Consider the following example where we want to execute first on a CPU thread po
      <tr>
       <th>Pipe 
       <td>
-<pre class="highlight"><c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>get_thread_pool_scheduler</c-><c- p>())</c->
+<pre class="highlight"><c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>())</c->
          <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>([]{</c-> <c- k>return</c-> <c- mi>123</c-><c- p>;</c-> <c- p>})</c->
          <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>cuda</c-><c- o>::</c-><c- n>new_stream_scheduler</c-><c- p>())</c->
          <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>([](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- mi>123</c-> <c- o>*</c-> <c- mi>5</c-><c- p>;</c-> <c- p>})</c->
-         <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>get_thread_pool</c-><c- p>())</c->
+         <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>())</c->
          <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>([](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- n>i</c-> <c- o>-</c-> <c- mi>5</c-><c- p>;</c-> <c- p>});</c->
 <c- k>auto</c-> <c- p>[</c-><c- n>result</c-><c- p>]</c-> <c- o>=</c-> <c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>snd</c-><c- p>).</c-><c- n>value</c-><c- p>();</c->
 <c- c1>// result == 610</c->
