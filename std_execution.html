@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-10-19">2021-10-19</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-10-20">2021-10-20</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2232,36 +2232,40 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#example-hello-world"><span class="secno">1.3.1</span> <span class="content">Hello world</span></a>
         <li><a href="#example-async-inclusive-scan"><span class="secno">1.3.2</span> <span class="content">Asynchronous inclusive scan</span></a>
         <li><a href="#example-async-dynamically-sized-read"><span class="secno">1.3.3</span> <span class="content">Asynchronous dynamically-sized read</span></a>
+       </ol>
+      <li>
+       <a href="#example-async-windows-socket-recv"><span class="secno">1.4</span> <span class="content">Asynchronous Windows socket <code class="highlight"><c- n>recv</c-></code></span></a>
+       <ol class="toc">
         <li>
-         <a href="#example-moar"><span class="secno">1.3.4</span> <span class="content">More end-user examples</span></a>
+         <a href="#example-moar"><span class="secno">1.4.1</span> <span class="content">More end-user examples</span></a>
          <ol class="toc">
-          <li><a href="#example-sudoku"><span class="secno">1.3.4.1</span> <span class="content">Sudoku solver</span></a>
-          <li><a href="#example-file-copy"><span class="secno">1.3.4.2</span> <span class="content">File copy</span></a>
-          <li><a href="#example-echo-server"><span class="secno">1.3.4.3</span> <span class="content">Echo server</span></a>
+          <li><a href="#example-sudoku"><span class="secno">1.4.1.1</span> <span class="content">Sudoku solver</span></a>
+          <li><a href="#example-file-copy"><span class="secno">1.4.1.2</span> <span class="content">File copy</span></a>
+          <li><a href="#example-echo-server"><span class="secno">1.4.1.3</span> <span class="content">Echo server</span></a>
          </ol>
        </ol>
       <li>
-       <a href="#example-algorithm"><span class="secno">1.4</span> <span class="content">Examples: Algorithms</span></a>
+       <a href="#example-algorithm"><span class="secno">1.5</span> <span class="content">Examples: Algorithms</span></a>
        <ol class="toc">
-        <li><a href="#example-then"><span class="secno">1.4.1</span> <span class="content"><code class="highlight"><c- n>then</c-></code></span></a>
-        <li><a href="#example-retry"><span class="secno">1.4.2</span> <span class="content"><code class="highlight"><c- n>retry</c-></code></span></a>
+        <li><a href="#example-then"><span class="secno">1.5.1</span> <span class="content"><code class="highlight"><c- n>then</c-></code></span></a>
+        <li><a href="#example-retry"><span class="secno">1.5.2</span> <span class="content"><code class="highlight"><c- n>retry</c-></code></span></a>
        </ol>
       <li>
-       <a href="#example-schedulers"><span class="secno">1.5</span> <span class="content">Examples: Schedulers</span></a>
+       <a href="#example-schedulers"><span class="secno">1.6</span> <span class="content">Examples: Schedulers</span></a>
        <ol class="toc">
-        <li><a href="#example-schedulers-inline"><span class="secno">1.5.1</span> <span class="content">Inline scheduler</span></a>
-        <li><a href="#example-single-thread"><span class="secno">1.5.2</span> <span class="content">Single thread scheduler</span></a>
+        <li><a href="#example-schedulers-inline"><span class="secno">1.6.1</span> <span class="content">Inline scheduler</span></a>
+        <li><a href="#example-single-thread"><span class="secno">1.6.2</span> <span class="content">Single thread scheduler</span></a>
        </ol>
-      <li><a href="#intro-is-not"><span class="secno">1.6</span> <span class="content">What this proposal is <strong>not</strong></span></a>
-      <li><a href="#intro-compare"><span class="secno">1.7</span> <span class="content">Design changes from P0443</span></a>
+      <li><a href="#intro-is-not"><span class="secno">1.7</span> <span class="content">What this proposal is <strong>not</strong></span></a>
+      <li><a href="#intro-compare"><span class="secno">1.8</span> <span class="content">Design changes from P0443</span></a>
       <li>
-       <a href="#intro-prior-art"><span class="secno">1.8</span> <span class="content">Prior art</span></a>
+       <a href="#intro-prior-art"><span class="secno">1.9</span> <span class="content">Prior art</span></a>
        <ol class="toc">
-        <li><a href="#intro-prior-art-futures"><span class="secno">1.8.1</span> <span class="content">Futures</span></a>
-        <li><a href="#intro-prior-art-coroutines"><span class="secno">1.8.2</span> <span class="content">Coroutines</span></a>
-        <li><a href="#intro-prior-art-callbacks"><span class="secno">1.8.3</span> <span class="content">Callbacks</span></a>
+        <li><a href="#intro-prior-art-futures"><span class="secno">1.9.1</span> <span class="content">Futures</span></a>
+        <li><a href="#intro-prior-art-coroutines"><span class="secno">1.9.2</span> <span class="content">Coroutines</span></a>
+        <li><a href="#intro-prior-art-callbacks"><span class="secno">1.9.3</span> <span class="content">Callbacks</span></a>
        </ol>
-      <li><a href="#intro-field-experience"><span class="secno">1.9</span> <span class="content">Field experience</span></a>
+      <li><a href="#intro-field-experience"><span class="secno">1.10</span> <span class="content">Field experience</span></a>
      </ol>
     <li>
      <a href="#revisions"><span class="secno">2</span> <span class="content">Revision history</span></a>
@@ -2467,11 +2471,6 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#spec-execution.coro_utils.as_awaitable"><span class="secno">9.8.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span></a>
         <li><a href="#spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.8.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span></a>
        </ol>
-     </ol>
-    <li>
-     <a href="#appendix-a-cancellation-examples"><span class="secno"></span> <span class="content">Appendix A - Cancellation Examples</span></a>
-     <ol class="toc">
-      <li><a href="#appendix-a-async_recv"><span class="secno"></span> <span class="content">Cancellation Example: Socket <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></code> #</span></a>
      </ol>
     <li>
      <a href="#index"><span class="secno"></span> <span class="content">Index</span></a>
@@ -2688,8 +2687,141 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
     <li data-md>
      <p>Finally, we move out of and return our <code class="highlight"><c- n>dynamic_buffer</c-></code> object. It will get sent by the sender returned by <code class="highlight"><c- n>async_read_array</c-></code>. We can attach more things to that sender to use the data in the buffer.</p>
    </ol>
-   <h4 class="heading settled" data-level="1.3.4" id="example-moar"><span class="secno">1.3.4. </span><span class="content">More end-user examples</span><a class="self-link" href="#example-moar"></a></h4>
-   <h5 class="heading settled" data-level="1.3.4.1" id="example-sudoku"><span class="secno">1.3.4.1. </span><span class="content">Sudoku solver</span><a class="self-link" href="#example-sudoku"></a></h5>
+   <h3 class="heading settled" data-level="1.4" id="example-async-windows-socket-recv"><span class="secno">1.4. </span><span class="content">Asynchronous Windows socket <code class="highlight"><c- n>recv</c-></code></span><a class="self-link" href="#example-async-windows-socket-recv"></a></h3>
+   <p>To get a better feel for how this interface might be used by low-level operations see this example implementation
+of a cancellable <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></code> operation for a Windows Socket.</p>
+<pre class="language-c++ highlight"><c- k>struct</c-> <c- nc>operation_base</c-> <c- o>:</c-> <c- n>WSAOVERALAPPED</c-> <c- p>{</c->
+    <c- n>using</c-> <c- n>completion_fn</c-> <c- o>=</c-> <c- b>void</c-><c- p>(</c-><c- n>operation_base</c-><c- o>*</c-> <c- n>op</c-><c- p>,</c-> <c- n>DWORD</c-> <c- n>bytesTransferred</c-><c- p>,</c-> <c- b>int</c-> <c- n>errorCode</c-><c- p>)</c-> <c- n>noexcept</c-><c- p>;</c->
+
+    <c- c1>// Assume IOCP event loop will call this when this OVERLAPPED structure is dequeued.</c->
+    <c- n>completion_fn</c-><c- o>*</c-> <c- n>completed</c-><c- p>;</c->
+<c- p>};</c->
+
+<c- n>template</c-><c- o>&lt;</c-><c- n>typename</c-> <c- n>Receiver</c-><c- o>></c->
+<c- k>struct</c-> <c- nc>recv_op</c-> <c- o>:</c-> <c- n>operation_base</c-> <c- p>{</c->
+    <c- n>recv_op</c-><c- p>(</c-><c- n>SOCKET</c-> <c- n>s</c-><c- p>,</c-> <c- b>void</c-><c- o>*</c-> <c- n>data</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>len</c-><c- p>,</c-> <c- n>Receiver</c-> <c- n>r</c-><c- p>)</c->
+    <c- o>:</c-> <c- n>receiver</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>r</c-><c- p>))</c->
+    <c- p>,</c-> <c- n>sock</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-> <c- p>{</c->
+        <c- n>this</c-><c- o>-></c-><c- n>Internal</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
+        <c- n>this</c-><c- o>-></c-><c- n>InternalHigh</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
+        <c- n>this</c-><c- o>-></c-><c- n>Offset</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
+        <c- n>this</c-><c- o>-></c-><c- n>OffsetHigh</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
+        <c- n>this</c-><c- o>-></c-><c- n>hEvent</c-> <c- o>=</c-> NULL<c- p>;</c->
+        <c- n>this</c-><c- o>-></c-><c- n>completed</c-> <c- o>=</c-> <c- o>&amp;</c-><c- n>recv_op</c-><c- o>::</c-><c- n>on_complete</c-><c- p>;</c->
+        <c- n>buffer</c-><c- p>.</c-><c- n>len</c-> <c- o>=</c-> <c- n>len</c-><c- p>;</c->
+        <c- n>buffer</c-><c- p>.</c-><c- n>buf</c-> <c- o>=</c-> <c- n>static_cast</c-><c- o>&lt;</c-><c- n>CHAR</c-><c- o>*></c-><c- p>(</c-><c- n>data</c-><c- p>);</c->
+    <c- p>}</c->
+
+    <c- n>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>tag_t</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- o>></c-><c- p>,</c-> <c- n>recv_op</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>)</c-> <c- n>noexcept</c-> <c- p>{</c->
+        <c- c1>// Avoid even calling WSARecv() if operation already cancelled</c->
+        <c- k>auto</c-> <c- n>st</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>);</c->
+        <c- k>if</c-> <c- p>(</c-><c- n>st</c-><c- p>.</c-><c- n>stop_requested</c-><c- p>())</c-> <c- p>{</c->
+            <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>));</c->
+            <c- k>return</c-><c- p>;</c->
+        <c- p>}</c->
+
+        <c- c1>// Store and cache result here in case it changes during execution</c->
+        <c- k>const</c-> <c- b>bool</c-> <c- n>stopPossible</c-> <c- o>=</c-> <c- n>st</c-><c- p>.</c-><c- n>stop_possible</c-><c- p>();</c->
+        <c- k>if</c-> <c- p>(</c-><c- o>!</c-><c- n>stopPossible</c-><c- p>)</c-> <c- p>{</c->
+            <c- n>self</c-><c- p>.</c-><c- n>ready</c-><c- p>.</c-><c- n>store</c-><c- p>(</c->true<c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>memory_order_relaxed</c-><c- p>);</c->
+        <c- p>}</c->
+
+        <c- c1>// Launch the operation</c->
+        <c- n>DWORD</c-> <c- n>bytesTransferred</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
+        <c- n>DWORD</c-> <c- n>flags</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
+        <c- b>int</c-> <c- n>result</c-> <c- o>=</c-> <c- n>WSARecv</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>sock</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>self</c-><c- p>.</c-><c- n>buffer</c-><c- p>,</c-> <c- mi>1</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>bytesTransferred</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>flags</c-><c- p>,</c->
+                             <c- n>static_cast</c-><c- o>&lt;</c-><c- n>WSAOVERLAPPED</c-><c- o>*></c-><c- p>(</c-><c- o>&amp;</c-><c- n>self</c-><c- p>),</c-> NULL<c- p>);</c->
+        <c- k>if</c-> <c- p>(</c-><c- n>result</c-> <c- o>==</c-> <c- n>SOCKET_ERROR</c-><c- p>)</c-> <c- p>{</c->
+            <c- b>int</c-> <c- n>errorCode</c-> <c- o>=</c-> <c- n>WSAGetLastError</c-><c- p>();</c->
+            <c- k>if</c-> <c- p>(</c-><c- n>errorCode</c-> <c- o>!=</c-> <c- n>WSA_IO_PENDING</c-><c- p>))</c-> <c- p>{</c->
+                <c- k>if</c-> <c- p>(</c-><c- n>errorCode</c-> <c- o>==</c-> <c- n>WSA_OPERATION_ABORTED</c-><c- p>)</c-> <c- p>{</c->
+                    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>));</c->
+                <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
+                    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>),</c->
+                                              <c- n>std</c-><c- o>::</c-><c- n>error_code</c-><c- p>(</c-><c- n>errorCode</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>system_category</c-><c- p>()));</c->
+                <c- p>}</c->
+                <c- k>return</c-><c- p>;</c->
+            <c- p>}</c->
+        <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
+            <c- c1>// Completed synchronously (assuming FILE_SKIP_COMPLETION_PORT_ON_SUCCESS has been set)</c->
+            <c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>),</c-> <c- n>bytesTransferred</c-><c- p>);</c->
+            <c- k>return</c-><c- p>;</c->
+        <c- p>}</c->
+
+        <c- c1>// If we get here then operation has launched successfully and will complete asynchronously.</c->
+        <c- c1>// May be completing concurrently on another thread already.</c->
+        <c- k>if</c-> <c- p>(</c-><c- n>stopPossible</c-><c- p>)</c-> <c- p>{</c->
+            <c- c1>// Register the stop callback</c->
+            <c- n>self</c-><c- p>.</c-><c- n>stopCallback</c-><c- p>.</c-><c- n>emplace</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>st</c-><c- p>),</c-> <c- n>cancel_cb</c-><c- p>{</c-><c- n>self</c-><c- p>});</c->
+
+            <c- c1>// Mark as 'completed'</c->
+            <c- k>if</c-> <c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>ready</c-><c- p>.</c-><c- n>load</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>memory_order_acquire</c-><c- p>)</c-> <c- o>||</c->
+                <c- n>self</c-><c- p>.</c-><c- n>ready</c-><c- p>.</c-><c- n>exchange</c-><c- p>(</c->true<c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>memory_order_acq_rel</c-><c- p>))</c-> <c- p>{</c->
+                <c- c1>// Already completed on another thread</c->
+                <c- n>self</c-><c- p>.</c-><c- n>stopCallback</c-><c- p>.</c-><c- n>reset</c-><c- p>();</c->
+
+                <c- n>BOOL</c-> <c- n>ok</c-> <c- o>=</c-> <c- n>WSAGetOverlappedResult</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>sock</c-><c- p>,</c-> <c- p>(</c-><c- n>WSAOVERLAPPED</c-><c- o>*</c-><c- p>)</c-><c- o>&amp;</c-><c- n>self</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>bytesTransferred</c-><c- p>,</c-> <c- n>FALSE</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>flags</c-><c- p>);</c->
+                <c- k>if</c-> <c- p>(</c-><c- n>ok</c-><c- p>)</c-> <c- p>{</c->
+                    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>),</c-> <c- n>bytesTransferred</c-><c- p>);</c->
+                <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
+                    <c- b>int</c-> <c- n>errorCode</c-> <c- o>=</c-> <c- n>WSAGetLastError</c-><c- p>();</c->
+                    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>),</c->
+                                              <c- n>std</c-><c- o>::</c-><c- n>error_code</c-><c- p>(</c-><c- n>errorCode</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>system_category</c-><c- p>()));</c->
+                <c- p>}</c->
+            <c- p>}</c->
+        <c- p>}</c->
+    <c- p>}</c->
+
+    <c- k>struct</c-> <c- nc>cancel_cb</c-> <c- p>{</c->
+        <c- n>recv_op</c-><c- o>&amp;</c-> <c- n>op</c-><c- p>;</c->
+
+        <c- b>void</c-> <c- nf>operator</c-><c- p>()()</c-> <c- n>noexcept</c-> <c- p>{</c->
+            <c- n>CancelIoEx</c-><c- p>((</c-><c- n>HANDLE</c-><c- p>)</c-><c- n>op</c-><c- p>.</c-><c- n>sock</c-><c- p>,</c-> <c- p>(</c-><c- n>OVERLAPPED</c-><c- o>*</c-><c- p>)(</c-><c- n>WSAOVERLAPPED</c-><c- o>*</c-><c- p>)</c-><c- o>&amp;</c-><c- n>op</c-><c- p>);</c->
+        <c- p>}</c->
+    <c- p>};</c->
+
+    <c- k>static</c-> <c- b>void</c-> <c- n>on_complete</c-><c- p>(</c-><c- n>operation_base</c-><c- o>*</c-> <c- n>op</c-><c- p>,</c-> <c- n>DWORD</c-> <c- n>bytesTransferred</c-><c- p>,</c-> <c- b>int</c-> <c- n>errorCode</c-><c- p>)</c-> <c- n>noexcept</c-> <c- p>{</c->
+        <c- n>recv_op</c-><c- o>&amp;</c-> <c- n>self</c-> <c- o>=</c-> <c- o>*</c-><c- n>static_cast</c-><c- o>&lt;</c-><c- n>recv_op</c-><c- o>*></c-><c- p>(</c-><c- n>op</c-><c- p>);</c->
+
+        <c- k>if</c-> <c- p>(</c-><c- n>ready</c-><c- p>.</c-><c- n>load</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>memory_order_acquire</c-><c- p>)</c-> <c- o>||</c-> <c- n>ready</c-><c- p>.</c-><c- n>exchange</c-><c- p>(</c->true<c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>memory_order_acq_rel</c-><c- p>))</c-> <c- p>{</c->
+            <c- c1>// Unsubscribe any stop-callback so we know that CancelIoEx() is not accessing 'op' any more</c->
+            <c- n>stopCallback</c-><c- p>.</c-><c- n>reset</c-><c- p>();</c->
+
+            <c- k>if</c-> <c- p>(</c-><c- n>errorCode</c-> <c- o>==</c-> <c- mi>0</c-><c- p>)</c-> <c- p>{</c->
+                <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>receiver</c-><c- p>),</c-> <c- n>bytesTransferred</c-><c- p>);</c->
+            <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
+                <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>receiver</c-><c- p>),</c->
+                                          <c- n>std</c-><c- o>::</c-><c- n>error_code</c-><c- p>(</c-><c- n>errorCode</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>system_category</c-><c- p>()));</c->
+            <c- p>}</c->
+        <c- p>}</c->
+    <c- p>}</c->
+
+    <c- n>Receiver</c-> <c- n>receiver</c-><c- p>;</c->
+    <c- n>SOCKET</c-> <c- n>sock</c-><c- p>;</c->
+    <c- n>WSABUF</c-> <c- n>buffer</c-><c- p>;</c->
+    <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>typename</c-> <c- n>stop_callback_type_t</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>>::</c-><c- n>template</c-> <c- n>callback_type</c-><c- o>&lt;</c-><c- n>cancel_cb</c-><c- o>>></c-> <c- n>stopCallback</c-><c- p>;</c->
+    <c- n>std</c-><c- o>::</c-><c- n>atomic</c-><c- o>&lt;</c-><c- b>bool</c-><c- o>></c-> <c- n>ready</c-><c- p>{</c->false<c- p>};</c->
+<c- p>};</c->
+
+<c- k>struct</c-> <c- nc>recv_sender</c-> <c- p>{</c->
+    <c- n>SOCKET</c-> <c- n>sock</c-><c- p>;</c->
+    <c- b>void</c-><c- o>*</c-> <c- n>data</c-><c- p>;</c->
+    <c- b>size_t</c-> <c- n>len</c-><c- p>;</c->
+
+    <c- n>template</c-><c- o>&lt;</c-><c- n>typename</c-> <c- n>Receiver</c-><c- o>></c->
+    <c- n>friend</c-> <c- n>recv_op</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>tag_t</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- o>></c->
+                                        <c- k>const</c-> <c- n>recv_sender</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>,</c->
+                                        <c- n>Receiver</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
+        <c- k>return</c-> <c- n>recv_op</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>></c-><c- p>{</c-><c- n>s</c-><c- p>.</c-><c- n>sock</c-><c- p>,</c-> <c- n>s</c-><c- p>.</c-><c- n>data</c-><c- p>,</c-> <c- n>s</c-><c- p>.</c-><c- n>len</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>r</c-><c- p>)};</c->
+    <c- p>}</c->
+<c- p>};</c->
+
+<c- n>recv_sender</c-> <c- nf>async_recv</c-><c- p>(</c-><c- n>SOCKET</c-> <c- n>s</c-><c- p>,</c-> <c- b>void</c-><c- o>*</c-> <c- n>data</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>len</c-><c- p>)</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>recv_sender</c-><c- p>{</c-><c- n>s</c-><c- p>,</c-> <c- n>data</c-><c- p>,</c-> <c- n>len</c-><c- p>};</c->
+<c- p>}</c->
+</pre>
+   <h4 class="heading settled" data-level="1.4.1" id="example-moar"><span class="secno">1.4.1. </span><span class="content">More end-user examples</span><a class="self-link" href="#example-moar"></a></h4>
+   <h5 class="heading settled" data-level="1.4.1.1" id="example-sudoku"><span class="secno">1.4.1.1. </span><span class="content">Sudoku solver</span><a class="self-link" href="#example-sudoku"></a></h5>
    <p>This example comes from Kirk Shoop, who ported an example from TBB’s documentation to sender/receiver in his fork of the libunifex repo. It is a Sudoku solver that uses a configurable number of threads to explore the search space for solutions.</p>
    <p>The sender/receiver-based Sudoku solver can be found <a href="https://github.com/kirkshoop/libunifex/blob/sudoku/examples/sudoku.cpp">here</a>. Some things that are worth noting about Kirk’s solution:</p>
    <ol>
@@ -2699,11 +2831,11 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
      <p>In addition to eliminating the need for reference counting, the use of structured concurrency makes it easy to ensure that resources are cleaned up on all code paths. In contrast, the TBB example that inspired this one <a href="https://github.com/oneapi-src/oneTBB/issues/568">leaks memory</a>.</p>
    </ol>
    <p>For comparison, the TBB-based Sudoku solver can be found <a href="https://github.com/oneapi-src/oneTBB/blob/40a9a1060069d37d5f66912c6ee4cf165144774b/examples/task_group/sudoku/sudoku.cpp">here</a>.</p>
-   <h5 class="heading settled" data-level="1.3.4.2" id="example-file-copy"><span class="secno">1.3.4.2. </span><span class="content">File copy</span><a class="self-link" href="#example-file-copy"></a></h5>
+   <h5 class="heading settled" data-level="1.4.1.2" id="example-file-copy"><span class="secno">1.4.1.2. </span><span class="content">File copy</span><a class="self-link" href="#example-file-copy"></a></h5>
    <p>This example also comes from Kirk Shoop which uses sender/receiver to recursively copy the files a directory tree. It demonstrates how sender/receiver can be used to do IO, using a scheduler that schedules work on Linux’s io_uring.</p>
    <p>As with the Sudoku example, this example obviates the need for reference counting by employing structured concurrency. It uses iteration with an upper limit to avoid having too many open file handles.</p>
    <p>You can find the example <a href="https://github.com/kirkshoop/libunifex/blob/filecopy/examples/file_copy.cpp">here</a>.</p>
-   <h5 class="heading settled" data-level="1.3.4.3" id="example-echo-server"><span class="secno">1.3.4.3. </span><span class="content">Echo server</span><a class="self-link" href="#example-echo-server"></a></h5>
+   <h5 class="heading settled" data-level="1.4.1.3" id="example-echo-server"><span class="secno">1.4.1.3. </span><span class="content">Echo server</span><a class="self-link" href="#example-echo-server"></a></h5>
    <p>Dietmar Kuehl has a hobby project that implements networking APIs on top of sender/receiver. He recently implemented an echo server as a demo. His echo server code can be found <a href="https://github.com/dietmarkuehl/kuhllib/blob/main/src/examples/echo_server.cpp">here</a>.</p>
    <p>Below, I show the part of the echo server code. This code is executed for each client that connects to the echo server. In a loop, it reads input from a socket and echos the input back to the same socket. All of this, including the loop, is implemented with generic async algorithms.</p>
 <pre class="highlight"><c- n>outstanding</c-><c- p>.</c-><c- n>start</c-><c- p>(</c->
@@ -2729,9 +2861,9 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
 </pre>
    <p>In this code, <code class="highlight"><c- n>NN</c-><c- o>::</c-><c- n>async_read_some</c-></code> and <code class="highlight"><c- n>NN</c-><c- o>::</c-><c- n>async_write_some</c-></code> are asynchronous socket-based networking APIs that return senders. <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>repeat_effect_until</c-></code>, <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>let_value</c-></code>, and <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>then</c-></code> and fully generic sender adaptor algorithms that accept and return senders.</p>
    <p>This is a good example of seamless composition of async IO functions with non-IO operations. And by composing the senders in this structured way, all the state for the composite operation -- the <code class="highlight"><c- n>repeat_effect_until</c-></code> expression and all its child operations -- is stored altogether in a single object.</p>
-   <h3 class="heading settled" data-level="1.4" id="example-algorithm"><span class="secno">1.4. </span><span class="content">Examples: Algorithms</span><a class="self-link" href="#example-algorithm"></a></h3>
+   <h3 class="heading settled" data-level="1.5" id="example-algorithm"><span class="secno">1.5. </span><span class="content">Examples: Algorithms</span><a class="self-link" href="#example-algorithm"></a></h3>
    <p>In this section we show a few simple sender/receiver-based algorithm implementations.</p>
-   <h4 class="heading settled" data-level="1.4.1" id="example-then"><span class="secno">1.4.1. </span><span class="content"><code class="highlight"><c- n>then</c-></code></span><a class="self-link" href="#example-then"></a></h4>
+   <h4 class="heading settled" data-level="1.5.1" id="example-then"><span class="secno">1.5.1. </span><span class="content"><code class="highlight"><c- n>then</c-></code></span><a class="self-link" href="#example-then"></a></h4>
 <pre class="language-c++ highlight"><c- c1>// For emulating "deducing this"</c->
 <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-> <c- n>A</c-><c- p>,</c-> <c- n>class</c-> <c- n>B</c-><c- o>></c->
   <c- n>concept</c-> <c- n>__this</c-> <c- o>=</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>A</c-><c- o>></c-><c- p>,</c-> <c- n>B</c-><c- o>></c-><c- p>;</c->
@@ -2792,7 +2924,7 @@ are passed through unchanged.</p>
     <li data-md>
      <p>Defines a sender that aggregates another sender and the invocable, which defines a <code class="highlight"><c- n>tag_invoke</c-></code> customization for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> that wraps the incoming receiver in the receiver from (1) and passes it and the incoming sender to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, returning the result.</p>
    </ol>
-   <h4 class="heading settled" data-level="1.4.2" id="example-retry"><span class="secno">1.4.2. </span><span class="content"><code class="highlight"><c- n>retry</c-></code></span><a class="self-link" href="#example-retry"></a></h4>
+   <h4 class="heading settled" data-level="1.5.2" id="example-retry"><span class="secno">1.5.2. </span><span class="content"><code class="highlight"><c- n>retry</c-></code></span><a class="self-link" href="#example-retry"></a></h4>
 <pre class="language-c++ highlight"><c- c1>// _conv needed so we can emplace construct non-movable types into</c->
 <c- c1>// a std::optional.</c->
 <c- n>template</c-><c- o>&lt;</c-><c- n>invocable</c-> <c- n>F</c-><c- o>></c->
@@ -2896,9 +3028,9 @@ the failed operation to be rescheduled.</p>
      <p>Defines a <code class="highlight"><c- n>_retry_sender</c-></code> that implements the <code class="highlight"><c- n>connect</c-></code> customization point to return
 an operation state constructed from the passed-in sender and receiver.</p>
    </ol>
-   <h3 class="heading settled" data-level="1.5" id="example-schedulers"><span class="secno">1.5. </span><span class="content">Examples: Schedulers</span><a class="self-link" href="#example-schedulers"></a></h3>
+   <h3 class="heading settled" data-level="1.6" id="example-schedulers"><span class="secno">1.6. </span><span class="content">Examples: Schedulers</span><a class="self-link" href="#example-schedulers"></a></h3>
    <p>In this section we look at some schedulers of varying complexity.</p>
-   <h4 class="heading settled" data-level="1.5.1" id="example-schedulers-inline"><span class="secno">1.5.1. </span><span class="content">Inline scheduler</span><a class="self-link" href="#example-schedulers-inline"></a></h4>
+   <h4 class="heading settled" data-level="1.6.1" id="example-schedulers-inline"><span class="secno">1.6.1. </span><span class="content">Inline scheduler</span><a class="self-link" href="#example-schedulers-inline"></a></h4>
 <pre class="language-c++ highlight"><c- k>struct</c-> <c- nc>inline_scheduler</c-> <c- p>{</c->
   <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-> <c- n>R</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>_op</c-> <c- p>{</c->
@@ -2951,7 +3083,7 @@ It returns an instance of type <code class="highlight"><c- n>_op</c-></code> tha
     <li data-md>
      <p>The operation state customizes <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> to call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> on the receiver, passing any exceptions to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> as an <code class="highlight"><c- n>exception_ptr</c-></code>.</p>
    </ol>
-   <h4 class="heading settled" data-level="1.5.2" id="example-single-thread"><span class="secno">1.5.2. </span><span class="content">Single thread scheduler</span><a class="self-link" href="#example-single-thread"></a></h4>
+   <h4 class="heading settled" data-level="1.6.2" id="example-single-thread"><span class="secno">1.6.2. </span><span class="content">Single thread scheduler</span><a class="self-link" href="#example-single-thread"></a></h4>
    <p>This example shows how to create a scheduler for an execution context that consists of a single
 thread. It is implemented in terms of a lower-level execution context called <code class="highlight"><c- n>manual_event_loop</c-></code>.</p>
 <pre class="language-c++ highlight"><c- n>class</c-> <c- n>single_thread_context</c-> <c- p>{</c->
@@ -2987,12 +3119,12 @@ intrusive linked list of work items. In structured concurrency patterns, the ope
 compose statically, and in an algorithm like <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code>, the composite operation state lives on the
 stack for the duration of the operation. The end result is that work can be scheduled onto this thread with zero
 allocations.</p>
-   <h3 class="heading settled" data-level="1.6" id="intro-is-not"><span class="secno">1.6. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#intro-is-not"></a></h3>
+   <h3 class="heading settled" data-level="1.7" id="intro-is-not"><span class="secno">1.7. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#intro-is-not"></a></h3>
    <p>This paper is not a patch on top of <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
 to standardize any further facilities.</p>
    <p>This paper is not an alternative design to <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; rather, we have taken the design in the current executors paper, and applied targeted fixes to allow it to fulfill the promises of the sender/receiver model, as well as provide all the facilities we consider
 essential when writing user code using standard execution concepts; we have also applied the guidance of removing one-way executors from the paper entirely, and instead provided an algorithm based around senders that serves the same purpose.</p>
-   <h3 class="heading settled" data-level="1.7" id="intro-compare"><span class="secno">1.7. </span><span class="content">Design changes from P0443</span><a class="self-link" href="#intro-compare"></a></h3>
+   <h3 class="heading settled" data-level="1.8" id="intro-compare"><span class="secno">1.8. </span><span class="content">Design changes from P0443</span><a class="self-link" href="#intro-compare"></a></h3>
    <ol>
     <li data-md>
      <p>The <code class="highlight"><c- n>executor</c-></code> concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.</p>
@@ -3011,21 +3143,21 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>A specific thread pool implementation is omitted, as per LEWG direction.</p>
    </ol>
-   <h3 class="heading settled" data-level="1.8" id="intro-prior-art"><span class="secno">1.8. </span><span class="content">Prior art</span><a class="self-link" href="#intro-prior-art"></a></h3>
+   <h3 class="heading settled" data-level="1.9" id="intro-prior-art"><span class="secno">1.9. </span><span class="content">Prior art</span><a class="self-link" href="#intro-prior-art"></a></h3>
    <p>This proposal builds upon and learns from years of prior art with asynchronous and parallel programming frameworks in C++. In this section, we discuss async abstractions that have previously been suggested as a possible basis for asynchronous algorithms and why they fall short.</p>
-   <h4 class="heading settled" data-level="1.8.1" id="intro-prior-art-futures"><span class="secno">1.8.1. </span><span class="content">Futures</span><a class="self-link" href="#intro-prior-art-futures"></a></h4>
+   <h4 class="heading settled" data-level="1.9.1" id="intro-prior-art-futures"><span class="secno">1.9.1. </span><span class="content">Futures</span><a class="self-link" href="#intro-prior-art-futures"></a></h4>
    <p>A future is a handle to work that has already been scheduled for execution. It is one end of a communication channel; the other end is a promise, used to receive the result from the concurrent operation and to communicate it to the future.</p>
    <p>Futures, as traditionally realized, require the dynamic allocation and management of a shared state, synchronization, and typically type-erasure of work and continuation. Many of these costs are inherent in the nature of "future" as a handle to work that is already scheduled for execution. These expenses rule out the future abstraction for many uses and makes it a poor choice for a basis of a generic mechanism.</p>
-   <h4 class="heading settled" data-level="1.8.2" id="intro-prior-art-coroutines"><span class="secno">1.8.2. </span><span class="content">Coroutines</span><a class="self-link" href="#intro-prior-art-coroutines"></a></h4>
+   <h4 class="heading settled" data-level="1.9.2" id="intro-prior-art-coroutines"><span class="secno">1.9.2. </span><span class="content">Coroutines</span><a class="self-link" href="#intro-prior-art-coroutines"></a></h4>
    <p>C++20 coroutines are frequently suggested as a basis for asynchronous algorithms. It’s fair to ask why, if we added coroutines to C++, are we suggesting the addition of a library-based abstraction for asynchrony. Certainly, coroutines come with huge syntactic and semantic advantages over the alternatives.</p>
    <p>Although coroutines are lighter weight than futures, coroutines suffer many of the same problems. Since they typically start suspended, they can avoid synchronizing the chaining of dependent work. However in many cases, coroutine frames require an unavoidable dynamic allocation and indirect function calls. This is done to hide the layout of the coroutine frame from the C++ type system, which in turn makes possible the separate compilation of coroutines and certain compiler optimizations, such as optimization of the coroutine frame size.</p>
    <p>Those advantages come at a cost, though. Because of the dynamic allocation of coroutine frames, coroutines in embedded or heterogeneous environments, which often lack support for dynamic allocation, require great attention to detail. And the allocations and indirections tend to complicate the job of the inliner, often resulting in sub-optimal codegen.</p>
    <p>The coroutine language feature mitigates these shortcomings somewhat with the HALO optimization <a data-link-type="biblio" href="#biblio-p0981r0">[P0981R0]</a>, which leverages existing compiler optimizations such as allocation elision and devirtualization to inline the coroutine, completely eliminating the runtime overhead. However, HALO requires a sophisiticated compiler, and a fair number of stars need to align for the optimization to kick in. In our experience, more often than not in real-world code today’s compilers are not able to inline the coroutine, resulting in allocations and indirections in the generated code.</p>
    <p>In a suite of generic async algorithms that are expected to be callable from hot code paths, the extra allocations and indirections are a deal-breaker. It is for these reasons that we consider coroutines a poor choise for a basis of all standard async.</p>
-   <h4 class="heading settled" data-level="1.8.3" id="intro-prior-art-callbacks"><span class="secno">1.8.3. </span><span class="content">Callbacks</span><a class="self-link" href="#intro-prior-art-callbacks"></a></h4>
+   <h4 class="heading settled" data-level="1.9.3" id="intro-prior-art-callbacks"><span class="secno">1.9.3. </span><span class="content">Callbacks</span><a class="self-link" href="#intro-prior-art-callbacks"></a></h4>
    <p>Callbacks are the oldest, simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities. The lack of a standard callback shape obstructs generic design.</p>
    <p>Additionally, few of these possibilities accommodate cancellation signals when the user requests upstream work to stop and clean up.</p>
-   <h3 class="heading settled" data-level="1.9" id="intro-field-experience"><span class="secno">1.9. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
+   <h3 class="heading settled" data-level="1.10" id="intro-field-experience"><span class="secno">1.10. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
    <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>. Libunifex has seen heavy production use at Facebook. As of October 2021, it is currently used in production within the following applications and platforms:</p>
    <ul>
     <li data-md>
@@ -3421,7 +3553,7 @@ until after the stop-callback has been registered. e.g. by having the <code clas
 an atomic variable once it has finished registering the stop-callback and having the concurrent completion handler
 check that variable and either call the completion-signalling operation or store the result and defer calling the
 receiver’s completion-signalling operation to the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>()</c-></code> call (which is still executing).</p>
-   <p>For an example of an implementation strategy for solving these data-races see the <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></code> example in Appendix A.</p>
+   <p>For an example of an implementation strategy for solving these data-races see <a href="#example-async-windows-socket-recv">§ 1.4 Asynchronous Windows socket recv</a>.</p>
    <h4 class="heading settled" data-level="4.10.4" id="design-cancellation-status"><span class="secno">4.10.4. </span><span class="content">Cancellation design status</span><a class="self-link" href="#design-cancellation-status"></a></h4>
    <p>This paper currently includes the design for cancellation as proposed in <a data-link-type="biblio" href="#biblio-p2175r0">[P2175R0]</a> - "Composable cancellation for sender-based async operations".
 P2175R0 contains more details on the background motivation and prior-art and design rationale of this design.</p>
@@ -6007,140 +6139,6 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 </pre>
      </ul>
    </ol>
-   <h2 class="heading settled" id="appendix-a-cancellation-examples"><span class="content">Appendix A - Cancellation Examples</span><a class="self-link" href="#appendix-a-cancellation-examples"></a></h2>
-   <h3 class="heading settled" id="appendix-a-async_recv"><span class="content">Cancellation Example: Socket <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></code> #</span><a class="self-link" href="#appendix-a-async_recv"></a></h3>
-   <p>To get a better feel for how this interface might be used by low-level operations see this example implementation
-of a cancellable <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></code> operation for a Windows Socket.</p>
-<pre class="language-c++ highlight"><c- k>struct</c-> <c- nc>operation_base</c-> <c- o>:</c-> <c- n>WSAOVERALAPPED</c-> <c- p>{</c->
-    <c- n>using</c-> <c- n>completion_fn</c-> <c- o>=</c-> <c- b>void</c-><c- p>(</c-><c- n>operation_base</c-><c- o>*</c-> <c- n>op</c-><c- p>,</c-> <c- n>DWORD</c-> <c- n>bytesTransferred</c-><c- p>,</c-> <c- b>int</c-> <c- n>errorCode</c-><c- p>)</c-> <c- n>noexcept</c-><c- p>;</c->
-
-    <c- c1>// Assume IOCP event loop will call this when this OVERLAPPED structure is dequeued.</c->
-    <c- n>completion_fn</c-><c- o>*</c-> <c- n>completed</c-><c- p>;</c->
-<c- p>};</c->
-
-<c- n>template</c-><c- o>&lt;</c-><c- n>typename</c-> <c- n>Receiver</c-><c- o>></c->
-<c- k>struct</c-> <c- nc>recv_op</c-> <c- o>:</c-> <c- n>operation_base</c-> <c- p>{</c->
-    <c- n>recv_op</c-><c- p>(</c-><c- n>SOCKET</c-> <c- n>s</c-><c- p>,</c-> <c- b>void</c-><c- o>*</c-> <c- n>data</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>len</c-><c- p>,</c-> <c- n>Receiver</c-> <c- n>r</c-><c- p>)</c->
-    <c- o>:</c-> <c- n>receiver</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>r</c-><c- p>))</c->
-    <c- p>,</c-> <c- n>sock</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-> <c- p>{</c->
-        <c- n>this</c-><c- o>-></c-><c- n>Internal</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
-        <c- n>this</c-><c- o>-></c-><c- n>InternalHigh</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
-        <c- n>this</c-><c- o>-></c-><c- n>Offset</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
-        <c- n>this</c-><c- o>-></c-><c- n>OffsetHigh</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
-        <c- n>this</c-><c- o>-></c-><c- n>hEvent</c-> <c- o>=</c-> NULL<c- p>;</c->
-        <c- n>this</c-><c- o>-></c-><c- n>completed</c-> <c- o>=</c-> <c- o>&amp;</c-><c- n>recv_op</c-><c- o>::</c-><c- n>on_complete</c-><c- p>;</c->
-        <c- n>buffer</c-><c- p>.</c-><c- n>len</c-> <c- o>=</c-> <c- n>len</c-><c- p>;</c->
-        <c- n>buffer</c-><c- p>.</c-><c- n>buf</c-> <c- o>=</c-> <c- n>static_cast</c-><c- o>&lt;</c-><c- n>CHAR</c-><c- o>*></c-><c- p>(</c-><c- n>data</c-><c- p>);</c->
-    <c- p>}</c->
-
-    <c- n>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>tag_t</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- o>></c-><c- p>,</c-> <c- n>recv_op</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>)</c-> <c- n>noexcept</c-> <c- p>{</c->
-        <c- c1>// Avoid even calling WSARecv() if operation already cancelled</c->
-        <c- k>auto</c-> <c- n>st</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>);</c->
-        <c- k>if</c-> <c- p>(</c-><c- n>st</c-><c- p>.</c-><c- n>stop_requested</c-><c- p>())</c-> <c- p>{</c->
-            <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>));</c->
-            <c- k>return</c-><c- p>;</c->
-        <c- p>}</c->
-
-        <c- c1>// Store and cache result here in case it changes during execution</c->
-        <c- k>const</c-> <c- b>bool</c-> <c- n>stopPossible</c-> <c- o>=</c-> <c- n>st</c-><c- p>.</c-><c- n>stop_possible</c-><c- p>();</c->
-        <c- k>if</c-> <c- p>(</c-><c- o>!</c-><c- n>stopPossible</c-><c- p>)</c-> <c- p>{</c->
-            <c- n>self</c-><c- p>.</c-><c- n>ready</c-><c- p>.</c-><c- n>store</c-><c- p>(</c->true<c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>memory_order_relaxed</c-><c- p>);</c->
-        <c- p>}</c->
-
-        <c- c1>// Launch the operation</c->
-        <c- n>DWORD</c-> <c- n>bytesTransferred</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
-        <c- n>DWORD</c-> <c- n>flags</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
-        <c- b>int</c-> <c- n>result</c-> <c- o>=</c-> <c- n>WSARecv</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>sock</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>self</c-><c- p>.</c-><c- n>buffer</c-><c- p>,</c-> <c- mi>1</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>bytesTransferred</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>flags</c-><c- p>,</c->
-                             <c- n>static_cast</c-><c- o>&lt;</c-><c- n>WSAOVERLAPPED</c-><c- o>*></c-><c- p>(</c-><c- o>&amp;</c-><c- n>self</c-><c- p>),</c-> NULL<c- p>);</c->
-        <c- k>if</c-> <c- p>(</c-><c- n>result</c-> <c- o>==</c-> <c- n>SOCKET_ERROR</c-><c- p>)</c-> <c- p>{</c->
-            <c- b>int</c-> <c- n>errorCode</c-> <c- o>=</c-> <c- n>WSAGetLastError</c-><c- p>();</c->
-            <c- k>if</c-> <c- p>(</c-><c- n>errorCode</c-> <c- o>!=</c-> <c- n>WSA_IO_PENDING</c-><c- p>))</c-> <c- p>{</c->
-                <c- k>if</c-> <c- p>(</c-><c- n>errorCode</c-> <c- o>==</c-> <c- n>WSA_OPERATION_ABORTED</c-><c- p>)</c-> <c- p>{</c->
-                    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>));</c->
-                <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
-                    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>),</c->
-                                              <c- n>std</c-><c- o>::</c-><c- n>error_code</c-><c- p>(</c-><c- n>errorCode</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>system_category</c-><c- p>()));</c->
-                <c- p>}</c->
-                <c- k>return</c-><c- p>;</c->
-            <c- p>}</c->
-        <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
-            <c- c1>// Completed synchronously (assuming FILE_SKIP_COMPLETION_PORT_ON_SUCCESS has been set)</c->
-            <c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>),</c-> <c- n>bytesTransferred</c-><c- p>);</c->
-            <c- k>return</c-><c- p>;</c->
-        <c- p>}</c->
-
-        <c- c1>// If we get here then operation has launched successfully and will complete asynchronously.</c->
-        <c- c1>// May be completing concurrently on another thread already.</c->
-        <c- k>if</c-> <c- p>(</c-><c- n>stopPossible</c-><c- p>)</c-> <c- p>{</c->
-            <c- c1>// Register the stop callback</c->
-            <c- n>self</c-><c- p>.</c-><c- n>stopCallback</c-><c- p>.</c-><c- n>emplace</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>st</c-><c- p>),</c-> <c- n>cancel_cb</c-><c- p>{</c-><c- n>self</c-><c- p>});</c->
-
-            <c- c1>// Mark as 'completed'</c->
-            <c- k>if</c-> <c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>ready</c-><c- p>.</c-><c- n>load</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>memory_order_acquire</c-><c- p>)</c-> <c- o>||</c->
-                <c- n>self</c-><c- p>.</c-><c- n>ready</c-><c- p>.</c-><c- n>exchange</c-><c- p>(</c->true<c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>memory_order_acq_rel</c-><c- p>))</c-> <c- p>{</c->
-                <c- c1>// Already completed on another thread</c->
-                <c- n>self</c-><c- p>.</c-><c- n>stopCallback</c-><c- p>.</c-><c- n>reset</c-><c- p>();</c->
-
-                <c- n>BOOL</c-> <c- n>ok</c-> <c- o>=</c-> <c- n>WSAGetOverlappedResult</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>sock</c-><c- p>,</c-> <c- p>(</c-><c- n>WSAOVERLAPPED</c-><c- o>*</c-><c- p>)</c-><c- o>&amp;</c-><c- n>self</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>bytesTransferred</c-><c- p>,</c-> <c- n>FALSE</c-><c- p>,</c-> <c- o>&amp;</c-><c- n>flags</c-><c- p>);</c->
-                <c- k>if</c-> <c- p>(</c-><c- n>ok</c-><c- p>)</c-> <c- p>{</c->
-                    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>),</c-> <c- n>bytesTransferred</c-><c- p>);</c->
-                <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
-                    <c- b>int</c-> <c- n>errorCode</c-> <c- o>=</c-> <c- n>WSAGetLastError</c-><c- p>();</c->
-                    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>.</c-><c- n>receiver</c-><c- p>),</c->
-                                              <c- n>std</c-><c- o>::</c-><c- n>error_code</c-><c- p>(</c-><c- n>errorCode</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>system_category</c-><c- p>()));</c->
-                <c- p>}</c->
-            <c- p>}</c->
-        <c- p>}</c->
-    <c- p>}</c->
-
-    <c- k>struct</c-> <c- nc>cancel_cb</c-> <c- p>{</c->
-        <c- n>recv_op</c-><c- o>&amp;</c-> <c- n>op</c-><c- p>;</c->
-
-        <c- b>void</c-> <c- nf>operator</c-><c- p>()()</c-> <c- n>noexcept</c-> <c- p>{</c->
-            <c- n>CancelIoEx</c-><c- p>((</c-><c- n>HANDLE</c-><c- p>)</c-><c- n>op</c-><c- p>.</c-><c- n>sock</c-><c- p>,</c-> <c- p>(</c-><c- n>OVERLAPPED</c-><c- o>*</c-><c- p>)(</c-><c- n>WSAOVERLAPPED</c-><c- o>*</c-><c- p>)</c-><c- o>&amp;</c-><c- n>op</c-><c- p>);</c->
-        <c- p>}</c->
-    <c- p>};</c->
-
-    <c- k>static</c-> <c- b>void</c-> <c- n>on_complete</c-><c- p>(</c-><c- n>operation_base</c-><c- o>*</c-> <c- n>op</c-><c- p>,</c-> <c- n>DWORD</c-> <c- n>bytesTransferred</c-><c- p>,</c-> <c- b>int</c-> <c- n>errorCode</c-><c- p>)</c-> <c- n>noexcept</c-> <c- p>{</c->
-        <c- n>recv_op</c-><c- o>&amp;</c-> <c- n>self</c-> <c- o>=</c-> <c- o>*</c-><c- n>static_cast</c-><c- o>&lt;</c-><c- n>recv_op</c-><c- o>*></c-><c- p>(</c-><c- n>op</c-><c- p>);</c->
-
-        <c- k>if</c-> <c- p>(</c-><c- n>ready</c-><c- p>.</c-><c- n>load</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>memory_order_acquire</c-><c- p>)</c-> <c- o>||</c-> <c- n>ready</c-><c- p>.</c-><c- n>exchange</c-><c- p>(</c->true<c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>memory_order_acq_rel</c-><c- p>))</c-> <c- p>{</c->
-            <c- c1>// Unsubscribe any stop-callback so we know that CancelIoEx() is not accessing 'op' any more</c->
-            <c- n>stopCallback</c-><c- p>.</c-><c- n>reset</c-><c- p>();</c->
-
-            <c- k>if</c-> <c- p>(</c-><c- n>errorCode</c-> <c- o>==</c-> <c- mi>0</c-><c- p>)</c-> <c- p>{</c->
-                <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>receiver</c-><c- p>),</c-> <c- n>bytesTransferred</c-><c- p>);</c->
-            <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
-                <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>receiver</c-><c- p>),</c->
-                                          <c- n>std</c-><c- o>::</c-><c- n>error_code</c-><c- p>(</c-><c- n>errorCode</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>system_category</c-><c- p>()));</c->
-            <c- p>}</c->
-        <c- p>}</c->
-    <c- p>}</c->
-
-    <c- n>Receiver</c-> <c- n>receiver</c-><c- p>;</c->
-    <c- n>SOCKET</c-> <c- n>sock</c-><c- p>;</c->
-    <c- n>WSABUF</c-> <c- n>buffer</c-><c- p>;</c->
-    <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>typename</c-> <c- n>stop_callback_type_t</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>>::</c-><c- n>template</c-> <c- n>callback_type</c-><c- o>&lt;</c-><c- n>cancel_cb</c-><c- o>>></c-> <c- n>stopCallback</c-><c- p>;</c->
-    <c- n>std</c-><c- o>::</c-><c- n>atomic</c-><c- o>&lt;</c-><c- b>bool</c-><c- o>></c-> <c- n>ready</c-><c- p>{</c->false<c- p>};</c->
-<c- p>};</c->
-
-<c- k>struct</c-> <c- nc>recv_sender</c-> <c- p>{</c->
-    <c- n>SOCKET</c-> <c- n>sock</c-><c- p>;</c->
-    <c- b>void</c-><c- o>*</c-> <c- n>data</c-><c- p>;</c->
-    <c- b>size_t</c-> <c- n>len</c-><c- p>;</c->
-
-    <c- n>template</c-><c- o>&lt;</c-><c- n>typename</c-> <c- n>Receiver</c-><c- o>></c->
-    <c- n>friend</c-> <c- n>recv_op</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>tag_t</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- o>></c->
-                                        <c- k>const</c-> <c- n>recv_sender</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>,</c->
-                                        <c- n>Receiver</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
-        <c- k>return</c-> <c- n>recv_op</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>></c-><c- p>{</c-><c- n>s</c-><c- p>.</c-><c- n>sock</c-><c- p>,</c-> <c- n>s</c-><c- p>.</c-><c- n>data</c-><c- p>,</c-> <c- n>s</c-><c- p>.</c-><c- n>len</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>r</c-><c- p>)};</c->
-    <c- p>}</c->
-<c- p>};</c->
-
-<c- n>recv_sender</c-> <c- nf>async_recv</c-><c- p>(</c-><c- n>SOCKET</c-> <c- n>s</c-><c- p>,</c-> <c- b>void</c-><c- o>*</c-> <c- n>data</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>len</c-><c- p>)</c-> <c- p>{</c->
-    <c- k>return</c-> <c- n>recv_sender</c-><c- p>{</c-><c- n>s</c-><c- p>,</c-> <c- n>data</c-><c- p>,</c-> <c- n>len</c-><c- p>};</c->
-<c- p>}</c->
-</pre>
   </main>
 <script>
 (function() {
