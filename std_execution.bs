@@ -132,7 +132,7 @@ In this section we demonstrate the end-user experience of asynchronous programmi
 ```c++
 using namespace std::execution;
 
-scheduler auto sch = get_thread_pool().scheduler();                           // 1
+scheduler auto sch = thread_pool.scheduler();                                 // 1
 
 sender auto begin = schedule(sch);                                            // 2
 sender auto hi = then(begin, []{                                              // 3
@@ -873,7 +873,7 @@ directly against their API. A scheduler is a solution to that problem: the sched
 by the scheduler. Logic that you want to run on that context can be placed in the receiver's completion-signalling method.
 
 <pre highlight="c++">
-execution::scheduler auto sch = get_thread_pool().scheduler();
+execution::scheduler auto sch = thread_pool.scheduler();
 execution::sender auto snd = execution::schedule(sch);
 // snd is a sender (see below) describing the creation of a new execution resource
 // on the execution context associated with sch
@@ -903,7 +903,7 @@ This paper proposes an initial set of such sender algorithms, which are describe
 For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:
 
 <pre highlight="c++">
-execution::scheduler auto sch = get_thread_pool().scheduler();
+execution::scheduler auto sch = thread_pool.scheduler();
 execution::sender auto snd = execution::schedule(sch);
 execution::sender auto cont = execution::then(snd, []{
     std::fstream file{ "result.txt" };
@@ -1277,11 +1277,11 @@ auto snd = execution::then(
                execution::then(
                  execution::transfer(
                    execution::then(
-                     execution::schedule(get_thread_pool().scheduler())
+                     execution::schedule(thread_pool.scheduler())
                      []{ return 123; }),
                    cuda::new_stream_scheduler()),
                  [](int i){ return 123 * 5; }),
-               get_thread_pool().scheduler()),
+               thread_pool.scheduler()),
              [](int i){ return i - 5; });
 auto [result] = this_thread::sync_wait(snd).value();
 // result == 610
@@ -1289,11 +1289,11 @@ auto [result] = this_thread::sync_wait(snd).value();
 <tr>
 <th>Function call <br/> (named temporaries)
 <td><pre highlight=c++>
-auto snd0 = execution::schedule(get_thread_pool().scheduler());
+auto snd0 = execution::schedule(thread_pool.scheduler());
 auto snd1 = execution::then(snd0, []{ return 123; });
 auto snd2 = execution::transfer(snd1, cuda::new_stream_scheduler());
 auto snd3 = execution::then(snd2, [](int i){ return 123 * 5; })
-auto snd4 = execution::transfer(snd3, get_thread_pool().scheduler())
+auto snd4 = execution::transfer(snd3, thread_pool.scheduler())
 auto snd5 = execution::then(snd4, [](int i){ return i - 5; });
 auto [result] = *this_thread::sync_wait(snd4);
 // result == 610
@@ -1301,11 +1301,11 @@ auto [result] = *this_thread::sync_wait(snd4);
 <tr>
 <th>Pipe
 <td><pre highlight=c++>
-auto snd = execution::schedule(get_thread_pool().scheduler())
+auto snd = execution::schedule(thread_pool.scheduler())
          | execution::then([]{ return 123; })
          | execution::transfer(cuda::new_stream_scheduler())
          | execution::then([](int i){ return 123 * 5; })
-         | execution::transfer(get_thread_pool().scheduler())
+         | execution::transfer(thread_pool.scheduler())
          | execution::then([](int i){ return i - 5; });
 auto [result] = this_thread::sync_wait(snd).value();
 // result == 610
@@ -1769,7 +1769,7 @@ The returned sender has no [=completion scheduler|completion schedulers=].
 See [[#design-join]].
 
 <pre highlight="c++">
-execution::scheduler auto sched = get_thread_pool().scheduler();
+execution::scheduler auto sched = thread_pool.scheduler();
 
 execution::sender auto sends_1 = ...;
 execution::sender auto sends_abc = ...;
