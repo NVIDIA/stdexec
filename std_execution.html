@@ -2522,7 +2522,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
    <h4 class="heading settled" data-level="1.3.1" id="example-hello-world"><span class="secno">1.3.1. </span><span class="content">Hello world</span><a class="self-link" href="#example-hello-world"></a></h4>
 <pre class="language-c++ highlight"><c- n>using</c-> <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
 
-<c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->                           <c- c1>// 1</c->
+<c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>();</c->                                 <c- c1>// 1</c->
 
 <c- n>sender</c-> <c- k>auto</c-> <c- n>begin</c-> <c- o>=</c-> <c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->                                            <c- c1>// 2</c->
 <c- n>sender</c-> <c- k>auto</c-> <c- n>hi</c-> <c- o>=</c-> <c- n>then</c-><c- p>(</c-><c- n>begin</c-><c- p>,</c-> <c- p>[]{</c->                                              <c- c1>// 3</c->
@@ -3264,7 +3264,7 @@ don’t need to have a representation in code; they are simply a term describing
    <p>A <dfn data-dfn-type="dfn" data-noexport id="scheduler">scheduler<a class="self-link" href="#scheduler"></a></dfn> is a lightweight handle that represents a strategy for scheduling work onto an <em>execution context</em>. Since execution contexts don’t necessarily manifest in C++ code, it’s not possible to program
 directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single sender algorithm, <code class="highlight"><c- n>schedule</c-></code>, which returns a sender that will complete on an execution context determined
 by the scheduler. Logic that you want to run on that context can be placed in the receiver’s completion-signalling method.</p>
-<pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
+<pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>();</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->
 <c- c1>// snd is a sender (see below) describing the creation of a new execution resource</c->
 <c- c1>// on the execution context associated with sch</c->
@@ -3290,7 +3290,7 @@ it directly.</p>
    <p>The way user code is expected to interact with senders is by using <a data-link-type="dfn" href="#sender-algorithms" id="ref-for-sender-algorithms">sender algorithms</a>.
 This paper proposes an initial set of such sender algorithms, which are described in <a href="#design-composable">§ 4.4 Senders are composable through sender algorithms</a>, <a href="#design-sender-factories">§ 4.19 User-facing sender factories</a>, <a href="#design-sender-adaptors">§ 4.20 User-facing sender adaptors</a>, and <a href="#design-sender-consumers">§ 4.21 User-facing sender consumers</a>.
 For example, here is how a user can create a new sender on a scheduler, attach a continuation to it, and then wait for execution of the continuation to complete:</p>
-<pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
+<pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sch</c-> <c- o>=</c-> <c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>();</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>);</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>cont</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd</c-><c- p>,</c-> <c- p>[]{</c->
     <c- n>std</c-><c- o>::</c-><c- n>fstream</c-> <c- n>file</c-><c- p>{</c-> <c- s>"result.txt"</c-> <c- p>};</c->
@@ -3601,11 +3601,11 @@ Consider the following example where we want to execute first on a CPU thread po
                <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c->
                  <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c->
                    <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c->
-                     <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>())</c->
+                     <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>())</c->
                      <c- p>[]{</c-> <c- k>return</c-> <c- mi>123</c-><c- p>;</c-> <c- p>}),</c->
                    <c- n>cuda</c-><c- o>::</c-><c- n>new_stream_scheduler</c-><c- p>()),</c->
                  <c- p>[](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- mi>123</c-> <c- o>*</c-> <c- mi>5</c-><c- p>;</c-> <c- p>}),</c->
-               <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>()),</c->
+               <c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>()),</c->
              <c- p>[](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- n>i</c-> <c- o>-</c-> <c- mi>5</c-><c- p>;</c-> <c- p>});</c->
 <c- k>auto</c-> <c- p>[</c-><c- n>result</c-><c- p>]</c-> <c- o>=</c-> <c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>snd</c-><c- p>).</c-><c- n>value</c-><c- p>();</c->
 <c- c1>// result == 610</c->
@@ -3613,11 +3613,11 @@ Consider the following example where we want to execute first on a CPU thread po
      <tr>
       <th>Function call <br> (named temporaries) 
       <td>
-<pre class="highlight"><c- k>auto</c-> <c- n>snd0</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>());</c->
+<pre class="highlight"><c- k>auto</c-> <c- n>snd0</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>());</c->
 <c- k>auto</c-> <c- n>snd1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd0</c-><c- p>,</c-> <c- p>[]{</c-> <c- k>return</c-> <c- mi>123</c-><c- p>;</c-> <c- p>});</c->
 <c- k>auto</c-> <c- n>snd2</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>snd1</c-><c- p>,</c-> <c- n>cuda</c-><c- o>::</c-><c- n>new_stream_scheduler</c-><c- p>());</c->
 <c- k>auto</c-> <c- n>snd3</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd2</c-><c- p>,</c-> <c- p>[](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- mi>123</c-> <c- o>*</c-> <c- mi>5</c-><c- p>;</c-> <c- p>})</c->
-<c- k>auto</c-> <c- n>snd4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>snd3</c-><c- p>,</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>())</c->
+<c- k>auto</c-> <c- n>snd4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>snd3</c-><c- p>,</c-> <c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>())</c->
 <c- k>auto</c-> <c- n>snd5</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd4</c-><c- p>,</c-> <c- p>[](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- n>i</c-> <c- o>-</c-> <c- mi>5</c-><c- p>;</c-> <c- p>});</c->
 <c- k>auto</c-> <c- p>[</c-><c- n>result</c-><c- p>]</c-> <c- o>=</c-> <c- o>*</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>snd4</c-><c- p>);</c->
 <c- c1>// result == 610</c->
@@ -3625,11 +3625,11 @@ Consider the following example where we want to execute first on a CPU thread po
      <tr>
       <th>Pipe 
       <td>
-<pre class="highlight"><c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>())</c->
+<pre class="highlight"><c- k>auto</c-> <c- n>snd</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>())</c->
          <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>([]{</c-> <c- k>return</c-> <c- mi>123</c-><c- p>;</c-> <c- p>})</c->
          <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>cuda</c-><c- o>::</c-><c- n>new_stream_scheduler</c-><c- p>())</c->
          <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>([](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- mi>123</c-> <c- o>*</c-> <c- mi>5</c-><c- p>;</c-> <c- p>})</c->
-         <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>())</c->
+         <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>())</c->
          <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>([](</c-><c- b>int</c-> <c- n>i</c-><c- p>){</c-> <c- k>return</c-> <c- n>i</c-> <c- o>-</c-> <c- mi>5</c-><c- p>;</c-> <c- p>});</c->
 <c- k>auto</c-> <c- p>[</c-><c- n>result</c-><c- p>]</c-> <c- o>=</c-> <c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>snd</c-><c- p>).</c-><c- n>value</c-><c- p>();</c->
 <c- c1>// result == 610</c->
@@ -3951,7 +3951,7 @@ parallel computing tasks.</p>
    <p><code class="highlight"><c- n>when_all_with_variant</c-></code> does the same, but it adapts all the input senders using <code class="highlight"><c- n>into_variant</c-></code>.</p>
    <p>The returned sender has no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑧">completion schedulers</a>.</p>
    <p>See <a href="#design-join">§ 4.9 Senders are joinable</a>.</p>
-<pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-> <c- o>=</c-> <c- n>get_thread_pool</c-><c- p>().</c-><c- n>scheduler</c-><c- p>();</c->
+<pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-> <c- o>=</c-> <c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>();</c->
 
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sends_1</c-> <c- o>=</c-> <c- p>...;</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>sends_abc</c-> <c- o>=</c-> <c- p>...;</c->
