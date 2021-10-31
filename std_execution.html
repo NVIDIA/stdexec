@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-10-20">2021-10-20</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-10-31">2021-10-31</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2579,7 +2579,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
            <c- p>[</c-><c- o>=</c-><c- p>](</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>i</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>double</c-><c- o>>&amp;</c-> <c- n>partials</c-><c- p>)</c-> <c- p>{</c->                <c- c1>// 14</c->
              <c- k>auto</c-> <c- n>start</c-> <c- o>=</c-> <c- n>i</c-> <c- o>*</c-> <c- n>tile_size</c-><c- p>;</c->                                      <c- c1>// 14</c->
              <c- k>auto</c-> <c- n>end</c->   <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>min</c-><c- p>(</c-><c- n>input</c-><c- p>.</c-><c- n>size</c-><c- p>(),</c-> <c- p>(</c-><c- n>i</c-> <c- o>+</c-> <c- mi>1</c-><c- p>)</c-> <c- o>*</c-> <c- n>tile_size</c-><c- p>);</c->        <c- c1>// 14</c->
-             <c- n>std</c-><c- o>::</c-><c- n>for_each</c-><c- p>(</c-><c- n>output</c-> <c- o>+</c-> <c- n>start</c-><c- p>,</c-> <c- n>output</c-> <c- o>+</c-> <c- n>end</c-><c- p>,</c->                      <c- c1>// 14</c->
+             <c- n>std</c-><c- o>::</c-><c- n>for_each</c-><c- p>(</c-><c- n>begin</c-><c- p>(</c-><c- n>output</c-><c- p>)</c-> <c- o>+</c-> <c- n>start</c-><c- p>,</c-> <c- n>begin</c-><c- p>(</c-><c- n>output</c-><c- p>)</c-> <c- o>+</c-> <c- n>end</c-><c- p>,</c->        <c- c1>// 14</c->
                <c- p>[</c-><c- o>&amp;</c-><c- p>]</c-> <c- p>(</c-><c- b>double</c-><c- o>&amp;</c-> <c- n>e</c-><c- p>)</c-> <c- p>{</c-> <c- n>e</c-> <c- o>=</c-> <c- n>partials</c-><c- p>[</c-><c- n>i</c-><c- p>]</c-> <c- o>+</c-> <c- n>e</c-><c- p>;</c-> <c- p>}</c->                       <c- c1>// 14</c->
              <c- p>);</c->
            <c- p>})</c->
