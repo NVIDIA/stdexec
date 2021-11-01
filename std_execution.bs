@@ -2476,7 +2476,7 @@ namespace std::execution {
     template&lt;class CPO>
     struct get_completion_scheduler_t;
     template&lt;class CPO>
-    inline constexpr get_completion_scheduler_t get_completion_scheduler{};
+    inline constexpr get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
 
     // [execution.senders.factories], sender factories
     struct schedule_t;
