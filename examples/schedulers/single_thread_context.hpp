@@ -17,13 +17,12 @@
 #pragma once
 
 #include <execution.hpp>
-#include "./manual_event_loop.hpp"
 
 #include <thread>
 
 namespace example {
   class single_thread_context {
-    manual_event_loop loop_;
+    std::execution::manual_event_loop loop_;
     std::thread thread_;
 
   public:
