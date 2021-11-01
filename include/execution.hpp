@@ -823,8 +823,7 @@ namespace std::execution {
 
   // NOT TO SPEC:
   namespace __closure {
-    template <class D>
-      requires is_class_v<D> && same_as<D, remove_cvref_t<D>>
+    template <__class D>
       struct sender_adaptor_closure;
   }
   using __closure::sender_adaptor_closure;
@@ -854,8 +853,7 @@ namespace std::execution {
       }
     };
 
-    template <class D>
-      requires is_class_v<D> && same_as<D, remove_cvref_t<D>>
+    template <__class D>
       struct sender_adaptor_closure
       {};
 
@@ -893,7 +891,18 @@ namespace std::execution {
           }, as);
       }
     };
-  }
+
+    inline constexpr struct __bind_back_fn {
+      template <class Fn, class... As>
+        __binder_back<Fn, decay_t<As>...> operator()(Fn fn, As&&... as) const
+          noexcept(noexcept(__binder_back<Fn, decay_t<As>...>{
+              {}, (Fn&&) fn, tuple<decay_t<As>...>{(As&&) as...}})) {
+            return {{}, (Fn&&) fn, tuple<decay_t<As>...>{(As&&) as...}};
+          }
+    } __bind_back {};
+  } // __closure
+  using __closure::__binder_back;
+  using __closure::__bind_back;
 
   // NOT TO SPEC
   namespace __tag_invoke_adaptors {
@@ -938,15 +947,6 @@ namespace std::execution {
             noexcept(noexcept(((Self&&) self).connect((R&&) r)))
             -> decltype(((Self&&) self).connect((R&&) r)) {
             return ((Self&&) self).connect((R&&) r);
-          }
-
-          template <__decays_to<Derived> Self, receiver R>
-            requires (!__has_connect<Self, R>) &&
-              sender_to<__member_t<Self, Base>, R>
-          friend auto tag_invoke(connect_t, Self&& self, R&& r)
-            noexcept(/*TODO*/ false)
-            -> connect_result_t<__member_t<Self, Base>, R> {
-            return execution::connect(__c_cast<__t>((Self&&) self).base(), (R&&) r);
           }
 
           template <__none_of<connect_t> Tag, same_as<Derived> Self, class... As>
@@ -1148,6 +1148,9 @@ namespace std::execution {
     using scheduler_adaptor =
       typename __tag_invoke_adaptors::__scheduler_adaptor<Base, Derived>::__t;
 
+  template <class Derived>
+    using adaptor_of = typename Derived::__t;
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   inline namespace __then {
@@ -1155,10 +1158,11 @@ namespace std::execution {
       template<class R_, class F>
         class __receiver
           : receiver_adaptor<__t<R_>, __receiver<R_, F>> {
+          friend adaptor_of<__receiver>;
           using R = __t<R_>;
           [[no_unique_address]] F f_;
 
-          // Customize set_value by invoking the callable and passing the result
+          // Customize set_value by invoking the invocable and passing the result
           // to the base class
           template<class... As>
             requires invocable<F, As...> &&
@@ -1168,7 +1172,7 @@ namespace std::execution {
                 ((__receiver&&) *this).base(),
                 std::invoke((F&&) f_, (As&&) as...));
           }
-          // Handle the case when the callable returns void
+          // Handle the case when the invocable returns void
           template<class... As>
             requires invocable<F, As...> &&
               same_as<void, invoke_result_t<F, As...>> &&
@@ -1177,8 +1181,9 @@ namespace std::execution {
             invoke((F&&) f_, (As&&) as...);
             execution::set_value(((__receiver&&) *this).base());
           }
-        public:
-          __receiver(R r, F f)
+
+         public:
+          explicit __receiver(R r, F f)
             : receiver_adaptor<R, __receiver>((R&&) r)
             , f_((F&&) f)
           {}
@@ -1187,6 +1192,7 @@ namespace std::execution {
       template<class S_, class F>
         class __sender
           : sender_adaptor<__t<S_>, __sender<S_, F>> {
+          friend adaptor_of<__sender>;
           using S = __t<S_>;
           template <class R>
             using __rec = __receiver<__id_t<remove_cvref_t<R>>, F>;
@@ -1195,14 +1201,15 @@ namespace std::execution {
 
           template<receiver R>
             requires sender_to<S, __rec<R>>
-          auto connect(R&& r) && noexcept(/*todo*/ false)
+          auto connect(R&& r) && noexcept(/*TODO*/ false)
             -> connect_result_t<S, __rec<R>> {
             return execution::connect(
                 ((__sender&&) *this).base(),
                 __rec<R>{{(R&&) r}, (F&&) f_});
           }
+
         public:
-          __sender(S s, F f)
+          explicit __sender(S s, F f)
             : sender_adaptor<S, __sender>{(S&&) s}
             , f_((F&&) f)
           {}
@@ -1225,7 +1232,7 @@ namespace std::execution {
         return __sender<S, F>{(S&&) s, (F&&) f};
       }
       template <class F>
-      __closure::__binder_back<then_t, F> operator()(F f) const {
+      __binder_back<then_t, F> operator()(F f) const {
         return {{}, {}, {(F&&) f}};
       }
     } then {};
@@ -1258,6 +1265,165 @@ namespace std::execution {
 
     static constexpr bool sends_done = sender_traits<S>::sends_done;
   };
+
+  inline namespace __loop {
+    class manual_event_loop;
+
+    namespace __impl {
+      struct __task {
+        using __execute_fn = void(__task*) noexcept;
+
+        void __execute() noexcept {
+          __execute_(this);
+        }
+
+        __execute_fn* __execute_;
+        __task* __next_ = nullptr;
+      };
+
+      template <typename Receiver_>
+        class __operation final : __task {
+          using Receiver = __t<Receiver_>;
+          using stop_token_type = stop_token_type_t<Receiver&>;
+
+          friend void tag_invoke(std::execution::start_t, __operation& op) noexcept {
+            op.__start_();
+          }
+
+          static void __execute_impl(__task* t) noexcept {
+            auto& self = *static_cast<__operation*>(t);
+            if (get_stop_token(self.__receiver_).stop_requested()) {
+              set_done(std::move(self.__receiver_));
+            } else {
+              set_value(std::move(self.__receiver_));
+            }
+          }
+
+          void __start_() noexcept;
+
+          [[no_unique_address]] Receiver __receiver_;
+          manual_event_loop* const __loop_;
+
+        public:
+          template <typename Receiver2>
+          explicit __operation(Receiver2&& receiver, manual_event_loop* loop)
+            : __task{&__execute_impl}
+            , __receiver_((Receiver2 &&) receiver)
+            , __loop_(loop) {}
+        };
+    } // namespace __impl
+
+    class manual_event_loop {
+      template <class>
+        friend struct __impl::__operation;
+     public:
+      class __scheduler {
+        struct __schedule_task {
+          template <
+              template <typename...> class Tuple,
+              template <typename...> class Variant>
+          using value_types = Variant<Tuple<>>;
+
+          template <template <typename...> class Variant>
+          using error_types = Variant<>;
+
+          static constexpr bool sends_done = true;
+
+        private:
+          friend __scheduler;
+
+          template <typename Receiver>
+          friend __impl::__operation<__id_t<Receiver>>
+          tag_invoke(connect_t, const __schedule_task& self, Receiver&& receiver) {
+            return __impl::__operation<__id_t<Receiver>>{(Receiver &&) receiver, self.__loop_};
+          }
+
+          explicit __schedule_task(manual_event_loop* loop) noexcept
+            : __loop_(loop)
+          {}
+
+          manual_event_loop* const __loop_;
+        };
+
+        friend manual_event_loop;
+
+        explicit __scheduler(manual_event_loop* loop) noexcept : __loop_(loop) {}
+
+       public:
+        friend __schedule_task tag_invoke(schedule_t, const __scheduler& self) noexcept {
+          return __schedule_task{self.__loop_};
+        }
+
+        bool operator==(const __scheduler&) const noexcept = default;
+
+       private:
+        manual_event_loop* __loop_;
+      };
+
+      __scheduler get_scheduler() {
+        return __scheduler{this};
+      }
+
+      void run();
+
+      void finish();
+
+     private:
+      void enqueue(__impl::__task* task);
+
+      mutex __mutex_;
+      condition_variable __cv_;
+      __impl::__task* __head_ = nullptr;
+      __impl::__task* __tail_ = nullptr;
+      bool __stop_ = false;
+    };
+
+    namespace __impl {
+      template <typename Receiver_>
+      inline void __operation<Receiver_>::__start_() noexcept {
+        __loop_->enqueue(this);
+      }
+    }
+
+    inline void manual_event_loop::run() {
+      unique_lock __lock{__mutex_};
+      while (true) {
+        while (__head_ == nullptr) {
+          if (__stop_)
+            return;
+          __cv_.wait(__lock);
+        }
+        auto* task = __head_;
+        __head_ = task->__next_;
+        if (__head_ == nullptr)
+          __tail_ = nullptr;
+        __lock.unlock();
+        task->__execute();
+        __lock.lock();
+      }
+    }
+
+    inline void manual_event_loop::finish() {
+      unique_lock lock{__mutex_};
+      __stop_ = true;
+      __cv_.notify_all();
+    }
+
+    inline void manual_event_loop::enqueue(__impl::__task* task) {
+      unique_lock lock{__mutex_};
+      if (__head_ == nullptr) {
+        __head_ = task;
+      } else {
+        __tail_->__next_ = task;
+      }
+      __tail_ = task;
+      task->__next_ = nullptr;
+      __cv_.notify_one();
+    }
+  } // namespace __loop
+
+  // NOT TO SPEC
+  using manual_event_loop = __loop::manual_event_loop;
 } // namespace std::execution
 
 namespace std::this_thread {
@@ -1274,48 +1440,50 @@ namespace std::this_thread {
 
       template <class Tuple>
         struct __state {
-          mutex mtx;
-          condition_variable cv;
           variant<monostate, Tuple, exception_ptr, execution::set_done_t> data;
           struct __receiver {
-            __state* state_;
+            __state* __state_;
+            execution::manual_event_loop* __loop_;
             template <class... As>
               requires constructible_from<Tuple, As...>
             friend void tag_invoke(execution::set_value_t, __receiver&& r, As&&... as) {
-              r.state_->data.template emplace<1>((As&&) as...);
-              r.state_->cv.notify_one();
+              r.__state_->data.template emplace<1>((As&&) as...);
+              r.__loop_->finish();
             }
             friend void tag_invoke(execution::set_error_t, __receiver&& r, exception_ptr e) noexcept {
-              r.state_->data.template emplace<2>((exception_ptr&&) e);
-              r.state_->cv.notify_one();
+              r.__state_->data.template emplace<2>((exception_ptr&&) e);
+              r.__loop_->finish();
             }
             friend void tag_invoke(execution::set_done_t d, __receiver&& r) noexcept {
-              r.state_->data.template emplace<3>(d);
-              r.state_->cv.notify_one();
+              r.__state_->data.template emplace<3>(d);
+              r.__loop_->finish();
+            }
+            friend execution::manual_event_loop::__scheduler
+            tag_invoke(execution::get_scheduler_t, const __receiver& r) noexcept {
+              return r.__loop_.get_scheduler();
             }
           };
         };
-    }
+    } // namespace __impl
 
     inline constexpr struct sync_wait_t {
       template <execution::typed_sender S>
       optional<__impl::__sync_wait_result_t<S>> operator()(S&& s) const {
         using state_t = __impl::__state<__impl::__sync_wait_result_t<S>>;
         state_t state {};
+        execution::manual_event_loop loop;
 
         // Launch the sender with a continuation that will fill in a variant
         // and notify a condition variable.
-        auto op = execution::connect((S&&) s, typename state_t::__receiver{&state});
+        auto op = execution::connect((S&&) s, typename state_t::__receiver{&state, &loop});
         execution::start(op);
 
         // Wait for the variant to be filled in.
-        {
-          unique_lock g{state.mtx};
-          state.cv.wait(g, [&]{return state.data.index() != 0;});
-        }
+        loop.run();
 
         if (state.data.index() == 2)
           rethrow_exception(std::get<2>(state.data));
+
         if (state.data.index() == 3)
           return nullopt;
 
