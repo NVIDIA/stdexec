@@ -3008,11 +3008,9 @@ enum class forward_progress_guarantee {
 
 1. `execution::schedule` is used to obtain a sender associated with a scheduler, which can be used to describe work to be started on that scheduler's associated execution context.
 
-2. The name `execution::schedule` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::scheduler`, `execution::schedule` is ill-formed. Otherwise, the expression `execution::schedule(s)`
-    is expression-equivalent to:
+2. The name `execution::schedule` denotes a customization point object. For some subexpression `s`, the expression `execution::schedule(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::schedule, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s`, the program is ill-formed with no
-        diagnostic required.
+    1. `tag_invoke(execution::schedule, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s`, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::schedule(s)` is ill-formed.
 
