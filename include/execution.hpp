@@ -478,7 +478,39 @@ namespace std::execution {
     using connect_result_t = tag_invoke_result_t<connect_t, S, R>;
 
   /////////////////////////////////////////////////////////////////////////////
-  // NOT TO SPEC: as_awaitable and with_awaitable_senders
+  // [execution.senders.queries], sender queries
+  template<__one_of<set_value_t, set_error_t, set_done_t> CPO>
+    struct get_completion_scheduler_t {
+      template <sender S>
+        requires tag_invocable<get_completion_scheduler_t, const S&> &&
+          scheduler<tag_invoke_result_t<get_completion_scheduler_t, const S&>>
+      auto operator()(const S& s) const noexcept
+          -> tag_invoke_result_t<get_completion_scheduler_t, const S&> {
+        // NOT TO SPEC:
+        static_assert(
+          nothrow_tag_invocable<get_completion_scheduler_t, const S&>,
+          "get_completion_scheduler<CPO> should be noexcept");
+        return tag_invoke(*this, s);
+      }
+    };
+
+  template<__one_of<set_value_t, set_error_t, set_done_t> CPO>
+    inline constexpr get_completion_scheduler_t<CPO> get_completion_scheduler{};
+
+  template <class S, class CPO>
+    concept __has_completion_scheduler =
+      invocable<get_completion_scheduler_t<CPO>, S>;
+
+  template <class S, class CPO>
+    using __completion_scheduler_for =
+      invoke_result_t<get_completion_scheduler_t<CPO>, S>;
+
+  template <class Fn, class CPO, class S, class... As>
+    concept __tag_invocable_with_completion_scheduler =
+      __has_completion_scheduler<S, CPO> &&
+      tag_invocable<Fn, __completion_scheduler_for<S, CPO>, S, As...>;
+
+  /////////////////////////////////////////////////////////////////////////////
   inline namespace __with_awaitable_senders {
     namespace __impl {
       struct __void {};
@@ -949,14 +981,6 @@ namespace std::execution {
             return ((Self&&) self).connect((R&&) r);
           }
 
-          template <__none_of<connect_t> Tag, same_as<Derived> Self, class... As>
-            requires invocable<Tag, const Base&, As...>
-          friend auto tag_invoke(Tag tag, const Self& self, As&&... as)
-            noexcept(is_nothrow_invocable_v<Tag, const Base&, As...>)
-            -> invoke_result_t<Tag, const Base&, As...> {
-            return ((Tag&&) tag)(__c_cast<__t>(self).base(), (As&&) as...);
-          }
-
         protected:
           using __adaptor_base<Base>::base;
 
@@ -1221,13 +1245,23 @@ namespace std::execution {
         using __sender = __impl::__sender<__id_t<remove_cvref_t<S>>, F>;
 
       template<sender S, class F>
-        requires tag_invocable<then_t, S, F>
+        requires __tag_invocable_with_completion_scheduler<then_t, set_value_t, S, F>
+      sender auto operator()(S&& s, F f) const
+        noexcept(nothrow_tag_invocable<then_t, __completion_scheduler_for<S, set_value_t>, S, F>) {
+        auto sch = get_completion_scheduler<set_value_t>(s);
+        return tag_invoke(then_t{}, std::move(sch), (S&&) s, (F&&) f);
+      }
+      template<sender S, class F>
+        requires (!__tag_invocable_with_completion_scheduler<then_t, set_value_t, S, F>) &&
+          tag_invocable<then_t, S, F>
       sender auto operator()(S&& s, F f) const
         noexcept(nothrow_tag_invocable<then_t, S, F>) {
         return tag_invoke(then_t{}, (S&&) s, (F&&) f);
       }
       template<sender S, class F>
-        requires sender<__sender<S, F>>
+        requires (!__tag_invocable_with_completion_scheduler<then_t, set_value_t, S, F>) &&
+          (!tag_invocable<then_t, S, F>) &&
+          sender<__sender<S, F>>
       __sender<S, F> operator()(S&& s, F f) const {
         return __sender<S, F>{(S&&) s, (F&&) f};
       }
@@ -1292,10 +1326,14 @@ namespace std::execution {
 
           static void __execute_impl(__task* t) noexcept {
             auto& self = *static_cast<__operation*>(t);
-            if (get_stop_token(self.__receiver_).stop_requested()) {
-              set_done(std::move(self.__receiver_));
-            } else {
-              set_value(std::move(self.__receiver_));
+            try {
+              if (get_stop_token(self.__receiver_).stop_requested()) {
+                set_done(std::move(self.__receiver_));
+              } else {
+                set_value(std::move(self.__receiver_));
+              }
+            } catch(...) {
+              set_error(std::move(self.__receiver_), current_exception());
             }
           }
 
@@ -1336,6 +1374,12 @@ namespace std::execution {
           friend __impl::__operation<__id_t<Receiver>>
           tag_invoke(connect_t, const __schedule_task& self, Receiver&& receiver) {
             return __impl::__operation<__id_t<Receiver>>{(Receiver &&) receiver, self.__loop_};
+          }
+
+          template <class CPO>
+          friend __scheduler
+          tag_invoke(get_completion_scheduler_t<CPO>, const __schedule_task& self) noexcept {
+            return __scheduler{self.__loop_};
           }
 
           explicit __schedule_task(manual_event_loop* loop) noexcept
@@ -1467,8 +1511,27 @@ namespace std::this_thread {
     } // namespace __impl
 
     inline constexpr struct sync_wait_t {
+      // TODO: constrain on return type
+      template <execution::sender S> // NOT TO SPEC
+        requires execution::__tag_invocable_with_completion_scheduler<sync_wait_t, execution::set_value_t, S>
+      tag_invoke_result_t<sync_wait_t, execution::__completion_scheduler_for<S, execution::set_value_t>, S>
+      operator()(S&& s) const
+        noexcept(nothrow_tag_invocable<sync_wait_t, execution::__completion_scheduler_for<S, execution::set_value_t>, S>) {
+        auto sch = execution::get_completion_scheduler<execution::set_value_t>(s);
+        return tag_invoke(sync_wait_t{}, std::move(sch), (S&&) s);
+      }
+      // TODO: constrain on return type
+      template <execution::sender S> // NOT TO SPEC
+        requires (!execution::__tag_invocable_with_completion_scheduler<sync_wait_t, execution::set_value_t, S>) &&
+          tag_invocable<sync_wait_t, S>
+      tag_invoke_result_t<sync_wait_t, S>
+      operator()(S&& s) const noexcept(nothrow_tag_invocable<sync_wait_t, S>) {
+        return tag_invoke(sync_wait_t{}, (S&&) s);
+      }
       template <execution::typed_sender S>
-      optional<__impl::__sync_wait_result_t<S>> operator()(S&& s) const {
+        requires (!execution::__tag_invocable_with_completion_scheduler<sync_wait_t, execution::set_value_t, S>) &&
+          (!tag_invocable<sync_wait_t, S>)
+      optional<__impl::__sync_wait_result_t<S>> operator()(S&& s) const volatile {
         using state_t = __impl::__state<__impl::__sync_wait_result_t<S>>;
         state_t state {};
         execution::manual_event_loop loop;
@@ -1488,12 +1551,6 @@ namespace std::this_thread {
           return nullopt;
 
         return std::move(std::get<1>(state.data));
-      }
-      template <execution::sender S>
-        requires tag_invocable<sync_wait_t, S>
-      decltype(auto) operator()(S&& s) const
-        noexcept(nothrow_tag_invocable<sync_wait_t, S>) {
-        return tag_invoke(sync_wait_t{}, (S&&) s);
       }
     } sync_wait {};
   }
