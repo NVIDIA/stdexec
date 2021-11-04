@@ -158,48 +158,44 @@ This example demonstrates the basics of schedulers, senders, and receivers:
 ### Asynchronous inclusive scan ### {#example-async-inclusive-scan}
 
 ```c++
+using namespace std;
 using namespace std::execution;
 
 sender auto async_inclusive_scan(scheduler auto sch,                          // 2
-                                 std::span<const double> input,               // 1
-                                 std::span<double> output,                    // 1
+                                 span<const double> input,                    // 1
+                                 span<double> output,                         // 1
                                  double init,                                 // 1
-                                 std::size_t tile_count)                      // 3
+                                 size_t tile_count)                           // 3
 {
-  std::size_t const tile_size = (input.size() + tile_count - 1) / tile_count;
+  size_t const tile_size = (input.size() + tile_count - 1) / tile_count;
 
-  std::vector<double> partials(tile_count + 1);                               // 4
+  vector<double> partials(tile_count + 1);                                    // 4
   partials[0] = init;                                                         // 4
 
-  auto chuncked_inclusive_scan =
-    [=](std::size_t i, std::vector<double>& partials) {                       // 7
+  auto chuncked_inclusive_scan = [=](size_t i, vector<double>& partials) {    // 7
     auto start = i * tile_size;                                               // 8
-    auto end   = std::min(input.size(), (i + 1) * tile_size);                 // 8
-    partials[i + 1] = *--std::inclusive_scan(begin(input) + start,            // 9
-                                             begin(input) + end,              // 9
-                                             begin(output) + start);          // 9
+    auto end   = min(input.size(), (i + 1) * tile_size);                      // 8
+    partials[i + 1] = *--inclusive_scan(begin(input) + start,                 // 9
+                                        begin(input) + end,                   // 9
+                                        begin(output) + start);               // 9
   };
 
-  auto merge_partial_results = [](std::vector<double>&& partials) {
-    std::inclusive_scan(begin(partials), end(partials),                       // 12
-                        begin(partials));                                     // 12
-    return std::move(partials);                                               // 13
+  auto merge_partial_results = [](vector<double>&& partials) {
+    inclusive_scan(begin(partials), end(partials), begin(partials));          // 12
+    return move(partials);                                                    // 13
   };
 
-  auto chuncked_update_output =
-    [=](std::size_t i, std::vector<double>&& partials) {                       // 14
+  auto chuncked_update_output = [=](size_t i, vector<double>&& partials) {    // 14
     auto start = i * tile_size;                                               // 14
-    auto end   = std::min(input.size(), (i + 1) * tile_size);                 // 14
-    std::for_each(begin(output) + start, begin(output) + end,                 // 14
+    auto end   = min(input.size(), (i + 1) * tile_size);                      // 14
+    for_each(begin(output) + start, begin(output) + end,                      // 14
       [&] (double& e) { e = partials[i] + e; }                                // 14
     );
   };
 
-  auto get_output = [=](std::vector<double>& partials) {                      // 15
-    return output;                                                            // 15
-  };
+  auto get_output = [=](vector<double>&& partials) { return output; };        // 15
 
-  return transfer_just(sch, std::move(partials))                              // 5
+  return transfer_just(sch, move(partials))                                   // 5
        | bulk(tile_count, chuncked_inclusive_scan)                            // 10
        | then(merge_partial_results)
        | bulk(tile_count, chuncked_update_output)
@@ -228,32 +224,33 @@ This example builds an asynchronous computation of an inclusive scan:
 ### Asynchronous dynamically-sized read ### {#example-async-dynamically-sized-read}
 
 ```c++
+using namespace std;
 using namespace std::execution;
 
-sender_of<set_value_t(std::size_t)> auto async_read(                          // 1
-    sender_of<set_value_t(std::span<std::byte>)> auto buffer,                 // 1
+sender_of<set_value_t(size_t)> auto async_read(
+    sender_of<set_value_t(span<byte>)> auto buffer,                           // 1
     auto handle);                                                             // 1
 
 struct dynamic_buffer {                                                       // 3
-  std::unique_ptr<std::byte[]> data;                                          // 3
-  std::size_t size;                                                           // 3
+  unique_ptr<byte[]> data;                                                    // 3
+  size_t size;                                                                // 3
 };                                                                            // 3
 
 sender_of<set_value_t(dynamic_buffer)> auto async_read_array(auto handle) {   // 2
   return just(dynamic_buffer{})                                               // 4
        | let_value([handle] (dynamic_buffer& buf) {                           // 5
-          auto valiate_and_create_storage = [&buf] (std::size_t bytes_read) { // 9
+          auto valiate_and_create_storage = [&buf] (size_t bytes_read) {      // 9
             assert(bytes_read == sizeof(buf.size));                           // 10
-            buf.data = std::make_unique<std::byte[]>(buf.size);               // 11
-            return std::span(buf.data.get(), buf.size);                       // 12
+            buf.data = make_unique<std::byte[]>(buf.size);                    // 11
+            return span(buf.data.get(), buf.size);                            // 12
           }
 
-          auto return_buffer = [&buf] (std::size_t bytes_read) {
+          auto return_buffer = [&buf] (size_t bytes_read) {
             assert(bytes_read == buf.size);                                   // 14
-            return std::move(buf);                                            // 15
+            return move(buf);                                                 // 15
           }
 
-          return just(std::as_writeable_bytes(std::span(&buf.size, 1))        // 6
+          return just(as_writeable_bytes(span(&buf.size, 1))                  // 6
                | async_read(handle)                                           // 7
                | then(valiate_and_create_storage)
                | async_read(handle)                                           // 13
