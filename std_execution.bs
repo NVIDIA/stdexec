@@ -172,7 +172,7 @@ sender auto async_inclusive_scan(scheduler auto sch,                          //
   vector<double> partials(tile_count + 1);                                    // 4
   partials[0] = init;                                                         // 4
 
-  auto chuncked_inclusive_scan = [=](size_t i, vector<double>& partials) {    // 7
+  auto chunked_inclusive_scan = [=](size_t i, vector<double>& partials) {     // 7
     auto start = i * tile_size;                                               // 8
     auto end   = min(input.size(), (i + 1) * tile_size);                      // 8
     partials[i + 1] = *--inclusive_scan(begin(input) + start,                 // 9
@@ -185,7 +185,7 @@ sender auto async_inclusive_scan(scheduler auto sch,                          //
     return move(partials);                                                    // 13
   };
 
-  auto chuncked_update_output = [=](size_t i, vector<double>&& partials) {    // 14
+  auto chunked_update_output = [=](size_t i, vector<double>&& partials) {     // 14
     auto start = i * tile_size;                                               // 14
     auto end   = min(input.size(), (i + 1) * tile_size);                      // 14
     for_each(begin(output) + start, begin(output) + end,                      // 14
@@ -196,9 +196,9 @@ sender auto async_inclusive_scan(scheduler auto sch,                          //
   auto get_output = [=](vector<double>&& partials) { return output; };        // 15
 
   return transfer_just(sch, move(partials))                                   // 5
-       | bulk(tile_count, chuncked_inclusive_scan)                            // 10
+       | bulk(tile_count, chunked_inclusive_scan)                             // 10
        | then(merge_partial_results)
-       | bulk(tile_count, chuncked_update_output)
+       | bulk(tile_count, chunked_update_output)
        | then(get_output);                                                    // 15
 }
 ```
@@ -239,7 +239,7 @@ struct dynamic_buffer {                                                       //
 sender_of<set_value_t(dynamic_buffer)> auto async_read_array(auto handle) {   // 2
   return just(dynamic_buffer{})                                               // 4
        | let_value([handle] (dynamic_buffer& buf) {                           // 5
-          auto valiate_and_create_storage = [&buf] (size_t bytes_read) {      // 9
+          auto create_storage = [&buf] (size_t bytes_read) {                  // 9
             assert(bytes_read == sizeof(buf.size));                           // 10
             buf.data = make_unique<std::byte[]>(buf.size);                    // 11
             return span(buf.data.get(), buf.size);                            // 12
@@ -252,7 +252,7 @@ sender_of<set_value_t(dynamic_buffer)> auto async_read_array(auto handle) {   //
 
           return just(as_writeable_bytes(span(&buf.size, 1))                  // 6
                | async_read(handle)                                           // 7
-               | then(valiate_and_create_storage)
+               | then(create_storage)
                | async_read(handle)                                           // 13
                | then(return_buffer);
        });
