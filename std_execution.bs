@@ -469,8 +469,8 @@ In this section we show a few simple sender/receiver-based algorithm implementat
 
 ```c++
 template<receiver R, class F>
-class _then_receiver : std::execution::receiver_adaptor<R, _then_receiver<R, F>> {
-  friend std::execution::receiver_adaptor<R, _then_receiver<R, F>>;
+class _then_receiver : std::execution::receiver_adaptor<_then_receiver<R, F>, R> {
+  friend std::execution::receiver_adaptor<_then_receiver, R>;
   F f_;
 
   // Customize set_value by invoking the callable and passing the result to the inner receiver
@@ -482,7 +482,7 @@ class _then_receiver : std::execution::receiver_adaptor<R, _then_receiver<R, F>>
 
  public:
   _then_receiver(R r, F f)
-   : std::execution::receiver_adaptor<R, _then_receiver<R, F>>{std::move(r)}
+   : std::execution::receiver_adaptor<_then_receiver, R>{std::move(r)}
    , f_(std::move(f)) {}
 };
 
@@ -2562,7 +2562,7 @@ namespace std::execution {
   }
 
   // [execution.snd_rec_utils], sender and receiver utilities
-  template&lt;receiver Base, <i>class-type</i> Derived>
+  template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
     using receiver_adaptor = <i>unspecified</i>;
 }
 
@@ -3842,10 +3842,6 @@ from the operation before the operation completes.
 
     <pre highlight="c++">
     template&lt;class T, class... Us>
-      concept <i>one-of</i> =
-        (same_as&lt;T, Us> ||...);
-
-    template&lt;class T, class... Us>
       concept <i>none-of</i> =
         ((!same_as&lt;T, Us>) &amp;&amp;...);
 
@@ -3862,7 +3858,7 @@ from the operation before the operation completes.
 ### `execution::receiver_adaptor` <b>[execution.snd_rec_utils.receiver_adaptor]</b> ### {#spec-execution.snd_rec_utils.receiver_adaptor}
 
     <pre highlight="c++">
-    template&lt;receiver Base, <i>class-type</i> Derived>
+    template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
       using receiver_adaptor = <i>see below</i>;
     </pre>
 
@@ -3890,75 +3886,116 @@ from the operation before the operation completes.
         };
     </pre>
 
-3. `receiver_adaptor<Base, Derived>` is an alias for a class type equivalent to the following:
+3. If `Base` is an alias for the unspecified default template parameter, then:
+
+    - Let <code><i>HAS-BASE</i></code> be `false`, and
+    - Let <code><i>GET-BASE</i>(d)</code> be <code><i>c-style-cast</i>&lt;<i>receiver-adaptor</i>>(d)</code>.
+
+    otherwise, let:
+
+    - Let <code><i>HAS-BASE</i></code> be `true`, and
+    - Let <code><i>GET-BASE</i>(d)</code> be `d.base()`.
+
+    Let <code><i>BASE-T</i>(D)</code> be the type of <code><i>GET-BASE</i>(declval&lt;D>())</code>.
+
+4. `receiver_adaptor<Derived, Base>` is an alias for a class type equivalent to the following:
 
     <pre highlight="c++">
     class <i>receiver-adaptor</i> { // <i>exposition only</i>
       friend Derived;
      public:
-      explicit <i>receiver-adaptor</i>(Base base) : base_(static_cast&lt;Base&amp;&amp;>(base)) {}
-
-     protected:
-      Base&amp; base() &amp; noexcept { return base_; }
-      const Base&amp; base() const &amp; noexcept { return base_; }
-      Base&amp;&amp; base() &amp;&amp; noexcept { return static_cast&lt;Base&amp;&amp;>(base_); }
+      // Constructors
+      <i>receiver-adaptor</i>() = default;
+      template &lt;class B>
+          requires <i>HAS-BASE</i> && constructible_from&lt;Base, B>
+        explicit <i>receiver-adaptor</i>(Base base) : base_(static_cast&lt;B&amp;&amp;>(base)) {}
 
      private:
-      template &lt;class... As>
-        requires <i>has-set-value</i>&lt;Derived, As...>
-      friend void tag_invoke(set_value_t, Derived&amp;&amp; self, As&amp;&amp;... as)
-        noexcept(noexcept(static_cast&lt;Derived&amp;&amp;>(self).set_value(static_cast&lt;As&amp;&amp;>(as)...))) {
-        static_cast&lt;Derived&amp;&amp;>(self).set_value(static_cast&lt;As&amp;&amp;>(as)...);
+      // Member functions
+      Base&amp; base() &amp; noexcept requires <i>HAS-BASE</i> { return base_; }
+      const Base&amp; base() const &amp; noexcept requires <i>HAS-BASE</i> { return base_; }
+      Base&amp;&amp; base() &amp;&amp; noexcept requires <i>HAS-BASE</i> {
+        return static_cast&lt;Base&amp;&amp;>(base_);
       }
+
+      // [execution.snd_rec_utils.receiver_adaptor.nonmembers] Non-member functions
+      template &lt;class... As>
+        friend void tag_invoke(set_value_t, Derived&amp;&amp; self, As&amp;&amp;... as) noexcept(<i>see below</i>);
 
       template &lt;class A>
-        requires <i>has-set-error</i>&lt;Derived, A>
-      friend void tag_invoke(set_error_t, Derived&amp;&amp; self, A&amp;&amp; a) noexcept {
-        static_assert(noexcept(static_cast&lt;Derived&amp;&amp;>(self).set_error(static_cast&lt;A&amp;&amp;>(a))));
-        static_cast&lt;Derived&amp;&amp;>(self).set_error(static_cast&lt;A&amp;&amp;>(a));
-      }
+        friend void tag_invoke(set_error_t, Derived&amp;&amp; self, A&amp;&amp; a) noexcept;
 
-      friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept requires <i>has-set-done</i>&lt;Derived> {
-        static_assert(noexcept(static_cast&lt;Derived&amp;&amp;>(self).set_done()));
-        static_cast&lt;Derived&amp;&amp;>(self).set_done();
-      }
-
-      template &lt;<i>one-of</i>&lt;set_value_t, set_error_t, set_done_t> Tag, class... As>
-        requires invocable&lt;Tag, Base, As...>
-      friend void tag_invoke(Tag, Derived&amp;&amp; self, As&amp;&amp;... as)
-        noexcept(is_nothrow_invocable_v&lt;Tag, Base, As...>) {
-        Tag{}(<i>c-style-cast</i>&lt;<i>receiver-adaptor</i>>(static_cast&lt;Derived&amp;&amp;>(self)).base(),
-              static_cast&lt;As&amp;&amp;>(as)...);
-      }
+      friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
 
       template &lt;<i>none-of</i>&lt;set_value_t, set_error_t, set_done_t> Tag, class... As>
-        requires invocable&lt;Tag, const Base&amp;, As...>
-      friend auto tag_invoke(Tag tag, const Derived&amp; self, As&amp;&amp;... as)
-        noexcept(is_nothrow_invocable_v&lt;Tag, const Base&amp;, As...>)
-        -> invoke_result_t&lt;Tag, const Base&amp;, As...> {
-        return static_cast&lt;Tag&amp;&amp;>(tag)(<i>c-style-cast</i>&lt;<i>receiver-adaptor</i>>(self).base(),
-                                       static_cast&lt;As&amp;&amp;>(as)...);
-      }
+          requires invocable&lt;Tag, <i>BASE-T</i>(const Derived&), As...>
+        friend auto tag_invoke(Tag tag, const Derived&amp; self, As&amp;&amp;... as)
+          noexcept(is_nothrow_invocable_v&lt;Tag, <i>BASE-T</i>(const Derived&), As...>)
+          -> invoke_result_t&lt;Tag, <i>BASE-T</i>(const Derived&), As...> {
+          return static_cast&lt;Tag&amp;&amp;>(tag)(<i>GET-BASE</i>(self), static_cast&lt;As&amp;&amp;>(as)...);
+        }
 
-      [[no_unique_address]] Base base_;
+      [[no_unique_address]] Base base_; // present if and only if <i>HAS-BASE</i> is true
     };
     </pre>
 
-4. [<i>Example:</i>
+5. [<i>Example:</i>
      <pre highlight="c++">
      template &lt;execution::receiver_of&lt;int> R>
-       class my_receiver : execution::receiver_adaptor&lt;R, my_receiver&lt;R>> {
-         friend execution::receiver_adaptor&lt;R, my_receiver&lt;R>>;
+       class my_receiver : execution::receiver_adaptor&lt;my_receiver&lt;R>, R> {
+         friend execution::receiver_adaptor&lt;my_receiver, R>;
          void set_value() && noexcept {
            execution::set_value(std::move(*this).base(), 42);
          }
         public:
-         explicit my_receiver(R r)
-           : execution::receiver_adaptor&lt;R, my_receiver&lt;R>>(std::move(r)) {}
+         using execution::receiver_adaptor&lt;my_receiver, R>::receiver_adaptor;
        };
      </pre>
      -- <i>end example</i>]
 
+#### Non-member functions <b>[execution.snd_rec_utils.receiver_adaptor.nonmembers]</b> #### {#spec-execution.snd_rec_utils.receiver_adaptor.nonmembers}
+
+    <pre>
+    template &lt;class... As>
+      friend void tag_invoke(set_value_t, Derived&amp;&amp; self, As&amp;&amp;... as) noexcept(<i>see below</i>);
+    </pre>
+
+    1. <i>Constraints:</i> Either <code><i>has-set-value</i>&lt;Derived, As...></code> is `true` or <code>receiver_of&lt;<i>BASE-T</i>(Derived), As...></code> is `true`.
+
+    2. If <code><i>has-set-value</i>&lt;Derived, As...></code> is `true`:
+
+        1. <i>Effects:</i> Equivalent to `static_cast<Derived&&>(self).set_value(static_cast<As&&>(as)...)`
+
+        2. <i>Remarks:</i> The exception specification is equivalent to `noexcept(static_cast<Derived&&>(self).set_value(static_cast<As&&>(as)...))`.
+
+    3. Otherwise:
+
+        1. <i>Effects:</i> Equivalent to <code>set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...)</code>
+
+        2. <i>Remarks:</i> The exception specification is equivalent to <code>noexcept(set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...))</code>
+
+    <pre>
+    template &lt;class E>
+      friend void tag_invoke(set_error_t, Derived&amp;&amp; self, E&amp;&amp; e) noexcept;
+    </pre>
+
+    1. <i>Constraints:</i> Either <code><i>has-set-error</i>&lt;Derived, E></code> is `true` or <code>receiver&lt;<i>BASE-T</i>(Derived), E></code> is `true`.
+
+    2. <i>Effects:</i> Equivalent to:
+
+        - `static_cast<Derived&&>(self).set_error(static_cast<E&&>(e))` if <code><i>has-set-error</i>&lt;Derived, E></code> is `true`,
+
+        - Otherwise, <code>set_error(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;E&amp;&amp;>(e))</code>
+
+    <pre>
+    friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
+    </pre>
+
+    1. <i>Effects:</i> Equivalent to:
+
+        - `static_cast<Derived&&>(self).set_done()` if <code><i>has-set-done</i>&lt;Derived></code> is `true`,
+
+        - Otherwise, <code>set_done(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
 
 ## Coroutine utilities <b>[execution.coro_utils]</b> ## {#spec-execution.coro_utils}
 

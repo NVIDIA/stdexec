@@ -42,18 +42,17 @@ struct _conv {
 
 // pass through all customizations except set_error, which retries the operation.
 template<class O, class R>
-struct _retry_receiver {
+struct _retry_receiver
+  : std::execution::receiver_adaptor<_retry_receiver<O, R>> {
   O* o_;
+
+  R&& base() && noexcept { return (R&&) o_->r_; }
+  const R& base() const & noexcept { return o_->r_; }
+
   explicit _retry_receiver(O* o) : o_(o) {}
-  friend void tag_invoke(std::execution::set_error_t, _retry_receiver&& self, auto&&) noexcept {
-    self.o_->_retry(); // This causes the op to be retried
-  }
-  // Forward all other tag_invoke-based CPOs (_copy_cvref_t from P1450):
-  template <_decays_to<_retry_receiver> Self, class... As, class Tag>
-  friend auto tag_invoke(Tag tag, Self&& self, As&&... as)
-    noexcept(std::is_nothrow_invocable_v<Tag, _copy_cvref_t<Self, R>, As...>)
-    -> std::invoke_result_t<Tag, _copy_cvref_t<Self, R>, As...> {
-    return ((Tag&&) tag)((_copy_cvref_t<Self, R>&&) self.o_->r_, (As&&) as...);
+
+  void set_error(auto&&) && noexcept {
+    o_->_retry(); // This causes the op to be retried
   }
 };
 
