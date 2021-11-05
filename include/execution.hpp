@@ -1170,7 +1170,7 @@ namespace std::execution {
       typename __tag_invoke_adaptors::__scheduler_adaptor<Base, Derived>::__t;
 
   template <class Derived>
-    using adaptor_of = typename Derived::__t;
+    using __adaptor_of = typename Derived::__t;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
@@ -1179,7 +1179,7 @@ namespace std::execution {
       template<class R_, class F>
         class __receiver
           : receiver_adaptor<__t<R_>, __receiver<R_, F>> {
-          friend adaptor_of<__receiver>;
+          friend __adaptor_of<__receiver>;
           using R = __t<R_>;
           [[no_unique_address]] F f_;
 
@@ -1213,7 +1213,7 @@ namespace std::execution {
       template<class S_, class F>
         class __sender
           : sender_adaptor<__t<S_>, __sender<S_, F>> {
-          friend adaptor_of<__sender>;
+          friend __adaptor_of<__sender>;
           using S = __t<S_>;
           template <class R>
             using __rec = __receiver<__id_t<remove_cvref_t<R>>, F>;
