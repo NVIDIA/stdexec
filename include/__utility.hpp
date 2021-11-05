@@ -20,7 +20,7 @@ namespace std {
   template <class...>
     struct __types;
 
-  template <template<class...> class List, template<class> class Fn>
+  template <template<class...> class List, template<class...> class Fn>
     struct __transform {
       template <class... Args>
         using __f = List<Fn<Args>...>;
@@ -32,7 +32,7 @@ namespace std {
         using __f = List<conditional_t<is_same_v<Old, Args>, New, Old>...>;
     };
 
-  template <template<class...> class First, template<class> class Second>
+  template <template<class...> class First, template<class...> class Second>
     struct __compose {
       template <class...Args>
         using __f = Second<First<Args...>>;
@@ -69,8 +69,8 @@ namespace std {
 
   template <template<class...> class List>
     struct __q {
-      template <class T>
-        using __f = List<T>;
+      template <class... Ts>
+        using __f = List<Ts...>;
     };
 
   template <template<class> class F>

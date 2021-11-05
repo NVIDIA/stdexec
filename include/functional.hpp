@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <concepts.hpp>
+
 #include <functional>
 
 namespace std {
