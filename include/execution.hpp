@@ -16,17 +16,17 @@
 #pragma once
 
 #include <cassert>
-#include <stdexcept>
-#include <type_traits>
-#include <tuple>
-#include <optional>
-#include <variant>
-#include <mutex>
 #include <condition_variable>
+#include <stdexcept>
+#include <mutex>
+#include <optional>
+#include <tuple>
+#include <type_traits>
+#include <variant>
 
 #include <__utility.hpp>
-#include <concepts.hpp>
 #include <functional.hpp>
+#include <concepts.hpp>
 #include <coroutine.hpp>
 #include <stop_token.hpp>
 
@@ -1014,50 +1014,47 @@ namespace std::execution {
         class __t : __adaptor_base<Base> {
           friend Derived;
 
-          template <same_as<Derived> Self, class... As>
-            requires __has_set_value<Self, As...>
-          friend void tag_invoke(set_value_t, Self&& self, As&&... as)
-            noexcept(noexcept(((Self&&) self).set_value((As&&) as...))) {
-            ((Self&&) self).set_value((As&&) as...);
+          template <class... As>
+            requires __has_set_value<Derived, As...>
+          friend void tag_invoke(set_value_t, Derived&& self, As&&... as)
+            noexcept(noexcept(((Derived&&) self).set_value((As&&) as...))) {
+            ((Derived&&) self).set_value((As&&) as...);
           }
 
-          template <same_as<Derived> Self, class... As>
-            requires (!__has_set_value<Self, As...>) &&
-              receiver_of<__member_t<Self, Base>, As...>
-          friend void tag_invoke(set_value_t, Self&& self, As&&... as)
-            noexcept(nothrow_receiver_of<__member_t<Self, Base>, As...>) {
-            return execution::set_value(__c_cast<__t>((Self&&) self).base(), (As&&) as...);
+          template <class... As>
+            requires (!__has_set_value<Derived, As...>) && receiver_of<Base, As...>
+          friend void tag_invoke(set_value_t, Derived&& self, As&&... as)
+            noexcept(nothrow_receiver_of<Base, As...>) {
+            set_value(__c_cast<__t>((Derived&&) self).base(), (As&&) as...);
           }
 
-          template <same_as<Derived> Self, class A>
-            requires __has_set_error<Self, A>
-          friend void tag_invoke(set_error_t, Self&& self, A&& a) noexcept {
-            static_assert(noexcept(((Self&&) self).set_error((A&&) a)));
-            ((Self&&) self).set_error((A&&) a);
+          template <class E>
+            requires __has_set_error<Derived, E>
+          friend void tag_invoke(set_error_t, Derived&& self, E&& e) noexcept {
+            static_assert(noexcept(((Derived&&) self).set_error((E&&) e)));
+            ((Derived&&) self).set_error((E&&) e);
           }
 
-          template <same_as<Derived> Self, class A>
-            requires (!__has_set_error<Self, A>) &&
-              receiver<__member_t<Self, Base>, A>
-          friend void tag_invoke(set_error_t, Self&& self, A&& a) noexcept {
-            return execution::set_error(__c_cast<__t>((Self&&) self).base(), (A&&) a);
+          template <class E>
+            requires (!__has_set_error<Derived, E>) && receiver<Base, E>
+          friend void tag_invoke(set_error_t, Derived&& self, E&& e) noexcept {
+            set_error(__c_cast<__t>((Derived&&) self).base(), (E&&) e);
           }
 
-          template <same_as<Derived> Self>
-            requires __has_set_done<Self>
-          friend void tag_invoke(set_done_t, Self&& self) noexcept {
-            static_assert(noexcept(((Self&&) self).set_done()));
-            ((Self&&) self).set_done();
+          friend void tag_invoke(set_done_t, Derived&& self) noexcept
+            requires __has_set_done<Derived> {
+            static_assert(noexcept(((Derived&&) self).set_done()));
+            ((Derived&&) self).set_done();
           }
 
-          template <same_as<Derived> Self>
-          friend void tag_invoke(set_done_t, Self&& self) noexcept {
-            return execution::set_done(__c_cast<__t>((Self&&) self).base());
+          friend void tag_invoke(set_done_t, Derived&& self) noexcept
+            requires (!__has_set_done<Derived>) {
+            set_done(__c_cast<__t>((Derived&&) self).base());
           }
 
-          template <__none_of<set_value_t, set_error_t, set_done_t> Tag, same_as<Derived> Self, class... As>
+          template <__none_of<set_value_t, set_error_t, set_done_t> Tag, class... As>
             requires invocable<Tag, const Base&, As...>
-          friend auto tag_invoke(Tag tag, const Self& self, As&&... as)
+          friend auto tag_invoke(Tag tag, const Derived& self, As&&... as)
             noexcept(is_nothrow_invocable_v<Tag, const Base&, As...>)
             -> invoke_result_t<Tag, const Base&, As...> {
             return ((Tag&&) tag)(__c_cast<__t>(self).base(), (As&&) as...);
@@ -1197,10 +1194,10 @@ namespace std::execution {
                 std::invoke((F&&) f_, (As&&) as...));
           }
           // Handle the case when the invocable returns void
-          template<class... As>
+          template<class R2 = R, class... As>
             requires invocable<F, As...> &&
               same_as<void, invoke_result_t<F, As...>> &&
-              receiver_of<R>
+              receiver_of<R2>
           void set_value(As&&... as) && noexcept(/*...*/ true) {
             invoke((F&&) f_, (As&&) as...);
             execution::set_value(((__receiver&&) *this).base());
@@ -1363,7 +1360,7 @@ namespace std::execution {
           using value_types = Variant<Tuple<>>;
 
           template <template <typename...> class Variant>
-          using error_types = Variant<>;
+          using error_types = Variant<std::exception_ptr>;
 
           static constexpr bool sends_done = true;
 
@@ -1468,6 +1465,184 @@ namespace std::execution {
 
   // NOT TO SPEC
   using manual_event_loop = __loop::manual_event_loop;
+
+  inline namespace __schedule_from {
+    namespace __impl {
+      template <class Fn>
+          requires is_nothrow_move_constructible_v<Fn>
+        struct __conv {
+          Fn __fn_;
+          operator invoke_result_t<Fn> () && {
+            return ((Fn&&) __fn_)();
+          }
+        };
+      template <class Fn>
+        __conv(Fn) -> __conv<Fn>;
+
+      template <class Scheduler_, class Sender_>
+        struct __sender {
+          using Scheduler = __t<Scheduler_>;
+          using Sender = __t<Sender_>;
+          Scheduler __sch_;
+          Sender __snd_;
+
+          template <class CvrefReceiver_>
+            struct __op1 {
+              // Bit of a hack here: the cvref qualification of the Sender
+              // is encoded in the type of the Receiver:
+              using CvrefReceiver = __t<CvrefReceiver_>;
+              using CvrefSender = __member_t<CvrefReceiver, Sender>;
+              using Receiver = decay_t<CvrefReceiver>;
+
+              // Compute a variant type that is capable of storing the results of the
+              // input sender when it completes. The variant has type:
+              //   variant<
+              //     tuple<set_done_t>,
+              //     tuple<set_value_t, decay_t<Values1>...>,
+              //     tuple<set_value_t, decay_t<Values2>...>,
+              //        ...
+              //     tuple<set_error_t, decay_t<Error1>>,
+              //     tuple<set_error_t, decay_t<Error2>>,
+              //        ...
+              //   >
+              template <class... Ts>
+                using __bind_tuples = __bind_front<variant, tuple<set_done_t>, Ts...>;
+
+              using __bound_values_t = typename sender_traits<Sender>::template value_types<
+                  __transform<
+                      __bind_front<tuple, set_value_t>::template __f,
+                      decay_t
+                  >::template __f,
+                  __bind_tuples>;
+
+              using __variant_t = typename sender_traits<Sender>::template error_types<
+                  __transform<
+                      __bound_values_t::template __f,
+                      __transform<
+                          __bind_front<tuple, set_error_t>::template __f,
+                          decay_t
+                      >::template __f
+                  >::template __f>;
+
+              // This receiver is to be completed on the execution context associated
+              // with the scheduler. When the source sender completes, the completion
+              // information is saved off in a variant so that when this receiver
+              // completes, it can read the completion out of the variant and forward
+              // it to the output receiver after transitioning to the scheduler's
+              // context.
+              struct __receiver2 {
+                __op1* __op_;
+
+                // If the work is successfully scheduled on the new execution context
+                // and is ready to run, forward the completion signal in the variant
+                friend void tag_invoke(set_value_t, __receiver2&& self) noexcept try {
+                  std::visit([op = self.__op_](auto&& tup) -> void {
+                    std::apply([op](auto tag, auto&&... args) -> void {
+                      tag((Receiver&&) op->__rec_, (decltype(args)&&) args...);
+                    }, (decltype(tup)&&) tup);
+                  }, std::move(self.__op_->__data_));
+                } catch(...) {
+                  set_error((Receiver&&) self.__op_->__rec_, current_exception());
+                }
+
+                template <__one_of<set_error_t, set_done_t> Tag, class... Args>
+                  requires invocable<Tag, Receiver, Args...>
+                friend void tag_invoke(Tag, __receiver2&& self, Args&&... args) noexcept {
+                  Tag{}((Receiver&&) self.__op_->__rec_, (Args&&) args...);
+                }
+
+                template <__none_of<set_value_t, set_error_t, set_done_t> Tag, class... Args>
+                friend auto tag_invoke(Tag tag, const __receiver2& self, Args&&... args)
+                  noexcept(is_nothrow_invocable_v<Tag, const Receiver&, Args...>)
+                  -> invoke_result_t<Tag, const Receiver&, Args...> {
+                  return ((Tag&&) tag)(as_const(self.__op_->__rec_), (Args&&) args...);
+                }
+              };
+
+              // This receiver is connected to the input sender. When that sender completes
+              // (on whatever context it completes on), save the completion information into
+              // the variant. Then, schedule a second operation to complete on the execution
+              // context of the scheduler. That second receiver will read the completion
+              // information out of the variant and propagate it to the output receiver from
+              // within the desired context.
+              struct __receiver1 {
+                __op1* __op_;
+
+                template <__one_of<set_value_t, set_error_t, set_done_t> Tag, class... Args>
+                  requires invocable<Tag, Receiver, Args...>
+                friend void tag_invoke(Tag, __receiver1&& self, Args&&... args) noexcept try {
+                  // Write the tag and the args into the variant so that we can forward the completion
+                  // from within the scheduler's execution context.
+                  self.__op_->__data_.template emplace<tuple<Tag, decay_t<Args>...>>(Tag{}, (Args&&) args...);
+                  // Schedule the completion to happen on the scheduler's execution context.
+                  self.__op_->__state2_.emplace(
+                      __conv{[op = self.__op_] {
+                        return connect(schedule(op->__sch_), __receiver2{op});
+                      }});
+                  // Enqueue the scheduled operation:
+                  start(*self.__op_->__state2_);
+                } catch(...) {
+                  set_error((Receiver&&) self.__op_->__rec_, current_exception());
+                }
+
+                template <__none_of<set_value_t, set_error_t, set_done_t> Tag, class... Args>
+                friend auto tag_invoke(Tag tag, const __receiver1& self, Args&&... args)
+                  noexcept(is_nothrow_invocable_v<Tag, const Receiver&, Args...>)
+                  -> invoke_result_t<Tag, const Receiver&, Args...> {
+                  return ((Tag&&) tag)(as_const(self.__op_->__rec_), (Args&&) args...);
+                }
+              };
+
+              Scheduler __sch_;
+              Receiver __rec_;
+              __variant_t __data_;
+              connect_result_t<CvrefSender, __receiver1> __state1_;
+              optional<connect_result_t<schedule_result_t<Scheduler>, __receiver2>> __state2_;
+
+              __op1(Scheduler sch, CvrefSender&& snd, __decays_to<Receiver> auto&& rec)
+                : __sch_(sch)
+                , __rec_((decltype(rec)&&) rec)
+                , __state1_(connect((CvrefSender&&) snd, __receiver1{this})) {}
+
+              friend void tag_invoke(start_t, __op1& op) noexcept {
+                start(op.__state1_);
+              }
+            };
+
+          template <__decays_to<__sender> Self, receiver R>
+            requires sender_to<__member_t<Self, Sender>, R>
+          friend auto tag_invoke(connect_t, Self&& self, R&& rec)
+              -> __op1<__id_t<__member_t<Self, decay_t<R>>>> {
+            return {self.__sch_, ((Self&&) self).__snd_, (R&&) rec};
+          }
+
+          template <__one_of<set_value_t, set_error_t, set_done_t> Tag>
+          friend Scheduler tag_invoke(get_completion_scheduler_t<Tag>, const __sender& self) noexcept {
+            return self.__sch_;
+          }
+        };
+    } // namespace __impl
+
+    inline constexpr struct schedule_from_t {
+      template <scheduler Sch, typed_sender S>
+        requires tag_invocable<schedule_from_t, Sch, S>
+      auto operator()(Sch&& sch, S&& s) const
+        noexcept(nothrow_tag_invocable<schedule_from_t, Sch, S>)
+        -> tag_invoke_result_t<schedule_from_t, Sch, S> {
+        return tag_invoke(*this, (Sch&&) sch, (S&&) s);
+      }
+
+      template <scheduler Sch, typed_sender S>
+      auto operator()(Sch&& sch, S&& s) const
+        -> __impl::__sender<__id_t<decay_t<Sch>>, __id_t<decay_t<S>>> {
+        return {(Sch&&) sch, (S&&) s};
+      }
+    } schedule_from {};
+  } // namespace __schedule_from
+
+  template <class Scheduler_, class Sender_>
+    struct sender_traits<__schedule_from::__impl::__sender<Scheduler_, Sender_>>
+      : sender_traits<__t<Sender_>> { };
 } // namespace std::execution
 
 namespace std::this_thread {
@@ -1531,7 +1706,7 @@ namespace std::this_thread {
       template <execution::typed_sender S>
         requires (!execution::__tag_invocable_with_completion_scheduler<sync_wait_t, execution::set_value_t, S>) &&
           (!tag_invocable<sync_wait_t, S>)
-      optional<__impl::__sync_wait_result_t<S>> operator()(S&& s) const volatile {
+      optional<__impl::__sync_wait_result_t<S>> operator()(S&& s) const {
         using state_t = __impl::__state<__impl::__sync_wait_result_t<S>>;
         state_t state {};
         execution::manual_event_loop loop;
