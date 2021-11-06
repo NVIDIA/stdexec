@@ -1297,6 +1297,8 @@ namespace std::execution {
     static constexpr bool sends_done = sender_traits<S>::sends_done;
   };
 
+  /////////////////////////////////////////////////////////////////////////////
+  // manual_event_loop
   inline namespace __loop {
     class manual_event_loop;
 
@@ -1466,6 +1468,8 @@ namespace std::execution {
   // NOT TO SPEC
   using manual_event_loop = __loop::manual_event_loop;
 
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.adaptors.schedule_from]
   inline namespace __schedule_from {
     namespace __impl {
       template <class Fn>
@@ -1643,6 +1647,38 @@ namespace std::execution {
   template <class Scheduler_, class Sender_>
     struct sender_traits<__schedule_from::__impl::__sender<Scheduler_, Sender_>>
       : sender_traits<__t<Sender_>> { };
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.adaptors.transfer]
+  inline namespace __transfer {
+    inline constexpr struct transfer_t {
+      template <sender S, scheduler Sch>
+        requires __tag_invocable_with_completion_scheduler<transfer_t, set_value_t, S, Sch>
+      tag_invoke_result_t<transfer_t, __completion_scheduler_for<S, set_value_t>, S, Sch>
+      operator()(S&& s, Sch&& sch) const
+        noexcept(nothrow_tag_invocable<transfer_t, __completion_scheduler_for<S, set_value_t>, S, Sch>) {
+        auto csch = get_completion_scheduler<set_value_t>(s);
+        return tag_invoke(transfer_t{}, std::move(csch), (S&&) s, (Sch&&) sch);
+      }
+      template <sender S, scheduler Sch>
+        requires (!__tag_invocable_with_completion_scheduler<transfer_t, set_value_t, S, Sch>) &&
+          tag_invocable<transfer_t, S, Sch>
+      tag_invoke_result_t<transfer_t, S, Sch>
+      operator()(S&& s, Sch&& sch) const noexcept(nothrow_tag_invocable<transfer_t, S, Sch>) {
+        return tag_invoke(transfer_t{}, (S&&) s, (Sch&&) sch);
+      }
+      template <typed_sender S, scheduler Sch>
+        requires (!__tag_invocable_with_completion_scheduler<transfer_t, set_value_t, S, Sch>) &&
+          (!tag_invocable<transfer_t, S, Sch>)
+      auto operator()(S&& s, Sch&& sch) const {
+        return schedule_from((Sch&&) sch, (S&&) s);
+      }
+      template <scheduler Sch>
+      __binder_back<transfer_t, decay_t<Sch>> operator()(Sch&& sch) const {
+        return {{}, {}, {(Sch&&) sch}};
+      }
+    } transfer {};
+  } // namespace __transfer
 } // namespace std::execution
 
 namespace std::this_thread {
