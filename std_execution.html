@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-05">2021-11-05</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-06">2021-11-06</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2270,9 +2270,10 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
     <li>
      <a href="#revisions"><span class="secno">2</span> <span class="content">Revision history</span></a>
      <ol class="toc">
-      <li><a href="#r2"><span class="secno">2.1</span> <span class="content">R2</span></a>
-      <li><a href="#r1"><span class="secno">2.2</span> <span class="content">R1</span></a>
-      <li><a href="#r0"><span class="secno">2.3</span> <span class="content">R0</span></a>
+      <li><a href="#r3"><span class="secno">2.1</span> <span class="content">R3</span></a>
+      <li><a href="#r2"><span class="secno">2.2</span> <span class="content">R2</span></a>
+      <li><a href="#r1"><span class="secno">2.3</span> <span class="content">R1</span></a>
+      <li><a href="#r0"><span class="secno">2.4</span> <span class="content">R0</span></a>
      </ol>
     <li>
      <a href="#design-intro"><span class="secno">3</span> <span class="content">Design - introduction</span></a>
@@ -2466,10 +2467,19 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        </ol>
       <li><a href="#spec-execution.execute"><span class="secno">9.7</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code> <b>[execution.execute]</b></span></a>
       <li>
-       <a href="#spec-execution.coro_utils"><span class="secno">9.8</span> <span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span></a>
+       <a href="#spec-execution.snd_rec_utils"><span class="secno">9.8</span> <span class="content">Sender/receiver utilities <b>[execution.snd_rec_utils]</b></span></a>
        <ol class="toc">
-        <li><a href="#spec-execution.coro_utils.as_awaitable"><span class="secno">9.8.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span></a>
-        <li><a href="#spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.8.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span></a>
+        <li>
+         <a href="#spec-execution.snd_rec_utils.receiver_adaptor"><span class="secno">9.8.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code> <b>[execution.snd_rec_utils.receiver_adaptor]</b></span></a>
+         <ol class="toc">
+          <li><a href="#spec-execution.snd_rec_utils.receiver_adaptor.nonmembers"><span class="secno">9.8.1.1</span> <span class="content">Non-member functions <b>[execution.snd_rec_utils.receiver_adaptor.nonmembers]</b></span></a>
+         </ol>
+       </ol>
+      <li>
+       <a href="#spec-execution.coro_utils"><span class="secno">9.9</span> <span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span></a>
+       <ol class="toc">
+        <li><a href="#spec-execution.coro_utils.as_awaitable"><span class="secno">9.9.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span></a>
+        <li><a href="#spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.9.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span></a>
        </ol>
      </ol>
     <li>
@@ -2864,29 +2874,22 @@ of a cancellable <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></cod
    <h3 class="heading settled" data-level="1.5" id="example-algorithm"><span class="secno">1.5. </span><span class="content">Examples: Algorithms</span><a class="self-link" href="#example-algorithm"></a></h3>
    <p>In this section we show a few simple sender/receiver-based algorithm implementations.</p>
    <h4 class="heading settled" data-level="1.5.1" id="example-then"><span class="secno">1.5.1. </span><span class="content"><code class="highlight"><c- n>then</c-></code></span><a class="self-link" href="#example-then"></a></h4>
-<pre class="language-c++ highlight"><c- c1>// For emulating "deducing this"</c->
-<c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-> <c- n>A</c-><c- p>,</c-> <c- n>class</c-> <c- n>B</c-><c- o>></c->
-  <c- n>concept</c-> <c- n>__this</c-> <c- o>=</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>A</c-><c- o>></c-><c- p>,</c-> <c- n>B</c-><c- o>></c-><c- p>;</c->
-
-<c- n>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- p>,</c-> <c- n>class</c-> <c- n>F</c-><c- o>></c->
-<c- k>struct</c-> <c- nc>_then_receiver</c-> <c- p>{</c->
-  <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
+<pre class="language-c++ highlight"><c- n>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- p>,</c-> <c- n>class</c-> <c- n>F</c-><c- o>></c->
+<c- n>class</c-> <c- nl>_then_receiver</c-> <c- p>:</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>_then_receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>F</c-><c- o>></c-><c- p>,</c-> <c- n>R</c-><c- o>></c-> <c- p>{</c->
+  <c- n>friend</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>_then_receiver</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>;</c->
   <c- n>F</c-> <c- n>f_</c-><c- p>;</c->
 
   <c- c1>// Customize set_value by invoking the callable and passing the result to the inner receiver</c->
   <c- n>template</c-><c- o>&lt;</c-><c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
     <c- n>requires</c-> <c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>F</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>>></c->
-  <c- n>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>_then_receiver</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- p>{</c->
-    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>r_</c-><c- p>,</c-> <c- n>invoke</c-><c- p>((</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>f_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...));</c->
+  <c- b>void</c-> <c- n>set_value</c-><c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- o>&amp;&amp;</c-> <c- p>{</c->
+    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- o>*</c-><c- n>this</c-><c- p>).</c-><c- n>base</c-><c- p>(),</c-> <c- n>invoke</c-><c- p>((</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>f_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...));</c->
   <c- p>}</c->
 
-  <c- c1>// Forward all other tag_invoke-based CPOs (copy_cvref_t from P1450):</c->
-  <c- n>template</c-> <c- o>&lt;</c-><c- n>__this</c-><c- o>&lt;</c-><c- n>_then_receiver</c-><c- o>></c-> <c- n>Self</c-><c- p>,</c-> <c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- p>,</c-> <c- n>invocable</c-><c- o>&lt;</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- n>Tag</c-><c- o>></c->
-  <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- n>Self</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c->
-    <c- n>noexcept</c-><c- p>(</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
-    <c- o>-></c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
-    <c- k>return</c-> <c- p>((</c-><c- n>Tag</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>tag</c-><c- p>)(((</c-><c- n>Self</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>).</c-><c- n>r_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...);</c->
-  <c- p>}</c->
+ <c- nl>public</c-><c- p>:</c->
+  <c- n>_then_receiver</c-><c- p>(</c-><c- n>R</c-> <c- n>r</c-><c- p>,</c-> <c- n>F</c-> <c- n>f</c-><c- p>)</c->
+   <c- o>:</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>_then_receiver</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>{</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>r</c-><c- p>)}</c->
+   <c- p>,</c-> <c- n>f_</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>f</c-><c- p>))</c-> <c- p>{}</c->
 <c- p>};</c->
 
 <c- n>template</c-><c- o>&lt;</c-><c- n>sender</c-> <c- n>S</c-><c- p>,</c-> <c- n>class</c-> <c- n>F</c-><c- o>></c->
@@ -2925,10 +2928,13 @@ are passed through unchanged.</p>
      <p>Defines a sender that aggregates another sender and the invocable, which defines a <code class="highlight"><c- n>tag_invoke</c-></code> customization for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> that wraps the incoming receiver in the receiver from (1) and passes it and the incoming sender to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, returning the result.</p>
    </ol>
    <h4 class="heading settled" data-level="1.5.2" id="example-retry"><span class="secno">1.5.2. </span><span class="content"><code class="highlight"><c- n>retry</c-></code></span><a class="self-link" href="#example-retry"></a></h4>
-<pre class="language-c++ highlight"><c- c1>// _conv needed so we can emplace construct non-movable types into</c->
+<pre class="language-c++ highlight"><c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-> <c- n>From</c-><c- p>,</c-> <c- n>class</c-> <c- n>To</c-><c- o>></c->
+<c- n>using</c-> <c- n>_decays_to</c-> <c- o>=</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>From</c-><c- o>></c-><c- p>,</c-> <c- n>To</c-><c- o>></c-><c- p>;</c->
+
+<c- c1>// _conv needed so we can emplace construct non-movable types into</c->
 <c- c1>// a std::optional.</c->
 <c- n>template</c-><c- o>&lt;</c-><c- n>invocable</c-> <c- n>F</c-><c- o>></c->
-  <c- n>requires</c-> <c- n>std</c-><c- o>::</c-><c- n>is_nothrow_move_constructible_v</c-><c- o>&lt;</c-><c- n>F</c-><c- o>></c->
+  <c- n>requires</c-> <c- n>is_nothrow_move_constructible_v</c-><c- o>&lt;</c-><c- n>F</c-><c- o>></c->
 <c- k>struct</c-> <c- nc>_conv</c-> <c- p>{</c->
   <c- n>F</c-> <c- n>f_</c-><c- p>;</c->
   <c- n>explicit</c-> <c- nf>_conv</c-><c- p>(</c-><c- n>F</c-> <c- n>f</c-><c- p>)</c-> <c- nl>noexcept</c-> <c- p>:</c-> <c- n>f_</c-><c- p>((</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>f</c-><c- p>)</c-> <c- p>{}</c->
@@ -2946,11 +2952,11 @@ are passed through unchanged.</p>
     <c- n>self</c-><c- p>.</c-><c- n>o_</c-><c- o>-></c-><c- n>_retry</c-><c- p>();</c-> <c- c1>// This causes the op to be retried</c->
   <c- p>}</c->
   <c- c1>// Forward all other tag_invoke-based CPOs (copy_cvref_t from P1450):</c->
-  <c- n>template</c-> <c- o>&lt;</c-><c- n>__this</c-><c- o>&lt;</c-><c- n>_retry_receiver</c-><c- o>></c-> <c- n>Self</c-><c- p>,</c-> <c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- p>,</c-> <c- n>invocable</c-><c- o>&lt;</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- n>Tag</c-><c- o>></c->
+  <c- n>template</c-> <c- o>&lt;</c-><c- n>_decays_to</c-><c- o>&lt;</c-><c- n>_retry_receiver</c-><c- o>></c-> <c- n>Self</c-><c- p>,</c-> <c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- p>,</c-> <c- n>class</c-> <c- n>Tag</c-><c- o>></c->
   <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- n>Self</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c->
     <c- n>noexcept</c-><c- p>(</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
     <c- o>-></c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
-    <c- k>return</c-> <c- p>((</c-><c- n>Tag</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>tag</c-><c- p>)(((</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>o_</c-><c- o>-></c-><c- n>r_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...);</c->
+    <c- k>return</c-> <c- p>((</c-><c- n>Tag</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>tag</c-><c- p>)((</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>o_</c-><c- o>-></c-><c- n>r_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...);</c->
   <c- p>}</c->
 <c- p>};</c->
 
@@ -2965,7 +2971,7 @@ are passed through unchanged.</p>
   <c- k>struct</c-> <c- nc>_op</c-> <c- p>{</c->
     <c- n>S</c-> <c- n>s_</c-><c- p>;</c->
     <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
-    <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>state_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&lt;</c-><c- n>_op</c-><c- p>,</c-> <c- n>R</c-><c- o>>>></c-> <c- n>o_</c-><c- p>;</c->
+    <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>connect_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&lt;</c-><c- n>_op</c-><c- p>,</c-> <c- n>R</c-><c- o>>>></c-> <c- n>o_</c-><c- p>;</c->
 
     <c- n>_op</c-><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c-><c- o>:</c-> <c- n>s_</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-><c- n>s</c-><c- p>),</c-> <c- n>r_</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-><c- n>r</c-><c- p>),</c-> <c- n>o_</c-><c- p>{</c-><c- n>_connect</c-><c- p>()}</c-> <c- p>{}</c->
     <c- n>_op</c-><c- p>(</c-><c- n>_op</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- o>=</c-> <c- n>delete</c-><c- p>;</c->
@@ -2987,11 +2993,16 @@ are passed through unchanged.</p>
   <c- p>};</c->
 
   <c- n>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
-    <c- n>requires</c-> <c- n>sender_to</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&lt;</c-><c- n>_op</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>R</c-><c- o>>></c->
+    <c- n>requires</c-> <c- n>sender_to</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>R</c-><c- o>></c->
   <c- n>friend</c-> <c- n>_op</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>_retry_sender</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
-    <c- k>return</c-> <c- n>_op</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>{(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>s_</c-><c- p>,</c-> <c- p>(</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>};</c->
+    <c- k>return</c-> <c- p>{(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>s_</c-><c- p>,</c-> <c- p>(</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>};</c->
   <c- p>}</c->
 <c- p>};</c->
+
+<c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-> <c- p>{</c->
+  <c- n>template</c-> <c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- o>></c->
+  <c- k>struct</c-> <c- nc>sender_traits</c-><c- o>&lt;</c-><c- n>_retry_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-> <c- o>:</c-> <c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
+<c- p>}</c->
 
 <c- n>template</c-><c- o>&lt;</c-><c- n>sender</c-> <c- n>S</c-><c- o>></c->
 <c- n>sender</c-> <c- k>auto</c-> <c- n>retry</c-><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>)</c-> <c- p>{</c->
@@ -3183,7 +3194,15 @@ essential when writing user code using standard execution concepts; we have also
    </ul>
    <p>Before this proposal is approved, we will present a new implementation of this proposal written from the specification and intended as a contribution to libc++. This implementation will demonstrate the viability of the design across the use cases and execution contexts that the committee has identified as essential.</p>
    <h2 class="heading settled" data-level="2" id="revisions"><span class="secno">2. </span><span class="content">Revision history</span><a class="self-link" href="#revisions"></a></h2>
-   <h3 class="heading settled" data-level="2.1" id="r2"><span class="secno">2.1. </span><span class="content">R2</span><a class="self-link" href="#r2"></a></h3>
+   <h3 class="heading settled" data-level="2.1" id="r3"><span class="secno">2.1. </span><span class="content">R3</span><a class="self-link" href="#r3"></a></h3>
+   <p>The changes since R2 are as follows:</p>
+   <ul>
+    <li data-md>
+     <p>Add <code class="highlight"><c- n>receiver_adaptor</c-></code> utility to simplify writing receivers.</p>
+    <li data-md>
+     <p>Fix recursive definition of the <code class="highlight"><c- n>scheduler</c-></code> concept.</p>
+   </ul>
+   <h3 class="heading settled" data-level="2.2" id="r2"><span class="secno">2.2. </span><span class="content">R2</span><a class="self-link" href="#r2"></a></h3>
    <p>The changes since R1 are as follows:</p>
    <ul>
     <li data-md>
@@ -3217,7 +3236,7 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>Various fixes of typos and bugs.</p>
    </ul>
-   <h3 class="heading settled" data-level="2.2" id="r1"><span class="secno">2.2. </span><span class="content">R1</span><a class="self-link" href="#r1"></a></h3>
+   <h3 class="heading settled" data-level="2.3" id="r1"><span class="secno">2.3. </span><span class="content">R1</span><a class="self-link" href="#r1"></a></h3>
    <p>The changes since R0 are as follows:</p>
    <ul>
     <li data-md>
@@ -3231,7 +3250,7 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>Various fixes of typos and bugs.</p>
    </ul>
-   <h3 class="heading settled" data-level="2.3" id="r0"><span class="secno">2.3. </span><span class="content">R0</span><a class="self-link" href="#r0"></a></h3>
+   <h3 class="heading settled" data-level="2.4" id="r0"><span class="secno">2.4. </span><span class="content">R0</span><a class="self-link" href="#r0"></a></h3>
    <p>Initial revision.</p>
    <h2 class="heading settled" data-level="3" id="design-intro"><span class="secno">3. </span><span class="content">Design - introduction</span><a class="self-link" href="#design-intro"></a></h2>
    <p>The following four sections describe the entirety of the proposed design.</p>
@@ -4467,6 +4486,12 @@ the shared stop state.</p>
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
     <c- k>concept</c-> <i><c- nc>moveable</c-><c- o>-</c-><c- n>value</c-></i> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
 
+  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>From</c-><c- p>,</c-> <c- k>class</c-> <c- nc>To</c-><c- o>></c->
+    <c- k>concept</c-> <i><c- nc>decays</c-><c- o>-</c-><c- n>to</c-></i> <c- o>=</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>From</c-><c- o>></c-><c- p>,</c-> <c- n>To</c-><c- o>></c-><c- p>;</c-> <c- c1>// exposition only</c->
+
+  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
+    <c- k>concept</c-> <i><c- nc>class</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c-> <i><c- n>decays</c-><c- o>-</c-><c- n>to</c-></i><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- n>is_class_v</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-><c- p>;</c->  <c- c1>// exposition only</c->
+
   <c- c1>// [execution.schedulers], schedulers</c->
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>scheduler</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
@@ -4580,8 +4605,7 @@ the shared stop state.</p>
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_just_t</c-> <c- n>transfer_just</c-><c- p>{};</c->
 
     <c- c1>// [execution.senders.adaptors], sender adaptors</c->
-    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>D</c-><c- o>></c->
-      <c- k>requires</c-> <c- n>is_class_v</c-><c- o>&lt;</c-><c- n>D</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>D</c-><c- p>,</c-> <c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>D</c-><c- o>>></c->
+    <c- k>template</c-><c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>D</c-><c- o>></c->
       <c- k>struct</c-> <c- nc>sender_adaptor_closure</c-> <c- p>{</c-> <c- p>};</c->
 
     <c- k>struct</c-> <c- nc>on_t</c-><c- p>;</c->
@@ -4638,6 +4662,10 @@ the shared stop state.</p>
     <c- k>struct</c-> <c- nc>start_detached_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>start_detached_t</c-> <c- n>start_detached</c-><c- p>{};</c->
   <c- p>}</c->
+
+  <c- c1>// [execution.snd_rec_utils], sender and receiver utilities</c->
+  <c- k>template</c-><c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Derived</c-><c- p>,</c-> <c- n>receiver</c-> <c- n>Base</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- o>></c->
+    <c- k>using</c-> <c- n>receiver_adaptor</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- p>;</c->
 <c- p>}</c->
 
 <c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-> <c- p>{</c->
@@ -4666,14 +4694,13 @@ the shared stop state.</p>
     <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- n>as_awaitable</c-><c- p>(</c-><c- n>Sender</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>Promise</c-><c- o>&amp;</c-> <c- n>p</c-><c- p>);</c->
 
   <c- c1>// [execution.coro_utils.with_awaitable_senders]</c->
-  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Promise</c-><c- o>></c->
-    <c- k>requires</c-> <c- n>is_class_v</c-><c- o>&lt;</c-><c- n>Promise</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>Promise</c-><c- p>,</c-> <c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>Promise</c-><c- o>>></c->
+  <c- k>template</c-> <c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Promise</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>with_awaitable_senders</c-><c- p>;</c->
 <c- p>}</c->
 </pre>
    <h3 class="heading settled" data-level="9.2" id="spec-execution.helpers"><span class="secno">9.2. </span><span class="content">Helper concepts <b>[execution.helpers]</b></span><a class="self-link" href="#spec-execution.helpers"></a></h3>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
-<c- k>concept</c-> <c- nc>moveable</c-><c- o>-</c-><c- n>value</c-> <c- o>=</c-> <c- c1>// exposition only</c->
+<c- k>concept</c-> <i><c- nc>moveable</c-><c- o>-</c-><c- n>value</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
   <c- n>move_constructible</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-> <c- o>&amp;&amp;</c->
   <c- n>constructible_from</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-><c- p>,</c-> <c- n>T</c-><c- o>></c-><c- p>;</c->
 </pre>
@@ -5974,8 +6001,177 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>),</c-> <c- n>f</c-><c- p>))</c-></code>.</p>
      </ol>
    </ol>
-   <h3 class="heading settled" data-level="9.8" id="spec-execution.coro_utils"><span class="secno">9.8. </span><span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span><a class="self-link" href="#spec-execution.coro_utils"></a></h3>
-   <h4 class="heading settled" data-level="9.8.1" id="spec-execution.coro_utils.as_awaitable"><span class="secno">9.8.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span><a class="self-link" href="#spec-execution.coro_utils.as_awaitable"></a></h4>
+   <h3 class="heading settled" data-level="9.8" id="spec-execution.snd_rec_utils"><span class="secno">9.8. </span><span class="content">Sender/receiver utilities <b>[execution.snd_rec_utils]</b></span><a class="self-link" href="#spec-execution.snd_rec_utils"></a></h3>
+   <ol>
+    <li data-md>
+     <p>This section makes use of the following exposition-only entities:</p>
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Us</c-><c- o>></c->
+  <c- k>concept</c-> <i><c- nc>none</c-><c- o>-</c-><c- n>of</c-></i> <c- o>=</c->
+    <c- p>((</c-><c- o>!</c-><c- n>same_as</c-><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>Us</c-><c- o>></c-><c- p>)</c-> <c- o>&amp;&amp;</c-><c- p>...);</c->
+
+<c- c1>// [</c-><i><c- c1>Editorial note:</c-></i><c- c1> copy_cvref_t as in [[P1450R3]] -- </c-><i><c- c1>end note</c-></i><c- c1>]</c->
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-> <c- nc>U</c-><c- o>></c->
+  <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-> <i><c- n>c</c-><c- o>-</c-><c- n>style</c-><c- o>-</c-><c- n>cast</c-></i><c- p>(</c-><c- n>U</c-><c- o>&amp;&amp;</c-> <c- n>u</c-><c- p>)</c-> <c- k>noexcept</c-> <c- k>requires</c-> <i><c- n>decays</c-><c- o>-</c-><c- n>to</c-></i><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-> <c- p>{</c->
+    <c- k>static_assert</c-><c- p>(</c-><c- n>is_base_of_v</c-><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>remove_reference_t</c-><c- o>&lt;</c-><c- n>U</c-><c- o>>></c-><c- p>);</c->
+    <c- k>return</c-> <c- p>(</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-><c- p>)</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>u</c-><c- p>);</c->
+  <c- p>}</c->
+</pre>
+    <li data-md>
+     <p>
+      [<i>Note:</i> The C-style cast in 
+      <tt><i>c-style-cast</i></tt>
+       is to disable accessibility checks. -- <i>end note</i>]
+     </p>
+   </ol>
+   <h4 class="heading settled" data-level="9.8.1" id="spec-execution.snd_rec_utils.receiver_adaptor"><span class="secno">9.8.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code> <b>[execution.snd_rec_utils.receiver_adaptor]</b></span><a class="self-link" href="#spec-execution.snd_rec_utils.receiver_adaptor"></a></h4>
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Derived</c-><c- p>,</c-> <c- n>receiver</c-> <c- n>Base</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- o>></c->
+  <c- k>using</c-> <c- n>receiver_adaptor</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>receiver_adaptor</c-></code> is used to simplify the implementation of one receiver type in terms of another. It defines <code class="highlight"><c- n>tag_invoke</c-></code> overloads that forward to named members if they exist, and to the adapted receiver otherwise.</p>
+    <li data-md>
+     <p>This section makes use of the following exposition-only entities:</p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Receiver</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
+  <c- k>concept</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i> <c- o>=</c->
+    <c- k>requires</c-><c- p>(</c-><c- n>Receiver</c-><c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- p>{</c->
+      <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>r</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>...);</c->
+    <c- p>};</c->
+
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Receiver</c-><c- p>,</c-> <c- k>class</c-> <c- nc>A</c-><c- o>></c->
+  <c- k>concept</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>error</c-></i> <c- o>=</c->
+    <c- k>requires</c-><c- p>(</c-><c- n>Receiver</c-><c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>,</c-> <c- n>A</c-><c- o>&amp;&amp;</c-> <c- n>a</c-><c- p>)</c-> <c- p>{</c->
+      <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>r</c-><c- p>).</c-><c- n>set_error</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>A</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>a</c-><c- p>);</c->
+    <c- p>};</c->
+
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Receiver</c-><c- o>></c->
+  <c- k>concept</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>done</c-></i> <c- o>=</c->
+    <c- k>requires</c-><c- p>(</c-><c- n>Receiver</c-><c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
+      <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>r</c-><c- p>).</c-><c- n>set_done</c-><c- p>();</c->
+    <c- p>};</c->
+</pre>
+    <li data-md>
+     <p>If <code class="highlight"><c- n>Base</c-></code> is an alias for the unspecified default template parameter, then:</p>
+     <ul>
+      <li data-md>
+       <p>Let <code class="highlight"><i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i></code> be <code class="highlight">false</code>, and</p>
+      <li data-md>
+       <p>Let <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>d</c-><c- p>)</c-></code> be <code class="highlight"><i><c- n>c</c-><c- o>-</c-><c- n>style</c-><c- o>-</c-><c- n>cast</c-></i><c- o>&lt;</c-><i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i><c- o>></c-><c- p>(</c-><c- n>d</c-><c- p>)</c-></code>.</p>
+     </ul>
+     <p>otherwise, let:</p>
+     <ul>
+      <li data-md>
+       <p>Let <code class="highlight"><i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i></code> be <code class="highlight">true</code>, and</p>
+      <li data-md>
+       <p>Let <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>d</c-><c- p>)</c-></code> be <code class="highlight"><c- n>d</c-><c- p>.</c-><c- n>base</c-><c- p>()</c-></code>.</p>
+     </ul>
+     <p>Let <code class="highlight"><i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- n>D</c-><c- p>)</c-></code> be the type of <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>D</c-><c- o>></c-><c- p>())</c-></code>.</p>
+    <li data-md>
+     <p><code class="highlight"><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>Base</c-><c- o>></c-></code> is an alias for a class type equivalent to the following:</p>
+<pre class="highlight"><c- k>class</c-> <i><c- nc>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i> <c- p>{</c-> <c- c1>// </c-><i><c- c1>exposition only</c-></i>
+  <c- k>friend</c-> <c- n>Derived</c-><c- p>;</c->
+ <c- k>public</c-><c- o>:</c->
+  <c- c1>// Constructors</c->
+  <i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i><c- p>()</c-> <c- o>=</c-> <c- k>default</c-><c- p>;</c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>B</c-><c- o>></c->
+      <c- k>requires</c-> <i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i> <c- o>&amp;&amp;</c-> <c- n>constructible_from</c-><c- o>&lt;</c-><c- n>Base</c-><c- p>,</c-> <c- n>B</c-><c- o>></c->
+    <c- k>explicit</c-> <i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i><c- p>(</c-><c- n>Base</c-> <c- n>base</c-><c- p>)</c-> <c- o>:</c-> <c- n>base_</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>B</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>base</c-><c- p>))</c-> <c- p>{}</c->
+
+ <c- k>private</c-><c- o>:</c->
+  <c- c1>// Member functions</c->
+  <c- n>Base</c-><c- o>&amp;</c-> <c- n>base</c-><c- p>()</c-> <c- o>&amp;</c-> <c- k>noexcept</c-> <c- k>requires</c-> <i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i> <c- p>{</c-> <c- k>return</c-> <c- n>base_</c-><c- p>;</c-> <c- p>}</c->
+  <c- k>const</c-> <c- n>Base</c-><c- o>&amp;</c-> <c- n>base</c-><c- p>()</c-> <c- k>const</c-> <c- o>&amp;</c-> <c- k>noexcept</c-> <c- k>requires</c-> <i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i> <c- p>{</c-> <c- k>return</c-> <c- n>base_</c-><c- p>;</c-> <c- p>}</c->
+  <c- n>Base</c-><c- o>&amp;&amp;</c-> <c- n>base</c-><c- p>()</c-> <c- o>&amp;&amp;</c-> <c- k>noexcept</c-> <c- k>requires</c-> <i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i> <c- p>{</c->
+    <c- k>return</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Base</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>base_</c-><c- p>);</c->
+  <c- p>}</c->
+
+  <c- c1>// [execution.snd_rec_utils.receiver_adaptor.nonmembers] Non-member functions</c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
+    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
+
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>A</c-><c- o>></c->
+    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>A</c-><c- o>&amp;&amp;</c-> <c- n>a</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+
+  <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_done_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+
+  <c- k>template</c-> <c- o>&lt;</c-><i><c- n>none</c-><c- o>-</c-><c- n>of</c-></i><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>set_error_t</c-><c- p>,</c-> <c- n>set_done_t</c-><c- o>></c-> <c- n>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
+      <c- k>requires</c-> <c- n>invocable</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c->
+    <c- k>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c->
+      <c- k>noexcept</c-><c- p>(</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
+      <c- o>-></c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
+      <c- k>return</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Tag</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>tag</c-><c- p>)(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>self</c-><c- p>),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...);</c->
+    <c- p>}</c->
+
+  <c- p>[[</c-><c- n>no_unique_address</c-><c- p>]]</c-> <c- n>Base</c-> <c- n>base_</c-><c- p>;</c-> <c- c1>// present if and only if </c-><i><c- c1>HAS-BASE</c-></i><c- c1> is true</c->
+<c- p>};</c->
+</pre>
+    <li data-md>
+     <p>[<i>Example:</i></p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>receiver_of</c-><c- o>&lt;</c-><c- b>int</c-><c- o>></c-> <c- n>R</c-><c- o>></c->
+  <c- k>class</c-> <c- nc>my_receiver</c-> <c- o>:</c-> <c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>my_receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>R</c-><c- o>></c-> <c- p>{</c->
+    <c- k>friend</c-> <c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>my_receiver</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>;</c->
+    <c- b>void</c-> <c- nf>set_value</c-><c- p>()</c-> <c- o>&amp;&amp;</c-> <c- k>noexcept</c-> <c- p>{</c->
+      <c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- o>*</c-><c- k>this</c-><c- p>).</c-><c- n>base</c-><c- p>(),</c-> <c- mi>42</c-><c- p>);</c->
+    <c- p>}</c->
+   <c- k>public</c-><c- o>:</c->
+    <c- k>using</c-> <c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>my_receiver</c-><c- p>,</c-> <c- n>R</c-><c- o>>::</c-><c- n>receiver_adaptor</c-><c- p>;</c->
+  <c- p>};</c->
+</pre>
+     <p>-- <i>end example</i>]</p>
+   </ol>
+   <h5 class="heading settled" data-level="9.8.1.1" id="spec-execution.snd_rec_utils.receiver_adaptor.nonmembers"><span class="secno">9.8.1.1. </span><span class="content">Non-member functions <b>[execution.snd_rec_utils.receiver_adaptor.nonmembers]</b></span><a class="self-link" href="#spec-execution.snd_rec_utils.receiver_adaptor.nonmembers"></a></h5>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
+  <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Constraints:</i> Either <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-></code> is <code class="highlight">true</code> or <code class="highlight"><c- n>receiver_of</c-><c- o>&lt;</c-><i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- n>Derived</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-></code> is <code class="highlight">true</code>.</p>
+    <li data-md>
+     <p>If <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-></code> is <code class="highlight">true</code>:</p>
+     <ol>
+      <li data-md>
+       <p><i>Effects:</i> Equivalent to <code class="highlight"><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...)</c-></code></p>
+      <li data-md>
+       <p><i>Remarks:</i> The exception specification is equivalent to <code class="highlight"><c- k>noexcept</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...))</c-></code>.</p>
+     </ol>
+    <li data-md>
+     <p>Otherwise:</p>
+     <ol>
+      <li data-md>
+       <p><i>Effects:</i> Equivalent to <code class="highlight"><c- n>set_value</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...)</c-></code></p>
+      <li data-md>
+       <p><i>Remarks:</i> The exception specification is equivalent to <code class="highlight"><c- k>noexcept</c-><c- p>(</c-><c- n>set_value</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...))</c-></code></p>
+     </ol>
+   </ol>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>E</c-><c- o>></c->
+  <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>E</c-><c- o>&amp;&amp;</c-> <c- n>e</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Constraints:</i> Either <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>error</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code> or <code class="highlight"><c- n>receiver</c-><c- o>&lt;</c-><i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- n>Derived</c-><c- p>),</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code>.</p>
+    <li data-md>
+     <p><i>Effects:</i> Equivalent to:</p>
+     <ul>
+      <li data-md>
+       <p><code class="highlight"><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>).</c-><c- n>set_error</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>E</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>e</c-><c- p>))</c-></code> if <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>error</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code>,</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><c- n>set_error</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>E</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>e</c-><c- p>))</c-></code></p>
+     </ul>
+   </ol>
+<pre class="highlight"><c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_done_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Effects:</i> Equivalent to:</p>
+     <ul>
+      <li data-md>
+       <p><code class="highlight"><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>).</c-><c- n>set_done</c-><c- p>()</c-></code> if <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>done</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- o>></c-></code> is <code class="highlight">true</code>,</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><c- n>set_done</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)))</c-></code></p>
+     </ul>
+   </ol>
+   <h3 class="heading settled" data-level="9.9" id="spec-execution.coro_utils"><span class="secno">9.9. </span><span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span><a class="self-link" href="#spec-execution.coro_utils"></a></h3>
+   <h4 class="heading settled" data-level="9.9.1" id="spec-execution.coro_utils.as_awaitable"><span class="secno">9.9.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span><a class="self-link" href="#spec-execution.coro_utils.as_awaitable"></a></h4>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>as_awaitable</c-></code> is used to wrap a sender into an object that is awaitable within a particular coroutine. A sender <code class="highlight"><c- n>s</c-></code> of type <code class="highlight"><c- n>S</c-></code> can be made awaitable if and only if:</p>
@@ -6077,7 +6273,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
        </ul>
      </ol>
    </ol>
-   <h4 class="heading settled" data-level="9.8.2" id="spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.8.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span><a class="self-link" href="#spec-execution.coro_utils.with_awaitable_senders"></a></h4>
+   <h4 class="heading settled" data-level="9.9.2" id="spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.9.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span><a class="self-link" href="#spec-execution.coro_utils.with_awaitable_senders"></a></h4>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>with_awaitable_senders</c-></code>, when used as the base class of a coroutine promise type, makes senders awaitable in that coroutine type.</p>
