@@ -773,7 +773,6 @@ namespace std::execution {
             }
           };
 
-          // NOT TO SPEC: copy_constructible
           template<receiver_of<Ts...> R>
             requires (copy_constructible<Ts> &&...)
           friend auto tag_invoke(connect_t, const __sender& s, R&& r)
