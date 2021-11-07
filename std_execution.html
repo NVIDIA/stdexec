@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-06">2021-11-06</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-07">2021-11-07</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -5340,10 +5340,10 @@ expressions are equivalent and yield a <code class="highlight"><c- n>sender</c->
      <p>The expression <code class="highlight"><c- n>C</c-> <c- o>|</c-> <c- n>D</c-></code> is well-formed if and only if the initializations of the state entities of <code class="highlight"><c- n>E</c-></code> are all well-formed.</p>
     <li data-md>
      <p>An object <code class="highlight"><c- n>t</c-></code> of type <code class="highlight"><c- n>T</c-></code> is a pipeable sender adaptor closure object if <code class="highlight"><c- n>T</c-></code> models <code class="highlight"><c- n>derived_from</c-><c- o>&lt;</c-><c- n>sender_adaptor_closure</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-></code>, <code class="highlight"><c- n>T</c-></code> has no other base
-classes of type <code class="highlight"><c- n>range_adaptor_closure</c-><c- o>&lt;</c-><c- n>U</c-><c- o>></c-></code> for any other type <code class="highlight"><c- n>U</c-></code>, and <code class="highlight"><c- n>T</c-></code> does not model <code class="highlight"><c- n>sender</c-></code>.</p>
+classes of type <code class="highlight"><c- n>sender_adaptor_closure</c-><c- o>&lt;</c-><c- n>U</c-><c- o>></c-></code> for any other type <code class="highlight"><c- n>U</c-></code>, and <code class="highlight"><c- n>T</c-></code> does not model <code class="highlight"><c- n>sender</c-></code>.</p>
     <li data-md>
      <p>The template parameter <code class="highlight"><c- n>D</c-></code> for <code class="highlight"><c- n>sender_adaptor_closure</c-></code> may be an incomplete type. Before any expression of type <code class="highlight"><i><c- n>cv</c-></i> <c- n>D</c-></code> appears as
-an operand to the <code class="highlight"><c- o>|</c-></code> operator, <code class="highlight"><c- n>D</c-></code> shall be complete and model <code class="highlight"><c- n>derived_from</c-><c- o>&lt;</c-><c- n>range_adaptor_closure</c-><c- o>&lt;</c-><c- n>D</c-><c- o>>></c-></code>. The behavior of an expression involving an
+an operand to the <code class="highlight"><c- o>|</c-></code> operator, <code class="highlight"><c- n>D</c-></code> shall be complete and model <code class="highlight"><c- n>derived_from</c-><c- o>&lt;</c-><c- n>sender_adaptor_closure</c-><c- o>&lt;</c-><c- n>D</c-><c- o>>></c-></code>. The behavior of an expression involving an
 object of type <code class="highlight"><i><c- n>cv</c-></i> <c- n>D</c-></code> as an operand to the <code class="highlight"><c- o>|</c-></code> operator is undefined if overload resolution selects a program-defined <code class="highlight"><c- k>operator</c-><c- o>|</c-></code> function.</p>
     <li data-md>
      <p>A <i>pipeable sender adaptor object</i> is a customization point object that accepts a <code class="highlight"><c- n>sender</c-></code> as its first argument and returns a <code class="highlight"><c- n>sender</c-></code>.</p>
