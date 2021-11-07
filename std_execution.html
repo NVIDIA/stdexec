@@ -2945,18 +2945,17 @@ are passed through unchanged.</p>
 
 <c- c1>// pass through all customizations except set_error, which retries the operation.</c->
 <c- n>template</c-><c- o>&lt;</c-><c- n>class</c-> <c- n>O</c-><c- p>,</c-> <c- n>class</c-> <c- n>R</c-><c- o>></c->
-<c- k>struct</c-> <c- nc>_retry_receiver</c-> <c- p>{</c->
+<c- k>struct</c-> <c- nc>_retry_receiver</c->
+  <c- o>:</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>_retry_receiver</c-><c- o>&lt;</c-><c- n>O</c-><c- p>,</c-> <c- n>R</c-><c- o>>></c-> <c- p>{</c->
   <c- n>O</c-><c- o>*</c-> <c- n>o_</c-><c- p>;</c->
-  <c- n>explicit</c-> <c- nf>_retry_receiver</c-><c- p>(</c-><c- n>O</c-><c- o>*</c-> <c- n>o</c-><c- p>)</c-> <c- o>:</c-> <c- n>o_</c-><c- p>(</c-><c- n>o</c-><c- p>)</c-> <c- p>{}</c->
-  <c- n>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- k>auto</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>noexcept</c-> <c- p>{</c->
-    <c- n>self</c-><c- p>.</c-><c- n>o_</c-><c- o>-></c-><c- n>_retry</c-><c- p>();</c-> <c- c1>// This causes the op to be retried</c->
-  <c- p>}</c->
-  <c- c1>// Forward all other tag_invoke-based CPOs (copy_cvref_t from P1450):</c->
-  <c- n>template</c-> <c- o>&lt;</c-><c- n>_decays_to</c-><c- o>&lt;</c-><c- n>_retry_receiver</c-><c- o>></c-> <c- n>Self</c-><c- p>,</c-> <c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- p>,</c-> <c- n>class</c-> <c- n>Tag</c-><c- o>></c->
-  <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- n>Self</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c->
-    <c- n>noexcept</c-><c- p>(</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
-    <c- o>-></c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
-    <c- k>return</c-> <c- p>((</c-><c- n>Tag</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>tag</c-><c- p>)((</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>Self</c-><c- p>,</c-> <c- n>R</c-><c- o>>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>o_</c-><c- o>-></c-><c- n>r_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...);</c->
+
+  <c- n>R</c-><c- o>&amp;&amp;</c-> <c- nf>base</c-><c- p>()</c-> <c- o>&amp;&amp;</c-> <c- n>noexcept</c-> <c- p>{</c-> <c- k>return</c-> <c- p>(</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>o_</c-><c- o>-></c-><c- n>r_</c-><c- p>;</c-> <c- p>}</c->
+  <c- k>const</c-> <c- n>R</c-><c- o>&amp;</c-> <c- n>base</c-><c- p>()</c-> <c- k>const</c-> <c- o>&amp;</c-> <c- n>noexcept</c-> <c- p>{</c-> <c- k>return</c-> <c- n>o_</c-><c- o>-></c-><c- n>r_</c-><c- p>;</c-> <c- p>}</c->
+
+  <c- n>explicit</c-> <c- n>_retry_receiver</c-><c- p>(</c-><c- n>O</c-><c- o>*</c-> <c- n>o</c-><c- p>)</c-> <c- o>:</c-> <c- n>o_</c-><c- p>(</c-><c- n>o</c-><c- p>)</c-> <c- p>{}</c->
+
+  <c- b>void</c-> <c- n>set_error</c-><c- p>(</c-><c- k>auto</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- o>&amp;&amp;</c-> <c- n>noexcept</c-> <c- p>{</c->
+    <c- n>o_</c-><c- o>-></c-><c- n>_retry</c-><c- p>();</c-> <c- c1>// This causes the op to be retried</c->
   <c- p>}</c->
 <c- p>};</c->
 
@@ -2971,7 +2970,8 @@ are passed through unchanged.</p>
   <c- k>struct</c-> <c- nc>_op</c-> <c- p>{</c->
     <c- n>S</c-> <c- n>s_</c-><c- p>;</c->
     <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
-    <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>connect_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&lt;</c-><c- n>_op</c-><c- p>,</c-> <c- n>R</c-><c- o>>>></c-> <c- n>o_</c-><c- p>;</c->
+    <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c->
+        <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>_retry_receiver</c-><c- o>&lt;</c-><c- n>_op</c-><c- p>,</c-> <c- n>R</c-><c- o>>>></c-> <c- n>o_</c-><c- p>;</c->
 
     <c- n>_op</c-><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c-><c- o>:</c-> <c- n>s_</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-><c- n>s</c-><c- p>),</c-> <c- n>r_</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-><c- n>r</c-><c- p>),</c-> <c- n>o_</c-><c- p>{</c-><c- n>_connect</c-><c- p>()}</c-> <c- p>{}</c->
     <c- n>_op</c-><c- p>(</c-><c- n>_op</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- o>=</c-> <c- n>delete</c-><c- p>;</c->
@@ -3004,9 +3004,8 @@ are passed through unchanged.</p>
   <c- k>struct</c-> <c- nc>sender_traits</c-><c- o>&lt;</c-><c- n>_retry_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-> <c- o>:</c-> <c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
 <c- p>}</c->
 
-<c- n>template</c-><c- o>&lt;</c-><c- n>sender</c-> <c- n>S</c-><c- o>></c->
-<c- n>sender</c-> <c- k>auto</c-> <c- n>retry</c-><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>)</c-> <c- p>{</c->
-  <c- k>return</c-> <c- n>_retry_sender</c-><c- p>{(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-><c- p>};</c->
+<c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>retry</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>s</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>return</c-> <c- n>_retry_sender</c-><c- p>{</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>)};</c->
 <c- p>}</c->
 </pre>
    <p>The <code class="highlight"><c- n>retry</c-></code> algorithm takes a multi-shot sender and causes it to repeat on error, passing
@@ -6059,7 +6058,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
       <li data-md>
        <p>Let <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>d</c-><c- p>)</c-></code> be <code class="highlight"><c- n>d</c-><c- p>.</c-><c- n>base</c-><c- p>()</c-></code>.</p>
      </ul>
-     <p>Let <code class="highlight"><i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- n>D</c-><c- p>)</c-></code> be the type of <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>D</c-><c- o>></c-><c- p>())</c-></code>.</p>
+     <p>Let <code class="highlight"><i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- n>D</c-><c- p>)</c-></code> be the type of <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>D</c-><c- o>></c-><c- p>())</c-></code>.</p>
     <li data-md>
      <p><code class="highlight"><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>Base</c-><c- o>></c-></code> is an alias for a class type equivalent to the following:</p>
 <pre class="highlight"><c- k>class</c-> <i><c- nc>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i> <c- p>{</c-> <c- c1>// </c-><i><c- c1>exposition only</c-></i>
@@ -6069,7 +6068,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i><c- p>()</c-> <c- o>=</c-> <c- k>default</c-><c- p>;</c->
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>B</c-><c- o>></c->
       <c- k>requires</c-> <i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i> <c- o>&amp;&amp;</c-> <c- n>constructible_from</c-><c- o>&lt;</c-><c- n>Base</c-><c- p>,</c-> <c- n>B</c-><c- o>></c->
-    <c- k>explicit</c-> <i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i><c- p>(</c-><c- n>Base</c-> <c- n>base</c-><c- p>)</c-> <c- o>:</c-> <c- n>base_</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>B</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>base</c-><c- p>))</c-> <c- p>{}</c->
+    <c- k>explicit</c-> <i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i><c- p>(</c-><c- n>B</c-><c- o>&amp;&amp;</c-> <c- n>base</c-><c- p>)</c-> <c- o>:</c-> <c- n>base_</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>B</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>base</c-><c- p>))</c-> <c- p>{}</c->
 
  <c- k>private</c-><c- o>:</c->
   <c- c1>// Member functions</c->
@@ -6083,16 +6082,16 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
     <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
 
-  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>A</c-><c- o>></c->
-    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>A</c-><c- o>&amp;&amp;</c-> <c- n>a</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>E</c-><c- o>></c->
+    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>E</c-><c- o>&amp;&amp;</c-> <c- n>e</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
 
   <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_done_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
 
   <c- k>template</c-> <c- o>&lt;</c-><i><c- n>none</c-><c- o>-</c-><c- n>of</c-></i><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>set_error_t</c-><c- p>,</c-> <c- n>set_done_t</c-><c- o>></c-> <c- n>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
-      <c- k>requires</c-> <c- n>invocable</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c->
+      <c- k>requires</c-> <c- n>invocable</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c->
     <c- k>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c->
-      <c- k>noexcept</c-><c- p>(</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
-      <c- o>-></c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
+      <c- k>noexcept</c-><c- p>(</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
+      <c- o>-></c-> <c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
       <c- k>return</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Tag</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>tag</c-><c- p>)(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>self</c-><c- p>),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...);</c->
     <c- p>}</c->
 
@@ -6119,7 +6118,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 </pre>
    <ol>
     <li data-md>
-     <p><i>Constraints:</i> Either <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-></code> is <code class="highlight">true</code> or <code class="highlight"><c- n>receiver_of</c-><c- o>&lt;</c-><i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- n>Derived</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-></code> is <code class="highlight">true</code>.</p>
+     <p><i>Constraints:</i> Either <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-></code> is <code class="highlight">true</code> or <code class="highlight"><c- n>receiver_of</c-><c- o>&lt;</c-><i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- n>Derived</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-></code> is <code class="highlight">true</code>.</p>
     <li data-md>
      <p>If <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-></code> is <code class="highlight">true</code>:</p>
      <ol>
@@ -6142,7 +6141,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 </pre>
    <ol>
     <li data-md>
-     <p><i>Constraints:</i> Either <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>error</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code> or <code class="highlight"><c- n>receiver</c-><c- o>&lt;</c-><i><c- n>BASE</c-><c- o>-</c-><c- n>T</c-></i><c- p>(</c-><c- n>Derived</c-><c- p>),</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code>.</p>
+     <p><i>Constraints:</i> Either <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>error</c-></i><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code> or <code class="highlight"><c- n>receiver</c-><c- o>&lt;</c-><i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- n>Derived</c-><c- p>),</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code>.</p>
     <li data-md>
      <p><i>Effects:</i> Equivalent to:</p>
      <ul>
