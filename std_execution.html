@@ -5234,14 +5234,8 @@ values equivalent to <code class="highlight"><c- n>vs</c-><c- p>...</c-></code> 
     <c- n>T</c-> <c- n>err_</c-><c- p>;</c->
     <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
 
-    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c->
-      <c- k>noexcept</c-> <c- p>{</c->
-      <c- k>try</c-> <c- p>{</c->
+    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
         <c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>err_</c-><c- p>));</c->
-      <c- p>}</c->
-      <c- k>catch</c-> <c- p>(...)</c-> <c- p>{</c->
-        <c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>current_exception</c-><c- p>());</c->
-      <c- p>}</c->
     <c- p>}</c->
   <c- p>};</c->
 
