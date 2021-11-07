@@ -3126,14 +3126,8 @@ enum class forward_progress_guarantee {
         T err_;
         R r_;
 
-        friend void tag_invoke(execution::start_t, operation_state& s)
-          noexcept {
-          try {
+        friend void tag_invoke(execution::start_t, operation_state& s) noexcept {
             execution::set_error(std::move(s.r_), std::move(err_));
-          }
-          catch (...) {
-            execution::set_error(std::move(s.r_), current_exception());
-          }
         }
       };
 
