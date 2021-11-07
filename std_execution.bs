@@ -3238,10 +3238,10 @@ enum class forward_progress_guarantee {
     The expression `C | D` is well-formed if and only if the initializations of the state entities of `E` are all well-formed.
 
 2. An object `t` of type `T` is a pipeable sender adaptor closure object if `T` models `derived_from<sender_adaptor_closure<T>>`, `T` has no other base
-    classes of type `range_adaptor_closure<U>` for any other type `U`, and `T` does not model `sender`.
+    classes of type `sender_adaptor_closure<U>` for any other type `U`, and `T` does not model `sender`.
 
 3. The template parameter `D` for `sender_adaptor_closure` may be an incomplete type. Before any expression of type <code><i>cv</i> D</code> appears as
-    an operand to the `|` operator, `D` shall be complete and model `derived_from<range_adaptor_closure<D>>`. The behavior of an expression involving an
+    an operand to the `|` operator, `D` shall be complete and model `derived_from<sender_adaptor_closure<D>>`. The behavior of an expression involving an
     object of type <code><i>cv</i> D</code> as an operand to the `|` operator is undefined if overload resolution selects a program-defined `operator|`
     function.
 
