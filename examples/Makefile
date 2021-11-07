@@ -5,7 +5,7 @@ CXXFLAGS=-I$(IDIR) -std=c++20 -stdlib=libc++ -ftemplate-backtrace-limit=0
 
 LIBS=-pthread
 
-all: hello_world hello_coro
+all: hello_world hello_coro retry
 
 execution: $(IDIR)/execution.hpp
 
@@ -19,6 +19,9 @@ hello_world: $(BUILDDIR)/hello_world.o
 	$(CXX) -o $(BUILDDIR)/$@ $^ $(CXXFLAGS) $(LIBS)
 
 hello_coro: $(BUILDDIR)/hello_coro.o
+	$(CXX) -o $(BUILDDIR)/$@ $^ $(CXXFLAGS) $(LIBS)
+
+retry: $(BUILDDIR)/retry.o
 	$(CXX) -o $(BUILDDIR)/$@ $^ $(CXXFLAGS) $(LIBS)
 
 .PHONY: clean

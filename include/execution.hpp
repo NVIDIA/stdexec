@@ -946,21 +946,34 @@ namespace std::execution {
         static_assert(is_base_of_v<T, remove_reference_t<U>>);
         return (__member_t<U, T>) (U&&) u;
       }
+    namespace __no {
+      struct __nope {};
+      struct __receiver : __nope {};
+      void tag_invoke(set_error_t, __receiver, std::exception_ptr) noexcept;
+      void tag_invoke(set_done_t, __receiver) noexcept;
+    }
+    using __not_a_receiver = __no::__receiver;
 
     template <class Base>
-    struct __adaptor {
-      struct __t {
-        explicit __t(Base base) : base_((Base&&) base) {}
+      struct __adaptor {
+        struct __t {
+          template <class B>
+            requires constructible_from<Base, B>
+          explicit __t(B&& base) : base_((B&&) base) {}
 
-      private:
-        [[no_unique_address]] Base base_;
+        private:
+          [[no_unique_address]] Base base_;
 
-      protected:
-        Base& base() & noexcept { return base_; }
-        const Base& base() const & noexcept { return base_; }
-        Base&& base() && noexcept { return (Base&&) base_; }
+        protected:
+          Base& base() & noexcept { return base_; }
+          const Base& base() const & noexcept { return base_; }
+          Base&& base() && noexcept { return (Base&&) base_; }
+        };
       };
-    };
+    template <derived_from<__no::__nope> Base>
+      struct __adaptor<Base> {
+        struct __t : __no::__nope { };
+      };
     template <class Base>
       using __adaptor_base = typename __adaptor<Base>::__t;
 
@@ -970,7 +983,7 @@ namespace std::execution {
           ((Sender&&) s).connect((Receiver&&) r);
         };
 
-    template <sender Base, __class Derived>
+    template <__class Derived, sender Base>
       struct __sender_adaptor {
         class __t : __adaptor_base<Base> {
           template <__decays_to<Derived> Self, receiver R>
@@ -1009,10 +1022,21 @@ namespace std::execution {
           ((Receiver&&) r).set_done();
         };
 
-    template <receiver Base, __class Derived>
+    template <__class Derived, receiver Base>
       struct __receiver_adaptor {
         class __t : __adaptor_base<Base> {
           friend Derived;
+
+          template <class D>
+            static decltype(auto) __get_base(D&& self) noexcept {
+              if constexpr (is_base_of_v<__no::__nope, Base>) {
+                return ((D&&) self).base();
+              } else {
+                return __c_cast<__t>((D&&) self).base();
+              }
+            }
+          template <class D>
+            using __base_t = decltype(__get_base(__declval<D>()));
 
           template <class... As>
             requires __has_set_value<Derived, As...>
@@ -1021,11 +1045,12 @@ namespace std::execution {
             ((Derived&&) self).set_value((As&&) as...);
           }
 
-          template <class... As>
-            requires (!__has_set_value<Derived, As...>) && receiver_of<Base, As...>
+          template <class D = Derived, class... As>
+            requires (!__has_set_value<Derived, As...>) &&
+              receiver_of<__base_t<D>, As...>
           friend void tag_invoke(set_value_t, Derived&& self, As&&... as)
-            noexcept(nothrow_receiver_of<Base, As...>) {
-            set_value(__c_cast<__t>((Derived&&) self).base(), (As&&) as...);
+            noexcept(nothrow_receiver_of<__base_t<D>, As...>) {
+            set_value(__get_base((Derived&&) self), (As&&) as...);
           }
 
           template <class E>
@@ -1035,24 +1060,55 @@ namespace std::execution {
             ((Derived&&) self).set_error((E&&) e);
           }
 
-          template <class E>
-            requires (!__has_set_error<Derived, E>) && receiver<Base, E>
+          template <class E, class D = Derived>
+            requires (!__has_set_error<Derived, E>) && receiver<__base_t<D>, E>
           friend void tag_invoke(set_error_t, Derived&& self, E&& e) noexcept {
-            set_error(__c_cast<__t>((Derived&&) self).base(), (E&&) e);
+            set_error(__get_base((Derived&&) self), (E&&) e);
           }
 
-          friend void tag_invoke(set_done_t, Derived&& self) noexcept
-            requires __has_set_done<Derived> {
-            static_assert(noexcept(((Derived&&) self).set_done()));
-            ((Derived&&) self).set_done();
+          friend void tag_invoke(set_done_t, Derived&& self) noexcept {
+            if constexpr (__has_set_done<Derived>) {
+              static_assert(noexcept(((Derived&&) self).set_done()));
+              ((Derived&&) self).set_done();
+            } else {
+              set_done(__get_base((Derived&&) self));
+            }
           }
 
-          friend void tag_invoke(set_done_t, Derived&& self) noexcept
-            requires (!__has_set_done<Derived>) {
-            set_done(__c_cast<__t>((Derived&&) self).base());
+          template <__none_of<set_value_t, set_error_t, set_done_t> Tag, class D = Derived, class... As>
+            requires invocable<Tag, __base_t<const D&>, As...>
+          friend auto tag_invoke(Tag tag, const Derived& self, As&&... as)
+            noexcept(is_nothrow_invocable_v<Tag, __base_t<const D&>, As...>)
+            -> invoke_result_t<Tag, __base_t<const D&>, As...> {
+            return ((Tag&&) tag)(__get_base(self), (As&&) as...);
           }
 
-          template <__none_of<set_value_t, set_error_t, set_done_t> Tag, class... As>
+         public:
+          __t() = default;
+          using __adaptor_base<Base>::__adaptor_base;
+        };
+      };
+
+    template <class OpState>
+      concept __has_start =
+        requires(OpState& op) {
+          op.start();
+        };
+
+    template <__class Derived, operation_state Base>
+      struct __operation_state_adaptor {
+        class __t : __adaptor_base<Base> {
+          friend void tag_invoke(start_t, Derived& self) noexcept
+            requires __has_start<Derived> {
+            static_assert(noexcept(self.start()));
+            self.start();
+          }
+
+          friend void tag_invoke(start_t, Derived& self) noexcept {
+            execution::start(__c_cast<__t>(self).base());
+          }
+
+          template <__none_of<start_t> Tag, class... As>
             requires invocable<Tag, const Base&, As...>
           friend auto tag_invoke(Tag tag, const Derived& self, As&&... as)
             noexcept(is_nothrow_invocable_v<Tag, const Base&, As...>)
@@ -1064,48 +1120,10 @@ namespace std::execution {
           using __adaptor_base<Base>::base;
 
         public:
-          explicit __t(Base base)
-            : __adaptor_base<Base>((Base&&) base)
-          {}
-        };
-      };
-
-    template <class OpState>
-      concept __has_start =
-        requires(OpState& op) {
-          op.start();
-        };
-
-    template <operation_state Base, __class Derived>
-      struct __operation_state_adaptor {
-        class __t : __adaptor_base<Base> {
-          template <same_as<Derived> Self>
-            requires __has_start<Self>
-          friend void tag_invoke(start_t, Self& self) noexcept {
-            static_assert(noexcept(self.start()));
-            self.start();
-          }
-
-          template <same_as<Derived> Self>
-            requires (!__has_start<Self>) && operation_state<Base&>
-          friend void tag_invoke(start_t, Self& self) noexcept {
-            execution::start(__c_cast<__t>(self).base());
-          }
-
-          template <__none_of<start_t> Tag, same_as<Derived> Self, class... As>
-            requires invocable<Tag, const Base&, As...>
-          friend auto tag_invoke(Tag tag, const Self& self, As&&... as)
-            noexcept(is_nothrow_invocable_v<Tag, const Base&, As...>)
-            -> invoke_result_t<Tag, const Base&, As...> {
-            return ((Tag&&) tag)(__c_cast<__t>(self).base(), (As&&) as...);
-          }
-
-        protected:
-          using __adaptor_base<Base>::base;
-
-        public:
-          explicit __t(Base base)
-            : __adaptor_base<Base>((Base&&) base)
+          template <class B>
+            requires constructible_from<Base, B>
+          explicit __t(B&& base)
+            : __adaptor_base<Base>((B&&) base)
           {}
         };
       };
@@ -1116,7 +1134,7 @@ namespace std::execution {
           ((Sched&&) sched).schedule();
         };
 
-    template <scheduler Base, __class Derived>
+    template <__class Derived, scheduler Base>
       struct __scheduler_adaptor {
         class __t : __adaptor_base<Base> {
           template <__decays_to<Derived> Self>
@@ -1152,36 +1170,33 @@ namespace std::execution {
           {}
         };
       };
-  }
-  template <sender Base, __class Derived>
+  } // namespace __tag_invoke_adaptors
+
+  template <__class Derived, sender Base>
     using sender_adaptor =
-      typename __tag_invoke_adaptors::__sender_adaptor<Base, Derived>::__t;
+      typename __tag_invoke_adaptors::__sender_adaptor<Derived, Base>::__t;
 
-  template <receiver Base, __class Derived>
+  template <__class Derived, receiver Base = __tag_invoke_adaptors::__not_a_receiver>
     using receiver_adaptor =
-      typename __tag_invoke_adaptors::__receiver_adaptor<Base, Derived>::__t;
+      typename __tag_invoke_adaptors::__receiver_adaptor<Derived, Base>::__t;
 
-  template <operation_state Base, __class Derived>
+  template <__class Derived, operation_state Base>
     using operation_state_adaptor =
-      typename __tag_invoke_adaptors::__operation_state_adaptor<Base, Derived>::__t;
+      typename __tag_invoke_adaptors::__operation_state_adaptor<Derived, Base>::__t;
 
-  template <scheduler Base, __class Derived>
+  template <__class Derived, scheduler Base>
     using scheduler_adaptor =
-      typename __tag_invoke_adaptors::__scheduler_adaptor<Base, Derived>::__t;
-
-  template <class Derived>
-    using adaptor_of = typename Derived::__t;
+      typename __tag_invoke_adaptors::__scheduler_adaptor<Derived, Base>::__t;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   inline namespace __then {
     namespace __impl {
       template<class R_, class F>
-        class __receiver
-          : receiver_adaptor<__t<R_>, __receiver<R_, F>> {
-          friend adaptor_of<__receiver>;
+        class __receiver : receiver_adaptor<__receiver<R_, F>, __t<R_>> {
           using R = __t<R_>;
-          [[no_unique_address]] F f_;
+          friend receiver_adaptor<__receiver, R>;
+          [[no_unique_address]] F __f_;
 
           // Customize set_value by invoking the invocable and passing the result
           // to the base class
@@ -1191,7 +1206,7 @@ namespace std::execution {
           void set_value(As&&... as) && noexcept(/*...*/ true) {
             execution::set_value(
                 ((__receiver&&) *this).base(),
-                std::invoke((F&&) f_, (As&&) as...));
+                std::invoke((F&&) __f_, (As&&) as...));
           }
           // Handle the case when the invocable returns void
           template<class R2 = R, class... As>
@@ -1199,22 +1214,21 @@ namespace std::execution {
               same_as<void, invoke_result_t<F, As...>> &&
               receiver_of<R2>
           void set_value(As&&... as) && noexcept(/*...*/ true) {
-            invoke((F&&) f_, (As&&) as...);
+            invoke((F&&) __f_, (As&&) as...);
             execution::set_value(((__receiver&&) *this).base());
           }
 
          public:
           explicit __receiver(R r, F f)
-            : receiver_adaptor<R, __receiver>((R&&) r)
-            , f_((F&&) f)
+            : receiver_adaptor<__receiver, R>((R&&) r)
+            , __f_((F&&) f)
           {}
         };
 
       template<class S_, class F>
-        class __sender
-          : sender_adaptor<__t<S_>, __sender<S_, F>> {
-          friend adaptor_of<__sender>;
+        class __sender : sender_adaptor<__sender<S_, F>, __t<S_>> {
           using S = __t<S_>;
+          friend sender_adaptor<__sender, S>;
           template <class R>
             using __rec = __receiver<__id_t<remove_cvref_t<R>>, F>;
 
@@ -1226,12 +1240,12 @@ namespace std::execution {
             -> connect_result_t<S, __rec<R>> {
             return execution::connect(
                 ((__sender&&) *this).base(),
-                __rec<R>{{(R&&) r}, (F&&) f_});
+                __rec<R>{(R&&) r, (F&&) f_});
           }
 
         public:
           explicit __sender(S s, F f)
-            : sender_adaptor<S, __sender>{(S&&) s}
+            : sender_adaptor<__sender, S>{(S&&) s}
             , f_((F&&) f)
           {}
         };
