@@ -2381,7 +2381,7 @@ template&lt;typename T>
 namespace std::execution {
   // [execution.helpers], helper concepts
   template&lt;class T>
-    concept <i>moveable-value</i> = <i>see-below</i>; // exposition only
+    concept <i>movable-value</i> = <i>see-below</i>; // exposition only
 
   template&lt;class From, class To>
     concept <i>decays-to</i> = same_as&lt;decay_t&lt;From>, To>; // exposition only
@@ -2496,7 +2496,7 @@ namespace std::execution {
     inline constexpr schedule_t schedule{};
     template&lt;class... Ts>
       struct <i>just-sender</i>; // exposition only
-    template&lt;<i>moveable-value</i>... Ts>
+    template&lt;<i>movable-value</i>... Ts>
       <i>just-sender</i>&lt;remove_cvref_t&lt;Ts>...> just(Ts &&...);
     struct transfer_just_t;
     inline constexpr transfer_just_t transfer_just{};
@@ -2600,9 +2600,9 @@ namespace std::execution {
 
     <pre highlight=c++>
     template&lt;class T>
-    concept <i>moveable-value</i> = // exposition only
-      move_constructible&lt;remove_cvref_t&lt;T>> &&
-      constructible_from&lt;remove_cvref_t&lt;T>, T>;
+    concept <i>movable-value</i> = // exposition only
+      move_constructible&lt;decay_t&lt;T>> &&
+      constructible_from&lt;decay_t&lt;T>, T>;
     </pre>
 
 ## Schedulers <b>[execution.schedulers] </b> ## {#spec-execution.schedulers}
@@ -3066,7 +3066,7 @@ enum class forward_progress_guarantee {
       };
 
       template&lt;receiver R>
-        requires receiver_of&lt;R, Ts...> && (copyable&ltTs> &&...)
+        requires receiver_of&lt;R, Ts...> && (copy_constructible&ltTs> &&...)
       friend auto tag_invoke(execution::connect_t, const <i>just-sender</i>& j, R && r) {
         return operation_state&lt;R>{ j.vs_, std::forward&lt;R>(r) };
       }
@@ -3078,8 +3078,8 @@ enum class forward_progress_guarantee {
       }
     };
 
-    template&lt;<i>moveable-value</i>... Ts>
-      <i>just-sender</i>&lt;remove_cvref_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
+    template&lt;<i>movable-value</i>... Ts>
+      <i>just-sender</i>&lt;decay_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
     </pre>
 
 1. <i>Effects</i>: Initializes `vs_` with `make_tuple(forward<Ts>(ts)...)`.
@@ -3087,7 +3087,7 @@ enum class forward_progress_guarantee {
 2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
 
     <pre highlight=c++>
-    (is_nothrow_constructible_v&lt;remove_cvref_t&lt;Ts>, Ts> && ...)
+    (is_nothrow_constructible_v&lt;decay_t&lt;Ts>, Ts> && ...)
     </pre>
 
 #### `execution::transfer_just` <b>[execution.senders.transfer_just]</b> #### {#spec-execution.senders.transfer_just}
@@ -3095,7 +3095,7 @@ enum class forward_progress_guarantee {
 1. `execution::transfer_just` is used to create a sender that propagates a set of values to a connected receiver on an execution agent belonging to the associated execution context of a specified scheduler.
 
 2. The name `execution::transfer_just` denotes a customization point object. For some subexpressions `s` and `vs...`, let `S` be `decltype((s))` and `Vs...` be `decltype((vs))`. If `S` does not satisfy `execution::scheduler`, or any type `V` in `Vs` does not
-    satisfy <code><i>moveable-value</i></code>, `execution::transfer_just(s, vs...)` is ill-formed. Otherwise, `execution::transfer_just(s, vs...)` is expression-equivalent to:
+    satisfy <code><i>movable-value</i></code>, `execution::transfer_just(s, vs...)` is ill-formed. Otherwise, `execution::transfer_just(s, vs...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::transfer_just, s, vs...)`, if that expression is valid and its type satisfies `execution::typed_sender`. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s` and sends
         values equivalent to `vs...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
@@ -3116,7 +3116,7 @@ enum class forward_progress_guarantee {
       using value_types = Variant&lt;>;
 
       template&lt;template&lt;class...> class Variant>
-      using error_types = Variant&lt;T, exception_ptr>;
+      using error_types = Variant&lt;T>;
 
       static const constexpr auto sends_done = false;
 
@@ -3126,12 +3126,12 @@ enum class forward_progress_guarantee {
         R r_;
 
         friend void tag_invoke(execution::start_t, operation_state& s) noexcept {
-            execution::set_error(std::move(s.r_), std::move(err_));
+          execution::set_error(std::move(s.r_), std::move(err_));
         }
       };
 
       template&lt;receiver R>
-        requires receiver&lt;R, T> && copyable&lt;T>
+        requires receiver&lt;R, T> && copy_constructible&lt;T>
       friend auto tag_invoke(execution::connect_t, const <i>just-error-sender</i>& j, R && r) {
         return operation_state&lt;remove_cvref_t&lt;R>>{ j.err_, std::forward&lt;R>(r) };
       }
@@ -3143,16 +3143,16 @@ enum class forward_progress_guarantee {
       }
     };
 
-    template&lt;<i>moveable-value</i> T>
-      <i>just-error-sender</i>&lt;remove_cvref_t&lt;T>> just_error(T && t) noexcept(<i>see-below</i>);
+    template&lt;<i>movable-value</i> T>
+      <i>just-error-sender</i>&lt;decay_t&lt;T>> just_error(T && t) noexcept(<i>see-below</i>);
     </pre>
 
-1. <i>Effects</i>: Returns a <code><i>just-error-sender</i>&lt;remove_cvref_t&lt;T>></code> with `err_` direct initialized with `static_cast<T&&>(t)`.
+1. <i>Effects</i>: Returns a <code><i>just-error-sender</i>&lt;decay_t&lt;T>></code> with `err_` direct initialized with `static_cast<T&&>(t)`.
 
 2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
 
     <pre highlight=c++>
-    is_nothrow_constructible_v&lt;remove_cvref_t&lt;T>, T>
+    is_nothrow_constructible_v&lt;decay_t&lt;T>, T>
     </pre>
 
 #### `execution::just_done` <b>[execution.senders.just_done]</b> #### {#spec-execution.senders.just_done}
