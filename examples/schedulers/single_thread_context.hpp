@@ -22,7 +22,7 @@
 
 namespace example {
   class single_thread_context {
-    std::execution::manual_event_loop loop_;
+    std::execution::run_loop loop_;
     std::thread thread_;
 
   public:
