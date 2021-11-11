@@ -1777,11 +1777,6 @@ namespace std::execution {
                     ((Self&&) self).__sender_,
                     (Receiver&&) recvr};
           }
-
-          friend Scheduler tag_invoke(get_scheduler_t, const __sender& self)
-              noexcept {
-            return self.__scheduler_;
-          }
         };
     } // namespace __impl
 
