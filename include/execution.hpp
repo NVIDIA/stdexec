@@ -1688,7 +1688,7 @@ namespace std::execution {
         };
 
       template <class Sch_, class S_>
-        struct __sender {
+        struct __sender : sender_base {
           using Sch = __t<Sch_>;
           using S = __t<S_>;
 
@@ -1771,7 +1771,7 @@ namespace std::execution {
       template <scheduler Sch, sender S>
       auto operator()(Sch&& sch, S&& s) const 
         -> __impl::__sender<__id_t<decay_t<Sch>>, __id_t<decay_t<S>>> {
-        return {(Sch&&) sch, (S&&) s};
+        return {{}, (Sch&&) sch, (S&&) s};
       }
     } on {};
   } // namespace __on
