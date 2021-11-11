@@ -1746,15 +1746,15 @@ namespace std::execution {
                 start(std::get<0>(self.__data_));
               }
 
-              template <class Sender, class Receiver>
-              __operation(Scheduler sched, Sender&& sndr, Receiver&& recvr)
+              template <class Sender2, class Receiver2>
+              __operation(Scheduler sched, Sender2&& sndr, Receiver2&& recvr)
                 : __data_{in_place_index<0>, __conv{[&, this]{
                     return connect(schedule(sched),
                                    __receiver<ReceiverId>{{}, this});
                   }}}
                 , __scheduler_((Scheduler&&) sched)
-                , __sender_((Sender&&) sndr)
-                , __receiver_((Receiver&&) recvr) {}
+                , __sender_((Sender2&&) sndr)
+                , __receiver_((Receiver2&&) recvr) {}
 
               std::variant<
                   connect_result_t<schedule_result_t<Scheduler>,
