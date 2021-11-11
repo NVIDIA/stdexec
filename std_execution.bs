@@ -3266,22 +3266,25 @@ are all well-formed.
     1. `tag_invoke(execution::on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch` when
         started, the program is ill-formed with no diagnostic required.
 
-    2. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state`. When `execution::start` is called on `op_state`, it:
+    2. Otherwise, constructs a sender `s1`. When `s1` is connected with some receiver `out_r`, it:
 
         1. Constructs a receiver `r`:
 
-            1. When `execution::set_value(r)` is called, it calls `execution::connect(s, out_r)`, which results in `op_state2`. It calls `execution::start(op_state2)`. If any of these throws an exception, it calls `execution::set_error` on `out_r`,
-                passing `current_exception()` as the second argument.
+            1. When `execution::set_value(r)` is called, it calls `execution::connect(s, r2)`, where `r2` is as specified below, which results in `op_state3`. It calls `execution::start(op_state3)`. If any of these throws an exception, it calls `execution::set_error` on `out_r`, passing `current_exception()` as the second argument.
 
             2. When `execution::set_error(r, e)` is called, it calls `execution::set_error(out_r, e)`.
 
             3. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
 
-        2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`.
+        2. Calls `execution::schedule(sch)`, which results in `s2`. It then calls `execution::connect(s2, r)`, resulting in `op_state2`.
+        
+        3. `op_state2` is wrapped by a new operation state, `op_state1`, that is returned to the caller.
 
-        3. The lifetime of `op_state2`, once constructed, lasts until `op_state` is destroyed. The lifetime of `op_state3`, once constructed, lasts until either `op_state2` is constructed or `op_state` is destroyed, whichever comes first.
+      2. `r2` is a receiver that wraps a reference to `out_r`. It forwards all receiver completion signals and receiver queries to `out_r`. Additionally, it implements the `get_scheduler` receiver query. The scheduler returned from the query is equivalent to the `sch` argument that was passed to `execution::on`.
 
-4. Any receiver `r` created by an implementation of `on` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for all such receivers should be equivalent to the `sch` argument passed into the `on` call.
+      3. When `execution::start` is called on `op_state1`, it calls `execution::start` on `op_state2`.
+
+      4. The lifetime of `op_state2`, once constructed, lasts until either `op_state3` is constructed or `op_state1` is destroyed, whichever comes first. The lifetime of `op_state3`, once constructed, lasts until `op_state1` is destroyed.
 
 #### `execution::transfer` <b>[execution.senders.adaptors.transfer]</b> #### {#spec-execution.senders.adaptors.transfer}
 

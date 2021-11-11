@@ -1677,109 +1677,136 @@ namespace std::execution {
     } transfer {};
   } // namespace __transfer
 
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.adaptors.on]
   inline namespace __on {
     namespace __impl {
-      template <class R_>
-        struct __receiver_ref : receiver_adaptor<__receiver_ref<R_>> {
-          using R = __t<R_>;
-          R& __r_;
-          R&& base() && noexcept { return (R&&) __r_; }
-          const R& base() const & noexcept { return __r_; }
-        };
-
-      template <class Sch_, class S_>
+      template <class SchedulerId, class SenderId>
         struct __sender : sender_base {
-          using Sch = __t<Sch_>;
-          using S = __t<S_>;
+          using Scheduler = __t<SchedulerId>;
+          using Sender = __t<SenderId>;
 
-          Sch __sch_;
-          S __s_;
+          Scheduler __scheduler_;
+          Sender __sender_;
 
-          template <class R_>
+          template <class ReceiverId>
             struct __operation;
 
-          template <class R_>
-            struct __receiver : receiver_adaptor<__receiver<R_>> {
-              using R = __t<R_>;
-              __operation<R_>* __op_;
-              R&& base() && noexcept { return (R&&) __op_->__r_; }
-              const R& base() const & noexcept { return __op_->__r_; }
+          template <class ReceiverId>
+            struct __receiver_ref
+              : receiver_adaptor<__receiver_ref<ReceiverId>> {
+              using Receiver = __t<ReceiverId>;
+              __operation<ReceiverId>* __op_state_;
+              Receiver&& base() && noexcept {
+                return (Receiver&&) __op_state_->__receiver_;
+              }
+              const Receiver& base() const & noexcept {
+                return __op_state_->__receiver_;
+              }
+              friend Scheduler tag_invoke(get_scheduler_t,
+                                          const __receiver_ref& self) noexcept {
+                return self.__op_state_->__scheduler_;
+              }
+            };
+
+          template <class ReceiverId>
+            struct __receiver : receiver_adaptor<__receiver<ReceiverId>> {
+              using Receiver = __t<ReceiverId>;
+              __operation<ReceiverId>* __op_state_;
+              Receiver&& base() && noexcept {
+                return (Receiver&&) __op_state_->__receiver_;
+              }
+              const Receiver& base() const & noexcept {
+                return __op_state_->__receiver_;
+              }
 
               void set_value() && noexcept {
                 // cache this locally since *this is going bye-bye.
-                auto* op = __op_;
+                auto* op_state = __op_state_;
                 try {
                   // This line will invalidate *this:
-                  start(op->__data_.template emplace<1>(__conv{
-                    [op]{
-                      return connect((S&&) op->__s_,
-                                     __receiver_ref<R_>{{}, op->__r_}); }
+                  start(op_state->__data_.template emplace<1>(__conv{
+                    [op_state] {
+                      return connect((Sender&&) op_state->__sender_,
+                                     __receiver_ref<ReceiverId>{{}, op_state});
+                    }
                   }));
                 } catch(...) {
-                  set_error((R&&) op->__r_, current_exception());
+                  set_error((Receiver&&) op_state->__receiver_,
+                            current_exception());
                 }
               }
             };
 
-          template <class R_>
+          template <class ReceiverId>
             struct __operation {
-              using R = __t<R_>;
+              using Receiver = __t<ReceiverId>;
 
               friend void tag_invoke(start_t, __operation& self) noexcept {
                 start(std::get<0>(self.__data_));
               }
 
-              template <class S, class R>
-              __operation(Sch sch, S&& s, R&& r)
+              template <class Sender, class Receiver>
+              __operation(Scheduler sched, Sender&& sndr, Receiver&& recvr)
                 : __data_{in_place_index<0>, __conv{[&, this]{
-                    return connect(schedule(sch), __receiver<R_>{{}, this});
+                    return connect(schedule(sched),
+                                   __receiver<ReceiverId>{{}, this});
                   }}}
-                , __s_((S&&) s)
-                , __r_((R&&) r) {}
+                , __scheduler_((Scheduler&&) sched)
+                , __sender_((Sender&&) sndr)
+                , __receiver_((Receiver&&) recvr) {}
 
               std::variant<
-                  connect_result_t<schedule_result_t<Sch>, __receiver<R_>>,
-                  connect_result_t<S, __receiver_ref<R_>>> __data_;
-              S __s_;
-              R __r_;
+                  connect_result_t<schedule_result_t<Scheduler>,
+                                   __receiver<ReceiverId>>,
+                  connect_result_t<Sender,
+                                   __receiver_ref<ReceiverId>>> __data_;
+              Scheduler __scheduler_;
+              Sender __sender_;
+              Receiver __receiver_;
             };
 
-          template <__decays_to<__sender> Self, receiver R>
-            requires constructible_from<S, __member_t<Self, S>> &&
-              sender_to<S, __receiver_ref<__id_t<decay_t<R>>>> &&
-              sender_to<schedule_result_t<Sch>, __receiver<__id_t<decay_t<R>>>>
-          friend auto tag_invoke(connect_t, Self&& self, R&& r)
-            -> __operation<__id_t<decay_t<R>>> {
-            return {((Self&&) self).__sch_, ((Self&&) self).__s_, (R&&) r};
+          template <__decays_to<__sender> Self, receiver Receiver>
+            requires constructible_from<Sender, __member_t<Self, Sender>> &&
+              sender_to<Sender, __receiver_ref<__id_t<decay_t<Receiver>>>> &&
+              sender_to<schedule_result_t<Scheduler>,
+                        __receiver<__id_t<decay_t<Receiver>>>>
+          friend auto tag_invoke(connect_t, Self&& self, Receiver&& recvr)
+            -> __operation<__id_t<decay_t<Receiver>>> {
+            return {((Self&&) self).__scheduler_,
+                    ((Self&&) self).__sender_,
+                    (Receiver&&) recvr};
           }
 
-          friend Sch tag_invoke(get_scheduler_t, const __sender& self) noexcept {
-            return self.__sch_;
+          friend Scheduler tag_invoke(get_scheduler_t, const __sender& self)
+              noexcept {
+            return self.__scheduler_;
           }
         };
     } // namespace __impl
 
     inline constexpr struct on_t {
-      template <scheduler Sch, sender S>
-        requires tag_invocable<on_t, Sch, S>
-      auto operator()(Sch&& sch, S&& s) const 
-        noexcept(nothrow_tag_invocable<on_t, Sch, S>)
-        -> tag_invoke_result_t<on_t, Sch, S> {
-        return tag_invoke(*this, (Sch&&) sch, (S&&) s);
+      template <scheduler Scheduler, sender Sender>
+        requires tag_invocable<on_t, Scheduler, Sender>
+      auto operator()(Scheduler&& sched, Sender&& sndr) const 
+        noexcept(nothrow_tag_invocable<on_t, Scheduler, Sender>)
+        -> tag_invoke_result_t<on_t, Scheduler, Sender> {
+        return tag_invoke(*this, (Scheduler&&) sched, (Sender&&) sndr);
       }
 
-      template <scheduler Sch, sender S>
-      auto operator()(Sch&& sch, S&& s) const 
-        -> __impl::__sender<__id_t<decay_t<Sch>>, __id_t<decay_t<S>>> {
-        return {{}, (Sch&&) sch, (S&&) s};
+      template <scheduler Scheduler, sender Sender>
+      auto operator()(Scheduler&& sched, Sender&& sndr) const 
+        -> __impl::__sender<__id_t<decay_t<Scheduler>>,
+                            __id_t<decay_t<Sender>>> {
+        return {{}, (Scheduler&&) sched, (Sender&&) sndr};
       }
     } on {};
   } // namespace __on
 
-  template <class Sch_, class S_>
-    requires typed_sender<__t<S_>>
-  struct sender_traits<__on::__impl::__sender<Sch_, S_>>
-    : sender_traits<__t<S_>> {};
+  template <class SchedulerId, class SenderId>
+    requires typed_sender<__t<SenderId>>
+  struct sender_traits<__on::__impl::__sender<SchedulerId, SenderId>>
+    : sender_traits<__t<SenderId>> {};
 
 } // namespace std::execution
 
