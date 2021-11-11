@@ -3270,16 +3270,16 @@ are all well-formed.
 
         1. Constructs a receiver `r`:
 
-            2. When `execution::set_value(r)` is called, it calls `execution::connect(s, out_r)`, which results in `op_state2`. It calls `execution::start(op_state2)`. If any of these throws an exception, it calls `execution::set_error` on `out_r`,
+            1. When `execution::set_value(r)` is called, it calls `execution::connect(s, out_r)`, which results in `op_state2`. It calls `execution::start(op_state2)`. If any of these throws an exception, it calls `execution::set_error` on `out_r`,
                 passing `current_exception()` as the second argument.
 
-            3. When `execution::set_error(r, e)` is called, it calls `execution::set_error(out_r, e)`.
+            2. When `execution::set_error(r, e)` is called, it calls `execution::set_error(out_r, e)`.
 
-            4. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
+            3. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
 
         2. Calls `execution::schedule(sch)`, which results in `s3`. It then calls `execution::connect(s3, r)`, resulting in `op_state3`, and then it calls `execution::start(op_state3)`.
 
-        3. The lifetimes of `op_state2` and `op_state3`, once constructed, last until `op_state` is destroyed.
+        3. The lifetime of `op_state2`, once constructed, lasts until `op_state` is destroyed. The lifetime of `op_state3`, once constructed, lasts until either `op_state2` is constructed or `op_state` is destroyed, whichever comes first.
 
 4. Any receiver `r` created by an implementation of `on` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for all such receivers should be equivalent to the `sch` argument passed into the `on` call.
 
@@ -3580,16 +3580,16 @@ are all well-formed.
 
         1. For each sender <code>s<i><sub>i</sub></i></code> in `s...`, constructs a receiver <code>r<sub><i>i</i></sub></code>:
 
-            2. If <code>execution::set_value(r<sub><i>i</i></sub>, t<sub><i>i</i></sub>...)</code> is called for every <code>r<sub><i>i</i></sub></code>,
+            1. If <code>execution::set_value(r<sub><i>i</i></sub>, t<sub><i>i</i></sub>...)</code> is called for every <code>r<sub><i>i</i></sub></code>,
                 <code>execution::set_value(out_r, t<sub><i>0</i></sub>..., t<sub><i>1</i></sub>..., ..., t<sub><i>n</i></sub>...)</code> is called, where `n` is `sizeof...(s) - 1`.
 
             2. Otherwise, if <code>execution::set_error(r<sub><i>i</i></sub>, e)</code> is called for any <code>r<sub><i>i</i></sub></code>, `execution::set_error(out_r, e)` is called.
 
             3. Otherwise, if <code>execution::set_done(r<sub><i>i</i></sub>)</code> is called for any <code>r<sub><i>i</i></sub></code>, `execution::set_done(out_r)` is called.
 
-        3. For each sender <code>s<i><sub>i</sub></i></code> in `s...`, calls <code>execution::connect(s<sub><i>i</i></sub>, r<sub><i>i</i></sub>)</code>, resulting in operation states <code>op_state<sub><i>i</i></sub></code>.
+        2. For each sender <code>s<i><sub>i</sub></i></code> in `s...`, calls <code>execution::connect(s<sub><i>i</i></sub>, r<sub><i>i</i></sub>)</code>, resulting in operation states <code>op_state<sub><i>i</i></sub></code>.
 
-        4. Returns an operation state `op_state` that contains each operation state <code>op_state<sub><i>i</i></sub></code>. When `execution::start(op_state)` is called, calls <code>execution::start(op_state<sub><i>i</i></sub>)</code> for each
+        3. Returns an operation state `op_state` that contains each operation state <code>op_state<sub><i>i</i></sub></code>. When `execution::start(op_state)` is called, calls <code>execution::start(op_state<sub><i>i</i></sub>)</code> for each
             <code>op_state<sub><i>i</i></sub></code>.
 
 3. The name `execution::when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,

@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <type_traits>
+
 namespace std {
   // Some utilities for manipulating lists of types at compile time
   template <class...>
@@ -102,4 +104,16 @@ namespace std {
 
   template <class T>
     using __t = typename T::type;
+
+  // For emplacing non-movable types into optionals:
+  template <class Fn>
+      requires is_nothrow_move_constructible_v<Fn>
+    struct __conv {
+      Fn __fn_;
+      operator invoke_result_t<Fn> () && {
+        return ((Fn&&) __fn_)();
+      }
+    };
+  template <class Fn>
+    __conv(Fn) -> __conv<Fn>;
 }
