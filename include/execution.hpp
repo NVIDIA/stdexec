@@ -1497,7 +1497,7 @@ namespace std::execution {
         __conv(Fn) -> __conv<Fn>;
 
       template <class Scheduler_, class Sender_>
-        struct __sender {
+        struct __sender : sender_base {
           using Scheduler = __t<Scheduler_>;
           using Sender = __t<Sender_>;
           Scheduler __sch_;
@@ -1652,7 +1652,7 @@ namespace std::execution {
       template <scheduler Sch, typed_sender S>
       auto operator()(Sch&& sch, S&& s) const
         -> __impl::__sender<__id_t<decay_t<Sch>>, __id_t<decay_t<S>>> {
-        return {(Sch&&) sch, (S&&) s};
+        return {{}, (Sch&&) sch, (S&&) s};
       }
     } schedule_from {};
   } // namespace __schedule_from
