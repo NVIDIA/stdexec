@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-10">2021-11-10</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-11">2021-11-11</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -3200,6 +3200,8 @@ essential when writing user code using standard execution concepts; we have also
      <p>Add <code class="highlight"><c- n>receiver_adaptor</c-></code> utility to simplify writing receivers.</p>
     <li data-md>
      <p>Fix recursive definition of the <code class="highlight"><c- n>scheduler</c-></code> concept.</p>
+    <li data-md>
+     <p>Fix specification of the <code class="highlight"><c- n>on</c-></code> algorithm to clarify lifetimes of intermediate operation states and properly scope the <code class="highlight"><c- n>get_scheduler</c-></code> query.</p>
    </ul>
    <h3 class="heading settled" data-level="2.2" id="r2"><span class="secno">2.2. </span><span class="content">R2</span><a class="self-link" href="#r2"></a></h3>
    <p>The changes since R1 are as follows:</p>
@@ -5368,27 +5370,30 @@ are all well-formed.</p>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected above does not return a sender which starts <code class="highlight"><c- n>s</c-></code> on an execution agent of the associated execution context of <code class="highlight"><c- n>sch</c-></code> when
 started, the program is ill-formed with no diagnostic required.</p>
       <li data-md>
-       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it results in an operation state <code class="highlight"><c- n>op_state</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>, it:</p>
+       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s1</c-></code>. When <code class="highlight"><c- n>s1</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
         <li data-md>
          <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>:</p>
-         <ol start="2">
+         <ol>
           <li data-md>
-           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>out_r</c-><c- p>)</c-></code>, which results in <code class="highlight"><c- n>op_state2</c-></code>. It calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>. If any of these throws an exception, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> on <code class="highlight"><c- n>out_r</c-></code>,
-passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code> as the second argument.</p>
+           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r2</c-><c- p>)</c-></code>, where <code class="highlight"><c- n>r2</c-></code> is as specified below, which results in <code class="highlight"><c- n>op_state3</c-></code>. It calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state3</c-><c- p>)</c-></code>. If any of these throws an exception, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> on <code class="highlight"><c- n>out_r</c-></code>, passing <code class="highlight"><c- n>current_exception</c-><c- p>()</c-></code> as the second argument.</p>
           <li data-md>
            <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>.</p>
           <li data-md>
            <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
          </ol>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code>, which results in <code class="highlight"><c- n>s3</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s3</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in <code class="highlight"><c- n>op_state3</c-></code>, and then it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state3</c-><c- p>)</c-></code>.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code>, which results in <code class="highlight"><c- n>s2</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s2</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in <code class="highlight"><c- n>op_state2</c-></code>.</p>
         <li data-md>
-         <p>The lifetimes of <code class="highlight"><c- n>op_state2</c-></code> and <code class="highlight"><c- n>op_state3</c-></code>, once constructed, last until <code class="highlight"><c- n>op_state</c-></code> is destroyed.</p>
+         <p><code class="highlight"><c- n>op_state2</c-></code> is wrapped by a new operation state, <code class="highlight"><c- n>op_state1</c-></code>, that is returned to the caller.</p>
        </ol>
+      <li data-md>
+       <p><code class="highlight"><c- n>r2</c-></code> is a receiver that wraps a reference to <code class="highlight"><c- n>out_r</c-></code>. It forwards all receiver completion signals and receiver queries to <code class="highlight"><c- n>out_r</c-></code>. Additionally, it implements the <code class="highlight"><c- n>get_scheduler</c-></code> receiver query. The scheduler returned from the query is equivalent to the <code class="highlight"><c- n>sch</c-></code> argument that was passed to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code>.</p>
+      <li data-md>
+       <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state1</c-></code>, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> on <code class="highlight"><c- n>op_state2</c-></code>.</p>
+      <li data-md>
+       <p>The lifetime of <code class="highlight"><c- n>op_state2</c-></code>, once constructed, lasts until either <code class="highlight"><c- n>op_state3</c-></code> is constructed or <code class="highlight"><c- n>op_state1</c-></code> is destroyed, whichever comes first. The lifetime of <code class="highlight"><c- n>op_state3</c-></code>, once constructed, lasts until <code class="highlight"><c- n>op_state1</c-></code> is destroyed.</p>
      </ol>
-    <li data-md>
-     <p>Any receiver <code class="highlight"><c- n>r</c-></code> created by an implementation of <code class="highlight"><c- n>on</c-></code> shall implement the <code class="highlight"><c- n>get_scheduler</c-></code> receiver query. The scheduler returned from the query for all such receivers should be equivalent to the <code class="highlight"><c- n>sch</c-></code> argument passed into the <code class="highlight"><c- n>on</c-></code> call.</p>
    </ol>
    <h5 class="heading settled" data-level="9.6.5.4" id="spec-execution.senders.adaptors.transfer"><span class="secno">9.6.5.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> <b>[execution.senders.adaptors.transfer]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.transfer"></a></h5>
    <ol>
@@ -5726,7 +5731,7 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
        <ol>
         <li data-md>
          <p>For each sender <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, constructs a receiver <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>:</p>
-         <ol start="2">
+         <ol>
           <li data-md>
            <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>t</c-><sub><i><c- n>i</c-></i></sub><c- p>...)</c-></code> is called for every <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>t</c-><sub><i><c- n>0</c-></i></sub><c- p>...,</c-> <c- n>t</c-><sub><i><c- n>1</c-></i></sub><c- p>...,</c-> <c- p>...,</c-> <c- n>t</c-><sub><i><c- n>n</c-></i></sub><c- p>...)</c-></code> is called, where <code class="highlight"><c- n>n</c-></code> is <code class="highlight"><c- k>sizeof</c-><c- p>...(</c-><c- n>s</c-><c- p>)</c-> <c- o>-</c-> <c- mi>1</c-></code>.</p>
           <li data-md>
