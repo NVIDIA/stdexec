@@ -1307,9 +1307,9 @@ namespace std::execution {
   };
 
   /////////////////////////////////////////////////////////////////////////////
-  // manual_event_loop
+  // run_loop
   inline namespace __loop {
-    class manual_event_loop;
+    class run_loop;
 
     namespace __impl {
       struct __task {
@@ -1348,18 +1348,18 @@ namespace std::execution {
           void __start_() noexcept;
 
           [[no_unique_address]] Receiver __receiver_;
-          manual_event_loop* const __loop_;
+          run_loop* const __loop_;
 
         public:
           template <typename Receiver2>
-          explicit __operation(Receiver2&& receiver, manual_event_loop* loop)
+          explicit __operation(Receiver2&& receiver, run_loop* loop)
             : __task{&__execute_impl}
             , __receiver_((Receiver2 &&) receiver)
             , __loop_(loop) {}
         };
     } // namespace __impl
 
-    class manual_event_loop {
+    class run_loop {
       template <class>
         friend struct __impl::__operation;
      public:
@@ -1390,16 +1390,16 @@ namespace std::execution {
             return __scheduler{self.__loop_};
           }
 
-          explicit __schedule_task(manual_event_loop* loop) noexcept
+          explicit __schedule_task(run_loop* loop) noexcept
             : __loop_(loop)
           {}
 
-          manual_event_loop* const __loop_;
+          run_loop* const __loop_;
         };
 
-        friend manual_event_loop;
+        friend run_loop;
 
-        explicit __scheduler(manual_event_loop* loop) noexcept : __loop_(loop) {}
+        explicit __scheduler(run_loop* loop) noexcept : __loop_(loop) {}
 
        public:
         friend __schedule_task tag_invoke(schedule_t, const __scheduler& self) noexcept {
@@ -1409,7 +1409,7 @@ namespace std::execution {
         bool operator==(const __scheduler&) const noexcept = default;
 
        private:
-        manual_event_loop* __loop_;
+        run_loop* __loop_;
       };
 
       __scheduler get_scheduler() {
@@ -1437,7 +1437,7 @@ namespace std::execution {
       }
     }
 
-    inline void manual_event_loop::run() {
+    inline void run_loop::run() {
       unique_lock __lock{__mutex_};
       while (true) {
         while (__head_ == nullptr) {
@@ -1455,13 +1455,13 @@ namespace std::execution {
       }
     }
 
-    inline void manual_event_loop::finish() {
+    inline void run_loop::finish() {
       unique_lock lock{__mutex_};
       __stop_ = true;
       __cv_.notify_all();
     }
 
-    inline void manual_event_loop::enqueue(__impl::__task* task) {
+    inline void run_loop::enqueue(__impl::__task* task) {
       unique_lock lock{__mutex_};
       if (__head_ == nullptr) {
         __head_ = task;
@@ -1475,7 +1475,7 @@ namespace std::execution {
   } // namespace __loop
 
   // NOT TO SPEC
-  using manual_event_loop = __loop::manual_event_loop;
+  using run_loop = __loop::run_loop;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.schedule_from]
@@ -1879,7 +1879,7 @@ namespace std::this_thread {
           variant<monostate, Tuple, exception_ptr, execution::set_done_t> data;
           struct __receiver {
             __state* __state_;
-            execution::manual_event_loop* __loop_;
+            execution::run_loop* __loop_;
             template <class... As>
               requires constructible_from<Tuple, As...>
             friend void tag_invoke(execution::set_value_t, __receiver&& r, As&&... as) {
@@ -1894,7 +1894,7 @@ namespace std::this_thread {
               r.__state_->data.template emplace<3>(d);
               r.__loop_->finish();
             }
-            friend execution::manual_event_loop::__scheduler
+            friend execution::run_loop::__scheduler
             tag_invoke(execution::get_scheduler_t, const __receiver& r) noexcept {
               return r.__loop_.get_scheduler();
             }
@@ -1926,7 +1926,7 @@ namespace std::this_thread {
       optional<__impl::__sync_wait_result_t<S>> operator()(S&& s) const {
         using state_t = __impl::__state<__impl::__sync_wait_result_t<S>>;
         state_t state {};
-        execution::manual_event_loop loop;
+        execution::run_loop loop;
 
         // Launch the sender with a continuation that will fill in a variant
         // and notify a condition variable.

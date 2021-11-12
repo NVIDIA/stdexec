@@ -696,11 +696,11 @@ implementing one. The `inline_scheduler`:
 ### Single thread scheduler ### {#example-single-thread}
 
 This example shows how to create a scheduler for an execution context that consists of a single
-thread. It is implemented in terms of a lower-level execution context called `manual_event_loop`.
+thread. It is implemented in terms of a lower-level execution context called `run_loop`.
 
 ```c++
 class single_thread_context {
-  manual_event_loop loop_;
+  run_loop loop_;
   std::thread thread_;
 
 public:
@@ -727,8 +727,8 @@ public:
 The `single_thread_context` owns an event loop and a thread to drive it. In the destructor, it tells the event
 loop to finish up what it's doing and then joins the thread, blocking for the event loop to drain.
 
-The interesting bits are in the `manual_event_loop` context implementation. It is slightly too long to include
-here, so we only provide [a reference to it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/main/examples/schedulers/manual_event_loop.hpp),
+The interesting bits are in the `run_loop` context implementation. It is slightly too long to include
+here, so we only provide [a reference to it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478),
 but there is one noteworthy detail about its implementation. It uses space in its operation state to build an
 intrusive linked list of work items. In structured concurrency patterns, the operation states of nested operations
 compose statically, and in an algorithm like `this_thread::sync_wait`, the composite operation state lives on the
@@ -807,6 +807,7 @@ Before this proposal is approved, we will present a new implementation of this p
 
 The changes since R2 are as follows:
 
+* Add `run_loop` execution context.
 * Add `receiver_adaptor` utility to simplify writing receivers.
 * Fix recursive definition of the `scheduler` concept.
 * Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
@@ -2564,6 +2565,9 @@ namespace std::execution {
   // [execution.snd_rec_utils], sender and receiver utilities
   template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
     using receiver_adaptor = <i>unspecified</i>;
+
+  // [execution.contexts], execution contexts
+  class run_loop;
 }
 
 namespace std::this_thread {
@@ -3818,8 +3822,13 @@ from the operation before the operation completes.
 
     3. Otherwise, `this_thread::sync_wait(execution::into_variant(s))`.
 
-4. Any receiver `r` created by an implementation of `sync_wait` and `sync_wait_with_variant` shall implement the `get_scheduler` receiver query. The scheduler returned from the query for the receiver created by the default implementation shall return an
-    implementation-defined scheduler that is driven by the waiting thread, such that scheduled tasks run on the thread of the caller.
+4. Any receiver `r` created by an implementation of `sync_wait` and
+    `sync_wait_with_variant` shall implement the `get_scheduler` receiver query.
+    The scheduler returned from the query for the receiver created by the
+    default implementation shall return a scheduler for an `execution::run_loop`
+    that local to the current activation of `sync_wait` or
+    `sync_wait_with_variant` and is driven by the waiting thread, such that
+    scheduled tasks run on the thread of the caller.
 
 ## `execution::execute` <b>[execution.execute]</b> ## {#spec-execution.execute}
 
@@ -3843,9 +3852,9 @@ from the operation before the operation completes.
         ((!same_as&lt;T, Us>) &amp;&amp;...);
 
     // [<i>Editorial note:</i> copy_cvref_t as in [[P1450R3]] -- <i>end note</i>]
+    // Mandates: is_base_of_v&lt;T, remove_reference_t&lt;U>> is true
     template &lt;class T, class U>
       copy_cvref_t&lt;U&amp;&amp;, T> <i>c-style-cast</i>(U&amp;&amp; u) noexcept requires <i>decays-to</i>&lt;T, T> {
-        static_assert(is_base_of_v&lt;T, remove_reference_t&lt;U>>);
         return (copy_cvref_t&lt;U&amp;&amp;, T>) static_cast&lt;U&amp;&amp;>(u);
       }
     </pre>
@@ -3895,7 +3904,7 @@ from the operation before the operation completes.
 
     Let <code><i>BASE-TYPE</i>(D)</code> be the type of <code><i>GET-BASE</i>(declval&lt;D>())</code>.
 
-4. `receiver_adaptor<Derived, Base>` is an alias for a class type equivalent to the following:
+4. `receiver_adaptor<Derived, Base>` is an alias for a non-template class type equivalent to the following:
 
     <pre highlight="c++">
     class <i>receiver-adaptor</i> { // <i>exposition only</i>
@@ -3994,6 +4003,161 @@ from the operation before the operation completes.
 
         - Otherwise, <code>set_done(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
 
+## Execution contexts <b>[execution.contexts]</b> ## {#spec-execution.contexts}
+
+1. This section specifies some execution contexts on which work can be scheduled.
+
+### `run_loop` <b>[execution.contexts.run_loop]</b> ### {#spec-execution.contexts.run_loop}
+
+1. A `run_loop` is an execution context on which work can be scheduled. It maintains a simple, thread-safe first-in-first-out queue of work. Its `run()` member function removes elements from the queue and executes them in a loop on whatever thread of execution calls `run()`.
+
+2. A `run_loop` instance has an associated <i>count</i> that corresponds to the number of work items that are in its queue. Additionally, a `run_loop` has an associated <i>state</i> that can be either <i>finishing</i> or <i>not-finishing</i>.
+
+3. [<i>Note:</i> Implementations are encouraged to use an intrusive queue of operation states to hold the work units to make scheduling allocation-free. -- <i>end note</i>]
+
+    <pre highlight="c++">
+    class run_loop {
+      // [execution.contexts.run_loop.types] Associated types
+      class <i>run-loop-scheduler</i>; // exposition only
+      class <i>run-loop-sender</i>; // exposition only
+      struct <i>run-loop-opstate-base</i> { // exposition only
+        virtual void execute() = 0;
+        void start() noexcept { loop_->push_back(this); }
+        run_loop* loop_;
+        <i>run-loop-opstate-base</i>* next_;
+      };
+      template&lt;receiver_of R>
+        using <i>run-loop-opstate</i> = <i>unspecified</i>; // exposition only
+
+      // [execution.contexts.run_loop.members] Member functions:
+      <i>run-loop-opstate-base</i>* pop_front() noexcept; // exposition only
+      void push_back(<i>run-loop-opstate-base</i>*) noexcept; // exposition only
+
+     public:
+      // [execution.contexts.run_loop.ctor] Constructor:
+      run_loop() noexcept;
+      run_loop(run_loop&&) = delete;
+
+      // [execution.contexts.run_loop.members] Member functions:
+      <i>run-loop-scheduler</i> get_scheduler();
+      void run();
+      void finish();
+    };
+    </pre>
+
+#### Associated types <b>[execution.contexts.run_loop.types]</b> #### {#spec-execution.contexts.run_loop.types}
+
+    <pre highlight="c++">
+    class <i>run-loop-scheduler</i>;
+    </pre>
+
+  1. <code><i>run-loop-scheduler</i></code> is an implementation defined type that models the `scheduler` concept.
+
+  2. Instances of <code><i>run-loop-scheduler</i></code> remain valid until the end of the lifetime of the `run_loop` instance from which they were obtained.
+
+  3. Two instances of <code><i>run-loop-scheduler</i></code> compare equal if and only if they were obtained from the same `run_loop` instance.
+
+  4. Let <code><i>sch</i></code> be an expression of type <code><i>run-loop-scheduler</i></code>. The expression  <code>execution::schedule(<i>sch</i>)</code> is not potentially throwing and has type <code><i>run-loop-sender</i></code>.
+
+  <pre highlight="c++">
+  class <i>run-loop-sender</i>;
+  </pre>
+
+  1. <code><i>run-loop-sender</i></code> is an implementation defined type that models the `sender_of` concept; <i>i.e.,</i> <code>sender_of&lt;<i>run-loop-sender</i>></code> is `true`. Additionally, the types reported by its `error_types` associated type is `exception_ptr`, and the value of its `sends_done` trait is `true`.
+
+  2. Instances of <code><i>run-loop-sender</i></code> remain valid even after the end of the lifetime of the <code><i>run-loop-scheduler</i></code> instance from which they were obtained.
+
+  3. Let <code><i>s</i></code> be an expression of type <code><i>run-loop-sender</i></code>, let <code><i>r</i></code> be an expression such that <code>decltype(<i>r</i>)</code> models the `receiver_of` concept, and let `C` be one of `set_value_t`, `set_error_t`, or `set_done_t`. Then:
+
+    * The expression <code>execution::connect(<i>s</i>, <i>r</i>)</code> has type <code><i>run-loop-optstate</i>&lt;decay_t&lt;decltype(<i>r</i>)>></code> and is potentially throwing if and only if the initialiation of <code>decay_t&lt;decltype(<i>r</i>)></code> from <code><i>r</i></code> is potentially throwing.
+
+    * The expression <code>get_completion_scheduler&lt;C>(<i>s</i>)</code> is not potentially throwing, has type <code><i>run-loop-scheduler</i></code>, and compares equal to the <code><i>run-loop-scheduler</i></code> instance from which <code><i>s</i></code> was obtained.
+
+  <pre highlight="c++">
+  template&lt;receiver_of R>
+    using <i>run-loop-opstate</i> = <i>unspecified</i>;
+  </pre>
+
+  1. <code><i>run-loop-opstate</i></code> is an implementation defined alias template such that for a type <code><i>R</i></code> that models `receiver_of`, <code><i>run-loop-opstate</i>&lt;R></code> is an alias for an unspecified non-template class type that inherits unambiguously from <code><i>run-loop-opstate-base</i></code>.
+
+  2. Let <code><i>o</i></code> be a non-`const` lvalue of type <code><i>run-loop-opstate</i>&lt;R></code>, and let <code><i>REC</i>(<i>o</i>)</code> be a non-`const` lvalue reference to an instance of type <code><i>R</i></code> that was initialized with the expression <code><i>r</i></code> passed to the invocation of `execution::connect` that returned <code><i>o</i></code>. Then:
+
+    * The object to which <code><i>REC</i>(<i>o</i>)</code> refers remains valid for the lifetime of the object to which <code><i>o</i></code> refers.
+
+    * The type <code><i>run-loop-opstate</i>&lt;R></code> overrides <code><i>run-loop-opstate-base</i>::execute()</code> such that <code><i>o</i>.execute()</code> is equivalent to the following:
+
+        <pre highlight="c++">
+        try {
+          if (execution::get_stop_token(<i>REC</i>(<i>o</i>)).stop_requested()) {
+            execution::set_done(std::move(<i>REC</i>(<i>o</i>)));
+          } else {
+            execution::set_value(std::move(<i>REC</i>(<i>o</i>)));
+          }
+        } catch(...) {
+          execution::set_error(std::move(<i>REC</i>(<i>o</i>)), current_exception());
+        }
+        </pre>
+
+    * The expression <code>execution::start(<i>o</i>)</code> is expression-equivalent to <code><i>o</i>.start()</code>.
+
+#### Constructor <b>[execution.contexts.run_loop.ctor]</b> #### {#spec-execution.contexts.run_loop.ctor}
+
+    <pre highlight="c++">
+    run_loop::run_loop() noexcept;
+    </pre>
+
+    1. <i>Postconditions:</i> <i>count</i> is `0` and <i>state</i> is <i>not-finishing</i>.
+
+#### Member functions <b>[execution.contexts.run_loop.members]</b> #### {#spec-execution.contexts.run_loop.members}
+
+    <pre highlight="c++">
+    <i>run-loop-opstate-base</i>* run_loop::pop_front() noexcept;
+    </pre>
+
+    1. <i>Effects:</i> Waits until one of the following conditions is `true`:
+
+        * <i>count</i> is `0` and <i>state</i> is <i>finishing</i>, in which case `pop_front()` returns `nullptr`; or
+
+        * <i>count</i> is greater than `0`, in which case `pop_front()` removes an item from the front of the queue, decrements <i>count</i> by `1`, and returns the item.
+
+    2. <i>Synchronization:</i> This function is thread-safe with respect to `push_back()` and `finish()`. Removing a queue item and decrementing <i>count</i> are executed atomically.
+
+    <pre highlight="c++">
+    void run_loop::push_back(<i>run-loop-opstate-base</i>* item) noexcept;
+    </pre>
+
+    1. <i>Effects:</i> Adds `item` to the back of the queue and increments <i>count</i> by `1`.
+
+    2. <i>Synchronization:</i> This function is thread-safe with respect to `pop_front()` and `finish()`. Adding a queue item and incrementing the <i>count</i> are executed atomically.
+
+    <pre highlight="c++">
+    <i>run-loop-scheduler</i> run_loop::get_scheduler();
+    </pre>
+
+    1. <i>Returns:</i> an instance of <code><i>run-loop-scheduler</i></code> that can be used to schedule work onto this `run_loop` instance.
+
+    <pre highlight="c++">
+    void run_loop::run();
+    </pre>
+
+    1. <i>Effects:</i> Equivalent to:
+
+        <pre highlight="c++">
+        while (auto* op = pop_front()) {
+          op->execute();
+        }
+        </pre>
+
+    2. <i>Synchronization:</i> None.
+
+    <pre highlight="c++">
+    void run_loop::finish();
+    </pre>
+
+    1. <i>Effects:</i> Changes <i>state</i> to <i>finishing</i>.
+
+    2. <i>Synchronization:</i> This function is thread-safe with respect to `pop_front()` and `push_back()`.
+
 ## Coroutine utilities <b>[execution.coro_utils]</b> ## {#spec-execution.coro_utils}
 
 ### `execution::as_awaitable` <b>[execution.coro_utils.as_awaitable]</b> ### {#spec-execution.coro_utils.as_awaitable}
@@ -4031,7 +4195,7 @@ from the operation before the operation completes.
 
     3. Otherwise, <code><i>single-sender-value-type</i>&lt;S</code> is ill-formed.
 
-3. For some expressions `s` and `p` such that `decltype((s))` is `S` and `decltype((p))` is `P&`, `as_awaitable(s, p)` returns <code><i>sender-awaitable</i>{s, p}</code>, where  <code><i>sender-awaitable</i></code> is an unspecified class type equivalant to the following:
+3. For some expressions `s` and `p` such that `decltype((s))` is `S` and `decltype((p))` is `P&`, `as_awaitable(s, p)` returns <code><i>sender-awaitable</i>{s, p}</code>, where  <code><i>sender-awaitable</i></code> is an unspecified non-template class type equivalent to the following:
 
     <pre highlight="c++">
     class <i>sender-awaitable</i> {
