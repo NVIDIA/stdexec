@@ -2476,10 +2476,21 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
          </ol>
        </ol>
       <li>
-       <a href="#spec-execution.coro_utils"><span class="secno">9.9</span> <span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span></a>
+       <a href="#spec-execution.contexts"><span class="secno">9.9</span> <span class="content">Execution contexts <b>[execution.contexts]</b></span></a>
        <ol class="toc">
-        <li><a href="#spec-execution.coro_utils.as_awaitable"><span class="secno">9.9.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span></a>
-        <li><a href="#spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.9.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span></a>
+        <li>
+         <a href="#spec-execution.contexts.run_loop"><span class="secno">9.9.1</span> <span class="content"><code class="highlight"><c- n>run_loop</c-></code> <b>[execution.contexts.run_loop]</b></span></a>
+         <ol class="toc">
+          <li><a href="#spec-execution.contexts.run_loop.types"><span class="secno">9.9.1.1</span> <span class="content">Associated types <b>[execution.contexts.run_loop.types]</b></span></a>
+          <li><a href="#spec-execution.contexts.run_loop.ctor"><span class="secno">9.9.1.2</span> <span class="content">Constructor <b>[execution.contexts.run_loop.ctor]</b></span></a>
+          <li><a href="#spec-execution.contexts.run_loop.members"><span class="secno">9.9.1.3</span> <span class="content">Member functions <b>[execution.contexts.run_loop.members]</b></span></a>
+         </ol>
+       </ol>
+      <li>
+       <a href="#spec-execution.coro_utils"><span class="secno">9.10</span> <span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span></a>
+       <ol class="toc">
+        <li><a href="#spec-execution.coro_utils.as_awaitable"><span class="secno">9.10.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span></a>
+        <li><a href="#spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.10.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span></a>
        </ol>
      </ol>
     <li>
@@ -3095,9 +3106,9 @@ It returns an instance of type <code class="highlight"><c- n>_op</c-></code> tha
    </ol>
    <h4 class="heading settled" data-level="1.6.2" id="example-single-thread"><span class="secno">1.6.2. </span><span class="content">Single thread scheduler</span><a class="self-link" href="#example-single-thread"></a></h4>
    <p>This example shows how to create a scheduler for an execution context that consists of a single
-thread. It is implemented in terms of a lower-level execution context called <code class="highlight"><c- n>manual_event_loop</c-></code>.</p>
+thread. It is implemented in terms of a lower-level execution context called <code class="highlight"><c- n>run_loop</c-></code>.</p>
 <pre class="language-c++ highlight"><c- n>class</c-> <c- n>single_thread_context</c-> <c- p>{</c->
-  <c- n>manual_event_loop</c-> <c- n>loop_</c-><c- p>;</c->
+  <c- n>run_loop</c-> <c- n>loop_</c-><c- p>;</c->
   <c- n>std</c-><c- o>::</c-><c- kr>thread</c-> <c- n>thread_</c-><c- p>;</c->
 
 <c- nl>public</c-><c- p>:</c->
@@ -3122,8 +3133,8 @@ thread. It is implemented in terms of a lower-level execution context called <co
 </pre>
    <p>The <code class="highlight"><c- n>single_thread_context</c-></code> owns an event loop and a thread to drive it. In the destructor, it tells the event
 loop to finish up what it’s doing and then joins the thread, blocking for the event loop to drain.</p>
-   <p>The interesting bits are in the <code class="highlight"><c- n>manual_event_loop</c-></code> context implementation. It is slightly too long to include
-here, so we only provide <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/main/examples/schedulers/manual_event_loop.hpp">a reference to it</a>,
+   <p>The interesting bits are in the <code class="highlight"><c- n>run_loop</c-></code> context implementation. It is slightly too long to include
+here, so we only provide <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478">a reference to it</a>,
 but there is one noteworthy detail about its implementation. It uses space in its operation state to build an
 intrusive linked list of work items. In structured concurrency patterns, the operation states of nested operations
 compose statically, and in an algorithm like <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code>, the composite operation state lives on the
@@ -3196,6 +3207,8 @@ essential when writing user code using standard execution concepts; we have also
    <h3 class="heading settled" data-level="2.1" id="r3"><span class="secno">2.1. </span><span class="content">R3</span><a class="self-link" href="#r3"></a></h3>
    <p>The changes since R2 are as follows:</p>
    <ul>
+    <li data-md>
+     <p>Add <code class="highlight"><c- n>run_loop</c-></code> execution context.</p>
     <li data-md>
      <p>Add <code class="highlight"><c- n>receiver_adaptor</c-></code> utility to simplify writing receivers.</p>
     <li data-md>
@@ -4667,6 +4680,9 @@ the shared stop state.</p>
   <c- c1>// [execution.snd_rec_utils], sender and receiver utilities</c->
   <c- k>template</c-><c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Derived</c-><c- p>,</c-> <c- n>receiver</c-> <c- n>Base</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- o>></c->
     <c- k>using</c-> <c- n>receiver_adaptor</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- p>;</c->
+
+  <c- c1>// [execution.contexts], execution contexts</c->
+  <c- k>class</c-> <c- nc>run_loop</c-><c- p>;</c->
 <c- p>}</c->
 
 <c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-> <c- p>{</c->
@@ -5982,8 +5998,10 @@ from the operation before the operation completes.</p>
        <p>Otherwise, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>.</p>
      </ol>
     <li data-md>
-     <p>Any receiver <code class="highlight"><c- n>r</c-></code> created by an implementation of <code class="highlight"><c- n>sync_wait</c-></code> and <code class="highlight"><c- n>sync_wait_with_variant</c-></code> shall implement the <code class="highlight"><c- n>get_scheduler</c-></code> receiver query. The scheduler returned from the query for the receiver created by the default implementation shall return an
-implementation-defined scheduler that is driven by the waiting thread, such that scheduled tasks run on the thread of the caller.</p>
+     <p>Any receiver <code class="highlight"><c- n>r</c-></code> created by an implementation of <code class="highlight"><c- n>sync_wait</c-></code> and <code class="highlight"><c- n>sync_wait_with_variant</c-></code> shall implement the <code class="highlight"><c- n>get_scheduler</c-></code> receiver query.
+The scheduler returned from the query for the receiver created by the
+default implementation shall return a scheduler for an <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code> that local to the current activation of <code class="highlight"><c- n>sync_wait</c-></code> or <code class="highlight"><c- n>sync_wait_with_variant</c-></code> and is driven by the waiting thread, such that
+scheduled tasks run on the thread of the caller.</p>
    </ol>
    <h3 class="heading settled" data-level="9.7" id="spec-execution.execute"><span class="secno">9.7. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code> <b>[execution.execute]</b></span><a class="self-link" href="#spec-execution.execute"></a></h3>
    <ol>
@@ -6008,9 +6026,9 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
     <c- p>((</c-><c- o>!</c-><c- n>same_as</c-><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>Us</c-><c- o>></c-><c- p>)</c-> <c- o>&amp;&amp;</c-><c- p>...);</c->
 
 <c- c1>// [</c-><i><c- c1>Editorial note:</c-></i><c- c1> copy_cvref_t as in [[P1450R3]] -- </c-><i><c- c1>end note</c-></i><c- c1>]</c->
+<c- c1>// Mandates: is_base_of_v&lt;T, remove_reference_t&lt;U>> is true</c->
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-> <c- nc>U</c-><c- o>></c->
   <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-> <i><c- n>c</c-><c- o>-</c-><c- n>style</c-><c- o>-</c-><c- n>cast</c-></i><c- p>(</c-><c- n>U</c-><c- o>&amp;&amp;</c-> <c- n>u</c-><c- p>)</c-> <c- k>noexcept</c-> <c- k>requires</c-> <i><c- n>decays</c-><c- o>-</c-><c- n>to</c-></i><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-> <c- p>{</c->
-    <c- k>static_assert</c-><c- p>(</c-><c- n>is_base_of_v</c-><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>remove_reference_t</c-><c- o>&lt;</c-><c- n>U</c-><c- o>>></c-><c- p>);</c->
     <c- k>return</c-> <c- p>(</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-><c- p>)</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>u</c-><c- p>);</c->
   <c- p>}</c->
 </pre>
@@ -6065,7 +6083,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
      </ul>
      <p>Let <code class="highlight"><i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- n>D</c-><c- p>)</c-></code> be the type of <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>D</c-><c- o>></c-><c- p>())</c-></code>.</p>
     <li data-md>
-     <p><code class="highlight"><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>Base</c-><c- o>></c-></code> is an alias for a class type equivalent to the following:</p>
+     <p><code class="highlight"><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>Base</c-><c- o>></c-></code> is an alias for a non-template class type equivalent to the following:</p>
 <pre class="highlight"><c- k>class</c-> <i><c- nc>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i> <c- p>{</c-> <c- c1>// </c-><i><c- c1>exposition only</c-></i>
   <c- k>friend</c-> <c- n>Derived</c-><c- p>;</c->
  <c- k>public</c-><c- o>:</c->
@@ -6168,8 +6186,162 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
        <p>Otherwise, <code class="highlight"><c- n>set_done</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)))</c-></code></p>
      </ul>
    </ol>
-   <h3 class="heading settled" data-level="9.9" id="spec-execution.coro_utils"><span class="secno">9.9. </span><span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span><a class="self-link" href="#spec-execution.coro_utils"></a></h3>
-   <h4 class="heading settled" data-level="9.9.1" id="spec-execution.coro_utils.as_awaitable"><span class="secno">9.9.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span><a class="self-link" href="#spec-execution.coro_utils.as_awaitable"></a></h4>
+   <h3 class="heading settled" data-level="9.9" id="spec-execution.contexts"><span class="secno">9.9. </span><span class="content">Execution contexts <b>[execution.contexts]</b></span><a class="self-link" href="#spec-execution.contexts"></a></h3>
+   <ol>
+    <li data-md>
+     <p>This section specifies some execution contexts on which work can be scheduled.</p>
+   </ol>
+   <h4 class="heading settled" data-level="9.9.1" id="spec-execution.contexts.run_loop"><span class="secno">9.9.1. </span><span class="content"><code class="highlight"><c- n>run_loop</c-></code> <b>[execution.contexts.run_loop]</b></span><a class="self-link" href="#spec-execution.contexts.run_loop"></a></h4>
+   <ol>
+    <li data-md>
+     <p>A <code class="highlight"><c- n>run_loop</c-></code> is an execution context on which work can be scheduled. It maintains a simple, thread-safe first-in-first-out queue of work. Its <code class="highlight"><c- n>run</c-><c- p>()</c-></code> member function removes elements from the queue and executes them in a loop on whatever thread of execution calls <code class="highlight"><c- n>run</c-><c- p>()</c-></code>.</p>
+    <li data-md>
+     <p>A <code class="highlight"><c- n>run_loop</c-></code> instance has an associated <i>count</i> that corresponds to the number of work items that are in its queue. Additionally, a <code class="highlight"><c- n>run_loop</c-></code> has an associated <i>state</i> that can be either <i>finishing</i> or <i>not-finishing</i>.</p>
+    <li data-md>
+     <p>[<i>Note:</i> Implementations are encouraged to use an intrusive queue of operation states to hold the work units to make scheduling allocation-free. -- <i>end note</i>]</p>
+<pre class="highlight"><c- k>class</c-> <c- nc>run_loop</c-> <c- p>{</c->
+  <c- c1>// [execution.contexts.run_loop.types] Associated types</c->
+  <c- k>class</c-> <i><c- nc>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
+  <c- k>class</c-> <i><c- nc>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
+  <c- k>struct</c-> <i><c- nc>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
+    <c- k>virtual</c-> <c- b>void</c-> <c- n>execute</c-><c- p>()</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
+    <c- b>void</c-> <c- nf>start</c-><c- p>()</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- n>loop_</c-><c- o>-></c-><c- n>push_back</c-><c- p>(</c-><c- k>this</c-><c- p>);</c-> <c- p>}</c->
+    <c- n>run_loop</c-><c- o>*</c-> <c- n>loop_</c-><c- p>;</c->
+    <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>next_</c-><c- p>;</c->
+  <c- p>};</c->
+  <c- k>template</c-><c- o>&lt;</c-><c- n>receiver_of</c-> <c- n>R</c-><c- o>></c->
+    <c- k>using</c-> <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-></i> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
+
+  <c- c1>// [execution.contexts.run_loop.members] Member functions:</c->
+  <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>pop_front</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c-> <c- c1>// exposition only</c->
+  <c- b>void</c-> <c- nf>push_back</c-><c- p>(</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c-> <c- c1>// exposition only</c->
+
+ <c- k>public</c-><c- o>:</c->
+  <c- c1>// [execution.contexts.run_loop.ctor] Constructor:</c->
+  <c- n>run_loop</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+  <c- n>run_loop</c-><c- p>(</c-><c- n>run_loop</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- o>=</c-> <c- k>delete</c-><c- p>;</c->
+
+  <c- c1>// [execution.contexts.run_loop.members] Member functions:</c->
+  <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i> <c- n>get_scheduler</c-><c- p>();</c->
+  <c- b>void</c-> <c- nf>run</c-><c- p>();</c->
+  <c- b>void</c-> <c- nf>finish</c-><c- p>();</c->
+<c- p>};</c->
+</pre>
+   </ol>
+   <h5 class="heading settled" data-level="9.9.1.1" id="spec-execution.contexts.run_loop.types"><span class="secno">9.9.1.1. </span><span class="content">Associated types <b>[execution.contexts.run_loop.types]</b></span><a class="self-link" href="#spec-execution.contexts.run_loop.types"></a></h5>
+<pre class="highlight"><c- k>class</c-> <i><c- nc>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code> is an implementation defined type that models the <code class="highlight"><c- n>scheduler</c-></code> concept.</p>
+    <li data-md>
+     <p>Instances of <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code> remain valid until the end of the lifetime of the <code class="highlight"><c- n>run_loop</c-></code> instance from which they were obtained.</p>
+    <li data-md>
+     <p>Two instances of <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code> compare equal if and only if they were obtained from the same <code class="highlight"><c- n>run_loop</c-></code> instance.</p>
+    <li data-md>
+     <p>Let <code class="highlight"><i><c- n>sch</c-></i></code> be an expression of type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code>. The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><i><c- n>sch</c-></i><c- p>)</c-></code> is not potentially throwing and has type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code>.</p>
+   </ol>
+<pre class="highlight"><c- k>class</c-> <i><c- nc>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code> is an implementation defined type that models the <code class="highlight"><c- n>sender_of</c-></code> concept; <i>i.e.,</i> <code class="highlight"><c- n>sender_of</c-><c- o>&lt;</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i><c- o>></c-></code> is <code class="highlight">true</code>. Additionally, the types reported by its <code class="highlight"><c- n>error_types</c-></code> associated type is <code class="highlight"><c- n>exception_ptr</c-></code>, and the value of its <code class="highlight"><c- n>sends_done</c-></code> trait is <code class="highlight">true</code>.</p>
+    <li data-md>
+     <p>Instances of <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code> remain valid even after the end of the lifetime of the <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code> instance from which they were obtained.</p>
+    <li data-md>
+     <p>Let <code class="highlight"><i><c- n>s</c-></i></code> be an expression of type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code>, let <code class="highlight"><i><c- n>r</c-></i></code> be an expression such that <code class="highlight"><c- k>decltype</c-><c- p>(</c-><i><c- n>r</c-></i><c- p>)</c-></code> models the <code class="highlight"><c- n>receiver_of</c-></code> concept, and let <code class="highlight"><c- n>C</c-></code> be one of <code class="highlight"><c- n>set_value_t</c-></code>, <code class="highlight"><c- n>set_error_t</c-></code>, or <code class="highlight"><c- n>set_done_t</c-></code>. Then:</p>
+     <ul>
+      <li data-md>
+       <p>The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><i><c- n>s</c-></i><c- p>,</c-> <i><c- n>r</c-></i><c- p>)</c-></code> has type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>optstate</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><i><c- n>r</c-></i><c- p>)</c-><c- o>>></c-></code> and is potentially throwing if and only if the initialiation of <code class="highlight"><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><i><c- n>r</c-></i><c- p>)</c-><c- o>></c-></code> from <code class="highlight"><i><c- n>r</c-></i></code> is potentially throwing.</p>
+      <li data-md>
+       <p>The expression <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>C</c-><c- o>></c-><c- p>(</c-><i><c- n>s</c-></i><c- p>)</c-></code> is not potentially throwing, has type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code>, and compares equal to the <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code> instance from which <code class="highlight"><i><c- n>s</c-></i></code> was obtained.</p>
+     </ul>
+   </ol>
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- n>receiver_of</c-> <c- n>R</c-><c- o>></c->
+  <c- k>using</c-> <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-></i> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-></i></code> is an implementation defined alias template such that for a type <code class="highlight"><i><c- n>R</c-></i></code> that models <code class="highlight"><c- n>receiver_of</c-></code>, <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-></i><c- o>&lt;</c-><c- n>R</c-><c- o>></c-></code> is an alias for an unspecified non-template class type that inherits unambiguously from <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i></code>.</p>
+    <li data-md>
+     <p>Let <code class="highlight"><i><c- n>o</c-></i></code> be a non-<code class="highlight"><c- k>const</c-></code> lvalue of type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-></i><c- o>&lt;</c-><c- n>R</c-><c- o>></c-></code>, and let <code class="highlight"><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)</c-></code> be a non-<code class="highlight"><c- k>const</c-></code> lvalue reference to an instance of type <code class="highlight"><i><c- n>R</c-></i></code> that was initialized with the expression <code class="highlight"><i><c- n>r</c-></i></code> passed to the invocation of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> that returned <code class="highlight"><i><c- n>o</c-></i></code>. Then:</p>
+     <ul>
+      <li data-md>
+       <p>The object to which <code class="highlight"><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)</c-></code> refers remains valid for the lifetime of the object to which <code class="highlight"><i><c- n>o</c-></i></code> refers.</p>
+      <li data-md>
+       <p>The type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-></i><c- o>&lt;</c-><c- n>R</c-><c- o>></c-></code> overrides <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>::</c-><c- n>execute</c-><c- p>()</c-></code> such that <code class="highlight"><i><c- n>o</c-></i><c- p>.</c-><c- n>execute</c-><c- p>()</c-></code> is equivalent to the following:</p>
+<pre class="highlight"><c- k>try</c-> <c- p>{</c->
+  <c- k>if</c-> <c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)).</c-><c- n>stop_requested</c-><c- p>())</c-> <c- p>{</c->
+    <c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)));</c->
+  <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
+    <c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)));</c->
+  <c- p>}</c->
+<c- p>}</c-> <c- k>catch</c-><c- p>(...)</c-> <c- p>{</c->
+  <c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)),</c-> <c- n>current_exception</c-><c- p>());</c->
+<c- p>}</c->
+</pre>
+      <li data-md>
+       <p>The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><i><c- n>o</c-></i><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><i><c- n>o</c-></i><c- p>.</c-><c- n>start</c-><c- p>()</c-></code>.</p>
+     </ul>
+   </ol>
+   <h5 class="heading settled" data-level="9.9.1.2" id="spec-execution.contexts.run_loop.ctor"><span class="secno">9.9.1.2. </span><span class="content">Constructor <b>[execution.contexts.run_loop.ctor]</b></span><a class="self-link" href="#spec-execution.contexts.run_loop.ctor"></a></h5>
+<pre class="highlight"><c- n>run_loop</c-><c- o>::</c-><c- n>run_loop</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Postconditions:</i> <i>count</i> is <code class="highlight"><c- mi>0</c-></code> and <i>state</i> is <i>not-finishing</i>.</p>
+   </ol>
+   <h5 class="heading settled" data-level="9.9.1.3" id="spec-execution.contexts.run_loop.members"><span class="secno">9.9.1.3. </span><span class="content">Member functions <b>[execution.contexts.run_loop.members]</b></span><a class="self-link" href="#spec-execution.contexts.run_loop.members"></a></h5>
+<pre class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>pop_front</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Effects:</i> Waits until one of the following conditions is <code class="highlight">true</code>:</p>
+     <ul>
+      <li data-md>
+       <p><i>count</i> is <code class="highlight"><c- mi>0</c-></code> and <i>state</i> is <i>finishing</i>, in which case <code class="highlight"><c- n>pop_front</c-><c- p>()</c-></code> returns <code class="highlight"><c- k>nullptr</c-></code>; or</p>
+      <li data-md>
+       <p><i>count</i> is greater than <code class="highlight"><c- mi>0</c-></code>, in which case <code class="highlight"><c- n>pop_front</c-><c- p>()</c-></code> removes an item from the front of the queue, decrements <i>count</i> by <code class="highlight"><c- mi>1</c-></code>, and returns the item.</p>
+     </ul>
+    <li data-md>
+     <p><i>Synchronization:</i> This function is thread-safe with respect to <code class="highlight"><c- n>push_back</c-><c- p>()</c-></code> and <code class="highlight"><c- n>finish</c-><c- p>()</c-></code>. Removing a queue item and decrementing <i>count</i> are executed atomically.</p>
+   </ol>
+<pre class="highlight"><c- b>void</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>push_back</c-><c- p>(</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>item</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Effects:</i> Adds <code class="highlight"><c- n>item</c-></code> to the back of the queue and increments <i>count</i> by <code class="highlight"><c- mi>1</c-></code>.</p>
+    <li data-md>
+     <p><i>Synchronization:</i> This function is thread-safe with respect to <code class="highlight"><c- n>pop_front</c-><c- p>()</c-></code> and <code class="highlight"><c- n>finish</c-><c- p>()</c-></code>. Adding a queue item and incrementing the <i>count</i> are executed atomically.</p>
+   </ol>
+<pre class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i> <c- n>run_loop</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>();</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Returns:</i> an instance of <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code> that can be used to schedule work onto this <code class="highlight"><c- n>run_loop</c-></code> instance.</p>
+   </ol>
+<pre class="highlight"><c- b>void</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>run</c-><c- p>();</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Effects:</i> Equivalent to:</p>
+<pre class="highlight"><c- k>while</c-> <c- p>(</c-><c- k>auto</c-><c- o>*</c-> <c- n>op</c-> <c- o>=</c-> <c- n>pop_front</c-><c- p>())</c-> <c- p>{</c->
+  <c- n>op</c-><c- o>-></c-><c- n>execute</c-><c- p>();</c->
+<c- p>}</c->
+</pre>
+    <li data-md>
+     <p><i>Synchronization:</i> None.</p>
+   </ol>
+<pre class="highlight"><c- b>void</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>finish</c-><c- p>();</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Effects:</i> Changes <i>state</i> to <i>finishing</i>.</p>
+    <li data-md>
+     <p><i>Synchronization:</i> This function is thread-safe with respect to <code class="highlight"><c- n>pop_front</c-><c- p>()</c-></code> and <code class="highlight"><c- n>push_back</c-><c- p>()</c-></code>.</p>
+   </ol>
+   <h3 class="heading settled" data-level="9.10" id="spec-execution.coro_utils"><span class="secno">9.10. </span><span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span><a class="self-link" href="#spec-execution.coro_utils"></a></h3>
+   <h4 class="heading settled" data-level="9.10.1" id="spec-execution.coro_utils.as_awaitable"><span class="secno">9.10.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span><a class="self-link" href="#spec-execution.coro_utils.as_awaitable"></a></h4>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>as_awaitable</c-></code> is used to wrap a sender into an object that is awaitable within a particular coroutine. A sender <code class="highlight"><c- n>s</c-></code> of type <code class="highlight"><c- n>S</c-></code> can be made awaitable if and only if:</p>
@@ -6207,7 +6379,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
        <p>Otherwise, <code class="highlight"><i><c- n>single</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-></code> is ill-formed.</p>
      </ol>
     <li data-md>
-     <p>For some expressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>p</c-></code> such that <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code> is <code class="highlight"><c- n>S</c-></code> and <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>p</c-><c- p>))</c-></code> is <code class="highlight"><c- n>P</c-><c- o>&amp;</c-></code>, <code class="highlight"><c- n>as_awaitable</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>p</c-><c- p>)</c-></code> returns <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>{</c-><c- n>s</c-><c- p>,</c-> <c- n>p</c-><c- p>}</c-></code>, where <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i></code> is an unspecified class type equivalant to the following:</p>
+     <p>For some expressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>p</c-></code> such that <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code> is <code class="highlight"><c- n>S</c-></code> and <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>p</c-><c- p>))</c-></code> is <code class="highlight"><c- n>P</c-><c- o>&amp;</c-></code>, <code class="highlight"><c- n>as_awaitable</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>p</c-><c- p>)</c-></code> returns <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>{</c-><c- n>s</c-><c- p>,</c-> <c- n>p</c-><c- p>}</c-></code>, where <code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i></code> is an unspecified non-template class type equivalent to the following:</p>
 <pre class="highlight"><c- k>class</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>awaitable</c-></i> <c- p>{</c->
   <c- k>struct</c-> <c- nc>unit</c-> <c- p>{};</c-> <c- c1>// exposition only</c->
   <c- k>using</c-> <c- n>value_t</c-> <c- o>=</c-> <i><c- n>single</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>;</c->
@@ -6271,7 +6443,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
        </ul>
      </ol>
    </ol>
-   <h4 class="heading settled" data-level="9.9.2" id="spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.9.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span><a class="self-link" href="#spec-execution.coro_utils.with_awaitable_senders"></a></h4>
+   <h4 class="heading settled" data-level="9.10.2" id="spec-execution.coro_utils.with_awaitable_senders"><span class="secno">9.10.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>with_awaitable_senders</c-></code> <b>[execution.coro_utils.with_awaitable_senders]</b></span><a class="self-link" href="#spec-execution.coro_utils.with_awaitable_senders"></a></h4>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>with_awaitable_senders</c-></code>, when used as the base class of a coroutine promise type, makes senders awaitable in that coroutine type.</p>
