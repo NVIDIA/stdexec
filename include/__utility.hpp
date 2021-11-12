@@ -22,6 +22,9 @@ namespace std {
   template <class...>
     struct __types;
 
+  template <class F, class... Args>
+    using __meta_invoke = typename F::template __f<Args...>;
+
   template <template<class...> class List, template<class...> class Fn>
     struct __transform {
       template <class... Args>
