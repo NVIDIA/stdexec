@@ -172,6 +172,14 @@ namespace std::execution {
       sender<S> &&
       __has_sender_types<sender_traits<remove_cvref_t<S>>>;
 
+  template<class S, class... Ts>
+    concept sender_of =
+      typed_sender<S> &&
+      same_as<
+        __types<Ts...>,
+        typename sender_traits<S>::template
+            value_types<__types, type_identity_t>>;
+
   template <class... As>
     requires (sizeof...(As) != 0)
     struct __front;
@@ -217,7 +225,7 @@ namespace std::execution {
       copy_constructible<remove_cvref_t<S>> &&
       equality_comparable<remove_cvref_t<S>> &&
       requires(S&& s) {
-        schedule((S&&) s);
+        { schedule((S&&) s) } -> sender_of;
       };
 
   // NOT TO SPEC
