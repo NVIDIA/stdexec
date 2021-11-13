@@ -3106,9 +3106,9 @@ It returns an instance of type <code class="highlight"><c- n>_op</c-></code> tha
    </ol>
    <h4 class="heading settled" data-level="1.6.2" id="example-single-thread"><span class="secno">1.6.2. </span><span class="content">Single thread scheduler</span><a class="self-link" href="#example-single-thread"></a></h4>
    <p>This example shows how to create a scheduler for an execution context that consists of a single
-thread. It is implemented in terms of a lower-level execution context called <code class="highlight"><c- n>run_loop</c-></code>.</p>
+thread. It is implemented in terms of a lower-level execution context called <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code>.</p>
 <pre class="language-c++ highlight"><c- n>class</c-> <c- n>single_thread_context</c-> <c- p>{</c->
-  <c- n>run_loop</c-> <c- n>loop_</c-><c- p>;</c->
+  <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-> <c- n>loop_</c-><c- p>;</c->
   <c- n>std</c-><c- o>::</c-><c- kr>thread</c-> <c- n>thread_</c-><c- p>;</c->
 
 <c- nl>public</c-><c- p>:</c->
@@ -3133,12 +3133,15 @@ thread. It is implemented in terms of a lower-level execution context called <co
 </pre>
    <p>The <code class="highlight"><c- n>single_thread_context</c-></code> owns an event loop and a thread to drive it. In the destructor, it tells the event
 loop to finish up what it’s doing and then joins the thread, blocking for the event loop to drain.</p>
-   <p>The interesting bits are in the <code class="highlight"><c- n>run_loop</c-></code> context implementation. It is slightly too long to include
-here, so we only provide <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478">a reference to it</a>,
-but there is one noteworthy detail about its implementation. It uses space in its operation state to build an
-intrusive linked list of work items. In structured concurrency patterns, the operation states of nested operations
-compose statically, and in an algorithm like <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code>, the composite operation state lives on the
-stack for the duration of the operation. The end result is that work can be scheduled onto this thread with zero
+   <p>The interesting bits are in the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code> context implementation. It
+is slightly too long to include here, so we only provide <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478">a reference to
+it</a>,
+but there is one noteworthy detail about its implementation. It uses space in
+its operation states to build an intrusive linked list of work items. In
+structured concurrency patterns, the operation states of nested operations
+compose statically, and in an algorithm like <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code>, the
+composite operation state lives on the stack for the duration of the operation.
+The end result is that work can be scheduled onto this thread with zero
 allocations.</p>
    <h3 class="heading settled" data-level="1.7" id="intro-is-not"><span class="secno">1.7. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#intro-is-not"></a></h3>
    <p>This paper is not a patch on top of <a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a>; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
@@ -6247,12 +6250,12 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
     <li data-md>
      <p><code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code> is an implementation defined type that models the <code class="highlight"><c- n>sender_of</c-></code> concept; <i>i.e.,</i> <code class="highlight"><c- n>sender_of</c-><c- o>&lt;</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i><c- o>></c-></code> is <code class="highlight">true</code>. Additionally, the types reported by its <code class="highlight"><c- n>error_types</c-></code> associated type is <code class="highlight"><c- n>exception_ptr</c-></code>, and the value of its <code class="highlight"><c- n>sends_done</c-></code> trait is <code class="highlight">true</code>.</p>
     <li data-md>
-     <p>Instances of <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code> remain valid even after the end of the lifetime of the <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code> instance from which they were obtained.</p>
+     <p>An instance of <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code> remains valid until the end of the lifetime of its associated <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code> instance.</p>
     <li data-md>
      <p>Let <code class="highlight"><i><c- n>s</c-></i></code> be an expression of type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code>, let <code class="highlight"><i><c- n>r</c-></i></code> be an expression such that <code class="highlight"><c- k>decltype</c-><c- p>(</c-><i><c- n>r</c-></i><c- p>)</c-></code> models the <code class="highlight"><c- n>receiver_of</c-></code> concept, and let <code class="highlight"><c- n>C</c-></code> be one of <code class="highlight"><c- n>set_value_t</c-></code>, <code class="highlight"><c- n>set_error_t</c-></code>, or <code class="highlight"><c- n>set_done_t</c-></code>. Then:</p>
      <ul>
       <li data-md>
-       <p>The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><i><c- n>s</c-></i><c- p>,</c-> <i><c- n>r</c-></i><c- p>)</c-></code> has type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>optstate</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><i><c- n>r</c-></i><c- p>)</c-><c- o>>></c-></code> and is potentially throwing if and only if the initialiation of <code class="highlight"><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><i><c- n>r</c-></i><c- p>)</c-><c- o>></c-></code> from <code class="highlight"><i><c- n>r</c-></i></code> is potentially throwing.</p>
+       <p>The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><i><c- n>s</c-></i><c- p>,</c-> <i><c- n>r</c-></i><c- p>)</c-></code> has type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><i><c- n>r</c-></i><c- p>)</c-><c- o>>></c-></code> and is potentially throwing if and only if the initialiation of <code class="highlight"><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><i><c- n>r</c-></i><c- p>)</c-><c- o>></c-></code> from <code class="highlight"><i><c- n>r</c-></i></code> is potentially throwing.</p>
       <li data-md>
        <p>The expression <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>C</c-><c- o>></c-><c- p>(</c-><i><c- n>s</c-></i><c- p>)</c-></code> is not potentially throwing, has type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code>, and compares equal to the <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i></code> instance from which <code class="highlight"><i><c- n>s</c-></i></code> was obtained.</p>
      </ul>
