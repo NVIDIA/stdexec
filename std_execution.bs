@@ -696,11 +696,11 @@ implementing one. The `inline_scheduler`:
 ### Single thread scheduler ### {#example-single-thread}
 
 This example shows how to create a scheduler for an execution context that consists of a single
-thread. It is implemented in terms of a lower-level execution context called `run_loop`.
+thread. It is implemented in terms of a lower-level execution context called `std::execution::run_loop`.
 
 ```c++
 class single_thread_context {
-  run_loop loop_;
+  std::execution::run_loop loop_;
   std::thread thread_;
 
 public:
@@ -727,12 +727,15 @@ public:
 The `single_thread_context` owns an event loop and a thread to drive it. In the destructor, it tells the event
 loop to finish up what it's doing and then joins the thread, blocking for the event loop to drain.
 
-The interesting bits are in the `run_loop` context implementation. It is slightly too long to include
-here, so we only provide [a reference to it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478),
-but there is one noteworthy detail about its implementation. It uses space in its operation state to build an
-intrusive linked list of work items. In structured concurrency patterns, the operation states of nested operations
-compose statically, and in an algorithm like `this_thread::sync_wait`, the composite operation state lives on the
-stack for the duration of the operation. The end result is that work can be scheduled onto this thread with zero
+The interesting bits are in the `execution::run_loop` context implementation. It
+is slightly too long to include here, so we only provide [a reference to
+it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478),
+but there is one noteworthy detail about its implementation. It uses space in
+its operation states to build an intrusive linked list of work items. In
+structured concurrency patterns, the operation states of nested operations
+compose statically, and in an algorithm like `this_thread::sync_wait`, the
+composite operation state lives on the stack for the duration of the operation.
+The end result is that work can be scheduled onto this thread with zero
 allocations.
 
 ## What this proposal is **not** ## {#intro-is-not}
@@ -4065,11 +4068,11 @@ from the operation before the operation completes.
 
   1. <code><i>run-loop-sender</i></code> is an implementation defined type that models the `sender_of` concept; <i>i.e.,</i> <code>sender_of&lt;<i>run-loop-sender</i>></code> is `true`. Additionally, the types reported by its `error_types` associated type is `exception_ptr`, and the value of its `sends_done` trait is `true`.
 
-  2. Instances of <code><i>run-loop-sender</i></code> remain valid even after the end of the lifetime of the <code><i>run-loop-scheduler</i></code> instance from which they were obtained.
+  2. An instance of <code><i>run-loop-sender</i></code> remains valid until the end of the lifetime of its associated `execution::run_loop` instance.
 
   3. Let <code><i>s</i></code> be an expression of type <code><i>run-loop-sender</i></code>, let <code><i>r</i></code> be an expression such that <code>decltype(<i>r</i>)</code> models the `receiver_of` concept, and let `C` be one of `set_value_t`, `set_error_t`, or `set_done_t`. Then:
 
-    * The expression <code>execution::connect(<i>s</i>, <i>r</i>)</code> has type <code><i>run-loop-optstate</i>&lt;decay_t&lt;decltype(<i>r</i>)>></code> and is potentially throwing if and only if the initialiation of <code>decay_t&lt;decltype(<i>r</i>)></code> from <code><i>r</i></code> is potentially throwing.
+    * The expression <code>execution::connect(<i>s</i>, <i>r</i>)</code> has type <code><i>run-loop-opstate</i>&lt;decay_t&lt;decltype(<i>r</i>)>></code> and is potentially throwing if and only if the initialiation of <code>decay_t&lt;decltype(<i>r</i>)></code> from <code><i>r</i></code> is potentially throwing.
 
     * The expression <code>get_completion_scheduler&lt;C>(<i>s</i>)</code> is not potentially throwing, has type <code><i>run-loop-scheduler</i></code>, and compares equal to the <code><i>run-loop-scheduler</i></code> instance from which <code><i>s</i></code> was obtained.
 
