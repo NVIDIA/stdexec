@@ -6208,7 +6208,6 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <c- k>class</c-> <i><c- nc>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
   <c- k>struct</c-> <i><c- nc>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>virtual</c-> <c- b>void</c-> <c- n>execute</c-><c- p>()</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c->
-    <c- b>void</c-> <c- nf>start</c-><c- p>()</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- n>loop_</c-><c- o>-></c-><c- n>push_back</c-><c- p>(</c-><c- k>this</c-><c- p>);</c-> <c- p>}</c->
     <c- n>run_loop</c-><c- o>*</c-> <c- n>loop_</c-><c- p>;</c->
     <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>next_</c-><c- p>;</c->
   <c- p>};</c->
@@ -6216,8 +6215,8 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
     <c- k>using</c-> <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-></i> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
 
   <c- c1>// [execution.contexts.run_loop.members] Member functions:</c->
-  <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>pop_front</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c-> <c- c1>// exposition only</c->
-  <c- b>void</c-> <c- nf>push_back</c-><c- p>(</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c-> <c- c1>// exposition only</c->
+  <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>pop_front</c-><c- p>();</c-> <c- c1>// exposition only</c->
+  <c- b>void</c-> <c- nf>push_back</c-><c- p>(</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-><c- p>);</c-> <c- c1>// exposition only</c->
 
  <c- k>public</c-><c- o>:</c->
   <c- c1>// [execution.contexts.run_loop.ctor] Constructor:</c->
@@ -6284,7 +6283,13 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 <c- p>}</c->
 </pre>
       <li data-md>
-       <p>The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><i><c- n>o</c-></i><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><i><c- n>o</c-></i><c- p>.</c-><c- n>start</c-><c- p>()</c-></code>.</p>
+       <p>The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><i><c- n>o</c-></i><c- p>)</c-></code> is equivalent to the following:</p>
+<pre class="highlight"><c- k>try</c-> <c- p>{</c->
+  <i><c- n>o</c-></i><c- p>.</c-><c- n>loop_</c-><c- o>-></c-><c- n>push_back</c-><c- p>(</c-><c- o>&amp;</c-><i><c- n>o</c-></i><c- p>);</c->
+<c- p>}</c-> <c- k>catch</c-><c- p>(...)</c-> <c- p>{</c->
+  <c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>),</c-> <c- n>current_exception</c-><c- p>());</c->
+<c- p>}</c->
+</pre>
      </ul>
    </ol>
    <h5 class="heading settled" data-level="9.9.1.2" id="spec-execution.contexts.run_loop.ctor"><span class="secno">9.9.1.2. </span><span class="content">Constructor <b>[execution.contexts.run_loop.ctor]</b></span><a class="self-link" href="#spec-execution.contexts.run_loop.ctor"></a></h5>
@@ -6295,7 +6300,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
      <p><i>Postconditions:</i> <i>count</i> is <code class="highlight"><c- mi>0</c-></code> and <i>state</i> is <i>not-finishing</i>.</p>
    </ol>
    <h5 class="heading settled" data-level="9.9.1.3" id="spec-execution.contexts.run_loop.members"><span class="secno">9.9.1.3. </span><span class="content">Member functions <b>[execution.contexts.run_loop.members]</b></span><a class="self-link" href="#spec-execution.contexts.run_loop.members"></a></h5>
-<pre class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>pop_front</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+<pre class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>pop_front</c-><c- p>();</c->
 </pre>
    <ol>
     <li data-md>
@@ -6309,7 +6314,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
     <li data-md>
      <p><i>Synchronization:</i> This function is thread-safe with respect to <code class="highlight"><c- n>push_back</c-><c- p>()</c-></code> and <code class="highlight"><c- n>finish</c-><c- p>()</c-></code>. Removing a queue item and decrementing <i>count</i> are executed atomically.</p>
    </ol>
-<pre class="highlight"><c- b>void</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>push_back</c-><c- p>(</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>item</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+<pre class="highlight"><c- b>void</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>push_back</c-><c- p>(</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>item</c-><c- p>);</c->
 </pre>
    <ol>
     <li data-md>
