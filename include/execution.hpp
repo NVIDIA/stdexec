@@ -1421,7 +1421,8 @@ namespace std::execution {
       void finish();
 
      private:
-      void enqueue(__impl::__task* task);
+      void push_back(__impl::__task* task);
+      __impl::__task* pop_front();
 
       mutex __mutex_;
       condition_variable __cv_;
@@ -1432,26 +1433,16 @@ namespace std::execution {
 
     namespace __impl {
       template <typename Receiver_>
-      inline void __operation<Receiver_>::__start_() noexcept {
-        __loop_->enqueue(this);
+      inline void __operation<Receiver_>::__start_() noexcept try {
+        __loop_->push_back(this);
+      } catch(...) {
+        set_error((Receiver&&) __receiver_, current_exception());
       }
     }
 
     inline void run_loop::run() {
-      unique_lock __lock{__mutex_};
-      while (true) {
-        while (__head_ == nullptr) {
-          if (__stop_)
-            return;
-          __cv_.wait(__lock);
-        }
-        auto* task = __head_;
-        __head_ = task->__next_;
-        if (__head_ == nullptr)
-          __tail_ = nullptr;
-        __lock.unlock();
+      while (auto* task = pop_front()) {
         task->__execute();
-        __lock.lock();
       }
     }
 
@@ -1461,7 +1452,7 @@ namespace std::execution {
       __cv_.notify_all();
     }
 
-    inline void run_loop::enqueue(__impl::__task* task) {
+    inline void run_loop::push_back(__impl::__task* task) {
       unique_lock lock{__mutex_};
       if (__head_ == nullptr) {
         __head_ = task;
@@ -1471,6 +1462,20 @@ namespace std::execution {
       __tail_ = task;
       task->__next_ = nullptr;
       __cv_.notify_one();
+    }
+
+    inline __impl::__task* run_loop::pop_front() {
+      unique_lock __lock{__mutex_};
+      while (__head_ == nullptr) {
+        if (__stop_)
+          return nullptr;
+        __cv_.wait(__lock);
+      }
+      auto* task = __head_;
+      __head_ = task->__next_;
+      if (__head_ == nullptr)
+        __tail_ = nullptr;
+      return task;
     }
   } // namespace __loop
 

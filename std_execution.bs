@@ -4025,7 +4025,6 @@ from the operation before the operation completes.
       class <i>run-loop-sender</i>; // exposition only
       struct <i>run-loop-opstate-base</i> { // exposition only
         virtual void execute() = 0;
-        void start() noexcept { loop_->push_back(this); }
         run_loop* loop_;
         <i>run-loop-opstate-base</i>* next_;
       };
@@ -4033,8 +4032,8 @@ from the operation before the operation completes.
         using <i>run-loop-opstate</i> = <i>unspecified</i>; // exposition only
 
       // [execution.contexts.run_loop.members] Member functions:
-      <i>run-loop-opstate-base</i>* pop_front() noexcept; // exposition only
-      void push_back(<i>run-loop-opstate-base</i>*) noexcept; // exposition only
+      <i>run-loop-opstate-base</i>* pop_front(); // exposition only
+      void push_back(<i>run-loop-opstate-base</i>*); // exposition only
 
      public:
       // [execution.contexts.run_loop.ctor] Constructor:
@@ -4101,7 +4100,15 @@ from the operation before the operation completes.
         }
         </pre>
 
-    * The expression <code>execution::start(<i>o</i>)</code> is expression-equivalent to <code><i>o</i>.start()</code>.
+    * The expression <code>execution::start(<i>o</i>)</code> is equivalent to the following:
+
+        <pre highlight="c++">
+        try {
+          <i>o</i>.loop_->push_back(&<i>o</i>);
+        } catch(...) {
+          execution::set_error(<i>REC</i>(<i>o</i>), current_exception());
+        }
+        </pre>
 
 #### Constructor <b>[execution.contexts.run_loop.ctor]</b> #### {#spec-execution.contexts.run_loop.ctor}
 
@@ -4114,7 +4121,7 @@ from the operation before the operation completes.
 #### Member functions <b>[execution.contexts.run_loop.members]</b> #### {#spec-execution.contexts.run_loop.members}
 
     <pre highlight="c++">
-    <i>run-loop-opstate-base</i>* run_loop::pop_front() noexcept;
+    <i>run-loop-opstate-base</i>* run_loop::pop_front();
     </pre>
 
     1. <i>Effects:</i> Waits until one of the following conditions is `true`:
@@ -4126,7 +4133,7 @@ from the operation before the operation completes.
     2. <i>Synchronization:</i> This function is thread-safe with respect to `push_back()` and `finish()`. Removing a queue item and decrementing <i>count</i> are executed atomically.
 
     <pre highlight="c++">
-    void run_loop::push_back(<i>run-loop-opstate-base</i>* item) noexcept;
+    void run_loop::push_back(<i>run-loop-opstate-base</i>* item);
     </pre>
 
     1. <i>Effects:</i> Adds `item` to the back of the queue and increments <i>count</i> by `1`.
