@@ -3285,7 +3285,7 @@ are all well-formed.
             3. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
 
         2. Calls `execution::schedule(sch)`, which results in `s2`. It then calls `execution::connect(s2, r)`, resulting in `op_state2`.
-        
+
         3. `op_state2` is wrapped by a new operation state, `op_state1`, that is returned to the caller.
 
       2. `r2` is a receiver that wraps a reference to `out_r`. It forwards all receiver completion signals and receiver queries to `out_r`. Additionally, it implements the `get_scheduler` receiver query. The scheduler returned from the query is equivalent to the `sch` argument that was passed to `execution::on`.
@@ -4014,7 +4014,9 @@ from the operation before the operation completes.
 
 2. A `run_loop` instance has an associated <i>count</i> that corresponds to the number of work items that are in its queue. Additionally, a `run_loop` has an associated <i>state</i> that can be either <i>finishing</i> or <i>not-finishing</i>.
 
-3. [<i>Note:</i> Implementations are encouraged to use an intrusive queue of operation states to hold the work units to make scheduling allocation-free. -- <i>end note</i>]
+3. Concurrent invocations of the member functions of `run_loop`, other than `run` and its destructor, do not introduce data races. The member functions `pop_front`, `push_back`, and `finish` execute atomically.
+
+4. [<i>Note:</i> Implementations are encouraged to use an intrusive queue of operation states to hold the work units to make scheduling allocation-free. — <i>end note</i>]
 
     <pre highlight="c++">
     class run_loop {
@@ -4124,11 +4126,9 @@ from the operation before the operation completes.
 
     1. <i>Effects:</i> Waits until one of the following conditions is `true`:
 
-        * <i>count</i> is `0` and <i>state</i> is <i>finishing</i>, in which case `pop_front()` returns `nullptr`; or
+        * <i>count</i> is `0` and <i>state</i> is <i>finishing</i>, in which case `pop_front` returns `nullptr`; or
 
-        * <i>count</i> is greater than `0`, in which case `pop_front()` removes an item from the front of the queue, decrements <i>count</i> by `1`, and returns the item.
-
-    2. <i>Synchronization:</i> This function is thread-safe with respect to `push_back()` and `finish()`. Removing a queue item and decrementing <i>count</i> are executed atomically.
+        * <i>count</i> is greater than `0`, in which case an item is removed from the front of the queue, <i>count</i> is decremented by `1`, and the removed item is returned.
 
     <pre highlight="c++">
     void run_loop::push_back(<i>run-loop-opstate-base</i>* item);
@@ -4136,7 +4136,7 @@ from the operation before the operation completes.
 
     1. <i>Effects:</i> Adds `item` to the back of the queue and increments <i>count</i> by `1`.
 
-    2. <i>Synchronization:</i> This function is thread-safe with respect to `pop_front()` and `finish()`. Adding a queue item and incrementing the <i>count</i> are executed atomically.
+    2. <i>Synchronization:</i> This operation synchronizes with the `pop_front` operation that obtains `item`.
 
     <pre highlight="c++">
     <i>run-loop-scheduler</i> run_loop::get_scheduler();
@@ -4156,7 +4156,9 @@ from the operation before the operation completes.
         }
         </pre>
 
-    2. <i>Synchronization:</i> None.
+    2. <i>Precondition:</i> <i>state</i> is <i>not-finishing</i>.
+
+    3. <i>Postcondition:</i> <i>state</i> is <i>finishing</i>.
 
     <pre highlight="c++">
     void run_loop::finish();
@@ -4164,7 +4166,7 @@ from the operation before the operation completes.
 
     1. <i>Effects:</i> Changes <i>state</i> to <i>finishing</i>.
 
-    2. <i>Synchronization:</i> This function is thread-safe with respect to `pop_front()` and `push_back()`.
+    2. <i>Synchronization:</i> This operation synchronizes with all `pop_front` operations on this object.
 
 ## Coroutine utilities <b>[execution.coro_utils]</b> ## {#spec-execution.coro_utils}
 
