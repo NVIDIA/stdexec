@@ -3613,8 +3613,6 @@ are all well-formed.
 
 4. Senders returned from adaptors defined in this subclause shall not expose the sender queries `get_completion_scheduler<CPO>`.
 
-5. `tag_invoke` expressions used in the definitions of the sender adaptors in this subclause shall not consider member functions of their first non-tag arguments.
-
 #### `execution::transfer_when_all` <b>[execution.senders.adaptors.transfer_when_all]</b> #### {#spec-execution.senders.adaptor.transfer_when_all}
 
 1. `execution::transfer_when_all` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
