@@ -4104,7 +4104,7 @@ from the operation before the operation completes.
         try {
           <i>o</i>.loop_->push_back(&<i>o</i>);
         } catch(...) {
-          execution::set_error(<i>REC</i>(<i>o</i>), current_exception());
+          execution::set_error(std::move(<i>REC</i>(<i>o</i>)), current_exception());
         }
         </pre>
 
