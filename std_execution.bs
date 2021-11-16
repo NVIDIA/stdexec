@@ -4078,7 +4078,7 @@ from the operation before the operation completes.
     using <i>run-loop-opstate</i> = <i>unspecified</i>;
   </pre>
 
-  1. <code><i>run-loop-opstate</i></code> is an implementation defined alias template such that for a type <code><i>R</i></code> that models `receiver_of`, <code><i>run-loop-opstate</i>&lt;R></code> is an alias for an unspecified non-template class type that inherits unambiguously from <code><i>run-loop-opstate-base</i></code>.
+  1. <code><i>run-loop-opstate</i>&lt;<i>R</i>></code> is an alias for an unspecified non-template class type that inherits unambiguously from <code><i>run-loop-opstate-base</i></code>.
 
   2. Let <code><i>o</i></code> be a non-`const` lvalue of type <code><i>run-loop-opstate</i>&lt;R></code>, and let <code><i>REC</i>(<i>o</i>)</code> be a non-`const` lvalue reference to an instance of type <code><i>R</i></code> that was initialized with the expression <code><i>r</i></code> passed to the invocation of `execution::connect` that returned <code><i>o</i></code>. Then:
 
