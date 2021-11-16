@@ -6285,7 +6285,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 <pre class="highlight"><c- k>try</c-> <c- p>{</c->
   <i><c- n>o</c-></i><c- p>.</c-><c- n>loop_</c-><c- o>-></c-><c- n>push_back</c-><c- p>(</c-><c- o>&amp;</c-><i><c- n>o</c-></i><c- p>);</c->
 <c- p>}</c-> <c- k>catch</c-><c- p>(...)</c-> <c- p>{</c->
-  <c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>),</c-> <c- n>current_exception</c-><c- p>());</c->
+  <c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)),</c-> <c- n>current_exception</c-><c- p>());</c->
 <c- p>}</c->
 </pre>
      </ul>
