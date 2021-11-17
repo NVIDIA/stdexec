@@ -18,6 +18,21 @@
 #include <type_traits>
 
 namespace std {
+  struct __ {};
+
+  // For hiding a template type parameter from ADL
+  template <class T>
+    struct __id {
+      struct __t {
+        using type = T;
+      };
+    };
+  template <class T>
+    using __id_t = typename __id<T>::__t;
+
+  template <class T>
+    using __t = typename T::type;
+
   // Some utilities for manipulating lists of types at compile time
   template <class...>
     struct __types;
@@ -37,16 +52,38 @@ namespace std {
         using __f = List<conditional_t<is_same_v<Old, Args>, New, Old>...>;
     };
 
-  template <template<class...> class First, template<class...> class Second>
-    struct __compose {
-      template <class...Args>
-        using __f = Second<First<Args...>>;
+  template <class State, template <class, class> class Fn>
+    struct __right_fold {
+      template <class, class...>
+        struct __f_ {};
+      template <class State2, class Head, class... Tail>
+          requires requires {typename Fn<State2, Head>;}
+        struct __f_<State2, Head, Tail...> : __f_<Fn<State2, Head>, Tail...>
+        {};
+      template <class State2>
+        struct __f_<State2> {
+          using type = State2;
+        };
+      template <class... Args>
+        using __f = __t<__f_<State, Args...>>;
     };
 
-  template <template<class...> class List, class... Front>
-    struct __bind_front {
-      template <class...Args>
-        using __f = List<Front..., Args...>;
+  template <template <class...> class List>
+    struct __concat {
+      template <class...>
+        struct __f_ {};
+      template <template <class...> class A, class... As,
+                template <class...> class B, class... Bs,
+                class... Tail>
+        struct __f_<A<As...>, B<Bs...>, Tail...>
+          : __f_<__types<As..., Bs...>, Tail...> {};
+      template <template <class...> class A, class... As>
+          requires requires {typename List<As...>;}
+        struct __f_<A<As...>> {
+          using type = List<As...>;
+        };
+      template <class... Args>
+        using __f = __t<__f_<Args...>>;
     };
 
   template <bool>
@@ -59,11 +96,37 @@ namespace std {
       template <class, class False>
         using __f = False;
     };
-
   template <template <class> class Pred, class True, class False>
     struct __if {
       template <class T>
         using __f = typename __if_<Pred<T>::value>::template __f<True, False>;
+    };
+
+  template <class List, class Item>
+    struct __push_back_unique_ {
+      using type = List;
+    };
+  template <template <class...> class List, class... Ts, class Item>
+      requires ((!is_same_v<Ts, Item>) &&...)
+    struct __push_back_unique_<List<Ts...>, Item> {
+      using type = List<Ts..., Item>;
+    };
+  template <class List, class Item>
+    using __push_back_unique = __t<__push_back_unique_<List, Item>>;
+
+  template <template <class...> class List>
+    struct __unique : __right_fold<List<>, __push_back_unique> {};
+
+  template <template<class...> class First, template<class...> class Second>
+    struct __compose {
+      template <class...Args>
+        using __f = Second<First<Args...>>;
+    };
+
+  template <template<class...> class List, class... Front>
+    struct __bind_front {
+      template <class...Args>
+        using __f = List<Front..., Args...>;
     };
 
   template <template<class...> class List>
@@ -73,10 +136,13 @@ namespace std {
     };
 
   template <template<class...> class List>
-    struct __q {
+    struct __curry {
       template <class... Ts>
         using __f = List<Ts...>;
     };
+
+  template <template<class...> class List>
+    struct __uncurry : __concat<List> {};
 
   template <template<class> class F>
     struct __eval2 {
@@ -95,18 +161,19 @@ namespace std {
   using __member_t = decltype(
       (__declval<Self>() .* __memptr<Member>(__declval<Self>())));
 
-  // For hiding a template type parameter from ADL
-  template <class T>
-    struct __id {
-      struct __t {
-        using type = T;
-      };
+  template <class... As>
+      requires (sizeof...(As) != 0)
+    struct __front;
+  template <class A, class... As>
+    struct __front<A, As...> {
+      using type = A;
     };
-  template <class T>
-    using __id_t = typename __id<T>::__t;
-
-  template <class T>
-    using __t = typename T::type;
+  template <class... As>
+      requires (sizeof...(As) == 1)
+    using __single_t = __t<__front<As...>>;
+  template <class... As>
+      requires (sizeof...(As) <= 1)
+    using __single_or_void_t = __t<__front<As..., void>>;
 
   // For emplacing non-movable types into optionals:
   template <class Fn>
