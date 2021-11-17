@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-15">2021-11-15</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-17">2021-11-17</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4614,10 +4614,13 @@ the shared stop state.</p>
     <c- c1>// [execution.senders.factories], sender factories</c->
     <c- k>struct</c-> <c- nc>schedule_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>schedule_t</c-> <c- n>schedule</c-><c- p>{};</c->
-    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
-      <c- k>struct</c-> <i><c- nc>just</c-><c- o>-</c-><c- n>sender</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
     <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
-      <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-><c- o>></c-> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...);</c->
+      <i><c- n>unspecified</c-></i> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
+    <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i> <c- n>Error</c-><c- o>></c->
+      <i><c- n>unspecified</c-></i> <c- n>just_error</c-><c- p>(</c-><c- n>Error</c-> <c- o>&amp;&amp;</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
+    <i><c- n>unspecified</c-></i> <c- nf>just_done</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+    <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
+      <i><c- n>unspecified</c-></i> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...);</c->
     <c- k>struct</c-> <c- nc>transfer_just_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_just_t</c-> <c- n>transfer_just</c-><c- p>{};</c->
 
