@@ -2499,10 +2499,13 @@ namespace std::execution {
     // [execution.senders.factories], sender factories
     struct schedule_t;
     inline constexpr schedule_t schedule{};
-    template&lt;class... Ts>
-      struct <i>just-sender</i>; // exposition only
     template&lt;<i>movable-value</i>... Ts>
-      <i>just-sender</i>&lt;remove_cvref_t&lt;Ts>...> just(Ts &&...);
+      <i>unspecified</i> just(Ts &&...) noexcept(<i>see below</i>);
+    template&lt;<i>movable-value</i> Error>
+      <i>unspecified</i> just_error(Error &&) noexcept(<i>see below</i>);
+    <i>unspecified</i> just_done() noexcept;
+    template&lt;<i>movable-value</i>... Ts>
+      <i>unspecified</i> just(Ts &&...);
     struct transfer_just_t;
     inline constexpr transfer_just_t transfer_just{};
 
