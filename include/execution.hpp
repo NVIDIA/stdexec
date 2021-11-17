@@ -1994,7 +1994,7 @@ namespace std::execution {
                         },
                         std::tuple_cat(
                           std::apply(
-                            [this](auto&... vals) { return std::tie(vals...); },
+                            [](auto&... vals) { return std::tie(vals...); },
                             *opt_values
                           )...
                         )
