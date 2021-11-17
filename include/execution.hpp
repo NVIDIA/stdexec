@@ -1861,25 +1861,7 @@ namespace std::execution {
     : sender_traits<__t<SenderId>> {};
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.transfer_just]
-  inline namespace __transfer_just {
-    inline constexpr struct transfer_just_t {
-      template <scheduler Scheduler, __movable_value... Values>
-        requires tag_invocable<transfer_just_t, Scheduler, Values...> &&
-          typed_sender<tag_invoke_result_t<transfer_just_t, Scheduler, Values...>>
-      auto operator()(Scheduler&& sched, Values&&... values) const
-        noexcept(nothrow_tag_invocable<transfer_just_t, Scheduler, Values...>)
-        -> tag_invoke_result_t<transfer_just_t, Scheduler, Values...> {
-        return tag_invoke(*this, (Scheduler&&) sched, (Values&&) values...);
-      }
-      template <scheduler Scheduler, __movable_value... Values>
-      auto operator()(Scheduler&& sched, Values&&... values) const
-        -> decltype(transfer((Scheduler&&) sched, just((Values&&) values...))) {
-        return transfer((Scheduler&&) sched, just((Values&&) values...));
-      }
-    } transfer_just {};
-  } // namespace __transfer_just
-
+  // [execution.senders.adaptors.when_all]
   inline namespace __when_all {
     namespace __impl {
       enum __state_t { __started, __error, __done };
@@ -1932,7 +1914,7 @@ namespace std::execution {
                       // We only need to bother recording the completion values
                       // if we're not already in the "error" or "done" state.
                       if (__op_->__state_ == __started) {
-                        std::get<Index>(__op_->__child_states_).__values_.emplace(
+                        std::get<Index>(__op_->__values_).emplace(
                             (Values&&) vals...);
                       }
                       (void) __op_->__barrier_.arrive();
@@ -1974,43 +1956,27 @@ namespace std::execution {
                   __operation* __op_;
                 };
 
-              template <class Cvref, size_t Index>
-                struct __child_opstate_ {
-                  using Sender = tuple_element_t<Index, tuple<__t<SenderIds>...>>;
-                  using CvrefSender = __member_t<Cvref, Sender>;
-                  using ValuesTuple = typename sender_traits<Sender>::template
-                      value_types<tuple, __single_t>;
-                  friend void tag_invoke(start_t, __child_opstate_& self) noexcept {
-                    execution::start(self.__child_op_);
-                  }
-                  connect_result_t<CvrefSender, __receiver<Index>> __child_op_;
-                  optional<ValuesTuple> __values_{};
-                };
-              template <size_t Index>
-                using __child_opstate = __child_opstate_<__member_t<WhenAll, __>, Index>;
+              template <class Sender, size_t Index>
+                using __child_opstate =
+                  connect_result_t<__member_t<WhenAll, Sender>, __receiver<Index>>;
 
               using Indices = index_sequence_for<SenderIds...>;
 
               template <size_t... Is>
-                static auto child_opstates_tuple_fn(index_sequence<Is...>)
-                  -> tuple<__child_opstate<Is>...>;
-
-              using child_opstates_tuple_t =
-                  decltype(child_opstates_tuple_fn(Indices{}));
-
-              template <size_t... Is>
-                auto connect_children(WhenAll&& when_all, index_sequence<Is...>)
-                    -> child_opstates_tuple_t {
-                  return child_opstates_tuple_t{
-                    __conv{[&when_all, this]() -> __child_opstate<Is> {
-                      return __child_opstate<Is>{
-                        execution::connect(
+                static auto connect_children(
+                    __operation* self, WhenAll&& when_all, index_sequence<Is...>)
+                    -> tuple<__child_opstate<__t<SenderIds>, Is>...> {
+                  return tuple<__child_opstate<__t<SenderIds>, Is>...>{
+                    __conv{[&when_all, self]() {
+                      return execution::connect(
                           std::get<Is>(((WhenAll&&) when_all).__sndrs_),
-                          __receiver<Is>{{}, this})
-                      };
+                          __receiver<Is>{{}, self});
                     }}...
                   };
                 }
+
+              using child_optstates_tuple_t =
+                  decltype(connect_children(nullptr, __declval<WhenAll>(), Indices{}));
 
               void complete() noexcept {
                 // Stop callback is no longer needed. Destroy it.
@@ -2020,7 +1986,7 @@ namespace std::execution {
                 case __started:
                   // All child operations completed successfully:
                   std::apply(
-                    [this](auto&... child_opstates) -> void {
+                    [this](auto&... opt_values) -> void {
                       std::apply(
                         [this](auto&... all_values) -> void {
                           execution::set_value(
@@ -2029,12 +1995,12 @@ namespace std::execution {
                         std::tuple_cat(
                           std::apply(
                             [this](auto&... vals) { return std::tie(vals...); },
-                            *child_opstates.__values_
+                            *opt_values
                           )...
                         )
                       );
                     },
-                    __child_states_
+                    __values_
                   );
                   break;
                 case __error:
@@ -2058,7 +2024,7 @@ namespace std::execution {
               };
 
               __operation(WhenAll&& when_all, Receiver recvr)
-                : __child_states_{connect_children((WhenAll&&) when_all, Indices{})}
+                : __child_states_{connect_children(this, (WhenAll&&) when_all, Indices{})}
                 , __recvr_((Receiver&&) recvr)
                 , __barrier_(sizeof...(SenderIds), __completion_fn{this})
               {}
@@ -2079,12 +2045,14 @@ namespace std::execution {
                 }
               }
 
-              child_opstates_tuple_t __child_states_;
+              child_optstates_tuple_t __child_states_;
               Receiver __recvr_;
               barrier<__completion_fn> __barrier_;
               // Could be non-atomic here and atomic_ref everywhere except __completion_fn
               atomic<__state_t> __state_{__started};
               error_types<variant> __errors_{};
+              tuple<typename sender_traits<__t<SenderIds>>::template
+                  value_types<tuple, optional>...> __values_{};
               in_place_stop_source __stop_source_{};
               optional<typename stop_token_type_t<Receiver&>::template
                   callback_type<__on_stop_requested>> __on_stop_{};
