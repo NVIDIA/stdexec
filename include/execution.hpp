@@ -174,16 +174,6 @@ namespace std::execution {
       sender<S> &&
       __has_sender_types<sender_traits<remove_cvref_t<S>>>;
 
-  template<class S>
-    using __single_sender_value_t =
-      typename sender_traits<remove_cvref_t<S>>
-        ::template value_types<__single_or_void_t, __single_t>;
-
-  template<class S>
-    concept __single_typed_sender =
-      typed_sender<S> &&
-      requires { typename __single_sender_value_t<S>; };
-
   // NOT TO SPEC:
   template <typed_sender Sender,
             template <class...> class Tuple,
@@ -200,9 +190,16 @@ namespace std::execution {
   template<class S, class... Ts>
     concept sender_of =
       typed_sender<S> &&
-      same_as<
-        __types<Ts...>,
-        value_types_of_t<S, __types, __single_t>>;
+      same_as<__types<Ts...>, value_types_of_t<S, __types, __single_t>>;
+
+  template<class S>
+    using __single_sender_value_t =
+      value_types_of_t<S, __single_or_void_t, __single_t>;
+
+  template<class S>
+    concept __single_typed_sender =
+      typed_sender<S> &&
+      requires { typename __single_sender_value_t<S>; };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
