@@ -1872,6 +1872,26 @@ namespace std::execution {
     : sender_traits<__t<SenderId>> {};
 
   /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.transfer_just]
+  inline namespace __transfer_just {
+    inline constexpr struct transfer_just_t {
+      template <scheduler Scheduler, __movable_value... Values>
+        requires tag_invocable<transfer_just_t, Scheduler, Values...> &&
+          typed_sender<tag_invoke_result_t<transfer_just_t, Scheduler, Values...>>
+      auto operator()(Scheduler&& sched, Values&&... values) const
+        noexcept(nothrow_tag_invocable<transfer_just_t, Scheduler, Values...>)
+        -> tag_invoke_result_t<transfer_just_t, Scheduler, Values...> {
+        return tag_invoke(*this, (Scheduler&&) sched, (Values&&) values...);
+      }
+      template <scheduler Scheduler, __movable_value... Values>
+      auto operator()(Scheduler&& sched, Values&&... values) const
+        -> decltype(transfer(just((Values&&) values...), (Scheduler&&) sched)) {
+        return transfer(just((Values&&) values...), (Scheduler&&) sched);
+      }
+    } transfer_just {};
+  } // namespace __transfer_just
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.when_all]
   inline namespace __when_all {
     namespace __impl {
