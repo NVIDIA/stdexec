@@ -174,13 +174,6 @@ namespace std::execution {
       sender<S> &&
       __has_sender_types<sender_traits<remove_cvref_t<S>>>;
 
-  template<class S, class... Ts>
-    concept sender_of =
-      typed_sender<S> &&
-      same_as<
-        __types<Ts...>,
-        typename sender_traits<S>::template value_types<__types, __single_t>>;
-
   template<class S>
     using __single_sender_value_t =
       typename sender_traits<remove_cvref_t<S>>
@@ -190,6 +183,26 @@ namespace std::execution {
     concept __single_typed_sender =
       typed_sender<S> &&
       requires { typename __single_sender_value_t<S>; };
+
+  // NOT TO SPEC:
+  template <typed_sender Sender,
+            template <class...> class Tuple,
+            template <class...> class Variant>
+    using value_types_of_t =
+      typename sender_traits<decay_t<Sender>>::template
+        value_types<Tuple, Variant>;
+
+  // NOT TO SPEC:
+  template <typed_sender Sender, template <class...> class Variant>
+    using error_types_of_t =
+      typename sender_traits<decay_t<Sender>>::template error_types<Variant>;
+
+  template<class S, class... Ts>
+    concept sender_of =
+      typed_sender<S> &&
+      same_as<
+        __types<Ts...>,
+        value_types_of_t<S, __types, __single_t>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
@@ -1277,26 +1290,25 @@ namespace std::execution {
   template <class S_, class F>
     requires typed_sender<__t<S_>> &&
       requires {
-        typename sender_traits<__t<S_>>::template value_types<
+        typename value_types_of_t<__t<S_>,
           __bind_front<invoke_result_t, F>::template __f,
           __types>;
       }
   struct sender_traits<__then::__impl::__sender<S_, F>> {
     using S = __t<S_>;
     template <template<class...> class Tuple, template<class...> class Variant>
-      using value_types =
-        typename sender_traits<S>::template value_types<
-          __bind_front<invoke_result_t, F>::template __f,
-          __transform<
-            Variant,
-            __eval2<
-              __if<is_void, __empty<Tuple>, __curry<Tuple>>::template __f
-            >::template __f
+      using value_types = value_types_of_t<S,
+        __bind_front<invoke_result_t, F>::template __f,
+        __transform<
+          Variant,
+          __eval2<
+            __if<is_void, __empty<Tuple>, __curry<Tuple>>::template __f
           >::template __f
-        >;
+        >::template __f
+      >;
 
     template <template<class...> class Variant>
-      using error_types = typename sender_traits<S>::template error_types<Variant>;
+      using error_types = error_types_of_t<S, Variant>;
 
     static constexpr bool sends_done = sender_traits<S>::sends_done;
   };
@@ -1532,14 +1544,16 @@ namespace std::execution {
           template <class... Ts>
             using __bind_tuples = __bind_front<variant, tuple<set_done_t>, Ts...>;
 
-          using __bound_values_t = typename sender_traits<Sender>::template value_types<
+          using __bound_values_t = value_types_of_t<
+              Sender,
               __transform<
                   __bind_front<tuple, set_value_t>::template __f,
                   decay_t
               >::template __f,
               __bind_tuples>;
 
-          using __variant_t = typename sender_traits<Sender>::template error_types<
+          using __variant_t = error_types_of_t<
+              Sender,
               __transform<
                   __bound_values_t::template __f,
                   __transform<
@@ -1873,20 +1887,43 @@ namespace std::execution {
         }
       };
 
+      template <class... Ts>
+          requires (sizeof...(Ts) == 0)
+        using __none_t = void;
+
+      template <class Sender>
+        concept __zero_alternatives =
+          requires {
+            typename value_types_of_t<Sender, __types, __none_t>;
+          };
+
       template <class... SenderIds>
         struct __sender {
+         private:
           template <template <class...> class Tuple,
                     template <class...> class Variant>
-            using value_types = Variant<__meta_invoke<__concat<Tuple>,
-                typename sender_traits<__t<SenderIds>>::template
-                    value_types<__types, __single_t>...>>;
+            struct __value_types {
+              using type = Variant<__meta_invoke<__concat<Tuple>,
+                value_types_of_t<__t<SenderIds>, __types, __single_t>...>>;
+            };
+
+          template <template <class...> class Tuple,
+                    template <class...> class Variant>
+              requires (__zero_alternatives<__t<SenderIds>> ||...)
+            struct __value_types<Tuple, Variant> {
+              using type = Variant<>;
+            };
+
+         public:
+          template <template <class...> class Tuple,
+                    template <class...> class Variant>
+            using value_types = __t<__value_types<Tuple, Variant>>;
 
           template <template <class...> class Variant>
             using error_types =
                 __meta_invoke<__concat<__unique<Variant>::template __f>,
                     __types<exception_ptr>,
-                    typename sender_traits<__t<SenderIds>>::template
-                        error_types<__types>...>;
+                    error_types_of_t<__t<SenderIds>, __types>...>;
 
           static constexpr bool sends_done = true;
 
@@ -1908,36 +1945,41 @@ namespace std::execution {
                   const Receiver& base() const & noexcept {
                     return __op_->__recvr_;
                   }
-                  template <class... Values>
-                    void set_value(Values&&... vals) && noexcept try {
-                      __state_t expected = __started;
-                      // We only need to bother recording the completion values
-                      // if we're not already in the "error" or "done" state.
-                      if (__op_->__state_ == __started) {
-                        std::get<Index>(__op_->__values_).emplace(
-                            (Values&&) vals...);
-                      }
-                      (void) __op_->__barrier_.arrive();
-                    } catch(...) {
-                      ((__receiver&&) *this).set_error(current_exception());
-                    }
                   template <class Error>
-                      requires receiver<Receiver, Error>
-                    void set_error(Error&& error, __state_t expected = __started) && noexcept {
+                    void __set_error(Error&& err, __state_t expected) noexcept {
                       // TODO: What memory orderings are actually needed here?
                       if (__op_->__state_.compare_exchange_strong(expected, __error)) {
+                        __op_->__stop_source_.request_stop();
                         // We won the race, free to write the error into the operation
                         // state without worry.
                         try {
-                          __op_->__errors_.template emplace<decay_t<Error>>((Error&&) error);
+                          __op_->__errors_.template emplace<decay_t<Error>>((Error&&) err);
                         } catch(...) {
                           __op_->__errors_.template emplace<exception_ptr>(current_exception());
                         }
-                        __op_->__stop_source_.request_stop();
                       }
-                      (void) __op_->__barrier_.arrive(); // Fatal error if it throws
+                      __op_->__arrive();
                     }
-                  void set_done() && noexcept try {
+                  template <class... Values>
+                    void set_value(Values&&... vals) && noexcept {
+                      // We only need to bother recording the completion values
+                      // if we're not already in the "error" or "done" state.
+                      if (__op_->__state_ == __started) {
+                        try {
+                          std::get<Index>(__op_->__values_).emplace(
+                              (Values&&) vals...);
+                        } catch(...) {
+                          __set_error(current_exception(), __started);
+                        }
+                      }
+                      __op_->__arrive();
+                    }
+                  template <class Error>
+                      requires receiver<Receiver, Error>
+                    void set_error(Error&& err) && noexcept {
+                      __set_error((Error&&) err, __started);
+                    }
+                  void set_done() && noexcept {
                     __state_t expected = __started;
                     // Transition to the "done" state if and only if we're in the
                     // "started" state. (If this fails, it's because we're in an
@@ -1945,12 +1987,10 @@ namespace std::execution {
                     if (__op_->__state_.compare_exchange_strong(expected, __done)) {
                       __op_->__stop_source_.request_stop();
                     }
-                    (void) __op_->__barrier_.arrive(); // potentially throwing
-                  } catch(...) {
-                    // Try to put this operation into the error state
-                    ((__receiver&&) *this).set_error(current_exception(), __done);
+                    __op_->__arrive();
                   }
-                  friend in_place_stop_token tag_invoke(get_stop_token_t, const __receiver& self) noexcept {
+                  friend in_place_stop_token tag_invoke(
+                      get_stop_token_t, const __receiver& self) noexcept {
                     return self.__op_->__stop_source_.get_token();
                   }
                   __operation* __op_;
@@ -1978,7 +2018,13 @@ namespace std::execution {
               using child_optstates_tuple_t =
                   decltype(connect_children(nullptr, __declval<WhenAll>(), Indices{}));
 
-              void complete() noexcept {
+              void __arrive() noexcept {
+                if (0 == --__count_) {
+                  __complete();
+                }
+              }
+
+              void __complete() noexcept {
                 // Stop callback is no longer needed. Destroy it.
                 __on_stop_.reset();
                 // All child operations have completed and arrived at the barrier.
@@ -1989,8 +2035,13 @@ namespace std::execution {
                     [this](auto&... opt_values) -> void {
                       std::apply(
                         [this](auto&... all_values) -> void {
-                          execution::set_value(
-                              (Receiver&&) __recvr_, std::move(all_values)...);
+                          try {
+                            execution::set_value(
+                                (Receiver&&) __recvr_, std::move(all_values)...);
+                          } catch(...) {
+                            execution::set_error(
+                                (Receiver&&) __recvr_, current_exception());
+                          }
                         },
                         std::tuple_cat(
                           std::apply(
@@ -2016,17 +2067,9 @@ namespace std::execution {
                 }
               }
 
-              struct __completion_fn {
-                void operator()() const noexcept {
-                  __op_->complete();
-                }
-                __operation* __op_;
-              };
-
               __operation(WhenAll&& when_all, Receiver recvr)
                 : __child_states_{connect_children(this, (WhenAll&&) when_all, Indices{})}
                 , __recvr_((Receiver&&) recvr)
-                , __barrier_(sizeof...(SenderIds), __completion_fn{this})
               {}
 
               friend void tag_invoke(start_t, __operation& self) noexcept {
@@ -2047,12 +2090,11 @@ namespace std::execution {
 
               child_optstates_tuple_t __child_states_;
               Receiver __recvr_;
-              barrier<__completion_fn> __barrier_;
+              atomic<size_t> __count_{sizeof...(SenderIds)};
               // Could be non-atomic here and atomic_ref everywhere except __completion_fn
               atomic<__state_t> __state_{__started};
-              error_types<variant> __errors_{};
-              tuple<typename sender_traits<__t<SenderIds>>::template
-                  value_types<tuple, optional>...> __values_{};
+              error_types_of_t<__sender, variant> __errors_{};
+              tuple<value_types_of_t<__t<SenderIds>, tuple, optional>...> __values_{};
               in_place_stop_source __stop_source_{};
               optional<typename stop_token_type_t<Receiver&>::template
                   callback_type<__on_stop_requested>> __on_stop_{};
@@ -2064,8 +2106,8 @@ namespace std::execution {
                 using __f = std::bool_constant<receiver_of<Receiver, Values...>>;
             };
           template <class Receiver>
-            using __can_connect_to_t =
-              value_types<__receiver_of<Receiver>::template __f, __single_t>;
+            using __can_connect_to_t = value_types_of_t<
+              __sender, __receiver_of<Receiver>::template __f, __single_or_void_t>;
 
           template <__decays_to<__sender> Self, receiver Receiver>
               requires __is_true<__can_connect_to_t<Receiver>>
@@ -2078,10 +2120,9 @@ namespace std::execution {
         };
 
       template <class Sender>
-        concept __one_alternative =
+        concept __zero_or_one_alternative =
           requires {
-            typename sender_traits<decay_t<Sender>>::template
-              value_types<__types, __single_t>;
+            typename value_types_of_t<Sender, __types, __single_or_void_t>;
           };
     } // namespce __impl
 
@@ -2096,7 +2137,7 @@ namespace std::execution {
       }
 
       template <typed_sender... Senders>
-        requires (__impl::__one_alternative<Senders> &&...)
+        requires (__impl::__zero_or_one_alternative<Senders> &&...)
       auto operator()(Senders&&... sndrs) const
         noexcept(nothrow_tag_invocable<when_all_t, Senders...>)
         -> __impl::__sender<__id_t<decay_t<Senders>>...> {
@@ -2104,7 +2145,7 @@ namespace std::execution {
             (Senders&&) sndrs...};
       }
     } when_all {};
-  } // namespace when_all
+  } // namespace __when_all
 } // namespace std::execution
 
 namespace std::this_thread {
@@ -2115,9 +2156,7 @@ namespace std::this_thread {
       // What should sync_wait(just_done()) return?
       template <class S>
         using __sync_wait_result_t =
-            typename execution::sender_traits<
-              remove_cvref_t<S>
-            >::template value_types<tuple, __single_t>;
+            execution::value_types_of_t<S, tuple, __single_t>;
 
       template <class Tuple>
         struct __state {
