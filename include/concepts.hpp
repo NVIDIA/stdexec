@@ -102,4 +102,12 @@ namespace std {
   template <class T>
     concept __boolean_testable =
       convertible_to<T, bool>;
-}
+
+  template <class T>
+    concept __movable_value =
+      move_constructible<decay_t<T>> &&
+      constructible_from<decay_t<T>, T>;
+
+  template <class Trait>
+    concept __is_true = Trait::value;
+} // namespace std
