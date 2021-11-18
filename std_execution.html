@@ -6202,7 +6202,9 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
     <li data-md>
      <p>A <code class="highlight"><c- n>run_loop</c-></code> instance has an associated <i>count</i> that corresponds to the number of work items that are in its queue. Additionally, a <code class="highlight"><c- n>run_loop</c-></code> has an associated <i>state</i> that can be either <i>finishing</i> or <i>not-finishing</i>.</p>
     <li data-md>
-     <p>[<i>Note:</i> Implementations are encouraged to use an intrusive queue of operation states to hold the work units to make scheduling allocation-free. -- <i>end note</i>]</p>
+     <p>Concurrent invocations of the member functions of <code class="highlight"><c- n>run_loop</c-></code>, other than <code class="highlight"><c- n>run</c-></code> and its destructor, do not introduce data races. The member functions <code class="highlight"><c- n>pop_front</c-></code>, <code class="highlight"><c- n>push_back</c-></code>, and <code class="highlight"><c- n>finish</c-></code> execute atomically.</p>
+    <li data-md>
+     <p>[<i>Note:</i> Implementations are encouraged to use an intrusive queue of operation states to hold the work units to make scheduling allocation-free. — <i>end note</i>]</p>
 <pre class="highlight"><c- k>class</c-> <c- nc>run_loop</c-> <c- p>{</c->
   <c- c1>// [execution.contexts.run_loop.types] Associated types</c->
   <c- k>class</c-> <i><c- nc>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
@@ -6308,12 +6310,10 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
      <p><i>Effects:</i> Waits until one of the following conditions is <code class="highlight">true</code>:</p>
      <ul>
       <li data-md>
-       <p><i>count</i> is <code class="highlight"><c- mi>0</c-></code> and <i>state</i> is <i>finishing</i>, in which case <code class="highlight"><c- n>pop_front</c-><c- p>()</c-></code> returns <code class="highlight"><c- k>nullptr</c-></code>; or</p>
+       <p><i>count</i> is <code class="highlight"><c- mi>0</c-></code> and <i>state</i> is <i>finishing</i>, in which case <code class="highlight"><c- n>pop_front</c-></code> returns <code class="highlight"><c- k>nullptr</c-></code>; or</p>
       <li data-md>
-       <p><i>count</i> is greater than <code class="highlight"><c- mi>0</c-></code>, in which case <code class="highlight"><c- n>pop_front</c-><c- p>()</c-></code> removes an item from the front of the queue, decrements <i>count</i> by <code class="highlight"><c- mi>1</c-></code>, and returns the item.</p>
+       <p><i>count</i> is greater than <code class="highlight"><c- mi>0</c-></code>, in which case an item is removed from the front of the queue, <i>count</i> is decremented by <code class="highlight"><c- mi>1</c-></code>, and the removed item is returned.</p>
      </ul>
-    <li data-md>
-     <p><i>Synchronization:</i> This function is thread-safe with respect to <code class="highlight"><c- n>push_back</c-><c- p>()</c-></code> and <code class="highlight"><c- n>finish</c-><c- p>()</c-></code>. Removing a queue item and decrementing <i>count</i> are executed atomically.</p>
    </ol>
 <pre class="highlight"><c- b>void</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>push_back</c-><c- p>(</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>item</c-><c- p>);</c->
 </pre>
@@ -6321,7 +6321,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
     <li data-md>
      <p><i>Effects:</i> Adds <code class="highlight"><c- n>item</c-></code> to the back of the queue and increments <i>count</i> by <code class="highlight"><c- mi>1</c-></code>.</p>
     <li data-md>
-     <p><i>Synchronization:</i> This function is thread-safe with respect to <code class="highlight"><c- n>pop_front</c-><c- p>()</c-></code> and <code class="highlight"><c- n>finish</c-><c- p>()</c-></code>. Adding a queue item and incrementing the <i>count</i> are executed atomically.</p>
+     <p><i>Synchronization:</i> This operation synchronizes with the <code class="highlight"><c- n>pop_front</c-></code> operation that obtains <code class="highlight"><c- n>item</c-></code>.</p>
    </ol>
 <pre class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i> <c- n>run_loop</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>();</c->
 </pre>
@@ -6339,7 +6339,9 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 <c- p>}</c->
 </pre>
     <li data-md>
-     <p><i>Synchronization:</i> None.</p>
+     <p><i>Precondition:</i> <i>state</i> is <i>not-finishing</i>.</p>
+    <li data-md>
+     <p><i>Postcondition:</i> <i>state</i> is <i>finishing</i>.</p>
    </ol>
 <pre class="highlight"><c- b>void</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>finish</c-><c- p>();</c->
 </pre>
@@ -6347,7 +6349,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
     <li data-md>
      <p><i>Effects:</i> Changes <i>state</i> to <i>finishing</i>.</p>
     <li data-md>
-     <p><i>Synchronization:</i> This function is thread-safe with respect to <code class="highlight"><c- n>pop_front</c-><c- p>()</c-></code> and <code class="highlight"><c- n>push_back</c-><c- p>()</c-></code>.</p>
+     <p><i>Synchronization:</i> This operation synchronizes with all <code class="highlight"><c- n>pop_front</c-></code> operations on this object.</p>
    </ol>
    <h3 class="heading settled" data-level="9.10" id="spec-execution.coro_utils"><span class="secno">9.10. </span><span class="content">Coroutine utilities <b>[execution.coro_utils]</b></span><a class="self-link" href="#spec-execution.coro_utils"></a></h3>
    <h4 class="heading settled" data-level="9.10.1" id="spec-execution.coro_utils.as_awaitable"><span class="secno">9.10.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>as_awaitable</c-></code> <b>[execution.coro_utils.as_awaitable]</b></span><a class="self-link" href="#spec-execution.coro_utils.as_awaitable"></a></h4>
