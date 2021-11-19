@@ -814,6 +814,7 @@ The changes since R2 are as follows:
 * Add `receiver_adaptor` utility to simplify writing receivers.
 * Fix recursive definition of the `scheduler` concept.
 * Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
+* Specify the cancellation scope of the `when_all` algorithm.
 * Add a design rationale for the removal of the possibly eager algorithms.
 
 ## R2 ## {#r2}
