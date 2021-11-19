@@ -281,7 +281,7 @@ namespace std::execution {
   }
 
   template <class R>
-    using stop_token_type_t =
+    using stop_token_of_t =
       remove_cvref_t<decltype(get_stop_token(std::declval<R>()))>;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1330,7 +1330,7 @@ namespace std::execution {
       template <typename Receiver_>
         class __operation final : __task {
           using Receiver = __t<Receiver_>;
-          using stop_token_type = stop_token_type_t<Receiver&>;
+          using stop_token_type = stop_token_of_t<Receiver&>;
 
           friend void tag_invoke(std::execution::start_t, __operation& op) noexcept {
             op.__start_();
@@ -2113,7 +2113,7 @@ namespace std::execution {
               error_types_of_t<__sender, variant> __errors_{};
               tuple<value_types_of_t<__t<SenderIds>, tuple, optional>...> __values_{};
               in_place_stop_source __stop_source_{};
-              optional<typename stop_token_type_t<Receiver&>::template
+              optional<typename stop_token_of_t<Receiver&>::template
                   callback_type<__on_stop_requested>> __on_stop_{};
             };
 

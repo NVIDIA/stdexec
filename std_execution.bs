@@ -815,6 +815,7 @@ The changes since R2 are as follows:
 * Fix recursive definition of the `scheduler` concept.
 * Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
 * Specify the cancellation scope of the `when_all` algorithm.
+* Add `value_types_of_t` and `error_types_of_t` alias templates; rename `stop_token_type_t` to `stop_token_of_t`.
 * Add a design rationale for the removal of the possibly eager algorithms.
 
 ## R2 ## {#r2}
@@ -1174,7 +1175,7 @@ At a high-level, the facilities proposed by this paper for supporting cancellati
 * Add `std::in_place_stop_token`, `std::in_place_stop_source` and `std::in_place_stop_callback<CB>` types that provide a more efficient implementation of a stop-token for use in structured concurrency situations.
 * Add `std::never_stop_token` for use in places where you never want to issue a stop-request
 * Add `std::execution::get_stop_token()` CPO for querying the stop-token to use for an operation from its receiver.
-* Add `std::execution::stop_token_type_t<T>` for querying the type of a stop-token returned from `get_stop_token()`
+* Add `std::execution::stop_token_of_t<T>` for querying the type of a stop-token returned from `get_stop_token()`
 
 In addition, there are requirements added to some of the algorithms to specify what their cancellation
 behaviour is and what the requirements of customisations of those algorithms are with respect to
@@ -2570,7 +2571,7 @@ namespace std::execution {
     inline constexpr get_stop_token_t get_stop_token{};
   }
   template <class R>
-    using stop_token_type_t =
+    using stop_token_of_t =
       remove_cvref_t<decltype(get_stop_token(declval<R>()))>;
 
   // [execution.op_state], operation states
@@ -2614,6 +2615,17 @@ namespace std::execution {
 
   template&lt;class S>
     struct sender_traits;
+
+  template&lt;typed_sender S,
+           template &lt;class...> class Tuple = tuple,
+           template &lt;class...> class Variant = variant>
+    using value_types_of_t =
+      typename sender_traits&lt;remove_cvref_t&lt;S>>::template value_types&lt;Tuple, Variant>;
+
+  template&lt;typed_sender S,
+           template &lt;class...> class Variant = variant>
+    using error_types_of_t =
+      typename sender_traits&lt;remove_cvref_t&lt;S>>::template error_types&lt;Variant>;
 
   inline namespace <i>unspecified</i> {
     // [execution.senders.connect], the connect sender algorithm
@@ -3080,11 +3092,11 @@ enum class forward_progress_guarantee {
           };
         </pre>
 
-5. If `sender_traits<S>::value_types<Tuple, Variant>` for some sender type `S` is well formed, it shall be a type <code>Variant&lt;Tuple&lt;Args<sub>0</sub>...>, Tuple&lt;Args<sub>1</sub>...>, ..., Tuple&lt;Args<sub>N</sub>...>>></code>, where the type packs <code>Args<sub>0</sub></code> through <code>Args<sub>N</sub></code> are the packs of types the sender `S` passes as
+5. If `value_types_of_t<S, Tuple, Variant>` for some sender type `S` is well formed, it shall be a type <code>Variant&lt;Tuple&lt;Args<sub>0</sub>...>, Tuple&lt;Args<sub>1</sub>...>, ..., Tuple&lt;Args<sub>N</sub>...>>></code>, where the type packs <code>Args<sub>0</sub></code> through <code>Args<sub>N</sub></code> are the packs of types the sender `S` passes as
     arguments to `execution::set_value` after a receiver object. If such sender `S` invokes `execution::set_value(r, args...)` for some receiver `r`, where `decltype(args)` is not one of the type packs <code>Args<sub>0</sub></code> through <code>Args<sub>N</sub></code>, the program is ill-formed with no
     diagnostic required.
 
-6. If `sender_traits<S>::error_types<Variant>` for some sender type `S` is well formed, it shall be a type <code>Variant&lt;E<sub>0</sub>, E<sub>1</sub>, ..., E<sub>N</sub>></code>, where the types <code>E<sub>0</sub></code> through <code>E<sub>N</sub></code> are the types the sender `S` passes as arguments to `execution::set_error` after a receiver
+6. If `error_types_of_t<S, Variant>` for some sender type `S` is well formed, it shall be a type <code>Variant&lt;E<sub>0</sub>, E<sub>1</sub>, ..., E<sub>N</sub>></code>, where the types <code>E<sub>0</sub></code> through <code>E<sub>N</sub></code> are the types the sender `S` passes as arguments to `execution::set_error` after a receiver
     object. If such sender `S` invokes `execution::set_error(r, e)` for some receiver `r`, where `decltype(e)` is not one of the types <code>E<sub>0</sub></code> through <code>E<sub>N</sub></code>, the program is ill-formed with no diagnostic required.
 
 7. If `sender_traits<S>::sends_done` is well formed and `false`, and such sender `S` invokes `execution::set_done(r)` for some receiver `r`, the program is ill-formed with no diagnostic required.
@@ -3721,7 +3733,7 @@ are all well-formed.
 
     * If the number of subexpressions <code>s<i><sub>i</sub></i>...</code> is 0, or
     * If any type <code>S<i><sub>i</sub></i></code> does not satisfy `execution::typed_sender`, or
-    * If for any type <code>S<i><sub>i</sub></i></code>, the type <code>sender_traits&lt;remove_cvref_t&lt;S<i><sub>i</sub></i>>>::value_types&lt;tuple, <i>zero-or-one</i>></code> is ill-formed, where <code><i>zero-or-one</i></code> is a template alias equivalent to the following:
+    * If for any type <code>S<i><sub>i</sub></i></code>, the type <code>value_types_of_t&lt;S<i><sub>i</sub></i>, tuple, <i>zero-or-one</i>></code> is ill-formed, where <code><i>zero-or-one</i></code> is a template alias equivalent to the following:
         <pre highlight="c++">
         template &lt;class... Ts>
             requires (sizeof...(Ts) <= 1)
@@ -3750,7 +3762,7 @@ are all well-formed.
         
             * Each operation state <code>child_op<sub><i>i</i></sub></code>, 
             * A stop source of type `in_place_stop_source`,
-            * A stop callback of type <code>optional&lt;stop_token_type_t&lt;OutR&amp;>::callback_type&lt;<i>stop-callback-fn</i>>></code>, where <code><i>stop-callback-fn</i></code> is an implementation defined class type equivalent to the following:
+            * A stop callback of type <code>optional&lt;stop_token_of_t&lt;OutR&amp;>::callback_type&lt;<i>stop-callback-fn</i>>></code>, where <code><i>stop-callback-fn</i></code> is an implementation defined class type equivalent to the following:
 
                 <pre highlight="c++">
                 struct <i>stop-callback-fn</i> {
@@ -3771,13 +3783,13 @@ are all well-formed.
 
         5. The associated types of the sender `W` are as follows:
 
-            * `sender_traits<W>::value_types<Tuple, Variant>` is:
+            * `value_types_of_t<W, Tuple, Variant>` is:
             
-                * `Variant<>` if for any type <code>S<i><sub>i</sub></i></code>, the type <code>sender_traits&lt;remove_cvref_t&lt;S<i><sub>i</sub></i>>>::value_types&lt;Tuple, Variant></code> is `Variant<>`.
+                * `Variant<>` if for any type <code>S<i><sub>i</sub></i></code>, the type <code>value_types_of_t&lt;S<i><sub>i</sub></i>, Tuple, Variant></code> is `Variant<>`.
 
-                * Otherwise, <code>Variant&lt;Tuple&lt;V<i><sub>0</sub></i>..., V<i><sub>1</sub></i>,..., V<i><sub>n-1</sub></i>...>></code> where <code><i>n</i></code> is the count of types in <code>S<i><sub>i</sub></i>...</code>, and where <code>V<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>sender_traits&lt;remove_cvref_t&lt;S<i><sub>i</sub></i>>>::value_types&lt;Tuple, Variant></code> is an alias for <code>Variant&lt;Tuple&lt;V<i><sub>i</sub></i>...>></code>.
+                * Otherwise, <code>Variant&lt;Tuple&lt;V<i><sub>0</sub></i>..., V<i><sub>1</sub></i>,..., V<i><sub>n-1</sub></i>...>></code> where <code><i>n</i></code> is the count of types in <code>S<i><sub>i</sub></i>...</code>, and where <code>V<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>value_types_of_t&lt;S<i><sub>i</sub></i>, Tuple, Variant></code> is an alias for <code>Variant&lt;Tuple&lt;V<i><sub>i</sub></i>...>></code>.
 
-            * `sender_traits<W>::error_types<Variant>` is <code>Variant&lt;exception_ptr, U<i><sub>i</sub></i>...></code>, where <code>U<i><sub>i</sub></i>...</code> is the unique set of types in <code>E<i><sub>0</sub></i>..., E<i><sub>1</sub></i>,..., E<i><sub>n-1</sub></i>...</code>, where <code>E<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>sender_traits&lt;remove_cvref_t&lt;S<i><sub>i</sub></i>>>::error_types&lt;Variant></code> is an alias for <code>Variant&lt;E<i><sub>i</sub></i>...></code>.
+            * `error_types_of_t<W, Variant>` is <code>Variant&lt;exception_ptr, U<i><sub>i</sub></i>...></code>, where <code>U<i><sub>i</sub></i>...</code> is the unique set of types in <code>E<i><sub>0</sub></i>..., E<i><sub>1</sub></i>,..., E<i><sub>n-1</sub></i>...</code>, where <code>E<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>error_types_of_t&lt;S<i><sub>i</sub></i>, Variant></code> is an alias for <code>Variant&lt;E<i><sub>i</sub></i>...></code>.
 
             * `sender_traits<W>::sends_done` is `true`.
 
@@ -3826,8 +3838,7 @@ are all well-formed.
     <pre highlight=c++>
         template&lt;typed_sender S>
           using <i>into-with-variant-type</i> =
-            typename execution::sender_traits&lt;remove_cvref_t&lt;S>>
-              ::template value_types&lt;tuple, variant>;
+            value_types_of_t&lt;S>;
 
         template&lt;typed_sender S>
           <i>see-below</i> into_variant(S && s);
@@ -3963,12 +3974,12 @@ from the operation before the operation completes.
 
     <pre highlight=c++>
         template&lt;typed_sender S>
-          using <i>sync-wait-type</i> = optional&lt;
-            typename execution::sender_traits&lt;remove_cvref_t&lt;S>>
-              ::template value_types&lt;tuple, type_identity_t>>;
+          using <i>sync-wait-type</i> =
+            optional&lt;execution::value_types_of_t&lt;S, tuple, type_identity_t>>;
 
         template&lt;typed_sender S>
-          using <i>sync-wait-with-variant-type</i> = optional<<i>into-variant-type</i>&lt;S>>;
+          using <i>sync-wait-with-variant-type</i> =
+            optional<<i>into-variant-type</i>&lt;S>>;
     </pre>
 
 3. The name `this_thread::sync_wait` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, or the number of the arguments `sender_traits<S>::value_types` passes into the
@@ -4377,9 +4388,9 @@ from the operation before the operation completes.
 
 2. Alias template <i>single-sender-value-type</i> is defined as follows:
 
-    1. If `sender_traits<remove_cvref_t<S>>::value_types<Tuple, Variant>` would have the form `Variant<Tuple<T>>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `T`.
+    1. If `value_types_of_t<S, Tuple, Variant>` would have the form `Variant<Tuple<T>>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `T`.
 
-    2. Otherwise, if `sender_traits<remove_cvref_t<S>>::value_types<Tuple, Variant>` would have the form `Variant<Tuple<>>` or `Variant<>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `void`.
+    2. Otherwise, if `value_types_of_t<S, Tuple, Variant>` would have the form `Variant<Tuple<>>` or `Variant<>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `void`.
 
     3. Otherwise, <code><i>single-sender-value-type</i>&lt;S</code> is ill-formed.
 
