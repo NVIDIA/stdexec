@@ -280,9 +280,9 @@ namespace std::execution {
     inline constexpr get_stop_token_t get_stop_token{};
   }
 
-  // NOT TO SPEC
   template <class R>
-    using stop_token_type_t = remove_cvref_t<decltype(get_stop_token(std::declval<R>()))>;
+    using stop_token_type_t =
+      remove_cvref_t<decltype(get_stop_token(std::declval<R>()))>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
