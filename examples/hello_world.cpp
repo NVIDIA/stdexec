@@ -18,15 +18,14 @@
 // Pull in the reference implementation of P2300:
 #include <execution.hpp>
 
-#include "./schedulers/single_thread_context.hpp"
+#include "./schedulers/static_thread_pool.hpp"
 
 using namespace std::execution;
 using std::this_thread::sync_wait;
 
 int main() {
-  example::single_thread_context ctx;
-  scheduler auto sch = ctx.get_scheduler();
-  //scheduler auto sch = get_thread_pool().scheduler();                     // 1
+  example::static_thread_pool ctx{8};
+  scheduler auto sch = ctx.get_scheduler();                               // 1
 
   sender auto begin = schedule(sch);                                      // 2
   sender auto hi_again = then(begin, [] {                                 // 3
