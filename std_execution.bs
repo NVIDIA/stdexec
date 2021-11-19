@@ -814,6 +814,7 @@ The changes since R2 are as follows:
 * Add `receiver_adaptor` utility to simplify writing receivers.
 * Fix recursive definition of the `scheduler` concept.
 * Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
+* Add a design rationale for the removal of the possibly eager algorithms.
 
 ## R2 ## {#r2}
 
@@ -1246,6 +1247,133 @@ support for cancellation is a fundamental requirement for an async model and is 
 talk about the semantics of some of the algorithms proposed in this paper.
 
 This paper will be updated in the future with any changes that arise from the investigations into P2175R0.
+
+## Sender factories and adaptors are lazy ## {#design-lazy-algorithms}
+
+In an earlier revision of this paper, some of the proposed algorithms supported
+executing their logic eagerly; <i>i.e.</i>, before the returned sender has been
+connected to a receiver and started. These algorithms were removed because eager
+execution has a number of negative semantic and performance implications.
+
+### Eager execution leads to detached work or worse ### {#design-lazy-algorithms-detached}
+
+One of the questions that arises with APIs that can potentially return
+eagerly-executing senders is "What happens when those senders are destructed
+without a call to `execution::connect`?" or similarly, "What happens if a call
+to `execution::connect` is made, but the returned operation state is destroyed
+before `execution::start` is called on that operation state"?
+
+In these cases, the operation represented by the sender is potentially executing
+concurrently in another thread at the time that the destructor of the sender
+and/or operation-state is running. In the case that the operation has not
+completed executing by the time that the destructor is run we need to decide
+what the semantics of the destructor is.
+
+There are three main strategies that can be adopted here, none of which is
+particularly satisfactory:
+
+1.  Make this undefined-behaviour - the caller must ensure that any
+    eagerly-executing sender is always joined by connecting and starting that
+    sender. This approach is generally pretty hostile to programmers,
+    particularly in the presence of exceptions, and is thus not recommended.
+
+2.  Detach from the computation - let the operation continue in the background -
+    like an implicit call to `std::thread::detach()`. While this approach can
+    work in some circumstances for some kinds of applications, in general it is
+    also pretty user-hostile; it makes it difficult to reason about the safe
+    destruction of resources used by these eager operations. In general, detached
+    work necessitates some kind of garbage collection; <i>e.g.</i>,
+    `std::shared_ptr`, to ensure resources are kept alive until the operations
+    complete, and can make clean shutdown nigh impossible.
+
+3.  Block in the destructor until the operation completes. This approach is
+    probably the safest to use as it preserves the structured nature of the
+    concurrent operations, but also introduces the potential for deadlocking the
+    application if the completion of the operation depends on the current thread
+    making forward progress.
+
+      The risk of deadlock might occur, for example, if a thread-pool with a
+    small number of threads is executing code that creates a sender representing
+    an eagerly-executing operation and then calls the destructor of that sender
+    without joining it (e.g. because an exception was thrown). If the current
+    thread blocks waiting for that eager operation to complete and that eager
+    operation cannot complete until some entry enqueued to the thread-pool's
+    queue of work is run then the thread may wait for an indefinite amount of
+    time. If all thread of the thread-pool are simultaneously performing such
+    blocking operations then deadlock can result.
+
+There are also minor variations on each of these choices. For example:
+
+4.  A variation of (1): Call `std::terminate` if an eager sender is destructed
+    without joining it. This is the approach that `std::thread` destructor
+    takes.
+
+5.  A variation of (2): Request cancellation of the operation before detaching.
+    This reduces the chances of operations continuing to run indefinitely in the
+    background once they have been detached but does not solve the
+    lifetime- or shutdown-related challenges.
+
+6.  A variation of (3): Request cancellation of the operation before blocking on
+    its completion. This is the strategy that `std::jthread` uses for its
+    destructor. It reduces the risk of deadlock but does not eliminate it.
+
+### Eager senders complicate algorithm implementations ### {#design-lazy-algorithms-complexity}
+
+Algorithms that can assume they are operating on senders with strictly lazy
+semantics are able to make certain optimizations that are not available if
+senders can be potentially eager. With lazy senders, an algorithm can safely
+assume that a call to `execution::start` on an operation state strictly happens
+before any receiver methods are called. This frees the algorithm from needing to
+resolve potential race conditions between the start and completion of the work.
+
+When an algorithm needs to deal with potentially eager senders, the potential
+race conditions can be resolved one of several ways, none of which is desirable:
+
+1.  Assume the worst and implement the algorithm defensively, assuming all
+    senders are eager. This obviously has overheads both at runtime and in
+    algorithm complexity. Resolving race conditions is hard.
+
+2.  Require senders to declare whether they are eager or not with a query.
+    Algorithms can then implement two different implementation strategies, one
+    for strictly lazy senders and one for potentially eager senders. This
+    addresses the performance problem of (1) while compounding the complexity
+    problem.
+
+3.  Push the problem back onto eager senders by requiring them to never call a
+    receiver's `set_*` completion until after `execution::start` has been called
+    on the operation state. That puts the onus of dealing with the race
+    condition on the sender author, which is arguably where it belongs. But it
+    has the negative effect of delaying the completion of the operation. Even
+    when the work is done and the continuation available, the sender has to
+    withold the completion, possibly indefinitely.
+
+Of these options, (3) seems the least bad but would seem to run contrary to the
+<i>raison d'être</i> of eager algorithms, which ostensibly is to make the
+results available sooner.
+
+### Eager senders incur cancellation-related overhead ### {#design-lazy-algorithms-runtime}
+
+Another implication of the use of eager operations is with regards to
+cancellation. The eagerly executing operation will not have access to the
+caller's stop token until the sender is connected to a receiver. If we still
+want to be able to cancel the eager operation then it will need to create a new
+stop source and pass its associated stop token down to child operations. Then
+when the returned sender is eventually connected it will register a stop
+callback with the receiver's stop token that will request stop on the eager
+sender's stop source.
+
+As the eager operation does not know at the time that it is launched what the
+type of the receiver is going to be, and thus whether or not the stop token
+returned from `execution::get_stop_token` is an `std::unstoppable_token` or not,
+the eager operation is going to need to assume it might be later connected to a
+receiver with a stop token that might actually issue a stop request. Thus it
+needs to incur the runtime overhead of supporting cancellation, even if
+cancellation will never be requested by the caller.
+
+The eager operation will also need to do this to support sending a stop request
+to the eager operation in the case that the sender representing the eager work
+is destroyed before it has been joined (assuming strategy (5) or (6) listed
+above is chosen).
 
 ## Schedulers advertise their forward progress guarantees ## {#design-fpg}
 
