@@ -1560,7 +1560,7 @@ Possible extra rowspan handling
     blockquote c-[vi] { color: inherit; } /* Name.Variable.Instance */
     blockquote c-[il] { color: inherit; } /* Literal.Number.Integer.Long */
   </style>
-  <meta content="Bikeshed version dfbc2b297, updated Thu Nov 11 15:52:32 2021 -0800" name="generator">
+  <meta content="Bikeshed version bbc364800, updated Mon Nov 15 13:57:55 2021 -0800" name="generator">
   <link href="https://wg21.link/P2300" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
 <style>
@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-18">2021-11-18</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-19">2021-11-19</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4554,6 +4554,9 @@ the shared stop state.</p>
     <c- k>struct</c-> <c- nc>get_stop_token_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_stop_token_t</c-> <c- n>get_stop_token</c-><c- p>{};</c->
   <c- p>}</c->
+  <c- k>template</c-> <class r>
+    <c- k>using</c-> <c- n>stop_token_type_t</c-> <c- o>=</c->
+      <c- n>remove_cvref_t</c-><decltypeU00028get_stop_tokenU00028declvalU0003Cr><c- p>()))</c-><c- o>></c-><c- p>;</c->
 
   <c- c1>// [execution.op_state], operation states</c->
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>O</c-><c- o>></c->
@@ -4720,7 +4723,7 @@ the shared stop state.</p>
   <c- k>template</c-> <c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Promise</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>with_awaitable_senders</c-><c- p>;</c->
 <c- p>}</c->
-</pre>
+</decltypeU00028get_stop_tokenU00028declvalU0003Cr></class></pre>
    <h3 class="heading settled" data-level="9.2" id="spec-execution.helpers"><span class="secno">9.2. </span><span class="content">Helper concepts <b>[execution.helpers]</b></span><a class="self-link" href="#spec-execution.helpers"></a></h3>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
 <c- k>concept</c-> <i><c- nc>movable</c-><c- o>-</c-><c- n>value</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
@@ -5742,29 +5745,85 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
    <h5 class="heading settled" data-level="9.6.5.14" id="spec-execution.senders.adaptor.when_all"><span class="secno">9.6.5.14. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> <b>[execution.senders.adaptors.when_all]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.when_all"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values. <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant</c-></code> is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, which may have one or more sets of sent values.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values. <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant</c-></code> is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, each of which may have one or more sets of sent values.</p>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, or the number of the arguments <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- o>>::</c-><c- n>value_types</c-></code> passes into the <code class="highlight"><c- n>Variant</c-></code> template parameter is not 1, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code>, let <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>))...</c-></code>. The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code> is ill-formed if any of the following is true:</p>
+     <ul>
+      <li data-md>
+       <p>If the number of subexpressions <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> is 0, or</p>
+      <li data-md>
+       <p>If any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, or</p>
+      <li data-md>
+       <p>If for any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code>, the type <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- o>>>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>tuple</c-><c- p>,</c-> <i><c- n>zero</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>one</c-></i><c- o>></c-></code> is ill-formed, where <code class="highlight"><i><c- n>zero</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>one</c-></i></code> is a template alias equivalent to the following:</p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
+    <c- k>requires</c-> <c- p>(</c-><c- k>sizeof</c-><c- p>...(</c-><c- n>Ts</c-><c- p>)</c-> <c- o>&lt;=</c-> <c- mi>1</c-><c- p>)</c->
+  <c- k>using</c-> <i><c- n>zero</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>one</c-></i> <c- o>=</c-> <c- b>void</c-><c- p>;</c->
+</pre>
+     </ul>
+     <p>Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>,</c-> <c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no diagnostic required.</p>
       <li data-md>
-       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s</c-></code>. When <code class="highlight"><c- n>s</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
+       <p>Otherwise, constructs a sender <code class="highlight"><c- n>w</c-></code> of type <code class="highlight"><c- n>W</c-></code>. When <code class="highlight"><c- n>w</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code> of type <code class="highlight"><c- n>OutR</c-></code>, it returns an operation state <code class="highlight"><c- n>op_state</c-></code> specified as below:</p>
        <ol>
         <li data-md>
-         <p>For each sender <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, constructs a receiver <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>:</p>
+         <p>For each sender <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i></code>, constructs a receiver <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code> such that:</p>
          <ol>
           <li data-md>
-           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>t</c-><sub><i><c- n>i</c-></i></sub><c- p>...)</c-></code> is called for every <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>t</c-><sub><i><c- n>0</c-></i></sub><c- p>...,</c-> <c- n>t</c-><sub><i><c- n>1</c-></i></sub><c- p>...,</c-> <c- p>...,</c-> <c- n>t</c-><sub><i><c- n>n</c-></i></sub><c- p>...)</c-></code> is called, where <code class="highlight"><c- n>n</c-></code> is <code class="highlight"><c- k>sizeof</c-><c- p>...(</c-><c- n>s</c-><c- p>)</c-> <c- o>-</c-> <c- mi>1</c-></code>.</p>
+           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>t</c-><sub><i><c- n>i</c-></i></sub><c- p>...)</c-></code> is called for every <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>, <code class="highlight"><c- n>op_state</c-></code>'s associated stop callback optional is reset and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>t</c-><sub><i><c- n>0</c-></i></sub><c- p>...,</c-> <c- n>t</c-><sub><i><c- n>1</c-></i></sub><c- p>...,</c-> <c- p>...,</c-> <c- n>t</c-><sub><i><c- n>n</c-><c- mf>-1</c-></i></sub><c- mf>.</c-><c- p>..)</c-></code> is called, where <code class="highlight"><c- n>n</c-></code> the number of subexpressions in <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code>.</p>
           <li data-md>
-           <p>Otherwise, if <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called for any <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called.</p>
+           <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> or <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-></code> was called for at least one receiver <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>. If the first such to complete did so with the call <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>, <code class="highlight"><c- n>request_stop</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>'s associated stop source. When all child operations have completed, <code class="highlight"><c- n>op_state</c-></code>'s associated stop callback optional is reset and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called.</p>
           <li data-md>
-           <p>Otherwise, if <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>)</c-></code> is called for any <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code> is called.</p>
+           <p>Otherwise, <code class="highlight"><c- n>request_stop</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>'s associated stop source. When all child operations have completed, <code class="highlight"><c- n>op_state</c-></code>'s associated stop callback optional is reset and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code> is called.</p>
+          <li data-md>
+           <p>For each receiver <code class="highlight"><c- n>r</c-><sub><i><c- n>i</c-></i></sub></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>)</c-></code> is well-formed and returns the results of calling <code class="highlight"><c- n>get_token</c-><c- p>()</c-></code> on <code class="highlight"><c- n>op_state</c-></code>'s associated stop source.</p>
          </ol>
         <li data-md>
-         <p>For each sender <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>)</c-></code>, resulting in operation states <code class="highlight"><c- n>op_state</c-><sub><i><c- n>i</c-></i></sub></code>.</p>
+         <p>For each sender <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i></code>, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><sub><i><c- n>i</c-></i></sub><c- p>,</c-> <c- n>r</c-><sub><i><c- n>i</c-></i></sub><c- p>)</c-></code>, resulting in operation states <code class="highlight"><c- n>child_op</c-><sub><i><c- n>i</c-></i></sub></code>.</p>
         <li data-md>
-         <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains each operation state <code class="highlight"><c- n>op_state</c-><sub><i><c- n>i</c-></i></sub></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><sub><i><c- n>i</c-></i></sub><c- p>)</c-></code> for each <code class="highlight"><c- n>op_state</c-><sub><i><c- n>i</c-></i></sub></code>.</p>
+         <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains:</p>
+         <ul>
+          <li data-md>
+           <p>Each operation state <code class="highlight"><c- n>child_op</c-><sub><i><c- n>i</c-></i></sub></code>,</p>
+          <li data-md>
+           <p>A stop source of type <code class="highlight"><c- n>in_place_stop_source</c-></code>,</p>
+          <li data-md>
+           <p>A stop callback of type <code class="highlight"><c- n>optional</c-><c- o>&lt;</c-><c- n>stop_token_type_t</c-><c- o>&lt;</c-><c- n>OutR</c-><c- o>&amp;>::</c-><c- n>callback_type</c-><c- o>&lt;</c-><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i><c- o>>></c-></code>, where <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i></code> is an implementation defined class type equivalent to the following:</p>
+<pre class="highlight"><c- k>struct</c-> <i><c- nc>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i> <c- p>{</c->
+  <c- n>in_place_stop_source</c-><c- o>&amp;</c-> <c- n>stop_src_</c-><c- p>;</c->
+  <c- b>void</c-> <c- nf>operator</c-><c- p>()()</c-> <c- k>noexcept</c-> <c- p>{</c->
+    <c- n>stop_src_</c-><c- p>.</c-><c- n>request_stop</c-><c- p>();</c->
+  <c- p>}</c->
+<c- p>};</c->
+</pre>
+         </ul>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called it:</p>
+         <ul>
+          <li data-md>
+           <p>Emplace constructs the stop callback optional with the arguments <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code> and <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i><c- p>{</c-><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i><c- p>}</c-></code>, where <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i></code> refers to the stop source of <code class="highlight"><c- n>op_state</c-></code>.</p>
+          <li data-md>
+           <p>Then, it checks to see if <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i><c- p>.</c-><c- n>stop_requested</c-><c- p>()</c-></code> is true. If so, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
+          <li data-md>
+           <p>Otherwise, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>child_op</c-><sub><i><c- n>i</c-></i></sub><c- p>)</c-></code> for each <code class="highlight"><c- n>child_op</c-><sub><i><c- n>i</c-></i></sub></code>.</p>
+         </ul>
+        <li data-md>
+         <p>The associated types of the sender <code class="highlight"><c- n>W</c-></code> are as follows:</p>
+         <ul>
+          <li data-md>
+           <p><code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>W</c-><c- o>>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> is:</p>
+           <ul>
+            <li data-md>
+             <p><code class="highlight"><c- n>Variant</c-><c- o>&lt;></c-></code> if for any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code>, the type <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- o>>>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> is <code class="highlight"><c- n>Variant</c-><c- o>&lt;></c-></code>.</p>
+            <li data-md>
+             <p>Otherwise, <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>V</c-><i><sub><c- n>0</c-></sub></i><c- p>...,</c-> <c- n>V</c-><i><sub><c- n>1</c-></sub></i><c- p>,...,</c-> <c- n>V</c-><i><sub><c- n>n</c-><c- mf>-1</c-></sub></i><c- mf>.</c-><c- p>..</c-><c- o>>></c-></code> where <code class="highlight"><i><c- n>n</c-></i></code> is the count of types in <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code>, and where <code class="highlight"><c- n>V</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> is a set of types such that for the type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code>, <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- o>>>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> is an alias for <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>V</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-><c- o>>></c-></code>.</p>
+           </ul>
+          <li data-md>
+           <p><code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>W</c-><c- o>>::</c-><c- n>error_types</c-><c- o>&lt;</c-><c- n>Variant</c-><c- o>></c-></code> is <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>exception_ptr</c-><c- p>,</c-> <c- n>U</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-><c- o>></c-></code>, where <code class="highlight"><c- n>U</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> is the unique set of types in <code class="highlight"><c- n>E</c-><i><sub><c- n>0</c-></sub></i><c- p>...,</c-> <c- n>E</c-><i><sub><c- n>1</c-></sub></i><c- p>,...,</c-> <c- n>E</c-><i><sub><c- n>n</c-><c- mf>-1</c-></sub></i><c- mf>.</c-><c- p>..</c-></code>, where <code class="highlight"><c- n>E</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> is a set of types such that for the type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code>, <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- o>>>::</c-><c- n>error_types</c-><c- o>&lt;</c-><c- n>Variant</c-><c- o>></c-></code> is an alias for <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>E</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-><c- o>></c-></code>.</p>
+          <li data-md>
+           <p><code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>W</c-><c- o>>::</c-><c- n>sends_done</c-></code> is <code class="highlight">true</code>.</p>
+         </ul>
        </ol>
      </ol>
     <li data-md>
