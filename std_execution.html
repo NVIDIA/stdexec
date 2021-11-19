@@ -3719,8 +3719,9 @@ type of the receiver is going to be, and thus whether or not the stop token
 returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> is an <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>unstoppable_token</c-></code> or not,
 the eager operation is going to need to assume it might be later connected to a
 receiver with a stop token that might actually issue a stop request. Thus it
-needs to incur the runtime overhead of supporting cancellation, even if
-cancellation will never be requested by the caller.</p>
+needs to declare space in the operation state for a type-erased stop callback
+and incur the runtime overhead of supporting cancellation, even if cancellation
+will never be requested by the caller.</p>
    <p>The eager operation will also need to do this to support sending a stop request
 to the eager operation in the case that the sender representing the eager work
 is destroyed before it has been joined (assuming strategy (5) or (6) listed
