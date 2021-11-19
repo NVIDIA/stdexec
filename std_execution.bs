@@ -2439,6 +2439,9 @@ namespace std::execution {
     struct get_stop_token_t;
     inline constexpr get_stop_token_t get_stop_token{};
   }
+  template <class R>
+    using stop_token_type_t =
+      remove_cvref_t<decltype(get_stop_token(declval<R>()))>;
 
   // [execution.op_state], operation states
   template&lt;class O>
@@ -3582,29 +3585,71 @@ are all well-formed.
 #### `execution::when_all` <b>[execution.senders.adaptors.when_all]</b> #### {#spec-execution.senders.adaptor.when_all}
 
 1. `execution::when_all` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values. `execution::when_all_with_variant`
-    is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, which may have one or more sets of sent values.
+    is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, each of which may have one or more sets of sent values.
 
-2. The name `execution::when_all` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`, or the number of the arguments
-    <code>sender_traits&lt;S<i><sub>i</sub></i>>::value_types</code> passes into the `Variant` template parameter is not 1, `execution::when_all` is ill-formed. Otherwise, the expression `execution::when_all(s...)` is expression-equivalent to:
+2. The name `execution::when_all` denotes a customization point object. For some subexpressions <code>s<i><sub>i</sub></i>...</code>, let <code>S<i><sub>i</sub></i>...</code> be <code>decltype((s<i><sub>i</sub></i>))...</code>. The expression <code>execution::when_all(s<i><sub>i</sub></i>...)</code> is ill-formed if any of the following is true:
 
-    1. `tag_invoke(execution::when_all, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which sends a concatenation of values sent by `s...` when they all complete with
-        `set_value`, the program is ill-formed with no diagnostic required.
+    * If the number of subexpressions <code>s<i><sub>i</sub></i>...</code> is 0, or
+    * If any type <code>S<i><sub>i</sub></i></code> does not satisfy `execution::typed_sender`, or
+    * If for any type <code>S<i><sub>i</sub></i></code>, the type <code>sender_traits&lt;remove_cvref_t&lt;S<i><sub>i</sub></i>>>::value_types&lt;tuple, <i>zero-or-one</i>></code> is ill-formed, where <code><i>zero-or-one</i></code> is a template alias equivalent to the following:
+        <pre highlight="c++">
+        template &lt;class... Ts>
+            requires (sizeof...(Ts) <= 1)
+          using <i>zero-or-one</i> = void;
+        </pre>
 
-    2. Otherwise, constructs a sender `s`. When `s` is connected with some receiver `out_r`, it:
+    Otherwise, the expression <code>execution::when_all(s<i><sub>i</sub></i>...)</code> is expression-equivalent to:
 
-        1. For each sender <code>s<i><sub>i</sub></i></code> in `s...`, constructs a receiver <code>r<sub><i>i</i></sub></code>:
+    1. <code>tag_invoke(execution::when_all, s<i><sub>i</sub></i>...)</code>, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by <code>s<i><sub>i</sub></i>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
 
-            1. If <code>execution::set_value(r<sub><i>i</i></sub>, t<sub><i>i</i></sub>...)</code> is called for every <code>r<sub><i>i</i></sub></code>,
-                <code>execution::set_value(out_r, t<sub><i>0</i></sub>..., t<sub><i>1</i></sub>..., ..., t<sub><i>n</i></sub>...)</code> is called, where `n` is `sizeof...(s) - 1`.
+    2. Otherwise, constructs a sender `w` of type `W`. When `w` is connected with some receiver `out_r` of type `OutR`, it returns an operation state `op_state` specified as below:
 
-            2. Otherwise, if <code>execution::set_error(r<sub><i>i</i></sub>, e)</code> is called for any <code>r<sub><i>i</i></sub></code>, `execution::set_error(out_r, e)` is called.
+        1. For each sender <code>s<i><sub>i</sub></i></code>, constructs a receiver <code>r<sub><i>i</i></sub></code> such that:
 
-            3. Otherwise, if <code>execution::set_done(r<sub><i>i</i></sub>)</code> is called for any <code>r<sub><i>i</i></sub></code>, `execution::set_done(out_r)` is called.
+            1. If <code>execution::set_value(r<sub><i>i</i></sub>, t<sub><i>i</i></sub>...)</code> is called for every <code>r<sub><i>i</i></sub></code>, `op_state`'s associated stop callback optional is reset and <code>execution::set_value(out_r, t<sub><i>0</i></sub>..., t<sub><i>1</i></sub>..., ..., t<sub><i>n-1</i></sub>...)</code> is called, where `n` the number of subexpressions in <code>s<i><sub>i</sub></i>...</code>.
 
-        2. For each sender <code>s<i><sub>i</sub></i></code> in `s...`, calls <code>execution::connect(s<sub><i>i</i></sub>, r<sub><i>i</i></sub>)</code>, resulting in operation states <code>op_state<sub><i>i</i></sub></code>.
+            2. Otherwise, `execution::set_error` or `execution::set_done` was called for at least one receiver <code>r<sub><i>i</i></sub></code>. If the first such to complete did so with the call <code>execution::set_error(r<sub><i>i</i></sub>, e)</code>, `request_stop` is called on `op_state`'s associated stop source. When all child operations have completed, `op_state`'s associated stop callback optional is reset and `execution::set_error(out_r, e)` is called.
 
-        3. Returns an operation state `op_state` that contains each operation state <code>op_state<sub><i>i</i></sub></code>. When `execution::start(op_state)` is called, calls <code>execution::start(op_state<sub><i>i</i></sub>)</code> for each
-            <code>op_state<sub><i>i</i></sub></code>.
+            3. Otherwise, `request_stop` is called on `op_state`'s associated stop source. When all child operations have completed, `op_state`'s associated stop callback optional is reset and `execution::set_done(out_r)` is called.
+
+            4. For each receiver <code>r<sub><i>i</i></sub></code>, <code>execution::get_stop_token(r<sub><i>i</i></sub>)</code> is well-formed and returns the results of calling `get_token()` on `op_state`'s associated stop source.
+
+        2. For each sender <code>s<i><sub>i</sub></i></code>, calls <code>execution::connect(s<sub><i>i</i></sub>, r<sub><i>i</i></sub>)</code>, resulting in operation states <code>child_op<sub><i>i</i></sub></code>.
+
+        3. Returns an operation state `op_state` that contains:
+        
+            * Each operation state <code>child_op<sub><i>i</i></sub></code>, 
+            * A stop source of type `in_place_stop_source`,
+            * A stop callback of type <code>optional&lt;stop_token_type_t&lt;OutR&amp;>::callback_type&lt;<i>stop-callback-fn</i>>></code>, where <code><i>stop-callback-fn</i></code> is an implementation defined class type equivalent to the following:
+
+                <pre highlight="c++">
+                struct <i>stop-callback-fn</i> {
+                  in_place_stop_source& stop_src_;
+                  void operator()() noexcept {
+                    stop_src_.request_stop();
+                  }
+                };
+                </pre>
+
+        4. When `execution::start(op_state)` is called it:
+
+            * Emplace constructs the stop callback optional with the arguments `execution::get_stop_token(out_r)` and <code><i>stop-callback-fn</i>{<i>stop-src</i>}</code>, where <code><i>stop-src</i></code> refers to the stop source of `op_state`.
+
+            * Then, it checks to see if <code><i>stop-src</i>.stop_requested()</code> is true. If so, it calls `execution::set_done(out_r)`.
+
+            * Otherwise, calls <code>execution::start(child_op<sub><i>i</i></sub>)</code> for each <code>child_op<sub><i>i</i></sub></code>.
+
+        5. The associated types of the sender `W` are as follows:
+
+            * `sender_traits<W>::value_types<Tuple, Variant>` is:
+            
+                * `Variant<>` if for any type <code>S<i><sub>i</sub></i></code>, the type <code>sender_traits&lt;remove_cvref_t&lt;S<i><sub>i</sub></i>>>::value_types&lt;Tuple, Variant></code> is `Variant<>`.
+
+                * Otherwise, <code>Variant&lt;Tuple&lt;V<i><sub>0</sub></i>..., V<i><sub>1</sub></i>,..., V<i><sub>n-1</sub></i>...>></code> where <code><i>n</i></code> is the count of types in <code>S<i><sub>i</sub></i>...</code>, and where <code>V<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>sender_traits&lt;remove_cvref_t&lt;S<i><sub>i</sub></i>>>::value_types&lt;Tuple, Variant></code> is an alias for <code>Variant&lt;Tuple&lt;V<i><sub>i</sub></i>...>></code>.
+
+            * `sender_traits<W>::error_types<Variant>` is <code>Variant&lt;exception_ptr, U<i><sub>i</sub></i>...></code>, where <code>U<i><sub>i</sub></i>...</code> is the unique set of types in <code>E<i><sub>0</sub></i>..., E<i><sub>1</sub></i>,..., E<i><sub>n-1</sub></i>...</code>, where <code>E<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>sender_traits&lt;remove_cvref_t&lt;S<i><sub>i</sub></i>>>::error_types&lt;Variant></code> is an alias for <code>Variant&lt;E<i><sub>i</sub></i>...></code>.
+
+            * `sender_traits<W>::sends_done` is `true`.
 
 3. The name `execution::when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::typed_sender`,
     `execution::when_all_with_variant` is ill-formed. Otherwise, the expression `execution::when_all_with_variant(s...)` is expression-equivalent to:
