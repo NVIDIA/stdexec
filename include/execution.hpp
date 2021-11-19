@@ -215,14 +215,18 @@ namespace std::execution {
     } schedule {};
   }
 
+  template<__one_of<set_value_t, set_error_t, set_done_t> CPO>
+    struct get_completion_scheduler_t;
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.schedulers]
   template<class S>
     concept scheduler =
       copy_constructible<remove_cvref_t<S>> &&
       equality_comparable<remove_cvref_t<S>> &&
-      requires(S&& s) {
+      requires(S&& s, const get_completion_scheduler_t<set_value_t> tag) {
         { schedule((S&&) s) } -> sender_of;
+        { tag_invoke(tag, schedule((S&&) s)) } -> same_as<remove_cvref_t<S>>;
       };
 
   // NOT TO SPEC
