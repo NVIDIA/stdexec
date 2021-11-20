@@ -1317,13 +1317,7 @@ namespace std::execution {
 
     namespace __impl {
       struct __task {
-        using __execute_fn = void(__task*) noexcept;
-
-        void __execute() noexcept {
-          __execute_(this);
-        }
-
-        __execute_fn* __execute_;
+        virtual void __execute() noexcept = 0;
         __task* __next_ = nullptr;
       };
 
@@ -1332,21 +1326,18 @@ namespace std::execution {
           using Receiver = __t<Receiver_>;
           using stop_token_type = stop_token_type_t<Receiver&>;
 
-          friend void tag_invoke(std::execution::start_t, __operation& op) noexcept {
+          friend void tag_invoke(start_t, __operation& op) noexcept {
             op.__start_();
           }
 
-          static void __execute_impl(__task* t) noexcept {
-            auto& self = *static_cast<__operation*>(t);
-            try {
-              if (get_stop_token(self.__receiver_).stop_requested()) {
-                set_done(std::move(self.__receiver_));
-              } else {
-                set_value(std::move(self.__receiver_));
-              }
-            } catch(...) {
-              set_error(std::move(self.__receiver_), current_exception());
+          void __execute() noexcept override try {
+            if (get_stop_token(__receiver_).stop_requested()) {
+              set_done((Receiver&&) __receiver_);
+            } else {
+              set_value((Receiver&&) __receiver_);
             }
+          } catch(...) {
+            set_error((Receiver&&) __receiver_, current_exception());
           }
 
           void __start_() noexcept;
@@ -1357,8 +1348,7 @@ namespace std::execution {
         public:
           template <typename Receiver2>
           explicit __operation(Receiver2&& receiver, run_loop* loop)
-            : __task{&__execute_impl}
-            , __receiver_((Receiver2 &&) receiver)
+            : __receiver_((Receiver2 &&) receiver)
             , __loop_(loop) {}
         };
     } // namespace __impl
