@@ -27,32 +27,64 @@ namespace coro = std::experimental;
 
 namespace std {
   // Defined some concepts and utilities for working with awaitables
-  template <class A>
+  template <class P, class A>
+  decltype(auto) __await_suspend(A& a) {
+    if constexpr (!same_as<P, void>) {
+      return a.await_suspend(coro::coroutine_handle<P>{});
+    }
+  }
+
+  template <class, template <class...> class>
+    constexpr bool __is_instance_of = false;
+  template <class... As, template <class...> class T>
+    constexpr bool __is_instance_of<T<As...>, T> = true;
+
+  template <class T>
+    concept __await_suspend_result =
+      __one_of<T, void, bool> || __is_instance_of<T, coro::coroutine_handle>;
+
+  template <class A, class P = void>
     concept __awaiter =
-      requires (A&& a) {
-        {((A&&) a).await_ready()} -> same_as<bool>;
-        ((A&&) a).await_resume();
+      requires (A& a) {
+        a.await_ready() ? 1 : 0;
+        {std::__await_suspend<P>(a)} -> __await_suspend_result;
+        a.await_resume();
       };
 
   template <class T>
-  decltype(auto) __get_awaiter(T&& t) {
+  decltype(auto) __get_awaiter(T&& t, void*) {
     if constexpr (requires { ((T&&) t).operator co_await(); }) {
       return ((T&&) t).operator co_await();
-    }
-    else if constexpr (requires { operator co_await((T&&) t); }) {
+    } else if constexpr (requires { operator co_await((T&&) t); }) {
       return operator co_await((T&&) t);
-    }
-    else {
+    } else {
       return (T&&) t;
     }
   }
 
-  template <class A>
+  template <class T, class P>
+  decltype(auto) __get_awaiter(T&& t, P* p)
+      requires requires { p->await_transform((T&&) t);} {
+    if constexpr (requires { p->await_transform((T&&) t).operator co_await(); }) {
+      return p->await_transform((T&&) t).operator co_await();
+    } else if constexpr (requires { operator co_await(p->await_transform((T&&) t)); }) {
+      return operator co_await(p->await_transform((T&&) t));
+    } else {
+      return p->await_transform((T&&) t);
+    }
+  }
+
+  template <class A, class P = void>
     concept __awaitable =
-      requires (A&& a) {
-        {std::__get_awaiter((A&&) a)} -> __awaiter;
+      requires (A&& a, P* p) {
+        {std::__get_awaiter((A&&) a, p)} -> __awaiter<P>;
       };
 
-  template <__awaitable A>
-    using __await_result_t = decltype(std::__get_awaiter(std::declval<A>()).await_resume());
+  template <class T>
+    T& __as_lvalue(T&&);
+
+  template <class A, class P = void>
+      requires __awaitable<A, P>
+    using __await_result_t = decltype(std::__as_lvalue(
+        std::__get_awaiter(declval<A>(), (P*) nullptr)).await_resume());
 }

@@ -20,6 +20,11 @@
 namespace std {
   struct __ {};
 
+  struct __ignore {
+    __ignore() = default;
+    __ignore(auto&&) noexcept {}
+  };
+
   // For hiding a template type parameter from ADL
   template <class T>
     struct __id {
