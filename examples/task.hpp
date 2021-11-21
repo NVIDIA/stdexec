@@ -23,84 +23,306 @@
 #include <coroutine.hpp>
 #include <execution.hpp>
 
+template <template<class...> class T, class... As>
+  concept well_formed =
+    requires { typename T<As...>; };
+
 template <class T>
-struct task {
-  struct promise_type;
-  struct final_awaitable {
-    bool await_ready() const noexcept {
-      return false;
+  concept stop_token_provider =
+    requires(const T& t) {
+      std::execution::get_stop_token(t);
+    };
+
+template <std::invocable Fn>
+    requires std::is_nothrow_move_constructible_v<Fn> &&
+      std::is_nothrow_invocable_v<Fn>
+  struct scope_guard {
+    Fn fn_;
+    scope_guard(Fn fn) noexcept : fn_((Fn&&) fn) {}
+    ~scope_guard() { ((Fn&&) fn_)(); }
+  };
+
+struct forward_stop_request {
+  std::in_place_stop_source& stop_source_;
+  void operator()() noexcept {
+    stop_source_.request_stop();
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// This is the context that is associated with basic_task's promise type
+// by default. It handles forwarding of stop requests from parent to child.
+class default_task_context_impl {
+  std::in_place_stop_token stop_token_;
+
+  // This is the context associated with basic_task's awaiter. By default
+  // it does nothing.
+  template <class ParentPromise>
+    struct awaiter_context {
+      explicit awaiter_context(
+          default_task_context_impl&, ParentPromise&) noexcept
+      {}
+    };
+
+  template <std::derived_from<default_task_context_impl> Self>
+    friend auto tag_invoke(std::execution::get_stop_token_t, const Self& self)
+        noexcept -> std::in_place_stop_token {
+      return self.stop_token_;
     }
-    coro::coroutine_handle<> await_suspend(coro::coroutine_handle<promise_type> h) const noexcept {
-      return h.promise().continuation();
+
+public:
+  default_task_context_impl() = default;
+
+  bool stop_requested() const noexcept {
+    return stop_token_.stop_requested();
+  }
+
+  template <class DerivedPromise>
+    using promise_context_t = default_task_context_impl;
+
+  template <
+      std::derived_from<default_task_context_impl>,
+      class ParentPromise = void>
+    using awaiter_context_t = awaiter_context<ParentPromise>;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// This is the context to be associated with basic_task's awaiter when
+// the parent coroutine's promise type is known, is a stop_token_provider,
+// and its stop token type is neither in_place_stop_token nor unstoppable.
+template <stop_token_provider ParentPromise>
+  struct default_task_context_impl::awaiter_context<ParentPromise> {
+    using stop_token_t = std::execution::stop_token_of_t<ParentPromise&>;
+    using stop_callback_t =
+      typename stop_token_t::template callback_type<forward_stop_request>;
+
+    explicit awaiter_context(
+        default_task_context_impl& self, ParentPromise& parent) noexcept
+        // Register a callback that will request stop on this basic_task's
+        // stop_source when stop is requested on the parent coroutine's stop
+        // token.
+      : stop_callback_{
+          std::execution::get_stop_token(parent),
+          forward_stop_request{stop_source_}} {
+      static_assert(std::is_nothrow_constructible_v<
+          stop_callback_t, stop_token_t, forward_stop_request>);
+      self.stop_token_ = stop_source_.get_token();
     }
-    void await_resume() const noexcept {
+
+    std::in_place_stop_source stop_source_{};
+    stop_callback_t stop_callback_;
+  };
+
+// If the parent coroutine's type has a stop token of type in_place_stop_token,
+// we don't need to register a stop callback.
+template <stop_token_provider ParentPromise>
+    requires std::same_as<
+        std::in_place_stop_token,
+        std::execution::stop_token_of_t<ParentPromise&>>
+  struct default_task_context_impl::awaiter_context<ParentPromise> {
+    explicit awaiter_context(
+        default_task_context_impl& self, ParentPromise& parent) noexcept {
+      self.stop_token_ = std::execution::get_stop_token(parent);
     }
   };
-  // In a base class so it can be specialized when T is void:
+
+// If the parent coroutine's stop token is unstoppable, there's no point
+// forwarding stop tokens or stop requests at all.
+template <stop_token_provider ParentPromise>
+    requires std::unstoppable_token<
+        std::execution::stop_token_of_t<ParentPromise&>>
+  struct default_task_context_impl::awaiter_context<ParentPromise> {
+    explicit awaiter_context(
+        default_task_context_impl&, ParentPromise&) noexcept
+    {}
+  }; 
+
+// Finally, if we don't know the parent coroutine's promise type, assume the
+// worst and save a type-erased stop callback.
+template<>
+  struct default_task_context_impl::awaiter_context<void> {
+    explicit awaiter_context(
+        default_task_context_impl& self, auto&) noexcept
+    {}
+
+    template <stop_token_provider ParentPromise>
+      explicit awaiter_context(
+          default_task_context_impl& self, ParentPromise& parent) {
+        // Register a callback that will request stop on this basic_task's
+        // stop_source when stop is requested on the parent coroutine's stop
+        // token.
+        using stop_token_t = std::execution::stop_token_of_t<ParentPromise&>;
+        using stop_callback_t =
+          typename stop_token_t::template callback_type<forward_stop_request>;
+
+        if constexpr (std::same_as<stop_token_t, std::in_place_stop_token>) {
+          self.stop_token_ = std::execution::get_stop_token(parent);
+        } else if(auto token = std::execution::get_stop_token(parent);
+                  token.stop_possible()) {
+          stop_callback_.emplace<stop_callback_t>(
+              std::move(token), forward_stop_request{stop_source_});
+          self.stop_token_ = stop_source_.get_token();
+        }
+      }
+
+    std::in_place_stop_source stop_source_{};
+    std::any stop_callback_{};
+  };
+
+template <class ValueType>
+  using default_task_context = default_task_context_impl;
+
+template <class Promise, class ParentPromise = void>
+  using awaiter_context_t =
+    typename Promise::template awaiter_context_t<Promise, ParentPromise>;
+
+////////////////////////////////////////////////////////////////////////////////
+// In a base class so it can be specialized when T is void:
+template <class T>
   struct _promise_base {
     void return_value(T value) noexcept {
       data_.template emplace<1>(std::move(value));
     }
     std::variant<std::monostate, T, std::exception_ptr> data_{};
   };
-  struct promise_type : _promise_base, std::execution::with_awaitable_senders<promise_type> {
-    task get_return_object() noexcept {
-      return task(coro::coroutine_handle<promise_type>::from_promise(*this));
+
+template<>
+  struct _promise_base<void> {
+    struct _void {};
+    void return_void() noexcept {
+      data_.template emplace<1>(_void{});
+    }
+    std::variant<std::monostate, _void, std::exception_ptr> data_{};
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+// basic_task
+template <class T, class Context = default_task_context<T>>
+class basic_task {
+  struct _promise;
+public:
+  using promise_type = _promise;
+
+  basic_task(basic_task&& that) noexcept
+    : coro_(std::exchange(that.coro_, {}))
+  {}
+
+  ~basic_task() {
+    if (coro_)
+      coro_.destroy();
+  }
+
+private:
+  struct _final_awaitable {
+    static std::false_type await_ready() noexcept {
+      return {};
+    }
+    static coro::coroutine_handle<>
+    await_suspend(coro::coroutine_handle<_promise> h) noexcept {
+      return h.promise().continuation();
+    }
+    static void await_resume() noexcept {
+    }
+  };
+
+  struct _promise
+    : _promise_base<T>
+    , Context::template promise_context_t<_promise>
+    , std::execution::with_awaitable_senders<_promise> {
+    basic_task get_return_object() noexcept {
+      return basic_task(coro::coroutine_handle<_promise>::from_promise(*this));
     }
     coro::suspend_always initial_suspend() noexcept {
       return {};
     }
-    final_awaitable final_suspend() noexcept {
+    _final_awaitable final_suspend() noexcept {
       return {};
     }
     void unhandled_exception() noexcept {
       this->data_.template emplace<2>(std::current_exception());
     }
+
+    // To make it possible to issue receiver queries against this promise type,
+    // it must trivially satisfy the receiver concept.
+    friend void tag_invoke(std::execution::set_error_t, _promise&&, auto&&) noexcept;
+    friend void tag_invoke(std::execution::set_done_t, _promise&&) noexcept;
   };
 
-  task(task&& that) noexcept
-    : coro_(std::exchange(that.coro_, {}))
-  {}
+  template <class ParentPromise = void>
+  struct _task_awaitable {
+    coro::coroutine_handle<_promise> coro_;
+    std::optional<awaiter_context_t<_promise, ParentPromise>> context_{};
 
-  ~task() {
-    if (coro_)
-      coro_.destroy();
-  }
-
-  struct task_awaitable {
-    task& t;
-    bool await_ready() const noexcept {
-      return false;
+    static std::false_type await_ready() noexcept {
+      return {};
     }
-    template <typename OtherPromise>
-    coro::coroutine_handle<> await_suspend(coro::coroutine_handle<OtherPromise> parent) noexcept {
-      t.coro_.promise().set_continuation(parent);
-      return t.coro_;
+    template <class ParentPromise2>
+    coro::coroutine_handle<>
+    await_suspend(coro::coroutine_handle<ParentPromise2> parent) noexcept {
+      static_assert(std::__one_of<ParentPromise, ParentPromise2, void>);
+      coro_.promise().set_continuation(parent);
+      context_.emplace(coro_.promise(), parent.promise());
+      if constexpr (requires { coro_.promise().stop_requested() ? 0 : 1; }) {
+        if (coro_.promise().stop_requested())
+          return parent.promise().unhandled_done();
+      }
+      return coro_;
     }
-    T await_resume() const {
-      if (t.coro_.promise().data_.index() == 2)
-        std::rethrow_exception(std::get<2>(t.coro_.promise().data_));
+    T await_resume() {
+      context_.reset();
+      scope_guard on_exit{
+          [this]() noexcept { std::exchange(coro_, {}).destroy(); }};
+      if (coro_.promise().data_.index() == 2)
+        std::rethrow_exception(std::get<2>(std::move(coro_.promise().data_)));
       if constexpr (!std::is_void_v<T>)
-        return std::get<T>(t.coro_.promise().data_);
+        return std::get<1>(std::move(coro_.promise().data_));
     }
   };
 
-  friend task_awaitable operator co_await(task&& t) noexcept {
-    return task_awaitable{t};
+  // Make this task awaitable within a particular context:
+  template <class ParentPromise>
+    requires std::constructible_from<
+        awaiter_context_t<_promise, ParentPromise>, _promise&, ParentPromise&>
+  friend _task_awaitable<ParentPromise>
+  tag_invoke(std::execution::as_awaitable_t, basic_task&& self, ParentPromise&) noexcept {
+    return _task_awaitable<ParentPromise>{std::exchange(self.coro_, {})};
   }
 
-private:
-  explicit task(coro::coroutine_handle<promise_type> coro) noexcept
+  // Make this task generally awaitable:
+  friend _task_awaitable<> operator co_await(basic_task&& self) noexcept 
+      requires well_formed<awaiter_context_t, _promise> {
+    return _task_awaitable<>{std::exchange(self.coro_, {})};
+  }
+
+  explicit basic_task(coro::coroutine_handle<promise_type> coro) noexcept
     : coro_(coro)
   {}
+
   coro::coroutine_handle<promise_type> coro_;
 };
 
-template<>
-struct task<void>::_promise_base {
-  struct _void {};
-  void return_void() noexcept {
-    data_.template emplace<1>(_void{});
-  }
-  std::variant<std::monostate, _void, std::exception_ptr> data_{};
-};
+template <class T>
+  using task = basic_task<T, default_task_context<T>>;
+
+////////////////////////////////////////////////////////////////////////////////
+// Specify basic_task's sender traits
+//   This is only necessary when basic_task is not generally awaitable
+//   owing to constraints imposed by its Context parameter.
+template <bool SendsDone, class... Ts>
+  struct sender_of_traits {
+    template<template<class...> class Tuple, template<class...> class Variant>
+      using value_types = Variant<Tuple<Ts...>>;
+    template<template<class...> class Variant>
+      using error_types = Variant<std::exception_ptr>;
+    static constexpr bool sends_done = SendsDone;
+  };
+
+template <bool SendsDone>
+  struct sender_of_traits<SendsDone, void>
+    : sender_of_traits<SendsDone> {};
+
+namespace std::execution {
+  template <class T, class Context>
+    struct sender_traits<::basic_task<T, Context>>
+      : ::sender_of_traits<false, T> {};
+}
