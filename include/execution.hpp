@@ -174,16 +174,30 @@ namespace std::execution {
       sender<S> &&
       __has_sender_types<sender_traits<remove_cvref_t<S>>>;
 
-  // NOT TO SPEC:
+  template <bool>
+    struct __variant_ {
+      template <class... Ts>
+        using __f = variant<Ts...>;
+    };
+  template <>
+    struct __variant_<false> {
+      struct __not_a_variant {
+        __not_a_variant() = delete;
+      };
+      template <class...>
+        using __f = __not_a_variant;
+    };
+  template <class... Ts>
+    using __variant = __meta_invoke<__variant_<sizeof...(Ts) != 0>, Ts...>;
+
   template <typed_sender Sender,
-            template <class...> class Tuple,
-            template <class...> class Variant>
+            template <class...> class Tuple = tuple,
+            template <class...> class Variant = __variant>
     using value_types_of_t =
       typename sender_traits<decay_t<Sender>>::template
         value_types<Tuple, Variant>;
 
-  // NOT TO SPEC:
-  template <typed_sender Sender, template <class...> class Variant>
+  template <typed_sender Sender, template <class...> class Variant = __variant>
     using error_types_of_t =
       typename sender_traits<decay_t<Sender>>::template error_types<Variant>;
 
