@@ -174,16 +174,30 @@ namespace std::execution {
       sender<S> &&
       __has_sender_types<sender_traits<remove_cvref_t<S>>>;
 
-  // NOT TO SPEC:
+  template <bool>
+    struct __variant_ {
+      template <class... Ts>
+        using __f = variant<Ts...>;
+    };
+  template <>
+    struct __variant_<false> {
+      struct __not_a_variant {
+        __not_a_variant() = delete;
+      };
+      template <class...>
+        using __f = __not_a_variant;
+    };
+  template <class... Ts>
+    using __variant = __meta_invoke<__variant_<sizeof...(Ts) != 0>, Ts...>;
+
   template <typed_sender Sender,
-            template <class...> class Tuple,
-            template <class...> class Variant>
+            template <class...> class Tuple = tuple,
+            template <class...> class Variant = __variant>
     using value_types_of_t =
       typename sender_traits<decay_t<Sender>>::template
         value_types<Tuple, Variant>;
 
-  // NOT TO SPEC:
-  template <typed_sender Sender, template <class...> class Variant>
+  template <typed_sender Sender, template <class...> class Variant = __variant>
     using error_types_of_t =
       typename sender_traits<decay_t<Sender>>::template error_types<Variant>;
 
@@ -281,7 +295,7 @@ namespace std::execution {
   }
 
   template <class R>
-    using stop_token_type_t =
+    using stop_token_of_t =
       remove_cvref_t<decltype(get_stop_token(std::declval<R>()))>;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1324,7 +1338,7 @@ namespace std::execution {
       template <typename Receiver_>
         class __operation final : __task {
           using Receiver = __t<Receiver_>;
-          using stop_token_type = stop_token_type_t<Receiver&>;
+          using stop_token_type = stop_token_of_t<Receiver&>;
 
           friend void tag_invoke(start_t, __operation& op) noexcept {
             op.__start_();
@@ -2103,7 +2117,7 @@ namespace std::execution {
               error_types_of_t<__sender, variant> __errors_{};
               tuple<value_types_of_t<__t<SenderIds>, tuple, optional>...> __values_{};
               in_place_stop_source __stop_source_{};
-              optional<typename stop_token_type_t<Receiver&>::template
+              optional<typename stop_token_of_t<Receiver&>::template
                   callback_type<__on_stop_requested>> __on_stop_{};
             };
 
