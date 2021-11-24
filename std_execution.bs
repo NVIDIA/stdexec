@@ -3120,7 +3120,7 @@ enum class forward_progress_guarantee {
 1. `execution::connect` is used to <i>connect</i> a sender with a receiver, producing an operation state object that represents the work that needs to be performed to satisfy the receiver contract of the receiver with values that are the result of the operations
     described by the sender.
 
-2. The name `execution::connect` denotes a customization point object. For some subexpressions `s` and `r`, let `S` be `decltype((s))` and `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver` or `S` does not satisfy `execution::sender`,
+2. The name `execution::connect` denotes a customization point object. For some subexpressions `s` and `r`, let `S` be `decltype((s))` and `R` be `decltype((r))`, and let `S'` and `R'` be the decayed types of `S` and `R`, respectively. If `R` does not satisfy `execution::receiver` or `S` does not satisfy `execution::sender`,
     `execution::connect(s, r)` is ill-formed. Otherwise, the expression `execution::connect(s, r)` is expression-equivalent to:
 
     1. `tag_invoke(execution::connect, s, r)`, if that expression is valid and its type satisfies `execution::operation_state`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program
@@ -3129,7 +3129,7 @@ enum class forward_progress_guarantee {
     2. Otherwise, <code><i>connect-awaitable</i>(s, r)</code> if <code><i>is-awaitable</i>&lt;S></code> is `true` and that expression is valid, where <code><i>connect-awaitable</i></code> is a coroutine equivalent to the following:
 
         <pre highlight="c++">
-        <i>operation-state-task</i> <i>connect-awaitable</i>(S s, R r) requires <i>see-below</i> {
+        <i>operation-state-task</i> <i>connect-awaitable</i>(S' s, R' r) requires <i>see-below</i> {
           exception_ptr e;
           try {
             <i>set-value-expr</i>
