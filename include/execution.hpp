@@ -423,7 +423,7 @@ namespace std::execution {
         using __nothrow_ = bool_constant<nothrow_receiver_of<R, Args...>>;
 
       template <class A, class R>
-      static __impl::__op<__id_t<remove_cvref_t<R>>> __impl(A&& a, R&& r) {
+      static __impl::__op<__id_t<remove_cvref_t<R>>> __impl(A a, R r) {
         exception_ptr ex;
         try {
           // This is a bit mind bending control-flow wise.

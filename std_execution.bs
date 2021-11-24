@@ -814,6 +814,7 @@ The changes since R2 are as follows:
 * Add `receiver_adaptor` utility to simplify writing receivers.
 * Fix recursive definition of the `scheduler` concept.
 * Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
+* Fix a memory safety bug in the implementation of <code><i>connect-awaitable</i></code>.
 * Specify the cancellation scope of the `when_all` algorithm.
 * Add `value_types_of_t` and `error_types_of_t` alias templates; rename `stop_token_type_t` to `stop_token_of_t`.
 * Add a design rationale for the removal of the possibly eager algorithms.
@@ -3128,7 +3129,7 @@ enum class forward_progress_guarantee {
     2. Otherwise, <code><i>connect-awaitable</i>(s, r)</code> if <code><i>is-awaitable</i>&lt;S></code> is `true` and that expression is valid, where <code><i>connect-awaitable</i></code> is a coroutine equivalent to the following:
 
         <pre highlight="c++">
-        <i>operation-state-task</i> <i>connect-awaitable</i>(S&& s, R&& r) requires <i>see-below</i> {
+        <i>operation-state-task</i> <i>connect-awaitable</i>(S s, R r) requires <i>see-below</i> {
           exception_ptr e;
           try {
             <i>set-value-expr</i>
