@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-22">2021-11-22</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-11-23">2021-11-23</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -3225,6 +3225,8 @@ essential when writing user code using standard execution concepts; we have also
      <p>Fix recursive definition of the <code class="highlight"><c- n>scheduler</c-></code> concept.</p>
     <li data-md>
      <p>Fix specification of the <code class="highlight"><c- n>on</c-></code> algorithm to clarify lifetimes of intermediate operation states and properly scope the <code class="highlight"><c- n>get_scheduler</c-></code> query.</p>
+    <li data-md>
+     <p>Fix a memory safety bug in the implementation of <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code>.</p>
     <li data-md>
      <p>Specify the cancellation scope of the <code class="highlight"><c- n>when_all</c-></code> algorithm.</p>
     <li data-md>
@@ -5245,7 +5247,7 @@ described by the sender.</p>
 is ill-formed with no diagnostic required.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> if <code class="highlight"><i><c- n>is</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-></code> is <code class="highlight">true</code> and that expression is valid, where <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> is a coroutine equivalent to the following:</p>
-<pre class="highlight"><i><c- n>operation</c-><c- o>-</c-><c- n>state</c-><c- o>-</c-><c- n>task</c-></i> <i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>R</c-><c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- k>requires</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- p>{</c->
+<pre class="highlight"><i><c- n>operation</c-><c- o>-</c-><c- n>state</c-><c- o>-</c-><c- n>task</c-></i> <i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c-> <c- k>requires</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- p>{</c->
   <c- n>exception_ptr</c-> <c- n>e</c-><c- p>;</c->
   <c- k>try</c-> <c- p>{</c->
     <i><c- n>set</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>expr</c-></i>
