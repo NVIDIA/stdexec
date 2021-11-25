@@ -813,6 +813,7 @@ The changes since R2 are as follows:
 * Add `run_loop` execution context.
 * Add `receiver_adaptor` utility to simplify writing receivers.
 * Fix recursive definition of the `scheduler` concept.
+* Require a scheduler's sender to model `sender_of` and provide a completion scheduler.
 * Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
 * Fix a memory safety bug in the implementation of <code><i>connect-awaitable</i></code>.
 * Specify the cancellation scope of the `when_all` algorithm.
@@ -2774,19 +2775,21 @@ namespace std::execution {
       concept scheduler =
         copy_constructible&lt;remove_cvref_t&lt;S>> &&
         equality_comparable&lt;remove_cvref_t&lt;S>> &&
-        requires(S&& s) {
-          execution::schedule((S&&)s);
+        requires(S&& s, const get_completion_scheduler_t&lt;set_value_t> tag) {
+          { execution::schedule((S&&) s) } -> sender_of;
+          { tag_invoke(tag, execution::schedule((S&&) s)) } -> same_as&lt;remove_cvref_t&lt;S>>;
         };
     </pre>
 
 2. None of a scheduler's copy constructor, destructor, equality comparison, or `swap` member functions shall exit via an exception.
 
-3. None of these member functions, nor a scheduler type's `schedule` function, shall introduce data races as a result of concurrent invocations of those functions from different
-    threads.
+3. None of these member functions, nor a scheduler type's `schedule` function, shall introduce data races as a result of concurrent invocations of those functions from different threads.
 
 4. For any two (possibly const) values `s1` and `s2` of some scheduler type `S`, `s1 == s2` shall return `true` only if both `s1` and `s2` are handles to the same associated execution context.
 
-5. A scheduler type's destructor shall not block pending completion of any receivers connected to the sender objects returned from `schedule`. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
+5. For a given scheduler expression `s`, the expression `execution::get_completion_scheduler<set_value_t>(execution::schedule(s))` shall compare equal to `s`.
+
+6. A scheduler type's destructor shall not block pending completion of any receivers connected to the sender objects returned from `schedule`. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
     context of the scheduler. <i>—end note</i>]
 
 ### Scheduler queries <b>[execution.schedulers.queries]</b> ### {#spec-execution.schedulers.queries}
