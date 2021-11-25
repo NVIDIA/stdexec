@@ -2317,6 +2317,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#design-lazy-algorithms-detached"><span class="secno">4.11.1</span> <span class="content">Eager execution leads to detached work or worse</span></a>
         <li><a href="#design-lazy-algorithms-complexity"><span class="secno">4.11.2</span> <span class="content">Eager senders complicate algorithm implementations</span></a>
         <li><a href="#design-lazy-algorithms-runtime"><span class="secno">4.11.3</span> <span class="content">Eager senders incur cancellation-related overhead</span></a>
+        <li><a href="#design-lazy-algorithms-runtime①"><span class="secno">4.11.4</span> <span class="content">Eager senders cannot access execution context from the receiver</span></a>
        </ol>
       <li><a href="#design-fpg"><span class="secno">4.12</span> <span class="content">Schedulers advertise their forward progress guarantees</span></a>
       <li><a href="#design-pipeable"><span class="secno">4.13</span> <span class="content">Most sender adaptors are pipeable</span></a>
@@ -3707,14 +3708,26 @@ particularly satisfactory:</p>
      <p>Make this undefined-behaviour - the caller must ensure that any
 eagerly-executing sender is always joined by connecting and starting that
 sender. This approach is generally pretty hostile to programmers,
-particularly in the presence of exceptions, and is thus not recommended.</p>
+particularly in the presence of exceptions, since it complicates the ability
+to compose these operations.</p>
+     <p>Eager operations typically need to acquire resources when they are first
+called in order to start the operation early. This makes eager algorithms
+prone to failure. Consider, then, what might happen in an expression such as <code class="highlight"><c- n>when_all</c-><c- p>(</c-><c- n>eager_op_1</c-><c- p>(),</c-> <c- n>eager_op_2</c-><c- p>())</c-></code>. Imagine <code class="highlight"><c- n>eager_op_1</c-><c- p>()</c-></code> starts an
+asynchronous operation successfully, but then <code class="highlight"><c- n>eager_op_2</c-><c- p>()</c-></code> throws. For
+lazy senders, that failure happens in the context of the <code class="highlight"><c- n>when_all</c-></code> algorithm, which handles the failure and ensures that async work joins on
+all code paths. In this case though -- the eager case -- the child operation
+has failed even before <code class="highlight"><c- n>when_all</c-></code> has been called.</p>
+     <p>It then becomes the responsibility, not of the algorithm, but of the end
+user to handle the exception and ensure that <code class="highlight"><c- n>eager_op_1</c-><c- p>()</c-></code> is joined before
+allowing the exception to propagate. If they fail to do that, they incur
+undefined behavior.</p>
     <li data-md>
      <p>Detach from the computation - let the operation continue in the background -
 like an implicit call to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- kr>thread</c-><c- o>::</c-><c- n>detach</c-><c- p>()</c-></code>. While this approach can
 work in some circumstances for some kinds of applications, in general it is
 also pretty user-hostile; it makes it difficult to reason about the safe
-destruction of resources used by these eager operations. In general, detached
-work necessitates some kind of garbage collection; <i>e.g.</i>, <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>shared_ptr</c-></code>, to ensure resources are kept alive until the operations
+destruction of resources used by these eager operations. In general,
+detached work necessitates some kind of garbage collection; <i>e.g.</i>, <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>shared_ptr</c-></code>, to ensure resources are kept alive until the operations
 complete, and can make clean shutdown nigh impossible.</p>
     <li data-md>
      <p>Block in the destructor until the operation completes. This approach is
@@ -3753,10 +3766,12 @@ destructor. It reduces the risk of deadlock but does not eliminate it.</p>
 semantics are able to make certain optimizations that are not available if
 senders can be potentially eager. With lazy senders, an algorithm can safely
 assume that a call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> on an operation state strictly happens
-before any receiver methods are called. This frees the algorithm from needing to
-resolve potential race conditions between the start and completion of the work.</p>
+before the execution of that async operation. This frees the algorithm from
+needing to resolve potential race conditions. For example, consider an algorithm <code class="highlight"><c- n>sequence</c-></code> that puts async operations in sequence by starting an operation only
+after the preceding one has completed. In an expression like <code class="highlight"><c- n>sequence</c-><c- p>(</c-><c- n>a</c-><c- p>(),</c-> <c- n>then</c-><c- p>(</c-><c- n>src</c-><c- p>,</c-> <c- p>[]</c-> <c- p>{</c-> <c- n>b</c-><c- p>();</c-> <c- p>}),</c-> <c- n>c</c-><c- p>())</c-></code>, one my reasonably assume that <code class="highlight"><c- n>a</c-><c- p>()</c-></code>, <code class="highlight"><c- n>b</c-><c- p>()</c-></code> and <code class="highlight"><c- n>c</c-><c- p>()</c-></code> are sequenced and therefore do not need synchronisation. Eager algorithms
+break that assumption.</p>
    <p>When an algorithm needs to deal with potentially eager senders, the potential
-race conditions can be resolved one of several ways, none of which is desirable:</p>
+race conditions can be resolved one of two ways, neither of which is desirable:</p>
    <ol>
     <li data-md>
      <p>Assume the worst and implement the algorithm defensively, assuming all
@@ -3768,17 +3783,7 @@ Algorithms can then implement two different implementation strategies, one
 for strictly lazy senders and one for potentially eager senders. This
 addresses the performance problem of (1) while compounding the complexity
 problem.</p>
-    <li data-md>
-     <p>Push the problem back onto eager senders by requiring them to never call a
-receiver’s <code class="highlight"><c- n>set_</c-><c- o>*</c-></code> completion until after <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> has been called
-on the operation state. That puts the onus of dealing with the race
-condition on the sender author, which is arguably where it belongs. But it
-has the negative effect of delaying the completion of the operation. Even
-when the work is done and the continuation available, the sender has to
-withold the completion, possibly indefinitely.</p>
    </ol>
-   <p>Of these options, (3) seems the least bad but would seem to run contrary to the <i>raison d’être</i> of eager algorithms, which ostensibly is to make the
-results available sooner.</p>
    <h4 class="heading settled" data-level="4.11.3" id="design-lazy-algorithms-runtime"><span class="secno">4.11.3. </span><span class="content">Eager senders incur cancellation-related overhead</span><a class="self-link" href="#design-lazy-algorithms-runtime"></a></h4>
    <p>Another implication of the use of eager operations is with regards to
 cancellation. The eagerly executing operation will not have access to the
@@ -3800,6 +3805,15 @@ will never be requested by the caller.</p>
 to the eager operation in the case that the sender representing the eager work
 is destroyed before it has been joined (assuming strategy (5) or (6) listed
 above is chosen).</p>
+   <h4 class="heading settled" data-level="4.11.4" id="design-lazy-algorithms-runtime①"><span class="secno">4.11.4. </span><span class="content">Eager senders cannot access execution context from the receiver</span><a class="self-link" href="#design-lazy-algorithms-runtime①"></a></h4>
+   <p>In sender/receiver, contextual information is passed from parent operations to
+their children by way of receivers. Information like stop tokens, allocators,
+current scheduler, priority, and deadline are propagated to child operations
+with custom receivers at the time the operation is connected. That way, each
+operation has the contextual information it needs before it is started.</p>
+   <p>But if the operation is started before it is connected to a receiver, then there
+isn’t a way for a parent operation to communicate contextual information to its
+child operations, which may complete before a receiver is ever attached.</p>
    <h3 class="heading settled" data-level="4.12" id="design-fpg"><span class="secno">4.12. </span><span class="content">Schedulers advertise their forward progress guarantees</span><a class="self-link" href="#design-fpg"></a></h3>
    <p>To decide whether a scheduler (and its associated execution context) is sufficient for a specific task, it may be necessary to know what kind of forward progress guarantees it provides for the execution agents it creates. The C++ Standard defines the following
 forward progress guarantees:</p>
