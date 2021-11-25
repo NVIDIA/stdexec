@@ -2449,6 +2449,13 @@ inline namespace unspecified {
 template&lt;auto& Tag>
   using tag_t = decay_t&lt;decltype(Tag)>;
 
+template&lt;class Tag>
+  using tag_category_t = <i>see below</i>;
+
+template&lt;class Tag, class... Categories>
+  concept tag_category_one_of =
+    (derived_from&lt;Tag, Categories> ||...);
+
 template&lt;class Tag, class... Args>
   concept tag_invocable =
     invocable&lt;decltype(tag_invoke), Tag, Args...>;
@@ -2483,6 +2490,8 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
 
     and that does not include the the `std::tag_invoke` name.
 
+2. For some type `T`, `tag_category_t<T>` is names `typename T::tag_category` if
+   such a type exists; otherwise, `void`.
 </blockquote>
 </ins>
 
@@ -2648,6 +2657,7 @@ namespace std::execution {
   // [execution.schedulers.queries], scheduler queries
   enum class forward_progress_guarantee;
   inline namespace <i>unspecified</i> {
+    struct scheduler_query_tag {};
     struct get_forward_progress_guarantee_t;
     inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
   }
@@ -2679,6 +2689,7 @@ namespace std::execution {
 
   // [execution.receivers.queries], receiver queries
   inline namespace <i>unspecified</i> {
+    struct receiver_query_tag {};
     struct get_scheduler_t;
     inline constexpr get_scheduler_t get_scheduler{};
     struct get_allocator_t;
@@ -2758,6 +2769,7 @@ namespace std::execution {
       using connect_result_t = decltype(connect(declval&lt;S>(), declval&lt;R>()));
 
     // [execution.senders.queries], sender queries
+    struct sender_query_tag {};
     template&lt;class CPO>
     struct get_completion_scheduler_t;
     template&lt;class CPO>
@@ -2913,6 +2925,8 @@ namespace std::execution {
 
 ### Scheduler queries <b>[execution.schedulers.queries]</b> ### {#spec-execution.schedulers.queries}
 
+1. For all customization point types `T` in this section, `tag_category_t<T>` is an alias for `scheduler_query_tag`.
+
 #### `execution::get_forward_progress_guarantee` <b>[execution.schedulers.queries.get_forward_progress_guarantee]</b> #### {#spec-execution.schedulers.queries.get_forward_progress_guarantee}
 
 <pre highlight=c++>
@@ -3014,6 +3028,8 @@ enum class forward_progress_guarantee {
     2. Otherwise, `execution::set_done(R)` is ill-formed.
 
 ### Receiver queries <b>[execution.receivers.queries]</b> ### {#spec-execution.receivers.queries}
+
+1. For all customization point types `T` in this section, `tag_category_t<T>` is an alias for `receiver_query_tag`.
 
 #### `execution::get_scheduler` <b>[execution.receivers.queries.get_scheduler]</b> #### {#spec-execution.receivers.queries.get_scheduler}
 
@@ -3296,6 +3312,8 @@ enum class forward_progress_guarantee {
 
 ### Sender queries <b>[execution.senders.queries]</b> ### {#spec-execution.senders.queries}
 
+1. For all customization point types `T` in this section, `tag_category_t<T>` is an alias for `sender_query_tag`.
+
 #### `execution::get_completion_scheduler` <b>[execution.senders.queries.get_completion_scheduler]</b> #### {#spec-execution.senders.queries.get_completion_scheduler}
 
 1. `execution::get_completion_scheduler` is used to ask a sender object for the <i>completion scheduler</i> for one of its signals.
@@ -3500,10 +3518,10 @@ enum class forward_progress_guarantee {
 3. Unless otherwise specified, a sender adaptor is required to not begin executing any functions which would observe or modify any of the arguments of the adaptor before the returned sender is connected with a receiver using `execution::connect`, and
     `execution::start` is called on the resulting operation state. This requirement applies to any function that is selected by the implementation of the sender adaptor.
 
-4. Unless otherwise specified, all sender adaptors which accept a single `sender` argument return sender objects that propagate sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
+4. A type `T` is a <i>sender query</i> if it is the type of a customization point object for which `tag_category_one_of<T, sender_query_tag>` is `true`. Unless otherwise specified, all sender adaptors which accept a single `sender` argument return sender objects that propagate sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
     sender adaptor.
 
-5. Unless otherwise specified, whenever a sender adaptor constructs a receiver it passes to another sender's connect, that receiver shall propagate receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
+5. A type `T` is a <i>receiver query</i> if it is the type of a customization point object for which `tag_category_one_of<T, receiver_query_tag>` is `true`. Unless otherwise specified, whenever a sender adaptor constructs a receiver it passes to another sender's connect, that receiver shall propagate receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
     applies to any sender returned from a function that is selected by the implementation of such sender adaptor.
 
 #### Sender adaptor closure objects <b>[execution.senders.adaptor.objects]</b> #### {#spec-execution.senders.adaptor.objects}

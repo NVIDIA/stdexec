@@ -33,12 +33,13 @@ namespace std {
 
       struct tag_invoke_t {
         template <class... _Args, __has_tag_invoke<_Args...> _Tag>
-        decltype(auto) operator()(_Tag __tag, _Args&&... __args) const
+        constexpr decltype(auto) operator()(_Tag __tag, _Args&&... __args) const
           noexcept(noexcept(tag_invoke((_Tag&&) __tag, (_Args&&) __args...))) {
           return tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
         }
       };
-    }
+    } // namespace __impl
+
     inline constexpr struct tag_invoke_t : __impl::tag_invoke_t {} tag_invoke {};
   }
 

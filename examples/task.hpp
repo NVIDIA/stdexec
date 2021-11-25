@@ -241,11 +241,6 @@ private:
     void unhandled_exception() noexcept {
       this->data_.template emplace<2>(std::current_exception());
     }
-
-    // To make it possible to issue receiver queries against this promise type,
-    // it must trivially satisfy the receiver concept.
-    friend void tag_invoke(std::execution::set_error_t, _promise&&, auto&&) noexcept;
-    friend void tag_invoke(std::execution::set_done_t, _promise&&) noexcept;
   };
 
   template <class ParentPromise = void>
