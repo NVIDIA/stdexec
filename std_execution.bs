@@ -868,18 +868,23 @@ This proposal also draws heavily from our experience with [Thrust](https://githu
 
 The changes since R2 are as follows:
 
-* Add `run_loop` execution context.
-* Add `receiver_adaptor` utility to simplify writing receivers.
-* Fix recursive definition of the `scheduler` concept.
-* Require a scheduler's sender to model `sender_of` and provide a completion scheduler.
-* Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
-* Fix a memory safety bug in the implementation of <code><i>connect-awaitable</i></code>.
-* Specify the cancellation scope of the `when_all` algorithm.
-* Make `as_awaitable` a customization point.
-* Change `connect`'s handling of awaitables to consider those types that are awaitable owing to customization of `as_awaitable`.
-* Add `value_types_of_t` and `error_types_of_t` alias templates; rename `stop_token_type_t` to `stop_token_of_t`.
-* Add a design rationale for the removal of the possibly eager algorithms.
-* Expand the section on field experience.
+<b>Fixes:</b>
+
+    * Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
+    * Fix a memory safety bug in the implementation of <code><i>connect-awaitable</i></code>.
+
+<b>Enhancements:</b>
+
+    * Add `run_loop` execution context.
+    * Add `receiver_adaptor` utility to simplify writing receivers.
+    * Fix recursive definition of the `scheduler` concept.
+    * Require a scheduler's sender to model `sender_of` and provide a completion scheduler.
+    * Specify the cancellation scope of the `when_all` algorithm.
+    * Make `as_awaitable` a customization point.
+    * Change `connect`'s handling of awaitables to consider those types that are awaitable owing to customization of `as_awaitable`.
+    * Add `value_types_of_t` and `error_types_of_t` alias templates; rename `stop_token_type_t` to `stop_token_of_t`.
+    * Add a design rationale for the removal of the possibly eager algorithms.
+    * Expand the section on field experience.
 
 ## R2 ## {#r2}
 
