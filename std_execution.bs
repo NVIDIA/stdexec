@@ -1340,14 +1340,30 @@ particularly satisfactory:
 1.  Make this undefined-behaviour - the caller must ensure that any
     eagerly-executing sender is always joined by connecting and starting that
     sender. This approach is generally pretty hostile to programmers,
-    particularly in the presence of exceptions, and is thus not recommended.
+    particularly in the presence of exceptions, since it complicates the ability
+    to compose these operations.
+
+    Eager operations typically need to acquire resources when they are first
+    called in order to start the operation early. This makes eager algorithms
+    prone to failure. Consider, then, what might happen in an expression such as
+    `when_all(eager_op_1(), eager_op_2())`. Imagine `eager_op_1()` starts an
+    asynchronous operation successfully, but then `eager_op_2()` throws. For
+    lazy senders, that failure happens in the context of the `when_all`
+    algorithm, which handles the failure and ensures that async work joins on
+    all code paths. In this case though -- the eager case -- the child operation
+    has failed even before `when_all` has been called.
+
+    It then becomes the responsibility, not of the algorithm, but of the end
+    user to handle the exception and ensure that `eager_op_1()` is joined before
+    allowing the exception to propagate. If they fail to do that, they incur
+    undefined behavior.
 
 2.  Detach from the computation - let the operation continue in the background -
     like an implicit call to `std::thread::detach()`. While this approach can
     work in some circumstances for some kinds of applications, in general it is
     also pretty user-hostile; it makes it difficult to reason about the safe
-    destruction of resources used by these eager operations. In general, detached
-    work necessitates some kind of garbage collection; <i>e.g.</i>,
+    destruction of resources used by these eager operations. In general,
+    detached work necessitates some kind of garbage collection; <i>e.g.</i>,
     `std::shared_ptr`, to ensure resources are kept alive until the operations
     complete, and can make clean shutdown nigh impossible.
 
@@ -1388,11 +1404,16 @@ Algorithms that can assume they are operating on senders with strictly lazy
 semantics are able to make certain optimizations that are not available if
 senders can be potentially eager. With lazy senders, an algorithm can safely
 assume that a call to `execution::start` on an operation state strictly happens
-before any receiver methods are called. This frees the algorithm from needing to
-resolve potential race conditions between the start and completion of the work.
+before the execution of that async operation. This frees the algorithm from
+needing to resolve potential race conditions. For example, consider an algorithm
+`sequence` that puts async operations in sequence by starting an operation only
+after the preceding one has completed. In an expression like `sequence(a(),
+then(src, [] { b(); }), c())`, one my reasonably assume that `a()`, `b()` and
+`c()` are sequenced and therefore do not need synchronisation. Eager algorithms
+break that assumption.
 
 When an algorithm needs to deal with potentially eager senders, the potential
-race conditions can be resolved one of several ways, none of which is desirable:
+race conditions can be resolved one of two ways, neither of which is desirable:
 
 1.  Assume the worst and implement the algorithm defensively, assuming all
     senders are eager. This obviously has overheads both at runtime and in
@@ -1403,18 +1424,6 @@ race conditions can be resolved one of several ways, none of which is desirable:
     for strictly lazy senders and one for potentially eager senders. This
     addresses the performance problem of (1) while compounding the complexity
     problem.
-
-3.  Push the problem back onto eager senders by requiring them to never call a
-    receiver's `set_*` completion until after `execution::start` has been called
-    on the operation state. That puts the onus of dealing with the race
-    condition on the sender author, which is arguably where it belongs. But it
-    has the negative effect of delaying the completion of the operation. Even
-    when the work is done and the continuation available, the sender has to
-    withold the completion, possibly indefinitely.
-
-Of these options, (3) seems the least bad but would seem to run contrary to the
-<i>raison d'être</i> of eager algorithms, which ostensibly is to make the
-results available sooner.
 
 ### Eager senders incur cancellation-related overhead ### {#design-lazy-algorithms-runtime}
 
@@ -1440,6 +1449,18 @@ The eager operation will also need to do this to support sending a stop request
 to the eager operation in the case that the sender representing the eager work
 is destroyed before it has been joined (assuming strategy (5) or (6) listed
 above is chosen).
+
+### Eager senders cannot access execution context from the receiver ### {#design-lazy-algorithms-runtime}
+
+In sender/receiver, contextual information is passed from parent operations to
+their children by way of receivers. Information like stop tokens, allocators,
+current scheduler, priority, and deadline are propagated to child operations
+with custom receivers at the time the operation is connected. That way, each
+operation has the contextual information it needs before it is started.
+
+But if the operation is started before it is connected to a receiver, then there
+isn't a way for a parent operation to communicate contextual information to its
+child operations, which may complete before a receiver is ever attached.
 
 ## Schedulers advertise their forward progress guarantees ## {#design-fpg}
 
