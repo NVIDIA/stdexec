@@ -3279,6 +3279,14 @@ essential when writing user code using standard execution concepts; we have also
    <h2 class="heading settled" data-level="2" id="revisions"><span class="secno">2. </span><span class="content">Revision history</span><a class="self-link" href="#revisions"></a></h2>
    <h3 class="heading settled" data-level="2.1" id="r3"><span class="secno">2.1. </span><span class="content">R3</span><a class="self-link" href="#r3"></a></h3>
    <p>The changes since R2 are as follows:</p>
+   <p><b>Fixes:</b></p>
+   <ul>
+    <li data-md>
+     <p>Fix specification of the <code class="highlight"><c- n>on</c-></code> algorithm to clarify lifetimes of intermediate operation states and properly scope the <code class="highlight"><c- n>get_scheduler</c-></code> query.</p>
+    <li data-md>
+     <p>Fix a memory safety bug in the implementation of <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code>.</p>
+   </ul>
+   <p><b>Enhancements:</b></p>
    <ul>
     <li data-md>
      <p>Add <code class="highlight"><c- n>run_loop</c-></code> execution context.</p>
@@ -3288,10 +3296,6 @@ essential when writing user code using standard execution concepts; we have also
      <p>Fix recursive definition of the <code class="highlight"><c- n>scheduler</c-></code> concept.</p>
     <li data-md>
      <p>Require a scheduler’s sender to model <code class="highlight"><c- n>sender_of</c-></code> and provide a completion scheduler.</p>
-    <li data-md>
-     <p>Fix specification of the <code class="highlight"><c- n>on</c-></code> algorithm to clarify lifetimes of intermediate operation states and properly scope the <code class="highlight"><c- n>get_scheduler</c-></code> query.</p>
-    <li data-md>
-     <p>Fix a memory safety bug in the implementation of <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code>.</p>
     <li data-md>
      <p>Specify the cancellation scope of the <code class="highlight"><c- n>when_all</c-></code> algorithm.</p>
     <li data-md>
