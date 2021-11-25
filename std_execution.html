@@ -2265,7 +2265,13 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#intro-prior-art-coroutines"><span class="secno">1.9.2</span> <span class="content">Coroutines</span></a>
         <li><a href="#intro-prior-art-callbacks"><span class="secno">1.9.3</span> <span class="content">Callbacks</span></a>
        </ol>
-      <li><a href="#intro-field-experience"><span class="secno">1.10</span> <span class="content">Field experience</span></a>
+      <li>
+       <a href="#intro-field-experience"><span class="secno">1.10</span> <span class="content">Field experience</span></a>
+       <ol class="toc">
+        <li><a href="#intro-field-experience-libunifex"><span class="secno">1.10.1</span> <span class="content">libunifex</span></a>
+        <li><a href="#intro-field-experience-other-implementations"><span class="secno">1.10.2</span> <span class="content">Other implementations</span></a>
+        <li><a href="#intro-field-experience-inspirations"><span class="secno">1.10.3</span> <span class="content">Inspirations</span></a>
+       </ol>
      </ol>
     <li>
      <a href="#revisions"><span class="secno">2</span> <span class="content">Revision history</span></a>
@@ -3189,7 +3195,19 @@ essential when writing user code using standard execution concepts; we have also
    <p>Callbacks are the oldest, simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities. The lack of a standard callback shape obstructs generic design.</p>
    <p>Additionally, few of these possibilities accommodate cancellation signals when the user requests upstream work to stop and clean up.</p>
    <h3 class="heading settled" data-level="1.10" id="intro-field-experience"><span class="secno">1.10. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
-   <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>. Libunifex has seen heavy production use at Facebook. As of October 2021, it is currently used in production within the following applications and platforms:</p>
+   <h4 class="heading settled" data-level="1.10.1" id="intro-field-experience-libunifex"><span class="secno">1.10.1. </span><span class="content">libunifex</span><a class="self-link" href="#intro-field-experience-libunifex"></a></h4>
+   <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>. Libunifex implements all of the concepts and customization points defined in this paper, many of this paper’s algorithms (some under different names), and much more besides.</p>
+   <p>Libunifex has several concrete schedulers in addition to the <code class="highlight"><c- n>run_loop</c-></code> suggested here (where it is called <code class="highlight"><c- n>manual_event_loop</c-></code>). It has schedulers that dispatch efficiently to epoll and io_uring on Linux and the Windows Thread Pool on Windows.</p>
+   <p>In addition to the proposed interfaces and the additional schedulers, it has several important extensions to the facilities described in this paper, which demonstrate directions in which these abstractions may be evolved over time, including:</p>
+   <ul>
+    <li data-md>
+     <p>Timed schedulers, which permit scheduling work on an execution context at a particular time or after a particular duration has elapsed. In addition, it provides time-based algorithms.</p>
+    <li data-md>
+     <p>File I/O schedulers, which permit filesystem I/O to be scheduled.</p>
+    <li data-md>
+     <p>Two complementary abstractions for streams (asynchronous ranges), and a set of stream-based algorithms.</p>
+   </ul>
+   <p>Libunifex has seen heavy production use at Facebook. As of October 2021, it is currently used in production within the following applications and platforms:</p>
    <ul>
     <li data-md>
      <p>Facebook Messenger on iOS, Android, Windows, and macOS</p>
@@ -3203,6 +3221,51 @@ essential when writing user code using standard execution concepts; we have also
      <p>An internal Facebook product that runs on Linux</p>
    </ul>
    <p>All of these applications are making direct use of the sender/receiver abstraction as presented in this paper. One product (Instagram on iOS) is making use of the sender/coroutine integration as presented. The monthly active users of these products number in the billions.</p>
+   <h4 class="heading settled" data-level="1.10.2" id="intro-field-experience-other-implementations"><span class="secno">1.10.2. </span><span class="content">Other implementations</span><a class="self-link" href="#intro-field-experience-other-implementations"></a></h4>
+   <p>The authors are aware of a number of other implementations of sender/receiver from this paper. These are presented here in perceived order of maturity and field experience.</p>
+   <ul>
+    <li data-md>
+     <p><b><a data-link-type="biblio" href="#biblio-hpx">[HPX]</a></b></p>
+     <p>HPX is a general purpose C++ runtime system for parallel and distributed applications that has been under active development since 2007. HPX exposes a uniform, standards-oriented API, and keeps abreast of the latest standards and proposals. It is used in a wide variety of high-performance applications.</p>
+     <p>The sender/receiver implementation in HPX has been under active development since May 2020. It is used to erase the overhead of futures and to make it possible to write efficient generic asynchronous algorithms that are agnostic to their execution context. In HPX, algorithms can migrate execution between execution contexts, even to GPUs and back, using a uniform standard interface with sender/receiver.</p>
+     <p>Far and away, the HPX team has the greatest usage experience outside Facebook. Mikael Simburg summarizes the experience as follows:</p>
+     <blockquote>
+      <p>Summarizing, for us the major benefits of sender/receiver compared to the old model are:</p>
+      <ol>
+       <li data-md>
+        <p>Proper hooks for transitioning between execution contexts.</p>
+       <li data-md>
+        <p>The adaptors. Things like <code class="highlight"><c- n>let_value</c-></code> are really nice additions.</p>
+       <li data-md>
+        <p>Separation of the error channel from the value channel (also cancellation, but we don’t have much use for it at the moment). Even from a teaching perspective having to explain that the future <code class="highlight"><c- n>f2</c-></code> in the continuation will always be ready here <code class="highlight"><c- n>f1</c-><c- p>.</c-><c- n>then</c-><c- p>([](</c-><c- n>future</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-> <c- n>f2</c-><c- p>)</c-> <c- p>{...})</c-></code> is enough of a reason to separate the channels. All the other obvious reasons apply as well of course.</p>
+       <li data-md>
+        <p>For futures we have a thing called <code class="highlight"><c- n>hpx</c-><c- o>::</c-><c- n>dataflow</c-></code> which is an optimized version of <code class="highlight"><c- n>when_all</c-><c- p>(...).</c-><c- n>then</c-><c- p>(...)</c-></code> which avoids intermediate allocations. With the sender/receiver <code class="highlight"><c- n>when_all</c-><c- p>(...)</c-> <c- o>|</c-> <c- n>then</c-><c- p>(...)</c-></code> we get that "for free".</p>
+      </ol>
+     </blockquote>
+    <li data-md>
+     <p><b><a href="https://github.com/dietmarkuehl/kuhllib/">kuhllib</a> by Dietmar Kuehl</b></p>
+     <p>This is a prototype Standard Template Library with an implementation of sender/receiver that has been under development since May, 2021. It is significant mostly for its support for sender/receiver-based networking interfaces.</p>
+     <p>Here, Dietmar Kuehl speaks about the perceived complexity of sender/receiver:</p>
+     <blockquote>
+      <p>... and, also similar to STL: as I had tried to do things in that space before I recognize sender/receivers as being maybe complicated in one way but a huge simplification in another one: like with STL I think those who use it will benefit - if not from the algorithm from the clarity of abstraction: the separation of concerns of STL (the algorithm being detached from the details of the sequence representation) is a major leap. Here it is rather similar: the separation of the asynchronous algorithm from the details of execution. Sure, there is some glue to tie things back together but each of them is simpler than the combined result.</p>
+     </blockquote>
+     <p>Elsewhere, he said:</p>
+     <blockquote>
+      <p>... to me it feels like sender/receivers are like iterators when STL emerged: they are different from what everybody did in that space. However, everything people are already doing in that space isn’t right.</p>
+     </blockquote>
+     <p>Kuehl also has experience teaching sender/receiver at Bloomberg. About that experience he says:</p>
+     <blockquote>
+      <p>When I asked [my students] specifically about how complex they consider the sender/receiver stuff the feedback was quite unanimous that the sender/receiver parts aren’t trivial but not what contributes to the complexity.</p>
+     </blockquote>
+    <li data-md>
+     <p><b><a href="https://github.com/brycelelbach/wg21_p2300_std_execution/tree/main/include">The reference implementation</a></b></p>
+     <p>This is a partial implementation written from the specification in this paper. Its primary purpose is to help find specification bugs and to harden the wording of the proposal. When finished, it will be a minimal and complete implementation of this proposal, fit for broad use and for contribution to libc++. It will be finished before this proposal is approved.</p>
+     <p>It currently lacks some of the proposed sender adaptors and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code>, but otherwise implements the concepts, customization points, traits, queries, coroutine integration, sender factories, pipe support, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code>, and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code>.</p>
+    <li data-md>
+     <p><b><a href="https://github.com/miscco/STL/tree/proposal/executors">Reference implementation for the Microsoft STL</a> by Michael Schellenberger Costa</b></p>
+     <p>This is another reference implementation of this proposal, this time in a fork of the Mircosoft STL implementation. Michael Schellenberger Costa is not affiliated with Microsoft. He intends to contribute this implementation upstream when it is complete.</p>
+   </ul>
+   <h4 class="heading settled" data-level="1.10.3" id="intro-field-experience-inspirations"><span class="secno">1.10.3. </span><span class="content">Inspirations</span><a class="self-link" href="#intro-field-experience-inspirations"></a></h4>
    <p>This proposal also draws heavily from our experience with <a href="https://github.com/NVIDIA/thrust">Thrust</a> and <a href="https://github.com/agency-library/agency">Agency</a>. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:</p>
    <ul>
     <li data-md>
@@ -3212,7 +3275,6 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p><a href="https://stlab.cc/libraries/concurrency/">stlab</a></p>
    </ul>
-   <p>Before this proposal is approved, we will present a new implementation of this proposal written from the specification and intended as a contribution to libc++. This implementation will demonstrate the viability of the design across the use cases and execution contexts that the committee has identified as essential.</p>
    <h2 class="heading settled" data-level="2" id="revisions"><span class="secno">2. </span><span class="content">Revision history</span><a class="self-link" href="#revisions"></a></h2>
    <h3 class="heading settled" data-level="2.1" id="r3"><span class="secno">2.1. </span><span class="content">R3</span><a class="self-link" href="#r3"></a></h3>
    <p>The changes since R2 are as follows:</p>
@@ -3235,6 +3297,8 @@ essential when writing user code using standard execution concepts; we have also
      <p>Add <code class="highlight"><c- n>value_types_of_t</c-></code> and <code class="highlight"><c- n>error_types_of_t</c-></code> alias templates; rename <code class="highlight"><c- n>stop_token_type_t</c-></code> to <code class="highlight"><c- n>stop_token_of_t</c-></code>.</p>
     <li data-md>
      <p>Add a design rationale for the removal of the possibly eager algorithms.</p>
+    <li data-md>
+     <p>Expand the section on field experience.</p>
    </ul>
    <h3 class="heading settled" data-level="2.2" id="r2"><span class="secno">2.2. </span><span class="content">R2</span><a class="self-link" href="#r2"></a></h3>
    <p>The changes since R1 are as follows:</p>
@@ -6886,6 +6950,8 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <h2 class="no-num no-ref heading settled" id="references"><span class="content">References</span><a class="self-link" href="#references"></a></h2>
   <h3 class="no-num no-ref heading settled" id="informative"><span class="content">Informative References</span><a class="self-link" href="#informative"></a></h3>
   <dl>
+   <dt id="biblio-hpx">[HPX]
+   <dd>Hartmut Kaiser; et al. <a href="https://doi.org/10.21105/joss.02352"><cite>HPX - The C++ Standard Library for Parallelism and Concurrency</cite></a>. URL: <a href="https://doi.org/10.21105/joss.02352">https://doi.org/10.21105/joss.02352</a>
    <dt id="biblio-n4885">[N4885]
    <dd>Thomas Köppe. <a href="https://wg21.link/n4885"><cite>Working Draft, Standard for Programming Language C++</cite></a>. 17 March 2021. URL: <a href="https://wg21.link/n4885">https://wg21.link/n4885</a>
    <dt id="biblio-p0443r14">[P0443R14]
