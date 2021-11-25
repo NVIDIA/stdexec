@@ -3224,6 +3224,8 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>Fix recursive definition of the <code class="highlight"><c- n>scheduler</c-></code> concept.</p>
     <li data-md>
+     <p>Require a scheduler’s sender to model <code class="highlight"><c- n>sender_of</c-></code> and provide a completion scheduler.</p>
+    <li data-md>
      <p>Fix specification of the <code class="highlight"><c- n>on</c-></code> algorithm to clarify lifetimes of intermediate operation states and properly scope the <code class="highlight"><c- n>get_scheduler</c-></code> query.</p>
     <li data-md>
      <p>Fix a memory safety bug in the implementation of <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code>.</p>
@@ -4883,17 +4885,19 @@ the shared stop state.</p>
   <c- k>concept</c-> <c- nc>scheduler</c-> <c- o>=</c->
     <c- n>copy_constructible</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-> <c- o>&amp;&amp;</c->
     <c- n>equality_comparable</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-> <c- o>&amp;&amp;</c->
-    <c- k>requires</c-><c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- p>{</c->
-      <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-><c- n>s</c-><c- p>);</c->
+    <c- k>requires</c-><c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- k>const</c-> <c- n>get_completion_scheduler_t</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-> <c- n>tag</c-><c- p>)</c-> <c- p>{</c->
+      <c- p>{</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-><c- p>)</c-> <c- p>}</c-> <c- o>-></c-> <c- n>sender_of</c-><c- p>;</c->
+      <c- p>{</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>tag</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-><c- p>))</c-> <c- p>}</c-> <c- o>-></c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-><c- p>;</c->
     <c- p>};</c->
 </pre>
     <li data-md>
      <p>None of a scheduler’s copy constructor, destructor, equality comparison, or <code class="highlight"><c- n>swap</c-></code> member functions shall exit via an exception.</p>
     <li data-md>
-     <p>None of these member functions, nor a scheduler type’s <code class="highlight"><c- n>schedule</c-></code> function, shall introduce data races as a result of concurrent invocations of those functions from different
-threads.</p>
+     <p>None of these member functions, nor a scheduler type’s <code class="highlight"><c- n>schedule</c-></code> function, shall introduce data races as a result of concurrent invocations of those functions from different threads.</p>
     <li data-md>
      <p>For any two (possibly const) values <code class="highlight"><c- n>s1</c-></code> and <code class="highlight"><c- n>s2</c-></code> of some scheduler type <code class="highlight"><c- n>S</c-></code>, <code class="highlight"><c- n>s1</c-> <c- o>==</c-> <c- n>s2</c-></code> shall return <code class="highlight">true</code> only if both <code class="highlight"><c- n>s1</c-></code> and <code class="highlight"><c- n>s2</c-></code> are handles to the same associated execution context.</p>
+    <li data-md>
+     <p>For a given scheduler expression <code class="highlight"><c- n>s</c-></code>, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code> shall compare equal to <code class="highlight"><c- n>s</c-></code>.</p>
     <li data-md>
      <p>A scheduler type’s destructor shall not block pending completion of any receivers connected to the sender objects returned from <code class="highlight"><c- n>schedule</c-></code>. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
 context of the scheduler. <i>—end note</i>]</p>
