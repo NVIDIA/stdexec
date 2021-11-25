@@ -875,6 +875,8 @@ The changes since R2 are as follows:
 * Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
 * Fix a memory safety bug in the implementation of <code><i>connect-awaitable</i></code>.
 * Specify the cancellation scope of the `when_all` algorithm.
+* Make `as_awaitable` a customization point.
+* Change `connect`'s handling of awaitables to consider those types that are awaitable owing to customization of `as_awaitable`.
 * Add `value_types_of_t` and `error_types_of_t` alias templates; rename `stop_token_type_t` to `stop_token_of_t`.
 * Add a design rationale for the removal of the possibly eager algorithms.
 * Expand the section on field experience.
@@ -2658,7 +2660,7 @@ namespace std::execution {
     concept typed_sender = <i>see-below</i>;
 
   template&lt;class... Ts>
-    struct <i>type-list</i> = <i>see-below</i>; // exposition only
+    struct <i>type-list</i>;
 
   template&lt;class S, class ...Ts>
     concept sender_of = <i>see-below</i>;
@@ -2807,8 +2809,10 @@ namespace std::execution {
   }
 
   // [execution.coro_utils.as_awaitable]
-  template &lt;<i>single-typed-sender</i> Sender, class Promise>
-    <i>see-below</i> as_awaitable(Sender&& s, Promise& p);
+  inline namespace <i>unspecified</i> {
+    struct as_awaitable_t;
+    inline constexpr as_awaitable_t as_awaitable;
+  }
 
   // [execution.coro_utils.with_awaitable_senders]
   template &lt;<i>class-type</i> Promise>
@@ -3067,9 +3071,6 @@ enum class forward_progress_guarantee {
 5. The `sender_of` concept defines the requirements for a typed sender type that on successful completion sends the specified set of value types.
 
     <pre highlight=c++>
-    template&ltclass... Ts>
-      struct <i>type-list</i> {};
-
     template&ltclass S, class... Ts>
       concept sender_of =
         typed_sender&ltS> &&
@@ -3087,11 +3088,11 @@ enum class forward_progress_guarantee {
 
 3. The primary class template `sender_traits<S>` also recognizes awaitables as typed senders. For this clause ([execution]):
 
-    1. An <i>awaitable</i> is an expression that would be well-formed as the operand of a `co_await` expression within a coroutine that does not define an `await_transform` member in its promise type.
+    1. An <i>awaitable</i> is an expression that would be well-formed as the operand of a `co_await` expression within a given context.
 
-    2. For any type `T`, <code><i>is-awaitable</i>&lt;T></code> is `true` if an expression of that type is an awaitable as described above; otherwise, `false`.
+    2. For any type `T`, <code><i>is-awaitable</i>&lt;T></code> is `true` if and only if an expression of that type is an awaitable as described above within the context of a coroutine whose promise type does not define a member `await_transform`. For a coroutine promise type `P`, <code><i>is-awaitable</i>&lt;T, P></code> is `true` if and only if an expression of that type is an awaitable as described above within the context of a coroutine whose promise type is `P`.
 
-    3. For an awaitable `a` such that `decltype((a))` is type `A`, <code><i>await-result-type</i>&lt;A></code> is an alias for <code>decltype(<i>e</i>)</code>, where <code><i>e</i></code> is `a`'s <i>await-resume</i> expression ([expr.await]).
+    3. For an awaitable `a` such that `decltype((a))` is type `A`, <code><i>await-result-type</i>&lt;A></code> is an alias for <code>decltype(<i>e</i>)</code>, where <code><i>e</i></code> is `a`'s <i>await-resume</i> expression ([expr.await]) within the context of a coroutine whose promise type does not define a member `await_transform`. For a coroutine promise type `P`, <code><i>await-result-type</i>&lt;A, P></code> is an alias for <code>decltype(<i>e</i>)</code>, where <code><i>e</i></code> is `a`'s <i>await-resume</i> expression ([expr.await]) within the context of a coroutine whose promise type is `P`.
 
 4. The primary class template `sender_traits<S>` is defined as if inheriting from an implementation-defined class template <code><i>sender-traits-base</i>&lt;S></code> defined as follows:
 
@@ -3179,48 +3180,49 @@ enum class forward_progress_guarantee {
 
 ### `execution::connect` <b>[execution.senders.connect]</b> ### {#spec-execution.senders.connect}
 
-1. `execution::connect` is used to <i>connect</i> a sender with a receiver, producing an operation state object that represents the work that needs to be performed to satisfy the receiver contract of the receiver with values that are the result of the operations
-    described by the sender.
+1. `execution::connect` is used to <i>connect</i> a sender with a receiver, producing an operation state object that represents the work that needs to be performed to satisfy the receiver contract of the receiver with values that are the result of the operations described by the sender.
 
-2. The name `execution::connect` denotes a customization point object. For some subexpressions `s` and `r`, let `S` be `decltype((s))` and `R` be `decltype((r))`, and let `S'` and `R'` be the decayed types of `S` and `R`, respectively. If `R` does not satisfy `execution::receiver` or `S` does not satisfy `execution::sender`,
-    `execution::connect(s, r)` is ill-formed. Otherwise, the expression `execution::connect(s, r)` is expression-equivalent to:
+2. The name `execution::connect` denotes a customization point object. For some subexpressions `s` and `r`, let `S` be `decltype((s))` and `R` be `decltype((r))`, and let `S'` and `R'` be the decayed types of `S` and `R`, respectively. If `R` does not satisfy `execution::receiver`, `execution::connect(s, r)` is ill-formed. Otherwise, the expression `execution::connect(s, r)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::connect, s, r)`, if that expression is valid and its type satisfies `execution::operation_state`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program
-        is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::connect, s, r)`, if that expression is valid, its type satisfies `execution::operation_state`, and `S` satisfies `execution::sender`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program is ill-formed with no diagnostic required.
 
-    2. Otherwise, <code><i>connect-awaitable</i>(s, r)</code> if <code><i>is-awaitable</i>&lt;S></code> is `true` and that expression is valid, where <code><i>connect-awaitable</i></code> is a coroutine equivalent to the following:
+    2. Otherwise, <code><i>connect-awaitable</i>(s, r)</code> if <code><i>is-awaitable</i>&lt;S, <i>connect-awaitable-promise</i>></code> is `true` and that expression is valid, where <code><i>connect-awaitable</i></code> is a coroutine equivalent to the following:
 
         <pre highlight="c++">
         <i>operation-state-task</i> <i>connect-awaitable</i>(S' s, R' r) requires <i>see-below</i> {
-          exception_ptr e;
+          exception_ptr ep;
           try {
             <i>set-value-expr</i>
           } catch(...) {
-            e = current_exception();
+            ep = current_exception();
           }
           <i>set-error-expr</i>
         }
         </pre>
 
-        where <code><i>connect-awaitable</i></code> suspends at the <i>initial suspends point</i> ([dcl.fct.def.coroutine]), and:
+        where <code><i>connect-awaitable-promise</i></code> is the promise type <code><i>connect-awaitable</i></code>, and where <code><i>connect-awaitable</i></code> suspends at the <i>initial suspends point</i> ([dcl.fct.def.coroutine]), and:
 
-          1. <i>set-value-expr</i> first evaluates `co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r)` if <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code>; otherwise, it evaluates `auto&& res = co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r, (decltype(res)) res)`.
+          1. <i>set-value-expr</i> first evaluates `co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r)` if <code><i>await-result-type</i>&lt;S, <i>connect-awaitable-promise</i>></code> is <code><i>cv</i> void</code>; otherwise, it evaluates `auto&& res = co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r, (decltype(res)) res)`.
 
             If the call to `execution::set_value` exits with an exception, the coroutine is resumed and the exception is immediately propagated in the context of the coroutine.
 
             [<i>Note</i>: If the call to `execution::set_value` exits normally, then the <code><i>connect-awaitable</i></code> coroutine is never resumed. --<i>end note</i>]
 
-          2. <i>set-error-expr</i> first suspends the coroutine and then executes `execution::set_error((R&&) r, std::move(e))`.
+          2. <i>set-error-expr</i> first suspends the coroutine and then executes `execution::set_error((R&&) r, std::move(ep))`.
 
             [<i>Note</i>: The <code><i>connect-awaitable</i></code> coroutine is never resumed after the call to `execution::set_error`. --<i>end note</i>]
 
           3. <code><i>operation-state-task</i></code> is a type that models `operation_state`. Its `execution::start` resumes the <code><i>connect-awaitable</i></code> coroutine, advancing it past the initial suspend point.
 
-          4. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
+          4. The type <code><i>connect-awaitable-promise</i></code> satisfies `receiver`. [<i>Note:</i> It need not model `receiver`. -- <i>end note</i>].
 
-          5. The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
+          5. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
 
-        The operand of the <i>requires-clause</i> of <code><i>connect-awaitable</i></code> is equivalent to `receiver_of<R>` if <code><i>await-result-type</i>&lt;S></code> is <code><i>cv</i> void</code>; otherwise, it is <code>receiver_of&lt;R, <i>await-result-type</i>&lt;S>></code>.
+          6. The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
+
+          7. For some expression `e`, the expression `p.await_transform(e)` is expression-equivalent to `as_awaitable(e, p)`.
+
+        The operand of the <i>requires-clause</i> of <code><i>connect-awaitable</i></code> is equivalent to `receiver_of<R>` if <code><i>await-result-type</i>&lt;S, <i>connect-awaitable-promise</i>></code> is <code><i>cv</i> void</code>; otherwise, it is <code>receiver_of&lt;R, <i>await-result-type</i>&lt;S, <i>connect-awaitable-promise</i>>></code>.
 
     3. Otherwise, `execution::connect(s, r)` is ill-formed.
 
@@ -4435,99 +4437,107 @@ from the operation before the operation completes.
 
 ### `execution::as_awaitable` <b>[execution.coro_utils.as_awaitable]</b> ### {#spec-execution.coro_utils.as_awaitable}
 
-1. `as_awaitable` is used to wrap a sender into an object that is awaitable within a particular coroutine. A sender `s` of type `S` can be made awaitable if and only if:
-
-    - `S` models the concept `typed_sender`, and
-
-    - It calls at most one overload of `execution::set_value` with zero or one argument, and
-
-    - It calls at most one overload of `exception::set_error`, and
-
-    - Given an lvalue `p` to the promise type of an awaiting coroutine, `p.unhandled_done()` is well-formed, `noexcept`, and returns a type convertible to `coroutine_handle<>`.
+1. `as_awaitable` is used to transform an object into one that is awaitable within a particular coroutine. This section makes use of the following exposition-only entities:
 
     <pre highlight="c++">
-    // exposition only
     template&lt;class S>
       using <i>single-sender-value-type</i> = <i>see below</i>;
 
-    // exposition only
     template&lt;class S>
       concept <i>single-typed-sender</i> =
-        typed_sender&lt;S> &&
+        typed_sender&lt;S> &amp;&amp;
         requires { typename <i>single-sender-value-type</i>&lt;S>; };
 
-    template&lt;<i>single-typed-sender</i> Sender, class Promise>
-      <i>unspecified</i> as_awaitable(Sender&& s, Promise& p);
+    template &lt;class S, class P>
+      concept <i>awaitable-sender</i> =
+        <i>single-typed-sender</i>&lt;S> &amp;&amp;
+        sender_to&lt;S, <i>awaitable-receiver</i>> &amp;&amp; // see below
+        requires (P&amp; p) {
+          { p.unhandled_done() } -> convertible_to&lt;coroutine_handle&lt;>>;
+        };
+
+    template &lt;class S>
+      using <i>sender-awaitable</i> = <i>see below</i>;
     </pre>
 
-2. Alias template <i>single-sender-value-type</i> is defined as follows:
+    1. Alias template <i>single-sender-value-type</i> is defined as follows:
 
-    1. If `value_types_of_t<S, Tuple, Variant>` would have the form `Variant<Tuple<T>>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `T`.
+        1. If `value_types_of_t<S, Tuple, Variant>` would have the form `Variant<Tuple<T>>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `T`.
 
-    2. Otherwise, if `value_types_of_t<S, Tuple, Variant>` would have the form `Variant<Tuple<>>` or `Variant<>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `void`.
+        2. Otherwise, if `value_types_of_t<S, Tuple, Variant>` would have the form `Variant<Tuple<>>` or `Variant<>`, then <code><i>single-sender-value-type</i>&lt;S></code> is an alias for type `void`.
 
-    3. Otherwise, <code><i>single-sender-value-type</i>&lt;S</code> is ill-formed.
+        3. Otherwise, <code><i>single-sender-value-type</i>&lt;S></code> is ill-formed.
 
-3. For some expressions `s` and `p` such that `decltype((s))` is `S` and `decltype((p))` is `P&`, `as_awaitable(s, p)` returns <code><i>sender-awaitable</i>{s, p}</code>, where  <code><i>sender-awaitable</i></code> is an unspecified non-template class type equivalent to the following:
+    2. The type <code><i>sender-awaitable</i>&lt;S></code> names an unspecified non-template class type equivalent to the following:
 
-    <pre highlight="c++">
-    class <i>sender-awaitable</i> {
-      struct unit {}; // exposition only
-      using value_t = <i>single-sender-value-type</i>&lt;S>;
-      using result_t = conditional_t&lt;is_void_v&lt;value_t>, unit, value_t>;
-      struct <i>awaitable-receiver</i>; // exposition only
+        <pre highlight="c++">
+        class <i>sender-awaitable-impl</i> {
+          struct unit {};
+          using value_t = <i>single-sender-value-type</i>&lt;S>;
+          using result_t = conditional_t&lt;is_void_v&lt;value_t>, unit, value_t>;
+          struct <i>awaitable-receiver</i>;
 
-      variant&lt;monostate, result_t, exception_ptr> result_{}; // exposition only
-      connect_result_t&lt;S, <i>awaitable-receiver</i>> state_;  // exposition only
+          variant&lt;monostate, result_t, exception_ptr> result_{};
+          connect_result_t&lt;S, <i>awaitable-receiver</i>> state_;
 
-     public:
-      <i>sender-awaitable</i>(S&& s, P& p);
-      bool await_ready() const noexcept { return false; }
-      void await_suspend(coro::coroutine_handle&lt;P>) noexcept { start(state_); }
-      value_t await_resume();
-    };
-    </pre>
-
-    1. <code><i>awaitable-receiver</i></code> is a receiver type equivalent to the following:
-
-        <pre highlight=c++>
-        struct <i>awaitable-receiver</i> { // exposition only
-          variant&lt;monostate, result_t, exception_ptr>* result_ptr_;
-          coroutine_handle&lt;P> continuation_;
-          // ... <i>see below</i>
+         public:
+          <i>sender-awaitable-impl</i>(S&& s, P& p);
+          bool await_ready() const noexcept { return false; }
+          void await_suspend(coro::coroutine_handle&lt;P>) noexcept { start(state_); }
+          value_t await_resume();
         };
         </pre>
 
-        Let `r` be an rvalue expression of type <code><i>awaitable-receiver</i></code>, let `v` be an expression of type `result_t`, let `e` be an arbitrary expression of type `E`, let `p` be an lvalue reference to the coroutine promise type, let `c` be a customization point object, and let `as...` be a pack of arguments. Then:
+        1. <code><i>awaitable-receiver</i></code> is an implementation-defined non-template class type equivalent to the following:
 
-          1. If `value_t` is `void`, then `execution::set_value(r)` is expression-equivalent to  `(result_ptr_->emplace<1>(), continuation_.resume())`; otherwise, `execution::set_value(r, v)` is expression-equivalent to `(result_ptr_->emplace<1>(v), continuation_.resume())`.
-
-          2. `execution::set_error(r, e)` is expression-equivalent to <code>(result_ptr_->emplace&lt;2>(<i>AS_EXCEPT_PTR</i>(e)), continuation_.resume())</code>, where <code><i>AS_EXCEPT_PTR</i>(e)</code> is:
-
-            1. `e` if `decay_t<E>` names the same type as `exception_ptr`,
-
-            2. Otherwise, `make_exception_ptr(system_error(e))` if `decay_t<E>` names the same type as `error_code`,
-
-            3. Otherwise, `make_exception_ptr(e)`.
-
-          3. `execution::set_done(r)` is expression-equivalent to `continuation_.promise().unhandled_done().resume()`.
-
-          4. `std::tag_invoke(c, r, as...)` is expression-equivalent to `c(p, as...)` when the type of `c` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution::set_done_t`.
-
-    2. <b><code><i>sender-awaitable</i>::<i>sender-awaitable</i>(S&& s, P& p)</code></b>
-
-        - <i>Effects:</i> initializes `state_` with <code>connect((S&&) s, <i>awaitable-receiver</i>{&result_, coroutine_handle&lt;P>::from_promise(p)})</code>.
-
-    3. <b><code>value_t <i>sender-awaitable</i>::await_resume()</code></b>
-
-        - <i>Effects:</i> equivalent to:
-
-            <pre highlight="c++">
-            if (result_.index()) == 2)
-              rethrow_exception(std::get&lt;2>(result_));
-            if constexpr (!is_void_v&lt;value_t>)
-              return (value_t&&) std::get&lt;1>(result_);
+            <pre highlight=c++>
+            struct <i>awaitable-receiver</i> {
+              variant&lt;monostate, result_t, exception_ptr>* result_ptr_;
+              coroutine_handle&lt;P> continuation_;
+              // ... <i>see below</i>
+            };
             </pre>
+
+            Let `r` be an rvalue expression of type <code><i>awaitable-receiver</i></code>, let `cr` be a `const` lvalue that refers to `r`, let `v` be an expression of type `result_t`, let `err` be an arbitrary expression of type `Err`, let `c` be a customization point object, and let `as...` be a pack of arguments. Then:
+
+              1. If `value_t` is `void`, then `execution::set_value(r)` is expression-equivalent to  `(result_ptr_->emplace<1>(), continuation_.resume())`; otherwise, `execution::set_value(r, v)` is expression-equivalent to `(result_ptr_->emplace<1>(v), continuation_.resume())`.
+
+              2. `execution::set_error(r, e)` is expression-equivalent to <code>(result_ptr_->emplace&lt;2>(<i>AS_EXCEPT_PTR</i>(err)), continuation_.resume())</code>, where <code><i>AS_EXCEPT_PTR</i>(err)</code> is:
+
+                1. `err` if `decay_t<Err>` names the same type as `exception_ptr`,
+
+                2. Otherwise, `make_exception_ptr(system_error(err))` if `decay_t<Err>` names the same type as `error_code`,
+
+                3. Otherwise, `make_exception_ptr(err)`.
+
+              3. `execution::set_done(r)` is expression-equivalent to `continuation_.promise().unhandled_done().resume()`.
+
+              4. `tag_invoke(c, cr, as...)` is expression-equivalent to `c(as_const(p), as...)` when the type of `c` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution::set_done_t`.
+
+        2. <b><code><i>sender-awaitable-impl</i>::<i>sender-awaitable-impl</i>(S&& s, P& p)</code></b>
+
+            - <i>Effects:</i> initializes `state_` with <code>connect((S&&) s, <i>awaitable-receiver</i>{&result_, coroutine_handle&lt;P>::from_promise(p)})</code>.
+
+        3. <b><code>value_t <i>sender-awaitable-impl</i>::await_resume()</code></b>
+
+            - <i>Effects:</i> equivalent to:
+
+                <pre highlight="c++">
+                if (result_.index()) == 2)
+                  rethrow_exception(std::get&lt;2>(result_));
+                if constexpr (!is_void_v&lt;value_t>)
+                  return static_cast&lt;value_t&&>(std::get&lt;1>(result_));
+                </pre>
+
+2. `as_awaitable` is a customization point object. For some subexpressions `e` and `p` where `p` is an lvalue, `E` names the type `decltype((e))` and `P` names the type `decltype((p))`, `as_awaitable(e, p)` is expression-equivalent to the following:
+
+    1. `tag_invoke(as_awaitable, e, p)` if that expression is well-formed and <code><i>is-awaitable</i>&lt;tag_invoke_result_t&lt;as_awaitable_t, E, P>, decay_t&lt;P>></code> is `true`.
+
+    2. Otherwise, `e` if <code><i>is-awaitable</i>&lt;E></code> is `true`.
+
+    3. Otherwise, <code><i>sender-awaitable</i>{e, p}</code> if <code><i>awaitable-sender</i>&lt;E, P></code> is `true`.
+
+    4. Otherwise, `e`.
 
 ### `execution::with_awaitable_senders` <b>[execution.coro_utils.with_awaitable_senders]</b> ### {#spec-execution.coro_utils.with_awaitable_senders}
 
@@ -4584,12 +4594,7 @@ from the operation before the operation completes.
       - <i>Effects:</i> equivalent to:
 
         <pre highlight="c++">
-        if constexpr (<i>is-awaitable</i>&lt;Value>)
-          return (Value&&) value;
-        else if constexpr (<i>single-typed-sender</i>&lt;Value>)
-          return as_awaitable(static_cast&lt;Value&&>(value), static_cast&lt;Promise&>(*this));
-        else
-          return (Value&&) value;
+        return as_awaitable(static_cast&lt;Value&&>(value), static_cast&lt;Promise&>(*this));
         </pre>
 
 <pre class=biblio>
