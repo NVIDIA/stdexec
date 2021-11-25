@@ -3285,6 +3285,8 @@ essential when writing user code using standard execution concepts; we have also
      <p>Fix specification of the <code class="highlight"><c- n>on</c-></code> algorithm to clarify lifetimes of intermediate operation states and properly scope the <code class="highlight"><c- n>get_scheduler</c-></code> query.</p>
     <li data-md>
      <p>Fix a memory safety bug in the implementation of <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code>.</p>
+    <li data-md>
+     <p>Fix recursive definition of the <code class="highlight"><c- n>scheduler</c-></code> concept.</p>
    </ul>
    <p><b>Enhancements:</b></p>
    <ul>
@@ -3292,8 +3294,6 @@ essential when writing user code using standard execution concepts; we have also
      <p>Add <code class="highlight"><c- n>run_loop</c-></code> execution context.</p>
     <li data-md>
      <p>Add <code class="highlight"><c- n>receiver_adaptor</c-></code> utility to simplify writing receivers.</p>
-    <li data-md>
-     <p>Fix recursive definition of the <code class="highlight"><c- n>scheduler</c-></code> concept.</p>
     <li data-md>
      <p>Require a scheduler’s sender to model <code class="highlight"><c- n>sender_of</c-></code> and provide a completion scheduler.</p>
     <li data-md>
