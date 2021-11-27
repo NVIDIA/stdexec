@@ -191,6 +191,15 @@ namespace std {
   template <class Fn, class... Front>
     using __bind_front = __bind_front_q<Fn::template __f, Front...>;
 
+  template <template<class...> class Fn, class... Back>
+    struct __bind_back_q {
+      template <class... Args>
+        using __f = Fn<Args..., Back...>;
+    };
+
+  template <class Fn, class... Back>
+    using __bind_back = __bind_back_q<Fn::template __f, Back...>;
+
   template <class Old, class New, class Continuation = __q<__types>>
     struct __replace {
       template <class... Args>
