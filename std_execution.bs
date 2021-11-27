@@ -3699,7 +3699,7 @@ are all well-formed.
 
             2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
-            3. When `execution::set_done(r, e)` is called, calls `execution::set_done(out_r)`.
+            3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
 
         2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
@@ -3728,7 +3728,7 @@ are all well-formed.
             2. When `execution::set_error(r, e)` is called, copies `e` into `op_state2` as `e`, then calls `invoke(f, e)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved
                 as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
-            3. When `execution::set_done(r, e)` is called, calls `execution::set_done(out_r)`.
+            3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
 
         2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
@@ -3786,7 +3786,7 @@ are all well-formed.
 
             2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
-            3. When `execution::set_done(r, e)` is called, calls `execution::set_done(out_r, e)`.
+            3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r, e)`.
 
         2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
