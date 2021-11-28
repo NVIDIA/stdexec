@@ -107,6 +107,24 @@ namespace std {
         using __f = typename __if_<Pred<T>::value>::template __f<True, False>;
     };
 
+  template <template<class...> class List>
+    struct __curry {
+      template <class... Ts>
+        using __f = List<Ts...>;
+    };
+
+  template <template<class...> class List>
+    struct __uncurry : __concat<List> {};
+
+  template <class F, class List>
+    using __meta_apply =
+      __meta_invoke<__uncurry<F::template __f>, List>;
+
+  struct __count {
+    template <class... Ts>
+      using __f = integral_constant<size_t, sizeof...(Ts)>;
+  };
+
   template <class List, class Item>
     struct __push_back_unique_ {
       using type = List;
@@ -120,7 +138,13 @@ namespace std {
     using __push_back_unique = __t<__push_back_unique_<List, Item>>;
 
   template <template <class...> class List>
-    struct __unique : __right_fold<List<>, __push_back_unique> {};
+    struct __unique {
+      template <class... Ts>
+        using __f =
+          __meta_invoke<
+            __uncurry<List>,
+            __meta_invoke<__right_fold<__types<>, __push_back_unique>, Ts...>>;
+    };
 
   template <template<class...> class First, template<class...> class Second>
     struct __compose {
@@ -139,15 +163,6 @@ namespace std {
       template <class>
         using __f = List<>;
     };
-
-  template <template<class...> class List>
-    struct __curry {
-      template <class... Ts>
-        using __f = List<Ts...>;
-    };
-
-  template <template<class...> class List>
-    struct __uncurry : __concat<List> {};
 
   template <template<class> class F>
     struct __eval2 {
