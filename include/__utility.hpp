@@ -27,13 +27,13 @@ namespace std {
 
   // For hiding a template type parameter from ADL
   template <class T>
-    struct __id {
+    struct __x_ {
       struct __t {
         using type = T;
       };
     };
   template <class T>
-    using __id_t = typename __id<T>::__t;
+    using __x = typename __x_<T>::__t;
 
   template <class T>
     using __t = typename T::type;
@@ -42,38 +42,69 @@ namespace std {
   template <class...>
     struct __types;
 
-  template <class F, class... Args>
-    using __meta_invoke = typename F::template __f<Args...>;
+  template <class T>
+    using __id = T;
 
-  template <template<class...> class List, template<class...> class Fn>
+  template <class T>
+    inline constexpr bool __v = T::value;
+
+  template <class T, class U>
+    inline constexpr bool __v<is_same<T, U>> = false;
+
+  template <class T>
+    inline constexpr bool __v<is_same<T, T>> = true;
+
+  template <template <class...> class Fn>
+    struct __q {
+      template <class... Args>
+        using __f = Fn<Args...>;
+    };
+
+  template <template <class> class Fn>
+    struct __q1 {
+      template <class Arg>
+        using __f = Fn<Arg>;
+    };
+
+  template <template <class, class> class Fn>
+    struct __q2 {
+      template <class First, class Second>
+        using __f = Fn<First, Second>;
+    };
+
+  template <class Fn, class... Args>
+    using __minvoke = typename Fn::template __f<Args...>;
+
+  template <class Fn, class Arg>
+    using __minvoke1 = typename Fn::template __f<Arg>;
+
+  template <class Fn, class First, class Second>
+    using __minvoke2 = typename Fn::template __f<First, Second>;
+
+  template <class Fn, class Continuation = __q<__types>>
     struct __transform {
       template <class... Args>
-        using __f = List<Fn<Args>...>;
+        using __f = __minvoke<Continuation, __minvoke1<Fn, Args>...>;
     };
 
-  template <template<class...> class List, class Old, class New>
-    struct __replace {
-      template <class... Args>
-        using __f = List<conditional_t<is_same_v<Old, Args>, New, Old>...>;
-    };
-
-  template <class State, template <class, class> class Fn>
+  template <class Init, class Fn>
     struct __right_fold {
       template <class, class...>
         struct __f_ {};
-      template <class State2, class Head, class... Tail>
-          requires requires {typename Fn<State2, Head>;}
-        struct __f_<State2, Head, Tail...> : __f_<Fn<State2, Head>, Tail...>
+      template <class State, class Head, class... Tail>
+          requires requires {typename __minvoke2<Fn, State, Head>;}
+        struct __f_<State, Head, Tail...>
+          : __f_<__minvoke2<Fn, State, Head>, Tail...>
         {};
-      template <class State2>
-        struct __f_<State2> {
-          using type = State2;
+      template <class State>
+        struct __f_<State> {
+          using type = State;
         };
       template <class... Args>
-        using __f = __t<__f_<State, Args...>>;
+        using __f = __t<__f_<Init, Args...>>;
     };
 
-  template <template <class...> class List>
+  template <class Continuation = __q<__types>>
     struct __concat {
       template <class...>
         struct __f_ {};
@@ -83,9 +114,9 @@ namespace std {
         struct __f_<A<As...>, B<Bs...>, Tail...>
           : __f_<__types<As..., Bs...>, Tail...> {};
       template <template <class...> class A, class... As>
-          requires requires {typename List<As...>;}
+          requires requires {typename __minvoke<Continuation, As...>;}
         struct __f_<A<As...>> {
-          using type = List<As...>;
+          using type = __minvoke<Continuation, As...>;
         };
       template <class... Args>
         using __f = __t<__f_<Args...>>;
@@ -101,73 +132,70 @@ namespace std {
       template <class, class False>
         using __f = False;
     };
-  template <template <class> class Pred, class True, class False>
-    struct __if {
-      template <class T>
-        using __f = typename __if_<Pred<T>::value>::template __f<True, False>;
-    };
+  template <class Pred, class True, class False>
+    using __if = __minvoke2<__if_<__v<Pred>>, True, False>;
 
-  template <template<class...> class List>
+  template <class Fn>
     struct __curry {
       template <class... Ts>
-        using __f = List<Ts...>;
+        using __f = __minvoke<Fn, Ts...>;
     };
 
-  template <template<class...> class List>
-    struct __uncurry : __concat<List> {};
+  template <class Fn>
+    struct __uncurry : __concat<Fn> {};
 
-  template <class F, class List>
-    using __meta_apply =
-      __meta_invoke<__uncurry<F::template __f>, List>;
+  template <class Fn, class List>
+    using __mapply =
+      __minvoke<__uncurry<Fn>, List>;
 
   struct __count {
     template <class... Ts>
       using __f = integral_constant<size_t, sizeof...(Ts)>;
   };
 
-  template <class List, class Item>
-    struct __push_back_unique_ {
-      using type = List;
-    };
-  template <template <class...> class List, class... Ts, class Item>
-      requires ((!is_same_v<Ts, Item>) &&...)
-    struct __push_back_unique_<List<Ts...>, Item> {
-      using type = List<Ts..., Item>;
-    };
-  template <class List, class Item>
-    using __push_back_unique = __t<__push_back_unique_<List, Item>>;
+  struct __push_back_unique {
+    template <class List, class Item>
+      struct __f_ {
+        using type = List;
+      };
+    template <template <class...> class List, class... Ts, class Item>
+        requires ((!__v<is_same<Ts, Item>>) &&...)
+      struct __f_<List<Ts...>, Item> {
+        using type = List<Ts..., Item>;
+      };
+    template <class List, class Item>
+      using __f = __t<__f_<List, Item>>;
+  };
 
-  template <template <class...> class List>
+  template <class Continuation = __q<__types>>
     struct __unique {
       template <class... Ts>
         using __f =
-          __meta_invoke<
-            __uncurry<List>,
-            __meta_invoke<__right_fold<__types<>, __push_back_unique>, Ts...>>;
+          __mapply<
+            Continuation,
+            __minvoke<__right_fold<__types<>, __push_back_unique>, Ts...>>;
     };
 
-  template <template<class...> class First, template<class...> class Second>
+  template <class First, class Second>
     struct __compose {
-      template <class...Args>
-        using __f = Second<First<Args...>>;
+      template <class... Args>
+        using __f = __minvoke<Second, __minvoke<First, Args...>>;
     };
 
-  template <template<class...> class List, class... Front>
-    struct __bind_front {
-      template <class...Args>
-        using __f = List<Front..., Args...>;
+  template <template<class...> class Fn, class... Front>
+    struct __bind_front_q {
+      template <class... Args>
+        using __f = Fn<Front..., Args...>;
     };
 
-  template <template<class...> class List>
-    struct __empty {
-      template <class>
-        using __f = List<>;
-    };
+  template <class Fn, class... Front>
+    using __bind_front = __bind_front_q<Fn::template __f, Front...>;
 
-  template <template<class> class F>
-    struct __eval2 {
-      template <class T>
-        using __f = typename F<T>::template __f<T>;
+  template <class Old, class New, class Continuation = __q<__types>>
+    struct __replace {
+      template <class... Args>
+        using __f =
+          __minvoke<Continuation, __if<is_same<Args, Old>, New, Args>...>;
     };
 
   // For copying cvref from one type to another:

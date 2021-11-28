@@ -64,13 +64,13 @@ namespace example {
 
        private:
         template <typename Receiver>
-        operation<std::__id_t<std::decay_t<Receiver>>>
+        operation<std::__x<std::decay_t<Receiver>>>
         make_operation_(Receiver&& r) const {
-          return operation<std::__id_t<std::decay_t<Receiver>>>{pool_, (Receiver &&) r};
+          return operation<std::__x<std::decay_t<Receiver>>>{pool_, (Receiver &&) r};
         }
 
         template <std::execution::receiver_of Receiver>
-        friend operation<std::__id_t<std::decay_t<Receiver>>>
+        friend operation<std::__x<std::decay_t<Receiver>>>
         tag_invoke(std::execution::connect_t, sender s, Receiver&& r) {
           return s.make_operation_((Receiver &&) r);
         }

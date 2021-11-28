@@ -179,7 +179,7 @@ namespace std::execution {
         using __f = __not_a_variant;
     };
   template <class... Ts>
-    using __variant = __meta_invoke<__variant_<sizeof...(Ts) != 0>, Ts...>;
+    using __variant = __minvoke<__variant_<sizeof...(Ts) != 0>, Ts...>;
 
   template <typed_sender Sender,
             template <class...> class Tuple = tuple,
@@ -191,6 +191,14 @@ namespace std::execution {
   template <typed_sender Sender, template <class...> class Variant = __variant>
     using error_types_of_t =
       typename sender_traits<decay_t<Sender>>::template error_types<Variant>;
+
+  template <typed_sender Sender, class Tuple, class Variant>
+    using __value_types_of_t =
+      value_types_of_t<Sender, Tuple::template __f, Variant::template __f>;
+
+  template <typed_sender Sender, class Variant>
+    using __error_types_of_t =
+      error_types_of_t<Sender, Variant::template __f>;
 
   template<class S, class... Ts>
     concept sender_of =
@@ -435,7 +443,7 @@ namespace std::execution {
     }
 
     template <class R>
-      using __promise_t = __impl::__promise<__id_t<remove_cvref_t<R>>>;
+      using __promise_t = __impl::__promise<__x<remove_cvref_t<R>>>;
 
     inline constexpr struct __fn {
      private:
@@ -443,7 +451,7 @@ namespace std::execution {
         using __nothrow_ = bool_constant<nothrow_receiver_of<R, Args...>>;
 
       template <class R>
-        using __op_t = __impl::__op<__id_t<remove_cvref_t<R>>>;
+        using __op_t = __impl::__op<__x<remove_cvref_t<R>>>;
 
       template <class A, class R>
       static __op_t<R> __impl(A a, R r) {
@@ -662,7 +670,7 @@ namespace std::execution {
       };
       template <class Promise, class Sender>
         using __sender_awaitable_t =
-          __sender_awaitable<__id_t<Promise>, __id_t<remove_cvref_t<Sender>>>;
+          __sender_awaitable<__x<Promise>, __x<remove_cvref_t<Sender>>>;
 
       template <class T, class Promise>
         concept __custom_tag_invoke_awaiter =
@@ -672,7 +680,7 @@ namespace std::execution {
       template <class Sender, class Promise>
         using __rec =
           typename __sender_awaitable_base<
-            __id_t<Promise>,
+            __x<Promise>,
             __single_sender_value_t<Sender>
           >::__rec;
 
@@ -870,14 +878,14 @@ namespace std::execution {
             requires (copy_constructible<Ts> &&...)
           friend auto tag_invoke(connect_t, const __sender& s, R&& r)
             noexcept((is_nothrow_copy_constructible_v<Ts> &&...))
-            -> __op<__id_t<remove_cvref_t<R>>> {
+            -> __op<__x<remove_cvref_t<R>>> {
             return {s.vs_, (R&&) r};
           }
 
           template<receiver_of<Ts...> R>
           friend auto tag_invoke(connect_t, __sender&& s, R&& r)
             noexcept((is_nothrow_move_constructible_v<Ts> &&...))
-            -> __op<__id_t<remove_cvref_t<R>>> {
+            -> __op<__x<remove_cvref_t<R>>> {
             return {((__sender&&) s).vs_, (R&&) r};
           }
         };
@@ -1325,7 +1333,7 @@ namespace std::execution {
           using S = __t<S_>;
           friend sender_adaptor<__sender, S>;
           template <class R>
-            using __rec = __receiver<__id_t<remove_cvref_t<R>>, F>;
+            using __rec = __receiver<__x<remove_cvref_t<R>>, F>;
 
           [[no_unique_address]] F f_;
 
@@ -1348,7 +1356,7 @@ namespace std::execution {
 
     inline constexpr struct then_t {
       template <class S, class F>
-        using __sender = __impl::__sender<__id_t<remove_cvref_t<S>>, F>;
+        using __sender = __impl::__sender<__x<remove_cvref_t<S>>, F>;
 
       template<sender S, class F>
         requires __tag_invocable_with_completion_scheduler<then_t, set_value_t, S, F>
@@ -1382,28 +1390,33 @@ namespace std::execution {
   template <class S_, class F>
     requires typed_sender<__t<S_>> &&
       requires {
-        typename value_types_of_t<__t<S_>,
-          __bind_front<invoke_result_t, F>::template __f,
-          __types>;
+        // Can the function F be called with each set of value types?
+        typename __value_types_of_t<__t<S_>,
+          __bind_front_q<invoke_result_t, F>,
+          __q<__types>>;
       }
   struct sender_traits<__then::__impl::__sender<S_, F>> {
     using S = __t<S_>;
     template <template<class...> class Tuple, template<class...> class Variant>
-      using value_types = value_types_of_t<S,
-        __bind_front<invoke_result_t, F>::template __f,
-        __transform<
-          Variant,
-          __eval2<
-            __if<is_void, __empty<Tuple>, __curry<Tuple>>::template __f
-          >::template __f
-        >::template __f
-      >;
+      using value_types =
+        __value_types_of_t<
+          S,
+          __bind_front_q<invoke_result_t, F>,
+          __transform<
+            __q<__types>,
+            __replace<
+              __types<void>,
+              __types<>,
+              __transform<__uncurry<__q<Tuple>>, __q<Variant>>>>>;
 
     template <template<class...> class Variant>
       using error_types =
-          __meta_invoke<
-              __concat<Variant>,
-              __push_back_unique<error_types_of_t<S, __types>, exception_ptr>>;
+        __mapply<
+          __q<Variant>,
+          __minvoke2<
+            __push_back_unique,
+            error_types_of_t<S, __types>,
+            exception_ptr>>;
 
     static constexpr bool sends_done = sender_traits<S>::sends_done;
   };
@@ -1471,9 +1484,9 @@ namespace std::execution {
           friend __scheduler;
 
           template <typename Receiver>
-          friend __impl::__operation<__id_t<Receiver>>
+          friend __impl::__operation<__x<Receiver>>
           tag_invoke(connect_t, const __schedule_task& self, Receiver&& receiver) {
-            return __impl::__operation<__id_t<Receiver>>{(Receiver &&) receiver, self.__loop_};
+            return __impl::__operation<__x<Receiver>>{(Receiver &&) receiver, self.__loop_};
           }
 
           template <class CPO>
@@ -1627,25 +1640,21 @@ namespace std::execution {
           //        ...
           //   >
           template <class... Ts>
-            using __bind_tuples = __bind_front<variant, tuple<set_done_t>, Ts...>;
+            using __bind_tuples =
+              __bind_front_q<variant, tuple<set_done_t>, Ts...>;
 
-          using __bound_values_t = value_types_of_t<
+          using __bound_values_t = 
+            __value_types_of_t<
+              Sender,
+              __transform<__q1<decay_t>, __bind_front_q<tuple, set_value_t>>,
+              __q<__bind_tuples>>;
+
+          using __variant_t =
+            __error_types_of_t<
               Sender,
               __transform<
-                  __bind_front<tuple, set_value_t>::template __f,
-                  decay_t
-              >::template __f,
-              __bind_tuples>;
-
-          using __variant_t = error_types_of_t<
-              Sender,
-              __transform<
-                  __bound_values_t::template __f,
-                  __transform<
-                      __bind_front<tuple, set_error_t>::template __f,
-                      decay_t
-                  >::template __f
-              >::template __f>;
+                __transform<__q1<decay_t>, __bind_front_q<tuple, set_error_t>>,
+                __bound_values_t>>;
 
           template <receiver Receiver>
             struct __f : private __variant_t {
@@ -1749,7 +1758,7 @@ namespace std::execution {
 
               Scheduler __sch_;
               Receiver __rec_;
-              __meta_invoke<__completion_storage<Sender>, Receiver> __data_;
+              __minvoke<__completion_storage<Sender>, Receiver> __data_;
               connect_result_t<CvrefSender, __receiver1> __state1_;
               optional<connect_result_t<schedule_result_t<Scheduler>, __receiver2>> __state2_;
 
@@ -1766,7 +1775,7 @@ namespace std::execution {
           template <__decays_to<__sender> Self, receiver R>
             requires sender_to<__member_t<Self, Sender>, R>
           friend auto tag_invoke(connect_t, Self&& self, R&& rec)
-              -> __op1<__id_t<__member_t<Self, decay_t<R>>>> {
+              -> __op1<__x<__member_t<Self, decay_t<R>>>> {
             return {self.__sch_, ((Self&&) self).__snd_, (R&&) rec};
           }
 
@@ -1790,7 +1799,7 @@ namespace std::execution {
       // NOT TO SPEC: permit non-typed senders:
       template <scheduler Sch, sender S>
       auto operator()(Sch&& sch, S&& s) const
-        -> __impl::__sender<__id_t<decay_t<Sch>>, __id_t<decay_t<S>>> {
+        -> __impl::__sender<__x<decay_t<Sch>>, __x<decay_t<S>>> {
         return {{}, (Sch&&) sch, (S&&) s};
       }
     } schedule_from {};
@@ -1924,11 +1933,11 @@ namespace std::execution {
 
           template <__decays_to<__sender> Self, receiver Receiver>
             requires constructible_from<Sender, __member_t<Self, Sender>> &&
-              sender_to<Sender, __receiver_ref<__id_t<decay_t<Receiver>>>> &&
+              sender_to<Sender, __receiver_ref<__x<decay_t<Receiver>>>> &&
               sender_to<schedule_result_t<Scheduler>,
-                        __receiver<__id_t<decay_t<Receiver>>>>
+                        __receiver<__x<decay_t<Receiver>>>>
           friend auto tag_invoke(connect_t, Self&& self, Receiver&& recvr)
-            -> __operation<__id_t<decay_t<Receiver>>> {
+            -> __operation<__x<decay_t<Receiver>>> {
             return {((Self&&) self).__scheduler_,
                     ((Self&&) self).__sender_,
                     (Receiver&&) recvr};
@@ -1947,8 +1956,8 @@ namespace std::execution {
 
       template <scheduler Scheduler, sender Sender>
       auto operator()(Scheduler&& sched, Sender&& sndr) const 
-        -> __impl::__sender<__id_t<decay_t<Scheduler>>,
-                            __id_t<decay_t<Sender>>> {
+        -> __impl::__sender<__x<decay_t<Scheduler>>,
+                            __x<decay_t<Sender>>> {
         return {{}, (Scheduler&&) sched, (Sender&&) sndr};
       }
     } on {};
@@ -2008,7 +2017,7 @@ namespace std::execution {
           template <template <class...> class Tuple,
                     template <class...> class Variant>
             struct __value_types {
-              using type = Variant<__meta_invoke<__concat<Tuple>,
+              using type = Variant<__minvoke<__concat<__q<Tuple>>,
                 value_types_of_t<__t<SenderIds>, __types, __single_t>...>>;
             };
 
@@ -2026,9 +2035,10 @@ namespace std::execution {
 
           template <template <class...> class Variant>
             using error_types =
-                __meta_invoke<__concat<__unique<Variant>::template __f>,
-                    __types<exception_ptr>,
-                    error_types_of_t<__t<SenderIds>, __types>...>;
+              __minvoke<
+                __concat<__unique<__q<Variant>>>,
+                __types<exception_ptr>,
+                error_types_of_t<__t<SenderIds>, __types>...>;
 
           static constexpr bool sends_done = true;
 
@@ -2208,16 +2218,19 @@ namespace std::execution {
           template <class Receiver>
             struct __receiver_of {
               template <class... Values>
-                using __f = std::bool_constant<receiver_of<Receiver, Values...>>;
+                using __f = bool_constant<receiver_of<Receiver, Values...>>;
             };
           template <class Receiver>
-            using __can_connect_to_t = value_types_of_t<
-              __sender, __receiver_of<Receiver>::template __f, __single_or_void_t>;
+            using __can_connect_to_t =
+              __value_types_of_t<
+                __sender,
+                __receiver_of<Receiver>,
+                __q<__single_or_void_t>>;
 
           template <__decays_to<__sender> Self, receiver Receiver>
               requires __is_true<__can_connect_to_t<Receiver>>
             friend auto tag_invoke(connect_t, Self&& self, Receiver&& recvr)
-              -> __operation<__id_t<decay_t<Receiver>>> {
+              -> __operation<__x<decay_t<Receiver>>> {
               return {(Self&&) self, (Receiver&&) recvr};
             }
 
@@ -2245,8 +2258,8 @@ namespace std::execution {
         requires (__impl::__zero_or_one_alternative<Senders> &&...)
       auto operator()(Senders&&... sndrs) const
         noexcept(nothrow_tag_invocable<when_all_t, Senders...>)
-        -> __impl::__sender<__id_t<decay_t<Senders>>...> {
-        return __impl::__sender<__id_t<decay_t<Senders>>...>{
+        -> __impl::__sender<__x<decay_t<Senders>>...> {
+        return __impl::__sender<__x<decay_t<Senders>>...>{
             (Senders&&) sndrs...};
       }
     } when_all {};

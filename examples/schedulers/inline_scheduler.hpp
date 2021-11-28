@@ -45,7 +45,7 @@ namespace example {
       template <std::execution::receiver_of R>
         friend auto tag_invoke(std::execution::connect_t, __sender, R&& rec)
           noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-          -> __op<std::__id_t<std::remove_cvref_t<R>>> {
+          -> __op<std::__x<std::remove_cvref_t<R>>> {
           return {(R&&) rec};
         }
     };
