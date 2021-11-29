@@ -176,7 +176,7 @@ namespace std {
             __minvoke<__right_fold<__types<>, __push_back_unique>, Ts...>>;
     };
 
-  template <class First, class Second>
+  template <class Second, class First>
     struct __compose {
       template <class... Args>
         using __f = __minvoke<Second, __minvoke<First, Args...>>;
