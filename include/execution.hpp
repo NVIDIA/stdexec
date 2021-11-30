@@ -1122,6 +1122,9 @@ namespace std::execution {
       struct __receiver_adaptor {
         class __t : __adaptor_base<Base> {
           friend Derived;
+          using set_value = void;
+          using set_error = void;
+          using set_done = void;
 
           template <class D>
             static decltype(auto) __get_base(D&& self) noexcept {
@@ -1142,11 +1145,11 @@ namespace std::execution {
           }
 
           template <class D = Derived, class... As>
-            requires (!__has_set_value<Derived, As...>) &&
+            requires requires {typename D::set_value;} &&
               receiver_of<__base_t<D>, As...>
           friend void tag_invoke(set_value_t, Derived&& self, As&&... as)
             noexcept(nothrow_receiver_of<__base_t<D>, As...>) {
-            set_value(__get_base((Derived&&) self), (As&&) as...);
+            execution::set_value(__get_base((Derived&&) self), (As&&) as...);
           }
 
           template <class E>
@@ -1157,21 +1160,27 @@ namespace std::execution {
           }
 
           template <class E, class D = Derived>
-            requires (!__has_set_error<Derived, E>) && receiver<__base_t<D>, E>
+            requires requires {typename D::set_error;} &&
+              receiver<__base_t<D>, E>
           friend void tag_invoke(set_error_t, Derived&& self, E&& e) noexcept {
-            set_error(__get_base((Derived&&) self), (E&&) e);
+            execution::set_error(__get_base((Derived&&) self), (E&&) e);
           }
 
+          template <class D = Derived>
+            requires __has_set_done<D>
           friend void tag_invoke(set_done_t, Derived&& self) noexcept {
-            if constexpr (__has_set_done<Derived>) {
-              static_assert(noexcept(((Derived&&) self).set_done()));
-              ((Derived&&) self).set_done();
-            } else {
-              set_done(__get_base((Derived&&) self));
-            }
+            static_assert(noexcept(((Derived&&) self).set_done()));
+            ((Derived&&) self).set_done();
           }
 
-          template <__none_of<set_value_t, set_error_t, set_done_t> Tag, class D = Derived, class... As>
+          template <class D = Derived>
+            requires requires {typename D::set_done;}
+          friend void tag_invoke(set_done_t, Derived&& self) noexcept {
+            execution::set_done(__get_base((Derived&&) self));
+          }
+
+          template <__none_of<set_value_t, set_error_t, set_done_t> Tag,
+                    class D = Derived, class... As>
             requires invocable<Tag, __base_t<const D&>, As...>
           friend auto tag_invoke(Tag tag, const Derived& self, As&&... as)
             noexcept(is_nothrow_invocable_v<Tag, __base_t<const D&>, As...>)
@@ -1194,12 +1203,17 @@ namespace std::execution {
     template <__class Derived, operation_state Base>
       struct __operation_state_adaptor {
         class __t : __adaptor_base<Base> {
-          friend void tag_invoke(start_t, Derived& self) noexcept
-            requires __has_start<Derived> {
+          using start = void;
+
+          template <class D = Derived>
+            requires __has_start<D>
+          friend void tag_invoke(start_t, Derived& self) noexcept {
             static_assert(noexcept(self.start()));
             self.start();
           }
 
+          template <class D = Derived>
+            requires requires {typename D::start;}
           friend void tag_invoke(start_t, Derived& self) noexcept {
             execution::start(__c_cast<__t>(self).base());
           }
@@ -1230,6 +1244,8 @@ namespace std::execution {
     template <__class Derived, scheduler Base>
       struct __scheduler_adaptor {
         class __t : __adaptor_base<Base> {
+          using schedule = void;
+
           template <__decays_to<Derived> Self>
             requires __has_schedule<Self>
           friend auto tag_invoke(schedule_t, Self&& self)
@@ -1239,7 +1255,8 @@ namespace std::execution {
           }
 
           template <__decays_to<Derived> Self>
-            requires (!__has_schedule<Self>) && scheduler<__member_t<Self, Base>>
+            requires requires {typename decay_t<Self>::schedule;} &&
+              scheduler<__member_t<Self, Base>>
           friend auto tag_invoke(schedule_t, Self&& self)
             noexcept(noexcept(execution::schedule(__declval<__member_t<Self, Base>>())))
             -> schedule_result_t<Self> {

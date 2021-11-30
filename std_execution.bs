@@ -4209,6 +4209,10 @@ from the operation before the operation completes.
         explicit <i>receiver-adaptor</i>(B&& base) : base_(static_cast&lt;B&amp;&amp;>(base)) {}
 
      private:
+      using set_value = <i>unspecified</i>;
+      using set_error = <i>unspecified</i>;
+      using set_done = <i>unspecified</i>;
+
       // Member functions
       Base&amp; base() &amp; noexcept requires <i>HAS-BASE</i> { return base_; }
       const Base&amp; base() const &amp; noexcept requires <i>HAS-BASE</i> { return base_; }
@@ -4217,19 +4221,20 @@ from the operation before the operation completes.
       }
 
       // [execution.snd_rec_utils.receiver_adaptor.nonmembers] Non-member functions
-      template &lt;class... As>
+      template &lt;class D = Derived, class... As>
         friend void tag_invoke(set_value_t, Derived&amp;&amp; self, As&amp;&amp;... as) noexcept(<i>see below</i>);
 
-      template &lt;class E>
+      template &lt;class E, class D = Derived>
         friend void tag_invoke(set_error_t, Derived&amp;&amp; self, E&amp;&amp; e) noexcept;
 
-      friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
+      template &lt;class D = Derived>
+        friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
 
-      template &lt;<i>none-of</i>&lt;set_value_t, set_error_t, set_done_t> Tag, class... As>
-          requires invocable&lt;Tag, <i>BASE-TYPE</i>(const Derived&), As...>
+      template &lt;<i>none-of</i>&lt;set_value_t, set_error_t, set_done_t> Tag, class D = Derived, class... As>
+          requires invocable&lt;Tag, <i>BASE-TYPE</i>(const D&), As...>
         friend auto tag_invoke(Tag tag, const Derived&amp; self, As&amp;&amp;... as)
-          noexcept(is_nothrow_invocable_v&lt;Tag, <i>BASE-TYPE</i>(const Derived&), As...>)
-          -> invoke_result_t&lt;Tag, <i>BASE-TYPE</i>(const Derived&), As...> {
+          noexcept(is_nothrow_invocable_v&lt;Tag, <i>BASE-TYPE</i>(const D&), As...>)
+          -> invoke_result_t&lt;Tag, <i>BASE-TYPE</i>(const D&), As...> {
           return static_cast&lt;Tag&amp;&amp;>(tag)(<i>GET-BASE</i>(self), static_cast&lt;As&amp;&amp;>(as)...);
         }
 
@@ -4254,13 +4259,13 @@ from the operation before the operation completes.
 #### Non-member functions <b>[execution.snd_rec_utils.receiver_adaptor.nonmembers]</b> #### {#spec-execution.snd_rec_utils.receiver_adaptor.nonmembers}
 
     <pre>
-    template &lt;class... As>
+    template &lt;class D = Derived, class... As>
       friend void tag_invoke(set_value_t, Derived&amp;&amp; self, As&amp;&amp;... as) noexcept(<i>see below</i>);
     </pre>
 
-    1. <i>Constraints:</i> Either <code><i>has-set-value</i>&lt;Derived, As...></code> is `true` or <code>receiver_of&lt;<i>BASE-TYPE</i>(Derived), As...></code> is `true`.
+    1. <i>Constraints:</i> Either <code><i>has-set-value</i>&lt;D, As...></code> is `true` or <code>requires {typename D::set_value;} && receiver_of&lt;<i>BASE-TYPE</i>(D), As...></code> is `true`.
 
-    2. If <code><i>has-set-value</i>&lt;Derived, As...></code> is `true`:
+    2. If <code><i>has-set-value</i>&lt;D, As...></code> is `true`:
 
         1. <i>Effects:</i> Equivalent to `static_cast<Derived&&>(self).set_value(static_cast<As&&>(as)...)`
 
@@ -4268,32 +4273,35 @@ from the operation before the operation completes.
 
     3. Otherwise:
 
-        1. <i>Effects:</i> Equivalent to <code>set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...)</code>
+        1. <i>Effects:</i> Equivalent to <code>execution::set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...)</code>
 
         2. <i>Remarks:</i> The exception specification is equivalent to <code>noexcept(set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...))</code>
 
     <pre>
-    template &lt;class E>
+    template &lt;class E, class D = Derived>
       friend void tag_invoke(set_error_t, Derived&amp;&amp; self, E&amp;&amp; e) noexcept;
     </pre>
 
-    1. <i>Constraints:</i> Either <code><i>has-set-error</i>&lt;Derived, E></code> is `true` or <code>receiver&lt;<i>BASE-TYPE</i>(Derived), E></code> is `true`.
+    1. <i>Constraints:</i> Either <code><i>has-set-error</i>&lt;D, E></code> is `true` or <code>requires {typename D::set_error;} && receiver&lt;<i>BASE-TYPE</i>(D), E></code> is `true`.
 
     2. <i>Effects:</i> Equivalent to:
 
-        - `static_cast<Derived&&>(self).set_error(static_cast<E&&>(e))` if <code><i>has-set-error</i>&lt;Derived, E></code> is `true`,
+        - `static_cast<Derived&&>(self).set_error(static_cast<E&&>(e))` if <code><i>has-set-error</i>&lt;D, E></code> is `true`,
 
-        - Otherwise, <code>set_error(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;E&amp;&amp;>(e))</code>
+        - Otherwise, <code>execution::set_error(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;E&amp;&amp;>(e))</code>
 
     <pre>
-    friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
+    template &lt;class D = Derived>
+      friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
     </pre>
 
-    1. <i>Effects:</i> Equivalent to:
+    1. <i>Constraints:</i> Either <code><i>has-set-done</i>&lt;D></code> is `true` or <code>requires {typename D::set_done;}</code> is `true`.
 
-        - `static_cast<Derived&&>(self).set_done()` if <code><i>has-set-done</i>&lt;Derived></code> is `true`,
+    2. <i>Effects:</i> Equivalent to:
 
-        - Otherwise, <code>set_done(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
+        - `static_cast<Derived&&>(self).set_done()` if <code><i>has-set-done</i>&lt;D></code> is `true`,
+
+        - Otherwise, <code>execution::set_done(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
 
 ## Execution contexts <b>[execution.contexts]</b> ## {#spec-execution.contexts}
 
