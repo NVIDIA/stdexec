@@ -1083,12 +1083,23 @@ namespace std::execution {
     template <__class Derived, sender Base>
       struct __sender_adaptor {
         class __t : __adaptor_base<Base> {
+          using connect = void;
+
           template <__decays_to<Derived> Self, receiver R>
             requires __has_connect<Self, R>
           friend auto tag_invoke(connect_t, Self&& self, R&& r)
             noexcept(noexcept(((Self&&) self).connect((R&&) r)))
             -> decltype(((Self&&) self).connect((R&&) r)) {
             return ((Self&&) self).connect((R&&) r);
+          }
+
+          template <__decays_to<Derived> Self, receiver R>
+            requires requires {typename decay_t<Self>::connect;} &&
+              sender_to<__member_t<Self, Base>, R>
+          friend auto tag_invoke(connect_t, Self&& self, R&& r)
+            noexcept(__has_nothrow_connect<__member_t<Self, Base>, R>)
+            -> connect_result_t<__member_t<Self, Base>, R> {
+            execution::connect(((Self&&) self).base(), (R&&) r);
           }
 
         protected:
