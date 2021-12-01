@@ -4423,7 +4423,7 @@ from the operation before the operation completes.
     <i>run-loop-opstate-base</i>* run_loop::pop_front();
     </pre>
 
-    1. <i>Effects:</i> Waits until one of the following conditions is `true`:
+    1. <i>Effects:</i> Blocks ([defns.block]) until one of the following conditions is `true`:
 
         * <i>count</i> is `0` and <i>state</i> is <i>finishing</i>, in which case `pop_front` returns `nullptr`; or
 
@@ -4466,6 +4466,8 @@ from the operation before the operation completes.
     1. <i>Effects:</i> Changes <i>state</i> to <i>finishing</i>.
 
     2. <i>Synchronization:</i> This operation synchronizes with all `pop_front` operations on this object.
+
+    3. <i>Remarks:</i> If the thread of execution calling `run()` guarantees concurrent or parallel forward progress, then it guarantees parallel forward progress until `run()` returns; otherwise, it guarantees weakly parallel forward progress.
 
 ## Coroutine utilities <b>[execution.coro_utils]</b> ## {#spec-execution.coro_utils}
 
