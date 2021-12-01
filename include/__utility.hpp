@@ -38,6 +38,9 @@ namespace std {
   template <class T>
     using __t = typename T::type;
 
+  template <bool B>
+    using __bool = bool_constant<B>;
+
   // Some utilities for manipulating lists of types at compile time
   template <class...>
     struct __types;
@@ -80,6 +83,22 @@ namespace std {
 
   template <class Fn, class First, class Second>
     using __minvoke2 = typename Fn::template __f<First, Second>;
+
+  template <template <class...> class T, class... Args>
+    concept __valid = requires { typename T<Args...>; };
+  template <template<class...> class T>
+    struct __defer {
+      template <class... Args> requires __valid<T, Args...>
+        struct __f_ { using type = T<Args...>; };
+      template <class A> requires __valid<T, A>
+        struct __f_<A> { using type = T<A>; };
+      template <class A, class B> requires __valid<T, A, B>
+        struct __f_<A, B> { using type = T<A, B>; };
+      template <class A, class B, class C> requires __valid<T, A, B, C>
+        struct __f_<A, B, C> { using type = T<A, B, C>; };
+      template <class... Args>
+        using __f = __t<__f_<Args...>>;
+    };
 
   template <class Fn, class Continuation = __q<__types>>
     struct __transform {

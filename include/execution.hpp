@@ -33,6 +33,17 @@
 #include <coroutine.hpp>
 #include <stop_token.hpp>
 
+#if defined(__clang__)
+#define _STRINGIZE(__arg) #__arg
+#define _PRAGMA_PUSH() _Pragma("GCC diagnostic push")
+#define _PRAGMA_POP() _Pragma("GCC diagnostic pop")
+#define _PRAGMA_IGNORE(__arg) _Pragma(_STRINGIZE(GCC diagnostic ignored __arg))
+#else
+#define _PRAGMA_PUSH()
+#define _PRAGMA_POP()
+#define _PRAGMA_IGNORE(__arg)
+#endif
+
 namespace std::execution {
   template<template<template<class...> class, template<class...> class> class>
     struct __test_has_values;
@@ -213,6 +224,15 @@ namespace std::execution {
     concept __single_typed_sender =
       typed_sender<S> &&
       requires { typename __single_sender_value_t<S>; };
+
+  template<class Fun, class S, class Tfx = __q1<__id>>
+    concept __invocable_with_values_from =
+      sender<S> && (!typed_sender<S> || requires {
+        typename __value_types_of_t<
+            S,
+            __transform<Tfx, __bind_front_q<invoke_result_t, Fun>>,
+            __q<__types>>;
+      });
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
@@ -1030,18 +1050,8 @@ namespace std::execution {
           }, as);
       }
     };
-
-    inline constexpr struct __bind_back_fn {
-      template <class Fn, class... As>
-        __binder_back<Fn, decay_t<As>...> operator()(Fn fn, As&&... as) const
-          noexcept(noexcept(__binder_back<Fn, decay_t<As>...>{
-              {}, (Fn&&) fn, tuple<decay_t<As>...>{(As&&) as...}})) {
-            return {{}, (Fn&&) fn, tuple<decay_t<As>...>{(As&&) as...}};
-          }
-    } __bind_back {};
   } // __closure
   using __closure::__binder_back;
-  using __closure::__bind_back;
 
   namespace __tag_invoke_adaptors {
     // A derived-to-base cast that works even when the base is not
@@ -1146,16 +1156,28 @@ namespace std::execution {
           using set_error = void;
           using set_done = void;
 
+          static constexpr bool __has_base = !derived_from<Base, __no::__nope>;
+
           template <class D>
-            static decltype(auto) __get_base(D&& self) noexcept {
-              if constexpr (is_base_of_v<__no::__nope, Base>) {
-                return ((D&&) self).base();
-              } else {
+            using __base_from_derived_t = decltype(__declval<D>().base());
+
+          using __get_base_t =
+            __if<
+              __bool<__has_base>,
+              __bind_back<__defer<__member_t>, Base>,
+              __q1<__base_from_derived_t>>;
+
+          template <class D>
+            using __base_t = __minvoke1<__get_base_t, D&&>;
+
+          template <class D>
+            static __base_t<D> __get_base(D&& self) noexcept {
+              if constexpr (__has_base) {
                 return __c_cast<__t>((D&&) self).base();
+              } else {
+                return ((D&&) self).base();
               }
             }
-          template <class D>
-            using __base_t = decltype(__get_base(__declval<D>()));
 
           template <class... As>
             requires __has_set_value<Derived, As...>
@@ -1395,21 +1417,21 @@ namespace std::execution {
       template <class S, class F>
         using __sender = __impl::__sender<__x<remove_cvref_t<S>>, F>;
 
-      template<sender S, class F>
+      template<sender S, __invocable_with_values_from<S> F>
         requires __tag_invocable_with_completion_scheduler<then_t, set_value_t, S, F>
       sender auto operator()(S&& s, F f) const
         noexcept(nothrow_tag_invocable<then_t, __completion_scheduler_for<S, set_value_t>, S, F>) {
         auto sch = get_completion_scheduler<set_value_t>(s);
         return tag_invoke(then_t{}, std::move(sch), (S&&) s, (F&&) f);
       }
-      template<sender S, class F>
+      template<sender S, __invocable_with_values_from<S> F>
         requires (!__tag_invocable_with_completion_scheduler<then_t, set_value_t, S, F>) &&
           tag_invocable<then_t, S, F>
       sender auto operator()(S&& s, F f) const
         noexcept(nothrow_tag_invocable<then_t, S, F>) {
         return tag_invoke(then_t{}, (S&&) s, (F&&) f);
       }
-      template<sender S, class F>
+      template<sender S, __invocable_with_values_from<S> F>
         requires (!__tag_invocable_with_completion_scheduler<then_t, set_value_t, S, F>) &&
           (!tag_invocable<then_t, S, F>) &&
           sender<__sender<S, F>>
@@ -1462,36 +1484,126 @@ namespace std::execution {
   //
   inline namespace __let {
     namespace __impl {
+      using __nullable_variant_t = __bind_front<__q<variant>, __>;
+
+      template <class... Ts>
+        using __decayed_tuple = tuple<decay_t<Ts>...>;
+
+      template <class... Ts>
+        struct __as_tuple {
+          __decayed_tuple<Ts...> operator()(Ts&&...) const;
+        };
+
+      template <class... Ts>
+        struct __which_tuple_ : Ts... {
+          using Ts::operator()...;
+        };
+
+      struct __which_tuple_base {
+        template <class... Ts>
+          __decayed_tuple<Ts...> operator()(Ts&&...) const;
+      };
+
+      template <sender>
+        struct __which_tuple : __which_tuple_base {};
+
+      template <typed_sender Sender>
+        struct __which_tuple<Sender>
+          : value_types_of_t<Sender, __as_tuple, __which_tuple_> {};
+
+_PRAGMA_PUSH()
+_PRAGMA_IGNORE("-Wundefined-internal")
+      template <class Fun>
+        struct __applyable_fn {
+          __ operator()(auto&&...) const;
+          template <class... As>
+              requires invocable<Fun, As...>
+            invoke_result_t<Fun, As...> operator()(As&&...) const;
+        };
+_PRAGMA_POP()
+
+      template <class Fun, class Tuple>
+        concept __applyable =
+          requires (__applyable_fn<Fun> fn, Tuple&& tup) {
+            {std::apply(fn, (Tuple&&) tup)} -> __none_of<__>;
+          };
+      template <class Fun, class Tuple>
+          requires __applyable<Fun, Tuple>
+        using __apply_result_t =
+          decltype(std::apply(__applyable_fn<Fun>{}, __declval<Tuple>()));
+
+      template <class Fun, class... As>
+        using __sender3_t = invoke_result_t<Fun, decay_t<As>&...>;
+
+      template <sender, class Receiver, class Fun>
+        struct __storage {
+          any __args_;
+          any __op_state3_;
+        };
+
+      template <typed_sender Sender, class Receiver, class Fun>
+        struct __storage<Sender, Receiver, Fun> {
+          template <class... As>
+            using __op_state_for_t =
+              connect_result_t<__sender3_t<Fun, As...>, Receiver>;
+
+          // Compute a variant of tuples to hold all the values of the input
+          // sender:
+          using __args_t =
+            __value_types_of_t<Sender, __q<tuple>, __nullable_variant_t>;
+          __args_t __args_;
+
+          // Compute a variant of operation states:
+          using __op_state3_t =
+            __value_types_of_t<Sender, __q<__op_state_for_t>, __nullable_variant_t>;
+          __op_state3_t __op_state3_;
+        };
+
+      template <class SenderId, class ReceiverId, class Fun>
+        struct __operation;
+
+      template <class SenderId, class ReceiverId, class Fun>
+        struct __receiver
+          : receiver_adaptor<__receiver<SenderId, ReceiverId, Fun>> {
+          using Sender = __t<SenderId>;
+          using Receiver = __t<ReceiverId>;
+          Receiver&& base() && noexcept { return (Receiver&&) __op_->__rec_;}
+          const Receiver& base() const & noexcept { return __op_->__rec_;}
+
+          template <class... As>
+            using __which_tuple_t =
+              invoke_result_t<__which_tuple<Sender>, As...>;
+
+          template <class... As>
+            using __op_state_for_t =
+              connect_result_t<__sender3_t<Fun, As...>, Receiver>;
+
+          template <class... As>
+              requires
+                __applyable<Fun, __which_tuple_t<As...>&> &&
+                sender_to<__apply_result_t<Fun, __which_tuple_t<As...>&>, Receiver>
+            void set_value(As&&... as) && noexcept try {
+              using __tuple_t = __which_tuple_t<As...>;
+              using __op_state_t = __mapply<__q<__op_state_for_t>, __tuple_t>;
+              auto& args =
+                __op_->__storage_.__args_.template emplace<__tuple_t>((As&&) as...);
+              start(__op_->__storage_.__op_state3_.template emplace<__op_state_t>(
+                __conv{[&, this] {
+                  return connect(apply(move(__op_->__fun_), args), move(*this).base());
+                }}
+              ));
+            } catch(...) {
+              set_error(move(*this).base(), current_exception());
+            }
+
+          __operation<SenderId, ReceiverId, Fun>* __op_;
+        };
+
       template <class SenderId, class ReceiverId, class Fun>
         struct __operation {
           using Sender = __t<SenderId>;
           using Receiver = __t<ReceiverId>;
-
-          struct __receiver : receiver_adaptor<__receiver> {
-            Receiver&& base() && noexcept { return std::move(__op_->__rec_); }
-            const Receiver& base() const & noexcept { return __op_->__rec_; }
-
-            template <class... As>
-                requires invocable<Fun, decay_t<As>...> &&
-                  sender_to<invoke_result_t<Fun, decay_t<As>...>, Receiver>
-              void set_value(As&&... as) && noexcept {
-                __op_->__set_value((As&&) as...);
-              }
-
-            __operation* __op_;
-          };
-
-          template <class... As>
-            void __set_value(As&&... as) noexcept try {
-              using op_state3_t =
-                connect_result_t<invoke_result_t<Fun, decay_t<As>...>, Receiver>;
-              auto& args = __args_.emplace<tuple<decay_t<As>...>>((As&&) as...);
-              start(__op_state3_.emplace<op_state3_t>(__conv{[&, this] {
-                return connect(apply(move(__fun_), args), move(__rec_));
-              }}));
-            } catch(...) {
-              set_error(std::move(__rec_), current_exception());
-            }
+          using __rec_t = __receiver<SenderId, ReceiverId, Fun>;
 
           friend void tag_invoke(start_t, __operation& self) noexcept {
             start(self.__op_state2_);
@@ -1499,17 +1611,15 @@ namespace std::execution {
 
           template <class Receiver2>
             __operation(Sender&& sndr, Receiver2&& rec, Fun fun)
-              : __op_state2_(connect((Sender&&) sndr, __receiver{{}, this}))
+              : __op_state2_(connect((Sender&&) sndr, __rec_t{{}, this}))
               , __rec_((Receiver2&&) rec)
               , __fun_((Fun&&) fun)
             {}
 
-          connect_result_t<Sender, __receiver> __op_state2_;
+          connect_result_t<Sender, __rec_t> __op_state2_;
           Receiver __rec_;
           Fun __fun_;
-          std::any __args_;
-          std::any __op_state3_;
-          //std::optional<> __op_state3_;
+          __storage<Sender, Receiver, Fun> __storage_;
         };
 
       template <class SenderId, class Fun>
@@ -1523,7 +1633,10 @@ namespace std::execution {
                 Fun>;
           template <class Self, class Receiver>
             using __rec_t =
-              typename __op_t<Self, Receiver>::__receiver;
+              __receiver<
+                __x<__member_t<Self, Sender>>,
+                __x<remove_cvref_t<Receiver>>,
+                Fun>;
 
           template <__decays_to<__sender> Self, receiver Receiver>
               requires sender_to<__member_t<Self, Sender>, __rec_t<Self, Receiver>>
@@ -1545,24 +1658,27 @@ namespace std::execution {
     } // namespace __impl
 
     inline constexpr struct let_value_t {
+      template <class T>
+        using __decay_ref = decay_t<T>&;
+
       template <class Sender, class Fun>
         using __sender = __impl::__sender<__x<remove_cvref_t<Sender>>, Fun>;
 
-      template<sender Sender, class Fun>
+      template<sender Sender, __invocable_with_values_from<Sender, __q1<__decay_ref>> Fun>
         requires __tag_invocable_with_completion_scheduler<let_value_t, set_value_t, Sender, Fun>
       sender auto operator()(Sender&& sndr, Fun fun) const
         noexcept(nothrow_tag_invocable<let_value_t, __completion_scheduler_for<Sender, set_value_t>, Sender, Fun>) {
         auto sch = get_completion_scheduler<set_value_t>(sndr);
         return tag_invoke(let_value_t{}, std::move(sch), (Sender&&) sndr, (Fun&&) fun);
       }
-      template<sender Sender, class Fun>
+      template<sender Sender, __invocable_with_values_from<Sender, __q1<__decay_ref>> Fun>
         requires (!__tag_invocable_with_completion_scheduler<let_value_t, set_value_t, Sender, Fun>) &&
           tag_invocable<let_value_t, Sender, Fun>
       sender auto operator()(Sender&& sndr, Fun fun) const
         noexcept(nothrow_tag_invocable<let_value_t, Sender, Fun>) {
         return tag_invoke(let_value_t{}, (Sender&&) sndr, (Fun&&) fun);
       }
-      template<sender Sender, class Fun>
+      template<sender Sender, __invocable_with_values_from<Sender, __q1<__decay_ref>> Fun>
         requires (!__tag_invocable_with_completion_scheduler<let_value_t, set_value_t, Sender, Fun>) &&
           (!tag_invocable<let_value_t, Sender, Fun>) &&
           sender<__sender<Sender, Fun>>
@@ -1586,7 +1702,7 @@ namespace std::execution {
           // typed sender?
           typename __value_types_of_t<
             __t<SenderId>,
-            __bind_front_q<invoke_result_t, Fun>,
+            __bind_front_q<__let::__impl::__sender3_t, Fun>,
             __q<__let::__impl::__typed_senders>>;
         }
     struct sender_traits<__let::__impl::__sender<SenderId, Fun>> {
@@ -1596,7 +1712,7 @@ namespace std::execution {
         using senders_t =
           __value_types_of_t<
             Sender,
-            __bind_front_q<invoke_result_t, Fun>,
+            __bind_front_q<__let::__impl::__sender3_t, Fun>,
             Continuation>;
 
       template <template <class...> class Tuple>
@@ -1840,7 +1956,7 @@ namespace std::execution {
 
       // This specialization is for typed senders, where the completion
       // information can be stored in situ within a variant in the operation
-      // state 
+      // state
       template <typed_sender Sender>
         struct __completion_storage<Sender> {
           // Compute a variant type that is capable of storing the results of the
@@ -1858,7 +1974,7 @@ namespace std::execution {
             using __bind_tuples =
               __bind_front_q<variant, tuple<set_done_t>, Ts...>;
 
-          using __bound_values_t = 
+          using __bound_values_t =
             __value_types_of_t<
               Sender,
               __transform<__q1<decay_t>, __bind_front_q<tuple, set_value_t>>,
@@ -2163,14 +2279,14 @@ namespace std::execution {
     inline constexpr struct on_t {
       template <scheduler Scheduler, sender Sender>
         requires tag_invocable<on_t, Scheduler, Sender>
-      auto operator()(Scheduler&& sched, Sender&& sndr) const 
+      auto operator()(Scheduler&& sched, Sender&& sndr) const
         noexcept(nothrow_tag_invocable<on_t, Scheduler, Sender>)
         -> tag_invoke_result_t<on_t, Scheduler, Sender> {
         return tag_invoke(*this, (Scheduler&&) sched, (Sender&&) sndr);
       }
 
       template <scheduler Scheduler, sender Sender>
-      auto operator()(Scheduler&& sched, Sender&& sndr) const 
+      auto operator()(Scheduler&& sched, Sender&& sndr) const
         -> __impl::__sender<__x<decay_t<Scheduler>>,
                             __x<decay_t<Sender>>> {
         return {{}, (Scheduler&&) sched, (Sender&&) sndr};
