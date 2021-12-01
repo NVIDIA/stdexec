@@ -419,10 +419,16 @@ namespace std::execution {
           }
 
           template <class A>
+          A&& await_transform(A&& a) noexcept {
+            return (A&&) a;
+          }
+
+          template <class A>
+            requires tag_invocable<as_awaitable_t, A, __promise&>
           auto await_transform(A&& a)
-              noexcept(is_nothrow_invocable_v<as_awaitable_t, A, __promise&>)
-              -> invoke_result_t<as_awaitable_t, A, __promise&> {
-            return as_awaitable((A&&) a, *this);
+              noexcept(nothrow_tag_invocable<as_awaitable_t, A, __promise&>)
+              -> tag_invoke_result_t<as_awaitable_t, A, __promise&> {
+            return tag_invoke(as_awaitable, (A&&) a, *this);
           }
 
           // Pass through receiver queries
@@ -440,21 +446,22 @@ namespace std::execution {
 
           R& r_;
         };
-    }
 
-    template <class R>
-      using __promise_t = __impl::__promise<__x<remove_cvref_t<R>>>;
+      template <class R>
+        using __promise_t = __promise<__x<remove_cvref_t<R>>>;
+
+      template <class R>
+        using __op_t = __op<__x<remove_cvref_t<R>>>;
+    } // namespace __impl
 
     inline constexpr struct __fn {
      private:
       template <class R, class... Args>
         using __nothrow_ = bool_constant<nothrow_receiver_of<R, Args...>>;
 
-      template <class R>
-        using __op_t = __impl::__op<__x<remove_cvref_t<R>>>;
-
       template <class A, class R>
-      static __op_t<R> __impl(A a, R r) {
+      static __impl::__op_t<R> __co_impl(A a, R r) {
+        using result_t = __await_result_t<A, __impl::__promise_t<R>>;
         exception_ptr ex;
         try {
           // This is a bit mind bending control-flow wise.
@@ -467,13 +474,13 @@ namespace std::execution {
           // for the receiver to destroy the coroutine.
           auto fn = [&]<bool Nothrow>(bool_constant<Nothrow>, auto&&... as) noexcept {
             return [&]() noexcept(Nothrow) -> void {
-              set_value((R&&) r, (add_rvalue_reference_t<__await_result_t<A, __promise_t<R>>>) as...);
+              set_value((R&&) r, (add_rvalue_reference_t<result_t>) as...);
             };
           };
-          if constexpr (is_void_v<__await_result_t<A, __promise_t<R>>>)
+          if constexpr (is_void_v<result_t>)
             co_yield (co_await (A &&) a, fn(__nothrow_<R>{}));
           else
-            co_yield fn(__nothrow_<R, __await_result_t<A, __promise_t<R>>>{}, co_await (A &&) a);
+            co_yield fn(__nothrow_<R, result_t>{}, co_await (A &&) a);
         } catch (...) {
           ex = current_exception();
         }
@@ -482,18 +489,19 @@ namespace std::execution {
         };
       }
      public:
-      template <receiver R, __awaitable<__promise_t<R>> A>
-        requires receiver_of<R, __await_result_t<A, __promise_t<R>>>
-      __op_t<R> operator()(A&& a, R&& r) const {
-        return __impl((A&&) a, (R&&) r);
+      template <receiver R, __awaitable<__impl::__promise_t<R>> A>
+        requires receiver_of<R, __await_result_t<A, __impl::__promise_t<R>>>
+      __impl::__op_t<R> operator()(A&& a, R&& r) const {
+        return __co_impl((A&&) a, (R&&) r);
       }
-      template <receiver R, __awaitable<__promise_t<R>> A>
-        requires same_as<void, __await_result_t<A, __promise_t<R>>> && receiver_of<R>
-      __op_t<R> operator()(A&& a, R&& r) const {
-        return __impl((A&&) a, (R&&) r);
+      template <receiver R, __awaitable<__impl::__promise_t<R>> A>
+        requires same_as<void, __await_result_t<A, __impl::__promise_t<R>>> &&
+          receiver_of<R>
+      __impl::__op_t<R> operator()(A&& a, R&& r) const {
+        return __co_impl((A&&) a, (R&&) r);
       }
     } __connect_awaitable{};
-  }
+  } // namespace __connect_awaitable_
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
@@ -503,13 +511,14 @@ namespace std::execution {
         requires tag_invocable<connect_t, S, R> &&
           operation_state<tag_invoke_result_t<connect_t, S, R>>
       auto operator()(S&& s, R&& r) const
-        noexcept(nothrow_tag_invocable<connect_t, S, R>) {
+        noexcept(nothrow_tag_invocable<connect_t, S, R>)
+        -> tag_invoke_result_t<connect_t, S, R> {
         return tag_invoke(connect_t{}, (S&&) s, (R&&) r);
       }
       template<class A, receiver R>
         requires (!tag_invocable<connect_t, A, R>) &&
-          __awaitable<A, __connect_awaitable_::__promise_t<R>>
-      auto operator()(A&& a, R&& r) const {
+          __awaitable<A, __connect_awaitable_::__impl::__promise_t<R>>
+      __connect_awaitable_::__impl::__op_t<R> operator()(A&& a, R&& r) const {
         return __connect_awaitable((A&&) a, (R&&) r);
       }
     } connect {};
