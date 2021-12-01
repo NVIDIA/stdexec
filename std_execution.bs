@@ -3246,7 +3246,7 @@ enum class forward_progress_guarantee {
 
           6. The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
 
-          7. For some expression `e`, the expression `p.await_transform(e)` is expression-equivalent to `as_awaitable(e, p)`.
+          7. For some expression `e`, the expression `p.await_transform(e)` is expression-equivalent to `tag_invoke(as_awaitable, e, p)` if that expression is well-formed; otherwise, it is expression-equivalent to `e`.
 
         The operand of the <i>requires-clause</i> of <code><i>connect-awaitable</i></code> is equivalent to `receiver_of<R>` if <code><i>await-result-type</i>&lt;S, <i>connect-awaitable-promise</i>></code> is <code><i>cv</i> void</code>; otherwise, it is <code>receiver_of&lt;R, <i>await-result-type</i>&lt;S, <i>connect-awaitable-promise</i>>></code>.
 
