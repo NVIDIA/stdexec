@@ -75,6 +75,12 @@ namespace std {
         using __f = Fn<First, Second>;
     };
 
+  template <template <class, class, class> class Fn>
+    struct __q3 {
+      template <class First, class Second, class Third>
+        using __f = Fn<First, Second, Third>;
+    };
+
   template <class Fn, class... Args>
     using __minvoke = typename Fn::template __f<Args...>;
 
@@ -83,6 +89,9 @@ namespace std {
 
   template <class Fn, class First, class Second>
     using __minvoke2 = typename Fn::template __f<First, Second>;
+
+  template <class Fn, class First, class Second, class Third>
+    using __minvoke3 = typename Fn::template __f<First, Second, Third>;
 
   template <template <class...> class T, class... Args>
     concept __valid = requires { typename T<Args...>; };
@@ -195,10 +204,23 @@ namespace std {
             __minvoke<__right_fold<__types<>, __push_back_unique>, Ts...>>;
     };
 
+  template <class...>
+    struct __compose {};
+
+  template <class First>
+    struct __compose<First> : First {};
+
   template <class Second, class First>
-    struct __compose {
+    struct __compose<Second, First> {
       template <class... Args>
-        using __f = __minvoke<Second, __minvoke<First, Args...>>;
+        using __f = __minvoke1<Second, __minvoke<First, Args...>>;
+    };
+
+  template <class Last, class Penultimate, class... Rest>
+    struct __compose<Last, Penultimate, Rest...> {
+      template <class... Args>
+        using __f =
+          __minvoke1<Last, __minvoke<__compose<Penultimate, Rest...>, Args...>>;
     };
 
   template <template<class...> class Fn, class... Front>
