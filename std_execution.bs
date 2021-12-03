@@ -4423,7 +4423,7 @@ from the operation before the operation completes.
     <i>run-loop-opstate-base</i>* run_loop::pop_front();
     </pre>
 
-    1. <i>Effects:</i> Waits until one of the following conditions is `true`:
+    1. <i>Effects:</i> Blocks ([defns.block]) until one of the following conditions is `true`:
 
         * <i>count</i> is `0` and <i>state</i> is <i>finishing</i>, in which case `pop_front` returns `nullptr`; or
 
