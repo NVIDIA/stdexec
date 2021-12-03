@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R3<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-02">2021-12-02</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-03">2021-12-03</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2496,7 +2496,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
          <a href="#spec-execution.contexts.run_loop"><span class="secno">9.9.1</span> <span class="content"><code class="highlight"><c- n>run_loop</c-></code> <b>[execution.contexts.run_loop]</b></span></a>
          <ol class="toc">
           <li><a href="#spec-execution.contexts.run_loop.types"><span class="secno">9.9.1.1</span> <span class="content">Associated types <b>[execution.contexts.run_loop.types]</b></span></a>
-          <li><a href="#spec-execution.contexts.run_loop.ctor"><span class="secno">9.9.1.2</span> <span class="content">Constructor <b>[execution.contexts.run_loop.ctor]</b></span></a>
+          <li><a href="#spec-execution.contexts.run_loop.ctor"><span class="secno">9.9.1.2</span> <span class="content">Constructor and destructor<b>[execution.contexts.run_loop.ctor]</b></span></a>
           <li><a href="#spec-execution.contexts.run_loop.members"><span class="secno">9.9.1.3</span> <span class="content">Member functions <b>[execution.contexts.run_loop.members]</b></span></a>
          </ol>
        </ol>
@@ -6304,8 +6304,9 @@ from the operation before the operation completes.</p>
     <li data-md>
      <p>Any receiver <code class="highlight"><c- n>r</c-></code> created by an implementation of <code class="highlight"><c- n>sync_wait</c-></code> and <code class="highlight"><c- n>sync_wait_with_variant</c-></code> shall implement the <code class="highlight"><c- n>get_scheduler</c-></code> receiver query.
 The scheduler returned from the query for the receiver created by the
-default implementation shall return a scheduler for an <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code> that local to the current activation of <code class="highlight"><c- n>sync_wait</c-></code> or <code class="highlight"><c- n>sync_wait_with_variant</c-></code> and is driven by the waiting thread, such that
-scheduled tasks run on the thread of the caller.</p>
+default implementation shall return an implementation-defined scheduler that
+is driven by the waiting thread, such that scheduled tasks run on the thread
+of the caller. [<i>Note:</i> The scheduler for a local instance of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code> is one valid implementation. -- <i>end note</i>]</p>
    </ol>
    <h3 class="heading settled" data-level="9.7" id="spec-execution.execute"><span class="secno">9.7. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code> <b>[execution.execute]</b></span><a class="self-link" href="#spec-execution.execute"></a></h3>
    <ol>
@@ -6508,7 +6509,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
     <li data-md>
      <p>A <code class="highlight"><c- n>run_loop</c-></code> is an execution context on which work can be scheduled. It maintains a simple, thread-safe first-in-first-out queue of work. Its <code class="highlight"><c- n>run</c-><c- p>()</c-></code> member function removes elements from the queue and executes them in a loop on whatever thread of execution calls <code class="highlight"><c- n>run</c-><c- p>()</c-></code>.</p>
     <li data-md>
-     <p>A <code class="highlight"><c- n>run_loop</c-></code> instance has an associated <i>count</i> that corresponds to the number of work items that are in its queue. Additionally, a <code class="highlight"><c- n>run_loop</c-></code> has an associated <i>state</i> that can be either <i>finishing</i> or <i>not-finishing</i>.</p>
+     <p>A <code class="highlight"><c- n>run_loop</c-></code> instance has an associated <i>count</i> that corresponds to the number of work items that are in its queue. Additionally, a <code class="highlight"><c- n>run_loop</c-></code> has an associated <i>state</i> that can be one of <i>starting</i>, <i>running</i>, or <i>finishing</i>.</p>
     <li data-md>
      <p>Concurrent invocations of the member functions of <code class="highlight"><c- n>run_loop</c-></code>, other than <code class="highlight"><c- n>run</c-></code> and its destructor, do not introduce data races. The member functions <code class="highlight"><c- n>pop_front</c-></code>, <code class="highlight"><c- n>push_back</c-></code>, and <code class="highlight"><c- n>finish</c-></code> execute atomically.</p>
     <li data-md>
@@ -6530,9 +6531,10 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
   <c- b>void</c-> <c- nf>push_back</c-><c- p>(</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-><c- p>);</c-> <c- c1>// exposition only</c->
 
  <c- k>public</c-><c- o>:</c->
-  <c- c1>// [execution.contexts.run_loop.ctor] Constructor:</c->
+  <c- c1>// [execution.contexts.run_loop.ctor] construct/copy/destroy</c->
   <c- n>run_loop</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
   <c- n>run_loop</c-><c- p>(</c-><c- n>run_loop</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- o>=</c-> <c- k>delete</c-><c- p>;</c->
+  <c- o>~</c-><c- n>run_loop</c-><c- p>();</c->
 
   <c- c1>// [execution.contexts.run_loop.members] Member functions:</c->
   <i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>scheduler</c-></i> <c- n>get_scheduler</c-><c- p>();</c->
@@ -6603,12 +6605,18 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 </pre>
      </ul>
    </ol>
-   <h5 class="heading settled" data-level="9.9.1.2" id="spec-execution.contexts.run_loop.ctor"><span class="secno">9.9.1.2. </span><span class="content">Constructor <b>[execution.contexts.run_loop.ctor]</b></span><a class="self-link" href="#spec-execution.contexts.run_loop.ctor"></a></h5>
+   <h5 class="heading settled" data-level="9.9.1.2" id="spec-execution.contexts.run_loop.ctor"><span class="secno">9.9.1.2. </span><span class="content">Constructor and destructor<b>[execution.contexts.run_loop.ctor]</b></span><a class="self-link" href="#spec-execution.contexts.run_loop.ctor"></a></h5>
 <pre class="highlight"><c- n>run_loop</c-><c- o>::</c-><c- n>run_loop</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
 </pre>
    <ol>
     <li data-md>
-     <p><i>Postconditions:</i> <i>count</i> is <code class="highlight"><c- mi>0</c-></code> and <i>state</i> is <i>not-finishing</i>.</p>
+     <p><i>Postconditions:</i> <i>count</i> is <code class="highlight"><c- mi>0</c-></code> and <i>state</i> is <i>starting</i>.</p>
+   </ol>
+<pre class="highlight"><c- n>run_loop</c-><c- o>::~</c-><c- n>run_loop</c-><c- p>();</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><i>Effects:</i> If <i>count</i> is not <code class="highlight"><c- mi>0</c-></code> or if <i>state</i> is <i>running</i>, invokes <code class="highlight"><c- n>terminate</c-><c- p>()</c-></code>. Otherwise, has no effects.</p>
    </ol>
    <h5 class="heading settled" data-level="9.9.1.3" id="spec-execution.contexts.run_loop.members"><span class="secno">9.9.1.3. </span><span class="content">Member functions <b>[execution.contexts.run_loop.members]</b></span><a class="self-link" href="#spec-execution.contexts.run_loop.members"></a></h5>
 <pre class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>*</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>pop_front</c-><c- p>();</c->
@@ -6647,9 +6655,11 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 <c- p>}</c->
 </pre>
     <li data-md>
-     <p><i>Precondition:</i> <i>state</i> is <i>not-finishing</i>.</p>
+     <p><i>Precondition:</i> <i>state</i> is <i>starting</i>.</p>
     <li data-md>
      <p><i>Postcondition:</i> <i>state</i> is <i>finishing</i>.</p>
+    <li data-md>
+     <p><i>Remarks:</i> While the loop is executing, <i>state</i> is <i>running</i>. When <i>state</i> changes, it does so without introducing data races.</p>
    </ol>
 <pre class="highlight"><c- b>void</c-> <c- n>run_loop</c-><c- o>::</c-><c- n>finish</c-><c- p>();</c->
 </pre>
