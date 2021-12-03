@@ -38,6 +38,9 @@ namespace std {
   template <class T>
     using __t = typename T::type;
 
+  template <bool B>
+    using __bool = bool_constant<B>;
+
   // Some utilities for manipulating lists of types at compile time
   template <class...>
     struct __types;
@@ -72,6 +75,12 @@ namespace std {
         using __f = Fn<First, Second>;
     };
 
+  template <template <class, class, class> class Fn>
+    struct __q3 {
+      template <class First, class Second, class Third>
+        using __f = Fn<First, Second, Third>;
+    };
+
   template <class Fn, class... Args>
     using __minvoke = typename Fn::template __f<Args...>;
 
@@ -80,6 +89,25 @@ namespace std {
 
   template <class Fn, class First, class Second>
     using __minvoke2 = typename Fn::template __f<First, Second>;
+
+  template <class Fn, class First, class Second, class Third>
+    using __minvoke3 = typename Fn::template __f<First, Second, Third>;
+
+  template <template <class...> class T, class... Args>
+    concept __valid = requires { typename T<Args...>; };
+  template <template<class...> class T>
+    struct __defer {
+      template <class... Args> requires __valid<T, Args...>
+        struct __f_ { using type = T<Args...>; };
+      template <class A> requires __valid<T, A>
+        struct __f_<A> { using type = T<A>; };
+      template <class A, class B> requires __valid<T, A, B>
+        struct __f_<A, B> { using type = T<A, B>; };
+      template <class A, class B, class C> requires __valid<T, A, B, C>
+        struct __f_<A, B, C> { using type = T<A, B, C>; };
+      template <class... Args>
+        using __f = __t<__f_<Args...>>;
+    };
 
   template <class Fn, class Continuation = __q<__types>>
     struct __transform {
@@ -176,10 +204,23 @@ namespace std {
             __minvoke<__right_fold<__types<>, __push_back_unique>, Ts...>>;
     };
 
+  template <class...>
+    struct __compose {};
+
+  template <class First>
+    struct __compose<First> : First {};
+
   template <class Second, class First>
-    struct __compose {
+    struct __compose<Second, First> {
       template <class... Args>
-        using __f = __minvoke<Second, __minvoke<First, Args...>>;
+        using __f = __minvoke1<Second, __minvoke<First, Args...>>;
+    };
+
+  template <class Last, class Penultimate, class... Rest>
+    struct __compose<Last, Penultimate, Rest...> {
+      template <class... Args>
+        using __f =
+          __minvoke1<Last, __minvoke<__compose<Penultimate, Rest...>, Args...>>;
     };
 
   template <template<class...> class Fn, class... Front>
@@ -190,6 +231,15 @@ namespace std {
 
   template <class Fn, class... Front>
     using __bind_front = __bind_front_q<Fn::template __f, Front...>;
+
+  template <template<class...> class Fn, class... Back>
+    struct __bind_back_q {
+      template <class... Args>
+        using __f = Fn<Args..., Back...>;
+    };
+
+  template <class Fn, class... Back>
+    using __bind_back = __bind_back_q<Fn::template __f, Back...>;
 
   template <class Old, class New, class Continuation = __q<__types>>
     struct __replace {
