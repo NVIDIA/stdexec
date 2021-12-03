@@ -1325,7 +1325,7 @@ executing their logic eagerly; <i>i.e.</i>, before the returned sender has been
 connected to a receiver and started. These algorithms were removed because eager
 execution has a number of negative semantic and performance implications.
 
-We have originally included this functionality in the paper because of along-standing
+We have originally included this functionality in the paper because of a long-standing
 belief that eager execution is a mandatory feature to be included in the standard Executors
 facility for that facility to be acceptable for accelerator vendors. A particular concern
 was that we must be able to write generic algorithms that can run either eagerly or lazily,
