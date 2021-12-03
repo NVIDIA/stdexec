@@ -181,15 +181,18 @@ namespace std {
       using __f = integral_constant<size_t, sizeof...(Ts)>;
   };
 
+  template <class Continuation = __q<__types>>
   struct __push_back_unique {
     template <class List, class Item>
-      struct __f_ {
-        using type = List;
+      struct __f_;
+    template <template <class...> class List, class... Ts, class Item>
+      struct __f_<List<Ts...>, Item> {
+        using type = __minvoke<Continuation, Ts...>;
       };
     template <template <class...> class List, class... Ts, class Item>
         requires ((!__v<is_same<Ts, Item>>) &&...)
       struct __f_<List<Ts...>, Item> {
-        using type = List<Ts..., Item>;
+        using type = __minvoke<Continuation, Ts..., Item>;
       };
     template <class List, class Item>
       using __f = __t<__f_<List, Item>>;
@@ -201,7 +204,7 @@ namespace std {
         using __f =
           __mapply<
             Continuation,
-            __minvoke<__right_fold<__types<>, __push_back_unique>, Ts...>>;
+            __minvoke<__right_fold<__types<>, __push_back_unique<>>, Ts...>>;
     };
 
   template <class...>

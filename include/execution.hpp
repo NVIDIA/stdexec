@@ -1483,35 +1483,25 @@ namespace std::execution {
 
   // Make the then sender typed if the input sender is also typed.
   template <class S_, class F>
-    requires typed_sender<__t<S_>> &&
-      requires {
-        // Can the function F be called with each set of value types?
-        typename __value_types_of_t<__t<S_>,
-          __bind_front_q<invoke_result_t, F>,
-          __q<__types>>;
-      }
+    // Can the function F be called with each set of value types?
+    requires typed_sender<__t<S_>> && __valid<__tfx_sender_values, __t<S_>, F>
   struct sender_traits<__then::__impl::__sender<S_, F>> {
     using S = __t<S_>;
     template <template<class...> class Tuple, template<class...> class Variant>
-      using value_types =
-        __value_types_of_t<
-          S,
-          __bind_front_q<invoke_result_t, F>,
-          __transform<
-            __q<__types>,
-            __replace<
-              __types<void>,
-              __types<>,
-              __transform<__uncurry<__q<Tuple>>, __q<Variant>>>>>;
+      using value_types = __tfx_sender_values<S, F, __q1<__id>,
+        __transform<
+          __q<__types>,
+          __replace<
+            __types<void>,
+            __types<>,
+            __transform<__uncurry<__q<Tuple>>, __q<Variant>>>>>;
 
     template <template<class...> class Variant>
       using error_types =
-        __mapply<
-          __q<Variant>,
-          __minvoke2<
-            __push_back_unique,
-            error_types_of_t<S, __types>,
-            exception_ptr>>;
+        __minvoke2<
+          __push_back_unique<__q<Variant>>,
+          error_types_of_t<S, __types>,
+          exception_ptr>;
 
     static constexpr bool sends_done = sender_traits<S>::sends_done;
   };
