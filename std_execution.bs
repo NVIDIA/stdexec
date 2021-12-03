@@ -1325,6 +1325,25 @@ executing their logic eagerly; <i>i.e.</i>, before the returned sender has been
 connected to a receiver and started. These algorithms were removed because eager
 execution has a number of negative semantic and performance implications.
 
+We have originally included this functionality in the paper because of a long-standing
+belief that eager execution is a mandatory feature to be included in the standard Executors
+facility for that facility to be acceptable for accelerator vendors. A particular concern
+was that we must be able to write generic algorithms that can run either eagerly or lazily,
+depending on the kind of an input sender or scheduler that have been passed into them as
+arguments. We considered this a requirement, because the _latency_ of launching work on an
+accelerator can sometimes be considerable.
+
+However, in the process of working on this paper and implementations of the features
+proposed within, our set of requirements has shifted, as we understood the different
+implementation strategies that are available for the feature set of this paper better,
+and, after weighting the earlier concerns against the points presented below, we
+have arrived at the conclusion that a purely lazy model is enough for most algorithms,
+and users who intend to launch work earlier may use an algorithm such as `ensure_started`
+to achieve that goal. We have also come to deeply appreciate the fact that a purely
+lazy model allows both the implementation and the compiler to have a much better
+understanding of what the complete graph of tasks looks like, allowing them to better
+optimize the code - also when targetting accelerators.
+
 ### Eager execution leads to detached work or worse ### {#design-lazy-algorithms-detached}
 
 One of the questions that arises with APIs that can potentially return
