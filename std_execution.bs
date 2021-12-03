@@ -3591,7 +3591,7 @@ are all well-formed.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`. The lifetime of `op_state3` ends when `op_state` is destroyed.
 
-4. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They shall return a scheduler equivalent to the `sch` argument from those queries.
+4. Senders returned from `execution::schedule_from` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They shall return a scheduler equivalent to the `sch` argument from those queries.
 
 #### `execution::then` <b>[execution.senders.adaptors.then]</b> #### {#spec-execution.senders.adaptor.then}
 
