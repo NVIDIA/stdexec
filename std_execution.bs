@@ -4117,10 +4117,9 @@ from the operation before the operation completes.
 4. Any receiver `r` created by an implementation of `sync_wait` and
     `sync_wait_with_variant` shall implement the `get_scheduler` receiver query.
     The scheduler returned from the query for the receiver created by the
-    default implementation shall return a scheduler for an `execution::run_loop`
-    that local to the current activation of `sync_wait` or
-    `sync_wait_with_variant` and is driven by the waiting thread, such that
-    scheduled tasks run on the thread of the caller.
+    default implementation shall return an implementation-defined scheduler that
+    is driven by the waiting thread, such that scheduled tasks run on the thread
+    of the caller. [<i>Note:</i> The scheduler for a local instance of `execution::run_loop` is one valid implementation. -- <i>end note</i>]
 
 ## `execution::execute` <b>[execution.execute]</b> ## {#spec-execution.execute}
 
@@ -4311,7 +4310,7 @@ from the operation before the operation completes.
 
 1. A `run_loop` is an execution context on which work can be scheduled. It maintains a simple, thread-safe first-in-first-out queue of work. Its `run()` member function removes elements from the queue and executes them in a loop on whatever thread of execution calls `run()`.
 
-2. A `run_loop` instance has an associated <i>count</i> that corresponds to the number of work items that are in its queue. Additionally, a `run_loop` has an associated <i>state</i> that can be either <i>finishing</i> or <i>not-finishing</i>.
+2. A `run_loop` instance has an associated <i>count</i> that corresponds to the number of work items that are in its queue. Additionally, a `run_loop` has an associated <i>state</i> that can be one of <i>starting</i>, <i>running</i>, or <i>finishing</i>.
 
 3. Concurrent invocations of the member functions of `run_loop`, other than `run` and its destructor, do not introduce data races. The member functions `pop_front`, `push_back`, and `finish` execute atomically.
 
@@ -4335,9 +4334,10 @@ from the operation before the operation completes.
       void push_back(<i>run-loop-opstate-base</i>*); // exposition only
 
      public:
-      // [execution.contexts.run_loop.ctor] Constructor:
+      // [execution.contexts.run_loop.ctor] construct/copy/destroy
       run_loop() noexcept;
       run_loop(run_loop&&) = delete;
+      ~run_loop();
 
       // [execution.contexts.run_loop.members] Member functions:
       <i>run-loop-scheduler</i> get_scheduler();
@@ -4409,13 +4409,19 @@ from the operation before the operation completes.
         }
         </pre>
 
-#### Constructor <b>[execution.contexts.run_loop.ctor]</b> #### {#spec-execution.contexts.run_loop.ctor}
+#### Constructor and destructor<b>[execution.contexts.run_loop.ctor]</b> #### {#spec-execution.contexts.run_loop.ctor}
 
     <pre highlight="c++">
     run_loop::run_loop() noexcept;
     </pre>
 
-    1. <i>Postconditions:</i> <i>count</i> is `0` and <i>state</i> is <i>not-finishing</i>.
+    1. <i>Postconditions:</i> <i>count</i> is `0` and <i>state</i> is <i>starting</i>.
+
+    <pre highlight="c++">
+    run_loop::~run_loop();
+    </pre>
+
+    1. <i>Effects:</i> If <i>count</i> is not `0` or if <i>state</i> is <i>running</i>, invokes `terminate()`. Otherwise, has no effects.
 
 #### Member functions <b>[execution.contexts.run_loop.members]</b> #### {#spec-execution.contexts.run_loop.members}
 
@@ -4455,9 +4461,11 @@ from the operation before the operation completes.
         }
         </pre>
 
-    2. <i>Precondition:</i> <i>state</i> is <i>not-finishing</i>.
+    2. <i>Precondition:</i> <i>state</i> is <i>starting</i>.
 
     3. <i>Postcondition:</i> <i>state</i> is <i>finishing</i>.
+
+    4. <i>Remarks:</i> While the loop is executing, <i>state</i> is <i>running</i>. When <i>state</i> changes, it does so without introducing data races.
 
     <pre highlight="c++">
     void run_loop::finish();
