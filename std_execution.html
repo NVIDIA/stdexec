@@ -3694,6 +3694,22 @@ talk about the semantics of some of the algorithms proposed in this paper.</p>
 executing their logic eagerly; <i>i.e.</i>, before the returned sender has been
 connected to a receiver and started. These algorithms were removed because eager
 execution has a number of negative semantic and performance implications.</p>
+   <p>We have originally included this functionality in the paper because of a long-standing
+belief that eager execution is a mandatory feature to be included in the standard Executors
+facility for that facility to be acceptable for accelerator vendors. A particular concern
+was that we must be able to write generic algorithms that can run either eagerly or lazily,
+depending on the kind of an input sender or scheduler that have been passed into them as
+arguments. We considered this a requirement, because the _latency_ of launching work on an
+accelerator can sometimes be considerable.</p>
+   <p>However, in the process of working on this paper and implementations of the features
+proposed within, our set of requirements has shifted, as we understood the different
+implementation strategies that are available for the feature set of this paper better,
+and, after weighting the earlier concerns against the points presented below, we
+have arrived at the conclusion that a purely lazy model is enough for most algorithms,
+and users who intend to launch work earlier may use an algorithm such as <code class="highlight"><c- n>ensure_started</c-></code> to achieve that goal. We have also come to deeply appreciate the fact that a purely
+lazy model allows both the implementation and the compiler to have a much better
+understanding of what the complete graph of tasks looks like, allowing them to better
+optimize the code - also when targetting accelerators.</p>
    <h4 class="heading settled" data-level="4.11.1" id="design-lazy-algorithms-detached"><span class="secno">4.11.1. </span><span class="content">Eager execution leads to detached work or worse</span><a class="self-link" href="#design-lazy-algorithms-detached"></a></h4>
    <p>One of the questions that arises with APIs that can potentially return
 eagerly-executing senders is "What happens when those senders are destructed
