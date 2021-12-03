@@ -1517,7 +1517,9 @@ namespace std::execution {
   };
 
   //////////////////////////////////////////////////////////////////////////////
-  //
+  // [execution.senders.adaptors.let_value]
+  // [execution.senders.adaptors.let_error]
+  // [execution.senders.adaptors.let_done]
   inline namespace __let {
     namespace __impl {
       using __nullable_variant_t = __bind_front<__q<variant>, __>;
