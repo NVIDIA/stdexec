@@ -3694,7 +3694,7 @@ are all well-formed.
 
         1. Constructs a receiver `r`.
 
-            1. When `execution::set_value(r, args...)` is called, copies `args...` into `op_state2` as `args2...`, then calls `invoke(f, args2...)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state
+            1. When `execution::set_value(r, args...)` is called, decay-copies `args...` into `op_state2` as `args2...`, then calls `invoke(f, args2...)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state
                 `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
             2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
@@ -3725,7 +3725,7 @@ are all well-formed.
 
             1. When `execution::set_value(r, args...)` is called, calls `execution::set_value(out_r, args...)`.
 
-            2. When `execution::set_error(r, e)` is called, copies `e` into `op_state2` as `e`, then calls `invoke(f, e)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved
+            2. When `execution::set_error(r, e)` is called, decay-copies `e` into `op_state2` as `e2`, then calls `invoke(f, e2)`, resulting in a sender `s3`. It then calls `execution::connect(s3, out_r)`, resulting in an operation state `op_state3`. `op_state3` is saved
                 as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(out_r, current_exception())`.
 
             3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r)`.
