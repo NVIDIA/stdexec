@@ -5714,7 +5714,7 @@ it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-
        </ol>
      </ol>
     <li data-md>
-     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
    </ol>
    <h5 class="heading settled" data-level="9.6.5.6" id="spec-execution.senders.adaptor.then"><span class="secno">9.6.5.6. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> <b>[execution.senders.adaptors.then]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.then"></a></h5>
    <ol>
