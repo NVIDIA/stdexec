@@ -1870,30 +1870,24 @@ _PRAGMA_POP()
   // sender, and if all the possible return types of the function are also
   // typed senders.
   template <class SenderId, class Fun>
-      requires requires {
-        typename __let::__impl::__traits<
-          __t<SenderId>, Fun, __q3<__let::__impl::__value_senders_of>>;
-      }
+      requires __valid<__let::__impl::__traits,
+          __t<SenderId>, Fun, __q3<__let::__impl::__value_senders_of>>
     struct sender_traits<__let::__impl::__sender<SenderId, Fun, let_value_t>>
       : __let::__impl::__traits<
           __t<SenderId>, Fun, __q3<__let::__impl::__value_senders_of>>
     {};
 
   template <class SenderId, class Fun>
-      requires requires {
-        typename __let::__impl::__traits<
-          __t<SenderId>, Fun, __q3<__let::__impl::__error_senders_of>>;
-      }
+      requires __valid<__let::__impl::__traits,
+          __t<SenderId>, Fun, __q3<__let::__impl::__error_senders_of>>
     struct sender_traits<__let::__impl::__sender<SenderId, Fun, let_error_t>>
       : __let::__impl::__traits<
           __t<SenderId>, Fun, __q3<__let::__impl::__error_senders_of>>
     {};
 
   template <class SenderId, class Fun>
-      requires requires {
-        typename __let::__impl::__traits<
-          __t<SenderId>, Fun, __q3<__let::__impl::__done_senders_of>>;
-      }
+      requires __valid<__let::__impl::__traits,
+          __t<SenderId>, Fun, __q3<__let::__impl::__done_senders_of>>
     struct sender_traits<__let::__impl::__sender<SenderId, Fun, let_done_t>>
       : __let::__impl::__traits<
           __t<SenderId>, Fun, __q3<__let::__impl::__done_senders_of>>
