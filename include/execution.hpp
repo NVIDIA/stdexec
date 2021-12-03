@@ -1529,7 +1529,7 @@ namespace std::execution {
 
       template <class... Ts>
         struct __as_tuple {
-          __decayed_tuple<Ts...> operator()(Ts&&...) const;
+          __decayed_tuple<Ts...> operator()(Ts...) const;
         };
 
       template <class... Ts>
