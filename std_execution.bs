@@ -457,7 +457,7 @@ Below, I show the part of the echo server code. This code is executed for each c
     );
     </pre>
 
-In this code, `NN::async_read_some` and `NN::async_write_some` are asynchronous socket-based networking APIs that return senders. `EX::repeat_effect_until`, `EX::let_value`, and `EX::then` and fully generic sender adaptor algorithms that accept and return senders.
+In this code, `NN::async_read_some` and `NN::async_write_some` are asynchronous socket-based networking APIs that return senders. `EX::repeat_effect_until`, `EX::let_value`, and `EX::then` are fully generic sender adaptor algorithms that accept and return senders.
 
 This is a good example of seamless composition of async IO functions with non-IO operations. And by composing the senders in this structured way, all the state for the composite operation -- the `repeat_effect_until` expression and all its child operations -- is stored altogether in a single object.
 
@@ -512,9 +512,16 @@ are passed through unchanged.
 
 In detail, it does the following:
 
-1. Defines a receiver that aggregates another receiver and an invocable which:
-    * Defines a constrained `tag_invoke` overload for transforming the value channel.
-    * Defines another constrained overload of `tag_invoke` that passes all other customizations through unchanged.
+1. Defines a receiver in terms of `execution::receiver_adaptor` that aggregates
+    another receiver and an invocable that:
+    * Defines a constrained `tag_invoke` overload for transforming the value
+        channel.
+    * Defines another constrained overload of `tag_invoke` that passes all other
+        customizations through unchanged.
+      
+    The `tag_invoke` overloads are actually implemented by
+    `execution::receiver_adaptor`; they dispatch either to named members, as
+    shown above with `_then_receiver::set_value`, or to the adapted receiver.
 2. Defines a sender that aggregates another sender and the invocable, which defines a `tag_invoke` customization for `std::execution::connect` that wraps the incoming receiver in the receiver from (1) and passes it and the incoming sender to `std::execution::connect`, returning the result.
 
 ### `retry` ### {#example-retry}
@@ -1012,7 +1019,7 @@ Senders are composed using <dfn>sender algorithms</dfn>:
 
 ## Senders can propagate completion schedulers ## {#design-propagation}
 
-One of the goals of executors is to support a diverse set of execution contexts, including traditional thread pools, task and fiber frameworks (like <a href="https://github.com/STEllAR-GROUP/hpx">HPX</a>) and [Legion](https://github.com/StanfordLegion/legion)), and GPUs and other accelerators (managed by runtimes such as CUDA or SYCL).
+One of the goals of executors is to support a diverse set of execution contexts, including traditional thread pools, task and fiber frameworks (like <a href="https://github.com/STEllAR-GROUP/hpx">HPX</a> and [Legion](https://github.com/StanfordLegion/legion)), and GPUs and other accelerators (managed by runtimes such as CUDA or SYCL).
 On many of these systems, not all execution agents are created equal and not all functions can be run on all execution agents.
 Having precise control over the execution context used for any given function call being submitted is important on such systems, and the users of standard execution facilities will expect to be able to express such requirements.
 
@@ -2011,9 +2018,9 @@ execution::sender auto when_all_with_variant(
 );
 </pre>
 
-`when_all` returns a sender which completes once all of the input senders have completed. The values send by this sender are the values sent by each of the input, in order of the arguments passed to `when_all`.
+`when_all` returns a sender that completes once all of the input senders have completed. It is constrained to only accept senders that can complete with a single set of values (_i.e._, it only calls one overload of `set_value` on its receiver). The values sent by this sender are the values sent by each of the input senders, in order of the arguments passed to `when_all`. It completes inline on the execution context on which the last input sender completes, unless stop is requested before `when_all` is started, in which case it completes inline within the call to `start`.
 
-`when_all_with_variant` does the same, but it adapts all the input senders using `into_variant`.
+`when_all_with_variant` does the same, but it adapts all the input senders using `into_variant`, and so it does not constrain the input arguments as `when_all` does.
 
 The returned sender has no [=completion scheduler|completion schedulers=].
 
