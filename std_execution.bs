@@ -1764,7 +1764,7 @@ execution::sender auto just(
 );
 </pre>
 
-Returns a sender with no [=completion scheduler|completion schedulers=], which [=send|sends=] the provided values. The input values are decay-copied into the returned sender. When the returned sender is connected to a receiver, the values are moved into the operation state if the sender is an rvalue; otherwise, they are copied. Then an xvalue referencing the values in the operation state is passed to the receiver's `set_value`.
+Returns a sender with no [=completion scheduler|completion schedulers=], which [=send|sends=] the provided values. The input values are decay-copied into the returned sender. When the returned sender is connected to a receiver, the values are moved into the operation state if the sender is an rvalue; otherwise, they are copied. Then xvalues referencing the values in the operation state are passed to the receiver's `set_value`.
 
 ```c++
 execution::sender auto snd1 = execution::just(3.14);
@@ -1780,18 +1780,19 @@ execution::sender auto then2 = execution::then(snd1, [] (double d, int i) {
 std::vector v3{1, 2, 3, 4, 5};
 execution::sender auto snd3 = execution::just(v3);
 execution::sender auto then3 = execution::then(snd3, [] (std::vector<int>&& v3copy) {
-  for (auto&& e : v3copy) { e *= 2; } return v3copy;
+  for (auto&& e : v3copy) { e *= 2; }
+  return std::move(v3copy);
 }
 auto&& [v3copy] = this_thread::sync_wait(then3).value();
 // v3 contains {1, 2, 3, 4, 5}; v3copy will contain {2, 4, 6, 8, 10}.
 
 execution::sender auto snd4 = execution::just(std::vector{1, 2, 3, 4, 5});
-execution::sender auto then4 = execution::then(snd4, [] (std::vector<int>&& v4) {
+execution::sender auto then4 = execution::then(std::move(snd4), [] (std::vector<int>&& v4) {
   for (auto&& e : v4) { e *= 2; }
   return std::move(v4);
 });
-auto&& [v4] = this_thread::sync_wait(then4).value();
-// v4 contains {2, 4, 6, 8, 10}.
+auto&& [v4] = this_thread::sync_wait(std::move(then4)).value();
+// v4 contains {2, 4, 6, 8, 10}. No vectors were copied in this example.
 ```
 
 ### `execution::transfer_just` ### {#design-sender-factory-transfer_just}
