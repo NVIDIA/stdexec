@@ -1764,7 +1764,7 @@ execution::sender auto just(
 );
 </pre>
 
-Returns a sender with no [=completion scheduler|completion schedulers=], which [=send|sends=] the provided values. If a provided value is an lvalue reference, a copy is made inside the returned sender and a non-const lvalue reference to the copy is sent. If the provided value is an rvalue reference, it is moved into the returned sender and an rvalue reference to it is sent.
+Returns a sender with no [=completion scheduler|completion schedulers=], which [=send|sends=] the provided values. The input values are decay-copied into the returned sender. When the returned sender is connected to a receiver, the values are moved into the operation state if the sender is an rvalue; otherwise, they are copied. Then an xvalue referencing the values in the operation state is passed to the receiver's `set_value`.
 
 ```c++
 execution::sender auto snd1 = execution::just(3.14);
@@ -1779,7 +1779,7 @@ execution::sender auto then2 = execution::then(snd1, [] (double d, int i) {
 
 std::vector v3{1, 2, 3, 4, 5};
 execution::sender auto snd3 = execution::just(v3);
-execution::sender auto then3 = execution::then(snd3, [] (std::vector<int>& v3copy) {
+execution::sender auto then3 = execution::then(snd3, [] (std::vector<int>&& v3copy) {
   for (auto&& e : v3copy) { e *= 2; } return v3copy;
 }
 auto&& [v3copy] = this_thread::sync_wait(then3).value();
