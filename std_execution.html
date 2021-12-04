@@ -2894,7 +2894,7 @@ of a cancellable <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></cod
     <c- p>)</c->
 <c- p>);</c->
 </pre>
-   <p>In this code, <code class="highlight"><c- n>NN</c-><c- o>::</c-><c- n>async_read_some</c-></code> and <code class="highlight"><c- n>NN</c-><c- o>::</c-><c- n>async_write_some</c-></code> are asynchronous socket-based networking APIs that return senders. <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>repeat_effect_until</c-></code>, <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>let_value</c-></code>, and <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>then</c-></code> and fully generic sender adaptor algorithms that accept and return senders.</p>
+   <p>In this code, <code class="highlight"><c- n>NN</c-><c- o>::</c-><c- n>async_read_some</c-></code> and <code class="highlight"><c- n>NN</c-><c- o>::</c-><c- n>async_write_some</c-></code> are asynchronous socket-based networking APIs that return senders. <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>repeat_effect_until</c-></code>, <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>let_value</c-></code>, and <code class="highlight"><c- n>EX</c-><c- o>::</c-><c- n>then</c-></code> are fully generic sender adaptor algorithms that accept and return senders.</p>
    <p>This is a good example of seamless composition of async IO functions with non-IO operations. And by composing the senders in this structured way, all the state for the composite operation -- the <code class="highlight"><c- n>repeat_effect_until</c-></code> expression and all its child operations -- is stored altogether in a single object.</p>
    <h3 class="heading settled" data-level="1.5" id="example-algorithm"><span class="secno">1.5. </span><span class="content">Examples: Algorithms</span><a class="self-link" href="#example-algorithm"></a></h3>
    <p>In this section we show a few simple sender/receiver-based algorithm implementations.</p>
@@ -2942,13 +2942,18 @@ are passed through unchanged.</p>
    <p>In detail, it does the following:</p>
    <ol>
     <li data-md>
-     <p>Defines a receiver that aggregates another receiver and an invocable which:</p>
+     <p>Defines a receiver in terms of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code> that aggregates
+another receiver and an invocable that:</p>
      <ul>
       <li data-md>
-       <p>Defines a constrained <code class="highlight"><c- n>tag_invoke</c-></code> overload for transforming the value channel.</p>
+       <p>Defines a constrained <code class="highlight"><c- n>tag_invoke</c-></code> overload for transforming the value
+channel.</p>
       <li data-md>
-       <p>Defines another constrained overload of <code class="highlight"><c- n>tag_invoke</c-></code> that passes all other customizations through unchanged.</p>
+       <p>Defines another constrained overload of <code class="highlight"><c- n>tag_invoke</c-></code> that passes all other
+customizations through unchanged.</p>
      </ul>
+     <p>The <code class="highlight"><c- n>tag_invoke</c-></code> overloads are actually implemented by <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code>; they dispatch either to named members, as
+shown above with <code class="highlight"><c- n>_then_receiver</c-><c- o>::</c-><c- n>set_value</c-></code>, or to the adapted receiver.</p>
     <li data-md>
      <p>Defines a sender that aggregates another sender and the invocable, which defines a <code class="highlight"><c- n>tag_invoke</c-></code> customization for <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> that wraps the incoming receiver in the receiver from (1) and passes it and the incoming sender to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, returning the result.</p>
    </ol>
@@ -3441,7 +3446,7 @@ Senders are composed using <dfn class="dfn-paneled" data-dfn-type="dfn" data-noe
      <p><a data-link-type="dfn" href="#sender-consumer" id="ref-for-sender-consumer">sender consumers</a>, algorithms that take (and potentially <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>) senders and do not return a sender.</p>
    </ul>
    <h3 class="heading settled" data-level="4.5" id="design-propagation"><span class="secno">4.5. </span><span class="content">Senders can propagate completion schedulers</span><a class="self-link" href="#design-propagation"></a></h3>
-   <p>One of the goals of executors is to support a diverse set of execution contexts, including traditional thread pools, task and fiber frameworks (like <a href="https://github.com/STEllAR-GROUP/hpx">HPX</a>) and <a href="https://github.com/StanfordLegion/legion">Legion</a>), and GPUs and other accelerators (managed by runtimes such as CUDA or SYCL).
+   <p>One of the goals of executors is to support a diverse set of execution contexts, including traditional thread pools, task and fiber frameworks (like <a href="https://github.com/STEllAR-GROUP/hpx">HPX</a> and <a href="https://github.com/StanfordLegion/legion">Legion</a>), and GPUs and other accelerators (managed by runtimes such as CUDA or SYCL).
 On many of these systems, not all execution agents are created equal and not all functions can be run on all execution agents.
 Having precise control over the execution context used for any given function call being submitted is important on such systems, and the users of standard execution facilities will expect to be able to express such requirements.</p>
    <p><a data-link-type="biblio" href="#biblio-p0443r14">[P0443R14]</a> was not always clear about the <i>place of execution</i> of any given piece of code.
@@ -4218,8 +4223,8 @@ parallel computing tasks.</p>
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- p>...</c-><c- n>inputs</c->
 <c- p>);</c->
 </pre>
-   <p><code class="highlight"><c- n>when_all</c-></code> returns a sender which completes once all of the input senders have completed. The values send by this sender are the values sent by each of the input, in order of the arguments passed to <code class="highlight"><c- n>when_all</c-></code>.</p>
-   <p><code class="highlight"><c- n>when_all_with_variant</c-></code> does the same, but it adapts all the input senders using <code class="highlight"><c- n>into_variant</c-></code>.</p>
+   <p><code class="highlight"><c- n>when_all</c-></code> returns a sender that completes once all of the input senders have completed. It is constrained to only accept senders that can complete with a single set of values (_i.e._, it only calls one overload of <code class="highlight"><c- n>set_value</c-></code> on its receiver). The values sent by this sender are the values sent by each of the input senders, in order of the arguments passed to <code class="highlight"><c- n>when_all</c-></code>. It completes inline on the execution context on which the last input sender completes, unless stop is requested before <code class="highlight"><c- n>when_all</c-></code> is started, in which case it completes inline within the call to <code class="highlight"><c- n>start</c-></code>.</p>
+   <p><code class="highlight"><c- n>when_all_with_variant</c-></code> does the same, but it adapts all the input senders using <code class="highlight"><c- n>into_variant</c-></code>, and so it does not constrain the input arguments as <code class="highlight"><c- n>when_all</c-></code> does.</p>
    <p>The returned sender has no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers⑧">completion schedulers</a>.</p>
    <p>See <a href="#design-join">§ 4.9 Senders are joinable</a>.</p>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-> <c- k>auto</c-> <c- n>sched</c-> <c- o>=</c-> <c- n>thread_pool</c-><c- p>.</c-><c- n>scheduler</c-><c- p>();</c->
