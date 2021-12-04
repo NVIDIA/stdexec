@@ -4046,7 +4046,7 @@ obtain an object of implementation-defined type to be provided as the first argu
     <c- k>auto</c-> <c- p>...</c-><c- o>&amp;&amp;</c-> <c- n>values</c->
 <c- p>);</c->
 </pre>
-   <p>Returns a sender with no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers③">completion schedulers</a>, which <a data-link-type="dfn" href="#send" id="ref-for-send②">sends</a> the provided values. The input values are decay-copied into the returned sender. When the returned sender is connected to a receiver, the values are moved into the operation state if the sender is an rvalue; otherwise, they are copied. Then an xvalue referencing the values in the operation state is passed to the receiver’s <code class="highlight"><c- n>set_value</c-></code>.</p>
+   <p>Returns a sender with no <a data-link-type="dfn" href="#completion-schedulers" id="ref-for-completion-schedulers③">completion schedulers</a>, which <a data-link-type="dfn" href="#send" id="ref-for-send②">sends</a> the provided values. The input values are decay-copied into the returned sender. When the returned sender is connected to a receiver, the values are moved into the operation state if the sender is an rvalue; otherwise, they are copied. Then xvalues referencing the values in the operation state are passed to the receiver’s <code class="highlight"><c- n>set_value</c-></code>.</p>
 <pre class="language-c++ highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- mf>3.14</c-><c- p>);</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd1</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- b>double</c-> <c- n>d</c-><c- p>)</c-> <c- p>{</c->
   <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- n>d</c-> <c- o>&lt;&lt;</c-> <c- s>"</c-><c- se>\n</c-><c- s>"</c-><c- p>;</c->
@@ -4060,18 +4060,19 @@ obtain an object of implementation-defined type to be provided as the first argu
 <c- n>std</c-><c- o>::</c-><c- n>vector</c-> <c- n>v3</c-><c- p>{</c-><c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c-><c- p>,</c-> <c- mi>4</c-><c- p>,</c-> <c- mi>5</c-><c- p>};</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd3</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>v3</c-><c- p>);</c->
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then3</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd3</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>>&amp;&amp;</c-> <c- n>v3copy</c-><c- p>)</c-> <c- p>{</c->
-  <c- k>for</c-> <c- p>(</c-><c- k>auto</c-><c- o>&amp;&amp;</c-> <c- nl>e</c-> <c- p>:</c-> <c- n>v3copy</c-><c- p>)</c-> <c- p>{</c-> <c- n>e</c-> <c- o>*=</c-> <c- mi>2</c-><c- p>;</c-> <c- p>}</c-> <c- k>return</c-> <c- n>v3copy</c-><c- p>;</c->
+  <c- k>for</c-> <c- p>(</c-><c- k>auto</c-><c- o>&amp;&amp;</c-> <c- nl>e</c-> <c- p>:</c-> <c- n>v3copy</c-><c- p>)</c-> <c- p>{</c-> <c- n>e</c-> <c- o>*=</c-> <c- mi>2</c-><c- p>;</c-> <c- p>}</c->
+  <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>v3copy</c-><c- p>);</c->
 <c- p>}</c->
 <c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>[</c-><c- n>v3copy</c-><c- p>]</c-> <c- o>=</c-> <c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>then3</c-><c- p>).</c-><c- n>value</c-><c- p>();</c->
 <c- c1>// v3 contains {1, 2, 3, 4, 5}; v3copy will contain {2, 4, 6, 8, 10}.</c->
 
 <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- p>{</c-><c- mi>1</c-><c- p>,</c-> <c- mi>2</c-><c- p>,</c-> <c- mi>3</c-><c- p>,</c-> <c- mi>4</c-><c- p>,</c-> <c- mi>5</c-><c- p>});</c->
-<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>snd4</c-><c- p>,</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>>&amp;&amp;</c-> <c- n>v4</c-><c- p>)</c-> <c- p>{</c->
+<c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>then4</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>snd4</c-><c- p>),</c-> <c- p>[]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>int</c-><c- o>>&amp;&amp;</c-> <c- n>v4</c-><c- p>)</c-> <c- p>{</c->
   <c- k>for</c-> <c- p>(</c-><c- k>auto</c-><c- o>&amp;&amp;</c-> <c- nl>e</c-> <c- p>:</c-> <c- n>v4</c-><c- p>)</c-> <c- p>{</c-> <c- n>e</c-> <c- o>*=</c-> <c- mi>2</c-><c- p>;</c-> <c- p>}</c->
   <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>v4</c-><c- p>);</c->
 <c- p>});</c->
-<c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>[</c-><c- n>v4</c-><c- p>]</c-> <c- o>=</c-> <c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>then4</c-><c- p>).</c-><c- n>value</c-><c- p>();</c->
-<c- c1>// v4 contains {2, 4, 6, 8, 10}.</c->
+<c- k>auto</c-><c- o>&amp;&amp;</c-> <c- p>[</c-><c- n>v4</c-><c- p>]</c-> <c- o>=</c-> <c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>then4</c-><c- p>)).</c-><c- n>value</c-><c- p>();</c->
+<c- c1>// v4 contains {2, 4, 6, 8, 10}. No vectors were copied in this example.</c->
 </pre>
    <h4 class="heading settled" data-level="4.20.3" id="design-sender-factory-transfer_just"><span class="secno">4.20.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code></span><a class="self-link" href="#design-sender-factory-transfer_just"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>transfer_just</c-><c- p>(</c->
