@@ -1,9 +1,9 @@
 <pre class='metadata'>
 Title: `std::execution`
 H1: <code>std::execution</code>
-Shortname: D2300
+Shortname: P2300
 Revision: 3
-Status: D
+Status: P
 Group: WG21
 Audience: SG1, LEWG
 Editor: Michał Dominiak, griwes@griwes.info
@@ -518,7 +518,7 @@ In detail, it does the following:
         channel.
     * Defines another constrained overload of `tag_invoke` that passes all other
         customizations through unchanged.
-      
+
     The `tag_invoke` overloads are actually implemented by
     `execution::receiver_adaptor`; they dispatch either to named members, as
     shown above with `_then_receiver::set_value`, or to the adapted receiver.
@@ -823,7 +823,7 @@ The authors are aware of a number of other implementations of sender/receiver fr
 * <b>[[HPX]]</b>
 
     HPX is a general purpose C++ runtime system for parallel and distributed applications that has been under active development since 2007. HPX exposes a uniform, standards-oriented API, and keeps abreast of the latest standards and proposals. It is used in a wide variety of high-performance applications.
-    
+
     The sender/receiver implementation in HPX has been under active development since May 2020. It is used to erase the overhead of futures and to make it possible to write efficient generic asynchronous algorithms that are agnostic to their execution context. In HPX, algorithms can migrate execution between execution contexts, even to GPUs and back, using a uniform standard interface with sender/receiver.
 
     Far and away, the HPX team has the greatest usage experience outside Facebook. Mikael Simburg summarizes the experience as follows:
@@ -3888,8 +3888,8 @@ are all well-formed.
         2. For each sender <code>s<i><sub>i</sub></i></code>, calls <code>execution::connect(s<sub><i>i</i></sub>, r<sub><i>i</i></sub>)</code>, resulting in operation states <code>child_op<sub><i>i</i></sub></code>.
 
         3. Returns an operation state `op_state` that contains:
-        
-            * Each operation state <code>child_op<sub><i>i</i></sub></code>, 
+
+            * Each operation state <code>child_op<sub><i>i</i></sub></code>,
             * A stop source of type `in_place_stop_source`,
             * A stop callback of type <code>optional&lt;stop_token_of_t&lt;OutR&amp;>::callback_type&lt;<i>stop-callback-fn</i>>></code>, where <code><i>stop-callback-fn</i></code> is an implementation defined class type equivalent to the following:
 
@@ -3913,7 +3913,7 @@ are all well-formed.
         5. The associated types of the sender `W` are as follows:
 
             * `value_types_of_t<W, Tuple, Variant>` is:
-            
+
                 * `Variant<>` if for any type <code>S<i><sub>i</sub></i></code>, the type <code>value_types_of_t&lt;S<i><sub>i</sub></i>, Tuple, Variant></code> is `Variant<>`.
 
                 * Otherwise, <code>Variant&lt;Tuple&lt;V<i><sub>0</sub></i>..., V<i><sub>1</sub></i>,..., V<i><sub>n-1</sub></i>...>></code> where <code><i>n</i></code> is the count of types in <code>S<i><sub>i</sub></i>...</code>, and where <code>V<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>value_types_of_t&lt;S<i><sub>i</sub></i>, Tuple, Variant></code> is an alias for <code>Variant&lt;Tuple&lt;V<i><sub>i</sub></i>...>></code>.
@@ -4671,23 +4671,23 @@ from the operation before the operation completes.
 	"HPX": {
 		"authors": [
       "Hartmut Kaiser",
-      "Patrick Diehl", 
-      "Adrian S. Lemoine", 
-      "Bryce Adelstein Lelbach", 
+      "Patrick Diehl",
+      "Adrian S. Lemoine",
+      "Bryce Adelstein Lelbach",
       "Parsa Amini",
       "Agustín Berge",
-      "John Biddiscombe", 
+      "John Biddiscombe",
       "Steven R. Brandt",
       "Nikunj Gupta",
-      "Thomas Heller", 
+      "Thomas Heller",
       "Kevin Huck",
       "Zahra Khatami",
-      "Alireza Kheirkhahan", 
-      "Auriane Reverdell", 
-      "Shahrzad Shirzad", 
-      "Mikael Simberg", 
-      "Bibek Wagle", 
-      "Weile Wei", 
+      "Alireza Kheirkhahan",
+      "Auriane Reverdell",
+      "Shahrzad Shirzad",
+      "Mikael Simberg",
+      "Bibek Wagle",
+      "Weile Wei",
       "Tianyi Zhang"
 		],
 		"href": "https://doi.org/10.21105/joss.02352",
