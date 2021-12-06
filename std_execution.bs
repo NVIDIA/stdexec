@@ -2932,7 +2932,7 @@ enum class forward_progress_guarantee {
 3. If `execution::get_forward_progress_guarantee(s)` for some scheduler `s` returns `execution::forward_progress_guarantee::concurrent`, all execution agents created by that scheduler shall provide the concurrent forward progress guarantee. If it returns
     `execution::forward_progress_guarantee::parallel`, all execution agents created by that scheduler shall provide at least the parallel forward progress guarantee.
 
-#### `this_thread::execute_may_block_caller` <b>[execution.schedulers.queries.execute_may_block_caller</b> #### {#spec-execution.schedulers.queries.execute_may_block_caller}
+#### `this_thread::execute_may_block_caller` <b>[execution.schedulers.queries.execute_may_block_caller]</b> #### {#spec-execution.schedulers.queries.execute_may_block_caller}
 
 1. `this_thread::execute_may_block_caller` is used to ask a scheduler `s` whether a call `execution::execute(s, f)` with any invocable `f` may block the thread where such a call occurs.
 
