@@ -5228,7 +5228,13 @@ to successfully return. [<i>Note:</i> this allows for the receiver to manage the
      <p>A sender is <i>typed</i> if it declares what types it sends through a connected receiver’s channels.</p>
     <li data-md>
      <p>The <code class="highlight"><c- n>typed_sender</c-></code> concept defines the requirements for a typed sender type.</p>
-<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-><c- p>,</c-> <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-><c- o>></c-> <c- k>class</c-><c- o>></c->
+  <c- k>struct</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>types</c-></i><c- p>;</c-> <c- c1>// exposition only </c->
+
+<c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-><c- o>></c-> <c- k>class</c-><c- o>></c->
+  <c- k>struct</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>error</c-><c- o>-</c-><c- n>types</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
+
+<c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
   <c- k>concept</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>types</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
     <c- k>requires</c-> <c- p>{</c->
       <c- k>typename</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>types</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>::</c-><c- k>template</c-> <c- n>value_types</c-><c- o>></c-><c- p>;</c->
