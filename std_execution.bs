@@ -3066,6 +3066,8 @@ enum class forward_progress_guarantee {
         };
     </pre>
 
+2. Any operation state types defined by the implementation are non-movable types.
+
 ### `execution::start` <b>[execution.op_state.start]</b> ### {#spec-execution.op_state.start}
 
 1. `execution::start` is used to start work represented by an operation state object.
