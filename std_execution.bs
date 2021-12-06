@@ -4436,7 +4436,7 @@ from the operation before the operation completes.
         }
         </pre>
 
-#### Constructor and destructor<b>[execution.contexts.run_loop.ctor]</b> #### {#spec-execution.contexts.run_loop.ctor}
+#### Constructor and destructor <b>[execution.contexts.run_loop.ctor]</b> #### {#spec-execution.contexts.run_loop.ctor}
 
     <pre highlight="c++">
     run_loop::run_loop() noexcept;
