@@ -3107,6 +3107,12 @@ enum class forward_progress_guarantee {
 4. The `typed_sender` concept defines the requirements for a typed sender type.
 
     <pre highlight=c++>
+    template&lt;template&lt;template&lt;class...> class, template&lt;class...> class> class>
+      struct <i>has-value-types</i>; // exposition only 
+
+    template&lt;template&lt;template&lt;class...> class> class>
+      struct <i>has-error-types</i>; // exposition only
+
     template&lt;class S>
       concept <i>has-sender-types</i> = // exposition only
         requires {
