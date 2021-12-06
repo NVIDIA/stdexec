@@ -2407,7 +2407,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
          <a href="#spec-execution.schedulers.queries"><span class="secno">9.3.1</span> <span class="content">Scheduler queries <b>[execution.schedulers.queries]</b></span></a>
          <ol class="toc">
           <li><a href="#spec-execution.schedulers.queries.get_forward_progress_guarantee"><span class="secno">9.3.1.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-></code> <b>[execution.schedulers.queries.get_forward_progress_guarantee]</b></span></a>
-          <li><a href="#spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.2</span> <span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller</b></span></a>
+          <li><a href="#spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.2</span> <span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller]</b></span></a>
          </ol>
        </ol>
       <li>
@@ -5035,7 +5035,7 @@ Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_fo
     <li data-md>
      <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> for some scheduler <code class="highlight"><c- n>s</c-></code> returns <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forward_progress_guarantee</c-><c- o>::</c-><c- n>concurrent</c-></code>, all execution agents created by that scheduler shall provide the concurrent forward progress guarantee. If it returns <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forward_progress_guarantee</c-><c- o>::</c-><c- n>parallel</c-></code>, all execution agents created by that scheduler shall provide at least the parallel forward progress guarantee.</p>
    </ol>
-   <h5 class="heading settled" data-level="9.3.1.2" id="spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.2. </span><span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller</b></span><a class="self-link" href="#spec-execution.schedulers.queries.execute_may_block_caller"></a></h5>
+   <h5 class="heading settled" data-level="9.3.1.2" id="spec-execution.schedulers.queries.execute_may_block_caller"><span class="secno">9.3.1.2. </span><span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> <b>[execution.schedulers.queries.execute_may_block_caller]</b></span><a class="self-link" href="#spec-execution.schedulers.queries.execute_may_block_caller"></a></h5>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> is used to ask a scheduler <code class="highlight"><c- n>s</c-></code> whether a call <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> with any invocable <code class="highlight"><c- n>f</c-></code> may block the thread where such a call occurs.</p>
