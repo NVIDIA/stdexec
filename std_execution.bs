@@ -4200,13 +4200,13 @@ from the operation before the operation completes.
     template &lt;class Receiver, class... As>
       concept <i>has-set-value</i> =
         requires(Receiver&amp;&amp; r, As&amp;&amp;... as) {
-          static_cast&lt;Receiver&amp;&amp;>(r).set_value(static_cast&lt;As&amp;&amp;>(as...);
+          static_cast&lt;Receiver&amp;&amp;>(r).set_value(static_cast&lt;As&amp;&amp;>(as...));
         };
 
     template &lt;class Receiver, class A>
       concept <i>has-set-error</i> =
         requires(Receiver&amp;&amp; r, A&amp;&amp; a) {
-          static_cast&lt;Receiver&amp;&amp;>(r).set_error(static_cast&lt;A&amp;&amp;>(a);
+          static_cast&lt;Receiver&amp;&amp;>(r).set_error(static_cast&lt;A&amp;&amp;>(a));
         };
 
     template &lt;class Receiver>
@@ -4219,12 +4219,12 @@ from the operation before the operation completes.
 3. If `Base` is an alias for the unspecified default template parameter, then:
 
     - Let <code><i>HAS-BASE</i></code> be `false`, and
-    - Let <code><i>GET-BASE</i>(d)</code> be <code><i>c-style-cast</i>&lt;<i>receiver-adaptor</i>>(d)</code>.
+    - Let <code><i>GET-BASE</i>(d)</code> be `d.base()`.
 
     otherwise, let:
 
     - Let <code><i>HAS-BASE</i></code> be `true`, and
-    - Let <code><i>GET-BASE</i>(d)</code> be `d.base()`.
+    - Let <code><i>GET-BASE</i>(d)</code> be <code><i>c-style-cast</i>&lt;<i>receiver-adaptor</i>>(d).base()</code>.
 
     Let <code><i>BASE-TYPE</i>(D)</code> be the type of <code><i>GET-BASE</i>(declval&lt;D>())</code>.
 
