@@ -1269,7 +1269,7 @@ Possible extra rowspan handling
 	ul.index ul,
 	ul.index dl { font-size: smaller; }
 	@media not print {
-		ul.index li span:not(.dfn-paneled) {
+		ul.index li a + span {
 			white-space: nowrap;
 			color: transparent; }
 		ul.index li a:hover + span,
@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-06">2021-12-06</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-07">2021-12-07</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -6384,13 +6384,13 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Receiver</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
   <c- k>concept</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i> <c- o>=</c->
     <c- k>requires</c-><c- p>(</c-><c- n>Receiver</c-><c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- p>{</c->
-      <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>r</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>...);</c->
+      <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>r</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>...));</c->
     <c- p>};</c->
 
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Receiver</c-><c- p>,</c-> <c- k>class</c-> <c- nc>A</c-><c- o>></c->
   <c- k>concept</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>error</c-></i> <c- o>=</c->
     <c- k>requires</c-><c- p>(</c-><c- n>Receiver</c-><c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>,</c-> <c- n>A</c-><c- o>&amp;&amp;</c-> <c- n>a</c-><c- p>)</c-> <c- p>{</c->
-      <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>r</c-><c- p>).</c-><c- n>set_error</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>A</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>a</c-><c- p>);</c->
+      <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>r</c-><c- p>).</c-><c- n>set_error</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>A</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>a</c-><c- p>));</c->
     <c- p>};</c->
 
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Receiver</c-><c- o>></c->
@@ -6405,14 +6405,14 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
       <li data-md>
        <p>Let <code class="highlight"><i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i></code> be <code class="highlight">false</code>, and</p>
       <li data-md>
-       <p>Let <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>d</c-><c- p>)</c-></code> be <code class="highlight"><i><c- n>c</c-><c- o>-</c-><c- n>style</c-><c- o>-</c-><c- n>cast</c-></i><c- o>&lt;</c-><i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i><c- o>></c-><c- p>(</c-><c- n>d</c-><c- p>)</c-></code>.</p>
+       <p>Let <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>d</c-><c- p>)</c-></code> be <code class="highlight"><c- n>d</c-><c- p>.</c-><c- n>base</c-><c- p>()</c-></code>.</p>
      </ul>
      <p>otherwise, let:</p>
      <ul>
       <li data-md>
        <p>Let <code class="highlight"><i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i></code> be <code class="highlight">true</code>, and</p>
       <li data-md>
-       <p>Let <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>d</c-><c- p>)</c-></code> be <code class="highlight"><c- n>d</c-><c- p>.</c-><c- n>base</c-><c- p>()</c-></code>.</p>
+       <p>Let <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>d</c-><c- p>)</c-></code> be <code class="highlight"><i><c- n>c</c-><c- o>-</c-><c- n>style</c-><c- o>-</c-><c- n>cast</c-></i><c- o>&lt;</c-><i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i><c- o>></c-><c- p>(</c-><c- n>d</c-><c- p>).</c-><c- n>base</c-><c- p>()</c-></code>.</p>
      </ul>
      <p>Let <code class="highlight"><i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- n>D</c-><c- p>)</c-></code> be the type of <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>D</c-><c- o>></c-><c- p>())</c-></code>.</p>
     <li data-md>
