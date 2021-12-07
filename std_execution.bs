@@ -3617,7 +3617,7 @@ are all well-formed.
 
             2. When `execution::set_error(r2, e)` is called, it calls `execution::set_error(out_r, e)`.
 
-            3. When `execution::done(r2)` is called, it calls `execution::set_done(out_r)`.
+            3. When `execution::set_done(r2)` is called, it calls `execution::set_done(out_r)`.
 
             It then calls `execution::schedule(sch)`, resulting in a sender `s3`. It then calls `execution::connect(s3, r2)`, resulting in an operation state `op_state3`. It then calls `execution::start(op_state3)`. If any of these throws an exception,
             it catches it and calls `execution::set_error(out_r, current_exception())`.
