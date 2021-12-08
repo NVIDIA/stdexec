@@ -2733,10 +2733,13 @@ namespace std::execution {
     struct sender_traits;
 
   template &lt;class... Ts>
+    using <i>decayed-tuple</i> = tuple&lt;decay_t&lt;Ts>...>; // exposition only
+
+  template &lt;class... Ts>
     using <i>variant-or-empty</i> = <i>see below</i>; // exposition only
 
   template&lt;typed_sender S,
-           template &lt;class...> class Tuple = tuple,
+           template &lt;class...> class Tuple = <i>decayed-tuple</i>,
            template &lt;class...> class Variant = <i>variant-or-empty</i>>
     using value_types_of_t =
       typename sender_traits&lt;remove_cvref_t&lt;S>>::template value_types&lt;Tuple, Variant>;
@@ -3218,13 +3221,17 @@ enum class forward_progress_guarantee {
           };
         </pre>
 
-5. The exposition-only type <code><i>variant-or-empty&lt;Ts...></i></code> names the type `variant<Ts...>` if `sizeof...(Ts)` is greater than zero; otherwise, it names an implementation defined class type equivalent to the following:
+5. The exposition-only type <code><i>variant-or-empty&lt;Ts...></i></code> is defined as follows:
 
-    <pre highlight="c++">
-    struct <i>empty-variant</i> {
-      <i>empty-variant</i>() = delete;
-    };
-    </pre>
+    1. If `sizeof...(Ts)` is greater than zero, <code><i>variant-or-empty&lt;Ts...></i></code> names the type `variant<Us...>` where `Us...` is the pack `decay_t<Ts>...` with duplicate types removed.
+
+    2. Otherwise, <code><i>variant-or-empty&lt;Ts...></i></code> names an implementation defined class type equivalent to the following:
+
+        <pre highlight="c++">
+        struct <i>empty-variant</i> {
+          <i>empty-variant</i>() = delete;
+        };
+        </pre>
 
 6. If `value_types_of_t<S, Tuple, Variant>` for some sender type `S` is well formed, it shall be a type <code>Variant&lt;Tuple&lt;Args<sub>0</sub>...>, Tuple&lt;Args<sub>1</sub>...>, ..., Tuple&lt;Args<sub>N</sub>...>>></code>, where the type packs <code>Args<sub>0</sub></code> through <code>Args<sub>N</sub></code> are the packs of types the sender `S` passes as
     arguments to `execution::set_value` after a receiver object. If such sender `S` odr-uses ([basic.def.odr]) `execution::set_value(r, args...)` for some receiver `r`, where `decltype(args)...` is not one of the type packs <code>Args<sub>0</sub>...</code> through <code>Args<sub>N</sub>...</code>, the program is ill-formed with no
@@ -3328,7 +3335,7 @@ enum class forward_progress_guarantee {
     template&lt;class... Ts>
     struct <i>just-sender</i> // exposition only
     {
-      std::tuple&lt;Ts...> vs_;
+      tuple&lt;Ts...> vs_;
 
       template&lt;template&lt;class...> class Tuple, template&lt;class...> class Variant>
       using value_types = Variant&lt;Tuple&lt;Ts...>>;
@@ -3340,7 +3347,7 @@ enum class forward_progress_guarantee {
 
       template&lt;class R>
       struct operation_state {
-        std::tuple&lt;Ts...> vs_;
+        tuple&lt;Ts...> vs_;
         R r_;
 
         friend void tag_invoke(execution::start_t, operation_state& s)
@@ -3373,7 +3380,7 @@ enum class forward_progress_guarantee {
       <i>just-sender</i>&lt;decay_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
     </pre>
 
-1. <i>Effects</i>: Initializes `vs_` with `make_tuple(forward<Ts>(ts)...)`.
+1. <i>Effects</i>: Initializes `vs_` with <code><i>decayed-tuple</i>&lt;Ts...>(std::forward&lt;Ts>(ts)...)</code>.
 
 2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
 
@@ -3868,7 +3875,7 @@ are all well-formed.
 
     * If the number of subexpressions <code>s<i><sub>i</sub></i>...</code> is 0, or
     * If any type <code>S<i><sub>i</sub></i></code> does not satisfy `execution::typed_sender`, or
-    * If for any type <code>S<i><sub>i</sub></i></code>, the type <code>value_types_of_t&lt;S<i><sub>i</sub></i>, tuple, <i>zero-or-one</i>></code> is ill-formed, where <code><i>zero-or-one</i></code> is a template alias equivalent to the following:
+    * If for any type <code>S<i><sub>i</sub></i></code>, the type <code>value_types_of_t&lt;S<i><sub>i</sub></i>, <i>decayed-tuple</i>, <i>zero-or-one</i>></code> is ill-formed, where <code><i>zero-or-one</i></code> is a template alias equivalent to the following:
         <pre highlight="c++">
         template &lt;class... Ts>
             requires (sizeof...(Ts) <= 1)
@@ -3983,7 +3990,7 @@ are all well-formed.
 
     1. Constructs a receiver `r`:
 
-        1. If `execution::set_value(r, ts...)` is called, calls <code>execution::set_value(out_r, <i>into-variant-type</i>&lt;S>(make_tuple(ts...)))</code>.
+        1. If `execution::set_value(r, ts...)` is called, calls <code>execution::set_value(out_r, <i>into-variant-type</i>&lt;S>(<i>decayed-tuple</i>&lt;decltype(ts)...>(ts...)))</code>.
 
         2. If `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
@@ -4110,7 +4117,7 @@ from the operation before the operation completes.
     <pre highlight=c++>
         template&lt;typed_sender S>
           using <i>sync-wait-type</i> =
-            optional&lt;execution::value_types_of_t&lt;S, tuple, type_identity_t>>;
+            optional&lt;execution::value_types_of_t&lt;S, <i>decayed-tuple</i>, type_identity_t>>;
 
         template&lt;typed_sender S>
           using <i>sync-wait-with-variant-type</i> =
@@ -4132,9 +4139,9 @@ from the operation before the operation completes.
 
         3. Blocks the current thread until a receiver completion-signal of `r` is called. When it is:
 
-            1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-type</i>&lt;S>(make_tuple(ts...))></code>.
+            1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-type</i>&lt;S>(<i>decayed-tuple</i>&lt;decltype(ts)...>(ts...))></code>.
 
-            2. If `execution::set_error(r, e...)` has been called, if `remove_cvref_t(decltype(e))` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, throws `e`.
+            2. If `execution::set_error(r, e...)` has been called, if `decay_t<decltype(e)>` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, throws `e`.
 
             3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-type</i>&lt;S(nullopt)></code>.
 

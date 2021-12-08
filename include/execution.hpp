@@ -176,24 +176,23 @@ namespace std::execution {
       sender<_Sender> &&
       __has_sender_types<sender_traits<remove_cvref_t<_Sender>>>;
 
-  template <bool>
-    struct __variant_ {
-      template <class... _Ts>
-        using __f = variant<_Ts...>;
-    };
-  template <>
-    struct __variant_<false> {
-      struct __not_a_variant {
-        __not_a_variant() = delete;
-      };
-      template <class...>
-        using __f = __not_a_variant;
-    };
+  struct __not_a_variant {
+    __not_a_variant() = delete;
+  };
   template <class... _Ts>
-    using __variant = __minvoke<__variant_<sizeof...(_Ts) != 0>, _Ts...>;
+    using __variant =
+      __minvoke<
+        __if<
+          __bool<sizeof...(_Ts) != 0>,
+          __transform<__q1<decay_t>, __unique<__q<variant>>>,
+          __constant<__not_a_variant>>,
+        _Ts...>;
+
+  template <class... _Ts>
+    using __decayed_tuple = tuple<decay_t<_Ts>...>;
 
   template <typed_sender _Sender,
-            template <class...> class _Tuple = tuple,
+            template <class...> class _Tuple = __decayed_tuple,
             template <class...> class _Variant = __variant>
     using value_types_of_t =
       typename sender_traits<decay_t<_Sender>>::template
@@ -1515,9 +1514,6 @@ namespace std::execution {
       using __nullable_variant_t = __unique<__bind_front<__q<variant>, __>>;
 
       template <class... _Ts>
-        using __decayed_tuple = tuple<decay_t<_Ts>...>;
-
-      template <class... _Ts>
         struct __as_tuple {
           __decayed_tuple<_Ts...> operator()(_Ts...) const;
         };
@@ -2107,14 +2103,14 @@ _PRAGMA_POP()
           using __bound_values_t =
             __value_types_of_t<
               _Sender,
-              __transform<__q1<decay_t>, __bind_front_q<tuple, set_value_t>>,
+              __bind_front_q<__decayed_tuple, set_value_t>,
               __q<__bind_tuples>>;
 
           using __variant_t =
             __error_types_of_t<
               _Sender,
               __transform<
-                __transform<__q1<decay_t>, __bind_front_q<tuple, set_error_t>>,
+                __bind_front_q<__decayed_tuple, set_error_t>,
                 __bound_values_t>>;
 
           template <receiver _Receiver>
@@ -2196,7 +2192,7 @@ _PRAGMA_POP()
                   // Write the tag and the args into the operation state so that
                   // we can forward the completion from within the scheduler's
                   // execution context.
-                  __self.__op_state_->__data_.template emplace<tuple<_Tag, decay_t<_Args>...>>(_Tag{}, (_Args&&) __args...);
+                  __self.__op_state_->__data_.template emplace<__decayed_tuple<_Tag, _Args...>>(_Tag{}, (_Args&&) __args...);
                   // Schedule the completion to happen on the scheduler's
                   // execution context.
                   __self.__op_state_->__state2_.emplace(
@@ -2670,7 +2666,7 @@ _PRAGMA_POP()
               // Could be non-atomic here and atomic_ref everywhere except __completion_fn
               atomic<__state_t> __state_{__started};
               error_types_of_t<__sender, variant> __errors_{};
-              tuple<value_types_of_t<__t<_SenderIds>, tuple, optional>...> __values_{};
+              tuple<value_types_of_t<__t<_SenderIds>, __decayed_tuple, optional>...> __values_{};
               in_place_stop_source __stop_source_{};
               optional<typename stop_token_of_t<_Receiver&>::template
                   callback_type<__on_stop_requested>> __on_stop_{};
@@ -2735,7 +2731,7 @@ namespace std::this_thread {
       // What should sync_wait(just_done()) return?
       template <class _Sender>
         using __sync_wait_result_t =
-            execution::value_types_of_t<_Sender, tuple, __single_t>;
+            execution::value_types_of_t<_Sender, execution::__decayed_tuple, __single_t>;
 
       template <class _Tuple>
         struct __state {
