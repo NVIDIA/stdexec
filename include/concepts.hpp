@@ -25,89 +25,89 @@
 namespace std {
   // C++20 concepts
   #if defined(__clang__)
-  template<class A, class B>
-    concept same_as = __is_same(A, B) && __is_same(B, A);
+  template<class _A, class _B>
+    concept same_as = __is_same(_A, _B) && __is_same(_B, _A);
   #elif defined(__GNUC__)
-  template<class A, class B>
-    concept same_as = __is_same_as(A, B) && __is_same_as(B, A);
+  template<class _A, class _B>
+    concept same_as = __is_same_as(_A, _B) && __is_same_as(_B, _A);
   #else
-  template<class A, class B>
+  template<class _A, class _B>
     inline constexpr bool __same_as_v = false;
-  template<class A>
-    inline constexpr bool __same_as_v<A, A> = true;
+  template<class _A>
+    inline constexpr bool __same_as_v<_A, _A> = true;
 
-  template<class A, class B>
-    concept same_as = __same_as_v<A, B> && __same_as_v<B, A>;
+  template<class _A, class _B>
+    concept same_as = __same_as_v<_A, _B> && __same_as_v<_B, _A>;
   #endif
 
-  template<class A, class B>
+  template<class _A, class _B>
     concept derived_from =
-      is_base_of_v<B, A> &&
-      is_convertible_v<const volatile A*, const volatile B*>;
+      is_base_of_v<_B, _A> &&
+      is_convertible_v<const volatile _A*, const volatile _B*>;
 
-  template<class From, class To>
+  template<class _From, class _To>
     concept convertible_to =
-      is_convertible_v<From, To> &&
-      requires(From (&f)()) {
-        static_cast<To>(f());
+      is_convertible_v<_From, _To> &&
+      requires(_From (&__fun)()) {
+        static_cast<_To>(__fun());
       };
 
-  template<class T>
+  template<class _T>
     concept equality_comparable =
-      requires(const remove_reference_t<T>& t) {
-        { t == t } -> convertible_to<bool>;
-        { t != t } -> convertible_to<bool>;
+      requires(const remove_reference_t<_T>& __t) {
+        { __t == __t } -> convertible_to<bool>;
+        { __t != __t } -> convertible_to<bool>;
       };
 
-  template<class T>
-    concept destructible = is_nothrow_destructible_v<T>;
+  template<class _T>
+    concept destructible = is_nothrow_destructible_v<_T>;
 
-  template<class T, class... As>
+  template<class _T, class... _As>
     concept constructible_from =
-      destructible<T> && is_constructible_v<T, As...>;
+      destructible<_T> && is_constructible_v<_T, _As...>;
 
-  template<class T>
-    concept move_constructible = constructible_from<T, T>;
+  template<class _T>
+    concept move_constructible = constructible_from<_T, _T>;
 
-  template<class T>
+  template<class _T>
     concept copy_constructible =
-      move_constructible<T> &&
-      constructible_from<T, T const&>;
+      move_constructible<_T> &&
+      constructible_from<_T, _T const&>;
 
-  template<class F, class... As>
+  template<class _F, class... _As>
     concept invocable = requires {
-      typename invoke_result_t<F, As...>;
+      typename invoke_result_t<_F, _As...>;
     };
 }
 #endif
 
 namespace std {
-  template<class T, class U>
+  template<class _T, class _U>
     concept __decays_to =
-      same_as<decay_t<T>, U>;
+      same_as<decay_t<_T>, _U>;
 
-  template <class C>
+  template <class _C>
     concept __class =
-      is_class_v<C> && __decays_to<C, C>;
+      is_class_v<_C> && __decays_to<_C, _C>;
 
-  template <class T, class... As>
+  template <class _T, class... _As>
     concept __one_of =
-      (same_as<T, As> ||...);
+      (same_as<_T, _As> ||...);
 
-  template <class T, class... Us>
+  template <class _T, class... _Us>
     concept __none_of =
-      ((!same_as<T, Us>) &&...);
+      ((!same_as<_T, _Us>) &&...);
 
   // Not exactly right, but close.
-  template <class T>
+  template <class _T>
     concept __boolean_testable =
-      convertible_to<T, bool>;
+      convertible_to<_T, bool>;
 
-  template <class T>
+  template <class _T>
     concept __movable_value =
-      move_constructible<decay_t<T>> &&
-      constructible_from<decay_t<T>, T>;
+      move_constructible<decay_t<_T>> &&
+      constructible_from<decay_t<_T>, _T>;
 
-  template <class Trait>
-    concept __is_true = Trait::value;
+  template <class _Trait>
+    concept __is_true = _Trait::value;
 } // namespace std

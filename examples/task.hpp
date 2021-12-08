@@ -217,8 +217,8 @@ private:
     static std::false_type await_ready() noexcept {
       return {};
     }
-    static coro::coroutine_handle<>
-    await_suspend(coro::coroutine_handle<_promise> h) noexcept {
+    static __coro::coroutine_handle<>
+    await_suspend(__coro::coroutine_handle<_promise> h) noexcept {
       return h.promise().continuation();
     }
     static void await_resume() noexcept {
@@ -230,9 +230,9 @@ private:
     , Context::template promise_context_t<_promise>
     , std::execution::with_awaitable_senders<_promise> {
     basic_task get_return_object() noexcept {
-      return basic_task(coro::coroutine_handle<_promise>::from_promise(*this));
+      return basic_task(__coro::coroutine_handle<_promise>::from_promise(*this));
     }
-    coro::suspend_always initial_suspend() noexcept {
+    __coro::suspend_always initial_suspend() noexcept {
       return {};
     }
     _final_awaitable final_suspend() noexcept {
@@ -250,15 +250,15 @@ private:
 
   template <class ParentPromise = void>
   struct _task_awaitable {
-    coro::coroutine_handle<_promise> coro_;
+    __coro::coroutine_handle<_promise> coro_;
     std::optional<awaiter_context_t<_promise, ParentPromise>> context_{};
 
     static std::false_type await_ready() noexcept {
       return {};
     }
     template <class ParentPromise2>
-    coro::coroutine_handle<>
-    await_suspend(coro::coroutine_handle<ParentPromise2> parent) noexcept {
+    __coro::coroutine_handle<>
+    await_suspend(__coro::coroutine_handle<ParentPromise2> parent) noexcept {
       static_assert(std::__one_of<ParentPromise, ParentPromise2, void>);
       coro_.promise().set_continuation(parent);
       context_.emplace(coro_.promise(), parent.promise());
@@ -294,11 +294,11 @@ private:
     return _task_awaitable<>{std::exchange(self.coro_, {})};
   }
 
-  explicit basic_task(coro::coroutine_handle<promise_type> coro) noexcept
-    : coro_(coro)
+  explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
+    : coro_(__coro)
   {}
 
-  coro::coroutine_handle<promise_type> coro_;
+  __coro::coroutine_handle<promise_type> coro_;
 };
 
 template <class T>

@@ -36,48 +36,48 @@ namespace std {
   class in_place_stop_source;
 
   // [stopcallback.inplace], class template in_place_stop_callback
-  template <class Callback>
+  template <class _Callback>
     class in_place_stop_callback;
 
-  namespace detail {
-    struct in_place_stop_callback_base {
-      void execute() noexcept {
-        this->execute_(this);
+  namespace __detail {
+    struct __in_place_stop_callback_base {
+      void __execute() noexcept {
+        this->__execute_(this);
       }
 
-    protected:
-      using execute_fn = void(in_place_stop_callback_base*) noexcept;
-      explicit in_place_stop_callback_base(in_place_stop_source* source, execute_fn* execute) noexcept
-        : source_(source), execute_(execute) {}
+     protected:
+      using __execute_fn_t = void(__in_place_stop_callback_base*) noexcept;
+      explicit __in_place_stop_callback_base(in_place_stop_source* __source, __execute_fn_t* __execute) noexcept
+        : __source_(__source), __execute_(__execute) {}
 
-      void register_callback() noexcept;
+      void __register_callback_() noexcept;
 
       friend in_place_stop_source;
 
-      in_place_stop_source* source_;
-      execute_fn* execute_;
-      in_place_stop_callback_base* next_ = nullptr;
-      in_place_stop_callback_base** prev_ptr_ = nullptr;
-      bool* removed_during_callback_ = nullptr;
-      std::atomic<bool> callback_completed_{false};
+      in_place_stop_source* __source_;
+      __execute_fn_t* __execute_;
+      __in_place_stop_callback_base* __next_ = nullptr;
+      __in_place_stop_callback_base** __prev_ptr_ = nullptr;
+      bool* __removed_during_callback_ = nullptr;
+      atomic<bool> __callback_completed_{false};
     };
 
-    struct spin_wait {
-      spin_wait() noexcept = default;
+    struct __spin_wait {
+      __spin_wait() noexcept = default;
 
-      void wait() noexcept {
-        if (count_++ < yield_threshold) {
+      void __wait() noexcept {
+        if (__count_++ < __yield_threshold_) {
           // TODO: _mm_pause();
         } else {
-          if (count_ == 0)
-            count_ = yield_threshold;
-          std::this_thread::yield();
+          if (__count_ == 0)
+            __count_ = __yield_threshold_;
+          this_thread::yield();
         }
       }
 
-    private:
-      static constexpr uint32_t yield_threshold = 20;
-      uint32_t count_ = 0;
+     private:
+      static constexpr uint32_t __yield_threshold_ = 20;
+      uint32_t __count_ = 0;
     };
 
     template<template <class> class>
@@ -86,11 +86,14 @@ namespace std {
 
   // [stoptoken.never], class never_stop_token
   struct never_stop_token {
-    template <class F>
-      struct callback_type {
-        explicit callback_type(never_stop_token, F&&) noexcept
-        {}
-      };
+   private:
+    struct __callback_type {
+      explicit __callback_type(never_stop_token, auto&&) noexcept
+      {}
+    };
+   public:
+    template <class>
+      using callback_type = __callback_type;
     static constexpr bool stop_requested() noexcept {
       return false;
     }
@@ -99,12 +102,12 @@ namespace std {
     }
   };
 
-  template <class Callback>
+  template <class _Callback>
     class in_place_stop_callback;
 
   // [stopsource.inplace], class in_place_stop_source
   class in_place_stop_source {
-  public:
+   public:
     in_place_stop_source() noexcept = default;
     ~in_place_stop_source();
     in_place_stop_source(in_place_stop_source&&) = delete;
@@ -113,75 +116,75 @@ namespace std {
 
     bool request_stop() noexcept;
     bool stop_requested() const noexcept {
-      return (state_.load(memory_order_acquire) & stop_requested_flag) != 0;
+      return (__state_.load(memory_order_acquire) & __stop_requested_flag_) != 0;
     }
 
-  private:
+   private:
     friend in_place_stop_token;
-    friend detail::in_place_stop_callback_base;
-    template <class F>
+    friend __detail::__in_place_stop_callback_base;
+    template <class>
       friend class in_place_stop_callback;
 
-    uint8_t lock() noexcept;
-    void unlock(uint8_t) noexcept;
+    uint8_t __lock_() noexcept;
+    void __unlock_(uint8_t) noexcept;
 
-    bool try_lock_unless_stop_requested(bool) noexcept;
+    bool __try_lock_unless_stop_requested_(bool) noexcept;
 
-    bool try_add_callback(detail::in_place_stop_callback_base*) noexcept;
+    bool __try_add_callback_(__detail::__in_place_stop_callback_base*) noexcept;
 
-    void remove_callback(detail::in_place_stop_callback_base*) noexcept;
+    void __remove_callback_(__detail::__in_place_stop_callback_base*) noexcept;
 
-    static constexpr uint8_t stop_requested_flag = 1;
-    static constexpr uint8_t locked_flag = 2;
+    static constexpr uint8_t __stop_requested_flag_ = 1;
+    static constexpr uint8_t __locked_flag_ = 2;
 
-    std::atomic<uint8_t> state_{0};
-    detail::in_place_stop_callback_base* callbacks_ = nullptr;
-    std::thread::id notifying_thread_;
+    atomic<uint8_t> __state_{0};
+    __detail::__in_place_stop_callback_base* __callbacks_ = nullptr;
+    thread::id __notifying_thread_;
   };
 
   // [stoptoken.inplace], class in_place_stop_token
   class in_place_stop_token {
-  public:
-    template <class F>
-      using callback_type = in_place_stop_callback<F>;
+   public:
+    template <class _Fun>
+      using callback_type = in_place_stop_callback<_Fun>;
 
-    in_place_stop_token() noexcept : source_(nullptr) {}
+    in_place_stop_token() noexcept : __source_(nullptr) {}
 
-    in_place_stop_token(const in_place_stop_token& other) noexcept = default;
+    in_place_stop_token(const in_place_stop_token& __other) noexcept = default;
 
-    in_place_stop_token(in_place_stop_token&& other) noexcept
-      : source_(std::exchange(other.source_, {})) {}
+    in_place_stop_token(in_place_stop_token&& __other) noexcept
+      : __source_(std::exchange(__other.__source_, {})) {}
 
-    in_place_stop_token& operator=(const in_place_stop_token& other) noexcept = default;
+    in_place_stop_token& operator=(const in_place_stop_token& __other) noexcept = default;
 
-    in_place_stop_token& operator=(in_place_stop_token&& other) noexcept {
-      source_ = std::exchange(other.source_, nullptr);
+    in_place_stop_token& operator=(in_place_stop_token&& __other) noexcept {
+      __source_ = std::exchange(__other.__source_, nullptr);
       return *this;
     }
 
     bool stop_requested() const noexcept {
-      return source_ != nullptr && source_->stop_requested();
+      return __source_ != nullptr && __source_->stop_requested();
     }
 
     bool stop_possible() const noexcept {
-      return source_ != nullptr;
+      return __source_ != nullptr;
     }
 
-    void swap(in_place_stop_token& other) noexcept {
-      std::swap(source_, other.source_);
+    void swap(in_place_stop_token& __other) noexcept {
+      std::swap(__source_, __other.__source_);
     }
 
     bool operator==(const in_place_stop_token&) const noexcept = default;
 
-  private:
+   private:
     friend in_place_stop_source;
-    template <class F>
+    template <class>
       friend class in_place_stop_callback;
 
-    explicit in_place_stop_token(in_place_stop_source* source) noexcept
-      : source_(source) {}
+    explicit in_place_stop_token(in_place_stop_source* __source) noexcept
+      : __source_(__source) {}
 
-    in_place_stop_source* source_;
+    in_place_stop_source* __source_;
   };
 
   inline in_place_stop_token in_place_stop_source::get_token() noexcept {
@@ -189,122 +192,122 @@ namespace std {
   }
 
   // [stopcallback.inplace], class template in_place_stop_callback
-  template <class F>
-    class in_place_stop_callback : detail::in_place_stop_callback_base {
-    public:
-      template <class T>
-        requires constructible_from<F, T>
-      explicit in_place_stop_callback(in_place_stop_token token, T&& func)
-          noexcept(std::is_nothrow_constructible_v<F, T>)
-        : detail::in_place_stop_callback_base(token.source_, &in_place_stop_callback::execute_impl)
-        , func_((T&&) func) {
-        register_callback();
+  template <class _Fun>
+    class in_place_stop_callback : __detail::__in_place_stop_callback_base {
+     public:
+      template <class _Fun2>
+        requires constructible_from<_Fun, _Fun2>
+      explicit in_place_stop_callback(in_place_stop_token __token, _Fun2&& __fun)
+          noexcept(is_nothrow_constructible_v<_Fun, _Fun2>)
+        : __detail::__in_place_stop_callback_base(__token.__source_, &in_place_stop_callback::__execute_impl_)
+        , __fun_((_Fun2&&) __fun) {
+        __register_callback_();
       }
 
       ~in_place_stop_callback() {
-        if (source_ != nullptr)
-          source_->remove_callback(this);
+        if (__source_ != nullptr)
+          __source_->__remove_callback_(this);
       }
 
-    private:
-      static void execute_impl(detail::in_place_stop_callback_base* cb) noexcept {
-        std::move(static_cast<in_place_stop_callback*>(cb)->func_)();
+     private:
+      static void __execute_impl_(__detail::__in_place_stop_callback_base* cb) noexcept {
+        std::move(static_cast<in_place_stop_callback*>(cb)->__fun_)();
       }
 
-      [[no_unique_address]] F func_;
+      [[no_unique_address]] _Fun __fun_;
     };
 
-  namespace detail {
-    inline void in_place_stop_callback_base::register_callback() noexcept {
-      if (source_ != nullptr) {
-        if (!source_->try_add_callback(this)) {
-          source_ = nullptr;
+  namespace __detail {
+    inline void __in_place_stop_callback_base::__register_callback_() noexcept {
+      if (__source_ != nullptr) {
+        if (!__source_->__try_add_callback_(this)) {
+          __source_ = nullptr;
           // Callback not registered because stop_requested() was true.
           // Execute inline here.
-          execute();
+          __execute();
         }
       }
     }
   }
 
   inline in_place_stop_source::~in_place_stop_source() {
-    assert((state_.load(memory_order_relaxed) & locked_flag) == 0);
-    assert(callbacks_ == nullptr);
+    assert((__state_.load(memory_order_relaxed) & __locked_flag_) == 0);
+    assert(__callbacks_ == nullptr);
   }
 
   inline bool in_place_stop_source::request_stop() noexcept {
-    if (!try_lock_unless_stop_requested(true))
+    if (!__try_lock_unless_stop_requested_(true))
       return true;
 
-    notifying_thread_ = this_thread::get_id();
+    __notifying_thread_ = this_thread::get_id();
 
     // We are responsible for executing callbacks.
-    while (callbacks_ != nullptr) {
-      auto* callback = callbacks_;
-      callback->prev_ptr_ = nullptr;
-      callbacks_ = callback->next_;
-      if (callbacks_ != nullptr)
-        callbacks_->prev_ptr_ = &callbacks_;
+    while (__callbacks_ != nullptr) {
+      auto* __callbk = __callbacks_;
+      __callbk->__prev_ptr_ = nullptr;
+      __callbacks_ = __callbk->__next_;
+      if (__callbacks_ != nullptr)
+        __callbacks_->__prev_ptr_ = &__callbacks_;
 
-      state_.store(stop_requested_flag, memory_order_release);
+      __state_.store(__stop_requested_flag_, memory_order_release);
 
       bool removed_during_callback = false;
-      callback->removed_during_callback_ = &removed_during_callback;
+      __callbk->__removed_during_callback_ = &removed_during_callback;
 
-      callback->execute();
+      __callbk->__execute();
 
       if (!removed_during_callback) {
-        callback->removed_during_callback_ = nullptr;
-        callback->callback_completed_.store(true, memory_order_release);
+        __callbk->__removed_during_callback_ = nullptr;
+        __callbk->__callback_completed_.store(true, memory_order_release);
       }
 
-      lock();
+      __lock_();
     }
 
-    state_.store(stop_requested_flag, memory_order_release);
+    __state_.store(__stop_requested_flag_, memory_order_release);
     return false;
   }
 
-  uint8_t in_place_stop_source::lock() noexcept {
-    detail::spin_wait spin;
-    auto old_state = state_.load(memory_order_relaxed);
+  uint8_t in_place_stop_source::__lock_() noexcept {
+    __detail::__spin_wait __spin;
+    auto __old_state = __state_.load(memory_order_relaxed);
     do {
-      while ((old_state & locked_flag) != 0) {
-        spin.wait();
-        old_state = state_.load(memory_order_relaxed);
+      while ((__old_state & __locked_flag_) != 0) {
+        __spin.__wait();
+        __old_state = __state_.load(memory_order_relaxed);
       }
-    } while (!state_.compare_exchange_weak(
-        old_state,
-        old_state | locked_flag,
+    } while (!__state_.compare_exchange_weak(
+        __old_state,
+        __old_state | __locked_flag_,
         memory_order_acquire,
         memory_order_relaxed));
 
-    return old_state;
+    return __old_state;
   }
 
-  void in_place_stop_source::unlock(uint8_t old_state) noexcept {
-    (void)state_.store(old_state, memory_order_release);
+  void in_place_stop_source::__unlock_(uint8_t __old_state) noexcept {
+    (void)__state_.store(__old_state, memory_order_release);
   }
 
-  bool in_place_stop_source::try_lock_unless_stop_requested(
-      bool set_stop_requested) noexcept {
-    detail::spin_wait spin;
-    auto old_state = state_.load(memory_order_relaxed);
+  bool in_place_stop_source::__try_lock_unless_stop_requested_(
+      bool __set_stop_requested) noexcept {
+    __detail::__spin_wait __spin;
+    auto __old_state = __state_.load(memory_order_relaxed);
     do {
       while (true) {
-        if ((old_state & stop_requested_flag) != 0) {
+        if ((__old_state & __stop_requested_flag_) != 0) {
           // Stop already requested.
           return false;
-        } else if (old_state == 0) {
+        } else if (__old_state == 0) {
           break;
         } else {
-          spin.wait();
-          old_state = state_.load(memory_order_relaxed);
+          __spin.__wait();
+          __old_state = __state_.load(memory_order_relaxed);
         }
       }
-    } while (!state_.compare_exchange_weak(
-        old_state,
-        set_stop_requested ? (locked_flag | stop_requested_flag) : locked_flag,
+    } while (!__state_.compare_exchange_weak(
+        __old_state,
+        __set_stop_requested ? (__locked_flag_ | __stop_requested_flag_) : __locked_flag_,
         memory_order_acq_rel,
         memory_order_relaxed));
 
@@ -312,88 +315,88 @@ namespace std {
     return true;
   }
 
-  bool in_place_stop_source::try_add_callback(
-      detail::in_place_stop_callback_base* callback) noexcept {
-    if (!try_lock_unless_stop_requested(false)) {
+  bool in_place_stop_source::__try_add_callback_(
+      __detail::__in_place_stop_callback_base* __callbk) noexcept {
+    if (!__try_lock_unless_stop_requested_(false)) {
       return false;
     }
 
-    callback->next_ = callbacks_;
-    callback->prev_ptr_ = &callbacks_;
-    if (callbacks_ != nullptr) {
-      callbacks_->prev_ptr_ = &callback->next_;
+    __callbk->__next_ = __callbacks_;
+    __callbk->__prev_ptr_ = &__callbacks_;
+    if (__callbacks_ != nullptr) {
+      __callbacks_->__prev_ptr_ = &__callbk->__next_;
     }
-    callbacks_ = callback;
+    __callbacks_ = __callbk;
 
-    unlock(0);
+    __unlock_(0);
 
     return true;
   }
 
-  void in_place_stop_source::remove_callback(
-      detail::in_place_stop_callback_base* callback) noexcept {
-    auto old_state = lock();
+  void in_place_stop_source::__remove_callback_(
+      __detail::__in_place_stop_callback_base* __callbk) noexcept {
+  auto __old_state = __lock_();
 
-    if (callback->prev_ptr_ != nullptr) {
+    if (__callbk->__prev_ptr_ != nullptr) {
       // Callback has not been executed yet.
       // Remove from the list.
-      *callback->prev_ptr_ = callback->next_;
-      if (callback->next_ != nullptr) {
-        callback->next_->prev_ptr_ = callback->prev_ptr_;
+      *__callbk->__prev_ptr_ = __callbk->__next_;
+      if (__callbk->__next_ != nullptr) {
+        __callbk->__next_->__prev_ptr_ = __callbk->__prev_ptr_;
       }
-      unlock(old_state);
+      __unlock_(__old_state);
     } else {
-      auto notifying_thread = notifying_thread_;
-      unlock(old_state);
+      auto notifying_thread = __notifying_thread_;
+      __unlock_(__old_state);
 
       // Callback has either already been executed or is
       // currently executing on another thread.
-      if (std::this_thread::get_id() == notifying_thread) {
-        if (callback->removed_during_callback_ != nullptr) {
-          *callback->removed_during_callback_ = true;
+      if (this_thread::get_id() == notifying_thread) {
+        if (__callbk->__removed_during_callback_ != nullptr) {
+          *__callbk->__removed_during_callback_ = true;
         }
       } else {
         // Concurrently executing on another thread.
         // Wait until the other thread finishes executing the callback.
-        detail::spin_wait spin;
-        while (!callback->callback_completed_.load(memory_order_acquire)) {
-          spin.wait();
+        __detail::__spin_wait __spin;
+        while (!__callbk->__callback_completed_.load(memory_order_acquire)) {
+          __spin.__wait();
         }
       }
     }
   }
 
-  template <class T>
+  template <class _Token>
     concept stoppable_token =
-      copy_constructible<T> &&
-      move_constructible<T> &&
-      is_nothrow_copy_constructible_v<T> &&
-      is_nothrow_move_constructible_v<T> &&
-      equality_comparable<T> &&
-      requires (const T& token) {
-        { token.stop_requested() } noexcept -> __boolean_testable;
-        { token.stop_possible() } noexcept -> __boolean_testable;
-        typename detail::__check_type_alias_exists<T::template callback_type>;
+      copy_constructible<_Token> &&
+      move_constructible<_Token> &&
+      is_nothrow_copy_constructible_v<_Token> &&
+      is_nothrow_move_constructible_v<_Token> &&
+      equality_comparable<_Token> &&
+      requires (const _Token& __token) {
+        { __token.stop_requested() } noexcept -> __boolean_testable;
+        { __token.stop_possible() } noexcept -> __boolean_testable;
+        typename __detail::__check_type_alias_exists<_Token::template callback_type>;
       };
 
-  template <class T, typename CB, typename Initializer = CB>
+  template <class _Token, typename _Callback, typename _Initializer = _Callback>
     concept stoppable_token_for =
-      stoppable_token<T> &&
-      invocable<CB> &&
+      stoppable_token<_Token> &&
+      invocable<_Callback> &&
       requires {
-        typename T::template callback_type<CB>;
+        typename _Token::template callback_type<_Callback>;
       } &&
-      constructible_from<CB, Initializer> &&
-      constructible_from<typename T::template callback_type<CB>, T, Initializer> &&
-      constructible_from<typename T::template callback_type<CB>, T&, Initializer> &&
-      constructible_from<typename T::template callback_type<CB>, const T, Initializer> &&
-      constructible_from<typename T::template callback_type<CB>, const T&, Initializer>;
+      constructible_from<_Callback, _Initializer> &&
+      constructible_from<typename _Token::template callback_type<_Callback>, _Token, _Initializer> &&
+      constructible_from<typename _Token::template callback_type<_Callback>, _Token&, _Initializer> &&
+      constructible_from<typename _Token::template callback_type<_Callback>, const _Token, _Initializer> &&
+      constructible_from<typename _Token::template callback_type<_Callback>, const _Token&, _Initializer>;
 
-  template <class T>
+  template <class _Token>
     concept unstoppable_token =
-      stoppable_token<T> &&
+      stoppable_token<_Token> &&
       requires {
-        { T::stop_possible() } -> __boolean_testable;
+        { _Token::stop_possible() } -> __boolean_testable;
       } &&
-      (!T::stop_possible());
+      (!_Token::stop_possible());
 }

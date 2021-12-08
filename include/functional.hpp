@@ -25,41 +25,41 @@ namespace std {
     namespace __impl {
       void tag_invoke();
 
-      template <class Tag, class... Args>
+      template <class _Tag, class... _Args>
       concept __has_tag_invoke =
-        requires (Tag tag, Args&&... args) {
-          tag_invoke((Tag&&) tag, (Args&&) args...);
+        requires (_Tag __tag, _Args&&... __args) {
+          tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
         };
 
       struct tag_invoke_t {
-        template <class... Args, __has_tag_invoke<Args...> Tag>
-        decltype(auto) operator()(Tag tag, Args&&... args) const
-          noexcept(noexcept(tag_invoke((Tag&&) tag, (Args&&) args...))) {
-          return tag_invoke((Tag&&) tag, (Args&&) args...);
+        template <class... _Args, __has_tag_invoke<_Args...> _Tag>
+        decltype(auto) operator()(_Tag __tag, _Args&&... __args) const
+          noexcept(noexcept(tag_invoke((_Tag&&) __tag, (_Args&&) __args...))) {
+          return tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
         }
       };
     }
     inline constexpr struct tag_invoke_t : __impl::tag_invoke_t {} tag_invoke {};
   }
 
-  template<auto& Tag>
-  using tag_t = decay_t<decltype(Tag)>;
+  template<auto& _Tag>
+  using tag_t = decay_t<decltype(_Tag)>;
 
   // TODO: Don't require tag_invocable to subsume invocable.
   // std::invoke is more expensive at compile time than necessary.
-  template<class Tag, class... Args>
+  template<class _Tag, class... _Args>
   concept tag_invocable =
-    invocable<decltype(tag_invoke), Tag, Args...>;
+    invocable<decltype(tag_invoke), _Tag, _Args...>;
 
   // NOT TO SPEC: nothrow_tag_invocable subsumes tag_invocable
-  template<class Tag, class... Args>
+  template<class _Tag, class... _Args>
   concept nothrow_tag_invocable =
-    tag_invocable<Tag, Args...> &&
-    is_nothrow_invocable_v<decltype(tag_invoke), Tag, Args...>;
+    tag_invocable<_Tag, _Args...> &&
+    is_nothrow_invocable_v<decltype(tag_invoke), _Tag, _Args...>;
 
-  template<class Tag, class... Args>
-  using tag_invoke_result = invoke_result<decltype(tag_invoke), Tag, Args...>;
+  template<class _Tag, class... _Args>
+  using tag_invoke_result = invoke_result<decltype(tag_invoke), _Tag, _Args...>;
 
-  template<class Tag, class... Args>
-  using tag_invoke_result_t = invoke_result_t<decltype(tag_invoke), Tag, Args...>;
+  template<class _Tag, class... _Args>
+  using tag_invoke_result_t = invoke_result_t<decltype(tag_invoke), _Tag, _Args...>;
 }
