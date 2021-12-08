@@ -6189,8 +6189,6 @@ required.</p>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>done_as_error</c-></code> is used to handle a done signal by mapping it into the error channel as an <code class="highlight"><c- n>exception_ptr</c-></code> that refers to a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.</p>
-    <li data-md>
-     <p>The template <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i></code> is used to compute the type sent by a sender returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code>.</p>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- n>move_constructible</c-> <c- n>Error</c-><c- p>,</c-> <c- n>sender</c-> <c- n>S</c-><c- o>></c->
   <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- n>done_as_error</c-><c- p>(</c-><c- n>S</c-> <c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>Error</c-> <c- n>err</c-> <c- o>=</c-> <c- n>Error</c-><c- p>{});</c->
 </pre>
