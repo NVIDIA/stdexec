@@ -2446,6 +2446,39 @@ _PRAGMA_POP()
   } // namespace __transfer_just
 
   /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.adaptors.into_variant]
+  inline namespace __into_variant {
+    namespace __impl {
+      template <class _T>
+        struct __construct {
+          template <class... _As>
+              requires constructible_from<_T, _As...>
+            _T operator()(_As&&... __as) const
+                noexcept(is_nothrow_constructible_v<_T, _As...>) {
+              return _T{(_As&&) __as...};
+            }
+        };
+      template <class _Sender>
+        using __to_variant = __construct<value_types_of_t<_Sender>>;
+
+      template <class _Sender, class _Fun>
+        using __then_result_t =
+          decltype(then(__declval<_Sender>(), __declval<_Fun>()));
+    } // namespace __impl
+
+    inline constexpr struct __into_variant_t {
+      template <typed_sender _Sender>
+        auto operator()(_Sender&& __sndr) const
+          -> __impl::__then_result_t<_Sender, __impl::__to_variant<_Sender>> {
+          return then((_Sender&&) __sndr, __impl::__to_variant<_Sender>{});
+        }
+      auto operator()() const noexcept {
+        return __binder_back<__into_variant_t>{};
+      }
+    } into_variant {};
+  } // namespace __into_variant
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.when_all]
   inline namespace __when_all {
     namespace __impl {
