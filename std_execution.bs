@@ -4017,14 +4017,12 @@ are all well-formed.
 
 1. `execution::done_as_error` is used to handle a done signal by mapping it into the error channel as an `exception_ptr` that refers to a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
 
-2. The template <code><i>into-variant-type</i></code> is used to compute the type sent by a sender returned from `execution::into_variant`.
-
     <pre highlight=c++>
         template&lt;move_constructible Error, sender S>
           <i>see-below</i> done_as_error(S && s, Error err = Error{});
     </pre>
 
-3. <i>Effects:</i> Equivalent to:
+2. <i>Effects:</i> Equivalent to:
 
     <pre highlight=c++>
         return execution::let_done(
