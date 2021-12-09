@@ -1794,53 +1794,6 @@ _PRAGMA_POP()
       template <class _Sender, class _Fun, class _Continuation>
         using __done_senders_of =
           __tfx_sender_done<_Sender, _Fun, __q1<__decay_ref>, _Continuation>;
-
-      // This template expresses the types with which a let_ sender competes:
-      template <class _Sender, class _Fun, class _SendersOf>
-          requires typed_sender<_Sender> &&
-            requires {
-              typename __minvoke3<_SendersOf, _Sender, _Fun, __q<__typed_senders>>;
-            }
-        struct __traits {
-          template <class _Continuation>
-            using __senders_of_t =
-              __minvoke3<_SendersOf, _Sender, _Fun, _Continuation>;
-
-          template <template <class...> class _Tuple>
-            struct __value_types_of {
-              template <class _Sender2>
-                using __f = value_types_of_t<_Sender2, _Tuple, __types>;
-            };
-
-          template <template <class...> class _Tuple, template <class...> class _Variant>
-            using value_types =
-              __senders_of_t<
-                __transform<
-                  __value_types_of<_Tuple>,
-                  __concat<__unique<__q<_Variant>>>>>;
-
-          template <class _Sender2>
-            using __error_types_of = error_types_of_t<_Sender2, __types>;
-
-          template <template <class...> class _Variant>
-            using error_types =
-              __senders_of_t<
-                __transform<
-                  __q1<__error_types_of>,
-                  __bind_front<
-                    __concat<__unique<__q<_Variant>>>,
-                    __types<exception_ptr>>>>;
-
-          template <class _Sender2>
-            using __sends_done =
-              bool_constant<sender_traits<_Sender2>::sends_done>;
-
-          static constexpr bool sends_done =
-            __senders_of_t<
-              __transform<
-                __q1<__sends_done>,
-                __right_fold<false_type, __q2<__or>>>>::value;
-        };
     } // namespace __impl
 
     inline constexpr struct let_value_t
@@ -1860,28 +1813,125 @@ _PRAGMA_POP()
   // sender, and if all the possible return types of the function are also
   // typed senders.
   template <class _SenderId, class _Fun>
-      requires __valid<__let::__impl::__traits,
-          __t<_SenderId>, _Fun, __q3<__let::__impl::__value_senders_of>>
+      requires typed_sender<__t<_SenderId>> &&
+        __valid<__let::__impl::__value_senders_of,
+          __t<_SenderId>, _Fun, __q<__let::__impl::__typed_senders>>
     struct sender_traits<__let::__impl::__sender<_SenderId, _Fun, let_value_t>>
-      : __let::__impl::__traits<
-          __t<_SenderId>, _Fun, __q3<__let::__impl::__value_senders_of>>
-    {};
+    {
+      template <class _Continuation>
+        using __result_senders_t =
+          __let::__impl::__value_senders_of<__t<_SenderId>, _Fun, _Continuation>;
+
+      template <template <class...> class _Tuple, template <class...> class _Variant>
+        using value_types =
+          __result_senders_t<
+            __transform<
+              __bind_back<__defer<__value_types_of_t>, __q<_Tuple>, __q<__types>>,
+              __concat<__unique<__q<_Variant>>>>>;
+
+      template <template <class...> class _Variant>
+        using error_types =
+          __result_senders_t<
+            __transform<
+              __bind_back<__defer<__error_types_of_t>, __q<__types>>,
+              __bind_front<
+                __concat<__unique<__q<_Variant>>>,
+                __types<exception_ptr>,
+                error_types_of_t<__t<_SenderId>, __types>>>>;
+
+      template <class _Sender2>
+        using __sends_done =
+          bool_constant<sender_traits<_Sender2>::sends_done>;
+
+      static constexpr bool sends_done =
+        __result_senders_t<
+          __transform<
+            __q1<__sends_done>,
+            __right_fold<
+              __bool<sender_traits<__t<_SenderId>>::sends_done>,
+              __q2<__let::__impl::__or>>>>::value;
+    };
 
   template <class _SenderId, class _Fun>
-      requires __valid<__let::__impl::__traits,
-          __t<_SenderId>, _Fun, __q3<__let::__impl::__error_senders_of>>
+      requires typed_sender<__t<_SenderId>> &&
+        __valid<__let::__impl::__error_senders_of,
+          __t<_SenderId>, _Fun, __q<__let::__impl::__typed_senders>>
     struct sender_traits<__let::__impl::__sender<_SenderId, _Fun, let_error_t>>
-      : __let::__impl::__traits<
-          __t<_SenderId>, _Fun, __q3<__let::__impl::__error_senders_of>>
-    {};
+    {
+      template <class _Continuation>
+        using __result_senders_t =
+          __let::__impl::__error_senders_of<__t<_SenderId>, _Fun, _Continuation>;
+
+      template <template <class...> class _Tuple, template <class...> class _Variant>
+        using value_types =
+          __result_senders_t<
+            __transform<
+              __bind_back<__defer<__value_types_of_t>, __q<_Tuple>, __q<__types>>,
+              __bind_front<
+                __concat<__unique<__q<_Variant>>>,
+                value_types_of_t<__t<_SenderId>, _Tuple, __types>>>>;
+
+      template <template <class...> class _Variant>
+        using error_types =
+          __result_senders_t<
+            __transform<
+              __bind_back<__defer<__error_types_of_t>, __q<__types>>,
+              __bind_front<
+                __concat<__unique<__q<_Variant>>>,
+                __types<exception_ptr>>>>;
+
+      template <class _Sender2>
+        using __sends_done =
+          bool_constant<sender_traits<_Sender2>::sends_done>;
+
+      static constexpr bool sends_done =
+        __result_senders_t<
+          __transform<
+            __q1<__sends_done>,
+            __right_fold<
+              __bool<sender_traits<__t<_SenderId>>::sends_done>,
+              __q2<__let::__impl::__or>>>>::value;
+    };
 
   template <class _SenderId, class _Fun>
-      requires __valid<__let::__impl::__traits,
-          __t<_SenderId>, _Fun, __q3<__let::__impl::__done_senders_of>>
+      requires typed_sender<__t<_SenderId>> &&
+        __valid<__let::__impl::__done_senders_of,
+          __t<_SenderId>, _Fun, __q<__let::__impl::__typed_senders>>
     struct sender_traits<__let::__impl::__sender<_SenderId, _Fun, let_done_t>>
-      : __let::__impl::__traits<
-          __t<_SenderId>, _Fun, __q3<__let::__impl::__done_senders_of>>
-    {};
+    {
+      template <class _Continuation>
+        using __result_senders_t =
+          __let::__impl::__done_senders_of<__t<_SenderId>, _Fun, _Continuation>;
+
+      template <template <class...> class _Tuple, template <class...> class _Variant>
+        using value_types =
+          __result_senders_t<
+            __transform<
+              __bind_back<__defer<__value_types_of_t>, __q<_Tuple>, __q<__types>>,
+              __bind_front<
+                __concat<__unique<__q<_Variant>>>,
+                value_types_of_t<__t<_SenderId>, _Tuple, __types>>>>;
+
+      template <template <class...> class _Variant>
+        using error_types =
+          __result_senders_t<
+            __transform<
+              __bind_back<__defer<__error_types_of_t>, __q<__types>>,
+              __bind_front<
+                __concat<__unique<__q<_Variant>>>,
+                __types<exception_ptr>,
+                error_types_of_t<__t<_SenderId>, __types>>>>;
+
+      template <class _Sender2>
+        using __sends_done =
+          bool_constant<sender_traits<_Sender2>::sends_done>;
+
+      static constexpr bool sends_done =
+        __result_senders_t<
+          __transform<
+            __q1<__sends_done>,
+            __right_fold<false_type, __q2<__let::__impl::__or>>>>::value;
+    };
 
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
