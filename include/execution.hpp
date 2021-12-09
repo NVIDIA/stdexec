@@ -2988,6 +2988,41 @@ _PRAGMA_POP()
             into_variant((_Senders&&) __sndrs)...};
       }
     } when_all_with_variant {};
+
+    inline constexpr struct transfer_when_all_t {
+      template <scheduler _Sched, typed_sender... _Senders>
+        requires tag_invocable<transfer_when_all_t, _Sched, _Senders...> &&
+          sender<tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...>>
+      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const
+        noexcept(nothrow_tag_invocable<transfer_when_all_t, _Sched, _Senders...>)
+        -> tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...> {
+        return tag_invoke(*this, (_Sched&&) __sched, (_Senders&&) __sndrs...);
+      }
+
+      template <scheduler _Sched, typed_sender... _Senders>
+        requires (__impl::__zero_or_one_alternative<_Senders> &&...)
+      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
+        return transfer(when_all((_Senders&&) __sndrs...), (_Sched&&) __sched);
+      }
+    } transfer_when_all {};
+
+    inline constexpr struct transfer_when_all_with_variant_t {
+      template <scheduler _Sched, typed_sender... _Senders>
+        requires tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...> &&
+          sender<tag_invoke_result_t<transfer_when_all_with_variant_t, _Sched, _Senders...>>
+      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const
+        noexcept(nothrow_tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>)
+        -> tag_invoke_result_t<transfer_when_all_with_variant_t, _Sched, _Senders...> {
+        return tag_invoke(*this, (_Sched&&) __sched, (_Senders&&) __sndrs...);
+      }
+
+      template <scheduler _Sched, typed_sender... _Senders>
+        requires (!tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>) &&
+          (invocable<__into_variant_t, _Senders> &&...)
+      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
+        return transfer_when_all((_Sched&&) __sched, into_variant((_Senders&&) __sndrs)...);
+      }
+    } transfer_when_all_with_variant {};
   } // namespace __when_all
 } // namespace std::execution
 
