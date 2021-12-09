@@ -1839,7 +1839,7 @@ _PRAGMA_POP()
             __senders_of_t<
               __transform<
                 __q1<__sends_done>,
-                __right_fold<false_type, __q2<__or>>>>::__val;
+                __right_fold<false_type, __q2<__or>>>>::value;
         };
     } // namespace __impl
 
