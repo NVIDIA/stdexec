@@ -1910,6 +1910,10 @@ _PRAGMA_POP()
       template <class _Sender, class _Fun, class _Continuation>
         using __done_senders_of =
           __tfx_sender_done<_Sender, _Fun, __q1<__decay_ref>, _Continuation>;
+
+      template <class _Sender>
+        using __sends_done =
+          __bool<sender_traits<_Sender>::sends_done>;
     } // namespace __impl
 
     inline constexpr struct let_value_t
@@ -1955,16 +1959,12 @@ _PRAGMA_POP()
                 __types<exception_ptr>,
                 error_types_of_t<__t<_SenderId>, __types>>>>;
 
-      template <class _Sender2>
-        using __sends_done =
-          bool_constant<sender_traits<_Sender2>::sends_done>;
-
       static constexpr bool sends_done =
         __result_senders_t<
           __transform<
-            __q1<__sends_done>,
+            __q1<__let::__impl::__sends_done>,
             __right_fold<
-              __bool<sender_traits<__t<_SenderId>>::sends_done>,
+              __let::__impl::__sends_done<__t<_SenderId>>,
               __q2<__let::__impl::__or>>>>::value;
     };
 
@@ -1996,16 +1996,12 @@ _PRAGMA_POP()
                 __concat<__unique<__q<_Variant>>>,
                 __types<exception_ptr>>>>;
 
-      template <class _Sender2>
-        using __sends_done =
-          bool_constant<sender_traits<_Sender2>::sends_done>;
-
       static constexpr bool sends_done =
         __result_senders_t<
           __transform<
-            __q1<__sends_done>,
+            __q1<__let::__impl::__sends_done>,
             __right_fold<
-              __bool<sender_traits<__t<_SenderId>>::sends_done>,
+              __let::__impl::__sends_done<__t<_SenderId>>,
               __q2<__let::__impl::__or>>>>::value;
     };
 
@@ -2038,16 +2034,49 @@ _PRAGMA_POP()
                 __types<exception_ptr>,
                 error_types_of_t<__t<_SenderId>, __types>>>>;
 
-      template <class _Sender2>
-        using __sends_done =
-          bool_constant<sender_traits<_Sender2>::sends_done>;
-
       static constexpr bool sends_done =
         __result_senders_t<
           __transform<
-            __q1<__sends_done>,
+            __q1<__let::__impl::__sends_done>,
             __right_fold<false_type, __q2<__let::__impl::__or>>>>::value;
     };
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.adaptors.done_as_optional]
+  // [execution.senders.adaptors.done_as_error]
+  inline namespace __done_as_xxx {
+    inline constexpr struct __done_as_optional_t {
+      template <__single_typed_sender _Sender>
+        auto operator()(_Sender&& __sndr) const {
+          using __value_t = decay_t<__single_sender_value_t<_Sender>>;
+          return (_Sender&&) __sndr
+            | then([]<class _T>(_T&& __t) {
+                return optional<__value_t>{(_T&&) __t};
+              })
+            | let_done([]() noexcept {
+                return just(optional<__value_t>{});
+              });
+        }
+      __binder_back<__done_as_optional_t> operator()() const noexcept {
+        return {};
+      }
+    } done_as_optional {};
+
+    inline constexpr struct __done_as_error_t {
+      template <sender _Sender, __movable_value _Error>
+        auto operator()(_Sender&& __sndr, _Error __err) const {
+          return (_Sender&&) __sndr
+            | let_done([__err2 = (_Error&&) __err] () mutable {
+                return just_error((_Error&&) __err2);
+              });
+        }
+      template <__movable_value _Error>
+        auto operator()(_Error __err) const
+          -> __binder_back<__done_as_error_t, _Error> {
+          return {{}, {}, {(_Error&&) __err}};
+        }
+    } done_as_error {};
+  } // namespace __done_as_xxx
 
   /////////////////////////////////////////////////////////////////////////////
   // run_loop

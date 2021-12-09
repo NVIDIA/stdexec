@@ -1984,7 +1984,7 @@ Returns a sender that maps the value channel from a `T` to an `optional<decay_t<
 template&lt;move_constructible Error>
 execution::sender auto done_as_error(
     execution::sender auto snd,
-    Error err = Error{}
+    Error err
 );
 </pre>
 
@@ -2862,8 +2862,8 @@ namespace std::execution {
     struct done_as_optional_t;
     inline constexpr done_as_optional_t done_as_optional;
 
-    template&lt;move_constructible Error, sender S>
-      <i>see-below</i> done_as_error(S &&, Error err = Error{});
+    struct done_as_error_t;
+    inline constexpr done_as_error_t done_as_error;
 
     // [execution.senders.consumers], sender consumers
     struct ensure_started_t;
@@ -4079,7 +4079,7 @@ are all well-formed.
 
 1. `execution::done_as_optional` is used to handle a done signal by mapping it into the value channel as an empty optional. The value channel is also converted into an optional. The result is a sender that never completes with done, reporting cancellation by completing with an empty optional.
 
-2. The name `execution::done_as_optional` denotes a customization point object. For some subexpression `s.`, let `S` be `decltype((s))`. If the type `S` does not satisfy <code><i>single-typed-sender</i></code>, `execution::done_as_optional(s)` is ill-formed. Otherwise, the expression `execution::done_as_optional(s)` is expression-equivalent to:
+2. The name `execution::done_as_optional` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If the type `S` does not satisfy <code><i>single-typed-sender</i></code>, `execution::done_as_optional(s)` is ill-formed. Otherwise, the expression `execution::done_as_optional(s)` is expression-equivalent to:
 
     <pre highlight=c++>
         execution::let_done(
@@ -4097,20 +4097,15 @@ are all well-formed.
 
 #### `execution::done_as_error` <b>[execution.senders.adaptors.done_as_error]</b> #### {#spec-execution.senders.adaptors.done_as_error}
 
-1. `execution::done_as_error` is used to handle a done signal by mapping it into the error channel as an `exception_ptr` that refers to a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
+1. `execution::done_as_error` is used to handle a done signal by mapping it into the error channel as a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
+
+2. The name `execution::done_as_error` denotes a customization point object. For some subexpressions `s` and `e`, let `S` be `decltype((s))` and let `E` be `decltype((e))`. If the type `S` does not satisfy `sender` or if the type `E` doesn't satisfy <code><i>movable-value</i></code>, `execution::done_as_error(s, e)` is ill-formed. Otherwise, the expression `execution::done_as_error(s, e)` is expression-equivalent to:
 
     <pre highlight=c++>
-        template&lt;move_constructible Error, sender S>
-          <i>see-below</i> done_as_error(S && s, Error err = Error{});
-    </pre>
-
-2. <i>Effects:</i> Equivalent to:
-
-    <pre highlight=c++>
-        return execution::let_done(
+        execution::let_done(
           static_cast&lt;S&&>(s),
-          [err2 = std::move(err)] () mutable {
-            return execution::just_error(std::move(err2));
+          [e2 = std::move(e)] () mutable {
+            return execution::just_error(std::move(e2));
           }
         )
     </pre>
