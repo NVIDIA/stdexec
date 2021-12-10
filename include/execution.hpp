@@ -172,41 +172,52 @@ namespace std::execution {
   }
   using __sender_base::sender_base;
 
-  template <class _Sender>
-    struct __typed_sender {
-      template <template <class...> class _Tuple, template <class...> class _Variant>
-        using value_types = typename _Sender::template value_types<_Tuple, _Variant>;
-      template <template <class...> class _Variant>
-        using error_types = typename _Sender::template error_types<_Variant>;
-      static constexpr bool sends_done = _Sender::sends_done;
-    };
+  inline namespace __sender_traits {
+    namespace __impl {
+      template <class _Sender>
+        struct __typed_sender {
+          template <template <class...> class _Tuple, template <class...> class _Variant>
+            using value_types = typename _Sender::template value_types<_Tuple, _Variant>;
+          template <template <class...> class _Variant>
+            using error_types = typename _Sender::template error_types<_Variant>;
+          static constexpr bool sends_done = _Sender::sends_done;
+        };
 
-  template <class _Sender>
-  auto __sender_traits_base_fn() {
-    if constexpr (__has_sender_types<_Sender>) {
-      return __typed_sender<_Sender>{};
-    } else if constexpr (derived_from<_Sender, sender_base>) {
-      return sender_base{};
-    } else if constexpr (__awaitable<_Sender>) {
-      using _Result = __await_result_t<_Sender>;
-      if constexpr (is_void_v<_Result>) {
-        return completion_signatures<set_value_t(), set_error_t(exception_ptr)>{};
-      } else {
-        return completion_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
-      }
-    } else {
-      struct __no_sender_traits{
-        using __this_is_not_a_sender = _Sender;
+      struct get_sender_traits_t {
+        template <class _Sender>
+        constexpr auto operator()(_Sender&&) const noexcept {
+          if constexpr (tag_invocable<get_sender_traits_t, __cref_t<_Sender>>) {
+            return tag_invoke_result_t<get_sender_traits_t, __cref_t<_Sender>>{};
+          } else if constexpr (__has_sender_types<_Sender>) {
+            return __typed_sender<_Sender>{};
+          } else if constexpr (derived_from<_Sender, sender_base>) {
+            return sender_base{};
+          } else if constexpr (__awaitable<_Sender>) {
+            using _Result = __await_result_t<_Sender>;
+            if constexpr (is_void_v<_Result>) {
+              return completion_signatures<set_value_t(), set_error_t(exception_ptr)>{};
+            } else {
+              return completion_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
+            }
+          } else {
+            struct __no_sender_traits{
+              using __this_is_not_a_sender = _Sender;
+            };
+            return __no_sender_traits{};
+          }
+        }
       };
-      return __no_sender_traits{};
-    }
-  }
+    } // namespace __impl
+
+    using __impl::get_sender_traits_t;
+    inline constexpr get_sender_traits_t get_sender_traits {};
+  } // namespace __sender_traits
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
   template <class _Sender>
   struct sender_traits
-    : decltype(__sender_traits_base_fn<_Sender>()) {};
+    : decltype(get_sender_traits(__declval<_Sender>())) {};
 
   template <class _Sender>
     concept __invalid_sender_traits =
@@ -388,9 +399,6 @@ namespace std::execution {
   // [execution.general.queries], general queries
   inline namespace __general_queries {
     namespace __impl {
-      template <class _T>
-        using __cref_t = const remove_reference_t<_T>&;
-
       // TODO: implement allocator concept
       template <class _T0>
         concept __allocator = true;
@@ -1061,14 +1069,7 @@ namespace std::execution {
   inline namespace __just {
     namespace __impl {
       template <class _CPO, class... _Ts>
-        using __traits =
-          __if<
-            is_same<_CPO, set_value_t>,
-            completion_signatures<set_value_t(_Ts...), set_error_t(exception_ptr)>,
-            completion_signatures<_CPO(_Ts...)>>;
-
-      template <class _CPO, class... _Ts>
-        struct __sender : __traits<_CPO, _Ts...> {
+        struct __sender {
           tuple<_Ts...> __vals_;
           template <class _Receiver>
             using __is_nothrow =
@@ -1111,13 +1112,21 @@ namespace std::execution {
             return {((__sender&&) __sndr).__vals_, (_Receiver&&) __rcvr};
           }
         };
+
+        template <class... _Ts>
+        completion_signatures<set_value_t(_Ts...), set_error_t(exception_ptr)>
+        tag_invoke(get_sender_traits_t, const __sender<set_value_t, _Ts...>&) noexcept;
+
+        template <class _Tag, class... _Ts>
+        completion_signatures<_Tag(_Ts...)>
+        tag_invoke(get_sender_traits_t, const __sender<_Tag, _Ts...>&) noexcept;
     }
 
     inline constexpr struct __just_t {
       template <__movable_value... _Ts>
       __impl::__sender<set_value_t, decay_t<_Ts>...> operator()(_Ts&&... __ts) const
         noexcept((is_nothrow_constructible_v<decay_t<_Ts>, _Ts> &&...)) {
-        return {{}, {(_Ts&&) __ts...}};
+        return {{(_Ts&&) __ts...}};
       }
     } just {};
 
@@ -1125,13 +1134,13 @@ namespace std::execution {
       template <__movable_value _Error>
       __impl::__sender<set_error_t, _Error> operator()(_Error&& __err) const
         noexcept(is_nothrow_constructible_v<decay_t<_Error>, _Error>) {
-        return {{}, {(_Error&&) __err}};
+        return {{(_Error&&) __err}};
       }
     } just_error {};
 
     inline constexpr struct __just_done_t {
       __impl::__sender<set_done_t> operator()() const noexcept {
-        return {{}, {}};
+        return {{}};
       }
     } just_done {};
   }
