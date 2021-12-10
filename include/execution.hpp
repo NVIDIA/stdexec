@@ -1844,6 +1844,13 @@ _PRAGMA_POP()
               };
             }
 
+          template <__sender_query _Tag, class... _As>
+            requires invocable<_Tag, const _Sender&, _As...>
+          friend decltype(auto) tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
+            noexcept(is_nothrow_invocable_v<_Tag, const _Sender&, _As...>) {
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+          }
+
           _Sender __sndr_;
           _Fun __fun_;
         };
@@ -2298,7 +2305,7 @@ _PRAGMA_POP()
           using _Scheduler = __t<_SchedulerId>;
           using _Sender = __t<_SenderId>;
           _Scheduler __sched_;
-          _Sender __snd_;
+          _Sender __sndr_;
 
           template <class _CvrefReceiver_>
             struct __operation1 {
@@ -2396,12 +2403,19 @@ _PRAGMA_POP()
             requires sender_to<__member_t<_Self, _Sender>, _Receiver>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
               -> __operation1<__x<__member_t<_Self, decay_t<_Receiver>>>> {
-            return {__self.__sched_, ((_Self&&) __self).__snd_, (_Receiver&&) __rcvr};
+            return {__self.__sched_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
           }
 
           template <__one_of<set_value_t, set_error_t, set_done_t> _Tag>
           friend _Scheduler tag_invoke(get_completion_scheduler_t<_Tag>, const __sender& __self) noexcept {
             return __self.__sched_;
+          }
+
+          template <__sender_query _Tag, class... _As>
+            requires invocable<_Tag, const _Sender&, _As...>
+          friend decltype(auto) tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
+            noexcept(is_nothrow_invocable_v<_Tag, const _Sender&, _As...>) {
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
         };
     } // namespace __impl
@@ -2561,6 +2575,13 @@ _PRAGMA_POP()
             return {((_Self&&) __self).__scheduler_,
                     ((_Self&&) __self).__sndr_,
                     (_Receiver&&) __rcvr};
+          }
+
+          template <__sender_query _Tag, class... _As>
+            requires invocable<_Tag, const _Sender&, _As...>
+          friend decltype(auto) tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
+            noexcept(is_nothrow_invocable_v<_Tag, const _Sender&, _As...>) {
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
         };
     } // namespace __impl
