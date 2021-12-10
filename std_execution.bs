@@ -3738,6 +3738,8 @@ are all well-formed.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
+        4. If `S` satisfies `typed_sender`, then space is reserved in `op_state` for `args2...` and `op_state2` rather than requiring a dynamic allocation.
+
     If the function selected above does not return a sender which invokes `f` when `set_value` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
@@ -3767,6 +3769,8 @@ are all well-formed.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
+        4. If `S` satisfies `typed_sender`, then space is reserved in `op_state` for `e2` and `op_state2` rather than requiring a dynamic allocation.
+
     If the function selected above does not return a sender which invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
@@ -3795,6 +3799,8 @@ are all well-formed.
         2. Calls `execution::connect(s, r)`. which results in an operation state `op_state2`.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+
+        4. Space is reserved in `op_state` for `op_state2` rather than requiring a dynamic allocation.
 
     If the function selected above does not return a sender which invokes `f` when `set_done` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
