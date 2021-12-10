@@ -522,9 +522,8 @@ namespace std::execution {
           // Pass through receiver queries
           template <__receiver_query _CPO, class... _As>
             requires invocable<_CPO, const _Receiver&, _As...>
-          friend auto tag_invoke(_CPO cpo, const __promise& __self, _As&&... __as)
-            noexcept(is_nothrow_invocable_v<_CPO, const _Receiver&, _As...>)
-            -> invoke_result_t<_CPO, const _Receiver&, _As...> {
+          friend decltype(auto) tag_invoke(_CPO cpo, const __promise& __self, _As&&... __as)
+            noexcept(is_nothrow_invocable_v<_CPO, const _Receiver&, _As...>) {
             return ((_CPO&&) cpo)(as_const(__self.__rcvr_), (_As&&) __as...);
           }
 
@@ -1242,12 +1241,11 @@ namespace std::execution {
             execution::connect(((_Self&&) __self).base(), (_Receiver&&) __rcvr);
           }
 
-          template <__sender_query _Tag>
-            requires invocable<_Tag, const _Base&>
-          friend auto tag_invoke(_Tag __tag, const _Derived& __self)
-            noexcept(is_nothrow_invocable_v<_Tag, const _Base&>)
-            -> invoke_result_t<_Tag, const _Base&> {
-            return ((_Tag&&) __tag)(__self.base());
+          template <__sender_query _Tag, class... _As>
+            requires invocable<_Tag, const _Base&, _As...>
+          friend decltype(auto) tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
+            noexcept(is_nothrow_invocable_v<_Tag, const _Base&, _As...>) {
+            return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
           }
 
          protected:
@@ -1352,9 +1350,8 @@ namespace std::execution {
 
           template <__receiver_query _Tag, class _D = _Derived, class... _As>
             requires invocable<_Tag, __base_t<const _D&>, _As...>
-          friend auto tag_invoke(_Tag tag, const _Derived& __self, _As&&... __as)
-            noexcept(is_nothrow_invocable_v<_Tag, __base_t<const _D&>, _As...>)
-            -> invoke_result_t<_Tag, __base_t<const _D&>, _As...> {
+          friend decltype(auto) tag_invoke(_Tag tag, const _Derived& __self, _As&&... __as)
+            noexcept(is_nothrow_invocable_v<_Tag, __base_t<const _D&>, _As...>) {
             return ((_Tag&&) tag)(__get_base(__self), (_As&&) __as...);
           }
 
@@ -1762,9 +1759,8 @@ _PRAGMA_POP()
 
           template <__receiver_query _Tag, class... _As>
               requires invocable<_Tag, const _Receiver&, _As...>
-            friend auto tag_invoke(_Tag tag, const __receiver& __self, _As&&... __as)
-                noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _As...>)
-                -> invoke_result_t<_Tag, const _Receiver&, _As...> {
+            friend decltype(auto) tag_invoke(_Tag tag, const __receiver& __self, _As&&... __as)
+                noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _As...>) {
               ((_Tag&&) tag)(__self.base(), (_As&&) __as...);
             }
 
@@ -2312,9 +2308,9 @@ _PRAGMA_POP()
                 }
 
                 template <__receiver_query _Tag, class... _Args>
-                friend auto tag_invoke(_Tag tag, const __receiver2& __self, _Args&&... __args)
-                  noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _Args...>)
-                  -> invoke_result_t<_Tag, const _Receiver&, _Args...> {
+                  requires invocable<_Tag, const _Receiver&, _Args...>
+                friend decltype(auto) tag_invoke(_Tag tag, const __receiver2& __self, _Args&&... __args)
+                  noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _Args...>) {
                   return ((_Tag&&) tag)(as_const(__self.__op_state_->__rcvr_), (_Args&&) __args...);
                 }
               };
@@ -2349,9 +2345,9 @@ _PRAGMA_POP()
                 }
 
                 template <__receiver_query _Tag, class... _Args>
-                friend auto tag_invoke(_Tag tag, const __receiver1& __self, _Args&&... __args)
-                  noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _Args...>)
-                  -> invoke_result_t<_Tag, const _Receiver&, _Args...> {
+                  requires invocable<_Tag, const _Receiver&, _Args...>
+                friend decltype(auto) tag_invoke(_Tag tag, const __receiver1& __self, _Args&&... __args)
+                  noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _Args...>) {
                   return ((_Tag&&) tag)(as_const(__self.__op_state_->__rcvr_), (_Args&&) __args...);
                 }
               };
