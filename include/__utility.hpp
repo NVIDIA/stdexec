@@ -236,16 +236,29 @@ namespace std {
     struct __concat {
       template <class...>
         struct __f_ {};
-      template <template <class...> class _A, class... _As,
-                template <class...> class _B, class... _Bs,
-                class... _Tail>
-        struct __f_<_A<_As...>, _B<_Bs...>, _Tail...>
-          : __f_<__types<_As..., _Bs...>, _Tail...> {};
       template <template <class...> class _A, class... _As>
           requires __minvocable<_Continuation, _As...>
         struct __f_<_A<_As...>> {
           using type = __minvoke<_Continuation, _As...>;
         };
+      template <template <class...> class _A, class... _As,
+                template <class...> class _B, class... _Bs,
+                class... _Tail>
+        struct __f_<_A<_As...>, _B<_Bs...>, _Tail...>
+          : __f_<__types<_As..., _Bs...>, _Tail...> {};
+      template <template <class...> class _A, class... _As,
+                template <class...> class _B, class... _Bs,
+                template <class...> class _C, class... _Cs,
+                class... _Tail>
+        struct __f_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _Tail...>
+          : __f_<__types<_As..., _Bs..., _Cs...>, _Tail...> {};
+      template <template <class...> class _A, class... _As,
+                template <class...> class _B, class... _Bs,
+                template <class...> class _C, class... _Cs,
+                template <class...> class _D, class... _Ds,
+                class... _Tail>
+        struct __f_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
+          : __f_<__types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
       template <class... _Args>
         using __f = __t<__f_<_Args...>>;
     };
@@ -395,4 +408,7 @@ namespace std {
     };
   template <class _Fn>
     __conv(_Fn) -> __conv<_Fn>;
+
+  template <class _T>
+    using __cref_t = const remove_reference_t<_T>&;
 }
