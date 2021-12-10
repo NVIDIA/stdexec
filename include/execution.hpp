@@ -284,6 +284,30 @@ namespace std::execution {
     } schedule {};
   }
 
+  inline namespace __scheduler_queries {
+    namespace __impl {
+      struct forwarding_scheduler_query_t {
+        template <class _Tag>
+        constexpr bool operator()(_Tag __tag) const noexcept {
+          if constexpr (tag_invocable<forwarding_scheduler_query_t, _Tag>) {
+            return tag_invoke(*this, (_Tag&&) __tag);
+          } else {
+            return false;
+          }
+        }
+      };
+    } // namespace __impl
+
+    using __impl::forwarding_scheduler_query_t;
+    inline constexpr forwarding_scheduler_query_t forwarding_scheduler_query{};
+
+    template <class _Tag>
+      concept __scheduler_query =
+        requires (_Tag __tag) {
+          requires forwarding_scheduler_query((_Tag&&) __tag);
+        };
+  } // namespace __scheduler_queries
+
   inline namespace __sender_queries {
     namespace __impl {
       template <__one_of<set_value_t, set_error_t, set_done_t> _CPO>
