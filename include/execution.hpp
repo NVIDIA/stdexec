@@ -21,6 +21,7 @@
 #include <cassert>
 #include <condition_variable>
 #include <stdexcept>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <tuple>
@@ -838,50 +839,81 @@ namespace std::execution {
   }
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.consumer.start_detached]
-  // TODO: turn this into start_detached
-  inline namespace __submit {
+  // NOT TO SPEC: __submit
+  inline namespace __submit_ {
     namespace __impl {
-      template <class _Sender, class _ReceiverId>
-        struct __receiver {
-          using _Receiver = remove_cvref_t<_ReceiverId>;
-          struct __wrap {
-            __receiver* __this_;
-            // Forward all tag_invoke calls, including the receiver ops.
-            template <__decays_to<__wrap> _Self, class... _As, invocable<__member_t<_Self, _Receiver>, _As...> _Tag>
-            friend auto tag_invoke(_Tag tag, _Self&& __self, _As&&... __as)
-                noexcept(is_nothrow_invocable_v<_Tag, __member_t<_Self, _Receiver>, _As...>)
-                -> invoke_result_t<_Tag, __member_t<_Self, _Receiver>, _As...> {
-              // If we are about to complete the receiver contract, delete the state as cleanup:
-              struct _g_t {
-                __receiver* __rcvr_;
-                ~_g_t() { delete __rcvr_; }
-              } _g{__one_of<_Tag, set_value_t, set_error_t, set_done_t> ? __self.__this_ : nullptr};
-              return ((_Tag&&) tag)((__member_t<_Self, _Receiver>&&) __self.__this_->__rcvr_, (_As&&) __as...);
+      template <class _SenderId, class _ReceiverId>
+        struct __operation {
+          using _Sender = __t<_SenderId>;
+          using _Receiver = __t<_ReceiverId>;
+          struct __receiver {
+            __operation* __op_state_;
+            // Forward all the receiver ops, and delete the operation state.
+            template <__one_of<set_value_t, set_error_t, set_done_t> _Tag, class... _As>
+              requires invocable<_Tag, _Receiver, _As...>
+            friend auto tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as)
+                noexcept(is_nothrow_invocable_v<_Tag, _Receiver, _As...>)
+                -> invoke_result_t<_Tag, _Receiver, _As...> {
+              // Delete the state as cleanup:
+              unique_ptr<__operation> __g{__self.__op_state_};
+              return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
+            }
+            // Forward all receiever queries.
+            template <__none_of<set_value_t, set_error_t, set_done_t> _Tag, class... _As>
+              requires invocable<_Tag, const _Receiver&, _As...>
+            friend auto tag_invoke(_Tag __tag, const __receiver& __self, _As&&... __as)
+                noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _As...>)
+                -> invoke_result_t<_Tag, const _Receiver&, _As...> {
+              return ((_Tag&&) __tag)((const _Receiver&) __self.__op_state_->__rcvr_, (_As&&) __as...);
             }
           };
           _Receiver __rcvr_;
-          connect_result_t<_Sender, __wrap> __state_;
-          __receiver(_Sender&& __sndr, _ReceiverId&& __rcvr)
-            : __rcvr_((_ReceiverId&&) __rcvr)
-            , __state_(connect((_Sender&&) __sndr, __wrap{this}))
+          connect_result_t<_Sender, __receiver> __op_state_;
+          __operation(_Sender&& __sndr, __decays_to<_Receiver> auto&& __rcvr)
+            : __rcvr_((decltype(__rcvr)&&) __rcvr)
+            , __op_state_(connect((_Sender&&) __sndr, __receiver{this}))
           {}
         };
-    }
+    } // namespace __impl
 
-    inline constexpr struct submit_t {
+    inline constexpr struct __submit_t {
       template <receiver _Receiver, sender_to<_Receiver> _Sender>
       void operator()(_Sender&& __sndr, _Receiver&& __rcvr) const noexcept(false) {
-        start((new __impl::__receiver<_Sender, _Receiver>{(_Sender&&) __sndr, (_Receiver&&) __rcvr})->__state_);
+        start((new __impl::__operation<__x<_Sender>, __x<decay_t<_Receiver>>>{
+            (_Sender&&) __sndr, (_Receiver&&) __rcvr})->__op_state_);
       }
-      template <receiver _Receiver, sender_to<_Receiver> _Sender>
-        requires tag_invocable<submit_t, _Sender, _Receiver>
-      void operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
-        noexcept(nothrow_tag_invocable<submit_t, _Sender, _Receiver>) {
-        (void) tag_invoke(submit_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+    } __submit {};
+  } // namespace __submit_
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.consumer.start_detached]
+  inline namespace __start_detached {
+    namespace __impl {
+      struct __detached_receiver {
+        friend void tag_invoke(set_value_t, __detached_receiver&&, auto&&...) noexcept {}
+        [[noreturn]]
+        friend void tag_invoke(set_error_t, __detached_receiver&&, auto&&) noexcept {
+          terminate();
+        }
+        friend void tag_invoke(set_done_t, __detached_receiver&&) noexcept {}
+      };
+    } // namespace __impl
+
+    inline constexpr struct start_detached_t {
+      template <sender _Sender>
+        requires tag_invocable<start_detached_t, _Sender>
+      void operator()(_Sender&& __sndr) const
+        noexcept(nothrow_tag_invocable<start_detached_t, _Sender>) {
+        (void) tag_invoke(start_detached_t{}, (_Sender&&) __sndr);
       }
-    } submit {};
-  }
+      template <sender _Sender>
+        requires (!tag_invocable<start_detached_t, _Sender>) &&
+          sender_to<_Sender, __impl::__detached_receiver>
+      void operator()(_Sender&& __sndr) const noexcept(false) {
+        __submit((_Sender&&) __sndr, __impl::__detached_receiver{});
+      }
+    } start_detached {};
+  } // namespace __start_detached
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
