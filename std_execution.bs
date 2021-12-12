@@ -833,6 +833,57 @@ For example, regardless where an error is generated (reading request, validating
 Also, because of using `execution::sender` objects at any step, we might expect any of these steps to be completely asynchronous; the overall flow doesn't care.
 Regardless of the execution context in which the steps, or part of the steps are executed in, the flow is still the same.
 
+### Moving between execution contexts with `execution::on` and `execution::transfer` ### {#example-server-on}
+
+Example context:
+- reading data from the socket before processing the request
+- reading of the data is done on the I/O context
+- no processing of the data needs to be done on the I/O context
+
+Goals:
+- show how one can change the execution context
+- exemplify the use of `on` and `transfer` algorithms
+
+
+```c++
+namespace ex = std::execution;
+
+size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {}
+void process_read_data(const char* read_data, size_t read_len) {}
+//...
+
+// A sender that just calls the legacy read function
+auto snd_read = ex::just(sock, buf, buf_len) | ex::then(legacy_read_from_socket);
+// The entire flow
+auto snd =
+    // start by reading data on the I/O thread
+    ex::on(io_sched, std::move(snd_read))
+    // do the processing on the worker threads pool
+    | ex::transfer(work_sched)
+    // process the incoming data (on worker threads)
+    | ex::then([buf](int read_len) { process_read_data(buf, read_len); })
+    // done
+    ;
+// execute the whole flow asynchronously
+ex::start_detached(std::move(snd));
+```
+
+The example assume that we need to wrap some legacy code of reading sockets, and handle execution context switching.
+(This style of reading from socket may not be the most efficient one, but it's working for our purposes.)
+For performance reasons, the reading from the socket needs to be done on the I/O thread, and all the processing needs to happen on a work-specific execution context (i.e., thread pool).
+
+Calling `execution::on` will ensure that the given sender will be started on the given scheduler.
+In our example, `snd_read` is going to be started on the I/O scheduler.
+This sender will just call the legacy code.
+
+The completion signal will be issued in the I/O execution context, so we have to move it to the work thread pool.
+This is achieved with the help of the `execution::transfer` algorithm.
+The rest of the processing (in our case, the last call to `then`) will happen in the work thread pool.
+
+The reader should notice the difference between `execution::on` and `execution::transfer`.
+The `execution::on` algorithm will ensure that the given sender will start in the specified context, and doesn't care where the completion signal for that sender is sent.
+The `execution::transfer` algorithm will not care where the given sender is going to be started, but will ensure that the completion signal of will be transferred to the given context.
+
 ## What this proposal is **not** ## {#intro-is-not}
 
 This paper is not a patch on top of [[P0443R14]]; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
