@@ -2562,6 +2562,7 @@ _PRAGMA_POP()
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.when_all]
+  // [execution.senders.adaptors.when_all_with_variant]
   inline namespace __when_all {
     namespace __impl {
       enum __state_t { __started, __error, __done };
@@ -2811,9 +2812,11 @@ _PRAGMA_POP()
 
       template <class _Sender>
         concept __zero_or_one_alternative =
-          requires {
-            typename value_types_of_t<_Sender, __types, __single_or_void_t>;
-          };
+          __valid<__value_types_of_t, _Sender, __q<__types>, __q<__single_or_void_t>>;
+
+      template <class _Sender>
+        using __into_variant_result_t =
+          decltype(into_variant(__declval<_Sender>()));
     } // namespce __impl
 
     inline constexpr struct when_all_t {
@@ -2829,12 +2832,31 @@ _PRAGMA_POP()
       template <typed_sender... _Senders>
         requires (__impl::__zero_or_one_alternative<_Senders> &&...)
       auto operator()(_Senders&&... __sndrs) const
-        noexcept(nothrow_tag_invocable<when_all_t, _Senders...>)
         -> __impl::__sender<__x<decay_t<_Senders>>...> {
         return __impl::__sender<__x<decay_t<_Senders>>...>{
             (_Senders&&) __sndrs...};
       }
     } when_all {};
+
+    inline constexpr struct when_all_with_variant_t {
+      template <typed_sender... _Senders>
+        requires tag_invocable<when_all_with_variant_t, _Senders...> &&
+          sender<tag_invoke_result_t<when_all_with_variant_t, _Senders...>>
+      auto operator()(_Senders&&... __sndrs) const
+        noexcept(nothrow_tag_invocable<when_all_with_variant_t, _Senders...>)
+        -> tag_invoke_result_t<when_all_with_variant_t, _Senders...> {
+        return tag_invoke(*this, (_Senders&&) __sndrs...);
+      }
+
+      template <typed_sender... _Senders>
+        requires (!tag_invocable<when_all_with_variant_t, _Senders...>) &&
+          (invocable<__into_variant_t, _Senders> &&...)
+      auto operator()(_Senders&&... __sndrs) const
+        -> __impl::__sender<__impl::__into_variant_result_t<_Senders>...> {
+        return __impl::__sender<__impl::__into_variant_result_t<_Senders>...>{
+            into_variant((_Senders&&) __sndrs)...};
+      }
+    } when_all_with_variant {};
   } // namespace __when_all
 } // namespace std::execution
 
