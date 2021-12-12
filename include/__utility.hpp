@@ -109,6 +109,12 @@ namespace std {
         using __f = __t<__f_<_Args...>>;
     };
 
+  template <class _T>
+    struct __constant {
+      template <class...>
+        using __f = _T;
+    };
+
   template <class _Fn, class _Continuation = __q<__types>>
     struct __transform {
       template <class... _Args>
