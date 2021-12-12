@@ -65,21 +65,6 @@ struct http_response {
   std::string body_;
 };
 
-// TODO: remove this when moving to start_detached
-struct my_receiver {
-  template <typename... Vs>
-  friend void tag_invoke(ex::set_value_t, my_receiver, Vs&&... vals) {
-    // std::cout << "completed successfully\n";
-  }
-  template <typename E>
-  friend void tag_invoke(ex::set_error_t, my_receiver, E&& err) noexcept {
-    // std::cout << "completed with error\n";
-  }
-  friend void tag_invoke(ex::set_done_t, my_receiver) noexcept {
-    // std::cout << "cancelled\n";
-  }
-};
-
 // Returns a sender that yields an http_request object for an incoming request
 template <ex::scheduler S>
 ex::sender auto schedule_request_start(S sched, int idx) {
@@ -159,9 +144,7 @@ int main() {
         ;
 
     // execute the whole flow asynchronously
-    ex::submit(std::move(snd), my_receiver{});
-    // TODO: use start_detached
-    // ex::start_detached(std::move(snd));
+    ex::start_detached(std::move(snd));
   }
 
   pool.request_stop();
