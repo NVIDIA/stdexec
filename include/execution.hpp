@@ -1835,11 +1835,16 @@ _PRAGMA_POP()
             using __sends_done =
               bool_constant<sender_traits<_Sender2>::sends_done>;
 
-          static constexpr bool sends_done =
-            __senders_of_t<
-              __transform<
-                __q1<__sends_done>,
-                __right_fold<false_type, __q2<__or>>>>::__val;
+          // TODO: the following code fails with apple-clang-13 when called for let_value()
+          // ../include/execution.hpp:1847:57: error: no member named '__val' in 'std::integral_constant<bool, false>'
+          //                 __right_fold<false_type, __q2<__or>>>>::__val;
+          //                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+          static constexpr bool sends_done = true;
+          // static constexpr bool sends_done =
+          //   __senders_of_t<
+          //     __transform<
+          //       __q1<__sends_done>,
+          //       __right_fold<false_type, __q2<__or>>>>::__val;
         };
     } // namespace __impl
 

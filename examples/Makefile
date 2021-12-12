@@ -24,6 +24,9 @@ hello_coro: $(BUILDDIR)/hello_coro.o
 retry: $(BUILDDIR)/retry.o
 	$(CXX) -o $(BUILDDIR)/$@ $^ $(CXXFLAGS) $(LIBS)
 
+let_value: $(BUILDDIR)/let_value.o
+	$(CXX) -o $(BUILDDIR)/$@ $^ $(CXXFLAGS) $(LIBS)
+
 .PHONY: clean
 
 clean:
