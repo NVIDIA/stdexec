@@ -2841,12 +2841,21 @@ _PRAGMA_POP()
 namespace std::this_thread {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumers.sync_wait]
+  // [execution.senders.consumers.sync_wait_with_variant]
   inline namespace __sync_wait {
     namespace __impl {
+      template <class _Sender>
+        using __into_variant_result_t =
+          decltype(execution::into_variant(__declval<_Sender>()));
+
       // What should sync_wait(just_done()) return?
       template <class _Sender>
         using __sync_wait_result_t =
-            execution::value_types_of_t<_Sender, execution::__decayed_tuple, __single_t>;
+          execution::value_types_of_t<_Sender, execution::__decayed_tuple, __single_t>;
+
+      template <class _Sender>
+        using __sync_wait_with_variant_result_t =
+          __sync_wait_result_t<__into_variant_result_t<_Sender>>;
 
       template <class _Tuple>
         struct __state {
@@ -2876,6 +2885,8 @@ namespace std::this_thread {
         };
     } // namespace __impl
 
+    ////////////////////////////////////////////////////////////////////////////
+    // [execution.senders.consumers.sync_wait]
     inline constexpr struct sync_wait_t {
       // TODO: constrain on return type
       template <execution::sender _Sender> // NOT TO SPEC
@@ -2919,5 +2930,33 @@ namespace std::this_thread {
         return std::move(std::get<1>(__state.__data_));
       }
     } sync_wait {};
-  }
-}
+
+    ////////////////////////////////////////////////////////////////////////////
+    // [execution.senders.consumers.sync_wait_with_variant]
+    inline constexpr struct sync_wait_with_variant_t {
+      template <execution::sender _Sender> // NOT TO SPEC
+        requires execution::__tag_invocable_with_completion_scheduler<sync_wait_with_variant_t, execution::set_value_t, _Sender>
+      auto operator()(_Sender&& __sndr) const
+        noexcept(nothrow_tag_invocable<sync_wait_with_variant_t, execution::__completion_scheduler_for<_Sender, execution::set_value_t>, _Sender>)
+        -> tag_invoke_result_t<sync_wait_with_variant_t, execution::__completion_scheduler_for<_Sender, execution::set_value_t>, _Sender> {
+        auto __sched = execution::get_completion_scheduler<execution::set_value_t>(__sndr);
+        return tag_invoke(sync_wait_with_variant_t{}, std::move(__sched), (_Sender&&) __sndr);
+      }
+      template <execution::sender _Sender> // NOT TO SPEC
+        requires (!execution::__tag_invocable_with_completion_scheduler<sync_wait_with_variant_t, execution::set_value_t, _Sender>) &&
+          tag_invocable<sync_wait_with_variant_t, _Sender>
+      auto operator()(_Sender&& __sndr) const
+        noexcept(nothrow_tag_invocable<sync_wait_with_variant_t, _Sender>)
+        -> tag_invoke_result_t<sync_wait_with_variant_t, _Sender> {
+        return tag_invoke(sync_wait_with_variant_t{}, (_Sender&&) __sndr);
+      }
+      template <execution::typed_sender _Sender>
+        requires (!execution::__tag_invocable_with_completion_scheduler<sync_wait_with_variant_t, execution::set_value_t, _Sender>) &&
+          (!tag_invocable<sync_wait_with_variant_t, _Sender>)
+      auto operator()(_Sender&& __sndr) const
+        -> optional<__impl::__sync_wait_with_variant_result_t<_Sender>> {
+        return sync_wait(execution::into_variant((_Sender&&) __sndr));
+      }
+    } sync_wait_with_variant {};
+  } // namespace __sync_wait
+} // namespace std::this_thread
