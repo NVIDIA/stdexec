@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-09">2021-12-09</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-11">2021-12-11</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4842,10 +4842,13 @@ the shared stop state.</p>
     <c- k>struct</c-> <c- nc>sender_traits</c-><c- p>;</c->
 
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
+    <c- k>using</c-> <i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i> <c- o>=</c-> <c- n>tuple</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-><c- o>></c-><c- p>;</c-> <c- c1>// exposition only</c->
+
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
     <c- k>using</c-> <i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-></i> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c-> <c- c1>// exposition only</c->
 
   <c- k>template</c-><c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- p>,</c->
-           <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Tuple</c-> <c- o>=</c-> <c- n>tuple</c-><c- p>,</c->
+           <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Tuple</c-> <c- o>=</c-> <i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- p>,</c->
            <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-> <c- o>=</c-> <i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-></i><c- o>></c->
     <c- k>using</c-> <c- n>value_types_of_t</c-> <c- o>=</c->
       <c- k>typename</c-> <c- nc>sender_traits</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>>::</c-><c- k>template</c-> <c- n>value_types</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-><c- p>;</c->
@@ -5334,11 +5337,17 @@ to successfully return. [<i>Note:</i> this allows for the receiver to manage the
 </pre>
      </ol>
     <li data-md>
-     <p>The exposition-only type <code class="highlight"><i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-></i></code> names the type <code class="highlight"><c- n>variant</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-></code> if <code class="highlight"><c- k>sizeof</c-><c- p>...(</c-><c- n>Ts</c-><c- p>)</c-></code> is greater than zero; otherwise, it names an implementation defined class type equivalent to the following:</p>
+     <p>The exposition-only type <code class="highlight"><i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-></i></code> is defined as follows:</p>
+     <ol>
+      <li data-md>
+       <p>If <code class="highlight"><c- k>sizeof</c-><c- p>...(</c-><c- n>Ts</c-><c- p>)</c-></code> is greater than zero, <code class="highlight"><i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-></i></code> names the type <code class="highlight"><c- n>variant</c-><c- o>&lt;</c-><c- n>Us</c-><c- p>...</c-><c- o>></c-></code> where <code class="highlight"><c- n>Us</c-><c- p>...</c-></code> is the pack <code class="highlight"><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-></code> with duplicate types removed.</p>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-></i></code> names an implementation defined class type equivalent to the following:</p>
 <pre class="highlight"><c- k>struct</c-> <i><c- nc>empty</c-><c- o>-</c-><c- n>variant</c-></i> <c- p>{</c->
   <i><c- n>empty</c-><c- o>-</c-><c- n>variant</c-></i><c- p>()</c-> <c- o>=</c-> <c- k>delete</c-><c- p>;</c->
 <c- p>};</c->
 </pre>
+     </ol>
     <li data-md>
      <p>If <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> for some sender type <code class="highlight"><c- n>S</c-></code> is well formed, it shall be a type <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args</c-><sub><c- n>0</c-></sub><c- p>...</c-><c- o>></c-><c- p>,</c-> <c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args</c-><sub><c- n>1</c-></sub><c- p>...</c-><c- o>></c-><c- p>,</c-> <c- p>...,</c-> <c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args</c-><sub><c- n>N</c-></sub><c- p>...</c-><c- o>>>></c-></code>, where the type packs <code class="highlight"><c- n>Args</c-><sub><c- n>0</c-></sub></code> through <code class="highlight"><c- n>Args</c-><sub><c- n>N</c-></sub></code> are the packs of types the sender <code class="highlight"><c- n>S</c-></code> passes as
 arguments to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> after a receiver object. If such sender <code class="highlight"><c- n>S</c-></code> odr-uses ([basic.def.odr]) <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> for some receiver <code class="highlight"><c- n>r</c-></code>, where <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>args</c-><c- p>)...</c-></code> is not one of the type packs <code class="highlight"><c- n>Args</c-><sub><c- n>0</c-></sub><c- p>...</c-></code> through <code class="highlight"><c- n>Args</c-><sub><c- n>N</c-></sub><c- p>...</c-></code>, the program is ill-formed with no
@@ -5442,7 +5451,7 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
 <c- k>struct</c-> <i><c- nc>just</c-><c- o>-</c-><c- n>sender</c-></i> <c- c1>// exposition only</c->
 <c- p>{</c->
-  <c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-> <c- n>vs_</c-><c- p>;</c->
+  <c- n>tuple</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-> <c- n>vs_</c-><c- p>;</c->
 
   <c- k>template</c-><c- o>&lt;</c-><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Tuple</c-><c- p>,</c-> <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-><c- o>></c->
   <c- k>using</c-> <c- n>value_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>>></c-><c- p>;</c->
@@ -5454,7 +5463,7 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
 
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>R</c-><c- o>></c->
   <c- k>struct</c-> <c- nc>operation_state</c-> <c- p>{</c->
-    <c- n>std</c-><c- o>::</c-><c- n>tuple</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-> <c- n>vs_</c-><c- p>;</c->
+    <c- n>tuple</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-> <c- n>vs_</c-><c- p>;</c->
     <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
 
     <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c->
@@ -5487,7 +5496,7 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
   <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-><c- o>></c-> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>ts</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>);</c->
 </pre>
     <li data-md>
-     <p><i>Effects</i>: Initializes <code class="highlight"><c- n>vs_</c-></code> with <code class="highlight"><c- n>make_tuple</c-><c- p>(</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>(</c-><c- n>ts</c-><c- p>)...)</c-></code>.</p>
+     <p><i>Effects</i>: Initializes <code class="highlight"><c- n>vs_</c-></code> with <code class="highlight"><i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>(</c-><c- n>ts</c-><c- p>)...)</c-></code>.</p>
     <li data-md>
      <p><i>Remarks</i>: The expression in the <code class="highlight"><c- k>noexcept</c-><c- o>-</c-><c- n>specifier</c-></code> is equivalent to</p>
 <pre class="highlight"><c- p>(</c-><c- n>is_nothrow_constructible_v</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>,</c-> <c- n>Ts</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- p>...)</c->
@@ -6024,7 +6033,7 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
       <li data-md>
        <p>If any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, or</p>
       <li data-md>
-       <p>If for any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code>, the type <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- p>,</c-> <c- n>tuple</c-><c- p>,</c-> <i><c- n>zero</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>one</c-></i><c- o>></c-></code> is ill-formed, where <code class="highlight"><i><c- n>zero</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>one</c-></i></code> is a template alias equivalent to the following:</p>
+       <p>If for any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code>, the type <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- p>,</c-> <i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- p>,</c-> <i><c- n>zero</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>one</c-></i><c- o>></c-></code> is ill-formed, where <code class="highlight"><i><c- n>zero</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>one</c-></i></code> is a template alias equivalent to the following:</p>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
     <c- k>requires</c-> <c- p>(</c-><c- k>sizeof</c-><c- p>...(</c-><c- n>Ts</c-><c- p>)</c-> <c- o>&lt;=</c-> <c- mi>1</c-><c- p>)</c->
   <c- k>using</c-> <i><c- n>zero</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>one</c-></i> <c- o>=</c-> <c- b>void</c-><c- p>;</c->
@@ -6154,7 +6163,7 @@ required.</p>
        <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>:</p>
        <ol>
         <li data-md>
-         <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(</c-><c- n>make_tuple</c-><c- p>(</c-><c- n>ts</c-><c- p>...)))</c-></code>.</p>
+         <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(</c-><i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><c- n>ts</c-><c- p>)...</c-><c- o>></c-><c- p>(</c-><c- n>ts</c-><c- p>...)))</c-></code>.</p>
         <li data-md>
          <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>.</p>
         <li data-md>
@@ -6285,7 +6294,7 @@ from the operation before the operation completes.</p>
      <p>The templates <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i></code> and <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i></code> are used to determine the return types of <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code> and <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait_with_variant</c-></code>.</p>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- o>></c->
   <c- k>using</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c->
-    <c- n>optional</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>tuple</c-><c- p>,</c-> <c- n>type_identity_t</c-><c- o>>></c-><c- p>;</c->
+    <c- n>optional</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- p>,</c-> <c- n>type_identity_t</c-><c- o>>></c-><c- p>;</c->
 
 <c- k>template</c-><c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- o>></c->
   <c- k>using</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c->
@@ -6309,9 +6318,9 @@ from the operation before the operation completes.</p>
          <p>Blocks the current thread until a receiver completion-signal of <code class="highlight"><c- n>r</c-></code> is called. When it is:</p>
          <ol>
           <li data-md>
-           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(</c-><c- n>make_tuple</c-><c- p>(</c-><c- n>ts</c-><c- p>...))</c-><c- o>></c-></code>.</p>
+           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(</c-><i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><c- n>ts</c-><c- p>)...</c-><c- o>></c-><c- p>(</c-><c- n>ts</c-><c- p>...))</c-><c- o>></c-></code>.</p>
           <li data-md>
-           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>...)</c-></code> has been called, if <code class="highlight"><c- n>remove_cvref_t</c-><c- p>(</c-><c- k>decltype</c-><c- p>(</c-><c- n>e</c-><c- p>))</c-></code> is <code class="highlight"><c- n>exception_ptr</c-></code>, calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>rethrow_exception</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code>. Otherwise, throws <code class="highlight"><c- n>e</c-></code>.</p>
+           <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>...)</c-></code> has been called, if <code class="highlight"><c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-><c- o>></c-></code> is <code class="highlight"><c- n>exception_ptr</c-></code>, calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>rethrow_exception</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code>. Otherwise, throws <code class="highlight"><c- n>e</c-></code>.</p>
           <li data-md>
            <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> has been called, returns <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>(</c-><c- n>nullopt</c-><c- p>)</c-><c- o>></c-></code>.</p>
          </ol>
