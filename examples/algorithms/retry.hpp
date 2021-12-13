@@ -57,7 +57,7 @@ struct _retry_receiver
 };
 
 template<class S>
-struct _retry_sender : std::execution::sender_base {
+struct _retry_sender {
   S s_;
   explicit _retry_sender(S s) : s_((S&&) s) {}
 
@@ -94,12 +94,12 @@ struct _retry_sender : std::execution::sender_base {
   friend _op<R> tag_invoke(std::execution::connect_t, _retry_sender&& self, R r) {
     return {(S&&) self.s_, (R&&) r};
   }
-};
 
-namespace std::execution {
-  template <typed_sender S>
-  struct sender_traits<_retry_sender<S>> : sender_traits<S> { };
-}
+  friend constexpr auto tag_invoke(std::execution::get_sender_traits_t, const _retry_sender&) noexcept
+    -> std::invoke_result_t<std::execution::get_sender_traits_t, const S&> {
+    return {};
+  }
+};
 
 template<std::execution::sender S>
 std::execution::sender auto retry(S s) {
