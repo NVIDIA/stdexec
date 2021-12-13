@@ -871,6 +871,19 @@ This proposal also draws heavily from our experience with [Thrust](https://githu
 
 # Revision history # {#revisions}
 
+## R4 ## {#r4}
+
+The changes since R3 are as follows:
+
+<b>Fixes:</b>
+
+    * ...
+
+<b>Enhancements:</b>
+
+    * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
+    * ...
+
 ## R3 ## {#r3}
 
 The changes since R2 are as follows:
