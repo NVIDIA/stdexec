@@ -1,17 +1,17 @@
 /*
- * _Copyright (c) _NVIDIA
+ * Copyright (c) NVIDIA
  *
- * _Licensed under the _Apache _License _Version 2.0 with _LLVM _Exceptions
- * (the "_License"); you may not use this file except in compliance with
- * the _License. _You may obtain a copy of the _License at
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *   https://llvm.org/_LICENSE.txt
+ *   https://llvm.org/LICENSE.txt
  *
- * _Unless required by applicable law or agreed to in writing, software
- * distributed under the _License is distributed on an "_AS _IS" _BASIS,
- * _WITHOUT _WARRANTIES _OR _CONDITIONS _OF _ANY _KIND, either express or implied.
- * _See the _License for the specific language governing permissions and
- * limitations under the _License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 #pragma once
 
@@ -36,9 +36,9 @@
 
 #if defined(__clang__)
 #define _STRINGIZE(__arg) #__arg
-#define _PRAGMA_PUSH() _Pragma("_GCC diagnostic push")
-#define _PRAGMA_POP() _Pragma("_GCC diagnostic pop")
-#define _PRAGMA_IGNORE(__arg) _Pragma(_STRINGIZE(_GCC diagnostic ignored __arg))
+#define _PRAGMA_PUSH() _Pragma("GCC diagnostic push")
+#define _PRAGMA_POP() _Pragma("GCC diagnostic pop")
+#define _PRAGMA_IGNORE(__arg) _Pragma(_STRINGIZE(GCC diagnostic ignored __arg))
 #else
 #define _PRAGMA_PUSH()
 #define _PRAGMA_POP()
