@@ -882,6 +882,7 @@ The changes since R3 are as follows:
 <b>Enhancements:</b>
 
     * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
+    * `done_as_error` respecified as a customization point object.
     * ...
 
 ## R3 ## {#r3}
