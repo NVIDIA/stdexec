@@ -23,6 +23,9 @@
 #include <coroutine.hpp>
 #include <execution.hpp>
 
+_PRAGMA_PUSH()
+_PRAGMA_IGNORE("-Wundefined-inline")
+
 template <template<class...> class T, class... As>
   concept well_formed =
     requires { typename T<As...>; };
@@ -289,6 +292,19 @@ private:
     return _task_awaitable<>{std::exchange(self.coro_, {})};
   }
 
+  // Specify basic_task's sender traits
+  //   This is only necessary when basic_task is not generally awaitable
+  //   owing to constraints imposed by its Context parameter.
+  template <class... Ts>
+    using _task_traits =
+      std::execution::completion_signatures<
+        std::execution::set_value_t(Ts...),
+        std::execution::set_error_t(std::exception_ptr),
+        std::execution::set_done_t()>;
+
+  friend constexpr auto tag_invoke(std::execution::get_sender_traits_t, const basic_task&) noexcept
+    -> std::conditional_t<std::is_void_v<T>, _task_traits<>, _task_traits<T>>;
+
   explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
     : coro_(__coro)
   {}
@@ -299,23 +315,4 @@ private:
 template <class T>
   using task = basic_task<T, default_task_context<T>>;
 
-////////////////////////////////////////////////////////////////////////////////
-// Specify basic_task's sender traits
-//   This is only necessary when basic_task is not generally awaitable
-//   owing to constraints imposed by its Context parameter.
-template <class... Ts>
-  using _task_traits =
-    std::execution::completion_signatures<
-      std::execution::set_value_t(Ts...),
-      std::execution::set_error_t(std::exception_ptr),
-      std::execution::set_done_t()>;
-
-namespace std::execution {
-  template <class T, class Context>
-    struct sender_traits<::basic_task<T, Context>>
-      : _task_traits<T> {};
-
-  template <class Context>
-    struct sender_traits<::basic_task<void, Context>>
-      : _task_traits<> {};
-}
+_PRAGMA_POP()
