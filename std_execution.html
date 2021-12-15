@@ -5977,6 +5977,8 @@ it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-
          <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>.</p>
         <li data-md>
          <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
+        <li data-md>
+         <p>If <code class="highlight"><c- n>S</c-></code> satisfies <code class="highlight"><c- n>typed_sender</c-></code>, then space is reserved in <code class="highlight"><c- n>op_state</c-></code> for <code class="highlight"><c- n>args2</c-><c- p>...</c-></code> and <code class="highlight"><c- n>op_state2</c-></code> rather than requiring a dynamic allocation.</p>
        </ol>
      </ol>
      <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_value</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
@@ -6011,6 +6013,8 @@ as a part of <code class="highlight"><c- n>op_state2</c-></code>. It then calls 
          <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>.</p>
         <li data-md>
          <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
+        <li data-md>
+         <p>If <code class="highlight"><c- n>S</c-></code> satisfies <code class="highlight"><c- n>typed_sender</c-></code>, then space is reserved in <code class="highlight"><c- n>op_state</c-></code> for <code class="highlight"><c- n>e2</c-></code> and <code class="highlight"><c- n>op_state2</c-></code> rather than requiring a dynamic allocation.</p>
        </ol>
      </ol>
      <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_error</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
@@ -6045,6 +6049,8 @@ It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sta
          <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>. which results in an operation state <code class="highlight"><c- n>op_state2</c-></code>.</p>
         <li data-md>
          <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
+        <li data-md>
+         <p>Space is reserved in <code class="highlight"><c- n>op_state</c-></code> for <code class="highlight"><c- n>op_state2</c-></code> rather than requiring a dynamic allocation.</p>
        </ol>
      </ol>
      <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_done</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
