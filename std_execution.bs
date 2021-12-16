@@ -20,6 +20,7 @@ Metadata Order: Editor, This Version, Source, Issue Tracking, Project, Audience
 Markup Shorthands: markdown yes
 Toggle Diffs: no
 No Abstract: yes
+Default Biblio Display: direct
 </pre>
 
 <style>
@@ -3179,7 +3180,7 @@ enum class forward_progress_guarantee {
 
     <pre highlight=c++>
     template&lt;template&lt;template&lt;class...> class, template&lt;class...> class> class>
-      struct <i>has-value-types</i>; // exposition only 
+      struct <i>has-value-types</i>; // exposition only
 
     template&lt;template&lt;template&lt;class...> class> class>
       struct <i>has-error-types</i>; // exposition only
