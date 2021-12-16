@@ -3207,7 +3207,7 @@ enum class forward_progress_guarantee {
         typed_sender&ltS> &&
         same_as&lt
           <i>type-list</i>&ltTs...>,
-          typename sender_traits&ltS>::value_types&lt<i>type-list</i>, type_identity_t>
+          typename sender_traits&ltS>::template value_types&lt<i>type-list</i>, type_identity_t>
         >;
     </pre>
 
