@@ -302,7 +302,10 @@ private:
         std::execution::set_error_t(std::exception_ptr),
         std::execution::set_done_t()>;
 
-  friend constexpr auto tag_invoke(std::execution::get_sender_traits_t, const basic_task&) noexcept
+  friend constexpr auto tag_invoke(
+      std::execution::get_sender_traits_t,
+      const basic_task&,
+      std::execution::receiver auto&&) noexcept
     -> std::conditional_t<std::is_void_v<T>, _task_traits<>, _task_traits<T>>;
 
   explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept

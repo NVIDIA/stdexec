@@ -20,6 +20,10 @@
 
 #include <functional>
 
+// A std::declval that doesn't instantiate templates:
+#define _DECLVAL(...) \
+  ((static_cast<__VA_ARGS__(*)()noexcept>(0))())
+
 namespace std {
   // [func.tag_invoke], tag_invoke
   inline namespace __tag_invoke {
