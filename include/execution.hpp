@@ -1656,7 +1656,7 @@ namespace std::execution {
               __transform<__q<__as_tuple>, __q<__which_tuple_>>> {};
 
 _PRAGMA_PUSH()
-_PRAGMA_IGNORE("-_Wundefined-internal")
+_PRAGMA_IGNORE("-Wundefined-internal")
       template <class _Fun>
         struct __applyable_fn {
           __ operator()(auto&&...) const;
