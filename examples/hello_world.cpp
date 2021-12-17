@@ -23,6 +23,8 @@
 using namespace std::execution;
 using std::this_thread::sync_wait;
 
+template <class T> struct undef;
+
 int main() {
   example::static_thread_pool ctx{8};
   scheduler auto sch = ctx.get_scheduler();                               // 1
