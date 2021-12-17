@@ -746,6 +746,145 @@ composite operation state lives on the stack for the duration of the operation.
 The end result is that work can be scheduled onto this thread with zero
 allocations.
 
+## Examples: Server theme ## {#example-server}
+
+In this section we look at some examples of how one would use senders to implement an HTTP server. The examples ignore the low-level details of the HTTP server and looks at how senders can be combined to achieve the goals of the project.
+
+General application context:
+* server application that processes images
+* execution contexts:
+    - 1 dedicated thread for network I/O
+    - N worker threads used for CPU-intensive work
+    - M threads for auxiliary I/O
+    - optional GPU context that may be used on some types of servers
+* all parts of the applications can be asynchronous
+* no locks shall be used in user code
+
+### Composability with `execution::let_*` ### {#example-server-let}
+
+Example context:
+- we are looking at the flow of processing an HTTP request and sending back the response
+- show how one can break the (slightly complex) flow into steps with `execution::let_*` functions
+- different phases of processing HTTP requests are broken down into separate concerns
+- each part of the processing might use different execution contexts (details not shown in this example)
+- error handling is generic, regardless which component fails; we always send the right response to the clients
+
+Goals:
+- show how one can break more complex flows into steps with let_* functions
+- exemplify the use of `let_value`, `let_error`, `let_done`, and `just` algorithms
+
+```c++
+namespace ex = std::execution;
+
+// Returns a sender that yields an http_request object for an incoming request
+ex::sender auto schedule_request_start(read_requests_ctx ctx) {...}
+// Sends a response back to the client; yields a void signal on success
+ex::sender auto send_response(const http_response& resp) {...}
+// Validate that the HTTP request is well-formed; forwards the request on success
+ex::sender auto validate_request(const http_request& req) {...}
+
+// Handle the request; main application logic
+ex::sender auto handle_request(const http_request& req) {
+  //...
+  return ex::just(http_response{200, result_body});
+}
+
+// Transforms server errors into responses to be sent to the client
+ex::sender auto error_to_response(std::exception_ptr err) {
+  try {
+    std::rethrow_exception(err);
+  } catch (const std::invalid_argument& e) {
+    return ex::just(http_response{404, e.what()});
+  } catch (const std::exception& e) {
+    return ex::just(http_response{500, e.what()});
+  } catch (...) {
+    return ex::just(http_response{500, "Unknown server error"});
+  }
+}
+// Transforms cancellation of the server into responses to be sent to the client
+ex::sender auto done_to_response() {
+  return ex::just(http_response{503, "Service temporarily unavailable"});
+}
+//...
+// The whole flow for transforming incoming requests into responses
+ex::sender auto snd =
+    // get a sender when a new request comes
+    schedule_request_start(the_read_requests_ctx)
+    // make sure the request is valid; throw if not
+    | ex::let_value(validate_request)
+    // process the request in a function that may be using a different execution context
+    | ex::let_value(handle_request)
+    // If there are errors transform them into proper responses
+    | ex::let_error(error_to_response)
+    // If the flow is cancelled, send back a proper response
+    | ex::let_done(done_to_response)
+    // write the result back to the client
+    | ex::let_value(send_response)
+    // done
+    ;
+// execute the whole flow asynchronously
+ex::start_detached(std::move(snd));
+```
+The example shows how one can separate out the concerns for interpreting requests, validating requests, running the main logic for handling the request, generating error responses, handling cancellation and sending the response back to the client.
+They are all different phases in the application, and can be joined together with the `let_*` functions.
+
+All our functions return `execution::sender` objects, so that they can all generate success, failure and cancellation paths.
+For example, regardless where an error is generated (reading request, validating request or handling the response), we would have one common block to handle the error, and following error flows is easy.
+
+Also, because of using `execution::sender` objects at any step, we might expect any of these steps to be completely asynchronous; the overall flow doesn't care.
+Regardless of the execution context in which the steps, or part of the steps are executed in, the flow is still the same.
+
+### Moving between execution contexts with `execution::on` and `execution::transfer` ### {#example-server-on}
+
+Example context:
+- reading data from the socket before processing the request
+- reading of the data is done on the I/O context
+- no processing of the data needs to be done on the I/O context
+
+Goals:
+- show how one can change the execution context
+- exemplify the use of `on` and `transfer` algorithms
+
+
+```c++
+namespace ex = std::execution;
+
+size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {}
+void process_read_data(const char* read_data, size_t read_len) {}
+//...
+
+// A sender that just calls the legacy read function
+auto snd_read = ex::just(sock, buf, buf_len) | ex::then(legacy_read_from_socket);
+// The entire flow
+auto snd =
+    // start by reading data on the I/O thread
+    ex::on(io_sched, std::move(snd_read))
+    // do the processing on the worker threads pool
+    | ex::transfer(work_sched)
+    // process the incoming data (on worker threads)
+    | ex::then([buf](int read_len) { process_read_data(buf, read_len); })
+    // done
+    ;
+// execute the whole flow asynchronously
+ex::start_detached(std::move(snd));
+```
+
+The example assume that we need to wrap some legacy code of reading sockets, and handle execution context switching.
+(This style of reading from socket may not be the most efficient one, but it's working for our purposes.)
+For performance reasons, the reading from the socket needs to be done on the I/O thread, and all the processing needs to happen on a work-specific execution context (i.e., thread pool).
+
+Calling `execution::on` will ensure that the given sender will be started on the given scheduler.
+In our example, `snd_read` is going to be started on the I/O scheduler.
+This sender will just call the legacy code.
+
+The completion signal will be issued in the I/O execution context, so we have to move it to the work thread pool.
+This is achieved with the help of the `execution::transfer` algorithm.
+The rest of the processing (in our case, the last call to `then`) will happen in the work thread pool.
+
+The reader should notice the difference between `execution::on` and `execution::transfer`.
+The `execution::on` algorithm will ensure that the given sender will start in the specified context, and doesn't care where the completion signal for that sender is sent.
+The `execution::transfer` algorithm will not care where the given sender is going to be started, but will ensure that the completion signal of will be transferred to the given context.
+
 ## What this proposal is **not** ## {#intro-is-not}
 
 This paper is not a patch on top of [[P0443R14]]; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
