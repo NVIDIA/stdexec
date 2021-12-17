@@ -2256,21 +2256,27 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#example-schedulers-inline"><span class="secno">1.6.1</span> <span class="content">Inline scheduler</span></a>
         <li><a href="#example-single-thread"><span class="secno">1.6.2</span> <span class="content">Single thread scheduler</span></a>
        </ol>
-      <li><a href="#intro-is-not"><span class="secno">1.7</span> <span class="content">What this proposal is <strong>not</strong></span></a>
-      <li><a href="#intro-compare"><span class="secno">1.8</span> <span class="content">Design changes from P0443</span></a>
       <li>
-       <a href="#intro-prior-art"><span class="secno">1.9</span> <span class="content">Prior art</span></a>
+       <a href="#example-server"><span class="secno">1.7</span> <span class="content">Examples: Server theme</span></a>
        <ol class="toc">
-        <li><a href="#intro-prior-art-futures"><span class="secno">1.9.1</span> <span class="content">Futures</span></a>
-        <li><a href="#intro-prior-art-coroutines"><span class="secno">1.9.2</span> <span class="content">Coroutines</span></a>
-        <li><a href="#intro-prior-art-callbacks"><span class="secno">1.9.3</span> <span class="content">Callbacks</span></a>
+        <li><a href="#example-server-let"><span class="secno">1.7.1</span> <span class="content">Composability with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span></a>
+        <li><a href="#example-server-on"><span class="secno">1.7.2</span> <span class="content">Moving between execution contexts with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span></a>
+       </ol>
+      <li><a href="#intro-is-not"><span class="secno">1.8</span> <span class="content">What this proposal is <strong>not</strong></span></a>
+      <li><a href="#intro-compare"><span class="secno">1.9</span> <span class="content">Design changes from P0443</span></a>
+      <li>
+       <a href="#intro-prior-art"><span class="secno">1.10</span> <span class="content">Prior art</span></a>
+       <ol class="toc">
+        <li><a href="#intro-prior-art-futures"><span class="secno">1.10.1</span> <span class="content">Futures</span></a>
+        <li><a href="#intro-prior-art-coroutines"><span class="secno">1.10.2</span> <span class="content">Coroutines</span></a>
+        <li><a href="#intro-prior-art-callbacks"><span class="secno">1.10.3</span> <span class="content">Callbacks</span></a>
        </ol>
       <li>
-       <a href="#intro-field-experience"><span class="secno">1.10</span> <span class="content">Field experience</span></a>
+       <a href="#intro-field-experience"><span class="secno">1.11</span> <span class="content">Field experience</span></a>
        <ol class="toc">
-        <li><a href="#intro-field-experience-libunifex"><span class="secno">1.10.1</span> <span class="content">libunifex</span></a>
-        <li><a href="#intro-field-experience-other-implementations"><span class="secno">1.10.2</span> <span class="content">Other implementations</span></a>
-        <li><a href="#intro-field-experience-inspirations"><span class="secno">1.10.3</span> <span class="content">Inspirations</span></a>
+        <li><a href="#intro-field-experience-libunifex"><span class="secno">1.11.1</span> <span class="content">libunifex</span></a>
+        <li><a href="#intro-field-experience-other-implementations"><span class="secno">1.11.2</span> <span class="content">Other implementations</span></a>
+        <li><a href="#intro-field-experience-inspirations"><span class="secno">1.11.3</span> <span class="content">Inspirations</span></a>
        </ol>
      </ol>
     <li>
@@ -3170,12 +3176,163 @@ compose statically, and in an algorithm like <code class="highlight"><c- n>this_
 composite operation state lives on the stack for the duration of the operation.
 The end result is that work can be scheduled onto this thread with zero
 allocations.</p>
-   <h3 class="heading settled" data-level="1.7" id="intro-is-not"><span class="secno">1.7. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#intro-is-not"></a></h3>
+   <h3 class="heading settled" data-level="1.7" id="example-server"><span class="secno">1.7. </span><span class="content">Examples: Server theme</span><a class="self-link" href="#example-server"></a></h3>
+   <p>In this section we look at some examples of how one would use senders to implement an HTTP server. The examples ignore the low-level details of the HTTP server and looks at how senders can be combined to achieve the goals of the project.</p>
+   <p>General application context:</p>
+   <ul>
+    <li data-md>
+     <p>server application that processes images</p>
+    <li data-md>
+     <p>execution contexts:</p>
+     <ul>
+      <li data-md>
+       <p>1 dedicated thread for network I/O</p>
+      <li data-md>
+       <p>N worker threads used for CPU-intensive work</p>
+      <li data-md>
+       <p>M threads for auxiliary I/O</p>
+      <li data-md>
+       <p>optional GPU context that may be used on some types of servers</p>
+     </ul>
+    <li data-md>
+     <p>all parts of the applications can be asynchronous</p>
+    <li data-md>
+     <p>no locks shall be used in user code</p>
+   </ul>
+   <h4 class="heading settled" data-level="1.7.1" id="example-server-let"><span class="secno">1.7.1. </span><span class="content">Composability with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span><a class="self-link" href="#example-server-let"></a></h4>
+   <p>Example context:</p>
+   <ul>
+    <li data-md>
+     <p>we are looking at the flow of processing an HTTP request and sending back the response</p>
+    <li data-md>
+     <p>show how one can break the (slightly complex) flow into steps with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code> functions</p>
+    <li data-md>
+     <p>different phases of processing HTTP requests are broken down into separate concerns</p>
+    <li data-md>
+     <p>each part of the processing might use different execution contexts (details not shown in this example)</p>
+    <li data-md>
+     <p>error handling is generic, regardless which component fails; we always send the right response to the clients</p>
+   </ul>
+   <p>Goals:</p>
+   <ul>
+    <li data-md>
+     <p>show how one can break more complex flows into steps with let_* functions</p>
+    <li data-md>
+     <p>exemplify the use of <code class="highlight"><c- n>let_value</c-></code>, <code class="highlight"><c- n>let_error</c-></code>, <code class="highlight"><c- n>let_done</c-></code>, and <code class="highlight"><c- n>just</c-></code> algorithms</p>
+   </ul>
+<pre class="language-c++ highlight"><c- n>namespace</c-> <c- n>ex</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
+
+<c- c1>// Returns a sender that yields an http_request object for an incoming request</c->
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>schedule_request_start</c-><c- p>(</c-><c- n>read_requests_ctx</c-> <c- n>ctx</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Sends a response back to the client; yields a void signal on success</c->
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>send_response</c-><c- p>(</c-><c- k>const</c-> <c- n>http_response</c-><c- o>&amp;</c-> <c- n>resp</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Validate that the HTTP request is well-formed; forwards the request on success</c->
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>validate_request</c-><c- p>(</c-><c- k>const</c-> <c- n>http_request</c-><c- o>&amp;</c-> <c- n>req</c-><c- p>)</c-> <c- p>{...}</c->
+
+<c- c1>// Handle the request; main application logic</c->
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>handle_request</c-><c- p>(</c-><c- k>const</c-> <c- n>http_request</c-><c- o>&amp;</c-> <c- n>req</c-><c- p>)</c-> <c- p>{</c->
+  <c- c1>//...</c->
+  <c- k>return</c-> <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>http_response</c-><c- p>{</c-><c- mi>200</c-><c- p>,</c-> <c- n>result_body</c-><c- p>});</c->
+<c- p>}</c->
+
+<c- c1>// Transforms server errors into responses to be sent to the client</c->
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>error_to_response</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-> <c- n>err</c-><c- p>)</c-> <c- p>{</c->
+  <c- n>try</c-> <c- p>{</c->
+    <c- n>std</c-><c- o>::</c-><c- n>rethrow_exception</c-><c- p>(</c-><c- n>err</c-><c- p>);</c->
+  <c- p>}</c-> <c- n>catch</c-> <c- p>(</c-><c- k>const</c-> <c- n>std</c-><c- o>::</c-><c- n>invalid_argument</c-><c- o>&amp;</c-> <c- n>e</c-><c- p>)</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>http_response</c-><c- p>{</c-><c- mi>404</c-><c- p>,</c-> <c- n>e</c-><c- p>.</c-><c- n>what</c-><c- p>()});</c->
+  <c- p>}</c-> <c- n>catch</c-> <c- p>(</c-><c- k>const</c-> <c- n>std</c-><c- o>::</c-><c- n>exception</c-><c- o>&amp;</c-> <c- n>e</c-><c- p>)</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>http_response</c-><c- p>{</c-><c- mi>500</c-><c- p>,</c-> <c- n>e</c-><c- p>.</c-><c- n>what</c-><c- p>()});</c->
+  <c- p>}</c-> <c- n>catch</c-> <c- p>(...)</c-> <c- p>{</c->
+    <c- k>return</c-> <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>http_response</c-><c- p>{</c-><c- mi>500</c-><c- p>,</c-> <c- s>"Unknown server error"</c-><c- p>});</c->
+  <c- p>}</c->
+<c- p>}</c->
+<c- c1>// Transforms cancellation of the server into responses to be sent to the client</c->
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>done_to_response</c-><c- p>()</c-> <c- p>{</c->
+  <c- k>return</c-> <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>http_response</c-><c- p>{</c-><c- mi>503</c-><c- p>,</c-> <c- s>"Service temporarily unavailable"</c-><c- p>});</c->
+<c- p>}</c->
+<c- c1>//...</c->
+<c- c1>// The whole flow for transforming incoming requests into responses</c->
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>snd</c-> <c- o>=</c->
+    <c- c1>// get a sender when a new request comes</c->
+    <c- n>schedule_request_start</c-><c- p>(</c-><c- n>the_read_requests_ctx</c-><c- p>)</c->
+    <c- c1>// make sure the request is valid; throw if not</c->
+    <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c-><c- n>validate_request</c-><c- p>)</c->
+    <c- c1>// process the request in a function that may be using a different execution context</c->
+    <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c-><c- n>handle_request</c-><c- p>)</c->
+    <c- c1>// If there are errors transform them into proper responses</c->
+    <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>let_error</c-><c- p>(</c-><c- n>error_to_response</c-><c- p>)</c->
+    <c- c1>// If the flow is cancelled, send back a proper response</c->
+    <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>let_done</c-><c- p>(</c-><c- n>done_to_response</c-><c- p>)</c->
+    <c- c1>// write the result back to the client</c->
+    <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c-><c- n>send_response</c-><c- p>)</c->
+    <c- c1>// done</c->
+    <c- p>;</c->
+<c- c1>// execute the whole flow asynchronously</c->
+<c- n>ex</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>snd</c-><c- p>));</c->
+</pre>
+   The example shows how one can separate out the concerns for interpreting requests, validating requests, running the main logic for handling the request, generating error responses, handling cancellation and sending the response back to the client.
+They are all different phases in the application, and can be joined together with the <code class="highlight"><c- n>let_</c-><c- o>*</c-></code> functions. 
+   <p>All our functions return <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code> objects, so that they can all generate success, failure and cancellation paths.
+For example, regardless where an error is generated (reading request, validating request or handling the response), we would have one common block to handle the error, and following error flows is easy.</p>
+   <p>Also, because of using <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code> objects at any step, we might expect any of these steps to be completely asynchronous; the overall flow doesn’t care.
+Regardless of the execution context in which the steps, or part of the steps are executed in, the flow is still the same.</p>
+   <h4 class="heading settled" data-level="1.7.2" id="example-server-on"><span class="secno">1.7.2. </span><span class="content">Moving between execution contexts with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span><a class="self-link" href="#example-server-on"></a></h4>
+   <p>Example context:</p>
+   <ul>
+    <li data-md>
+     <p>reading data from the socket before processing the request</p>
+    <li data-md>
+     <p>reading of the data is done on the I/O context</p>
+    <li data-md>
+     <p>no processing of the data needs to be done on the I/O context</p>
+   </ul>
+   <p>Goals:</p>
+   <ul>
+    <li data-md>
+     <p>show how one can change the execution context</p>
+    <li data-md>
+     <p>exemplify the use of <code class="highlight"><c- n>on</c-></code> and <code class="highlight"><c- n>transfer</c-></code> algorithms</p>
+   </ul>
+<pre class="language-c++ highlight"><c- n>namespace</c-> <c- n>ex</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
+
+<c- b>size_t</c-> <c- nf>legacy_read_from_socket</c-><c- p>(</c-><c- b>int</c-> <c- n>sock</c-><c- p>,</c-> <c- b>char</c-><c- o>*</c-> <c- n>buffer</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>buffer_len</c-><c- p>)</c-> <c- p>{}</c->
+<c- b>void</c-> <c- nf>process_read_data</c-><c- p>(</c-><c- k>const</c-> <c- b>char</c-><c- o>*</c-> <c- n>read_data</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>read_len</c-><c- p>)</c-> <c- p>{}</c->
+<c- c1>//...</c->
+
+<c- c1>// A sender that just calls the legacy read function</c->
+<c- k>auto</c-> <c- n>snd_read</c-> <c- o>=</c-> <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>sock</c-><c- p>,</c-> <c- n>buf</c-><c- p>,</c-> <c- n>buf_len</c-><c- p>)</c-> <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>legacy_read_from_socket</c-><c- p>);</c->
+<c- c1>// The entire flow</c->
+<c- k>auto</c-> <c- n>snd</c-> <c- o>=</c->
+    <c- c1>// start by reading data on the I/O thread</c->
+    <c- n>ex</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>io_sched</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>snd_read</c-><c- p>))</c->
+    <c- c1>// do the processing on the worker threads pool</c->
+    <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>work_sched</c-><c- p>)</c->
+    <c- c1>// process the incoming data (on worker threads)</c->
+    <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>([</c-><c- n>buf</c-><c- p>](</c-><c- b>int</c-> <c- n>read_len</c-><c- p>)</c-> <c- p>{</c-> <c- n>process_read_data</c-><c- p>(</c-><c- n>buf</c-><c- p>,</c-> <c- n>read_len</c-><c- p>);</c-> <c- p>})</c->
+    <c- c1>// done</c->
+    <c- p>;</c->
+<c- c1>// execute the whole flow asynchronously</c->
+<c- n>ex</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>snd</c-><c- p>));</c->
+</pre>
+   <p>The example assume that we need to wrap some legacy code of reading sockets, and handle execution context switching.
+(This style of reading from socket may not be the most efficient one, but it’s working for our purposes.)
+For performance reasons, the reading from the socket needs to be done on the I/O thread, and all the processing needs to happen on a work-specific execution context (i.e., thread pool).</p>
+   <p>Calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> will ensure that the given sender will be started on the given scheduler.
+In our example, <code class="highlight"><c- n>snd_read</c-></code> is going to be started on the I/O scheduler.
+This sender will just call the legacy code.</p>
+   <p>The completion signal will be issued in the I/O execution context, so we have to move it to the work thread pool.
+This is achieved with the help of the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> algorithm.
+The rest of the processing (in our case, the last call to <code class="highlight"><c- n>then</c-></code>) will happen in the work thread pool.</p>
+   <p>The reader should notice the difference between <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code>.
+The <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> algorithm will ensure that the given sender will start in the specified context, and doesn’t care where the completion signal for that sender is sent.
+The <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> algorithm will not care where the given sender is going to be started, but will ensure that the completion signal of will be transferred to the given context.</p>
+   <h3 class="heading settled" data-level="1.8" id="intro-is-not"><span class="secno">1.8. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#intro-is-not"></a></h3>
    <p>This paper is not a patch on top of <a data-link-type="biblio" href="https://wg21.link/p0443r14">[P0443R14]</a>; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
 to standardize any further facilities.</p>
    <p>This paper is not an alternative design to <a data-link-type="biblio" href="https://wg21.link/p0443r14">[P0443R14]</a>; rather, we have taken the design in the current executors paper, and applied targeted fixes to allow it to fulfill the promises of the sender/receiver model, as well as provide all the facilities we consider
 essential when writing user code using standard execution concepts; we have also applied the guidance of removing one-way executors from the paper entirely, and instead provided an algorithm based around senders that serves the same purpose.</p>
-   <h3 class="heading settled" data-level="1.8" id="intro-compare"><span class="secno">1.8. </span><span class="content">Design changes from P0443</span><a class="self-link" href="#intro-compare"></a></h3>
+   <h3 class="heading settled" data-level="1.9" id="intro-compare"><span class="secno">1.9. </span><span class="content">Design changes from P0443</span><a class="self-link" href="#intro-compare"></a></h3>
    <ol>
     <li data-md>
      <p>The <code class="highlight"><c- n>executor</c-></code> concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.</p>
@@ -3194,22 +3351,22 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p>A specific thread pool implementation is omitted, as per LEWG direction.</p>
    </ol>
-   <h3 class="heading settled" data-level="1.9" id="intro-prior-art"><span class="secno">1.9. </span><span class="content">Prior art</span><a class="self-link" href="#intro-prior-art"></a></h3>
+   <h3 class="heading settled" data-level="1.10" id="intro-prior-art"><span class="secno">1.10. </span><span class="content">Prior art</span><a class="self-link" href="#intro-prior-art"></a></h3>
    <p>This proposal builds upon and learns from years of prior art with asynchronous and parallel programming frameworks in C++. In this section, we discuss async abstractions that have previously been suggested as a possible basis for asynchronous algorithms and why they fall short.</p>
-   <h4 class="heading settled" data-level="1.9.1" id="intro-prior-art-futures"><span class="secno">1.9.1. </span><span class="content">Futures</span><a class="self-link" href="#intro-prior-art-futures"></a></h4>
+   <h4 class="heading settled" data-level="1.10.1" id="intro-prior-art-futures"><span class="secno">1.10.1. </span><span class="content">Futures</span><a class="self-link" href="#intro-prior-art-futures"></a></h4>
    <p>A future is a handle to work that has already been scheduled for execution. It is one end of a communication channel; the other end is a promise, used to receive the result from the concurrent operation and to communicate it to the future.</p>
    <p>Futures, as traditionally realized, require the dynamic allocation and management of a shared state, synchronization, and typically type-erasure of work and continuation. Many of these costs are inherent in the nature of "future" as a handle to work that is already scheduled for execution. These expenses rule out the future abstraction for many uses and makes it a poor choice for a basis of a generic mechanism.</p>
-   <h4 class="heading settled" data-level="1.9.2" id="intro-prior-art-coroutines"><span class="secno">1.9.2. </span><span class="content">Coroutines</span><a class="self-link" href="#intro-prior-art-coroutines"></a></h4>
+   <h4 class="heading settled" data-level="1.10.2" id="intro-prior-art-coroutines"><span class="secno">1.10.2. </span><span class="content">Coroutines</span><a class="self-link" href="#intro-prior-art-coroutines"></a></h4>
    <p>C++20 coroutines are frequently suggested as a basis for asynchronous algorithms. It’s fair to ask why, if we added coroutines to C++, are we suggesting the addition of a library-based abstraction for asynchrony. Certainly, coroutines come with huge syntactic and semantic advantages over the alternatives.</p>
    <p>Although coroutines are lighter weight than futures, coroutines suffer many of the same problems. Since they typically start suspended, they can avoid synchronizing the chaining of dependent work. However in many cases, coroutine frames require an unavoidable dynamic allocation and indirect function calls. This is done to hide the layout of the coroutine frame from the C++ type system, which in turn makes possible the separate compilation of coroutines and certain compiler optimizations, such as optimization of the coroutine frame size.</p>
    <p>Those advantages come at a cost, though. Because of the dynamic allocation of coroutine frames, coroutines in embedded or heterogeneous environments, which often lack support for dynamic allocation, require great attention to detail. And the allocations and indirections tend to complicate the job of the inliner, often resulting in sub-optimal codegen.</p>
    <p>The coroutine language feature mitigates these shortcomings somewhat with the HALO optimization <a data-link-type="biblio" href="https://wg21.link/p0981r0">[P0981R0]</a>, which leverages existing compiler optimizations such as allocation elision and devirtualization to inline the coroutine, completely eliminating the runtime overhead. However, HALO requires a sophisiticated compiler, and a fair number of stars need to align for the optimization to kick in. In our experience, more often than not in real-world code today’s compilers are not able to inline the coroutine, resulting in allocations and indirections in the generated code.</p>
    <p>In a suite of generic async algorithms that are expected to be callable from hot code paths, the extra allocations and indirections are a deal-breaker. It is for these reasons that we consider coroutines a poor choise for a basis of all standard async.</p>
-   <h4 class="heading settled" data-level="1.9.3" id="intro-prior-art-callbacks"><span class="secno">1.9.3. </span><span class="content">Callbacks</span><a class="self-link" href="#intro-prior-art-callbacks"></a></h4>
+   <h4 class="heading settled" data-level="1.10.3" id="intro-prior-art-callbacks"><span class="secno">1.10.3. </span><span class="content">Callbacks</span><a class="self-link" href="#intro-prior-art-callbacks"></a></h4>
    <p>Callbacks are the oldest, simplest, most powerful, and most efficient mechanism for creating chains of work, but suffer problems of their own. Callbacks must propagate either errors or values. This simple requirement yields many different interface possibilities. The lack of a standard callback shape obstructs generic design.</p>
    <p>Additionally, few of these possibilities accommodate cancellation signals when the user requests upstream work to stop and clean up.</p>
-   <h3 class="heading settled" data-level="1.10" id="intro-field-experience"><span class="secno">1.10. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
-   <h4 class="heading settled" data-level="1.10.1" id="intro-field-experience-libunifex"><span class="secno">1.10.1. </span><span class="content">libunifex</span><a class="self-link" href="#intro-field-experience-libunifex"></a></h4>
+   <h3 class="heading settled" data-level="1.11" id="intro-field-experience"><span class="secno">1.11. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
+   <h4 class="heading settled" data-level="1.11.1" id="intro-field-experience-libunifex"><span class="secno">1.11.1. </span><span class="content">libunifex</span><a class="self-link" href="#intro-field-experience-libunifex"></a></h4>
    <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>. Libunifex implements all of the concepts and customization points defined in this paper, many of this paper’s algorithms (some under different names), and much more besides.</p>
    <p>Libunifex has several concrete schedulers in addition to the <code class="highlight"><c- n>run_loop</c-></code> suggested here (where it is called <code class="highlight"><c- n>manual_event_loop</c-></code>). It has schedulers that dispatch efficiently to epoll and io_uring on Linux and the Windows Thread Pool on Windows.</p>
    <p>In addition to the proposed interfaces and the additional schedulers, it has several important extensions to the facilities described in this paper, which demonstrate directions in which these abstractions may be evolved over time, including:</p>
@@ -3235,7 +3392,7 @@ essential when writing user code using standard execution concepts; we have also
      <p>An internal Facebook product that runs on Linux</p>
    </ul>
    <p>All of these applications are making direct use of the sender/receiver abstraction as presented in this paper. One product (Instagram on iOS) is making use of the sender/coroutine integration as presented. The monthly active users of these products number in the billions.</p>
-   <h4 class="heading settled" data-level="1.10.2" id="intro-field-experience-other-implementations"><span class="secno">1.10.2. </span><span class="content">Other implementations</span><a class="self-link" href="#intro-field-experience-other-implementations"></a></h4>
+   <h4 class="heading settled" data-level="1.11.2" id="intro-field-experience-other-implementations"><span class="secno">1.11.2. </span><span class="content">Other implementations</span><a class="self-link" href="#intro-field-experience-other-implementations"></a></h4>
    <p>The authors are aware of a number of other implementations of sender/receiver from this paper. These are presented here in perceived order of maturity and field experience.</p>
    <ul>
     <li data-md>
@@ -3279,7 +3436,7 @@ essential when writing user code using standard execution concepts; we have also
      <p><b><a href="https://github.com/miscco/STL/tree/proposal/executors">Reference implementation for the Microsoft STL</a> by Michael Schellenberger Costa</b></p>
      <p>This is another reference implementation of this proposal, this time in a fork of the Mircosoft STL implementation. Michael Schellenberger Costa is not affiliated with Microsoft. He intends to contribute this implementation upstream when it is complete.</p>
    </ul>
-   <h4 class="heading settled" data-level="1.10.3" id="intro-field-experience-inspirations"><span class="secno">1.10.3. </span><span class="content">Inspirations</span><a class="self-link" href="#intro-field-experience-inspirations"></a></h4>
+   <h4 class="heading settled" data-level="1.11.3" id="intro-field-experience-inspirations"><span class="secno">1.11.3. </span><span class="content">Inspirations</span><a class="self-link" href="#intro-field-experience-inspirations"></a></h4>
    <p>This proposal also draws heavily from our experience with <a href="https://github.com/NVIDIA/thrust">Thrust</a> and <a href="https://github.com/agency-library/agency">Agency</a>. It is also inspired by the needs of countless other C++ frameworks for asynchrony, parallelism, and concurrency, including:</p>
    <ul>
     <li data-md>
