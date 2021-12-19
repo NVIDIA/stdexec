@@ -1171,7 +1171,7 @@ Senders are composed using <dfn>sender algorithms</dfn>:
 * [=sender adaptors=], algorithms that take (and potentially `execution::connect`) senders and return a sender.
 * [=sender consumers=], algorithms that take (and potentially `execution::connect`) senders and do not return a sender.
 
-## Senders can propagate completion schedulers ## {#design-propagation}
+## Senders can propagate Completion Schedulers ## {#design-propagation}
 
 One of the goals of executors is to support a diverse set of execution contexts, including traditional thread pools, task and fiber frameworks (like <a href="https://github.com/STEllAR-GROUP/hpx">HPX</a> and [Legion](https://github.com/StanfordLegion/legion)), and GPUs and other accelerators (managed by runtimes such as CUDA or SYCL).
 On many of these systems, not all execution agents are created equal and not all functions can be run on all execution agents.
