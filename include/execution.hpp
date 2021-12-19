@@ -1546,8 +1546,8 @@ namespace std::execution {
 
           template <receiver _Receiver>
             requires sender_to<_Sender, __receiver<_Receiver>>
-          auto connect(_Receiver&& __rcvr) && noexcept(__has_nothrow_connect<_Sender, __receiver<_Receiver>>)
-            -> connect_result_t<_Sender, __receiver<_Receiver>> {
+          decltype(auto) connect(_Receiver&& __rcvr) &&
+            noexcept(__has_nothrow_connect<_Sender, __receiver<_Receiver>>) {
             return execution::connect(
                 ((__sender&&) *this).base(),
                 __receiver<_Receiver>{(_Receiver&&) __rcvr, (_Fun&&) __fun_});
