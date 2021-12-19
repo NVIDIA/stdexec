@@ -1259,9 +1259,8 @@ namespace std::execution {
           template <__decays_to<_Derived> _Self, receiver _Receiver>
             requires requires {typename decay_t<_Self>::connect;} &&
               sender_to<__member_t<_Self, _Base>, _Receiver>
-          friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-            noexcept(__has_nothrow_connect<__member_t<_Self, _Base>, _Receiver>)
-            -> connect_result_t<__member_t<_Self, _Base>, _Receiver> {
+          friend decltype(auto) tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+            noexcept(__has_nothrow_connect<__member_t<_Self, _Base>, _Receiver>) {
             execution::connect(((_Self&&) __self).base(), (_Receiver&&) __rcvr);
           }
 
@@ -2596,9 +2595,9 @@ _PRAGMA_POP()
 
           template <__decays_to<__sender> _Self, receiver _Receiver>
             requires constructible_from<_Sender, __member_t<_Self, _Sender>> &&
-              sender_to<_Sender, __receiver_ref<__x<decay_t<_Receiver>>>> &&
               sender_to<schedule_result_t<_Scheduler>,
-                        __receiver<__x<decay_t<_Receiver>>>>
+                        __receiver<__x<decay_t<_Receiver>>>> &&
+              sender_to<_Sender, __receiver_ref<__x<decay_t<_Receiver>>>>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
             -> __operation<__x<decay_t<_Receiver>>> {
             return {((_Self&&) __self).__scheduler_,
