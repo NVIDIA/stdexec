@@ -197,7 +197,7 @@ namespace std::execution {
       __minvoke<
         __if<
           __bool<sizeof...(_Ts) != 0>,
-          __transform<__q1<decay_t>, __unique<__q<variant>>>,
+          __transform<__q1<decay_t>, __uniq<__q<variant>>>,
           __constant<__not_a_variant>>,
         _Ts...>;
 
@@ -1636,7 +1636,7 @@ namespace std::execution {
   // [execution.senders.adaptors.let_done]
   inline namespace __let {
     namespace __impl {
-      using __nullable_variant_t = __unique<__bind_front<__q<variant>, __>>;
+      using __nullable_variant_t = __uniq<__bind_front<__q<variant>, __>>;
 
       template <class... _Ts>
         struct __as_tuple {
@@ -1962,7 +1962,7 @@ namespace std::execution {
           __result_senders_t<
             __transform<
               __bind_back<__defer<__value_types_of_t>, __q<_Tuple>, __q<__types>>,
-              __concat<__unique<__q<_Variant>>>>>;
+              __concat<__uniq<__q<_Variant>>>>>;
 
       template <template <class...> class _Variant>
         using error_types =
@@ -1970,7 +1970,7 @@ namespace std::execution {
             __transform<
               __bind_back<__defer<__error_types_of_t>, __q<__types>>,
               __bind_front<
-                __concat<__unique<__q<_Variant>>>,
+                __concat<__uniq<__q<_Variant>>>,
                 __types<exception_ptr>,
                 error_types_of_t<__t<_SenderId>, __types>>>>;
 
@@ -1999,7 +1999,7 @@ namespace std::execution {
             __transform<
               __bind_back<__defer<__value_types_of_t>, __q<_Tuple>, __q<__types>>,
               __bind_front<
-                __concat<__unique<__q<_Variant>>>,
+                __concat<__uniq<__q<_Variant>>>,
                 value_types_of_t<__t<_SenderId>, _Tuple, __types>>>>;
 
       template <template <class...> class _Variant>
@@ -2008,7 +2008,7 @@ namespace std::execution {
             __transform<
               __bind_back<__defer<__error_types_of_t>, __q<__types>>,
               __bind_front<
-                __concat<__unique<__q<_Variant>>>,
+                __concat<__uniq<__q<_Variant>>>,
                 __types<exception_ptr>>>>;
 
       static constexpr bool sends_done =
@@ -2036,7 +2036,7 @@ namespace std::execution {
             __transform<
               __bind_back<__defer<__value_types_of_t>, __q<_Tuple>, __q<__types>>,
               __bind_front<
-                __concat<__unique<__q<_Variant>>>,
+                __concat<__uniq<__q<_Variant>>>,
                 value_types_of_t<__t<_SenderId>, _Tuple, __types>>>>;
 
       template <template <class...> class _Variant>
@@ -2045,7 +2045,7 @@ namespace std::execution {
             __transform<
               __bind_back<__defer<__error_types_of_t>, __q<__types>>,
               __bind_front<
-                __concat<__unique<__q<_Variant>>>,
+                __concat<__uniq<__q<_Variant>>>,
                 __types<exception_ptr>,
                 error_types_of_t<__t<_SenderId>, __types>>>>;
 
@@ -2772,7 +2772,7 @@ namespace std::execution {
           template <template <class...> class _Variant>
             using error_types =
               __minvoke<
-                __concat<__unique<__q<_Variant>>>,
+                __concat<__uniq<__q<_Variant>>>,
                 __types<exception_ptr>,
                 error_types_of_t<__t<_SenderIds>, __types>...>;
 
