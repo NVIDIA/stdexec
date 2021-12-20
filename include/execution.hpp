@@ -63,6 +63,61 @@ namespace std::execution {
     };
 
   /////////////////////////////////////////////////////////////////////////////
+  // [execution.receivers]
+  inline namespace __receiver_cpo {
+    inline constexpr struct set_value_t {
+      template <class _Receiver, class... _As>
+        requires tag_invocable<set_value_t, _Receiver, _As...>
+      void operator()(_Receiver&& __rcvr, _As&&... __as) const
+        noexcept(nothrow_tag_invocable<set_value_t, _Receiver, _As...>) {
+        (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
+      }
+    } set_value{};
+
+    inline constexpr struct set_error_t {
+      template <class _Receiver, class _Error>
+        requires tag_invocable<set_error_t, _Receiver, _Error>
+      void operator()(_Receiver&& __rcvr, _Error&& __err) const
+        noexcept(nothrow_tag_invocable<set_error_t, _Receiver, _Error>) {
+        (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
+      }
+    } set_error {};
+
+    inline constexpr struct set_done_t {
+      template <class _Receiver>
+        requires tag_invocable<set_done_t, _Receiver>
+      void operator()(_Receiver&& __rcvr) const
+        noexcept(nothrow_tag_invocable<set_done_t, _Receiver>) {
+        (void) tag_invoke(set_done_t{}, (_Receiver&&) __rcvr);
+      }
+    } set_done{};
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.receivers]
+  template <class _Receiver, class _Error = exception_ptr>
+    concept receiver =
+      move_constructible<remove_cvref_t<_Receiver>> &&
+      constructible_from<remove_cvref_t<_Receiver>, _Receiver> &&
+      requires(remove_cvref_t<_Receiver>&& __rcvr, _Error&& __err) {
+        { set_done(std::move(__rcvr)) } noexcept;
+        { set_error(std::move(__rcvr), (_Error&&) __err) } noexcept;
+      };
+
+  template <class _Receiver, class... _An>
+    concept receiver_of =
+      receiver<_Receiver> &&
+      requires(remove_cvref_t<_Receiver>&& __rcvr, _An&&... an) {
+        set_value((remove_cvref_t<_Receiver>&&) __rcvr, (_An&&) an...);
+      };
+
+  // NOT TO SPEC
+  template <class _Receiver, class..._As>
+    inline constexpr bool nothrow_receiver_of =
+      receiver_of<_Receiver, _As...> &&
+      nothrow_tag_invocable<set_value_t, _Receiver, _As...>;
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
   using sender_base = struct __sender_base {};
 
@@ -117,61 +172,6 @@ namespace std::execution {
   template <class _Sender>
     concept __valid_sender_traits =
       !__invalid_sender_traits<_Sender>;
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.receivers]
-  inline namespace __receiver_cpo {
-    inline constexpr struct set_value_t {
-      template <class _Receiver, class... _As>
-        requires tag_invocable<set_value_t, _Receiver, _As...>
-      void operator()(_Receiver&& __rcvr, _As&&... __as) const
-        noexcept(nothrow_tag_invocable<set_value_t, _Receiver, _As...>) {
-        (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
-      }
-    } set_value{};
-
-    inline constexpr struct set_error_t {
-      template <class _Receiver, class _Error>
-        requires tag_invocable<set_error_t, _Receiver, _Error>
-      void operator()(_Receiver&& __rcvr, _Error&& __err) const
-        noexcept(nothrow_tag_invocable<set_error_t, _Receiver, _Error>) {
-        (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
-      }
-    } set_error {};
-
-    inline constexpr struct set_done_t {
-      template <class _Receiver>
-        requires tag_invocable<set_done_t, _Receiver>
-      void operator()(_Receiver&& __rcvr) const
-        noexcept(nothrow_tag_invocable<set_done_t, _Receiver>) {
-        (void) tag_invoke(set_done_t{}, (_Receiver&&) __rcvr);
-      }
-    } set_done{};
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.receivers]
-  template <class _Receiver, class _Error = exception_ptr>
-    concept receiver =
-      move_constructible<remove_cvref_t<_Receiver>> &&
-      constructible_from<remove_cvref_t<_Receiver>, _Receiver> &&
-      requires(remove_cvref_t<_Receiver>&& __rcvr, _Error&& __err) {
-        { set_done(std::move(__rcvr)) } noexcept;
-        { set_error(std::move(__rcvr), (_Error&&) __err) } noexcept;
-      };
-
-  template <class _Receiver, class... _An>
-    concept receiver_of =
-      receiver<_Receiver> &&
-      requires(remove_cvref_t<_Receiver>&& __rcvr, _An&&... an) {
-        set_value((remove_cvref_t<_Receiver>&&) __rcvr, (_An&&) an...);
-      };
-
-  // NOT TO SPEC
-  template <class _Receiver, class..._As>
-    inline constexpr bool nothrow_receiver_of =
-      receiver_of<_Receiver, _As...> &&
-      nothrow_tag_invocable<set_value_t, _Receiver, _As...>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
