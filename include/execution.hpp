@@ -66,10 +66,6 @@ namespace std::execution {
   // [execution.senders.traits]
   using sender_base = struct __sender_base {};
 
-  struct __no_sender_traits {
-    using __unspecialized = void;
-  };
-
   template <bool _SendsDone, class... _Ts>
     struct __sender_of {
       template <template <class...> class _Tuple, template <class...> class _Variant>
@@ -101,6 +97,9 @@ namespace std::execution {
         return __sender_of<false, __await_result_t<_Sender>>{};
       }
     } else {
+      struct __no_sender_traits{
+        using __this_is_not_a_sender = _Sender;
+      };
       return __no_sender_traits{};
     }
   }
@@ -110,6 +109,14 @@ namespace std::execution {
   template <class _Sender>
   struct sender_traits
     : decltype(__sender_traits_base_fn<_Sender>()) {};
+
+  template <class _Sender>
+    concept __invalid_sender_traits =
+      same_as<typename sender_traits<_Sender>::__this_is_not_a_sender, _Sender>;
+
+  template <class _Sender>
+    concept __valid_sender_traits =
+      !__invalid_sender_traits<_Sender>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -168,12 +175,11 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
+  // NOT TO SPEC (YET)
   template <class _Sender>
     concept sender =
       move_constructible<remove_cvref_t<_Sender>> &&
-      !requires {
-        typename sender_traits<remove_cvref_t<_Sender>>::__unspecialized;
-      };
+      __valid_sender_traits<remove_cvref_t<_Sender>>;
 
   template <class _Sender>
     concept typed_sender =
