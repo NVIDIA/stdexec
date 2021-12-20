@@ -45,6 +45,9 @@
 #define _PRAGMA_IGNORE(__arg)
 #endif
 
+_PRAGMA_PUSH()
+_PRAGMA_IGNORE("-Wundefined-internal")
+
 namespace std::execution {
   template <template <template <class...> class, template <class...> class> class>
     struct __test_has_values;
@@ -1654,8 +1657,6 @@ namespace std::execution {
               _Sender,
               __transform<__q<__as_tuple>, __q<__which_tuple_>>> {};
 
-_PRAGMA_PUSH()
-_PRAGMA_IGNORE("-Wundefined-internal")
       template <class _Fun>
         struct __applyable_fn {
           __ operator()(auto&&...) const;
@@ -1663,7 +1664,6 @@ _PRAGMA_IGNORE("-Wundefined-internal")
               requires invocable<_Fun, _As...>
             invoke_result_t<_Fun, _As...> operator()(_As&&...) const;
         };
-_PRAGMA_POP()
 
       template <class _Fun, class _Tuple>
         concept __applyable =
@@ -1753,6 +1753,13 @@ _PRAGMA_POP()
           template <class... _As>
             using __op_state_for_t =
               connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
+
+          // For the purposes of the receiver concept, this receiver must be able
+          // to accept exception_ptr, even if the input sender can never complete
+          // with set_error.
+          template <__decays_to<exception_ptr> _Error>
+            friend void tag_invoke(set_error_t, __receiver&&, _Error&& __err) noexcept
+              requires same_as<_Let, set_error_t> && (!__valid<__which_tuple_t, _Error>);
 
           template <__one_of<_Let> _Tag, class... _As>
               requires
@@ -3162,3 +3169,5 @@ namespace std::this_thread {
     } sync_wait_with_variant {};
   } // namespace __sync_wait
 } // namespace std::this_thread
+
+_PRAGMA_POP()
