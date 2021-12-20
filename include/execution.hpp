@@ -2758,6 +2758,7 @@ namespace std::execution {
           template <template <class...> class _Tuple,
                     template <class...> class _Variant>
             struct __value_types {
+              static constexpr bool __has_values = true;
               using type = _Variant<__minvoke<__concat<__q<_Tuple>>,
                 value_types_of_t<__t<_SenderIds>, __types, __single_t>...>>;
             };
@@ -2766,6 +2767,7 @@ namespace std::execution {
                     template <class...> class _Variant>
               requires (__zero_alternatives<__t<_SenderIds>> ||...)
             struct __value_types<_Tuple, _Variant> {
+              static constexpr bool __has_values = false;
               using type = _Variant<>;
             };
 
@@ -2818,14 +2820,16 @@ namespace std::execution {
                     }
                   template <class... _Values>
                     void set_value(_Values&&... __vals) && noexcept {
-                      // We only need to bother recording the completion values
-                      // if we're not already in the "error" or "done" state.
-                      if (__op_state_->__state_ == __started) {
-                        try {
-                          std::get<_Index>(__op_state_->__values_).emplace(
-                              (_Values&&) __vals...);
-                        } catch(...) {
-                          __set_error(current_exception(), __started);
+                      if constexpr ((!__zero_alternatives<__t<_SenderIds>> &&...)) {
+                        // We only need to bother recording the completion values
+                        // if we're not already in the "error" or "done" state.
+                        if (__op_state_->__state_ == __started) {
+                          try {
+                            std::get<_Index>(__op_state_->__values_).emplace(
+                                (_Values&&) __vals...);
+                          } catch(...) {
+                            __set_error(current_exception(), __started);
+                          }
                         }
                       }
                       __op_state_->__arrive();
@@ -2886,29 +2890,31 @@ namespace std::execution {
                 // All child operations have completed and arrived at the barrier.
                 switch(__state_.load(memory_order_relaxed)) {
                 case __started:
-                  // All child operations completed successfully:
-                  std::apply(
-                    [this](auto&... __opt_vals) -> void {
-                      std::apply(
-                        [this](auto&... __all_vals) -> void {
-                          try {
-                            execution::set_value(
-                                (_Receiver&&) __recvr_, std::move(__all_vals)...);
-                          } catch(...) {
-                            execution::set_error(
-                                (_Receiver&&) __recvr_, current_exception());
-                          }
-                        },
-                        std::tuple_cat(
-                          std::apply(
-                            [](auto&... __vals) { return std::tie(__vals...); },
-                            *__opt_vals
-                          )...
-                        )
-                      );
-                    },
-                    __values_
-                  );
+                  if constexpr ((!__zero_alternatives<__t<_SenderIds>> &&...)) {
+                    // All child operations completed successfully:
+                    std::apply(
+                      [this](auto&... __opt_vals) -> void {
+                        std::apply(
+                          [this](auto&... __all_vals) -> void {
+                            try {
+                              execution::set_value(
+                                  (_Receiver&&) __recvr_, std::move(__all_vals)...);
+                            } catch(...) {
+                              execution::set_error(
+                                  (_Receiver&&) __recvr_, current_exception());
+                            }
+                          },
+                          std::tuple_cat(
+                            std::apply(
+                              [](auto&... __vals) { return std::tie(__vals...); },
+                              *__opt_vals
+                            )...
+                          )
+                        );
+                      },
+                      __values_
+                    );
+                  }
                   break;
                 case __error:
                   std::visit([this](auto& __err) noexcept {
