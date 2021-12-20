@@ -119,7 +119,10 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
-  using sender_base = struct __sender_base {};
+  namespace __sender_base {
+    struct sender_base {};
+  }
+  using __sender_base::sender_base;
 
   template <bool _SendsDone, class... _Ts>
     struct __sender_of {
