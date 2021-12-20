@@ -32,7 +32,8 @@ namespace std {
         };
 
       struct tag_invoke_t {
-        template <class... _Args, __has_tag_invoke<_Args...> _Tag>
+        template <class _Tag, class... _Args>
+          requires __has_tag_invoke<_Tag, _Args...>
         constexpr decltype(auto) operator()(_Tag __tag, _Args&&... __args) const
           noexcept(noexcept(tag_invoke((_Tag&&) __tag, (_Args&&) __args...))) {
           return tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
