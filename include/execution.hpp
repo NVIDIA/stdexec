@@ -3418,6 +3418,48 @@ namespace std::execution {
       }
     } transfer_when_all_with_variant {};
   } // namespace __when_all
+
+  inline namespace __read_ {
+    namespace __impl {
+      template <class _Tag, class _ReceiverId>
+        struct __operation {
+          __t<_ReceiverId> __rcvr_;
+          friend void tag_invoke(start_t, __operation& __self) noexcept try {
+            set_value(std::move(__self.__rcvr_), _Tag{}(std::as_const(__self.__rcvr_)));
+          } catch(...) {
+            set_error(std::move(__self.__rcvr_), current_exception());
+          }
+        };
+
+      template <class _Tag>
+        struct __sender {
+          template <class _Receiver>
+            requires invocable<_Tag, __cref_t<_Receiver>> &&
+              receiver_of<_Receiver, invoke_result_t<_Tag, __cref_t<_Receiver>>>
+          friend auto tag_invoke(connect_t, __sender, _Receiver&& __rcvr)
+            noexcept(is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
+            -> __operation<_Tag, __x<decay_t<_Receiver>>> {
+            return {(_Receiver&&) __rcvr};
+          }
+
+          friend __ tag_invoke(get_sender_traits_t, __sender, auto&&) noexcept;
+
+          template <class _Receiver>
+            requires invocable<_Tag, __cref_t<_Receiver>>
+          friend auto tag_invoke(get_sender_traits_t, __sender, _Receiver&&) noexcept
+            -> completion_signatures<
+                set_value_t(invoke_result_t<_Tag, __cref_t<_Receiver>>),
+                set_error_t(exception_ptr)>;
+        };
+    } // namespace __impl
+
+    inline constexpr struct __read_t {
+      template <class _Tag>
+      constexpr __impl::__sender<_Tag> operator()(_Tag) const noexcept {
+        return {};
+      }
+    } __read {};
+  } // namespace __read_
 } // namespace std::execution
 
 namespace std::this_thread {

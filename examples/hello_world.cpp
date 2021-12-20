@@ -39,4 +39,8 @@ int main() {
 
   auto [i] = sync_wait(std::move(add_42)).value();                        // 5
   std::cout << "Result: " << i << std::endl;
+
+  std::tuple<run_loop::__scheduler> t =
+    sync_wait(__read(get_scheduler)).value();
+  (void) t;
 }
