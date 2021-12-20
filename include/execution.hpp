@@ -1034,12 +1034,22 @@ namespace std::execution {
       template <class _CPO, class... _Ts>
         struct __sender : __traits<_CPO, _Ts...> {
           tuple<_Ts...> __vals_;
+          template <class _Receiver>
+            using __is_nothrow =
+              __bool<noexcept(_CPO{}(__declval<_Receiver>(), __declval<_Ts>()...))>;
 
           template <class _ReceiverId>
           struct __operation {
             using _Receiver = __t<_ReceiverId>;
             tuple<_Ts...> __vals_;
             _Receiver __rcvr_;
+
+            friend void tag_invoke(start_t, __operation& __op_state) noexcept
+                requires __v<__is_nothrow<_Receiver>> {
+              std::apply([&__op_state](_Ts&... __ts) {
+                _CPO{}((_Receiver&&) __op_state.__rcvr_, (_Ts&&) __ts...);
+              }, __op_state.__vals_);
+            }
 
             friend void tag_invoke(start_t, __operation& __op_state) noexcept try {
               std::apply([&__op_state](_Ts&... __ts) {
