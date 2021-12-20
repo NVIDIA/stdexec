@@ -22,15 +22,10 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
-struct fail_some {
-  template <template<class...> class Tuple, template<class...> class Variant>
-  using value_types = Variant<Tuple<int>>;
-
-  template <template<class...> class Variant>
-  using error_types = Variant<std::exception_ptr>;
-
-  static constexpr bool sends_done = false;
-
+struct fail_some
+ : std::execution::receiver_signatures<
+      std::execution::set_value_t(int),
+      std::execution::set_error_t(std::exception_ptr)> {
   template <class R>
   struct op {
     R r_;

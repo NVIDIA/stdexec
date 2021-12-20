@@ -118,20 +118,59 @@ namespace std::execution {
       nothrow_tag_invocable<set_value_t, _Receiver, _As...>;
 
   /////////////////////////////////////////////////////////////////////////////
+  // receiver_signatures
+  // NOT TO SPEC
+  namespace __receiver_signatures {
+    template <same_as<set_value_t> _Tag, class _Ty = __q<__types>, class... _Args>
+      __types<__minvoke<_Ty, _Args...>> __test(_Tag(*)(_Args...));
+    template <same_as<set_error_t> _Tag, class _Ty = __q<__types>, class _Error>
+      __types<__minvoke1<_Ty, _Error>> __test(_Tag(*)(_Error));
+    template <same_as<set_done_t> _Tag, class _Ty = __q<__types>>
+      __types<__minvoke<_Ty>> __test(_Tag(*)());
+    template <class, class = void>
+      __types<> __test(...);
+
+    template <class _Sig, class _Tag, class _Ty = __q<__types>>
+      using __signal_args_t =
+        decltype(__test<_Tag, _Ty>((_Sig*) nullptr));
+
+    template <class _Sig>
+      concept __receiver_signal =
+        requires { typename __id<decltype(__test((_Sig*) nullptr))>; };
+
+    template <class... _Sigs>
+      struct receiver_signatures {
+        struct type {
+          template <template <class...> class _Tuple, template <class...> class _Variant>
+            using value_types =
+              __minvoke<
+                __concat<__q<_Variant>>,
+                __signal_args_t<_Sigs, set_value_t, __q<_Tuple>>...>;
+
+          template <template <class...> class _Variant>
+            using error_types =
+              __minvoke<
+                __concat<__q<_Variant>>,
+                __signal_args_t<_Sigs, set_error_t, __q1<__id>>...>;
+
+          static constexpr bool sends_done =
+            __minvoke<
+              __concat<__count>,
+              __signal_args_t<_Sigs, set_done_t>...>::value != 0;
+        };
+      };
+  } // namespace __receiver_signatures
+
+  template <__receiver_signatures::__receiver_signal... _Sigs>
+    using receiver_signatures =
+      __t<__receiver_signatures::receiver_signatures<_Sigs...>>;
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
   namespace __sender_base {
     struct sender_base {};
   }
   using __sender_base::sender_base;
-
-  template <bool _SendsDone, class... _Ts>
-    struct __sender_of {
-      template <template <class...> class _Tuple, template <class...> class _Variant>
-        using value_types = _Variant<_Tuple<_Ts...>>;
-      template <template <class...> class _Variant>
-        using error_types = _Variant<exception_ptr>;
-      static constexpr bool sends_done = _SendsDone;
-    };
 
   template <class _Sender>
     struct __typed_sender {
@@ -149,10 +188,11 @@ namespace std::execution {
     } else if constexpr (derived_from<_Sender, sender_base>) {
       return sender_base{};
     } else if constexpr (__awaitable<_Sender>) {
-      if constexpr (is_void_v<__await_result_t<_Sender>>) {
-        return __sender_of<false>{};
+      using _Result = __await_result_t<_Sender>;
+      if constexpr (is_void_v<_Result>) {
+        return receiver_signatures<set_value_t(), set_error_t(exception_ptr)>{};
       } else {
-        return __sender_of<false, __await_result_t<_Sender>>{};
+        return receiver_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
       }
     } else {
       struct __no_sender_traits{
@@ -1002,38 +1042,12 @@ namespace std::execution {
   inline namespace __just {
     namespace __impl {
       template <class _CPO, class... _Ts>
-        struct __traits {
-          template <template <class...> class _Tuple,
-                    template <class...> class _Variant>
-          using value_types = _Variant<_Tuple<_Ts...>>;
+        using __traits =
+          __if<
+            is_same<_CPO, set_value_t>,
+            receiver_signatures<set_value_t(_Ts...), set_error_t(exception_ptr)>,
+            receiver_signatures<_CPO(_Ts...)>>;
 
-          template <template <class...> class _Variant>
-          using error_types = _Variant<exception_ptr>;
-
-          static const constexpr auto sends_done = false;
-        };
-      template <class _Error>
-        struct __traits<set_error_t, _Error> {
-          template <template <class...> class,
-                    template <class...> class _Variant>
-          using value_types = _Variant<>;
-
-          template <template <class...> class _Variant>
-          using error_types = _Variant<_Error>;
-
-          static const constexpr auto sends_done = false;
-        };
-      template <>
-        struct __traits<set_done_t> {
-          template <template <class...> class,
-                    template <class...> class _Variant>
-          using value_types = _Variant<>;
-
-          template <template <class...> class _Variant>
-          using error_types = _Variant<>;
-
-          static const constexpr auto sends_done = true;
-        };
       template <class _CPO, class... _Ts>
         struct __sender : __traits<_CPO, _Ts...> {
           tuple<_Ts...> __vals_;
@@ -2237,17 +2251,8 @@ namespace std::execution {
         friend struct __impl::__operation;
      public:
       class __scheduler {
-        struct __schedule_task {
-          template <
-              template <typename...> class _Tuple,
-              template <typename...> class _Variant>
-          using value_types = _Variant<_Tuple<>>;
-
-          template <template <typename...> class _Variant>
-          using error_types = _Variant<exception_ptr>;
-
-          static constexpr bool sends_done = true;
-
+        struct __schedule_task
+          : receiver_signatures<set_value_t(), set_error_t(exception_ptr), set_done_t()> {
          private:
           friend __scheduler;
 
