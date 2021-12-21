@@ -34,6 +34,11 @@ task<std::optional<int>> async_answer2(S1 s1, S2 s2) {
   co_return co_await done_as_optional(async_answer(s1, s2));
 }
 
+// tasks have an associated stop token
+task<std::in_place_stop_token> async_stop_token() {
+  co_return co_await get_stop_token();
+}
+
 int main() try {
   // Awaitables are implicitly senders:
   auto [i] = std::this_thread::sync_wait(async_answer2(just(42), just())).value();

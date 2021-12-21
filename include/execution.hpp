@@ -47,6 +47,8 @@
 
 _PRAGMA_PUSH()
 _PRAGMA_IGNORE("-Wundefined-internal")
+// inline namespace reopened as a non-inline namespace:
+_PRAGMA_IGNORE("-Winline-namespace-reopened-noninline")
 
 namespace std::execution {
   template <template <template <class...> class, template <class...> class> class>
@@ -403,6 +405,8 @@ namespace std::execution {
           -> tag_invoke_result_t<get_scheduler_t, __cref_t<_T>> {
           return tag_invoke(get_scheduler_t{}, std::as_const(__t));
         }
+        // NOT TO SPEC
+        auto operator()() const noexcept;
       };
 
       struct get_delegee_scheduler_t {
@@ -424,6 +428,8 @@ namespace std::execution {
           noexcept(nothrow_tag_invocable<get_allocator_t, __cref_t<_T>>) {
           return tag_invoke(get_allocator_t{}, std::as_const(__t));
         }
+        // NOT TO SPEC
+        auto operator()() const noexcept;
       };
 
       struct get_stop_token_t {
@@ -437,6 +443,8 @@ namespace std::execution {
         never_stop_token operator()(auto&&) const noexcept {
           return {};
         }
+        // NOT TO SPEC
+        auto operator()() const noexcept;
       };
     } // namespace __impl
 
@@ -3460,6 +3468,18 @@ namespace std::execution {
       }
     } __read {};
   } // namespace __read_
+
+  namespace __general_queries::__impl {
+    inline auto get_scheduler_t::operator()() const noexcept {
+      return __read_::__impl::__sender<get_scheduler_t>{};
+    }
+    inline auto get_allocator_t::operator()() const noexcept {
+      return __read_::__impl::__sender<get_allocator_t>{};
+    }
+    inline auto get_stop_token_t::operator()() const noexcept {
+      return __read_::__impl::__sender<get_stop_token_t>{};
+    }
+  }
 } // namespace std::execution
 
 namespace std::this_thread {
