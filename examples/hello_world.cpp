@@ -40,7 +40,13 @@ int main() {
   auto [i] = sync_wait(std::move(add_42)).value();                        // 5
   std::cout << "Result: " << i << std::endl;
 
+  // Sync_wait provides a run_loop scheduler
   std::tuple<run_loop::__scheduler> t =
-    sync_wait(__read(get_scheduler)).value();
+    sync_wait(get_scheduler()).value();
   (void) t;
+
+  auto y = let_value(get_scheduler(), [](auto sched){
+    return on(sched, then(just(),[]{std::cout << "from run_loop\n";return 42;}));
+  });
+  sync_wait(std::move(y));
 }
