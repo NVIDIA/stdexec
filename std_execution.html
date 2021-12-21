@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-19">2021-12-19</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-20">2021-12-20</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4956,7 +4956,7 @@ the shared stop state.</p>
 
     <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
       <c- k>concept</c-> <i><c- nc>forwarding</c-><c- o>-</c-><c- n>scheduler</c-><c- o>-</c-><c- n>query</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
-        <c- k>requires</c-><c- p>(</c-><c- n>T</c-> <c- n>t</c-><c- p>)</c-> <c- p>{</c-> <c- k>requires</c-> <c- nf>forwarding_scheduler_query</c-><c- p>(</c-><c- n>t</c-><c- p>);</c-> <c- p>};</c->
+        <c- n>forwarding_scheduler_query</c-><c- p>(</c-><c- n>T</c-><c- p>{});</c->
 
     <c- k>struct</c-> <c- nc>get_forward_progress_guarantee_t</c-><c- p>;</c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_forward_progress_guarantee_t</c-> <c- n>get_forward_progress_guarantee</c-><c- p>{};</c->
@@ -4994,7 +4994,7 @@ the shared stop state.</p>
 
     <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
       <c- k>concept</c-> <i><c- nc>forwarding</c-><c- o>-</c-><c- n>receiver</c-><c- o>-</c-><c- n>query</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
-        <c- k>requires</c-><c- p>(</c-><c- n>T</c-> <c- n>t</c-><c- p>)</c-> <c- p>{</c-> <c- k>requires</c-> <c- nf>forwarding_receiver_query</c-><c- p>(</c-><c- n>t</c-><c- p>);</c-> <c- p>};</c->
+        <c- n>forwarding_receiver_query</c-><c- p>(</c-><c- n>T</c-><c- p>{});</c->
   <c- p>}</c->
 
   <c- c1>// [execution.op_state], operation states</c->
@@ -5070,7 +5070,7 @@ the shared stop state.</p>
 
     <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
       <c- k>concept</c-> <i><c- nc>forwarding</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>query</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
-        <c- k>requires</c-><c- p>(</c-><c- n>T</c-> <c- n>t</c-><c- p>)</c-> <c- p>{</c-> <c- k>requires</c-> <c- nf>forwarding_sender_query</c-><c- p>(</c-><c- n>t</c-><c- p>);</c-> <c- p>};</c->
+        <c- n>forwarding_sender_query</c-><c- p>(</c-><c- n>T</c-><c- p>{});</c->
 
     <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>get_completion_scheduler_t</c-><c- p>;</c->
