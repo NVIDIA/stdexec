@@ -1804,7 +1804,7 @@ namespace std::execution {
               requires invocable<_Tag, const _Receiver&, _As...>
             friend decltype(auto) tag_invoke(_Tag tag, const __receiver& __self, _As&&... __as)
                 noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _As...>) {
-              ((_Tag&&) tag)(__self.base(), (_As&&) __as...);
+              return ((_Tag&&) tag)(__self.base(), (_As&&) __as...);
             }
 
           __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
