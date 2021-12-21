@@ -315,9 +315,7 @@ namespace std::execution {
 
     template <class _Tag>
       concept __scheduler_query =
-        requires (_Tag __tag) {
-          requires forwarding_scheduler_query((_Tag&&) __tag);
-        };
+        forwarding_scheduler_query(_Tag{});
   } // namespace __scheduler_queries
 
   inline namespace __sender_queries {
@@ -420,9 +418,7 @@ namespace std::execution {
 
     template <class _Tag>
       concept __receiver_query =
-        requires (_Tag __tag) {
-          requires forwarding_receiver_query((_Tag&&) __tag);
-        };
+        forwarding_receiver_query(_Tag{});
   } // namespace __receiver_queries
 
   /////////////////////////////////////////////////////////////////////////////
@@ -701,9 +697,7 @@ namespace std::execution {
 
     template <class _Tag>
       concept __sender_query =
-        requires (_Tag __tag) {
-          requires forwarding_sender_query((_Tag&&) __tag);
-        };
+        forwarding_sender_query(_Tag{});
   } // namespace __sender_queries
 
   template <class _Sender, class _CPO>

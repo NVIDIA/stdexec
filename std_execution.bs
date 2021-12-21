@@ -2820,7 +2820,7 @@ namespace std::execution {
 
     template &lt;class T>
       concept <i>forwarding-scheduler-query</i> = // exposition only
-        requires(T t) { requires forwarding_scheduler_query(t); };
+        forwarding_scheduler_query(T{});
 
     struct get_forward_progress_guarantee_t;
     inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
@@ -2858,7 +2858,7 @@ namespace std::execution {
 
     template &lt;class T>
       concept <i>forwarding-receiver-query</i> = // exposition only
-        requires(T t) { requires forwarding_receiver_query(t); };
+        forwarding_receiver_query(T{});
   }
 
   // [execution.op_state], operation states
@@ -2934,7 +2934,7 @@ namespace std::execution {
 
     template &lt;class T>
       concept <i>forwarding-sender-query</i> = // exposition only
-        requires(T t) { requires forwarding_sender_query(t); };
+        forwarding_sender_query(T{});
 
     template&lt;class CPO>
     struct get_completion_scheduler_t;
