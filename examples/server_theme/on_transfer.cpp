@@ -101,8 +101,7 @@ int main() {
     // The entire flow
     auto snd =
         // start by reading data on the I/O thread
-        ex::on(io_sched, std::move(snd_read)) // TODO: doesn't work apple-clang-13
-        // ex::on(io_sched, ex::just(size_t(13)))
+        ex::on(io_sched, std::move(snd_read))
         // do the processing on the worker threads pool
         | ex::transfer(work_sched)
         // process the incoming data (on worker threads)
