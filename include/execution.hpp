@@ -332,9 +332,9 @@ namespace std::execution {
     concept scheduler =
       copy_constructible<remove_cvref_t<_Scheduler>> &&
       equality_comparable<remove_cvref_t<_Scheduler>> &&
-      requires(_Scheduler&& __sched, const get_completion_scheduler_t<set_value_t> tag) {
+      requires(_Scheduler&& __sched, const get_completion_scheduler_t<set_value_t> __tag) {
         { schedule((_Scheduler&&) __sched) } -> sender_of;
-        { tag_invoke(tag, schedule((_Scheduler&&) __sched)) } -> same_as<remove_cvref_t<_Scheduler>>;
+        { tag_invoke(__tag, schedule((_Scheduler&&) __sched)) } -> same_as<remove_cvref_t<_Scheduler>>;
       };
 
   // NOT TO SPEC
@@ -1387,9 +1387,9 @@ namespace std::execution {
 
           template <__receiver_query _Tag, class _D = _Derived, class... _As>
             requires invocable<_Tag, __base_t<const _D&>, _As...>
-          friend decltype(auto) tag_invoke(_Tag tag, const _Derived& __self, _As&&... __as)
+          friend decltype(auto) tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
             noexcept(is_nothrow_invocable_v<_Tag, __base_t<const _D&>, _As...>) {
-            return ((_Tag&&) tag)(__get_base(__self), (_As&&) __as...);
+            return ((_Tag&&) __tag)(__get_base(__self), (_As&&) __as...);
           }
 
          public:
@@ -1424,9 +1424,9 @@ namespace std::execution {
 
           template <__none_of<start_t> _Tag, class... _As>
             requires invocable<_Tag, const _Base&, _As...>
-          friend decltype(auto) tag_invoke(_Tag tag, const _Derived& __self, _As&&... __as)
+          friend decltype(auto) tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
             noexcept(is_nothrow_invocable_v<_Tag, const _Base&, _As...>) {
-            return ((_Tag&&) tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
+            return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
           }
 
          protected:
@@ -1468,9 +1468,9 @@ namespace std::execution {
 
           template <__none_of<schedule_t> _Tag, same_as<_Derived> _Self, class... _As>
             requires invocable<_Tag, const _Base&, _As...>
-          friend decltype(auto) tag_invoke(_Tag tag, const _Self& __self, _As&&... __as)
+          friend decltype(auto) tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as)
             noexcept(is_nothrow_invocable_v<_Tag, const _Base&, _As...>) {
-            return ((_Tag&&) tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
+            return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
           }
 
          protected:
@@ -1790,17 +1790,17 @@ namespace std::execution {
 
           template <__one_of<set_value_t, set_error_t, set_done_t> _Tag, class... _As>
               requires __none_of<_Tag, _Let> && invocable<_Tag, _Receiver, _As...>
-            friend void tag_invoke(_Tag tag, __receiver&& __self, _As&&... __as) noexcept try {
-              tag(std::move(__self).base(), (_As&&) __as...);
+            friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept try {
+              __tag(std::move(__self).base(), (_As&&) __as...);
             } catch(...) {
               set_error(std::move(__self).base(), current_exception());
             }
 
           template <__receiver_query _Tag, class... _As>
               requires invocable<_Tag, const _Receiver&, _As...>
-            friend decltype(auto) tag_invoke(_Tag tag, const __receiver& __self, _As&&... __as)
+            friend decltype(auto) tag_invoke(_Tag __tag, const __receiver& __self, _As&&... __as)
                 noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _As...>) {
-              return ((_Tag&&) tag)(__self.base(), (_As&&) __as...);
+              return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
             }
 
           __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
@@ -2276,8 +2276,8 @@ namespace std::execution {
                 __tuple_.emplace<_Tuple>((_Args&&) __args...);
                 __complete_ = [](_Receiver& __rcvr, any& __tupl) noexcept {
                   try {
-                    std::apply([&](auto tag, auto&&... __args) -> void {
-                      tag((_Receiver&&) __rcvr, (decltype(__args)&&) __args...);
+                    std::apply([&](auto __tag, auto&&... __args) -> void {
+                      __tag((_Receiver&&) __rcvr, (decltype(__args)&&) __args...);
                     }, any_cast<_Tuple>(__tupl));
                   } catch(...) {
                     set_error((_Receiver&&) __rcvr, current_exception());
@@ -2377,9 +2377,9 @@ namespace std::execution {
 
           template <__receiver_query _Tag, class... _Args>
             requires invocable<_Tag, const _Receiver&, _Args...>
-          friend decltype(auto) tag_invoke(_Tag tag, const __receiver2& __self, _Args&&... __args)
+          friend decltype(auto) tag_invoke(_Tag __tag, const __receiver2& __self, _Args&&... __args)
             noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _Args...>) {
-            return ((_Tag&&) tag)(as_const(__self.__op_state_->__rcvr_), (_Args&&) __args...);
+            return ((_Tag&&) __tag)(as_const(__self.__op_state_->__rcvr_), (_Args&&) __args...);
           }
         };
 
@@ -2419,9 +2419,9 @@ namespace std::execution {
 
           template <__receiver_query _Tag, class... _Args>
             requires invocable<_Tag, const _Receiver&, _Args...>
-          friend decltype(auto) tag_invoke(_Tag tag, const __receiver1& __self, _Args&&... __args)
+          friend decltype(auto) tag_invoke(_Tag __tag, const __receiver1& __self, _Args&&... __args)
             noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _Args...>) {
-            return ((_Tag&&) tag)(as_const(__self.__op_state_->__rcvr_), (_Args&&) __args...);
+            return ((_Tag&&) __tag)(as_const(__self.__op_state_->__rcvr_), (_Args&&) __args...);
           }
         };
 
