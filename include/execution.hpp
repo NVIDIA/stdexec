@@ -933,9 +933,8 @@ namespace std::execution {
             // Forward all the receiver ops, and delete the operation state.
             template <__one_of<set_value_t, set_error_t, set_done_t> _Tag, class... _As>
               requires invocable<_Tag, _Receiver, _As...>
-            friend auto tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as)
-                noexcept(is_nothrow_invocable_v<_Tag, _Receiver, _As...>)
-                -> invoke_result_t<_Tag, _Receiver, _As...> {
+            friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as)
+                noexcept(is_nothrow_invocable_v<_Tag, _Receiver, _As...>) {
               // Delete the state as cleanup:
               unique_ptr<__operation> __g{__self.__op_state_};
               return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
@@ -943,9 +942,8 @@ namespace std::execution {
             // Forward all receiever queries.
             template <__none_of<set_value_t, set_error_t, set_done_t> _Tag, class... _As>
               requires invocable<_Tag, const _Receiver&, _As...>
-            friend auto tag_invoke(_Tag __tag, const __receiver& __self, _As&&... __as)
-                noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _As...>)
-                -> invoke_result_t<_Tag, const _Receiver&, _As...> {
+            friend decltype(auto) tag_invoke(_Tag __tag, const __receiver& __self, _As&&... __as)
+                noexcept(is_nothrow_invocable_v<_Tag, const _Receiver&, _As...>) {
               return ((_Tag&&) __tag)((const _Receiver&) __self.__op_state_->__rcvr_, (_As&&) __as...);
             }
           };
@@ -1426,9 +1424,8 @@ namespace std::execution {
 
           template <__none_of<start_t> _Tag, class... _As>
             requires invocable<_Tag, const _Base&, _As...>
-          friend auto tag_invoke(_Tag tag, const _Derived& __self, _As&&... __as)
-            noexcept(is_nothrow_invocable_v<_Tag, const _Base&, _As...>)
-            -> invoke_result_t<_Tag, const _Base&, _As...> {
+          friend decltype(auto) tag_invoke(_Tag tag, const _Derived& __self, _As&&... __as)
+            noexcept(is_nothrow_invocable_v<_Tag, const _Base&, _As...>) {
             return ((_Tag&&) tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
           }
 
@@ -1471,9 +1468,8 @@ namespace std::execution {
 
           template <__none_of<schedule_t> _Tag, same_as<_Derived> _Self, class... _As>
             requires invocable<_Tag, const _Base&, _As...>
-          friend auto tag_invoke(_Tag tag, const _Self& __self, _As&&... __as)
-            noexcept(is_nothrow_invocable_v<_Tag, const _Base&, _As...>)
-            -> invoke_result_t<_Tag, const _Base&, _As...> {
+          friend decltype(auto) tag_invoke(_Tag tag, const _Self& __self, _As&&... __as)
+            noexcept(is_nothrow_invocable_v<_Tag, const _Base&, _As...>) {
             return ((_Tag&&) tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
           }
 
