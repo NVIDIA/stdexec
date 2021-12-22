@@ -84,8 +84,8 @@ namespace std {
   template <class _Fn, class... _Args>
     using __minvoke = typename _Fn::template __f<_Args...>;
 
-  template <class _Fn, class _Arg>
-    using __minvoke1 = typename _Fn::template __f<_Arg>;
+  template <class _Fn, class _First>
+    using __minvoke1 = typename _Fn::template __f<_First>;
 
   template <class _Fn, class _First, class _Second>
     using __minvoke2 = typename _Fn::template __f<_First, _Second>;
@@ -95,6 +95,28 @@ namespace std {
 
   template <template <class...> class _T, class... _Args>
     concept __valid = requires { typename _T<_Args...>; };
+
+  template <template <class> class _T, class _First>
+    concept __valid1 = requires { typename _T<_First>; };
+
+  template <template <class, class> class _T, class _First, class _Second>
+    concept __valid2 = requires { typename _T<_First, _Second>; };
+
+  template <template <class, class, class> class _T, class _First, class _Second, class _Third>
+    concept __valid3 = requires { typename _T<_First, _Second, _Third>; };
+
+  template <class _Fn, class... _Args>
+    concept __minvocable = __valid<_Fn::template __f, _Args...>;
+
+  template <class _Fn, class _First>
+    concept __minvocable1 = __valid1<_Fn::template __f, _First>;
+
+  template <class _Fn, class _First, class _Second>
+    concept __minvocable2 = __valid2<_Fn::template __f, _First, _Second>;
+
+  template <class _Fn, class _First, class _Second, class _Third>
+    concept __minvocable3 = __valid3<_Fn::template __f, _First, _Second, _Third>;
+
   template <template<class...> class _T>
     struct __defer {
       template <class... _Args> requires __valid<_T, _Args...>
@@ -126,7 +148,7 @@ namespace std {
       template <class, class...>
         struct __f_ {};
       template <class _State, class _Head, class... _Tail>
-          requires requires {typename __minvoke2<_Fn, _State, _Head>;}
+          requires __minvocable2<_Fn, _State, _Head>
         struct __f_<_State, _Head, _Tail...>
           : __f_<__minvoke2<_Fn, _State, _Head>, _Tail...>
         {};
@@ -148,7 +170,7 @@ namespace std {
         struct __f_<_A<_As...>, _B<_Bs...>, _Tail...>
           : __f_<__types<_As..., _Bs...>, _Tail...> {};
       template <template <class...> class _A, class... _As>
-          requires requires {typename __minvoke<_Continuation, _As...>;}
+          requires __minvocable<_Continuation, _As...>
         struct __f_<_A<_As...>> {
           using type = __minvoke<_Continuation, _As...>;
         };
@@ -188,21 +210,23 @@ namespace std {
   };
 
   template <class _Continuation = __q<__types>>
-  struct __push_back_unique {
-    template <class _List, class _Item>
-      struct __f_;
-    template <template <class...> class _List, class... _Ts, class _Item>
-      struct __f_<_List<_Ts...>, _Item> {
-        using type = __minvoke<_Continuation, _Ts...>;
-      };
-    template <template <class...> class _List, class... _Ts, class _Item>
-        requires ((!__v<is_same<_Ts, _Item>>) &&...)
-      struct __f_<_List<_Ts...>, _Item> {
-        using type = __minvoke<_Continuation, _Ts..., _Item>;
-      };
-    template <class _List, class _Item>
-      using __f = __t<__f_<_List, _Item>>;
-  };
+    struct __push_back_unique {
+      template <class _List, class _Item>
+        struct __f_;
+      template <template <class...> class _List, class... _Ts, class _Item>
+          requires __minvocable<_Continuation, _Ts...>
+        struct __f_<_List<_Ts...>, _Item> {
+          using type = __minvoke<_Continuation, _Ts...>;
+        };
+      template <template <class...> class _List, class... _Ts, class _Item>
+          requires ((!__v<is_same<_Ts, _Item>>) &&...) &&
+            __minvocable<_Continuation, _Ts..., _Item>
+        struct __f_<_List<_Ts...>, _Item> {
+          using type = __minvoke<_Continuation, _Ts..., _Item>;
+        };
+      template <class _List, class _Item>
+        using __f = __t<__f_<_List, _Item>>;
+    };
 
   template <class _Continuation = __q<__types>>
     struct __munique {
@@ -259,13 +283,16 @@ namespace std {
 
   // For copying cvref from one type to another:
   template <class _T>
-  _T&& __declval() noexcept;
+    _T&& __declval() noexcept requires true;
+
+  template <class>
+    void __declval() noexcept;
 
   template <class _Member, class _Self>
-  _Member _Self::*__memptr(const _Self&);
+    _Member _Self::*__memptr(const _Self&);
 
   template <typename _Self, typename _Member>
-  using __member_t = decltype(
+    using __member_t = decltype(
       (__declval<_Self>() .* __memptr<_Member>(__declval<_Self>())));
 
   template <class... _As>
