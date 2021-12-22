@@ -1083,7 +1083,7 @@ Initial revision.
 
 # Design - introduction # {#design-intro}
 
-The following four sections describe the entirety of the proposed design.
+The following three sections describe the entirety of the proposed design.
 
 * [[#design-intro]] describes the conventions used through the rest of the design sections, as well as an example illustrating how we envision code will be written using this proposal.
 * [[#design-user]] describes all the functionality from the perspective we intend for users: it describes the various concepts they will interact with, and what their programming model is.
