@@ -221,6 +221,7 @@ def_example(example.then "examples/then.cpp")
 def_example(example.server_theme.let_value "examples/server_theme/let_value.cpp")
 def_example(example.server_theme.on_transfer "examples/server_theme/on_transfer.cpp")
 def_example(example.server_theme.then_upon "examples/server_theme/then_upon.cpp")
+def_example(example.server_theme.split_bulk "examples/server_theme/split_bulk.cpp")
 
 ##############################################################################
 # Install targets ------------------------------------------------------------

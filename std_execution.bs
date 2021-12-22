@@ -982,6 +982,101 @@ In this simplified case, one can simplify the signature of the functions to not 
 At the end of the flow we always transform a `classification_result` into an `http_response` object.
 With these constraints, errors and cancellations are handled as if the flow is linear.
 
+### Using multiple threads with `execution::split`, `execution::when_all` and `execution::bulk` ### {#example-server-split}
+
+Example context:
+- implement the handler for applying 3 edge detection algorithms on one image
+- implement the handler for applying a blur filter over the given set of images
+- we show one can use multiple threads to execute a more complex work
+- we show how to use `execution::split` / `execution::when_all` and `execution::bulk`
+- error and cancellation handling is performed outside the handler
+
+Goals:
+- show how one can create work to fill up multiple threads
+- exemplify the use of `then`, `split`, `when_all`, `bulk` and `let_value` algorithms
+
+```c++
+namespace ex = std::execution;
+
+// Extract the image from the HTTP request
+image extract_image(http_request req) {...}
+// Extract multiple images from the HTTP request
+std::vector<image> extract_images(http_request req) {...}
+// Convert the given set of images into the corresponding HTTP response
+http_response img3_to_response(const image& img1, const image& img2, const image& img3) {...}
+// Convert the given set of images into the corresponding HTTP response
+http_response imgvec_to_response(const std::vector<image>& imgs) {...}
+
+// Apply the Canny edge detector on the given image
+image apply_canny(const image& img) {...}
+// Apply the Sobel edge detector on the given image
+image apply_sobel(const image& img) {...}
+// Apply the Prewitt edge detector on the given image
+image apply_prewitt(const image& img) {...}
+// Apply blur filter on the given image
+image apply_blur(const image& img) {...}
+
+ex::sender auto handle_edge_detection_request(const http_request& req) {
+  // extract the input image from the request
+  ex::sender auto in_img_sender = ex::just(req) | ex::then(extract_image);
+
+  // Prepare for using multiple parallel flows on the same input sender
+  // ex::sender auto multi_shot_img = ex::split(in_img_sender);
+  auto& multi_shot_img = in_img_sender;
+
+  // Apply the three methods of edge detection on the same input image, in parallel.
+  // Then, join the results and generate the HTTP response
+  return ex::when_all(                                //
+             multi_shot_img | ex::then(apply_canny),  //
+             multi_shot_img | ex::then(apply_sobel),  //
+             multi_shot_img | ex::then(apply_prewitt) //
+             ) |
+         // transform the resulting 3 images into an HTTP response
+         ex::then(img3_to_response);
+  // error and cancellation handling is performed outside
+}
+
+ex::sender auto handle_multi_blur_request(const http_request& req) {
+  return
+      // extract the input images from the request
+      ex::just(req) |
+      ex::then(extract_images)
+      // process images in parallel with bulk.
+      // use let_value to access the image count before calling bulk.
+      | ex::let_value([](std::vector<image> imgs) {
+          // get the image count
+          size_t img_count = imgs.size();
+          // return a sender that bulk-processes the image in parallel
+          return ex::just(std::move(imgs)) |
+                 ex::bulk(img_count,
+                     [](size_t i, std::vector<image>& imgs) {
+                        imgs[i] = apply_blur(imgs[i]);
+                 });
+        })
+      // transform the resulting 3 images into an HTTP response
+      | ex::then(imgvec_to_response)
+      // done; error and cancellation handling is performed outside
+      ;
+}
+```
+
+The example shows how one can use multiple threads when handling a request.
+We show two handlers that processes multiple things in parallel: one that applies 3 edge detection filters, and one that applies a blur filter to multiple images.
+
+In the first example we know upfront the maximum level of parallelism for the request: as we are computing 3 filters, we have 3 top-level independent processing units that can happen in parallel.
+We use `execution::split` to ensure that the sender that gives the input image can be used multiple times.
+After applying the filter to a copy of the image, we join all 3 processing paths using `execution::when_all`; this will return a sender that completes whenever all given senders complete.
+
+For the second request type, we have a dynamic number of images, so we don't know upfront how to divide the independent top-level work.
+To process all images in parallel we use `execution::bulk`.
+We need to pass the number of work items that can be executed in parallel, and for that we need to query the value that is being issued through the sender.
+For this inspection we use the `execution::let_value` sender algorithm; this allows us to access the value being passed to the sender before retuning an appropriate sender.
+In our case, we get the size of the vector of images, and then we return a sender that, given the set of images will apply `execution::bulk` for that size and the set of images.
+
+
+In our example we assume that that error handling is done outside our handlers.
+See previous examples on how error handling can be implemented.
+
 ## What this proposal is **not** ## {#intro-is-not}
 
 This paper is not a patch on top of [[P0443R14]]; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
