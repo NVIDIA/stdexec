@@ -126,14 +126,14 @@ namespace std {
     template <class>
       friend class in_place_stop_callback;
 
-    inline uint8_t __lock_() noexcept;
-    inline void __unlock_(uint8_t) noexcept;
+    uint8_t __lock_() noexcept;
+    void __unlock_(uint8_t) noexcept;
 
-    inline bool __try_lock_unless_stop_requested_(bool) noexcept;
+    bool __try_lock_unless_stop_requested_(bool) noexcept;
 
-    inline bool __try_add_callback_(__detail::__in_place_stop_callback_base*) noexcept;
+    bool __try_add_callback_(__detail::__in_place_stop_callback_base*) noexcept;
 
-    inline void __remove_callback_(__detail::__in_place_stop_callback_base*) noexcept;
+    void __remove_callback_(__detail::__in_place_stop_callback_base*) noexcept;
 
     static constexpr uint8_t __stop_requested_flag_ = 1;
     static constexpr uint8_t __locked_flag_ = 2;
