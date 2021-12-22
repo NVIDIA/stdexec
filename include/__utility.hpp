@@ -205,7 +205,7 @@ namespace std {
   };
 
   template <class _Continuation = __q<__types>>
-    struct __uniq {
+    struct __munique {
       template <class... _Ts>
         using __f =
           __mapply<
