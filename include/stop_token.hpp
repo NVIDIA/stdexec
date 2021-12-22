@@ -100,6 +100,7 @@ namespace std {
     static constexpr bool stop_possible() noexcept {
       return false;
     }
+    bool operator==(const never_stop_token&) const noexcept = default;
   };
 
   template <class _Callback>
