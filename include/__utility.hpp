@@ -148,7 +148,7 @@ namespace std {
         struct __f_<_A<_As...>, _B<_Bs...>, _Tail...>
           : __f_<__types<_As..., _Bs...>, _Tail...> {};
       template <template <class...> class _A, class... _As>
-          requires requires {typename __minvoke<_Continuation, _As...>;}
+          requires __valid<_Continuation::template __f, _As...>
         struct __f_<_A<_As...>> {
           using type = __minvoke<_Continuation, _As...>;
         };
