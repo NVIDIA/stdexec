@@ -290,25 +290,19 @@ namespace std {
   template <class _Continuation = __q<__types>>
     struct __push_back {
       template <class _List, class _Item>
-        struct __f_ {};
-      template <template <class...> class _List, class... _Ts, class _Item>
-          requires __minvocable<_Continuation, _Ts..., _Item>
-        struct __f_<_List<_Ts...>, _Item> {
-          using type = __minvoke<_Continuation, _Ts..., _Item>;
-        };
-      template <class _List, class _Item>
-        using __f = __t<__f_<_List, _Item>>;
+        using __f =
+          __mapply<__bind_back<_Continuation, _Item>, _List>;
     };
 
   template <class _Continuation = __q<__types>>
     struct __push_back_unique {
       template <class _List, class _Item>
         using __f =
-          __minvoke<
+          __mapply<
             __if<
               __mapply<__contains<_Item>, _List>,
-              __uncurry<_Continuation>,
-              __bind_back1<__push_back<_Continuation>, _Item>>,
+              _Continuation,
+              __bind_back<_Continuation, _Item>>,
             _List>;
     };
 
