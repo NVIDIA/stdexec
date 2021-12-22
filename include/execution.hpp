@@ -46,24 +46,12 @@
 #endif
 
 _PRAGMA_PUSH()
+_PRAGMA_IGNORE("-Wundefined-inline")
 _PRAGMA_IGNORE("-Wundefined-internal")
 // inline namespace reopened as a non-inline namespace:
 _PRAGMA_IGNORE("-Winline-namespace-reopened-noninline")
 
 namespace std::execution {
-  template <template <template <class...> class, template <class...> class> class>
-    struct __test_has_values;
-
-  template <template <template <class...> class> class>
-    struct __test_has_errors;
-
-  template <class _T>
-    concept __has_sender_types = requires {
-      typename __test_has_values<_T::template value_types>;
-      typename __test_has_errors<_T::template error_types>;
-      typename bool_constant<_T::sends_done>;
-    };
-
   enum class forward_progress_guarantee {
     concurrent,
     parallel,
@@ -126,6 +114,30 @@ namespace std::execution {
       nothrow_tag_invocable<set_value_t, _Receiver, _As...>;
 
   /////////////////////////////////////////////////////////////////////////////
+  // [execution.receivers.queries], receiver queries
+  inline namespace __receiver_queries {
+    namespace __impl {
+      struct forwarding_receiver_query_t {
+        template <class _Tag>
+        constexpr bool operator()(_Tag __tag) const noexcept {
+          if constexpr (tag_invocable<forwarding_receiver_query_t, _Tag>) {
+            return tag_invoke(*this, (_Tag&&) __tag);
+          } else {
+            return __none_of<_Tag, set_value_t, set_error_t, set_done_t>;
+          }
+        }
+      };
+    }
+
+    using __impl::forwarding_receiver_query_t;
+    inline constexpr forwarding_receiver_query_t forwarding_receiver_query{};
+
+    template <class _Tag>
+      concept __receiver_query =
+        forwarding_receiver_query(_Tag{});
+  } // namespace __receiver_queries
+
+  /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   // NOT TO SPEC
   namespace __completion_signatures {
@@ -182,10 +194,24 @@ namespace std::execution {
 
   inline namespace __sender_traits {
     namespace __impl {
+      template <template <template <class...> class, template <class...> class> class>
+        struct __test_has_values;
+
+      template <template <template <class...> class> class>
+        struct __test_has_errors;
+
+      template <class _T>
+        concept __has_sender_types = requires {
+          typename __test_has_values<_T::template value_types>;
+          typename __test_has_errors<_T::template error_types>;
+          typename bool_constant<_T::sends_done>;
+        };
+
       struct __default_context {
-        friend void tag_invoke(set_value_t, __default_context&&, auto&&...) {}
-        friend void tag_invoke(set_error_t, __default_context&&, auto&&) noexcept {}
-        friend void tag_invoke(set_done_t, __default_context&&) noexcept {}
+        friend void tag_invoke(set_value_t, __default_context&&, auto&&...);
+        friend void tag_invoke(set_error_t, __default_context&&, auto&&) noexcept;
+        friend void tag_invoke(set_done_t, __default_context&&) noexcept;
+        friend void tag_invoke(__receiver_query auto, __default_context, auto&&...) noexcept = delete;
       };
 
       template <class _Sender>
@@ -234,6 +260,7 @@ namespace std::execution {
       };
     } // namespace __impl
     using __impl::__default_context;
+    using __impl::__has_sender_types;
 
     using __impl::get_sender_traits_t;
     inline constexpr get_sender_traits_t get_sender_traits {};
@@ -459,15 +486,16 @@ namespace std::execution {
       };
 
       struct get_stop_token_t {
+        struct __self_t { __self_t(get_stop_token_t) {} };
+        friend never_stop_token tag_invoke(__self_t, __ignore) noexcept {
+          return {};
+        }
         template <class _T>
           requires tag_invocable<get_stop_token_t, __cref_t<_T>> &&
             stoppable_token<tag_invoke_result_t<get_stop_token_t, __cref_t<_T>>>
         tag_invoke_result_t<get_stop_token_t, __cref_t<_T>> operator()(_T&& __t) const
           noexcept(nothrow_tag_invocable<get_stop_token_t, __cref_t<_T>>) {
           return tag_invoke(get_stop_token_t{}, std::as_const(__t));
-        }
-        never_stop_token operator()(auto&&) const noexcept {
-          return {};
         }
         // NOT TO SPEC
         auto operator()() const noexcept;
@@ -487,31 +515,6 @@ namespace std::execution {
   template <class _T>
     using stop_token_of_t =
       remove_cvref_t<decltype(get_stop_token(__declval<_T>()))>;
-
-  // [execution.receivers.queries], receiver queries
-  inline namespace __receiver_queries {
-    namespace __impl {
-      struct forwarding_receiver_query_t {
-        template <class _Tag>
-        constexpr bool operator()(_Tag __tag) const noexcept {
-          if constexpr (nothrow_tag_invocable<forwarding_receiver_query_t, _Tag> &&
-                        is_invocable_r_v<bool, tag_t<tag_invoke>,
-                                         forwarding_receiver_query_t, _Tag>) {
-            return tag_invoke(*this, (_Tag&&) __tag);
-          } else {
-            return __none_of<_Tag, set_value_t, set_error_t, set_done_t>;
-          }
-        }
-      };
-    }
-
-    using __impl::forwarding_receiver_query_t;
-    inline constexpr forwarding_receiver_query_t forwarding_receiver_query{};
-
-    template <class _Tag>
-      concept __receiver_query =
-        forwarding_receiver_query(_Tag{});
-  } // namespace __receiver_queries
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
@@ -1716,9 +1719,7 @@ namespace std::execution {
 
           template <class _Receiver>
           friend constexpr __traits<_Sender, _Receiver, _Fun>
-          tag_invoke(get_sender_traits_t, const __sender&, _Receiver&&) noexcept {
-            return {};
-          }
+          tag_invoke(get_sender_traits_t, const __sender&, _Receiver&&) noexcept;
 
          public:
           explicit __sender(_Sender __sndr, _Fun __fun)
@@ -2147,9 +2148,7 @@ namespace std::execution {
 
           template <__decays_to<__sender> _Self, class _Receiver>
           friend constexpr auto tag_invoke(get_sender_traits_t, _Self&&, _Receiver&&) noexcept
-              -> __traits<__member_t<_Self, _Sender>, _Receiver, _Fun, _Let> {
-            return {};
-          }
+              -> __traits<__member_t<_Self, _Sender>, _Receiver, _Fun, _Let>;
 
           _Sender __sndr_;
           _Fun __fun_;
@@ -2732,9 +2731,7 @@ namespace std::execution {
 
           template <__decays_to<__sender> _Self, class _Receiver>
           friend constexpr auto tag_invoke(get_sender_traits_t, _Self&&, _Receiver&&) noexcept
-              -> sender_traits<__member_t<_Self, _Sender>, __receiver1_t<_Self, _Receiver>> {
-            return {};
-          }
+              -> sender_traits<__member_t<_Self, _Sender>, __receiver1_t<_Self, _Receiver>>;
         };
     } // namespace __impl
 
@@ -2918,9 +2915,7 @@ namespace std::execution {
 
           template <__decays_to<__sender> _Self, class _Receiver>
           friend constexpr auto tag_invoke(get_sender_traits_t, _Self&&, _Receiver&&) noexcept
-            -> sender_traits<__member_t<_Self, _Sender>, __receiver_ref_t<__x<decay_t<_Receiver>>>> {
-            return {};
-          }
+            -> sender_traits<__member_t<_Self, _Sender>, __receiver_ref_t<__x<decay_t<_Receiver>>>>;
         };
     } // namespace __impl
 
@@ -3046,9 +3041,7 @@ namespace std::execution {
 
           template <class _Receiver>
           friend constexpr __traits<__x<_Sender>, __x<_Receiver>>
-          tag_invoke(get_sender_traits_t, const __sender&, const _Receiver&) noexcept {
-            return {};
-          }
+          tag_invoke(get_sender_traits_t, const __sender&, const _Receiver&) noexcept;
 
          public:
           using sender_adaptor<__sender, _Sender>::sender_adaptor;
@@ -3360,9 +3353,7 @@ namespace std::execution {
 
           template <__decays_to<__sender> _Self, receiver _Receiver>
             friend auto tag_invoke(get_sender_traits_t, _Self&& __self, _Receiver&& __rcvr)
-              -> __traits<__member_t<_Self, __x<decay_t<_Receiver>>>> {
-              return {};
-            }
+              -> __traits<__member_t<_Self, __x<decay_t<_Receiver>>>>;
 
           tuple<__t<_SenderIds>...> __sndrs_;
         };

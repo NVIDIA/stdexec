@@ -27,7 +27,7 @@
 namespace std {
   // [func.tag_invoke], tag_invoke
   inline namespace __tag_invoke {
-    namespace __impl {
+    namespace __tinvoke_impl {
       void tag_invoke();
 
       // NOT TO SPEC: Don't require tag_invocable to subsume invocable.
@@ -59,17 +59,17 @@ namespace std {
             return tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
           }
       };
-    } // namespace __impl
+    } // namespace __tinvoke_impl
 
-    inline constexpr struct tag_invoke_t : __impl::tag_invoke_t {} tag_invoke {};
+    inline constexpr struct tag_invoke_t : __tinvoke_impl::tag_invoke_t {} tag_invoke {};
   }
 
   template<auto& _Tag>
     using tag_t = decay_t<decltype(_Tag)>;
 
-  using __impl::tag_invocable;
-  using __impl::nothrow_tag_invocable;
-  using __impl::tag_invoke_result_t;
+  using __tinvoke_impl::tag_invocable;
+  using __tinvoke_impl::nothrow_tag_invocable;
+  using __tinvoke_impl::tag_invoke_result_t;
 
   template<class _Tag, class... _Args>
     struct tag_invoke_result
