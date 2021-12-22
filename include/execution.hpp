@@ -2179,12 +2179,16 @@ namespace std::execution {
 
        public:
         friend __schedule_task tag_invoke(schedule_t, const __scheduler& __self) noexcept {
-          return __schedule_task{__self.__loop_};
+          return __self.__schedule();
         }
 
         bool operator==(const __scheduler&) const noexcept = default;
 
        private:
+        __schedule_task __schedule() const noexcept {
+          return __schedule_task{__loop_};
+        }
+
         run_loop* __loop_;
       };
 
