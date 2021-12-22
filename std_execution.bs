@@ -2804,9 +2804,9 @@ namespace std::execution {
     struct get_stop_token_t;
     inline constexpr get_stop_token_t get_stop_token{};
   }
-  template <class T>
+  template &lt;class T>
     using stop_token_of_t =
-      remove_cvref_t<decltype(get_stop_token(declval<T>()))>;
+      remove_cvref_t&lt;decltype(get_stop_token(declval&lt;T>()))>;
 
   // [execution.schedulers], schedulers
   template&lt;class S>
