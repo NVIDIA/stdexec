@@ -369,12 +369,27 @@ namespace std {
       requires (sizeof...(_As) <= 1)
     using __single_or_void_t = __t<__front<_As..., void>>;
 
+  template <class _Fun, class... _As>
+    using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
+
+  template <class _Fun, class... _As>
+    concept __callable =
+      requires (_Fun&& __fun, _As&&... __as) {
+        ((_Fun&&) __fun)((_As&&) __as...);
+      };
+  template <class _Fun, class... _As>
+    concept __nothrow_callable =
+      __callable<_Fun, _As...> &&
+      requires (_Fun&& __fun, _As&&... __as) {
+        { ((_Fun&&) __fun)((_As&&) __as...) } noexcept;
+      };
+
   // For emplacing non-movable types into optionals:
   template <class _Fn>
       requires is_nothrow_move_constructible_v<_Fn>
     struct __conv {
       _Fn __fn_;
-      operator invoke_result_t<_Fn> () && {
+      operator __call_result_t<_Fn> () && {
         return ((_Fn&&) __fn_)();
       }
     };

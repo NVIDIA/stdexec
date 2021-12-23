@@ -383,7 +383,7 @@ namespace std {
   template <class _Token, typename _Callback, typename _Initializer = _Callback>
     concept stoppable_token_for =
       stoppable_token<_Token> &&
-      invocable<_Callback> &&
+      __callable<_Callback> &&
       requires {
         typename _Token::template callback_type<_Callback>;
       } &&
