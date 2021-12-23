@@ -3040,7 +3040,9 @@ namespace std::execution {
       }
 
       template <scheduler _Sched, typed_sender... _Senders>
-        requires (__impl::__zero_or_one_alternative<_Senders> &&...)
+        requires ((!tag_invocable<transfer_when_all_t, _Sched, _Senders...>) ||
+          (!sender<tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...>>)) &&
+          (__impl::__zero_or_one_alternative<_Senders> &&...)
       auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
         return transfer(when_all((_Senders&&) __sndrs...), (_Sched&&) __sched);
       }
