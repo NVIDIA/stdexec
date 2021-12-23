@@ -215,11 +215,13 @@ namespace std::execution {
     using error_types_of_t =
       typename sender_traits<decay_t<_Sender>>::template error_types<_Variant>;
 
-  template <typed_sender _Sender, class _Tuple, class _Variant>
+  template <typed_sender _Sender,
+            class _Tuple = __q<__decayed_tuple>,
+            class _Variant = __q<__variant>>
     using __value_types_of_t =
       value_types_of_t<_Sender, _Tuple::template __f, _Variant::template __f>;
 
-  template <typed_sender _Sender, class _Variant>
+  template <typed_sender _Sender, class _Variant = __q<__variant>>
     using __error_types_of_t =
       error_types_of_t<_Sender, _Variant::template __f>;
 
@@ -2060,17 +2062,106 @@ namespace std::execution {
   // [execution.senders.adaptors.done_as_optional]
   // [execution.senders.adaptors.done_as_error]
   inline namespace __done_as_xxx {
+    namespace __impl {
+      template <class _Ty, class _Sender, class _Receiver>
+        concept __constructible_from =
+          __single_typed_sender<_Sender> &&
+          constructible_from<optional<__single_sender_value_t<_Sender>>, _Ty>;
+
+      template <class _SenderId, class _ReceiverId>
+        struct __operation;
+
+      template <class _SenderId, class _ReceiverId>
+        struct __receiver : receiver_adaptor<__receiver<_SenderId, _ReceiverId>> {
+          using _Sender = __t<_SenderId>;
+          using _Receiver = __t<_ReceiverId>;
+          _Receiver&& base() && noexcept { return (_Receiver&&) __op_->__rcvr_; }
+          const _Receiver& base() const & noexcept { return __op_->__rcvr_; }
+
+          template <__constructible_from<_Sender, __receiver> _Ty>
+            void set_value(_Ty&& __a) && noexcept try {
+              using _Value = __single_sender_value_t<_Sender>;
+              execution::set_value(((__receiver&&) *this).base(), optional<_Value>{(_Ty&&) __a});
+            } catch(...) {
+              execution::set_error(((__receiver&&) *this).base(), current_exception());
+            }
+
+          void set_done() && noexcept {
+            using _Value = __single_sender_value_t<_Sender>;
+            execution::set_value(((__receiver&&) *this).base(), optional<_Value>{nullopt});
+          }
+
+          __operation<_SenderId, _ReceiverId>* __op_;
+        };
+
+      template <class _SenderId, class _ReceiverId>
+        struct __operation {
+          using _Sender = __t<_SenderId>;
+          using _Receiver = __t<_ReceiverId>;
+          using __receiver_t = __receiver<_SenderId, _ReceiverId>;
+
+          __operation(_Sender&& __sndr, _Receiver&& __rcvr)
+            : __op_state_(connect((_Sender&&) __sndr, __receiver_t{{}, this}))
+            , __rcvr_((_Receiver&&) __rcvr)
+          {}
+
+          friend void tag_invoke(start_t, __operation& __self) noexcept {
+            start(__self.__op_state_);
+          }
+
+          connect_result_t<_Sender, __receiver_t> __op_state_;
+          _Receiver __rcvr_;
+        };
+
+      template <class _Sender>
+        struct __traits {
+          template <template <class...> class _Tuple, template <class...> class _Variant>
+            using value_types = _Variant<_Tuple<optional<__single_sender_value_t<_Sender>>>>;
+
+          template <template <class...> class _Variant>
+            using error_types =
+              __minvoke<
+                __push_back_unique<__q<_Variant>>,
+                __error_types_of_t<_Sender>,
+                exception_ptr>;
+
+          static constexpr bool sends_done = false;
+        };
+
+      template <class _SenderId>
+        struct __sender {
+          using _Sender = __t<_SenderId>;
+          template <class _Self, class _Receiver>
+            using __operation_t =
+              __operation<__x<__member_t<_Self, _Sender>>, __x<decay_t<_Receiver>>>;
+          template <class _Self, class _Receiver>
+            using __receiver_t =
+              __receiver<__x<__member_t<_Self, _Sender>>, __x<decay_t<_Receiver>>>;
+
+          template <__decays_to<__sender> _Self, receiver _Receiver>
+              requires __single_typed_sender<__member_t<_Self, _Sender>> &&
+                sender_to<__member_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
+            friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+              -> __operation_t<_Self, _Receiver> {
+              return __operation_t<_Self, _Receiver>{((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
+            }
+
+          template <__sender_query _Tag, class... _As>
+              requires __callable<_Tag, const _Sender&, _As...>
+            friend decltype(auto) tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
+              noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>) {
+              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            }
+
+          _Sender __sndr_;
+        };
+    } // namespace __impl
+
     inline constexpr struct __done_as_optional_t {
-      template <__single_typed_sender _Sender>
-        auto operator()(_Sender&& __sndr) const {
-          using __value_t = decay_t<__single_sender_value_t<_Sender>>;
-          return (_Sender&&) __sndr
-            | then([]<class _T>(_T&& __t) {
-                return optional<__value_t>{(_T&&) __t};
-              })
-            | let_done([]() noexcept {
-                return just(optional<__value_t>{});
-              });
+      template <sender _Sender>
+        auto operator()(_Sender&& __sndr) const
+          -> __impl::__sender<__x<decay_t<_Sender>>> {
+          return {(_Sender&&) __sndr};
         }
       __binder_back<__done_as_optional_t> operator()() const noexcept {
         return {};
@@ -2092,6 +2183,12 @@ namespace std::execution {
         }
     } done_as_error {};
   } // namespace __done_as_xxx
+
+  template <class _SenderId>
+      requires __single_typed_sender<__t<_SenderId>>
+    struct sender_traits<__done_as_xxx::__impl::__sender<_SenderId>>
+      : __done_as_xxx::__impl::__traits<__t<_SenderId>>
+    {};
 
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
