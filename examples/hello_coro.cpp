@@ -22,21 +22,21 @@
 
 using namespace std::execution;
 
-template <typed_sender S1, typed_sender S2>
+template <sender S1, sender S2>
 task<int> async_answer(S1 s1, S2 s2) {
-  // Senders are implicitly awaitable (int this coroutine type):
+  // Senders are implicitly awaitable (in this coroutine type):
   co_await (S2&&) s2;
   co_return co_await (S1&&) s1;
 }
 
-template <typed_sender S1, typed_sender S2>
+template <sender S1, sender S2>
 task<std::optional<int>> async_answer2(S1 s1, S2 s2) {
   co_return co_await done_as_optional(async_answer(s1, s2));
 }
 
 // tasks have an associated stop token
-task<std::in_place_stop_token> async_stop_token() {
-  co_return co_await get_stop_token();
+task<std::optional<std::in_place_stop_token>> async_stop_token() {
+  co_return co_await done_as_optional(get_stop_token());
 }
 
 int main() try {

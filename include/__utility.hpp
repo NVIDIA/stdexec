@@ -380,10 +380,6 @@ namespace std {
     using __member_t = decltype(
       (__declval<_Self>() .* __memptr<_Member>(__declval<_Self>())));
 
-  template <class _Fun, class... _Args>
-  using __call_result_t =
-    decltype(__declval<_Fun>()(__declval<_Args>()...));
-
   template <class... _As>
       requires (sizeof...(_As) != 0)
     struct __front;
@@ -399,9 +395,6 @@ namespace std {
     using __single_or_void_t = __t<__front<_As..., void>>;
 
   template <class _Fun, class... _As>
-    using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
-
-  template <class _Fun, class... _As>
     concept __callable =
       requires (_Fun&& __fun, _As&&... __as) {
         ((_Fun&&) __fun)((_As&&) __as...);
@@ -412,6 +405,19 @@ namespace std {
       requires (_Fun&& __fun, _As&&... __as) {
         { ((_Fun&&) __fun)((_As&&) __as...) } noexcept;
       };
+  template <class _Fun, class... _As>
+    using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
+
+  // For working around clang's lack of support for CWG#2369:
+  // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369
+  struct __qcall_result {
+    template <class _Fun, class... _As>
+      using __f = __call_result_t<_Fun, _As...>;
+  };
+  template <bool _Enable, class _Fun, class... _As>
+    using __call_result_if_t =
+      typename __if<__bool<_Enable>, __qcall_result, __>
+        ::template __f<_Fun, _As...>;
 
   // For emplacing non-movable types into optionals:
   template <class _Fn>
