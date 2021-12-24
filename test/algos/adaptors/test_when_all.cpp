@@ -38,7 +38,7 @@ TEST_CASE("when_all returns a typed_sender", "[adaptors][when_all]") {
 TEST_CASE("when_all simple example", "[adaptors][when_all]") {
   auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
-  auto op = ex::connect(std::move(snd1), expect_value_receiver<double>{3.1415});
+  auto op = ex::connect(std::move(snd1), expect_value_receiver<double>{3.1415}, empty_env{});
   ex::start(op);
 }
 
@@ -113,7 +113,7 @@ TEST_CASE("when_all completes when children complete", "[adaptors][when_all]") {
           called = true;
           return a + b + c;
         });
-  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{41});
+  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{41}, empty_env{});
   ex::start(op);
   // The when_all scheduler will complete only after 3 impulses
   CHECK_FALSE(called);
@@ -132,7 +132,7 @@ TEST_CASE("TODO: when_all can be used with just_*", "[adaptors][when_all]") {
       ex::just_done()                       //
   );
   // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  // auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   // ex::start(op);
   // invalid check
   static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
@@ -146,7 +146,7 @@ TEST_CASE(
       ex::transfer_just(sched, 5),    //
       ex::just(7)                     //
   );
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
 }
 
@@ -157,7 +157,7 @@ TEST_CASE("when_all terminates with done if one child is cancelled", "[adaptors]
       ex::transfer_just(sched, 5),    //
       ex::just(7)                     //
   );
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
 }
 
@@ -177,7 +177,7 @@ TEST_CASE("when_all cancels remaining children if error is detected", "[adaptors
               return ex::just();
             }) //
   );
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   // The first child will complete; the third one will be cancelled
   CHECK_FALSE(called1);
@@ -207,7 +207,7 @@ TEST_CASE("when_all cancels remaining children if cancel is detected", "[adaptor
               return ex::just();
             }) //
   );
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
   // The first child will complete; the third one will be cancelled
   CHECK_FALSE(called1);

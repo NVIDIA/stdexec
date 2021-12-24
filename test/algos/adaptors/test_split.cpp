@@ -36,8 +36,8 @@ namespace ex = std::execution;
 // TEST_CASE("split simple example", "[adaptors][split]") {
 //   bool called{false};
 //   auto snd = ex::split(ex::just(19));
-//   auto op1 = ex::connect(snd, expect_value_receiver<int>{19});
-//   auto op2 = ex::connect(snd, expect_void_receiver<int>{19});
+//   auto op1 = ex::connect(snd, expect_value_receiver<int>{19}, empty_env{});
+//   auto op2 = ex::connect(snd, expect_void_receiver<int>{19}, empty_env{});
 //   ex::start(op1);
 //   ex::start(op2);
 //   // The receiver will ensure that the right value is produced

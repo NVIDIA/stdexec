@@ -35,7 +35,7 @@ TEST_CASE("then returns a typed_sender", "[adaptors][then]") {
 TEST_CASE("then simple example", "[adaptors][then]") {
   bool called{false};
   auto snd = ex::then(ex::just(), [&] { called = true; });
-  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  auto op = ex::connect(std::move(snd), expect_void_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks that it's called
   // we also check that the function was invoked
@@ -73,7 +73,7 @@ TEST_CASE("then can throw, and set_error will be called", "[adaptors][then]") {
                  throw std::logic_error{"err"};
                  return x + 5;
                });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
 }
 
@@ -81,7 +81,7 @@ TEST_CASE("TODO: then can be used with just_error", "[adaptors][then]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::then([]() -> int { return 17; });
   // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  // auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   // ex::start(op);
   // invalid check:
   static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
@@ -89,7 +89,7 @@ TEST_CASE("TODO: then can be used with just_error", "[adaptors][then]") {
 TEST_CASE("then can be used with just_done", "[adaptors][then]") {
   ex::sender auto snd = ex::just_done() | //
                         ex::then([]() -> int { return 17; });
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
 }
 
@@ -101,7 +101,7 @@ TEST_CASE("then function is not called on error", "[adaptors][then]") {
                             called = true;
                             return x + 5;
                           });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   CHECK_FALSE(called);
 }
@@ -113,7 +113,7 @@ TEST_CASE("then function is not called when cancelled", "[adaptors][then]") {
                             called = true;
                             return x + 5;
                           });
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
   CHECK_FALSE(called);
 }

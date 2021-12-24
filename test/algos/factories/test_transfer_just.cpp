@@ -35,7 +35,7 @@ TEST_CASE("transfer_just returns a typed_sender", "[factories][transfer_just]") 
 TEST_CASE("transfer_just simple example", "[factories][transfer_just]") {
   inline_scheduler sched;
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
@@ -45,7 +45,7 @@ TEST_CASE(
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(snd, expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(snd, expect_value_receiver_ex{&recv_value}, empty_env{});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task; no effect expected
   CHECK(recv_value == 0);
@@ -56,27 +56,27 @@ TEST_CASE(
 }
 TEST_CASE("transfer_just can be called with value type scheduler", "[factories][transfer_just]") {
   auto snd = ex::transfer_just(inline_scheduler{}, 13);
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
 TEST_CASE("transfer_just can be called with rvalue ref scheduler", "[factories][transfer_just]") {
   auto snd = ex::transfer_just(inline_scheduler{}, 13);
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
 TEST_CASE("transfer_just can be called with const ref scheduler", "[factories][transfer_just]") {
   const inline_scheduler sched;
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
 TEST_CASE("transfer_just can be called with ref scheduler", "[factories][transfer_just]") {
   inline_scheduler sched;
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
@@ -84,21 +84,21 @@ TEST_CASE("transfer_just can be called with ref scheduler", "[factories][transfe
 TEST_CASE("transfer_just forwards set_error calls", "[factories][transfer_just]") {
   error_scheduler<std::exception_ptr> sched{std::exception_ptr{}};
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
 TEST_CASE("transfer_just forwards set_error calls of other types", "[factories][transfer_just]") {
   error_scheduler<std::string> sched{std::string{"error"}};
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
 TEST_CASE("transfer_just forwards set_done calls", "[factories][transfer_just]") {
   done_scheduler sched{};
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the done signal
 }
@@ -162,7 +162,7 @@ TEST_CASE("transfer_just can be customized", "[factories][transfer_just]") {
   // The customization will alter the value passed in
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"world"});
   std::string res;
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<std::string>(&res));
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<std::string>(&res), empty_env{});
   ex::start(op);
   REQUIRE(res == "Hello, world");
 }

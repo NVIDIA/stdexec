@@ -39,7 +39,7 @@ TEST_CASE("schedule_from returns a typed_sender", "[adaptors][schedule_from]") {
 }
 TEST_CASE("schedule_from simple example", "[adaptors][schedule_from]") {
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
@@ -49,7 +49,7 @@ TEST_CASE(
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::schedule_from(sched, ex::just(13));
-  auto op = ex::connect(snd, expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(snd, expect_value_receiver_ex{&recv_value}, empty_env{});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task; no effect expected
   CHECK(recv_value == 0);
@@ -70,7 +70,7 @@ TEST_CASE("schedule_from calls the given sender when the scheduler dictates",
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::schedule_from(sched, std::move(snd_base));
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value}, empty_env{});
   ex::start(op);
   // The sender is started, even if the scheduler hasn't yet triggered
   CHECK(called);
@@ -105,21 +105,21 @@ TEST_CASE("schedule_from works when changing threads", "[adaptors][schedule_from
 
 TEST_CASE("schedule_from can be called with rvalue ref scheduler", "[adaptors][schedule_from]") {
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
 TEST_CASE("schedule_from can be called with const ref scheduler", "[adaptors][schedule_from]") {
   const inline_scheduler sched;
   auto snd = ex::schedule_from(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
 TEST_CASE("schedule_from can be called with ref scheduler", "[adaptors][schedule_from]") {
   inline_scheduler sched;
   auto snd = ex::schedule_from(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
@@ -127,21 +127,21 @@ TEST_CASE("schedule_from can be called with ref scheduler", "[adaptors][schedule
 TEST_CASE("schedule_from forwards set_error calls", "[adaptors][schedule_from]") {
   error_scheduler<std::exception_ptr> sched{std::exception_ptr{}};
   auto snd = ex::schedule_from(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
 TEST_CASE("schedule_from forwards set_error calls of other types", "[adaptors][schedule_from]") {
   error_scheduler<std::string> sched{std::string{"error"}};
   auto snd = ex::schedule_from(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
 TEST_CASE("schedule_from forwards set_done calls", "[adaptors][schedule_from]") {
   done_scheduler sched{};
   auto snd = ex::schedule_from(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the done signal
 }
@@ -189,6 +189,6 @@ auto tag_invoke(decltype(ex::schedule_from), inline_scheduler sched, just_string
 TEST_CASE("schedule_from can be customized", "[adaptors][schedule_from]") {
   // The customization will return a different value
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(std::string{"transfer"}));
-  auto op = ex::connect(std::move(snd), expect_value_receiver<std::string>("hijacked"));
+  auto op = ex::connect(std::move(snd), expect_value_receiver<std::string>("hijacked"), empty_env{});
   ex::start(op);
 }

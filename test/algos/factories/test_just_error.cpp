@@ -22,7 +22,7 @@
 namespace ex = std::execution;
 
 TEST_CASE("Simple test for just_error", "[factories][just_error]") {
-  auto op = ex::connect(ex::just_error(std::exception_ptr{}), expect_error_receiver{});
+  auto op = ex::connect(ex::just_error(std::exception_ptr{}), expect_error_receiver{}, empty_env{});
   ex::start(op);
   // receiver ensures that set_error() is called
 }

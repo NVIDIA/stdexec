@@ -42,7 +42,7 @@ TEST_CASE("let_done simple example", "[adaptors][let_done]") {
     called = true;
     return ex::just();
   });
-  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  auto op = ex::connect(std::move(snd), expect_void_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks that it's called
   // we also check that the function was invoked
@@ -72,7 +72,7 @@ TEST_CASE("let_done can throw, calling set_error", "[adaptors][let_done]") {
                  throw std::logic_error{"err"};
                  return ex::just(1);
                });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
 }
 
@@ -80,7 +80,7 @@ TEST_CASE("TODO: let_done can be used with just_error", "[adaptors][let_done]") 
   ex::sender auto snd = ex::just_error(1) //
                         | ex::let_done([] { return ex::just(17); });
   // TODO: check why this doesn't work
-  // auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  // auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   // ex::start(op);
   (void)snd;
 }
@@ -93,7 +93,7 @@ TEST_CASE("let_done function is not called on regular flow", "[adaptors][let_don
                             called = true;
                             return ex::just(0);
                           });
-  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{13}, empty_env{});
   ex::start(op);
   CHECK_FALSE(called);
 }
@@ -105,7 +105,7 @@ TEST_CASE("let_done function is not called on error flow", "[adaptors][let_done]
                             called = true;
                             return ex::just(0);
                           });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   CHECK_FALSE(called);
 }

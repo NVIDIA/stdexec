@@ -42,7 +42,7 @@ TEST_CASE("TODO: transfer_when_all simple example", "[adaptors][transfer_when_al
   auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
   // TODO: check why transfer_when_all doesn't work
-  // auto op = ex::connect(std::move(snd1), expect_value_receiver<double>{3.1415});
+  // auto op = ex::connect(std::move(snd1), expect_value_receiver<double>{3.1415}, empty_env{});
   // ex::start(op);
   (void)snd1;
 }
@@ -54,7 +54,7 @@ TEST_CASE("TODO: transfer_when_all transfers the result when the scheduler dicta
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
   double res{0.0};
   // TODO: check why transfer_when_all doesn't work
-  // auto op = ex::connect(std::move(snd1), expect_value_receiver_ex<double>{&res});
+  // auto op = ex::connect(std::move(snd1), expect_value_receiver_ex<double>{&res}, empty_env{});
   // ex::start(op);
   CHECK(res == 0.0);
   sched.start_next();

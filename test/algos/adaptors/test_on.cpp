@@ -39,7 +39,7 @@ TEST_CASE("on returns a typed_sender", "[adaptors][on]") {
 }
 TEST_CASE("on simple example", "[adaptors][on]") {
   auto snd = ex::on(inline_scheduler{}, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
@@ -48,7 +48,7 @@ TEST_CASE("on calls the receiver when the scheduler dictates", "[adaptors][on]")
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::on(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value}, empty_env{});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task; no effect expected
   CHECK(recv_value == 0);
@@ -68,7 +68,7 @@ TEST_CASE("on calls the given sender when the scheduler dictates", "[adaptors][o
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::on(sched, std::move(snd_base));
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value}, empty_env{});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task
   // The base sender shouldn't be started
@@ -102,21 +102,21 @@ TEST_CASE("on works when changing threads", "[adaptors][on]") {
 
 TEST_CASE("on can be called with rvalue ref scheduler", "[adaptors][on]") {
   auto snd = ex::on(inline_scheduler{}, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
 TEST_CASE("on can be called with const ref scheduler", "[adaptors][on]") {
   const inline_scheduler sched;
   auto snd = ex::on(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
 TEST_CASE("on can be called with ref scheduler", "[adaptors][on]") {
   inline_scheduler sched;
   auto snd = ex::on(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
@@ -124,21 +124,21 @@ TEST_CASE("on can be called with ref scheduler", "[adaptors][on]") {
 TEST_CASE("on forwards set_error calls", "[adaptors][on]") {
   error_scheduler<std::exception_ptr> sched{std::exception_ptr{}};
   auto snd = ex::on(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
 TEST_CASE("on forwards set_error calls of other types", "[adaptors][on]") {
   error_scheduler<std::string> sched{std::string{"error"}};
   auto snd = ex::on(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
 TEST_CASE("on forwards set_done calls", "[adaptors][on]") {
   done_scheduler sched{};
   auto snd = ex::on(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks if we receive the done signal
 }
@@ -186,7 +186,7 @@ TEST_CASE("on can be customized", "[adaptors][on]") {
   // The customization will return a different value
   auto snd = ex::on(inline_scheduler{}, ex::just(std::string{"world"}));
   std::string res;
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<std::string>(&res));
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<std::string>(&res), empty_env{});
   ex::start(op);
   REQUIRE(res == "Hello, world!");
 }

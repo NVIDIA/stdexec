@@ -36,20 +36,22 @@ struct impulse_scheduler {
   //! All the commands that we need to somehow
   std::shared_ptr<cmd_vec_t> all_commands_{};
 
-  template <typename R>
+  template <typename R, typename StopToken>
   struct oper {
     cmd_vec_t* all_commands_;
     R receiver_;
+    StopToken stoken_;
 
-    oper(cmd_vec_t* all_commands, R&& recv)
+    oper(cmd_vec_t* all_commands, R&& recv, StopToken stoken)
         : all_commands_(all_commands)
-        , receiver_((R &&) recv) {}
+        , receiver_((R &&) recv)
+        , stoken_((StopToken&&) stoken) {}
 
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
       // Enqueue another command to the list of all commands
       // The scheduler will start this, whenever start_next() is called
       self.all_commands_->emplace_back([&self]() {
-        if (ex::get_stop_token(ex::get_env(self.receiver_)).stop_requested()) {
+        if (self.stoken_.stop_requested()) {
           ex::set_done((R &&) self.receiver_);
         } else {
           try {
@@ -68,10 +70,10 @@ struct impulse_scheduler {
                          ex::set_done_t()> {
     cmd_vec_t* all_commands_;
 
-    template <ex::receiver_of R>
-    friend oper<std::decay_t<R>>
-    tag_invoke(ex::connect_t, my_sender self, R&& r) {
-      return {self.all_commands_, (R &&) r};
+    template <typename R, typename C>
+    friend oper<R, ex::stop_token_of_t<C>>
+    tag_invoke(ex::connect_t, my_sender self, R&& r, C&& c) {
+      return {self.all_commands_, (R &&) r, ex::get_stop_token(c)};
     }
 
     friend impulse_scheduler tag_invoke(
@@ -122,7 +124,7 @@ struct inline_scheduler {
                          ex::set_value_t(),     //
                          ex::set_error_t(std::exception_ptr)> {
     template <typename R>
-    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
+    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r, auto) {
       return {(R &&) r};
     }
 
@@ -156,7 +158,7 @@ struct error_scheduler {
     E err_;
 
     template <typename R>
-    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
+    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r, auto) {
       return {(R &&) r, (E &&) self.err_};
     }
 
@@ -187,7 +189,7 @@ struct done_scheduler {
                          ex::set_value_t(),     //
                          ex::set_done_t()> {
     template <typename R>
-    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
+    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r, auto) {
       return {(R &&) r};
     }
 

@@ -36,7 +36,7 @@ namespace ex = std::execution;
 // TEST_CASE("then simple example", "[adaptors][upon_done]") {
 //   bool called{false};
 //   auto snd = ex::upon_done(ex::just_done(), [&]() { called = true; });
-//   auto op = ex::connect(std::move(snd), expect_error_receiver{});
+//   auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
 //   ex::start(op);
 //   // The receiver checks that it's called
 //   // we also check that the function was invoked

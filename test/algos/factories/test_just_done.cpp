@@ -20,7 +20,7 @@
 #include <test_common/type_helpers.hpp>
 
 TEST_CASE("Simple test for just_done", "[factories][just_done]") {
-  auto op = ex::connect(ex::just_done(), expect_done_receiver{});
+  auto op = ex::connect(ex::just_done(), expect_done_receiver{}, empty_env{});
   ex::start(op);
   // receiver ensures that set_done() is called
 }

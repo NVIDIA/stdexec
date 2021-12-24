@@ -901,14 +901,33 @@ essential when writing user code using standard execution concepts; we have also
 
 ## Design changes from P0443 ## {#intro-compare}
 
-1. The `executor` concept has been removed and all of its proposed functionality is now based on schedulers and senders, as per SG1 direction.
-2. Properties are not included in this paper. We see them as a possible future extension, if the committee gets more comfortable with them.
-3. Senders now advertise what scheduler, if any, their evaluation will complete on.
-4. The places of execution of user code in P0443 weren't precisely defined, whereas they are in this paper. See [[#design-propagation]].
-5. P0443 did not propose a suite of sender algorithms necessary for writing sender code; this paper does. See [[#design-sender-factories]], [[#design-sender-adaptors]], and [[#design-sender-consumers]].
-6. P0443 did not specify the semantics of variously qualified `connect` overloads; this paper does. See [[#design-shot]].
-7. Specific type erasure facilities are omitted, as per LEWG direction. Type erasure facilities can be built on top of this proposal, as discussed in [[#design-dispatch]].
-8. A specific thread pool implementation is omitted, as per LEWG direction.
+1. The `executor` concept has been removed and all of its proposed functionality
+   is now based on schedulers and senders, as per SG1 direction.
+2. Properties are not included in this paper. We see them as a possible future
+   extension, if the committee gets more comfortable with them.
+3. Senders now advertise what scheduler, if any, their evaluation will complete
+   on.
+4. The places of execution of user code in P0443 weren't precisely defined,
+   whereas they are in this paper. See [[#design-propagation]].
+5. P0443 did not propose a suite of sender algorithms necessary for writing
+   sender code; this paper does. See [[#design-sender-factories]],
+   [[#design-sender-adaptors]], and [[#design-sender-consumers]].
+6. P0443 did not specify the semantics of variously qualified `connect`
+   overloads; this paper does. See [[#design-shot]].
+7. This paper extends the sender traits/typed sender design to support typed
+   senders whose value/error types depend on type information provided late via
+   the receiver.
+8. Specific type erasure facilities are omitted, as per LEWG direction. Type
+   erasure facilities can be built on top of this proposal, as discussed in
+   [[#design-dispatch]].
+9. A specific thread pool implementation is omitted, as per LEWG direction.
+10. Some additional utilities are added:
+  * **`run_loop`**: An execution context that provides a multi-producer,
+    single-consumer, first-in-first-out work queue.
+  * **`receiver_adaptor`**: A utility for algorithm authors for defining one
+    receiver type in terms of another.
+  * **`completion_signatures`**: A utility for authoring a sender traits struct
+    using a declarative syntax.
 
 ## Prior art ## {#intro-prior-art}
 
@@ -1028,11 +1047,116 @@ The changes since R3 are as follows:
 
 <b>Enhancements:</b>
 
-    * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
-    * Add `completion_signatures` utility for declaratively defining a typed sender's metadata.
+    * Support for "dependently-typed" senders, where the completion signatures --
+      and thus the sender metadata -- depend on the type of the receiver connected
+      to it. See the section [dependently-typed senders](#dependently-typed-senders)
+      below for more information.
+    * Add customization points for controlling the forwarding of scheduler and
+      sender queries through layers of adaptors; specify the behavior of the
+      standard adaptors in terms of the new customization points.
+    * Add `completion_signatures` utility for declaratively defining a typed
+      sender's metadata.
     * `done_as_error` respecified as a customization point object.
     * Add `get_delegee_scheduler` receiver query to forward a scheduler that can be used by algorithms or by the scheduler to delegate work and forward progress.
     * ...
+
+### Dependently-typed senders ### {#dependently-typed-senders}
+
+**Background:**
+
+In the sender/receiver model, as with coroutines, contextual information about
+the current execution is most naturally propagated from the consumer to the
+producer. In coroutines, that means information like stop tokens, allocators and
+schedulers are propagated from the calling coroutine to the callee. In
+sender/receiver, that means that that contextual information is associated with
+the receiver and is queried by the sender and/or operation state after the
+sender and the receiver are `connect`-ed.
+
+**Problem:**
+
+The implication of the above is that the sender alone does not have all the
+information about the async computation it will ultimately initiate; some of
+that information is provided late via the receiver. However, the `sender_traits`
+mechanism, by which an algorithm can introspect the value and error types the
+sender will propagate, *only* accepts a sender parameter. It does not take into
+consideration the type information that will come in late via the receiver. The
+effect of this is that some senders cannot be "typed" senders when they
+otherwise could be.
+
+**Example:**
+
+To get concrete, consider the case of a "`current_stop_token`" sender: when
+`connect`-ed and `start`-ed, it queries the receiver for its associated stop
+token and passes it back to the receiver through the value channel by calling
+`set_value` with it. That sender's "value type" is the type of the *receiver's*
+stop token. What then should
+`sender_traits<current_stop_token_sender>::value_types` report for the
+`current_stop_token`'s value types? It can't answer because it doesn't know.
+
+**Solution:**
+
+The solution is conceptually quite simple: extend the `sender_traits` mechanism
+to optionally accept a receiver in addition to the sender. The algorithms can
+use <code>sender_traits&lt;<i>Sender</i>, <i>Receiver</i>></code> to inspect the
+async operation's completion signals. The `typed_sender` concept would also need
+to take an optional receiver parameter. This is the simplest change, and it
+would solve the immediate problem. 
+
+**Design:**
+
+Using the receiver type to compute the sender traits turns out to have pitfalls
+in practice. Many receivers make use of that type information in their
+implementation. It is very easy to create cycles in the type system, leading to
+inscrutible errors. The design pursued in R4 is to give receivers an associated
+*context* and to move the contextual information (stop tokens, etc) out of the
+receiver and into the context. The `sender_traits` template and the
+`typed_sender` concept, rather than taking a receiver, takes a context. This is
+a much more robust design.
+
+A further refinement of this design would be to separate the receiver and the
+context entirely, passing then as separate arguments along with the sender to
+`connect`. This paper does not propose that change.
+
+**Drive-by:**
+
+We took the opportunity to make an additional drive-by change: Rather than
+providing the sender traits via a class template for users to specialize, we
+changed it into a sender *query*: <code>get_sender_traits(<i>sender</i>,
+<i>context</i>)</code>. That function's return type is used as the sender's
+traits. The authors feel this leads to a more uniform design and gives sender
+authors a straightforward way to make the value/error types dependent on the cv-
+and ref-qualification of the sender if need be.
+
+**Details:**
+
+Below are the salient parts of the new support for dependently-typed senders in
+R4:
+
+* Receiver queries have been moved from the receiver into a separate context
+  object.
+* Receivers have an associated context. The new `get_env` CPO retrieves a
+  receiver's context.
+* If a receiver doesn't customize `get_env`, its context is an
+  implementation-defined "<code><i>empty-context</i></code>".
+* `sender_traits` now takes an optional `context` parameter that is used to
+  determine the error/value types.
+* The primary `sender_traits` template is replaced with a `sender_traits_t`
+  alias implemented in terms of a new `get_sender_traits` CPO that dispatches
+  with `tag_invoke`. `get_sender_traits` takes a sender and an optional context.
+  A sender can customize this to specify its value/error types.
+* The `typed_sender` concept now takes a sender and an optional context.
+* The `sender` concept now checks that
+  <code>get_sender_traits(<i>sender</i>)</code> is well-formed.
+* Not specifying a context parameter to `get_sender_traits`, `sender_traits_t`,
+  or `typed_sender` is equivalent to passing an instance of `no_env`. All
+  context queries fail (are ill-formed) when passed an instance of `no_env`.
+* If a sender satisfies both <code>typed_sender&lt;<i>Sender</i>></code> and
+  <code>typed_sender&lt;<i>Sender</i>, <i>Context</i>></code>, then the
+  associated sender types for the two cannot be different in any way. It is
+  possible for an implementation to enforce this statically, but not required.
+* The `sender_of` concept is no longer used anywhere and is removed.
+* All of the algorithms and examples have been updated to work with
+  dependently-typed senders.
 
 ## R3 ## {#r3}
 
@@ -2804,7 +2928,26 @@ namespace std::execution {
   template&lt;class T>
     concept <i>class-type</i> = <i>decays-to</i>&lt;T, T> && is_class_v&lt;T>;  // exposition only
 
-  // [execution.queries], general queries
+  // [execution.context], execution context
+  inline namespace <i>unspecified</i> {
+    struct no_env;
+    struct <i>empty-context</i> {}; // exposition only
+
+    struct get_env_t;
+    inline constexpr get_env_t get_env{};
+
+    template &lt;<i>class-type</i> Tag>
+      inline constexpr <i>unspecified</i> __make_env{};
+  }
+  template &lt;class ContextProvider>
+    using env_of_t =
+      remove_cvref_t&lt;decltype(get_env(declval&lt;ContextProvider>()))>;
+
+  template &lt;<i>class-type</i> Tag, class Value, class BaseContext = <i>empty-context</i>>
+    using __make_env_t =
+      decltype(__make_env&lt;Tag>(declval&lt;Value>(), declval&lt;BaseContext>()));
+
+  // [execution.queries], contextual queries
   inline namespace <i>unspecified</i> {
     struct get_scheduler_t;
     inline constexpr get_scheduler_t get_scheduler{};
@@ -2862,16 +3005,6 @@ namespace std::execution {
     inline constexpr set_done_t set_done{};
   }
 
-  // [execution.receivers.queries], receiver queries
-  inline namespace <i>unspecified</i> {
-    struct forwarding_receiver_query_t;
-    inline constexpr forwarding_receiver_query_t forwarding_receiver_query{};
-
-    template &lt;class T>
-      concept <i>forwarding-receiver-query</i> = // exposition only
-        forwarding_receiver_query(T{});
-  }
-
   // [execution.op_state], operation states
   template&lt;class O>
     concept operation_state = <i>see-below</i>;
@@ -2891,28 +3024,27 @@ namespace std::execution {
   template&lt;class S>
     concept <i>has-sender-types</i> = <i>see-below</i>; // exposition only
 
-  template&lt;class S>
+  template&lt;class S, class Ctx = no_env>
     concept typed_sender = <i>see-below</i>;
 
   template&lt;class... Ts>
     struct <i>type-list</i>;
 
-  template&lt;class S, class ...Ts>
-    concept sender_of = <i>see-below</i>;
-
-  template&lt;class S>
+  template&lt;class S, class Ctx = no_env>
     using <i>single-sender-value-type</i> = <i>see below</i>; // exposition only
 
-  template &lt;class S>
+  template &lt;class S, class Ctx = no_env>
     concept <i>single-typed-sender</i> = <i>see below</i>; // exposition only
 
   // [execution.senders.traits], sender traits
   inline namespace <i>unspecified</i> {
     struct sender_base {};
+    struct get_sender_traits_t;
+    inline constexpr get_sender_traits_t get_sender_traits {};
   }
 
-  template &lt;class S>
-    struct sender_traits;
+  template &lt;class S, class Ctx = no_env>
+    using sender_traits_t = invoke_result_t&lt;get_sender_traits_t, S, Ctx>;
 
   template &lt;class... Ts>
     using <i>decayed-tuple</i> = tuple&lt;decay_t&lt;Ts>...>; // exposition only
@@ -2920,16 +3052,24 @@ namespace std::execution {
   template &lt;class... Ts>
     using <i>variant-or-empty</i> = <i>see below</i>; // exposition only
 
-  template&lt;typed_sender S,
+  template&lt;class S,
+           class Ctx = no_env,
            template &lt;class...> class Tuple = <i>decayed-tuple</i>,
            template &lt;class...> class Variant = <i>variant-or-empty</i>>
+      requires typed_sender&lt;S, Ctx>
     using value_types_of_t =
-      typename sender_traits&lt;remove_cvref_t&lt;S>>::template value_types&lt;Tuple, Variant>;
+      typename sender_traits_t&lt;S, Ctx>::template value_types&lt;Tuple, Variant>;
 
-  template&lt;typed_sender S,
+  template&lt;class S,
+           class Ctx = no_env,
            template &lt;class...> class Variant = <i>variant-or-empty</i>>
+      requires typed_sender&lt;S, Ctx>
     using error_types_of_t =
-      typename sender_traits&lt;remove_cvref_t&lt;S>>::template error_types&lt;Variant>;
+      typename sender_traits_t&lt;S, Ctx>::template error_types&lt;Variant>;
+
+  template&lt;class S, class Ctx = no_env>
+      requires typed_sender&lt;S, Ctx>
+    inline constexpr bool sends_done = sender_traits_t&lt;S, Ctx>::sends_done;
 
   inline namespace <i>unspecified</i> {
     // [execution.senders.connect], the connect sender algorithm
@@ -3006,9 +3146,10 @@ namespace std::execution {
     inline constexpr transfer_when_all_with_variant_t
       transfer_when_all_with_variant{};
 
-    template&lt;typed_sender S>
+    template&lt;class S, class Ctx>
+        requires typed_sender<S, Ctx>
       using <i>into-variant-type</i> = <i>see-below</i>; // exposition-only
-    template&lt;typed_sender S>
+    template&lt;sender S>
       <i>see-below</i> into_variant(S &&);
 
     struct done_as_optional_t;
@@ -3085,19 +3226,19 @@ namespace std::execution {
       constructible_from&lt;decay_t&lt;T>, T>;
     </pre>
 
-## General queries <b>[execution.queries]</b> ### {#spec-execution.queries}
+## General contextual queries <b>[execution.queries]</b> ### {#spec-execution.queries}
 
-### `execution::get_scheduler` <b>[execution.queries.get_scheduler]</b> ### {#spec-execution.receivers.queries.get_scheduler}
+### `execution::get_scheduler` <b>[execution.queries.get_scheduler]</b> ### {#spec-execution.queries.get_scheduler}
 
-1. `execution::get_scheduler` is used to ask an object for its associated scheduler.
+1. `execution::get_scheduler` is used to ask a context object for its associated scheduler.
 
-2. The name `execution::get_scheduler` denotes a customization point object. For some subexpression `r`, `execution::get_scheduler(r)` is expression equivalent to:
+2. The name `execution::get_scheduler` denotes a customization point object. For some subexpression `ctx`, if the type of `ctx` is (possibly cv-qualified) `no_env`, then `execution::get_scheduler(ctx)` is ill-formed. Otherwise, it is expression equivalent to:
 
-    1. `tag_invoke(execution::get_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::get_scheduler, as_const(ctx))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
 
-    2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
+    2. Otherwise, `execution::get_scheduler(ctx)` is ill-formed.
 
-### `execution::get_delegee_scheduler` <b>[execution.queries.get_delegee_scheduler]</b> ### {#spec-execution.receivers.queries.get_delegee_scheduler}
+### `execution::get_delegee_scheduler` <b>[execution.queries.get_delegee_scheduler]</b> ### {#spec-execution.queries.get_delegee_scheduler}
 
 1. `execution::get_delegee_scheduler` is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.
 
@@ -3107,23 +3248,23 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_delegee_scheduler(r)` is ill-formed.
 
-### `execution::get_allocator` <b>[execution.queries.get_allocator]</b> ### {#spec-execution.receivers.queries.get_allocator}
+### `execution::get_allocator` <b>[execution.queries.get_allocator]</b> ### {#spec-execution.queries.get_allocator}
 
-1. `execution::get_allocator` is used to ask an object for its associated allocator.
+1. `execution::get_allocator` is used to ask a context object for its associated allocator.
 
-2. The name `execution::get_allocator` denotes a customization point object. For some subexpression `r`, `execution::get_allocator(r)` is expression equivalent to:
+2. The name `execution::get_allocator` denotes a customization point object. For some subexpression `ctx`, if the type of `ctx` is (possibly cv-qualified) `no_env`, then `execution::get_allocator(ctx)` is ill-formed. Otherwise, it is expression equivalent to:
 
-    1. `tag_invoke(execution::get_allocator, as_const(r))`, if this expression is well formed and models <i>Allocator</i>, and is `noexcept`.
+    1. `tag_invoke(execution::get_allocator, as_const(ctx))`, if this expression is well formed and models <i>Allocator</i>, and is `noexcept`.
 
-    2. Otherwise, `execution::get_allocator(r)` is ill-formed.
+    2. Otherwise, `execution::get_allocator(ctx)` is ill-formed.
 
-### `execution::get_stop_token` <b>[execution.queries.get_stop_token]</b> ### {#spec-execution.receivers.queries.get_stop_token}
+### `execution::get_stop_token` <b>[execution.queries.get_stop_token]</b> ### {#spec-execution.queries.get_stop_token}
 
-1. `execution::get_stop_token` is used to ask an object for an associated stop token.
+1. `execution::get_stop_token` is used to ask a context object for an associated stop token.
 
-2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `r`, `execution::get_stop_token(r)` is expression equivalent to:
+2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `ctx`, if the type of `ctx` is (possibly cv-qualified) `no_env`, then `execution::get_stop_token(ctx)` is ill-formed. Otherwise, it is `execution::get_stop_token(ctx)` is expression equivalent to:
 
-    1. `tag_invoke(execution::get_stop_token, as_const(r))`, if this expression is well formed and satisfies `stoppable_token`, and is `noexcept`.
+    1. `tag_invoke(execution::get_stop_token, as_const(ctx))`, if this expression is well formed and satisfies `stoppable_token`, and is `noexcept`.
 
     2. Otherwise, `never_stop_token{}`.
 
@@ -3279,20 +3420,6 @@ enum class forward_progress_guarantee {
     1. `tag_invoke(execution::set_done, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s done channel, the program is ill-formed with no diagnostic required.
 
     2. Otherwise, `execution::set_done(R)` is ill-formed.
-
-### Receiver queries <b>[execution.receivers.queries]</b> ### {#spec-execution.receivers.queries}
-
-#### `execution::forwarding_receiver_query` <b>[execution.receivers.queries.forwarding_receiver_query]</b> #### {#spec-execution.receivers.queries.forwarding_receiver_query}
-
-1. `execution::forwarding_receiver_query` is used to ask a customization point object whether it is a receiver query that should be forwarded through receiver adaptors.
-
-2. The name `execution::forwarding_receiver_query` denotes a customization point object. For some subexpression `t`, `execution::forwarding_receiver_query(t)` is expression equivalent to:
-
-    1. `tag_invoke(execution::forwarding_receiver_query, t)`, if this expression is well formed, its type is implicitly convertible to `bool`, and is `noexcept`.
-
-    2. Otherwise, `false` if the type of `t` is one of `set_value_t`, `set_error_t`, or `set_done_t`.
-
-    3. Otherwise, `true`.
 
 ## Operation states <b>[execution.op_state]</b> ## {#spec-execution.op_state}
 
@@ -3753,9 +3880,6 @@ enum class forward_progress_guarantee {
 
 4. A type `T` is a <i>forwarding sender query</i> if it is the type of a customization point object that models <code>forwarding-sender-query</code>. Unless otherwise specified, all sender adaptors that accept a single `sender` argument return sender objects that propagate forwarding sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
     sender adaptor.
-
-5. A type `T` is a <i>forwarding receiver query</i> if it is the type of a customization point object that models <code>forwarding-receiver-query</code>. Unless otherwise specified, whenever a sender adaptor constructs a receiver that it passes to another sender's connect, that receiver shall propagate forwarding receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
-    applies to any sender returned from a function that is selected by the implementation of such sender adaptor.
 
 #### Sender adaptor closure objects <b>[execution.senders.adaptor.objects]</b> #### {#spec-execution.senders.adaptor.objects}
 
@@ -4501,10 +4625,10 @@ from the operation before the operation completes.
       using set_done = <i>unspecified</i>;
 
       // Member functions
-      Base&amp; base() &amp; noexcept requires <i>HAS-BASE</i> { return base_; }
-      const Base&amp; base() const &amp; noexcept requires <i>HAS-BASE</i> { return base_; }
-      Base&amp;&amp; base() &amp;&amp; noexcept requires <i>HAS-BASE</i> {
-        return static_cast&lt;Base&amp;&amp;>(base_);
+      template &lt;class Self>
+        requires <i>HAS-BASE</i>
+      copy_cvref_t&lt;Self, Base>&amp;&amp; base(this Self&amp;&amp; self) noexcept {
+        return static_cast&lt;Self&amp;&amp;>(self).base_;
       }
 
       // [execution.snd_rec_utils.receiver_adaptor.nonmembers] Non-member functions
@@ -4517,12 +4641,11 @@ from the operation before the operation completes.
       template &lt;class D = Derived>
         friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
 
-      template &lt;<i>forwarding-receiver-query</i> Tag, class D = Derived, class... As>
-          requires invocable&lt;Tag, <i>BASE-TYPE</i>(const D&), As...>
-        friend auto tag_invoke(Tag tag, const Derived&amp; self, As&amp;&amp;... as)
-          noexcept(is_nothrow_invocable_v&lt;Tag, <i>BASE-TYPE</i>(const D&), As...>)
-          -> invoke_result_t&lt;Tag, <i>BASE-TYPE</i>(const D&), As...> {
-          return static_cast&lt;Tag&amp;&amp;>(tag)(<i>GET-BASE</i>(self), static_cast&lt;As&amp;&amp;>(as)...);
+      template &lt;class D = Derived>
+        friend auto tag_invoke(get_env_t, const Derived&amp; self)
+          noexcept(is_nothrow_invocable_v&lt;get_env_t, <i>BASE-TYPE</i>(const D&)>)
+          -> env_of_t&lt;<i>BASE-TYPE</i>(const D&)> {
+          return get_env(<i>GET-BASE</i>(self));
         }
 
       [[no_unique_address]] Base base_; // present if and only if <i>HAS-BASE</i> is true

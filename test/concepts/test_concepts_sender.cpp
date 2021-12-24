@@ -36,19 +36,18 @@ TEST_CASE(
 }
 TEST_CASE(
     "type deriving from sender_base, w/o start, doesn't model sender_to", "[concepts][sender]") {
-  REQUIRE_FALSE(ex::sender_to<empty_sender, empty_recv::recv0>);
+  REQUIRE_FALSE(ex::sender_to<empty_sender, empty_recv::recv0, empty_env>);
 }
 
 struct simple_sender : ex::sender_base {
-  template <typename R>
-  friend oper tag_invoke(ex::connect_t, simple_sender, R) {
+  friend oper tag_invoke(ex::connect_t, simple_sender, auto, auto) {
     return {};
   }
 };
 
 TEST_CASE("type deriving from sender_base models sender and sender_to", "[concepts][sender]") {
   REQUIRE(ex::sender<simple_sender>);
-  REQUIRE(ex::sender_to<simple_sender, empty_recv::recv0>);
+  REQUIRE(ex::sender_to<simple_sender, empty_recv::recv0, empty_env>);
 }
 TEST_CASE("type deriving from sender_base, doesn't model typed_sender", "[concepts][sender]") {
   REQUIRE_FALSE(ex::typed_sender<simple_sender, empty_env>);
@@ -59,7 +58,7 @@ struct my_sender0 : ex::completion_signatures<               //
                         ex::set_error_t(std::exception_ptr), //
                         ex::set_done_t()> {
 
-  friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&& r) { return {}; }
+  friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&& r, auto) { return {}; }
 };
 TEST_CASE("type w/ proper types, is a sender & typed_sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender0>);
@@ -67,7 +66,7 @@ TEST_CASE("type w/ proper types, is a sender & typed_sender", "[concepts][sender
 }
 TEST_CASE(
     "sender that accepts a void sender models sender_to the given sender", "[concepts][sender]") {
-  REQUIRE(ex::sender_to<my_sender0, empty_recv::recv0>);
+  REQUIRE(ex::sender_to<my_sender0, empty_recv::recv0, empty_env>);
 }
 
 struct my_sender_int : ex::completion_signatures<               //
@@ -75,7 +74,7 @@ struct my_sender_int : ex::completion_signatures<               //
                            ex::set_error_t(std::exception_ptr), //
                            ex::set_done_t()> {
 
-  friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&& r) { return {}; }
+  friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&& r, auto) { return {}; }
 };
 TEST_CASE("my_sender_int is a sender & typed_sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender_int>);
@@ -83,17 +82,17 @@ TEST_CASE("my_sender_int is a sender & typed_sender", "[concepts][sender]") {
 }
 TEST_CASE("sender that accepts an int receiver models sender_to the given receiver",
     "[concepts][sender]") {
-  REQUIRE(ex::sender_to<my_sender_int, empty_recv::recv_int>);
+  REQUIRE(ex::sender_to<my_sender_int, empty_recv::recv_int, empty_env>);
 }
 
 TEST_CASE("not all combinations of senders & receivers satisfy the sender_to concept",
     "[concepts][sender]") {
-  REQUIRE_FALSE(ex::sender_to<my_sender0, empty_recv::recv_int>);
-  REQUIRE_FALSE(ex::sender_to<my_sender0, empty_recv::recv0_ec>);
-  REQUIRE_FALSE(ex::sender_to<my_sender0, empty_recv::recv_int_ec>);
-  REQUIRE_FALSE(ex::sender_to<my_sender_int, empty_recv::recv0>);
-  REQUIRE_FALSE(ex::sender_to<my_sender_int, empty_recv::recv0_ec>);
-  REQUIRE_FALSE(ex::sender_to<my_sender_int, empty_recv::recv_int_ec>);
+  REQUIRE_FALSE(ex::sender_to<my_sender0, empty_recv::recv_int, empty_env>);
+  REQUIRE_FALSE(ex::sender_to<my_sender0, empty_recv::recv0_ec, empty_env>);
+  REQUIRE_FALSE(ex::sender_to<my_sender0, empty_recv::recv_int_ec, empty_env>);
+  REQUIRE_FALSE(ex::sender_to<my_sender_int, empty_recv::recv0, empty_env>);
+  REQUIRE_FALSE(ex::sender_to<my_sender_int, empty_recv::recv0_ec, empty_env>);
+  REQUIRE_FALSE(ex::sender_to<my_sender_int, empty_recv::recv_int_ec, empty_env>);
 }
 
 TEST_CASE("can apply sender traits to invalid sender", "[concepts][sender]") {
@@ -120,7 +119,7 @@ struct multival_sender : ex::completion_signatures<        //
                              ex::set_value_t(short, long), //
                              ex::set_error_t(std::exception_ptr)> {
 
-  friend oper tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&& r) { return {}; }
+  friend oper tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&& r, auto) { return {}; }
 };
 TEST_CASE("check sender traits for sender that advertises multiple sets of values",
     "[concepts][sender]") {
@@ -133,7 +132,7 @@ struct ec_sender : ex::completion_signatures<               //
                        ex::set_value_t(),                   //
                        ex::set_error_t(std::exception_ptr), //
                        ex::set_error_t(int)> {
-  friend oper tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&& r) { return {}; }
+  friend oper tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&& r, auto) { return {}; }
 };
 TEST_CASE("check sender traits for sender that also supports error codes", "[concepts][sender]") {
   check_val_types<type_array<type_array<>>>(ec_sender{});

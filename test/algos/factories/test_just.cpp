@@ -22,16 +22,16 @@
 namespace ex = std::execution;
 
 TEST_CASE("Simple test for just", "[factories][just]") {
-  auto o1 = ex::connect(ex::just(1), expect_value_receiver(1));
+  auto o1 = ex::connect(ex::just(1), expect_value_receiver(1), empty_env{});
   ex::start(o1);
-  auto o2 = ex::connect(ex::just(2), expect_value_receiver(2));
+  auto o2 = ex::connect(ex::just(2), expect_value_receiver(2), empty_env{});
   ex::start(o2);
-  auto o3 = ex::connect(ex::just(3), expect_value_receiver(3));
+  auto o3 = ex::connect(ex::just(3), expect_value_receiver(3), empty_env{});
   ex::start(o3);
 
-  auto o4 = ex::connect(ex::just(std::string("this")), expect_value_receiver(std::string("this")));
+  auto o4 = ex::connect(ex::just(std::string("this")), expect_value_receiver(std::string("this")), empty_env{});
   ex::start(o4);
-  auto o5 = ex::connect(ex::just(std::string("that")), expect_value_receiver(std::string("that")));
+  auto o5 = ex::connect(ex::just(std::string("that")), expect_value_receiver(std::string("that")), empty_env{});
   ex::start(o5);
 }
 
@@ -48,7 +48,7 @@ TEST_CASE("just can handle multiple values", "[factories][just]") {
     CHECK(d == 0.14);
     executed = true;
   };
-  auto op = ex::connect(ex::just(3, 0.14), make_fun_receiver(std::move(f)));
+  auto op = ex::connect(ex::just(3, 0.14), make_fun_receiver(std::move(f)), empty_env{});
   ex::start(op);
   CHECK(executed);
 }
@@ -80,7 +80,7 @@ TEST_CASE("just works with value type", "[factories][just]") {
   // Check received value
   std::string res;
   typecat cat{typecat::undefined};
-  auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
+  auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat}, empty_env{});
   ex::start(op);
   CHECK(res == "hello");
   CHECK(cat == typecat::rvalref);
@@ -95,7 +95,7 @@ TEST_CASE("just works with ref type", "[factories][just]") {
   // Check received value
   std::string res;
   typecat cat{typecat::undefined};
-  auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
+  auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat}, empty_env{});
   ex::start(op);
   CHECK(res == original);
   CHECK(cat == typecat::rvalref);
@@ -110,7 +110,7 @@ TEST_CASE("just works with const-ref type", "[factories][just]") {
   // Check received value
   std::string res;
   typecat cat{typecat::undefined};
-  auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
+  auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat}, empty_env{});
   ex::start(op);
   CHECK(res == original);
   CHECK(cat == typecat::rvalref);

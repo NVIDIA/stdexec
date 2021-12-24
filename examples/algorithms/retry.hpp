@@ -42,19 +42,19 @@ struct _conv {
   }
 };
 
-template<class S, class R>
+template<class S, class R, class C>
 struct _op;
 
 // pass through all customizations except set_error, which retries the operation.
-template<class S, class R>
+template<class S, class R, class C>
 struct _retry_receiver
-  : stdex::receiver_adaptor<_retry_receiver<S, R>> {
-  _op<S, R>* o_;
+  : stdex::receiver_adaptor<_retry_receiver<S, R, C>> {
+  _op<S, R, C>* o_;
 
   R&& base() && noexcept { return (R&&) o_->r_; }
   const R& base() const & noexcept { return o_->r_; }
 
-  explicit _retry_receiver(_op<S, R>* o) : o_(o) {}
+  explicit _retry_receiver(_op<S, R, C>* o) : o_(o) {}
 
   void set_error(auto&&) && noexcept {
     o_->_retry(); // This causes the op to be retried
@@ -63,19 +63,20 @@ struct _retry_receiver
 
 // Hold the nested operation state in an optional so we can
 // re-construct and re-start it if the operation fails.
-template<class S, class R>
+template<class S, class R, class C>
 struct _op {
   S s_;
   R r_;
+  C c_;
   std::optional<
-      stdex::connect_result_t<S&, _retry_receiver<S, R>>> o_;
+      stdex::connect_result_t<S&, _retry_receiver<S, R, C>, C&>> o_;
 
-  _op(S s, R r): s_((S&&)s), r_((R&&)r), o_{_connect()} {}
+  _op(S s, R r, C c): s_((S&&)s), r_((R&&)r), c_((C&&)c), o_{_connect()} {}
   _op(_op&&) = delete;
 
   auto _connect() noexcept {
     return _conv{[this] {
-      return stdex::connect(s_, _retry_receiver<S, R>{this});
+      return stdex::connect(s_, _retry_receiver<S, R, C>{this}, c_);
     }};
   }
   void _retry() noexcept try {
@@ -94,15 +95,15 @@ struct _retry_sender {
   S s_;
   explicit _retry_sender(S s) : s_((S&&) s) {}
 
-  template<stdex::receiver R>
-    requires stdex::sender_to<S&, R>
-  friend _op<S, R> tag_invoke(stdex::connect_t, _retry_sender&& self, R r) {
-    return {(S&&) self.s_, (R&&) r};
+  template<stdex::receiver R, class C>
+    requires stdex::sender_to<S&, R, C&>
+  friend _op<S, R, C> tag_invoke(stdex::connect_t, _retry_sender&& self, R r, C c) {
+    return {(S&&) self.s_, (R&&) r, (C &&) c};
   }
 
-  template <class Env>
-  friend auto tag_invoke(stdex::get_sender_traits_t, const _retry_sender&, Env)
-    -> stdex::sender_traits_t<const S&, Env>;
+  template <class Context>
+  friend auto tag_invoke(stdex::get_sender_traits_t, const _retry_sender&, Context)
+    -> stdex::sender_traits_t<const S&, Context>;
 };
 
 template<stdex::sender S>

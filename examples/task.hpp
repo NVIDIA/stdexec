@@ -30,16 +30,16 @@ template <template<class...> class T, class... As>
   concept well_formed =
     requires { typename T<As...>; };
 
-template <class T>
+template <class Context>
   concept stop_token_provider =
-    requires(const T& t) {
+    requires(const Context& t) {
       std::execution::get_stop_token(t);
     };
 
-template <class T>
+template <class Promise>
   concept indirect_stop_token_provider =
-    requires(const T& t) {
-      { std::execution::get_env(t) } -> stop_token_provider;
+    requires(Promise& t) {
+      { t.get_env() } -> stop_token_provider;
     };
 
 template <std::invocable Fn>
@@ -99,7 +99,9 @@ public:
 // and its stop token type is neither in_place_stop_token nor unstoppable.
 template <indirect_stop_token_provider ParentPromise>
   struct default_task_context_impl::awaiter_context<ParentPromise> {
-    using stop_token_t = std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>;
+    using stop_token_t =
+      std::execution::stop_token_of_t<
+        std::execution::env_of_t<ParentPromise>>;
     using stop_callback_t =
       typename stop_token_t::template callback_type<forward_stop_request>;
 
@@ -109,7 +111,7 @@ template <indirect_stop_token_provider ParentPromise>
         // stop_source when stop is requested on the parent coroutine's stop
         // token.
       : stop_callback_{
-          std::execution::get_stop_token(std::execution::get_env(parent)),
+          std::execution::get_stop_token(parent.get_env()),
           forward_stop_request{stop_source_}} {
       static_assert(std::is_nothrow_constructible_v<
           stop_callback_t, stop_token_t, forward_stop_request>);
@@ -125,12 +127,13 @@ template <indirect_stop_token_provider ParentPromise>
 template <indirect_stop_token_provider ParentPromise>
     requires std::same_as<
         std::in_place_stop_token,
-        std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>>
+        std::execution::stop_token_of_t<
+          std::execution::env_of_t<ParentPromise>>>
   struct default_task_context_impl::awaiter_context<ParentPromise> {
     explicit awaiter_context(
         default_task_context_impl& self, ParentPromise& parent) noexcept {
       self.stop_token_ =
-        std::execution::get_stop_token(std::execution::get_env(parent));
+        std::execution::get_stop_token(parent.get_env());
     }
   };
 
@@ -138,7 +141,8 @@ template <indirect_stop_token_provider ParentPromise>
 // forwarding stop tokens or stop requests at all.
 template <indirect_stop_token_provider ParentPromise>
     requires std::unstoppable_token<
-        std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>>
+        std::execution::stop_token_of_t<
+          std::execution::env_of_t<ParentPromise>>>
   struct default_task_context_impl::awaiter_context<ParentPromise> {
     explicit awaiter_context(
         default_task_context_impl&, ParentPromise&) noexcept
@@ -167,10 +171,9 @@ template<>
 
         if constexpr (std::same_as<stop_token_t, std::in_place_stop_token>) {
           self.stop_token_ =
-            std::execution::get_stop_token(std::execution::get_env(parent));
+            std::execution::get_stop_token(parent.get_env());
         } else if(auto token =
-                    std::execution::get_stop_token(
-                      std::execution::get_env(parent));
+                    std::execution::get_stop_token(parent.get_env());
                   token.stop_possible()) {
           stop_callback_.emplace<stop_callback_t>(
               std::move(token), forward_stop_request{stop_source_});
@@ -256,8 +259,8 @@ private:
     }
     using _context_t =
       typename Context::template promise_context_t<_promise>;
-    friend _context_t tag_invoke(std::execution::get_env_t, const _promise& self) {
-      return self.context_;
+    const _context_t& get_env() const noexcept {
+      return context_;
     }
     _context_t context_;
   };

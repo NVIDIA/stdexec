@@ -36,7 +36,7 @@ namespace ex = std::execution;
 // TEST_CASE("bulk simple example", "[adaptors][bulk]") {
 //   bool called{false};
 //   auto snd = ex::bulk(ex::just(19), 8, [](int idx, int val) { called = true; });
-//   auto op = ex::connect(std::move(snd), expect_void_receiver{});
+//   auto op = ex::connect(std::move(snd), expect_void_receiver{}, empty_env{});
 //   ex::start(op);
 //   // The receiver checks that it's called
 //   // we also check that the function was invoked

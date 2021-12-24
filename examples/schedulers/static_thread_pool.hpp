@@ -33,11 +33,11 @@ namespace example {
     void (*__execute)(task_base*) noexcept;
   };
 
-  template <typename ReceiverID>
+  template <typename ReceiverID, typename StopToken>
     class operation;
 
   class static_thread_pool {
-    template <typename ReceiverId>
+    template <typename ReceiverId, typename StopToken>
       friend class operation;
    public:
     static_thread_pool();
@@ -48,7 +48,7 @@ namespace example {
       bool operator==(const scheduler&) const = default;
 
      private:
-      template <typename ReceiverId>
+      template <typename ReceiverId, typename StopToken>
         friend class operation;
 
       using traits = std::execution::completion_signatures<
@@ -57,16 +57,18 @@ namespace example {
           std::execution::set_done_t()>;
 
       class sender : public traits {
-        template <typename Receiver>
-        operation<std::__x<std::decay_t<Receiver>>>
-        make_operation_(Receiver&& r) const {
-          return operation<std::__x<std::decay_t<Receiver>>>{pool_, (Receiver &&) r};
+        template <typename Receiver, typename StopToken>
+        operation<std::__x<std::decay_t<Receiver>>, StopToken>
+        make_operation_(Receiver&& r, StopToken stoken) const {
+          return {pool_, (Receiver &&) r, std::move(stoken)};
         }
 
-        template <std::execution::receiver_of Receiver>
-        friend operation<std::__x<std::decay_t<Receiver>>>
-        tag_invoke(std::execution::connect_t, sender s, Receiver&& r) {
-          return s.make_operation_((Receiver &&) r);
+        template <std::execution::receiver_of Receiver, class Context>
+        friend operation<
+          std::__x<std::decay_t<Receiver>>,
+          std::execution::stop_token_of_t<Context&>>
+        tag_invoke(std::execution::connect_t, sender s, Receiver&& r, Context&& c) {
+          return s.make_operation_((Receiver &&) r, std::execution::get_stop_token(c));
         }
 
         template <class CPO>
@@ -130,23 +132,22 @@ namespace example {
     std::atomic<std::uint32_t> nextThread_;
   };
 
-  template <typename ReceiverId>
+  template <typename ReceiverId, typename StopToken>
     class operation : task_base {
       using Receiver = typename ReceiverId::type;
       friend static_thread_pool::scheduler::sender;
 
       static_thread_pool& pool_;
       Receiver receiver_;
+      StopToken stoken_;
 
-      explicit operation(static_thread_pool& pool, Receiver&& r)
+      operation(static_thread_pool& pool, Receiver&& r, StopToken stoken)
         : pool_(pool)
-        , receiver_((Receiver &&) r) {
+        , receiver_((Receiver &&) r)
+        , stoken_(std::move(stoken)) {
         this->__execute = [](task_base* t) noexcept {
           auto& op = *static_cast<operation*>(t);
-          auto stoken =
-            std::execution::get_stop_token(
-              std::execution::get_env(op.receiver_));
-          if (stoken.stop_requested()) {
+          if (op.stoken_.stop_requested()) {
             std::execution::set_done((Receiver &&) op.receiver_);
           } else {
             std::execution::set_value((Receiver &&) op.receiver_);

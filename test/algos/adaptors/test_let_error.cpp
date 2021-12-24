@@ -43,7 +43,7 @@ TEST_CASE("let_error simple example", "[adaptors][let_error]") {
     called = true;
     return ex::just();
   });
-  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  auto op = ex::connect(std::move(snd), expect_void_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks that it's called
   // we also check that the function was invoked
@@ -88,7 +88,7 @@ TEST_CASE("let_error can be used to transform errors", "[adaptors][let_error]") 
                             return ex::just_error(std::exception_ptr{}); // not reached
                           });
 
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
 }
 
@@ -99,14 +99,14 @@ TEST_CASE("let_error can throw, and yield a different error type", "[adaptors][l
                    throw std::logic_error{"err"};
                  return ex::just_error(x);
                });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
 }
 
 TEST_CASE("let_error can be used with just_done", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just_done() //
                         | ex::let_error([](std::exception_ptr) { return ex::just(17); });
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
 }
 
@@ -119,7 +119,7 @@ TEST_CASE("let_error function is not called on regular flow", "[adaptors][let_er
                             called = true;
                             return ex::just(0);
                           });
-  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{13}, empty_env{});
   ex::start(op);
   CHECK_FALSE(called);
 }
@@ -131,7 +131,7 @@ TEST_CASE("let_error function is not called when cancelled", "[adaptors][let_err
                             called = true;
                             return ex::just(0);
                           });
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
   CHECK_FALSE(called);
 }
@@ -183,7 +183,7 @@ TEST_CASE("TODO: let_error exposes a parameter that is destructed when the main 
   //                           return ex::transfer_just(sched, 13);
   //                         });
   // int res{0};
-  // auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>{&res});
+  // auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>{&res}, empty_env{});
   // ex::start(op);
   // // The function is called immediately after starting the operation
   // CHECK(fun_called);

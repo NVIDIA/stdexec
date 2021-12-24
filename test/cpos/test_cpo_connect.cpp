@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include "test_common/receivers.hpp"
+#include "test_common/type_helpers.hpp"
 
 namespace ex = std::execution;
 
@@ -36,7 +37,7 @@ struct my_sender : ex::completion_signatures< //
   int value_{0};
 
   template <ex::receiver_of R>
-  friend op_state<R> tag_invoke(ex::connect_t, my_sender&& s, R&& r) {
+  friend op_state<R> tag_invoke(ex::connect_t, my_sender&& s, R&& r, auto) {
     return {s.value_, (R &&) r};
   }
 };
@@ -47,27 +48,27 @@ struct my_sender_unconstrained : ex::completion_signatures< //
   int value_{0};
 
   template <typename R> // accept any type here
-  friend op_state<R> tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) {
+  friend op_state<R> tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r, auto) {
     return {s.value_, (R &&) r};
   }
 };
 
 TEST_CASE("can call connect on an appropriate types", "[cpo][cpo_connect]") {
-  auto op = ex::connect(my_sender{{}, 10}, expect_value_receiver{10});
+  auto op = ex::connect(my_sender{{}, 10}, expect_value_receiver{10}, empty_env{});
   ex::start(op);
   // the receiver will check the received value
 }
 
 TEST_CASE("cannot connect sender with invalid receiver", "[cpo][cpo_connect]") {
   static_assert(ex::sender<my_sender_unconstrained>);
-  REQUIRE_FALSE(std::invocable<ex::connect_t, my_sender_unconstrained, int>);
+  REQUIRE_FALSE(std::invocable<ex::connect_t, my_sender_unconstrained, int, empty_env>);
 }
 
 struct strange_receiver {
   bool* called_;
 
   friend inline op_state<strange_receiver> tag_invoke(
-      ex::connect_t, my_sender, strange_receiver self) {
+      ex::connect_t, my_sender, strange_receiver self, auto) {
     *self.called_ = true;
     // NOLINTNEXTLINE
     return {19, std::move(self)};
@@ -82,7 +83,7 @@ TEST_CASE("connect can be defined in the receiver", "[cpo][cpo_connect]") {
   static_assert(ex::sender<my_sender>);
   static_assert(ex::receiver<strange_receiver>);
   bool called{false};
-  auto op = ex::connect(my_sender{{}, 10}, strange_receiver{&called});
+  auto op = ex::connect(my_sender{{}, 10}, strange_receiver{&called}, empty_env{});
   ex::start(op);
   REQUIRE(called);
 }

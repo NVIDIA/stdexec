@@ -37,7 +37,7 @@ namespace ex = std::execution;
 //   bool called{false};
 //   auto snd = ex::upon_error(
 //       ex::just_error(std::exception_ptr{}), [&](std::exception_ptr) { called = true; });
-//   auto op = ex::connect(std::move(snd), expect_error_receiver{});
+//   auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
 //   ex::start(op);
 //   // The receiver checks that it's called
 //   // we also check that the function was invoked

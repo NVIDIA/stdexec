@@ -43,7 +43,7 @@ TEST_CASE("let_value simple example", "[adaptors][let_value]") {
     called = true;
     return ex::just();
   });
-  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  auto op = ex::connect(std::move(snd), expect_void_receiver{}, empty_env{});
   ex::start(op);
   // The receiver checks that it's called
   // we also check that the function was invoked
@@ -77,7 +77,7 @@ TEST_CASE("let_value can be used with multiple parameters", "[adaptors][let_valu
 
 TEST_CASE("let_value can be used to change the sender", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just(13) | ex::let_value([](int x) { return ex::just_error(x + 4); });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
 }
 
@@ -128,7 +128,7 @@ TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_v
                  throw std::logic_error{"err"};
                  return ex::just(x + 5);
                });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
 }
 
@@ -136,7 +136,7 @@ TEST_CASE("TODO: let_value can be used with just_error", "[adaptors][let_value]"
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::let_value([]() { return ex::just(17); });
   // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  // auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   // ex::start(op);
   // invalid check
   static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
@@ -145,7 +145,7 @@ TEST_CASE("TODO: let_value can be used with just_done", "[adaptors][let_value]")
   ex::sender auto snd = ex::just_done() | //
                         ex::let_value([]() { return ex::just(17); });
   // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  // auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   // ex::start(op);
   // invalid check:
   static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_done_receiver>);
@@ -159,7 +159,7 @@ TEST_CASE("let_value function is not called on error", "[adaptors][let_value]") 
                             called = true;
                             return ex::just(x + 5);
                           });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{}, empty_env{});
   ex::start(op);
   CHECK_FALSE(called);
 }
@@ -171,7 +171,7 @@ TEST_CASE("let_value function is not called when cancelled", "[adaptors][let_val
                             called = true;
                             return ex::just(x + 5);
                           });
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_done_receiver{}, empty_env{});
   ex::start(op);
   CHECK_FALSE(called);
 }
@@ -214,7 +214,7 @@ TEST_CASE("TODO: let_value exposes a parameter that is destructed when the main 
 
   // TODO: check why this doesn't work
   // int res{0};
-  // auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>{&res});
+  // auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>{&res}, empty_env{});
   // ex::start(op);
   // // The function is called immediately after starting the operation
   // CHECK(fun_called);
