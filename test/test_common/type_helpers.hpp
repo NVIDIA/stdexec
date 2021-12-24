@@ -28,23 +28,29 @@ struct type_printer;
 template <typename... Ts>
 struct type_array {};
 
+//! Used as a default empty context
+struct empty_context {
+  friend void tag_invoke(ex::set_error_t, empty_context, std::exception_ptr) noexcept;
+  friend void tag_invoke(ex::set_done_t, empty_context) noexcept;
+};
+
 //! Check that the value_types of a sender matches the expected type
-template <typename ExpectedValType, typename S>
+template <typename ExpectedValType, typename Context = empty_context, typename S>
 inline void check_val_types(S snd) {
-  using t = typename ex::sender_traits<S>::template value_types<type_array, type_array>;
+  using t = typename ex::sender_traits<S, Context>::template value_types<type_array, type_array>;
   static_assert(std::is_same<t, ExpectedValType>::value);
 }
 
 //! Check that the error_types of a sender matches the expected type
-template <typename ExpectedValType, typename S>
+template <typename ExpectedValType, typename Context = empty_context, typename S>
 inline void check_err_types(S snd) {
-  using t = typename ex::sender_traits<S>::template error_types<type_array>;
+  using t = typename ex::sender_traits<S, Context>::template error_types<type_array>;
   static_assert(std::is_same<t, ExpectedValType>::value);
 }
 
 //! Check that the send_done of a sender matches the expected value
-template <bool Expected, typename S>
+template <bool Expected, typename Context = empty_context, typename S>
 inline void check_sends_done(S snd) {
-  constexpr bool val = ex::sender_traits<S>::sends_done;
+  constexpr bool val = ex::sender_traits<S, Context>::sends_done;
   static_assert(val == Expected);
 }

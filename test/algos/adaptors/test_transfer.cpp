@@ -34,7 +34,7 @@ TEST_CASE("transfer returns a sender", "[adaptors][transfer]") {
 }
 TEST_CASE("transfer returns a typed_sender", "[adaptors][transfer]") {
   auto snd = ex::transfer(ex::just(13), inline_scheduler{});
-  static_assert(ex::typed_sender<decltype(snd)>);
+  static_assert(ex::typed_sender<decltype(snd), empty_context>);
   (void)snd;
 }
 TEST_CASE("transfer simple example", "[adaptors][transfer]") {

@@ -32,7 +32,7 @@ TEST_CASE("when_all returns a sender", "[adaptors][when_all]") {
 }
 TEST_CASE("when_all returns a typed_sender", "[adaptors][when_all]") {
   auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
-  static_assert(ex::typed_sender<decltype(snd)>);
+  static_assert(ex::typed_sender<decltype(snd), empty_context>);
   (void)snd;
 }
 TEST_CASE("when_all simple example", "[adaptors][when_all]") {
@@ -70,7 +70,7 @@ TEST_CASE("when_all with just one sender", "[adaptors][when_all]") {
 
 TEST_CASE("TODO: when_all with no senders sender -- should fail", "[adaptors][when_all]") {
   auto snd = ex::when_all();
-  static_assert(ex::typed_sender<decltype(snd)>);
+  static_assert(ex::typed_sender<decltype(snd), empty_context>);
   // TODO: calling `ex::when_all()` should be ill-formed
 }
 

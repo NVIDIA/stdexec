@@ -34,7 +34,7 @@ TEST_CASE("just_error returns a sender", "[factories][just_error]") {
 
 TEST_CASE("just_error returns a typed sender", "[factories][just_error]") {
   using t = decltype(ex::just_error(std::exception_ptr{}));
-  static_assert(ex::typed_sender<t>, "ex::just_error must return a typed_sender");
+  static_assert(ex::typed_sender<t, empty_context>, "ex::just_error must return a typed_sender");
 }
 
 TEST_CASE("error types are properly set for just_error<int>", "[factories][just_error]") {

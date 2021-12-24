@@ -23,8 +23,6 @@
 using namespace std::execution;
 using std::this_thread::sync_wait;
 
-template <class T> struct undef;
-
 int main() {
   example::static_thread_pool ctx{8};
   scheduler auto sch = ctx.get_scheduler();                               // 1
@@ -49,4 +47,6 @@ int main() {
     return on(sched, then(just(),[]{std::cout << "from run_loop\n";return 42;}));
   });
   sync_wait(std::move(y));
+
+  sync_wait(when_all(just(42), get_scheduler()));
 }
