@@ -143,7 +143,10 @@ namespace example {
         , receiver_((Receiver &&) r) {
         this->__execute = [](task_base* t) noexcept {
           auto& op = *static_cast<operation*>(t);
-          if (std::execution::get_stop_token(op.receiver_).stop_requested()) {
+          auto stoken =
+            std::execution::get_stop_token(
+              std::execution::get_context(op.receiver_));
+          if (stoken.stop_requested()) {
             std::execution::set_done((Receiver &&) op.receiver_);
           } else {
             std::execution::set_value((Receiver &&) op.receiver_);

@@ -34,11 +34,6 @@ namespace std {
     }
   }
 
-  template <class, template <class...> class>
-    constexpr bool __is_instance_of = false;
-  template <class... _As, template <class...> class _T>
-    constexpr bool __is_instance_of<_T<_As...>, _T> = true;
-
   template <class _T>
     concept __await_suspend_result =
       __one_of<_T, void, bool> || __is_instance_of<_T, __coro::coroutine_handle>;

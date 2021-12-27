@@ -48,5 +48,5 @@ int main() {
   });
   sync_wait(std::move(y));
 
-  sync_wait(when_all(just(42), get_scheduler()));
+  sync_wait(when_all(just(42), get_scheduler(), get_stop_token()));
 }

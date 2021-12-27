@@ -97,11 +97,11 @@ TEST_CASE("not all combinations of senders & receivers satisfy the sender_to con
 }
 
 TEST_CASE("can apply sender traits to invalid sender", "[concepts][sender]") {
-  REQUIRE(sizeof(ex::sender_traits<empty_sender, empty_context>) <= sizeof(int));
+  REQUIRE(sizeof(ex::sender_traits_t<empty_sender, empty_context>) <= sizeof(int));
 }
 
 TEST_CASE("can apply sender traits to senders deriving from sender_base", "[concepts][sender]") {
-  REQUIRE(sizeof(ex::sender_traits<simple_sender, empty_context>) <= sizeof(int));
+  REQUIRE(sizeof(ex::sender_traits_t<simple_sender, empty_context>) <= sizeof(int));
 }
 
 TEST_CASE("can query sender traits for a typed sender that sends nothing", "[concepts][sender]") {
