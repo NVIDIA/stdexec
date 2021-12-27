@@ -98,11 +98,10 @@ struct _retry_sender {
     return {(S&&) self.s_, (R&&) r};
   }
 
-  template <std::execution::receiver R>
-  friend constexpr auto tag_invoke(std::execution::get_sender_traits_t, const _retry_sender&, R&&) noexcept
-    -> std::execution::sender_traits<const S&, _retry_receiver<S, R>> {
-    return {};
-  }
+  template <class Context>
+  friend constexpr auto tag_invoke(
+      std::execution::get_sender_traits_t, const _retry_sender&, Context) noexcept
+    -> std::execution::sender_traits_t<const S&, Context>;
 };
 
 template<std::execution::sender S>

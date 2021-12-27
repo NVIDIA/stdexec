@@ -37,20 +37,20 @@ struct empty_context {
 //! Check that the value_types of a sender matches the expected type
 template <typename ExpectedValType, typename Context = empty_context, typename S>
 inline void check_val_types(S snd) {
-  using t = typename ex::sender_traits<S, Context>::template value_types<type_array, type_array>;
+  using t = typename ex::sender_traits_t<S, Context>::template value_types<type_array, type_array>;
   static_assert(std::is_same<t, ExpectedValType>::value);
 }
 
 //! Check that the error_types of a sender matches the expected type
 template <typename ExpectedValType, typename Context = empty_context, typename S>
 inline void check_err_types(S snd) {
-  using t = typename ex::sender_traits<S, Context>::template error_types<type_array>;
+  using t = typename ex::sender_traits_t<S, Context>::template error_types<type_array>;
   static_assert(std::is_same<t, ExpectedValType>::value);
 }
 
 //! Check that the send_done of a sender matches the expected value
 template <bool Expected, typename Context = empty_context, typename S>
 inline void check_sends_done(S snd) {
-  constexpr bool val = ex::sender_traits<S, Context>::sends_done;
+  constexpr bool val = ex::sender_traits_t<S, Context>::sends_done;
   static_assert(val == Expected);
 }
