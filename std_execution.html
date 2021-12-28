@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-23">2021-12-23</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-27">2021-12-27</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2539,7 +2539,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <h3 class="heading settled" data-level="1.1" id="motivation"><span class="secno">1.1. </span><span class="content">Motivation</span><a class="self-link" href="#motivation"></a></h3>
    <p>Today, C++ software is increasingly asynchronous and parallel, a trend that is likely to only continue going forward.
 Asynchrony and parallelism appears everywhere, from processor hardware interfaces, to networking, to file I/O, to GUIs, to accelerators.
-Every C++ domain and every platform need to deal with asynchrony and parallelism, from scientific computing to video games to financial services, from the smallest mobile devices to your laptop to GPUs in the world’s fastest supercomputer.</p>
+Every C++ domain and every platform needs to deal with asynchrony and parallelism, from scientific computing to video games to financial services, from the smallest mobile devices to your laptop to GPUs in the world’s fastest supercomputer.</p>
    <p>While the C++ Standard Library has a rich set concurrency primitives (<code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>atomic</c-></code>, <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>mutex</c-></code>, <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>counting_semaphore</c-></code>, etc) and lower level building blocks (<code class="highlight"><c- n>std</c-><c- o>::</c-><c- kr>thread</c-></code>, etc), we lack a Standard vocabulary and framework for asynchrony and parallelism that C++ programmers desperately need. <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>async</c-></code>/<code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>future</c-></code>/<code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>promise</c-></code>, C++11’s intended exposure for asynchrony, is inefficient, hard to use correctly, and severely lacking in genericity, making it unusable in many contexts.
 We introduced parallel algorithms to the C++ Standard Library in C++17, and while they are an excellent start, they are all inherently synchronous and not composable.</p>
    <p>This paper proposes a Standard C++ model for asynchrony, based around three key abstractions: schedulers, senders, and receivers, and a set of customizable asynchronous algorithms.</p>
