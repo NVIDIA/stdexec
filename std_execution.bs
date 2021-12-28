@@ -2836,10 +2836,10 @@ namespace std::this_thread {
 
 namespace std::execution {
   // [execution.receivers], receivers
-  template&lt;class T, class E = exception_ptr>
+  template &lt;class T, class E = exception_ptr>
     concept receiver = <i>see-below</i>;
 
-  template&lt;class T, class... An>
+  template &lt;class T, class... An>
     concept receiver_of = <i>see-below</i>;
 
   inline namespace <i>unspecified</i> {
@@ -2900,7 +2900,7 @@ namespace std::execution {
     struct sender_base {};
   }
 
-  template&lt;class S>
+  template &lt;class S>
     struct sender_traits;
 
   template &lt;class... Ts>
@@ -2936,10 +2936,10 @@ namespace std::execution {
       concept <i>forwarding-sender-query</i> = // exposition only
         forwarding_sender_query(T{});
 
-    template&lt;class CPO>
+    template &lt;class CPO>
     struct get_completion_scheduler_t;
 
-    template&lt;class CPO>
+    template &lt;class CPO>
     inline constexpr get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
 
     // [execution.senders.factories], sender factories
@@ -3015,8 +3015,18 @@ namespace std::execution {
   }
 
   // [execution.snd_rec_utils], sender and receiver utilities
+  // [execution.snd_rec_utils.rcvr_adptr]
   template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
     using receiver_adaptor = <i>unspecified</i>;
+
+  template &lt;class Fn>
+    concept <i>receiver-signature</i> = <i>// exposition only</i>
+      <i>see below</i>;
+
+  // [execution.snd_rec_utils.rcvr_sigs]
+  template &lt;<i>receiver-signature</i>... Fns>
+    using receiver_signatures =
+      <i>see below</i>;
 
   // [execution.contexts], execution contexts
   class run_loop;
@@ -4405,7 +4415,7 @@ from the operation before the operation completes.
 
 2. [<i>Note:</i> The C-style cast in <tt><i>c-style-cast</i></tt> is to disable accessibility checks. -- <i>end note</i>]
 
-### `execution::receiver_adaptor` <b>[execution.snd_rec_utils.receiver_adaptor]</b> ### {#spec-execution.snd_rec_utils.receiver_adaptor}
+### `execution::receiver_adaptor` <b>[execution.snd_rec_utils.rcvr_adptr]</b> ### {#spec-execution.snd_rec_utils.rcvr_adptr}
 
     <pre highlight="c++">
     template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
@@ -4554,6 +4564,71 @@ from the operation before the operation completes.
         - `static_cast<Derived&&>(self).set_done()` if <code><i>has-set-done</i>&lt;D></code> is `true`,
 
         - Otherwise, <code>execution::set_done(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
+
+### `execution::receiver_signatures` <b>[execution.snd_rec_utils.rcvr_sigs]</b> ### {#spec-execution.snd_rec_utils.rcvr_sigs}
+
+1. `receiver_signatures` is used to define a type that implements the nested `value_types`, `error_types`, and `sends_done` members that describe a typed sender. Its arguments are a flat list of function types that describe the signatures of the receiver's completion-signal operations that the sender invokes.
+
+2. [<i>Example:</i>
+     <pre highlight="c++">
+     using my_traits =
+       execution::receiver_signatures&lt;
+         execution::set_value_t(),
+         execution::set_value_t(int, float),
+         execution::set_error_t(exception_ptr),
+         execution::set_error_t(error_code),
+         execution::set_done_t()
+       >;
+
+      // my_traits::value_types&lt;tuple, variant> names the type:
+      //   variant&lt;tuple&lt;>, tuple&lt;int, float>>
+      //
+      // my_traits::error_types&lt;variant> names the type:
+      //   variant&lt;exception_ptr, error_code>
+      //
+      // my_traits::sends_done is true
+     </pre>
+     -- <i>end example</i>]
+
+3. This section makes use of the following exposition-only concept:
+
+    <pre highlight="c++">
+    template &lt;class Fn>
+      concept <i>receiver-signature</i> = <i>see below</i>;
+    </pre>
+
+    1. A type `Fn` satisfies <code><i>receiver-signature</i></code> if it is a function type with one of the following forms:
+
+        * <code>set_value_t(<i>Vs</i>...)</code>, where <code><i>Vs</i></code> is an arbitrary parameter pack.
+        * <code>set_error_t(<i>E</i>)</code>, where <code><i>E</i></code> is an arbitrary type.
+        * `set_done_t()`
+
+    2. Otherwise, `Fn` does not satisfy <code><i>receiver-signature</i></code>.
+
+4.  <pre highlight="c++">
+    template &lt;<i>receiver-signature</i>... Fns>
+      using receiver_signagures = <i>see below</i>;
+    </pre>
+
+    Given a template parameter pack <code><i>Fns</i></code> of types that satisfy <code><i>receiver-signature</i></code>, <code>receiver_signatures&lt;<i>Fns</i>...></code> names a non-template class type equivalent to the following:
+
+        <pre highlight="c++">
+        struct <i>receiver-signatures-impl</i> {
+          template &lt;template &lt;class...> class Tuple, template &lt;class...> class Variant>
+            using value_types = <i>see below</i>;
+
+          template &lt;template &lt;class...> class Variant>
+            using error_types = <i>see below</i>;
+
+          static constexpr bool sends_done = <i>see below</i>;
+        };
+        </pre>
+
+        1. Let <code><i>ValueFns</i></code> be a template parameter pack of the function types in <code><i>Fns</i></code> whose return types are `execution::set_value_t`, and let <code><i>Values<sub>n</sub></i></code> be a template parameter pack of the function argument types in the <code><i>n</i></code>-th type in <code><i>ValueFns</i></code>. Then, given two variadic templates <code><i>Tuple</i></code> and <code><i>Variant</i></code>, the type <code><i>receiver-signatures-impl</i>::value_types&lt;<i>Tuple</i>, <i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Tuple</i>&lt;<i>Values<sub>0</sub></i>...>, <i>Tuple</i>&lt;<i>Values<sub>1</sub></i>...>, ... <i>Tuple</i>&lt;<i>Values<sub>m-1</sub></i>...>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ValueFns</i></code>.
+
+        2. Let <code><i>ErrorFns</i></code> be a template parameter pack of the function types in <code><i>Fns</i></code> whose return types are `execution::set_error_t`, and let <code><i>Error<sub>n</sub></i></code> be the function argument type in the <code><i>n</i></code>-th type in <code><i>ErrorFns</i></code>. Then, given a variadic template <code><i>Variant</i></code>, the type <code><i>receiver-signatures-impl</i>::error_types&lt;<i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Error<sub>0</sub></i>, <i>Error<sub>1</sub></i>, ... <i>Error<sub>m-1</sub></i>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ErrorFns</i></code>.
+
+        3. <code><i>receiver-signatures-impl</i>::sends_done</code> is `true` if at least one of the types in <code><i>Fns</i></code> is `execution::set_done_t()`; otherwise, `false`.
 
 ## Execution contexts <b>[execution.contexts]</b> ## {#spec-execution.contexts}
 
