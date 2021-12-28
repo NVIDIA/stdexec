@@ -646,7 +646,7 @@ In this section we look at some schedulers of varying complexity.
 ### Inline scheduler ### {#example-schedulers-inline}
 
 ```c++
-struct inline_scheduler {
+class inline_scheduler {
   template <class R>
     struct _op {
       [[no_unique_address]] R rec_;
@@ -657,14 +657,11 @@ struct inline_scheduler {
       }
     };
 
-  struct _sender {
-    template <template <class...> class Tuple,
-              template <class...> class Variant>
-      using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-      using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = false;
+  using _traits = std::execution::receiver_signatures<
+    std::execution::set_value_t(),
+    std::execution::set_error_t(std::exception_ptr)>;
 
+  struct _sender : _traits {
     template <std::execution::receiver_of R>
       friend auto tag_invoke(std::execution::connect_t, _sender, R&& rec)
         noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
@@ -677,6 +674,8 @@ struct inline_scheduler {
     return {};
   }
 
+ public:
+  inline_scheduler() = default;
   bool operator==(const inline_scheduler&) const noexcept = default;
 };
 ```
@@ -690,16 +689,18 @@ wants to be passed an lvalue.
 Although not a particularly useful scheduler, it serves to illustrate the basics of
 implementing one. The `inline_scheduler`:
 
-1. Customizes `execution::schedule` to return an instance of the sender type `_sender`.
-2. The `_sender` type models the `typed_sender` concept and provides the metadata needed
-    to describe it as a sender of no values (see `value_types`) that can send an
-    `exception_ptr` as an error (see `error_types`), and that never calls `set_done`
-    (see `sends_done`).
-3. The `_sender` type customizes `execution::connect` to accept a receiver of no values.
-    It returns an instance of type `_op` that holds the receiver by value.
-4. The operation state customizes `std::execution::start` to call `std::execution::set_value`
-    on the receiver, passing any exceptions to `std::execution::set_error` as an
-    `exception_ptr`.
+1. Customizes `execution::schedule` to return an instance of the sender type
+   `_sender`.
+2. The `_sender` type models the `typed_sender` concept and provides the
+    metadata needed to describe it as a sender of no values that can send an
+    `exception_ptr` as an error and that never calls `set_done`. This metadata
+    is provided with the help of the `execution::receiver_signatures` utility.
+3. The `_sender` type customizes `execution::connect` to accept a receiver of no
+    values. It returns an instance of type `_op` that holds the receiver by
+    value.
+4. The operation state customizes `std::execution::start` to call
+    `std::execution::set_value` on the receiver, passing any exceptions to
+    `std::execution::set_error` as an `exception_ptr`.
 
 ### Single thread scheduler ### {#example-single-thread}
 
@@ -738,7 +739,7 @@ loop to finish up what it's doing and then joins the thread, blocking for the ev
 The interesting bits are in the `execution::run_loop` context implementation. It
 is slightly too long to include here, so we only provide [a reference to
 it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478),
-but there is one noteworthy detail about its implementation. It uses space in
+but there is one noteworthy detail about its implementation: It uses space in
 its operation states to build an intrusive linked list of work items. In
 structured concurrency patterns, the operation states of nested operations
 compose statically, and in an algorithm like `this_thread::sync_wait`, the
@@ -1022,6 +1023,7 @@ The changes since R3 are as follows:
 <b>Enhancements:</b>
 
     * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
+    * Add `receiver_signatures` utility for declaratively defining a typed sender's metadata.
     * `done_as_error` respecified as a customization point object.
     * ...
 
