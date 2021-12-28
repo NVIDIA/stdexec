@@ -103,7 +103,7 @@ This paper proposes a self-contained design for a Standard C++ framework for man
 
 Today, C++ software is increasingly asynchronous and parallel, a trend that is likely to only continue going forward.
 Asynchrony and parallelism appears everywhere, from processor hardware interfaces, to networking, to file I/O, to GUIs, to accelerators.
-Every C++ domain and every platform need to deal with asynchrony and parallelism, from scientific computing to video games to financial services, from the smallest mobile devices to your laptop to GPUs in the world's fastest supercomputer.
+Every C++ domain and every platform needs to deal with asynchrony and parallelism, from scientific computing to video games to financial services, from the smallest mobile devices to your laptop to GPUs in the world's fastest supercomputer.
 
 While the C++ Standard Library has a rich set concurrency primitives (`std::atomic`, `std::mutex`, `std::counting_semaphore`, etc) and lower level building blocks (`std::thread`, etc), we lack a Standard vocabulary and framework for asynchrony and parallelism that C++ programmers desperately need.
 `std::async`/`std::future`/`std::promise`, C++11's intended exposure for asynchrony, is inefficient, hard to use correctly, and severely lacking in genericity, making it unusable in many contexts.
