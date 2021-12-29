@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-27">2021-12-27</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-28">2021-12-28</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2685,18 +2685,18 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
 
 <c- n>sender_of</c-><c- o>&lt;</c-><c- n>dynamic_buffer</c-><c- o>></c-> <c- k>auto</c-> <c- n>async_read_array</c-><c- p>(</c-><c- k>auto</c-> <c- n>handle</c-><c- p>)</c-> <c- p>{</c->                <c- c1>// 2</c->
   <c- k>return</c-> <c- nf>just</c-><c- p>(</c-><c- n>dynamic_buffer</c-><c- p>{})</c->                                               <c- c1>// 4</c->
-       <c- o>|</c-> <c- n>let_value</c-><c- p>([]</c-> <c- p>(</c-><c- n>dynamic_buffer</c-><c- o>&amp;</c-> <c- n>buf</c-><c- p>)</c-> <c- p>{</c->                                 <c- c1>// 5</c->
+       <c- o>|</c-> <c- n>let_value</c-><c- p>([</c-><c- n>handle</c-><c- p>]</c-> <c- p>(</c-><c- n>dynamic_buffer</c-><c- o>&amp;</c-> <c- n>buf</c-><c- p>)</c-> <c- p>{</c->                           <c- c1>// 5</c->
            <c- k>return</c-> <c- n>just</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>as_writeable_bytes</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>span</c-><c- p>(</c-><c- o>&amp;</c-><c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>,</c-> <c- mi>1</c-><c- p>))</c->       <c- c1>// 6</c->
                 <c- o>|</c-> <c- n>async_read</c-><c- p>(</c-><c- n>handle</c-><c- p>)</c->                                          <c- c1>// 7</c->
                 <c- o>|</c-> <c- n>then</c-><c- p>(</c->                                                       <c- c1>// 8</c->
-                    <c- p>[</c-><c- o>&amp;</c-><c- p>]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>bytes_read</c-><c- p>)</c-> <c- p>{</c->                            <c- c1>// 9</c->
+                    <c- p>[</c-><c- o>&amp;</c-><c- n>buf</c-><c- p>]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>bytes_read</c-><c- p>)</c-> <c- p>{</c->                         <c- c1>// 9</c->
                       <c- n>assert</c-><c- p>(</c-><c- n>bytes_read</c-> <c- o>==</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>));</c->                 <c- c1>// 10</c->
-                      <c- n>buf</c-><c- p>.</c-><c- n>data</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>make_unique</c-><c- p>(</c-><c- n>new</c-> <c- n>std</c-><c- o>::</c-><c- n>byte</c-><c- p>[</c-><c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>]);</c->   <c- c1>// 11</c->
+                      <c- n>buf</c-><c- p>.</c-><c- n>data</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>make_unique</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>byte</c-><c- p>[]</c-><c- o>></c-><c- p>(</c-><c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>);</c->     <c- c1>// 11</c->
                       <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>span</c-><c- p>(</c-><c- n>buf</c-><c- p>.</c-><c- n>data</c-><c- p>.</c-><c- n>get</c-><c- p>(),</c-> <c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>);</c->             <c- c1>// 12</c->
                     <c- p>}</c->
                 <c- o>|</c-> <c- n>async_read</c-><c- p>(</c-><c- n>handle</c-><c- p>)</c->                                          <c- c1>// 13</c->
                 <c- o>|</c-> <c- n>then</c-><c- p>(</c->
-                    <c- p>[</c-><c- o>&amp;</c-><c- p>]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>bytes_read</c-><c- p>)</c-> <c- p>{</c->
+                    <c- p>[</c-><c- o>&amp;</c-><c- n>buf</c-><c- p>]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>bytes_read</c-><c- p>)</c-> <c- p>{</c->
                       <c- n>assert</c-><c- p>(</c-><c- n>bytes_read</c-> <c- o>==</c-> <c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>);</c->                         <c- c1>// 14</c->
                       <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>buf</c-><c- p>);</c->                                  <c- c1>// 15</c->
                     <c- p>});</c->
