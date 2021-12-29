@@ -1017,7 +1017,7 @@ The changes since R3 are as follows:
 
 <b>Fixes:</b>
 
-    * ...
+    * Fix the default `sender_traits<>::sends_done` value for types that are senders by virtue of being generally awaitable.
 
 <b>Enhancements:</b>
 
@@ -3364,6 +3364,8 @@ enum class forward_progress_guarantee {
 
     3. For an awaitable `a` such that `decltype((a))` is type `A`, <code><i>await-result-type</i>&lt;A></code> is an alias for <code>decltype(<i>e</i>)</code>, where <code><i>e</i></code> is `a`'s <i>await-resume</i> expression ([expr.await]) within the context of a coroutine whose promise type does not define a member `await_transform`. For a coroutine promise type `P`, <code><i>await-result-type</i>&lt;A, P></code> is an alias for <code>decltype(<i>e</i>)</code>, where <code><i>e</i></code> is `a`'s <i>await-resume</i> expression ([expr.await]) within the context of a coroutine whose promise type is `P`.
 
+    4. For an awaitable of type `A`, <code><i>stoppable-awaitable</i>&lt;A></code> is true if and only if `coroutine_traits<A>::promise_type` is well-formed and names a type `P` such that, given a non-const lvalue expression `p` of type `P`, the expression `p.unhandled_done()` is well-formed and its type is convertible to `coroutine_handle<>`.
+
 4. The primary class template `sender_traits<S>` is defined as if inheriting from an implementation-defined class template <code><i>sender-traits-base</i>&lt;S></code> defined as follows:
 
     1. If <code><i>has-sender-types</i>&lt;S></code> is `true`, then <code><i>sender-traits-base</i>&lt;S></code> is equivalent to:
@@ -3401,7 +3403,7 @@ enum class forward_progress_guarantee {
                 template&lt;template&lt;class...> class Variant>
                   using error_types = Variant&lt;exception_ptr>;
 
-                static constexpr bool sends_done = false;
+                static constexpr bool sends_done = <i>stoppable-awaitable</i>&lt;S>;
               };
             </pre>
 
@@ -3416,7 +3418,7 @@ enum class forward_progress_guarantee {
                 template&lt;template&lt;class...> class Variant>
                   using error_types = Variant&lt;exception_ptr>;
 
-                static constexpr bool sends_done = false;
+                static constexpr bool sends_done = <i>stoppable-awaitable</i>&lt;S>;
               };
             </pre>
 

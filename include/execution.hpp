@@ -124,6 +124,19 @@ namespace std::execution {
   }
   using __sender_base::sender_base;
 
+  template <class _Awaitable>
+    using __promise_type_of_t =
+      typename __coro::coroutine_traits<_Awaitable>::promise_type;
+
+  template <class _Awaitable>
+    concept __stoppable_awaitable =
+      requires {
+        typename __promise_type_of_t<_Awaitable>;
+        requires requires (__promise_type_of_t<_Awaitable>& __p) {
+          { __p.unhandled_done() } -> convertible_to<__coro::coroutine_handle<>>;
+        };
+      };
+
   template <bool _SendsDone, class... _Ts>
     struct __sender_of {
       template <template <class...> class _Tuple, template <class...> class _Variant>
@@ -150,9 +163,9 @@ namespace std::execution {
       return sender_base{};
     } else if constexpr (__awaitable<_Sender>) {
       if constexpr (is_void_v<__await_result_t<_Sender>>) {
-        return __sender_of<false>{};
+        return __sender_of<__stoppable_awaitable<_Sender>>{};
       } else {
-        return __sender_of<false, __await_result_t<_Sender>>{};
+        return __sender_of<__stoppable_awaitable<_Sender>, __await_result_t<_Sender>>{};
       }
     } else {
       struct __no_sender_traits{
@@ -595,7 +608,7 @@ namespace std::execution {
             };
           };
           if constexpr (is_void_v<__result_t>)
-            co_yield (co_await (_Awaitable &&) __await, __fun(__nothrow_<_Receiver>{}));
+            co_yield ((co_await (_Awaitable &&) __await), __fun(__nothrow_<_Receiver>{}));
           else
             co_yield __fun(__nothrow_<_Receiver, __result_t>{}, co_await (_Awaitable &&) __await);
         } catch (...) {
