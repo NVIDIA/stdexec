@@ -233,18 +233,18 @@ struct dynamic_buffer {                                                       //
 
 sender_of<dynamic_buffer> auto async_read_array(auto handle) {                // 2
   return just(dynamic_buffer{})                                               // 4
-       | let_value([] (dynamic_buffer& buf) {                                 // 5
+       | let_value([handle] (dynamic_buffer& buf) {                           // 5
            return just(std::as_writeable_bytes(std::span(&buf.size, 1))       // 6
                 | async_read(handle)                                          // 7
                 | then(                                                       // 8
-                    [&] (std::size_t bytes_read) {                            // 9
+                    [&buf] (std::size_t bytes_read) {                         // 9
                       assert(bytes_read == sizeof(buf.size));                 // 10
-                      buf.data = std::make_unique(new std::byte[buf.size]);   // 11
+                      buf.data = std::make_unique<std::byte[]>(buf.size);     // 11
                       return std::span(buf.data.get(), buf.size);             // 12
                     }
                 | async_read(handle)                                          // 13
                 | then(
-                    [&] (std::size_t bytes_read) {
+                    [&buf] (std::size_t bytes_read) {
                       assert(bytes_read == buf.size);                         // 14
                       return std::move(buf);                                  // 15
                     });
