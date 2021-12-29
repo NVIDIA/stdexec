@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-28">2021-12-28</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2021-12-29">2021-12-29</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2619,7 +2619,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
                                                       <c- n>begin</c-><c- p>(</c-><c- n>output</c-><c- p>)</c-> <c- o>+</c-> <c- n>start</c-><c- p>);</c-> <c- c1>// 9</c->
            <c- p>})</c->                                                                 <c- c1>// 10</c->
        <c- o>|</c-> <c- n>then</c-><c- p>(</c->                                                                <c- c1>// 11</c->
-           <c- p>[](</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>double</c-><c- o>>&amp;</c-> <c- n>partials</c-><c- p>)</c-> <c- p>{</c->
+           <c- p>[](</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>double</c-><c- o>>&amp;&amp;</c-> <c- n>partials</c-><c- p>)</c-> <c- p>{</c->
              <c- n>std</c-><c- o>::</c-><c- n>inclusive_scan</c-><c- p>(</c-><c- n>begin</c-><c- p>(</c-><c- n>partials</c-><c- p>),</c-> <c- n>end</c-><c- p>(</c-><c- n>partials</c-><c- p>),</c->              <c- c1>// 12</c->
                                  <c- n>begin</c-><c- p>(</c-><c- n>partials</c-><c- p>));</c->                            <c- c1>// 12</c->
              <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>partials</c-><c- p>);</c->                                      <c- c1>// 13</c->
@@ -2633,7 +2633,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
              <c- p>);</c->
            <c- p>})</c->
        <c- o>|</c-> <c- n>then</c-><c- p>(</c->                                                                <c- c1>// 15</c->
-           <c- p>[</c-><c- o>=</c-><c- p>](</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>double</c-><c- o>>&amp;</c-> <c- n>partials</c-><c- p>)</c-> <c- p>{</c->                               <c- c1>// 15</c->
+           <c- p>[</c-><c- o>=</c-><c- p>](</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- b>double</c-><c- o>>&amp;&amp;</c-> <c- n>partials</c-><c- p>)</c-> <c- p>{</c->                              <c- c1>// 15</c->
              <c- k>return</c-> <c- n>output</c-><c- p>;</c->                                                   <c- c1>// 15</c->
            <c- p>});</c->                                                                <c- c1>// 15</c->
 <c- p>}</c->
