@@ -601,7 +601,12 @@ struct _retry_sender : std::execution::sender_base {
 
 namespace std::execution {
   template <typed_sender S>
-  struct sender_traits<_retry_sender<S>> : sender_traits<S> { };
+  struct sender_traits<_retry_sender<S>> : sender_traits<S> {
+    // Only sends an error if the connect() throws.
+    // Errors sent by S are caught and discarded.
+    template<template<typename...> class Variant>
+    using error_types = Variant<std::exception_ptr>;
+  };
 }
 
 std::execution::sender auto retry(std::execution::sender auto s) {
