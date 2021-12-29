@@ -3045,7 +3045,12 @@ shown above with <code class="highlight"><c- n>_then_receiver</c-><c- o>::</c-><
 
 <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-> <c- p>{</c->
   <c- n>template</c-> <c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- o>></c->
-  <c- k>struct</c-> <c- nc>sender_traits</c-><c- o>&lt;</c-><c- n>_retry_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-> <c- o>:</c-> <c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-> <c- p>{</c-> <c- p>};</c->
+  <c- k>struct</c-> <c- nc>sender_traits</c-><c- o>&lt;</c-><c- n>_retry_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-> <c- o>:</c-> <c- n>sender_traits</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-> <c- p>{</c->
+    <c- c1>// Only sends an error if the connect() throws.</c->
+    <c- c1>// Errors sent by S are caught and discarded.</c->
+    <c- n>template</c-><c- o>&lt;</c-><c- n>template</c-><c- o>&lt;</c-><c- n>typename</c-><c- p>...</c-><c- o>></c-> <c- n>class</c-> <c- n>Variant</c-><c- o>></c->
+    <c- n>using</c-> <c- n>error_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-><c- o>></c-><c- p>;</c->
+  <c- p>};</c->
 <c- p>}</c->
 
 <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>retry</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>s</c-><c- p>)</c-> <c- p>{</c->
