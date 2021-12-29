@@ -179,7 +179,7 @@ sender auto async_inclusive_scan(scheduler auto sch,                          //
                                                       begin(output) + start); // 9
            })                                                                 // 10
        | then(                                                                // 11
-           [](std::vector<double>& partials) {
+           [](std::vector<double>&& partials) {
              std::inclusive_scan(begin(partials), end(partials),              // 12
                                  begin(partials));                            // 12
              return std::move(partials);                                      // 13
@@ -193,7 +193,7 @@ sender auto async_inclusive_scan(scheduler auto sch,                          //
              );
            })
        | then(                                                                // 15
-           [=](std::vector<double>& partials) {                               // 15
+           [=](std::vector<double>&& partials) {                              // 15
              return output;                                                   // 15
            });                                                                // 15
 }
