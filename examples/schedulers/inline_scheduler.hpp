@@ -34,7 +34,7 @@ namespace example {
         }
       };
 
-    using __sender_traits = std::execution::receiver_signatures<
+    using __sender_traits = std::execution::completion_signatures<
         std::execution::set_value_t(),
         std::execution::set_error_t(std::exception_ptr)>;
 

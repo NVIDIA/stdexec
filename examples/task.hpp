@@ -305,7 +305,7 @@ template <class T>
 //   owing to constraints imposed by its Context parameter.
 template <class... Ts>
   using _task_traits =
-    std::execution::receiver_signatures<
+    std::execution::completion_signatures<
       std::execution::set_value_t(Ts...),
       std::execution::set_error_t(std::exception_ptr),
       std::execution::set_done_t()>;

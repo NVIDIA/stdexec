@@ -51,7 +51,7 @@ namespace example {
       template <typename ReceiverId>
         friend struct operation;
 
-      using traits = std::execution::receiver_signatures<
+      using traits = std::execution::completion_signatures<
           std::execution::set_value_t(),
           std::execution::set_error_t(std::exception_ptr),
           std::execution::set_done_t()>;

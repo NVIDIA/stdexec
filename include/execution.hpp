@@ -118,9 +118,9 @@ namespace std::execution {
       nothrow_tag_invocable<set_value_t, _Receiver, _As...>;
 
   /////////////////////////////////////////////////////////////////////////////
-  // receiver_signatures
+  // completion_signatures
   // NOT TO SPEC
-  namespace __receiver_signatures {
+  namespace __completion_signatures {
     template <same_as<set_value_t> _Tag, class _Ty = __q<__types>, class... _Args>
       __types<__minvoke<_Ty, _Args...>> __test(_Tag(*)(_Args...));
     template <same_as<set_error_t> _Tag, class _Ty = __q<__types>, class _Error>
@@ -135,11 +135,11 @@ namespace std::execution {
         decltype(__test<_Tag, _Ty>((_Sig*) nullptr));
 
     template <class _Sig>
-      concept __receiver_signal =
+      concept __completion_signal =
         requires { typename __id<decltype(__test((_Sig*) nullptr))>; };
 
     template <class... _Sigs>
-      struct receiver_signatures {
+      struct completion_signatures {
         struct type {
           template <template <class...> class _Tuple, template <class...> class _Variant>
             using value_types =
@@ -159,11 +159,11 @@ namespace std::execution {
               __signal_args_t<_Sigs, set_done_t>...>::value != 0;
         };
       };
-  } // namespace __receiver_signatures
+  } // namespace __completion_signatures
 
-  template <__receiver_signatures::__receiver_signal... _Sigs>
-    using receiver_signatures =
-      __t<__receiver_signatures::receiver_signatures<_Sigs...>>;
+  template <__completion_signatures::__completion_signal... _Sigs>
+    using completion_signatures =
+      __t<__completion_signatures::completion_signatures<_Sigs...>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
@@ -190,9 +190,9 @@ namespace std::execution {
     } else if constexpr (__awaitable<_Sender>) {
       using _Result = __await_result_t<_Sender>;
       if constexpr (is_void_v<_Result>) {
-        return receiver_signatures<set_value_t(), set_error_t(exception_ptr)>{};
+        return completion_signatures<set_value_t(), set_error_t(exception_ptr)>{};
       } else {
-        return receiver_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
+        return completion_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
       }
     } else {
       struct __no_sender_traits{
@@ -1045,8 +1045,8 @@ namespace std::execution {
         using __traits =
           __if<
             is_same<_CPO, set_value_t>,
-            receiver_signatures<set_value_t(_Ts...), set_error_t(exception_ptr)>,
-            receiver_signatures<_CPO(_Ts...)>>;
+            completion_signatures<set_value_t(_Ts...), set_error_t(exception_ptr)>,
+            completion_signatures<_CPO(_Ts...)>>;
 
       template <class _CPO, class... _Ts>
         struct __sender : __traits<_CPO, _Ts...> {
@@ -2252,7 +2252,7 @@ namespace std::execution {
      public:
       class __scheduler {
         struct __schedule_task
-          : receiver_signatures<set_value_t(), set_error_t(exception_ptr), set_done_t()> {
+          : completion_signatures<set_value_t(), set_error_t(exception_ptr), set_done_t()> {
          private:
           friend __scheduler;
 

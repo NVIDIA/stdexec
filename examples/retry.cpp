@@ -23,7 +23,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
 struct fail_some
- : std::execution::receiver_signatures<
+ : std::execution::completion_signatures<
       std::execution::set_value_t(int),
       std::execution::set_error_t(std::exception_ptr)> {
   template <class R>
