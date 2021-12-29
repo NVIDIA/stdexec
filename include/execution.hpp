@@ -2782,6 +2782,8 @@ namespace std::execution {
         return tag_invoke(*this, (_Scheduler&&) __sched, (_Values&&) __vals...);
       }
       template <scheduler _Scheduler, __movable_value... _Values>
+        requires (!tag_invocable<transfer_just_t, _Scheduler, _Values...> ||
+          !typed_sender<tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...>>)
       auto operator()(_Scheduler&& __sched, _Values&&... __vals) const
         -> decltype(transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched)) {
         return transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched);
