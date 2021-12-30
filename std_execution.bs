@@ -651,7 +651,7 @@ In this section we look at some schedulers of varying complexity.
 ### Inline scheduler ### {#example-schedulers-inline}
 
 ```c++
-struct inline_scheduler {
+class inline_scheduler {
   template <class R>
     struct _op {
       [[no_unique_address]] R rec_;
@@ -662,14 +662,11 @@ struct inline_scheduler {
       }
     };
 
-  struct _sender {
-    template <template <class...> class Tuple,
-              template <class...> class Variant>
-      using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-      using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = false;
+  using _traits = std::execution::completion_signatures<
+    std::execution::set_value_t(),
+    std::execution::set_error_t(std::exception_ptr)>;
 
+  struct _sender : _traits {
     template <std::execution::receiver_of R>
       friend auto tag_invoke(std::execution::connect_t, _sender, R&& rec)
         noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
@@ -682,6 +679,8 @@ struct inline_scheduler {
     return {};
   }
 
+ public:
+  inline_scheduler() = default;
   bool operator==(const inline_scheduler&) const noexcept = default;
 };
 ```
@@ -695,16 +694,18 @@ wants to be passed an lvalue.
 Although not a particularly useful scheduler, it serves to illustrate the basics of
 implementing one. The `inline_scheduler`:
 
-1. Customizes `execution::schedule` to return an instance of the sender type `_sender`.
-2. The `_sender` type models the `typed_sender` concept and provides the metadata needed
-    to describe it as a sender of no values (see `value_types`) that can send an
-    `exception_ptr` as an error (see `error_types`), and that never calls `set_done`
-    (see `sends_done`).
-3. The `_sender` type customizes `execution::connect` to accept a receiver of no values.
-    It returns an instance of type `_op` that holds the receiver by value.
-4. The operation state customizes `std::execution::start` to call `std::execution::set_value`
-    on the receiver, passing any exceptions to `std::execution::set_error` as an
-    `exception_ptr`.
+1. Customizes `execution::schedule` to return an instance of the sender type
+   `_sender`.
+2. The `_sender` type models the `typed_sender` concept and provides the
+    metadata needed to describe it as a sender of no values that can send an
+    `exception_ptr` as an error and that never calls `set_done`. This metadata
+    is provided with the help of the `execution::completion_signatures` utility.
+3. The `_sender` type customizes `execution::connect` to accept a receiver of no
+    values. It returns an instance of type `_op` that holds the receiver by
+    value.
+4. The operation state customizes `std::execution::start` to call
+    `std::execution::set_value` on the receiver, passing any exceptions to
+    `std::execution::set_error` as an `exception_ptr`.
 
 ### Single thread scheduler ### {#example-single-thread}
 
@@ -743,7 +744,7 @@ loop to finish up what it's doing and then joins the thread, blocking for the ev
 The interesting bits are in the `execution::run_loop` context implementation. It
 is slightly too long to include here, so we only provide [a reference to
 it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478),
-but there is one noteworthy detail about its implementation. It uses space in
+but there is one noteworthy detail about its implementation: It uses space in
 its operation states to build an intrusive linked list of work items. In
 structured concurrency patterns, the operation states of nested operations
 compose statically, and in an algorithm like `this_thread::sync_wait`, the
@@ -1027,6 +1028,7 @@ The changes since R3 are as follows:
 <b>Enhancements:</b>
 
     * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
+    * Add `completion_signatures` utility for declaratively defining a typed sender's metadata.
     * `done_as_error` respecified as a customization point object.
     * ...
 
@@ -2841,10 +2843,10 @@ namespace std::this_thread {
 
 namespace std::execution {
   // [execution.receivers], receivers
-  template&lt;class T, class E = exception_ptr>
+  template &lt;class T, class E = exception_ptr>
     concept receiver = <i>see-below</i>;
 
-  template&lt;class T, class... An>
+  template &lt;class T, class... An>
     concept receiver_of = <i>see-below</i>;
 
   inline namespace <i>unspecified</i> {
@@ -2905,7 +2907,7 @@ namespace std::execution {
     struct sender_base {};
   }
 
-  template&lt;class S>
+  template &lt;class S>
     struct sender_traits;
 
   template &lt;class... Ts>
@@ -2941,10 +2943,10 @@ namespace std::execution {
       concept <i>forwarding-sender-query</i> = // exposition only
         forwarding_sender_query(T{});
 
-    template&lt;class CPO>
+    template &lt;class CPO>
     struct get_completion_scheduler_t;
 
-    template&lt;class CPO>
+    template &lt;class CPO>
     inline constexpr get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
 
     // [execution.senders.factories], sender factories
@@ -3020,8 +3022,18 @@ namespace std::execution {
   }
 
   // [execution.snd_rec_utils], sender and receiver utilities
+  // [execution.snd_rec_utils.rcvr_adptr]
   template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
     using receiver_adaptor = <i>unspecified</i>;
+
+  template &lt;class Fn>
+    concept <i>completion-signature</i> = <i>// exposition only</i>
+      <i>see below</i>;
+
+  // [execution.snd_rec_utils.completion_sigs]
+  template &lt;<i>completion-signature</i>... Fns>
+    using completion_signatures =
+      <i>see below</i>;
 
   // [execution.contexts], execution contexts
   class run_loop;
@@ -4410,7 +4422,7 @@ from the operation before the operation completes.
 
 2. [<i>Note:</i> The C-style cast in <tt><i>c-style-cast</i></tt> is to disable accessibility checks. -- <i>end note</i>]
 
-### `execution::receiver_adaptor` <b>[execution.snd_rec_utils.receiver_adaptor]</b> ### {#spec-execution.snd_rec_utils.receiver_adaptor}
+### `execution::receiver_adaptor` <b>[execution.snd_rec_utils.rcvr_adptr]</b> ### {#spec-execution.snd_rec_utils.rcvr_adptr}
 
     <pre highlight="c++">
     template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
@@ -4559,6 +4571,75 @@ from the operation before the operation completes.
         - `static_cast<Derived&&>(self).set_done()` if <code><i>has-set-done</i>&lt;D></code> is `true`,
 
         - Otherwise, <code>execution::set_done(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
+
+### `execution::completion_signatures` <b>[execution.snd_rec_utils.completion_sigs]</b> ### {#spec-execution.snd_rec_utils.completion_sigs}
+
+1. `completion_signatures` is used to define a type that implements the nested `value_types`, `error_types`, and `sends_done` members that describe a typed sender. Its arguments are a flat list of function types that describe the signatures of the receiver's completion-signal operations that the sender invokes.
+
+2. [<i>Example:</i>
+     <pre highlight="c++">
+     using my_sender_traits =
+       execution::completion_signatures&lt;
+         execution::set_value_t(),
+         execution::set_value_t(int, float),
+         execution::set_error_t(exception_ptr),
+         execution::set_error_t(error_code),
+         execution::set_done_t()
+       >;
+
+      // my_sender_traits::value_types&lt;tuple, variant> names the type:
+      //   variant&lt;tuple&lt;>, tuple&lt;int, float>>
+      //
+      // my_sender_traits::error_types&lt;variant> names the type:
+      //   variant&lt;exception_ptr, error_code>
+      //
+      // my_sender_traits::sends_done is true
+
+      class my_sender : public my_sender_traits {
+        // ...
+      };
+     </pre>
+     -- <i>end example</i>]
+
+3. This section makes use of the following exposition-only concept:
+
+    <pre highlight="c++">
+    template &lt;class Fn>
+      concept <i>completion-signature</i> = <i>see below</i>;
+    </pre>
+
+    1. A type `Fn` satisfies <code><i>completion-signature</i></code> if it is a function type with one of the following forms:
+
+        * <code>set_value_t(<i>Vs</i>...)</code>, where <code><i>Vs</i></code> is an arbitrary parameter pack.
+        * <code>set_error_t(<i>E</i>)</code>, where <code><i>E</i></code> is an arbitrary type.
+        * `set_done_t()`
+
+    2. Otherwise, `Fn` does not satisfy <code><i>completion-signature</i></code>.
+
+4.  <pre highlight="c++">
+    template &lt;<i>completion-signature</i>... Fns>
+      using completion_signatures = <i>see below</i>;
+    </pre>
+
+    Given a template parameter pack <code><i>Fns</i></code> of types that satisfy <code><i>completion-signature</i></code>, <code>completion_signatures&lt;<i>Fns</i>...></code> names a non-template class type equivalent to the following:
+
+        <pre highlight="c++">
+        struct <i>completion-signatures-impl</i> {
+          template &lt;template &lt;class...> class Tuple, template &lt;class...> class Variant>
+            using value_types = <i>see below</i>;
+
+          template &lt;template &lt;class...> class Variant>
+            using error_types = <i>see below</i>;
+
+          static constexpr bool sends_done = <i>see below</i>;
+        };
+        </pre>
+
+        1. Let <code><i>ValueFns</i></code> be a template parameter pack of the function types in <code><i>Fns</i></code> whose return types are `execution::set_value_t`, and let <code><i>Values<sub>n</sub></i></code> be a template parameter pack of the function argument types in the <code><i>n</i></code>-th type in <code><i>ValueFns</i></code>. Then, given two variadic templates <code><i>Tuple</i></code> and <code><i>Variant</i></code>, the type <code><i>completion-signatures-impl</i>::value_types&lt;<i>Tuple</i>, <i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Tuple</i>&lt;<i>Values<sub>0</sub></i>...>, <i>Tuple</i>&lt;<i>Values<sub>1</sub></i>...>, ... <i>Tuple</i>&lt;<i>Values<sub>m-1</sub></i>...>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ValueFns</i></code>.
+
+        2. Let <code><i>ErrorFns</i></code> be a template parameter pack of the function types in <code><i>Fns</i></code> whose return types are `execution::set_error_t`, and let <code><i>Error<sub>n</sub></i></code> be the function argument type in the <code><i>n</i></code>-th type in <code><i>ErrorFns</i></code>. Then, given a variadic template <code><i>Variant</i></code>, the type <code><i>completion-signatures-impl</i>::error_types&lt;<i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Error<sub>0</sub></i>, <i>Error<sub>1</sub></i>, ... <i>Error<sub>m-1</sub></i>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ErrorFns</i></code>.
+
+        3. <code><i>completion-signatures-impl</i>::sends_done</code> is `true` if at least one of the types in <code><i>Fns</i></code> is `execution::set_done_t()`; otherwise, `false`.
 
 ## Execution contexts <b>[execution.contexts]</b> ## {#spec-execution.contexts}
 
