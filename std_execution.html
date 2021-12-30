@@ -2498,10 +2498,11 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <a href="#spec-execution.snd_rec_utils"><span class="secno">9.9</span> <span class="content">Sender/receiver utilities <b>[execution.snd_rec_utils]</b></span></a>
        <ol class="toc">
         <li>
-         <a href="#spec-execution.snd_rec_utils.receiver_adaptor"><span class="secno">9.9.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code> <b>[execution.snd_rec_utils.receiver_adaptor]</b></span></a>
+         <a href="#spec-execution.snd_rec_utils.rcvr_adptr"><span class="secno">9.9.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code> <b>[execution.snd_rec_utils.rcvr_adptr]</b></span></a>
          <ol class="toc">
           <li><a href="#spec-execution.snd_rec_utils.receiver_adaptor.nonmembers"><span class="secno">9.9.1.1</span> <span class="content">Non-member functions <b>[execution.snd_rec_utils.receiver_adaptor.nonmembers]</b></span></a>
          </ol>
+        <li><a href="#spec-execution.snd_rec_utils.completion_sigs"><span class="secno">9.9.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-></code> <b>[execution.snd_rec_utils.completion_sigs]</b></span></a>
        </ol>
       <li>
        <a href="#spec-execution.contexts"><span class="secno">9.10</span> <span class="content">Execution contexts <b>[execution.contexts]</b></span></a>
@@ -3090,7 +3091,7 @@ an operation state constructed from the passed-in sender and receiver.</p>
    <h3 class="heading settled" data-level="1.6" id="example-schedulers"><span class="secno">1.6. </span><span class="content">Examples: Schedulers</span><a class="self-link" href="#example-schedulers"></a></h3>
    <p>In this section we look at some schedulers of varying complexity.</p>
    <h4 class="heading settled" data-level="1.6.1" id="example-schedulers-inline"><span class="secno">1.6.1. </span><span class="content">Inline scheduler</span><a class="self-link" href="#example-schedulers-inline"></a></h4>
-<pre class="language-c++ highlight"><c- k>struct</c-> <c- nc>inline_scheduler</c-> <c- p>{</c->
+<pre class="language-c++ highlight"><c- n>class</c-> <c- n>inline_scheduler</c-> <c- p>{</c->
   <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-> <c- n>R</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>_op</c-> <c- p>{</c->
       <c- p>[[</c-><c- n>no_unique_address</c-><c- p>]]</c-> <c- n>R</c-> <c- n>rec_</c-><c- p>;</c->
@@ -3101,14 +3102,11 @@ an operation state constructed from the passed-in sender and receiver.</p>
       <c- p>}</c->
     <c- p>};</c->
 
-  <c- k>struct</c-> <c- nc>_sender</c-> <c- p>{</c->
-    <c- n>template</c-> <c- o>&lt;</c-><c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-><c- o>></c-> <c- n>class</c-> <c- n>Tuple</c-><c- p>,</c->
-              <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-><c- o>></c-> <c- n>class</c-> <c- n>Variant</c-><c- o>></c->
-      <c- n>using</c-> <c- n>value_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;>></c-><c- p>;</c->
-    <c- n>template</c-> <c- o>&lt;</c-><c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-><c- o>></c-> <c- n>class</c-> <c- n>Variant</c-><c- o>></c->
-      <c- n>using</c-> <c- n>error_types</c-> <c- o>=</c-> <c- n>Variant</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-><c- o>></c-><c- p>;</c->
-    <c- k>static</c-> <c- n>constexpr</c-> <c- b>bool</c-> <c- n>sends_done</c-> <c- o>=</c-> false<c- p>;</c->
+  <c- n>using</c-> <c- n>_traits</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c->
+    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(),</c->
+    <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-><c- p>;</c->
 
+  <c- k>struct</c-> <c- nc>_sender</c-> <c- o>:</c-> <c- n>_traits</c-> <c- p>{</c->
     <c- n>template</c-> <c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>receiver_of</c-> <c- n>R</c-><c- o>></c->
       <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>_sender</c-><c- p>,</c-> <c- n>R</c-><c- o>&amp;&amp;</c-> <c- n>rec</c-><c- p>)</c->
         <c- n>noexcept</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>is_nothrow_constructible_v</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>)</c->
@@ -3121,6 +3119,8 @@ an operation state constructed from the passed-in sender and receiver.</p>
     <c- k>return</c-> <c- p>{};</c->
   <c- p>}</c->
 
+ <c- nl>public</c-><c- p>:</c->
+  <c- n>inline_scheduler</c-><c- p>()</c-> <c- o>=</c-> <c- k>default</c-><c- p>;</c->
   <c- b>bool</c-> <c- n>operator</c-><c- o>==</c-><c- p>(</c-><c- k>const</c-> <c- n>inline_scheduler</c-><c- o>&amp;</c-><c- p>)</c-> <c- k>const</c-> <c- n>noexcept</c-> <c- o>=</c-> <c- k>default</c-><c- p>;</c->
 <c- p>};</c->
 </pre>
@@ -3134,11 +3134,13 @@ implementing one. The <code class="highlight"><c- n>inline_scheduler</c-></code>
     <li data-md>
      <p>Customizes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code> to return an instance of the sender type <code class="highlight"><c- n>_sender</c-></code>.</p>
     <li data-md>
-     <p>The <code class="highlight"><c- n>_sender</c-></code> type models the <code class="highlight"><c- n>typed_sender</c-></code> concept and provides the metadata needed
-to describe it as a sender of no values (see <code class="highlight"><c- n>value_types</c-></code>) that can send an <code class="highlight"><c- n>exception_ptr</c-></code> as an error (see <code class="highlight"><c- n>error_types</c-></code>), and that never calls <code class="highlight"><c- n>set_done</c-></code> (see <code class="highlight"><c- n>sends_done</c-></code>).</p>
+     <p>The <code class="highlight"><c- n>_sender</c-></code> type models the <code class="highlight"><c- n>typed_sender</c-></code> concept and provides the
+metadata needed to describe it as a sender of no values that can send an <code class="highlight"><c- n>exception_ptr</c-></code> as an error and that never calls <code class="highlight"><c- n>set_done</c-></code>. This metadata
+is provided with the help of the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-></code> utility.</p>
     <li data-md>
-     <p>The <code class="highlight"><c- n>_sender</c-></code> type customizes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> to accept a receiver of no values.
-It returns an instance of type <code class="highlight"><c- n>_op</c-></code> that holds the receiver by value.</p>
+     <p>The <code class="highlight"><c- n>_sender</c-></code> type customizes <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> to accept a receiver of no
+values. It returns an instance of type <code class="highlight"><c- n>_op</c-></code> that holds the receiver by
+value.</p>
     <li data-md>
      <p>The operation state customizes <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> to call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> on the receiver, passing any exceptions to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> as an <code class="highlight"><c- n>exception_ptr</c-></code>.</p>
    </ol>
@@ -3174,7 +3176,7 @@ loop to finish up what it’s doing and then joins the thread, blocking for the 
    <p>The interesting bits are in the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code> context implementation. It
 is slightly too long to include here, so we only provide <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478">a reference to
 it</a>,
-but there is one noteworthy detail about its implementation. It uses space in
+but there is one noteworthy detail about its implementation: It uses space in
 its operation states to build an intrusive linked list of work items. In
 structured concurrency patterns, the operation states of nested operations
 compose statically, and in an algorithm like <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code>, the
@@ -3463,6 +3465,8 @@ essential when writing user code using standard execution concepts; we have also
    <ul>
     <li data-md>
      <p>Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.</p>
+    <li data-md>
+     <p>Add <code class="highlight"><c- n>completion_signatures</c-></code> utility for declaratively defining a typed sender’s metadata.</p>
     <li data-md>
      <p><code class="highlight"><c- n>done_as_error</c-></code> respecified as a customization point object.</p>
     <li data-md>
@@ -4977,10 +4981,10 @@ the shared stop state.</p>
 
 <c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-> <c- p>{</c->
   <c- c1>// [execution.receivers], receivers</c->
-  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>exception_ptr</c-><c- o>></c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>exception_ptr</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>receiver</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
-  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>An</c-><c- o>></c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>An</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>receiver_of</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
   <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
@@ -5041,7 +5045,7 @@ the shared stop state.</p>
     <c- k>struct</c-> <c- nc>sender_base</c-> <c- p>{};</c->
   <c- p>}</c->
 
-  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>sender_traits</c-><c- p>;</c->
 
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
@@ -5077,10 +5081,10 @@ the shared stop state.</p>
       <c- k>concept</c-> <i><c- nc>forwarding</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>query</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
         <c- n>forwarding_sender_query</c-><c- p>(</c-><c- n>T</c-><c- p>{});</c->
 
-    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- o>></c->
+    <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>get_completion_scheduler_t</c-><c- p>;</c->
 
-    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- o>></c->
+    <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- o>></c->
     <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_completion_scheduler_t</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-> <c- n>get_completion_scheduler</c-><c- p>{};</c->
 
     <c- c1>// [execution.senders.factories], sender factories</c->
@@ -5156,8 +5160,18 @@ the shared stop state.</p>
   <c- p>}</c->
 
   <c- c1>// [execution.snd_rec_utils], sender and receiver utilities</c->
+  <c- c1>// [execution.snd_rec_utils.rcvr_adptr]</c->
   <c- k>template</c-><c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Derived</c-><c- p>,</c-> <c- n>receiver</c-> <c- n>Base</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- o>></c->
     <c- k>using</c-> <c- n>receiver_adaptor</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- p>;</c->
+
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Fn</c-><c- o>></c->
+    <c- k>concept</c-> <i><c- nc>completion</c-><c- o>-</c-><c- n>signature</c-></i> <c- o>=</c-> <i><c- c1>// exposition only</c-></i>
+      <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+
+  <c- c1>// [execution.snd_rec_utils.completion_sigs]</c->
+  <c- k>template</c-> <c- o>&lt;</c-><i><c- n>completion</c-><c- o>-</c-><c- n>signature</c-></i><c- p>...</c-> <c- n>Fns</c-><c- o>></c->
+    <c- k>using</c-> <c- n>completion_signatures</c-> <c- o>=</c->
+      <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
 
   <c- c1>// [execution.contexts], execution contexts</c->
   <c- k>class</c-> <c- nc>run_loop</c-><c- p>;</c->
@@ -6637,7 +6651,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
        is to disable accessibility checks. -- <i>end note</i>]
      </p>
    </ol>
-   <h4 class="heading settled" data-level="9.9.1" id="spec-execution.snd_rec_utils.receiver_adaptor"><span class="secno">9.9.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code> <b>[execution.snd_rec_utils.receiver_adaptor]</b></span><a class="self-link" href="#spec-execution.snd_rec_utils.receiver_adaptor"></a></h4>
+   <h4 class="heading settled" data-level="9.9.1" id="spec-execution.snd_rec_utils.rcvr_adptr"><span class="secno">9.9.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code> <b>[execution.snd_rec_utils.rcvr_adptr]</b></span><a class="self-link" href="#spec-execution.snd_rec_utils.rcvr_adptr"></a></h4>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Derived</c-><c- p>,</c-> <c- n>receiver</c-> <c- n>Base</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- o>></c->
   <c- k>using</c-> <c- n>receiver_adaptor</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
 </pre>
@@ -6791,6 +6805,77 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)))</c-></code></p>
      </ul>
+   </ol>
+   <h4 class="heading settled" data-level="9.9.2" id="spec-execution.snd_rec_utils.completion_sigs"><span class="secno">9.9.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-></code> <b>[execution.snd_rec_utils.completion_sigs]</b></span><a class="self-link" href="#spec-execution.snd_rec_utils.completion_sigs"></a></h4>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>completion_signatures</c-></code> is used to define a type that implements the nested <code class="highlight"><c- n>value_types</c-></code>, <code class="highlight"><c- n>error_types</c-></code>, and <code class="highlight"><c- n>sends_done</c-></code> members that describe a typed sender. Its arguments are a flat list of function types that describe the signatures of the receiver’s completion-signal operations that the sender invokes.</p>
+    <li data-md>
+     <p>[<i>Example:</i></p>
+<pre class="highlight"><c- k>using</c-> <c- n>my_sender_traits</c-> <c- o>=</c->
+  <c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c->
+    <c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(),</c->
+    <c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(</c-><c- b>int</c-><c- p>,</c-> <c- b>float</c-><c- p>),</c->
+    <c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>),</c->
+    <c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>error_code</c-><c- p>),</c->
+    <c- n>execution</c-><c- o>::</c-><c- n>set_done_t</c-><c- p>()</c->
+  <c- o>></c-><c- p>;</c->
+
+ <c- c1>// my_sender_traits::value_types&lt;tuple, variant> names the type:</c->
+ <c- c1>//   variant&lt;tuple&lt;>, tuple&lt;int, float>></c->
+ <c- c1>//</c->
+ <c- c1>// my_sender_traits::error_types&lt;variant> names the type:</c->
+ <c- c1>//   variant&lt;exception_ptr, error_code></c->
+ <c- c1>//</c->
+ <c- c1>// my_sender_traits::sends_done is true</c->
+
+ <c- k>class</c-> <c- nc>my_sender</c-> <c- o>:</c-> <c- k>public</c-> <c- n>my_sender_traits</c-> <c- p>{</c->
+   <c- c1>// ...</c->
+ <c- p>};</c->
+</pre>
+     <p>-- <i>end example</i>]</p>
+    <li data-md>
+     <p>This section makes use of the following exposition-only concept:</p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Fn</c-><c- o>></c->
+  <c- k>concept</c-> <i><c- nc>completion</c-><c- o>-</c-><c- n>signature</c-></i> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+</pre>
+     <ol>
+      <li data-md>
+       <p>A type <code class="highlight"><c- n>Fn</c-></code> satisfies <code class="highlight"><i><c- n>completion</c-><c- o>-</c-><c- n>signature</c-></i></code> if it is a function type with one of the following forms:</p>
+       <ul>
+        <li data-md>
+         <p><code class="highlight"><c- n>set_value_t</c-><c- p>(</c-><i><c- n>Vs</c-></i><c- p>...)</c-></code>, where <code class="highlight"><i><c- n>Vs</c-></i></code> is an arbitrary parameter pack.</p>
+        <li data-md>
+         <p><code class="highlight"><c- n>set_error_t</c-><c- p>(</c-><i><c- n>E</c-></i><c- p>)</c-></code>, where <code class="highlight"><i><c- n>E</c-></i></code> is an arbitrary type.</p>
+        <li data-md>
+         <p><code class="highlight"><c- n>set_done_t</c-><c- p>()</c-></code></p>
+       </ul>
+      <li data-md>
+       <p>Otherwise, <code class="highlight"><c- n>Fn</c-></code> does not satisfy <code class="highlight"><i><c- n>completion</c-><c- o>-</c-><c- n>signature</c-></i></code>.</p>
+     </ol>
+    <li data-md>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><i><c- n>completion</c-><c- o>-</c-><c- n>signature</c-></i><c- p>...</c-> <c- n>Fns</c-><c- o>></c->
+  <c- k>using</c-> <c- n>completion_signatures</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+</pre>
+     <p>Given a template parameter pack <code class="highlight"><i><c- n>Fns</c-></i></code> of types that satisfy <code class="highlight"><i><c- n>completion</c-><c- o>-</c-><c- n>signature</c-></i></code>, <code class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><i><c- n>Fns</c-></i><c- p>...</c-><c- o>></c-></code> names a non-template class type equivalent to the following:</p>
+<pre class="highlight"><c- k>struct</c-> <i><c- nc>completion</c-><c- o>-</c-><c- n>signatures</c-><c- o>-</c-><c- n>impl</c-></i> <c- p>{</c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Tuple</c-><c- p>,</c-> <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-><c- o>></c->
+    <c- k>using</c-> <c- n>value_types</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-><c- o>></c->
+    <c- k>using</c-> <c- n>error_types</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+
+  <c- k>static</c-> <c- k>constexpr</c-> <c- b>bool</c-> <c- n>sends_done</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+<c- p>};</c->
+</pre>
+     <ol>
+      <li data-md>
+       <p>Let <code class="highlight"><i><c- n>ValueFns</c-></i></code> be a template parameter pack of the function types in <code class="highlight"><i><c- n>Fns</c-></i></code> whose return types are <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-></code>, and let <code class="highlight"><i><c- n>Values</c-><sub><c- n>n</c-></sub></i></code> be a template parameter pack of the function argument types in the <code class="highlight"><i><c- n>n</c-></i></code>-th type in <code class="highlight"><i><c- n>ValueFns</c-></i></code>. Then, given two variadic templates <code class="highlight"><i><c- n>Tuple</c-></i></code> and <code class="highlight"><i><c- n>Variant</c-></i></code>, the type <code class="highlight"><i><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-><c- o>-</c-><c- n>impl</c-></i><c- o>::</c-><c- n>value_types</c-><c- o>&lt;</c-><i><c- n>Tuple</c-></i><c- p>,</c-> <i><c- n>Variant</c-></i><c- o>></c-></code> names the type <code class="highlight"><i><c- n>Variant</c-></i><c- o>&lt;</c-><i><c- n>Tuple</c-></i><c- o>&lt;</c-><i><c- n>Values</c-><sub><c- n>0</c-></sub></i><c- p>...</c-><c- o>></c-><c- p>,</c-> <i><c- n>Tuple</c-></i><c- o>&lt;</c-><i><c- n>Values</c-><sub><c- n>1</c-></sub></i><c- p>...</c-><c- o>></c-><c- p>,</c-> <c- p>...</c-> <i><c- n>Tuple</c-></i><c- o>&lt;</c-><i><c- n>Values</c-><sub><c- n>m</c-><c- mf>-1</c-></sub></i><c- mf>.</c-><c- p>..</c-><c- o>>></c-></code>, where <code class="highlight"><i><c- n>m</c-></i></code> is the size of the parameter pack <code class="highlight"><i><c- n>ValueFns</c-></i></code>.</p>
+      <li data-md>
+       <p>Let <code class="highlight"><i><c- n>ErrorFns</c-></i></code> be a template parameter pack of the function types in <code class="highlight"><i><c- n>Fns</c-></i></code> whose return types are <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-></code>, and let <code class="highlight"><i><c- n>Error</c-><sub><c- n>n</c-></sub></i></code> be the function argument type in the <code class="highlight"><i><c- n>n</c-></i></code>-th type in <code class="highlight"><i><c- n>ErrorFns</c-></i></code>. Then, given a variadic template <code class="highlight"><i><c- n>Variant</c-></i></code>, the type <code class="highlight"><i><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-><c- o>-</c-><c- n>impl</c-></i><c- o>::</c-><c- n>error_types</c-><c- o>&lt;</c-><i><c- n>Variant</c-></i><c- o>></c-></code> names the type <code class="highlight"><i><c- n>Variant</c-></i><c- o>&lt;</c-><i><c- n>Error</c-><sub><c- n>0</c-></sub></i><c- p>,</c-> <i><c- n>Error</c-><sub><c- n>1</c-></sub></i><c- p>,</c-> <c- p>...</c-> <i><c- n>Error</c-><sub><c- n>m</c-><c- mi>-1</c-></sub></i><c- o>></c-></code>, where <code class="highlight"><i><c- n>m</c-></i></code> is the size of the parameter pack <code class="highlight"><i><c- n>ErrorFns</c-></i></code>.</p>
+      <li data-md>
+       <p><code class="highlight"><i><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-><c- o>-</c-><c- n>impl</c-></i><c- o>::</c-><c- n>sends_done</c-></code> is <code class="highlight">true</code> if at least one of the types in <code class="highlight"><i><c- n>Fns</c-></i></code> is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done_t</c-><c- p>()</c-></code>; otherwise, <code class="highlight">false</code>.</p>
+     </ol>
    </ol>
    <h3 class="heading settled" data-level="9.10" id="spec-execution.contexts"><span class="secno">9.10. </span><span class="content">Execution contexts <b>[execution.contexts]</b></span><a class="self-link" href="#spec-execution.contexts"></a></h3>
    <ol>
