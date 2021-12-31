@@ -20,6 +20,7 @@ Metadata Order: Editor, This Version, Source, Issue Tracking, Project, Audience
 Markup Shorthands: markdown yes
 Toggle Diffs: no
 No Abstract: yes
+Default Biblio Display: direct
 </pre>
 
 <style>
@@ -102,9 +103,9 @@ This paper proposes a self-contained design for a Standard C++ framework for man
 
 Today, C++ software is increasingly asynchronous and parallel, a trend that is likely to only continue going forward.
 Asynchrony and parallelism appears everywhere, from processor hardware interfaces, to networking, to file I/O, to GUIs, to accelerators.
-Every C++ domain and every platform need to deal with asynchrony and parallelism, from scientific computing to video games to financial services, from the smallest mobile devices to your laptop to GPUs in the world's fastest supercomputer.
+Every C++ domain and every platform needs to deal with asynchrony and parallelism, from scientific computing to video games to financial services, from the smallest mobile devices to your laptop to GPUs in the world's fastest supercomputer.
 
-While the C++ Standard Library has a rich set concurrency primitives (`std::atomic`, `std::mutex`, `std::counting_semaphore`, etc) and lower level building blocks (`std::thread`, etc), we lack a Standard vocabulary and framework for asynchrony and parallelism that C++ programmers desperately need.
+While the C++ Standard Library has a rich set of concurrency primitives (`std::atomic`, `std::mutex`, `std::counting_semaphore`, etc) and lower level building blocks (`std::thread`, etc), we lack a Standard vocabulary and framework for asynchrony and parallelism that C++ programmers desperately need.
 `std::async`/`std::future`/`std::promise`, C++11's intended exposure for asynchrony, is inefficient, hard to use correctly, and severely lacking in genericity, making it unusable in many contexts.
 We introduced parallel algorithms to the C++ Standard Library in C++17, and while they are an excellent start, they are all inherently synchronous and not composable.
 
@@ -178,7 +179,7 @@ sender auto async_inclusive_scan(scheduler auto sch,                          //
                                                       begin(output) + start); // 9
            })                                                                 // 10
        | then(                                                                // 11
-           [](std::vector<double>& partials) {
+           [](std::vector<double>&& partials) {
              std::inclusive_scan(begin(partials), end(partials),              // 12
                                  begin(partials));                            // 12
              return std::move(partials);                                      // 13
@@ -192,7 +193,7 @@ sender auto async_inclusive_scan(scheduler auto sch,                          //
              );
            })
        | then(                                                                // 15
-           [=](std::vector<double>& partials) {                               // 15
+           [=](std::vector<double>&& partials) {                              // 15
              return output;                                                   // 15
            });                                                                // 15
 }
@@ -232,18 +233,18 @@ struct dynamic_buffer {                                                       //
 
 sender_of<dynamic_buffer> auto async_read_array(auto handle) {                // 2
   return just(dynamic_buffer{})                                               // 4
-       | let_value([] (dynamic_buffer& buf) {                                 // 5
+       | let_value([handle] (dynamic_buffer& buf) {                           // 5
            return just(std::as_writeable_bytes(std::span(&buf.size, 1))       // 6
                 | async_read(handle)                                          // 7
                 | then(                                                       // 8
-                    [&] (std::size_t bytes_read) {                            // 9
+                    [&buf] (std::size_t bytes_read) {                         // 9
                       assert(bytes_read == sizeof(buf.size));                 // 10
-                      buf.data = std::make_unique(new std::byte[buf.size]);   // 11
+                      buf.data = std::make_unique<std::byte[]>(buf.size);     // 11
                       return std::span(buf.data.get(), buf.size);             // 12
                     }
                 | async_read(handle)                                          // 13
                 | then(
-                    [&] (std::size_t bytes_read) {
+                    [&buf] (std::size_t bytes_read) {
                       assert(bytes_read == buf.size);                         // 14
                       return std::move(buf);                                  // 15
                     });
@@ -600,7 +601,12 @@ struct _retry_sender : std::execution::sender_base {
 
 namespace std::execution {
   template <typed_sender S>
-  struct sender_traits<_retry_sender<S>> : sender_traits<S> { };
+  struct sender_traits<_retry_sender<S>> : sender_traits<S> {
+    // Only sends an error if the connect() throws.
+    // Errors sent by S are caught and discarded.
+    template<template<typename...> class Variant>
+    using error_types = Variant<std::exception_ptr>;
+  };
 }
 
 std::execution::sender auto retry(std::execution::sender auto s) {
@@ -645,7 +651,7 @@ In this section we look at some schedulers of varying complexity.
 ### Inline scheduler ### {#example-schedulers-inline}
 
 ```c++
-struct inline_scheduler {
+class inline_scheduler {
   template <class R>
     struct _op {
       [[no_unique_address]] R rec_;
@@ -656,14 +662,11 @@ struct inline_scheduler {
       }
     };
 
-  struct _sender {
-    template <template <class...> class Tuple,
-              template <class...> class Variant>
-      using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-      using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = false;
+  using _traits = std::execution::completion_signatures<
+    std::execution::set_value_t(),
+    std::execution::set_error_t(std::exception_ptr)>;
 
+  struct _sender : _traits {
     template <std::execution::receiver_of R>
       friend auto tag_invoke(std::execution::connect_t, _sender, R&& rec)
         noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
@@ -676,6 +679,8 @@ struct inline_scheduler {
     return {};
   }
 
+ public:
+  inline_scheduler() = default;
   bool operator==(const inline_scheduler&) const noexcept = default;
 };
 ```
@@ -689,16 +694,18 @@ wants to be passed an lvalue.
 Although not a particularly useful scheduler, it serves to illustrate the basics of
 implementing one. The `inline_scheduler`:
 
-1. Customizes `execution::schedule` to return an instance of the sender type `_sender`.
-2. The `_sender` type models the `typed_sender` concept and provides the metadata needed
-    to describe it as a sender of no values (see `value_types`) that can send an
-    `exception_ptr` as an error (see `error_types`), and that never calls `set_done`
-    (see `sends_done`).
-3. The `_sender` type customizes `execution::connect` to accept a receiver of no values.
-    It returns an instance of type `_op` that holds the receiver by value.
-4. The operation state customizes `std::execution::start` to call `std::execution::set_value`
-    on the receiver, passing any exceptions to `std::execution::set_error` as an
-    `exception_ptr`.
+1. Customizes `execution::schedule` to return an instance of the sender type
+   `_sender`.
+2. The `_sender` type models the `typed_sender` concept and provides the
+    metadata needed to describe it as a sender of no values that can send an
+    `exception_ptr` as an error and that never calls `set_done`. This metadata
+    is provided with the help of the `execution::completion_signatures` utility.
+3. The `_sender` type customizes `execution::connect` to accept a receiver of no
+    values. It returns an instance of type `_op` that holds the receiver by
+    value.
+4. The operation state customizes `std::execution::start` to call
+    `std::execution::set_value` on the receiver, passing any exceptions to
+    `std::execution::set_error` as an `exception_ptr`.
 
 ### Single thread scheduler ### {#example-single-thread}
 
@@ -737,13 +744,152 @@ loop to finish up what it's doing and then joins the thread, blocking for the ev
 The interesting bits are in the `execution::run_loop` context implementation. It
 is slightly too long to include here, so we only provide [a reference to
 it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478),
-but there is one noteworthy detail about its implementation. It uses space in
+but there is one noteworthy detail about its implementation: It uses space in
 its operation states to build an intrusive linked list of work items. In
 structured concurrency patterns, the operation states of nested operations
 compose statically, and in an algorithm like `this_thread::sync_wait`, the
 composite operation state lives on the stack for the duration of the operation.
 The end result is that work can be scheduled onto this thread with zero
 allocations.
+
+## Examples: Server theme ## {#example-server}
+
+In this section we look at some examples of how one would use senders to implement an HTTP server. The examples ignore the low-level details of the HTTP server and looks at how senders can be combined to achieve the goals of the project.
+
+General application context:
+* server application that processes images
+* execution contexts:
+    - 1 dedicated thread for network I/O
+    - N worker threads used for CPU-intensive work
+    - M threads for auxiliary I/O
+    - optional GPU context that may be used on some types of servers
+* all parts of the applications can be asynchronous
+* no locks shall be used in user code
+
+### Composability with `execution::let_*` ### {#example-server-let}
+
+Example context:
+- we are looking at the flow of processing an HTTP request and sending back the response
+- show how one can break the (slightly complex) flow into steps with `execution::let_*` functions
+- different phases of processing HTTP requests are broken down into separate concerns
+- each part of the processing might use different execution contexts (details not shown in this example)
+- error handling is generic, regardless which component fails; we always send the right response to the clients
+
+Goals:
+- show how one can break more complex flows into steps with let_* functions
+- exemplify the use of `let_value`, `let_error`, `let_done`, and `just` algorithms
+
+```c++
+namespace ex = std::execution;
+
+// Returns a sender that yields an http_request object for an incoming request
+ex::sender auto schedule_request_start(read_requests_ctx ctx) {...}
+// Sends a response back to the client; yields a void signal on success
+ex::sender auto send_response(const http_response& resp) {...}
+// Validate that the HTTP request is well-formed; forwards the request on success
+ex::sender auto validate_request(const http_request& req) {...}
+
+// Handle the request; main application logic
+ex::sender auto handle_request(const http_request& req) {
+  //...
+  return ex::just(http_response{200, result_body});
+}
+
+// Transforms server errors into responses to be sent to the client
+ex::sender auto error_to_response(std::exception_ptr err) {
+  try {
+    std::rethrow_exception(err);
+  } catch (const std::invalid_argument& e) {
+    return ex::just(http_response{404, e.what()});
+  } catch (const std::exception& e) {
+    return ex::just(http_response{500, e.what()});
+  } catch (...) {
+    return ex::just(http_response{500, "Unknown server error"});
+  }
+}
+// Transforms cancellation of the server into responses to be sent to the client
+ex::sender auto done_to_response() {
+  return ex::just(http_response{503, "Service temporarily unavailable"});
+}
+//...
+// The whole flow for transforming incoming requests into responses
+ex::sender auto snd =
+    // get a sender when a new request comes
+    schedule_request_start(the_read_requests_ctx)
+    // make sure the request is valid; throw if not
+    | ex::let_value(validate_request)
+    // process the request in a function that may be using a different execution context
+    | ex::let_value(handle_request)
+    // If there are errors transform them into proper responses
+    | ex::let_error(error_to_response)
+    // If the flow is cancelled, send back a proper response
+    | ex::let_done(done_to_response)
+    // write the result back to the client
+    | ex::let_value(send_response)
+    // done
+    ;
+// execute the whole flow asynchronously
+ex::start_detached(std::move(snd));
+```
+The example shows how one can separate out the concerns for interpreting requests, validating requests, running the main logic for handling the request, generating error responses, handling cancellation and sending the response back to the client.
+They are all different phases in the application, and can be joined together with the `let_*` functions.
+
+All our functions return `execution::sender` objects, so that they can all generate success, failure and cancellation paths.
+For example, regardless where an error is generated (reading request, validating request or handling the response), we would have one common block to handle the error, and following error flows is easy.
+
+Also, because of using `execution::sender` objects at any step, we might expect any of these steps to be completely asynchronous; the overall flow doesn't care.
+Regardless of the execution context in which the steps, or part of the steps are executed in, the flow is still the same.
+
+### Moving between execution contexts with `execution::on` and `execution::transfer` ### {#example-server-on}
+
+Example context:
+- reading data from the socket before processing the request
+- reading of the data is done on the I/O context
+- no processing of the data needs to be done on the I/O context
+
+Goals:
+- show how one can change the execution context
+- exemplify the use of `on` and `transfer` algorithms
+
+
+```c++
+namespace ex = std::execution;
+
+size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {}
+void process_read_data(const char* read_data, size_t read_len) {}
+//...
+
+// A sender that just calls the legacy read function
+auto snd_read = ex::just(sock, buf, buf_len) | ex::then(legacy_read_from_socket);
+// The entire flow
+auto snd =
+    // start by reading data on the I/O thread
+    ex::on(io_sched, std::move(snd_read))
+    // do the processing on the worker threads pool
+    | ex::transfer(work_sched)
+    // process the incoming data (on worker threads)
+    | ex::then([buf](int read_len) { process_read_data(buf, read_len); })
+    // done
+    ;
+// execute the whole flow asynchronously
+ex::start_detached(std::move(snd));
+```
+
+The example assume that we need to wrap some legacy code of reading sockets, and handle execution context switching.
+(This style of reading from socket may not be the most efficient one, but it's working for our purposes.)
+For performance reasons, the reading from the socket needs to be done on the I/O thread, and all the processing needs to happen on a work-specific execution context (i.e., thread pool).
+
+Calling `execution::on` will ensure that the given sender will be started on the given scheduler.
+In our example, `snd_read` is going to be started on the I/O scheduler.
+This sender will just call the legacy code.
+
+The completion signal will be issued in the I/O execution context, so we have to move it to the work thread pool.
+This is achieved with the help of the `execution::transfer` algorithm.
+The rest of the processing (in our case, the last call to `then`) will happen in the work thread pool.
+
+The reader should notice the difference between `execution::on` and `execution::transfer`.
+The `execution::on` algorithm will ensure that the given sender will start in the specified context, and doesn't care where the completion signal for that sender is sent.
+The `execution::transfer` algorithm will not care where the given sender is going to be started, but will ensure that the completion signal of will be transferred to the given context.
 
 ## What this proposal is **not** ## {#intro-is-not}
 
@@ -871,6 +1017,21 @@ This proposal also draws heavily from our experience with [Thrust](https://githu
 
 # Revision history # {#revisions}
 
+## R4 ## {#r4}
+
+The changes since R3 are as follows:
+
+<b>Fixes:</b>
+
+    * ...
+
+<b>Enhancements:</b>
+
+    * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
+    * Add `completion_signatures` utility for declaratively defining a typed sender's metadata.
+    * `done_as_error` respecified as a customization point object.
+    * ...
+
 ## R3 ## {#r3}
 
 The changes since R2 are as follows:
@@ -929,7 +1090,7 @@ Initial revision.
 
 # Design - introduction # {#design-intro}
 
-The following four sections describe the entirety of the proposed design.
+The following three sections describe the entirety of the proposed design.
 
 * [[#design-intro]] describes the conventions used through the rest of the design sections, as well as an example illustrating how we envision code will be written using this proposal.
 * [[#design-user]] describes all the functionality from the perspective we intend for users: it describes the various concepts they will interact with, and what their programming model is.
@@ -1481,7 +1642,7 @@ to the eager operation in the case that the sender representing the eager work
 is destroyed before it has been joined (assuming strategy (5) or (6) listed
 above is chosen).
 
-### Eager senders cannot access execution context from the receiver ### {#design-lazy-algorithms-runtime}
+### Eager senders cannot access execution context from the receiver ### {#design-lazy-algorithms-context}
 
 In sender/receiver, contextual information is passed from parent operations to
 their children by way of receivers. Information like stop tokens, allocators,
@@ -1971,7 +2132,7 @@ Returns a sender that maps the value channel from a `T` to an `optional<decay_t<
 template&lt;move_constructible Error>
 execution::sender auto done_as_error(
     execution::sender auto snd,
-    Error err = Error{}
+    Error err
 );
 </pre>
 
@@ -2481,7 +2642,7 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
     void tag_invoke();
     </pre>
 
-    and that does not include the the `std::tag_invoke` name.
+    and that does not include the `std::tag_invoke` name.
 
 </blockquote>
 </ins>
@@ -2641,6 +2802,19 @@ namespace std::execution {
   template&lt;class T>
     concept <i>class-type</i> = <i>decays-to</i>&lt;T, T> && is_class_v&lt;T>;  // exposition only
 
+  // [execution.queries], general queries
+  inline namespace <i>unspecified</i> {
+    struct get_scheduler_t;
+    inline constexpr get_scheduler_t get_scheduler{};
+    struct get_allocator_t;
+    inline constexpr get_allocator_t get_allocator{};
+    struct get_stop_token_t;
+    inline constexpr get_stop_token_t get_stop_token{};
+  }
+  template &lt;class T>
+    using stop_token_of_t =
+      remove_cvref_t&lt;decltype(get_stop_token(declval&lt;T>()))>;
+
   // [execution.schedulers], schedulers
   template&lt;class S>
     concept scheduler = <i>see-below</i>;
@@ -2648,6 +2822,13 @@ namespace std::execution {
   // [execution.schedulers.queries], scheduler queries
   enum class forward_progress_guarantee;
   inline namespace <i>unspecified</i> {
+    struct forwarding_scheduler_query_t;
+    inline constexpr forwarding_scheduler_query_t forwarding_scheduler_query{};
+
+    template &lt;class T>
+      concept <i>forwarding-scheduler-query</i> = // exposition only
+        forwarding_scheduler_query(T{});
+
     struct get_forward_progress_guarantee_t;
     inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
   }
@@ -2662,10 +2843,10 @@ namespace std::this_thread {
 
 namespace std::execution {
   // [execution.receivers], receivers
-  template&lt;class T, class E = exception_ptr>
+  template &lt;class T, class E = exception_ptr>
     concept receiver = <i>see-below</i>;
 
-  template&lt;class T, class... An>
+  template &lt;class T, class... An>
     concept receiver_of = <i>see-below</i>;
 
   inline namespace <i>unspecified</i> {
@@ -2679,16 +2860,13 @@ namespace std::execution {
 
   // [execution.receivers.queries], receiver queries
   inline namespace <i>unspecified</i> {
-    struct get_scheduler_t;
-    inline constexpr get_scheduler_t get_scheduler{};
-    struct get_allocator_t;
-    inline constexpr get_allocator_t get_allocator{};
-    struct get_stop_token_t;
-    inline constexpr get_stop_token_t get_stop_token{};
+    struct forwarding_receiver_query_t;
+    inline constexpr forwarding_receiver_query_t forwarding_receiver_query{};
+
+    template &lt;class T>
+      concept <i>forwarding-receiver-query</i> = // exposition only
+        forwarding_receiver_query(T{});
   }
-  template <class R>
-    using stop_token_of_t =
-      remove_cvref_t<decltype(get_stop_token(declval<R>()))>;
 
   // [execution.op_state], operation states
   template&lt;class O>
@@ -2729,7 +2907,7 @@ namespace std::execution {
     struct sender_base {};
   }
 
-  template&lt;class S>
+  template &lt;class S>
     struct sender_traits;
 
   template &lt;class... Ts>
@@ -2758,9 +2936,17 @@ namespace std::execution {
       using connect_result_t = decltype(connect(declval&lt;S>(), declval&lt;R>()));
 
     // [execution.senders.queries], sender queries
-    template&lt;class CPO>
+    struct forwarding_sender_query_t;
+    inline constexpr forwarding_sender_query_t forwarding_sender_query{};
+
+    template &lt;class T>
+      concept <i>forwarding-sender-query</i> = // exposition only
+        forwarding_sender_query(T{});
+
+    template &lt;class CPO>
     struct get_completion_scheduler_t;
-    template&lt;class CPO>
+
+    template &lt;class CPO>
     inline constexpr get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
 
     // [execution.senders.factories], sender factories
@@ -2824,8 +3010,8 @@ namespace std::execution {
     struct done_as_optional_t;
     inline constexpr done_as_optional_t done_as_optional;
 
-    template&lt;move_constructible Error, sender S>
-      <i>see-below</i> done_as_error(S &&, Error err = Error{});
+    struct done_as_error_t;
+    inline constexpr done_as_error_t done_as_error;
 
     // [execution.senders.consumers], sender consumers
     struct ensure_started_t;
@@ -2836,8 +3022,18 @@ namespace std::execution {
   }
 
   // [execution.snd_rec_utils], sender and receiver utilities
+  // [execution.snd_rec_utils.rcvr_adptr]
   template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
     using receiver_adaptor = <i>unspecified</i>;
+
+  template &lt;class Fn>
+    concept <i>completion-signature</i> = <i>// exposition only</i>
+      <i>see below</i>;
+
+  // [execution.snd_rec_utils.completion_sigs]
+  template &lt;<i>completion-signature</i>... Fns>
+    using completion_signatures =
+      <i>see below</i>;
 
   // [execution.contexts], execution contexts
   class run_loop;
@@ -2885,6 +3081,38 @@ namespace std::execution {
       constructible_from&lt;decay_t&lt;T>, T>;
     </pre>
 
+## General queries <b>[execution.queries]</b> ### {#spec-execution.queries}
+
+### `execution::get_scheduler` <b>[execution.queries.get_scheduler]</b> ### {#spec-execution.receivers.queries.get_scheduler}
+
+1. `execution::get_scheduler` is used to ask an object for its associated scheduler.
+
+2. The name `execution::get_scheduler` denotes a customization point object. For some subexpression `r`, `execution::get_scheduler(r)` is expression equivalent to:
+
+    1. `tag_invoke(execution::get_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+
+    2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
+
+### `execution::get_allocator` <b>[execution.queries.get_allocator]</b> ### {#spec-execution.receivers.queries.get_allocator}
+
+1. `execution::get_allocator` is used to ask an object for its associated allocator.
+
+2. The name `execution::get_allocator` denotes a customization point object. For some subexpression `r`, `execution::get_allocator(r)` is expression equivalent to:
+
+    1. `tag_invoke(execution::get_allocator, as_const(r))`, if this expression is well formed and models <i>Allocator</i>, and is `noexcept`.
+
+    2. Otherwise, `execution::get_allocator(r)` is ill-formed.
+
+### `execution::get_stop_token` <b>[execution.queries.get_stop_token]</b> ### {#spec-execution.receivers.queries.get_stop_token}
+
+1. `execution::get_stop_token` is used to ask an object for an associated stop token.
+
+2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `r`, `execution::get_stop_token(r)` is expression equivalent to:
+
+    1. `tag_invoke(execution::get_stop_token, as_const(r))`, if this expression is well formed and satisfies `stoppable_token`, and is `noexcept`.
+
+    2. Otherwise, `never_stop_token{}`.
+
 ## Schedulers <b>[execution.schedulers] </b> ## {#spec-execution.schedulers}
 
 1. The `scheduler` concept defines the requirements of a type that allows for scheduling of work on its <i>associated execution context</i>.
@@ -2912,6 +3140,16 @@ namespace std::execution {
     context of the scheduler. <i>—end note</i>]
 
 ### Scheduler queries <b>[execution.schedulers.queries]</b> ### {#spec-execution.schedulers.queries}
+
+#### `execution::forwarding_scheduler_query` <b>[execution.schedulers.queries.forwarding_scheduler_query]</b> #### {#spec-execution.schedulers.queries.forwarding_scheduler_query}
+
+1. `execution::forwarding_scheduler_query` is used to ask a customization point object whether it is a scheduler query that should be forwarded through scheduler adaptors.
+
+2. The name `execution::forwarding_scheduler_query` denotes a customization point object. For some subexpression `t`, `execution::forwarding_scheduler_query(t)` is expression equivalent to:
+
+    1. `tag_invoke(execution::forwarding_scheduler_query, t)`, if this expression is well formed, its type is implicitly convertible to `bool`, and is `noexcept`.
+
+    2. Otherwise, `false`.
 
 #### `execution::get_forward_progress_guarantee` <b>[execution.schedulers.queries.get_forward_progress_guarantee]</b> #### {#spec-execution.schedulers.queries.get_forward_progress_guarantee}
 
@@ -2983,6 +3221,19 @@ enum class forward_progress_guarantee {
 
 4. Once one of a receiver’s completion-signal operations has completed non-exceptionally, the receiver contract has been satisfied.
 
+5. `execution::get_scheduler` is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
+    its result. --<i>end note</i>]
+
+6. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
+    its result. --<i>end note</i>]
+
+7. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> of that receiver. A sender connected with that receiver can use this stop token to check whether a stop request has been made. [<i>Note</i>: such
+    a stop token being signalled does not bind the sender to actually cancel any work. --<i>end note</i>]
+
+8. Let `r` be a receiver, `s` be a sender, and `op_state` be an operation state resulting from an `execution::connect(s, r)` call. Let `token` be a stop token resulting from an `execution::get_stop_token(r)` call. `token` must remain valid at least until a call to
+    a receiver completion-signal function of `r` returns successfully. [<i>Note</i>: this means that, unless it knows about further guarantees provided by the receiver `r`, the implementation of `op_state` should not use `token` after it makes a call to a receiver
+    completion-signal function of `r`. This also implies that stop callbacks registered on `token` by the implementation of `op_state` or `s` must be destroyed before such a call to a receiver completion-signal function of `r`. --<i>end note</i>]
+
 ### `execution::set_value` <b>[execution.receivers.set_value]</b> ### {#spec-execution.receivers.set_value}
 
 1. `execution::set_value` is used to send a <i>value completion signal</i> to a receiver.
@@ -3015,45 +3266,17 @@ enum class forward_progress_guarantee {
 
 ### Receiver queries <b>[execution.receivers.queries]</b> ### {#spec-execution.receivers.queries}
 
-#### `execution::get_scheduler` <b>[execution.receivers.queries.get_scheduler]</b> #### {#spec-execution.receivers.queries.get_scheduler}
+#### `execution::forwarding_receiver_query` <b>[execution.receivers.queries.forwarding_receiver_query]</b> #### {#spec-execution.receivers.queries.forwarding_receiver_query}
 
-1. `execution::get_scheduler` is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
-    its result. --<i>end note</i>]
+1. `execution::forwarding_receiver_query` is used to ask a customization point object whether it is a receiver query that should be forwarded through receiver adaptors.
 
-2. The name `execution::get_scheduler` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_scheduler` is ill-formed. Otherwise, `execution::get_scheduler(r)` is
-    expression equivalent to:
+2. The name `execution::forwarding_receiver_query` denotes a customization point object. For some subexpression `t`, `execution::forwarding_receiver_query(t)` is expression equivalent to:
 
-    1. `tag_invoke(execution::get_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::forwarding_receiver_query, t)`, if this expression is well formed, its type is implicitly convertible to `bool`, and is `noexcept`.
 
-    2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
+    2. Otherwise, `false` if the type of `t` is one of `set_value_t`, `set_error_t`, or `set_done_t`.
 
-#### `execution::get_allocator` <b>[execution.receivers.queries.get_allocator]</b> #### {#spec-execution.receivers.queries.get_allocator}
-
-1. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
-    its result. --<i>end note</i>]
-
-2. The name `execution::get_allocator` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_allocator` is ill-formed. Otherwise, `execution::get_allocator(r)` is
-    expression equivalent to:
-
-    1. `tag_invoke(execution::get_allocator, as_const(r))`, if this expression is well formed and models <i>Allocator</i>, and is `noexcept`.
-
-    2. Otherwise, `execution::get_allocator(r)` is ill-formed.
-
-#### `execution::get_stop_token` <b>[execution.receivers.queries.get_stop_token]</b> #### {#spec-execution.receivers.queries.get_stop_token}
-
-1. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> of that receiver. A sender connected with that receiver can use this stop token to check whether a stop request has been made. [<i>Note</i>: such
-    a stop token being signalled does not bind the sender to actually cancel any work. --<i>end note</i>]
-
-2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `r`, let `R` be `decltype((r))`. If `R` does not satisfy `execution::receiver`, `execution::get_stop_token` is ill-formed. Otherwise, `execution::get_stop_token(r)`
-    is expression equivalent to:
-
-    1. `tag_invoke(execution::get_stop_token, as_const(r))`, if this expression is well formed and satisfies `stoppable_token`, and is `noexcept`.
-
-    2. Otherwise, `never_stop_token{}`.
-
-3. Let `r` be a receiver, `s` be a sender, and `op_state` be an operation state resulting from an `execution::connect(s, r)` call. Let `token` be a stop token resulting from an `execution::get_stop_token(r)` call. `token` must remain valid at least until a call to
-    a receiver completion-signal function of `r` returns successfully. [<i>Note</i>: this means that, unless it knows about further guarantees provided by the receiver `r`, the implementation of `op_state` should not use `token` after it makes a call to a receiver
-    completion-signal function of `r`. This also implies that stop callbacks registered on `token` by the implementation of `op_state` or `s` must be destroyed before such a call to a receiver completion-signal function of `r`. --<i>end note</i>]
+    3. Otherwise, `true`.
 
 ## Operation states <b>[execution.op_state]</b> ## {#spec-execution.op_state}
 
@@ -3068,6 +3291,8 @@ enum class forward_progress_guarantee {
           { execution::start(o) } noexcept;
         };
     </pre>
+
+2. Any operation state types defined by the implementation are non-movable types.
 
 ### `execution::start` <b>[execution.op_state.start]</b> ### {#spec-execution.op_state.start}
 
@@ -3111,7 +3336,7 @@ enum class forward_progress_guarantee {
 
     <pre highlight=c++>
     template&lt;template&lt;template&lt;class...> class, template&lt;class...> class> class>
-      struct <i>has-value-types</i>; // exposition only 
+      struct <i>has-value-types</i>; // exposition only
 
     template&lt;template&lt;template&lt;class...> class> class>
       struct <i>has-error-types</i>; // exposition only
@@ -3138,7 +3363,7 @@ enum class forward_progress_guarantee {
         typed_sender&ltS> &&
         same_as&lt
           <i>type-list</i>&ltTs...>,
-          typename sender_traits&ltS>::value_types&lt<i>type-list</i>, type_identity_t>
+          typename sender_traits&ltS>::template value_types&lt<i>type-list</i>, type_identity_t>
         >;
     </pre>
 
@@ -3295,6 +3520,16 @@ enum class forward_progress_guarantee {
 3. Standard sender types shall always expose an rvalue-qualified overload of a customization of `execution::connect`. Standard sender types shall only expose an lvalue-qualified overload of a customization of `execution::connect` if they are copyable.
 
 ### Sender queries <b>[execution.senders.queries]</b> ### {#spec-execution.senders.queries}
+
+#### `execution::forwarding_sender_query` <b>[execution.senders.queries.forwarding_sender_query]</b> #### {#spec-execution.senders.queries.forwarding_sender_query}
+
+1. `execution::forwarding_sender_query` is used to ask a customization point object whether it is a sender query that should be forwarded through sender adaptors.
+
+2. The name `execution::forwarding_sender_query` denotes a customization point object. For some subexpression `t`, `execution::forwarding_sender_query(t)` is expression equivalent to:
+
+    1. `tag_invoke(execution::forwarding_sender_query, t)`, if this expression is well formed, its type is implicitly convertible to `bool`, and is `noexcept`.
+
+    2. Otherwise, `false`.
 
 #### `execution::get_completion_scheduler` <b>[execution.senders.queries.get_completion_scheduler]</b> #### {#spec-execution.senders.queries.get_completion_scheduler}
 
@@ -3500,10 +3735,10 @@ enum class forward_progress_guarantee {
 3. Unless otherwise specified, a sender adaptor is required to not begin executing any functions which would observe or modify any of the arguments of the adaptor before the returned sender is connected with a receiver using `execution::connect`, and
     `execution::start` is called on the resulting operation state. This requirement applies to any function that is selected by the implementation of the sender adaptor.
 
-4. Unless otherwise specified, all sender adaptors which accept a single `sender` argument return sender objects that propagate sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
+4. A type `T` is a <i>forwarding sender query</i> if it is the type of a customization point object that models <code>forwarding-sender-query</code>. Unless otherwise specified, all sender adaptors that accept a single `sender` argument return sender objects that propagate forwarding sender queries to that single sender argument. This requirement applies to any function that is selected by the implementation of the
     sender adaptor.
 
-5. Unless otherwise specified, whenever a sender adaptor constructs a receiver it passes to another sender's connect, that receiver shall propagate receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
+5. A type `T` is a <i>forwarding receiver query</i> if it is the type of a customization point object that models <code>forwarding-receiver-query</code>. Unless otherwise specified, whenever a sender adaptor constructs a receiver that it passes to another sender's connect, that receiver shall propagate forwarding receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
     applies to any sender returned from a function that is selected by the implementation of such sender adaptor.
 
 #### Sender adaptor closure objects <b>[execution.senders.adaptor.objects]</b> #### {#spec-execution.senders.adaptor.objects}
@@ -3746,6 +3981,8 @@ are all well-formed.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
+        4. If `S` satisfies `typed_sender`, then space is reserved in `op_state` for `args2...` and `op_state2` rather than requiring a dynamic allocation.
+
     If the function selected above does not return a sender which invokes `f` when `set_value` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
@@ -3775,6 +4012,8 @@ are all well-formed.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
+        4. If `S` satisfies `typed_sender`, then space is reserved in `op_state` for `e2` and `op_state2` rather than requiring a dynamic allocation.
+
     If the function selected above does not return a sender which invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
@@ -3803,6 +4042,8 @@ are all well-formed.
         2. Calls `execution::connect(s, r)`. which results in an operation state `op_state2`.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+
+        4. Space is reserved in `op_state` for `op_state2` rather than requiring a dynamic allocation.
 
     If the function selected above does not return a sender which invokes `f` when `set_done` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
@@ -4005,7 +4246,7 @@ are all well-formed.
 
 1. `execution::done_as_optional` is used to handle a done signal by mapping it into the value channel as an empty optional. The value channel is also converted into an optional. The result is a sender that never completes with done, reporting cancellation by completing with an empty optional.
 
-2. The name `execution::done_as_optional` denotes a customization point object. For some subexpression `s.`, let `S` be `decltype((s))`. If the type `S` does not satisfy <code><i>single-typed-sender</i></code>, `execution::done_as_optional(s)` is ill-formed. Otherwise, the expression `execution::done_as_optional(s)` is expression-equivalent to:
+2. The name `execution::done_as_optional` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If the type `S` does not satisfy <code><i>single-typed-sender</i></code>, `execution::done_as_optional(s)` is ill-formed. Otherwise, the expression `execution::done_as_optional(s)` is expression-equivalent to:
 
     <pre highlight=c++>
         execution::let_done(
@@ -4023,20 +4264,15 @@ are all well-formed.
 
 #### `execution::done_as_error` <b>[execution.senders.adaptors.done_as_error]</b> #### {#spec-execution.senders.adaptors.done_as_error}
 
-1. `execution::done_as_error` is used to handle a done signal by mapping it into the error channel as an `exception_ptr` that refers to a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
+1. `execution::done_as_error` is used to handle a done signal by mapping it into the error channel as a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
+
+2. The name `execution::done_as_error` denotes a customization point object. For some subexpressions `s` and `e`, let `S` be `decltype((s))` and let `E` be `decltype((e))`. If the type `S` does not satisfy `sender` or if the type `E` doesn't satisfy <code><i>movable-value</i></code>, `execution::done_as_error(s, e)` is ill-formed. Otherwise, the expression `execution::done_as_error(s, e)` is expression-equivalent to:
 
     <pre highlight=c++>
-        template&lt;move_constructible Error, sender S>
-          <i>see-below</i> done_as_error(S && s, Error err = Error{});
-    </pre>
-
-2. <i>Effects:</i> Equivalent to:
-
-    <pre highlight=c++>
-        return execution::let_done(
+        execution::let_done(
           static_cast&lt;S&&>(s),
-          [err2 = std::move(err)] () mutable {
-            return execution::just_error(std::move(err2));
+          [e2 = std::move(e)] () mutable {
+            return execution::just_error(std::move(e2));
           }
         )
     </pre>
@@ -4177,10 +4413,6 @@ from the operation before the operation completes.
 1. This section makes use of the following exposition-only entities:
 
     <pre highlight="c++">
-    template&lt;class T, class... Us>
-      concept <i>none-of</i> =
-        ((!same_as&lt;T, Us>) &amp;&amp;...);
-
     // [<i>Editorial note:</i> copy_cvref_t as in [[P1450R3]] -- <i>end note</i>]
     // Mandates: is_base_of_v&lt;T, remove_reference_t&lt;U>> is true
     template &lt;class T, class U>
@@ -4191,7 +4423,7 @@ from the operation before the operation completes.
 
 2. [<i>Note:</i> The C-style cast in <tt><i>c-style-cast</i></tt> is to disable accessibility checks. -- <i>end note</i>]
 
-### `execution::receiver_adaptor` <b>[execution.snd_rec_utils.receiver_adaptor]</b> ### {#spec-execution.snd_rec_utils.receiver_adaptor}
+### `execution::receiver_adaptor` <b>[execution.snd_rec_utils.rcvr_adptr]</b> ### {#spec-execution.snd_rec_utils.rcvr_adptr}
 
     <pre highlight="c++">
     template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
@@ -4268,7 +4500,7 @@ from the operation before the operation completes.
       template &lt;class D = Derived>
         friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
 
-      template &lt;<i>none-of</i>&lt;set_value_t, set_error_t, set_done_t> Tag, class D = Derived, class... As>
+      template &lt;<i>forwarding-receiver-query</i> Tag, class D = Derived, class... As>
           requires invocable&lt;Tag, <i>BASE-TYPE</i>(const D&), As...>
         friend auto tag_invoke(Tag tag, const Derived&amp; self, As&amp;&amp;... as)
           noexcept(is_nothrow_invocable_v&lt;Tag, <i>BASE-TYPE</i>(const D&), As...>)
@@ -4340,6 +4572,75 @@ from the operation before the operation completes.
         - `static_cast<Derived&&>(self).set_done()` if <code><i>has-set-done</i>&lt;D></code> is `true`,
 
         - Otherwise, <code>execution::set_done(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
+
+### `execution::completion_signatures` <b>[execution.snd_rec_utils.completion_sigs]</b> ### {#spec-execution.snd_rec_utils.completion_sigs}
+
+1. `completion_signatures` is used to define a type that implements the nested `value_types`, `error_types`, and `sends_done` members that describe a typed sender. Its arguments are a flat list of function types that describe the signatures of the receiver's completion-signal operations that the sender invokes.
+
+2. [<i>Example:</i>
+     <pre highlight="c++">
+     using my_sender_traits =
+       execution::completion_signatures&lt;
+         execution::set_value_t(),
+         execution::set_value_t(int, float),
+         execution::set_error_t(exception_ptr),
+         execution::set_error_t(error_code),
+         execution::set_done_t()
+       >;
+
+      // my_sender_traits::value_types&lt;tuple, variant> names the type:
+      //   variant&lt;tuple&lt;>, tuple&lt;int, float>>
+      //
+      // my_sender_traits::error_types&lt;variant> names the type:
+      //   variant&lt;exception_ptr, error_code>
+      //
+      // my_sender_traits::sends_done is true
+
+      class my_sender : public my_sender_traits {
+        // ...
+      };
+     </pre>
+     -- <i>end example</i>]
+
+3. This section makes use of the following exposition-only concept:
+
+    <pre highlight="c++">
+    template &lt;class Fn>
+      concept <i>completion-signature</i> = <i>see below</i>;
+    </pre>
+
+    1. A type `Fn` satisfies <code><i>completion-signature</i></code> if it is a function type with one of the following forms:
+
+        * <code>set_value_t(<i>Vs</i>...)</code>, where <code><i>Vs</i></code> is an arbitrary parameter pack.
+        * <code>set_error_t(<i>E</i>)</code>, where <code><i>E</i></code> is an arbitrary type.
+        * `set_done_t()`
+
+    2. Otherwise, `Fn` does not satisfy <code><i>completion-signature</i></code>.
+
+4.  <pre highlight="c++">
+    template &lt;<i>completion-signature</i>... Fns>
+      using completion_signatures = <i>see below</i>;
+    </pre>
+
+    Given a template parameter pack <code><i>Fns</i></code> of types that satisfy <code><i>completion-signature</i></code>, <code>completion_signatures&lt;<i>Fns</i>...></code> names a non-template class type equivalent to the following:
+
+        <pre highlight="c++">
+        struct <i>completion-signatures-impl</i> {
+          template &lt;template &lt;class...> class Tuple, template &lt;class...> class Variant>
+            using value_types = <i>see below</i>;
+
+          template &lt;template &lt;class...> class Variant>
+            using error_types = <i>see below</i>;
+
+          static constexpr bool sends_done = <i>see below</i>;
+        };
+        </pre>
+
+        1. Let <code><i>ValueFns</i></code> be a template parameter pack of the function types in <code><i>Fns</i></code> whose return types are `execution::set_value_t`, and let <code><i>Values<sub>n</sub></i></code> be a template parameter pack of the function argument types in the <code><i>n</i></code>-th type in <code><i>ValueFns</i></code>. Then, given two variadic templates <code><i>Tuple</i></code> and <code><i>Variant</i></code>, the type <code><i>completion-signatures-impl</i>::value_types&lt;<i>Tuple</i>, <i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Tuple</i>&lt;<i>Values<sub>0</sub></i>...>, <i>Tuple</i>&lt;<i>Values<sub>1</sub></i>...>, ... <i>Tuple</i>&lt;<i>Values<sub>m-1</sub></i>...>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ValueFns</i></code>.
+
+        2. Let <code><i>ErrorFns</i></code> be a template parameter pack of the function types in <code><i>Fns</i></code> whose return types are `execution::set_error_t`, and let <code><i>Error<sub>n</sub></i></code> be the function argument type in the <code><i>n</i></code>-th type in <code><i>ErrorFns</i></code>. Then, given a variadic template <code><i>Variant</i></code>, the type <code><i>completion-signatures-impl</i>::error_types&lt;<i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Error<sub>0</sub></i>, <i>Error<sub>1</sub></i>, ... <i>Error<sub>m-1</sub></i>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ErrorFns</i></code>.
+
+        3. <code><i>completion-signatures-impl</i>::sends_done</code> is `true` if at least one of the types in <code><i>Fns</i></code> is `execution::set_done_t()`; otherwise, `false`.
 
 ## Execution contexts <b>[execution.contexts]</b> ## {#spec-execution.contexts}
 

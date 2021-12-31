@@ -75,6 +75,78 @@ namespace std {
         using __f = _Fn<_First, _Second>;
     };
 
+  template <template<class...> class _Fn, class... _Front>
+    struct __bind_front_q {
+      template <class... _Args>
+        using __f = _Fn<_Front..., _Args...>;
+    };
+
+  template <template<class...> class _Fn, class... _Front>
+    struct __bind_front_q1 {
+      template <class _A>
+        using __f = _Fn<_Front..., _A>;
+    };
+
+  template <template<class...> class _Fn, class... _Front>
+    struct __bind_front_q2 {
+      template <class _A, class _B>
+        using __f = _Fn<_Front..., _A, _B>;
+    };
+
+  template <template<class...> class _Fn, class... _Front>
+    struct __bind_front_q3 {
+      template <class _A, class _B, class _C>
+        using __f = _Fn<_Front..., _A, _B, _C>;
+    };
+
+  template <class _Fn, class... _Front>
+    using __bind_front = __bind_front_q<_Fn::template __f, _Front...>;
+
+  template <class _Fn, class... _Back>
+    using __bind_front1 = __bind_front_q1<_Fn::template __f, _Back...>;
+
+  template <class _Fn, class... _Back>
+    using __bind_front2 = __bind_front_q2<_Fn::template __f, _Back...>;
+
+  template <class _Fn, class... _Back>
+    using __bind_front3 = __bind_front_q3<_Fn::template __f, _Back...>;
+
+  template <template<class...> class _Fn, class... _Back>
+    struct __bind_back_q {
+      template <class... _Args>
+        using __f = _Fn<_Args..., _Back...>;
+    };
+
+  template <template<class...> class _Fn, class... _Back>
+    struct __bind_back_q1 {
+      template <class _A>
+        using __f = _Fn<_A, _Back...>;
+    };
+
+  template <template<class...> class _Fn, class... _Back>
+    struct __bind_back_q2 {
+      template <class _A, class _B>
+        using __f = _Fn<_A, _B, _Back...>;
+    };
+
+  template <template<class...> class _Fn, class... _Back>
+    struct __bind_back_q3 {
+      template <class _A, class _B, class _C>
+        using __f = _Fn<_A, _B, _C, _Back...>;
+    };
+
+  template <class _Fn, class... _Back>
+    using __bind_back = __bind_back_q<_Fn::template __f, _Back...>;
+
+  template <class _Fn, class... _Back>
+    using __bind_back1 = __bind_back_q1<_Fn::template __f, _Back...>;
+
+  template <class _Fn, class... _Back>
+    using __bind_back2 = __bind_back_q2<_Fn::template __f, _Back...>;
+
+  template <class _Fn, class... _Back>
+    using __bind_back3 = __bind_back_q3<_Fn::template __f, _Back...>;
+
   template <template <class, class, class> class _Fn>
     struct __q3 {
       template <class _First, class _Second, class _Third>
@@ -84,8 +156,8 @@ namespace std {
   template <class _Fn, class... _Args>
     using __minvoke = typename _Fn::template __f<_Args...>;
 
-  template <class _Fn, class _Arg>
-    using __minvoke1 = typename _Fn::template __f<_Arg>;
+  template <class _Fn, class _First>
+    using __minvoke1 = typename _Fn::template __f<_First>;
 
   template <class _Fn, class _First, class _Second>
     using __minvoke2 = typename _Fn::template __f<_First, _Second>;
@@ -95,6 +167,28 @@ namespace std {
 
   template <template <class...> class _T, class... _Args>
     concept __valid = requires { typename _T<_Args...>; };
+
+  template <template <class> class _T, class _First>
+    concept __valid1 = requires { typename _T<_First>; };
+
+  template <template <class, class> class _T, class _First, class _Second>
+    concept __valid2 = requires { typename _T<_First, _Second>; };
+
+  template <template <class, class, class> class _T, class _First, class _Second, class _Third>
+    concept __valid3 = requires { typename _T<_First, _Second, _Third>; };
+
+  template <class _Fn, class... _Args>
+    concept __minvocable = __valid<_Fn::template __f, _Args...>;
+
+  template <class _Fn, class _First>
+    concept __minvocable1 = __valid1<_Fn::template __f, _First>;
+
+  template <class _Fn, class _First, class _Second>
+    concept __minvocable2 = __valid2<_Fn::template __f, _First, _Second>;
+
+  template <class _Fn, class _First, class _Second, class _Third>
+    concept __minvocable3 = __valid3<_Fn::template __f, _First, _Second, _Third>;
+
   template <template<class...> class _T>
     struct __defer {
       template <class... _Args> requires __valid<_T, _Args...>
@@ -123,10 +217,10 @@ namespace std {
 
   template <class _Init, class _Fn>
     struct __right_fold {
-      template <class, class...>
+      template <class...>
         struct __f_ {};
       template <class _State, class _Head, class... _Tail>
-          requires requires {typename __minvoke2<_Fn, _State, _Head>;}
+          requires __minvocable2<_Fn, _State, _Head>
         struct __f_<_State, _Head, _Tail...>
           : __f_<__minvoke2<_Fn, _State, _Head>, _Tail...>
         {};
@@ -148,7 +242,7 @@ namespace std {
         struct __f_<_A<_As...>, _B<_Bs...>, _Tail...>
           : __f_<__types<_As..., _Bs...>, _Tail...> {};
       template <template <class...> class _A, class... _As>
-          requires requires {typename __minvoke<_Continuation, _As...>;}
+          requires __minvocable<_Continuation, _As...>
         struct __f_<_A<_As...>> {
           using type = __minvoke<_Continuation, _As...>;
         };
@@ -187,25 +281,33 @@ namespace std {
       using __f = integral_constant<size_t, sizeof...(_Ts)>;
   };
 
-  template <class _Continuation = __q<__types>>
-  struct __push_back_unique {
-    template <class _List, class _Item>
-      struct __f_;
-    template <template <class...> class _List, class... _Ts, class _Item>
-      struct __f_<_List<_Ts...>, _Item> {
-        using type = __minvoke<_Continuation, _Ts...>;
-      };
-    template <template <class...> class _List, class... _Ts, class _Item>
-        requires ((!__v<is_same<_Ts, _Item>>) &&...)
-      struct __f_<_List<_Ts...>, _Item> {
-        using type = __minvoke<_Continuation, _Ts..., _Item>;
-      };
-    template <class _List, class _Item>
-      using __f = __t<__f_<_List, _Item>>;
-  };
+  template <class _T>
+    struct __contains {
+      template <class... _Args>
+        using __f = __bool<(__v<is_same<_T, _Args>> ||...)>;
+    };
 
   template <class _Continuation = __q<__types>>
-    struct __unique {
+    struct __push_back {
+      template <class _List, class _Item>
+        using __f =
+          __mapply<__bind_back<_Continuation, _Item>, _List>;
+    };
+
+  template <class _Continuation = __q<__types>>
+    struct __push_back_unique {
+      template <class _List, class _Item>
+        using __f =
+          __mapply<
+            __if<
+              __mapply<__contains<_Item>, _List>,
+              _Continuation,
+              __bind_back<_Continuation, _Item>>,
+            _List>;
+    };
+
+  template <class _Continuation = __q<__types>>
+    struct __munique {
       template <class... _Ts>
         using __f =
           __mapply<
@@ -232,24 +334,6 @@ namespace std {
           __minvoke1<_Last, __minvoke<__compose<_Penultimate, _Rest...>, _Args...>>;
     };
 
-  template <template<class...> class _Fn, class... _Front>
-    struct __bind_front_q {
-      template <class... _Args>
-        using __f = _Fn<_Front..., _Args...>;
-    };
-
-  template <class _Fn, class... _Front>
-    using __bind_front = __bind_front_q<_Fn::template __f, _Front...>;
-
-  template <template<class...> class _Fn, class... _Back>
-    struct __bind_back_q {
-      template <class... _Args>
-        using __f = _Fn<_Args..., _Back...>;
-    };
-
-  template <class _Fn, class... _Back>
-    using __bind_back = __bind_back_q<_Fn::template __f, _Back...>;
-
   template <class _Old, class _New, class _Continuation = __q<__types>>
     struct __replace {
       template <class... _Args>
@@ -257,15 +341,18 @@ namespace std {
           __minvoke<_Continuation, __if<is_same<_Args, _Old>, _New, _Args>...>;
     };
 
-  // For copying cvref from one type to another:
   template <class _T>
-  _T&& __declval() noexcept;
+    _T&& __declval() noexcept requires true;
 
+  template <class>
+    void __declval() noexcept;
+
+  // For copying cvref from one type to another:
   template <class _Member, class _Self>
-  _Member _Self::*__memptr(const _Self&);
+    _Member _Self::*__memptr(const _Self&);
 
   template <typename _Self, typename _Member>
-  using __member_t = decltype(
+    using __member_t = decltype(
       (__declval<_Self>() .* __memptr<_Member>(__declval<_Self>())));
 
   template <class... _As>
@@ -282,12 +369,27 @@ namespace std {
       requires (sizeof...(_As) <= 1)
     using __single_or_void_t = __t<__front<_As..., void>>;
 
+  template <class _Fun, class... _As>
+    using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
+
+  template <class _Fun, class... _As>
+    concept __callable =
+      requires (_Fun&& __fun, _As&&... __as) {
+        ((_Fun&&) __fun)((_As&&) __as...);
+      };
+  template <class _Fun, class... _As>
+    concept __nothrow_callable =
+      __callable<_Fun, _As...> &&
+      requires (_Fun&& __fun, _As&&... __as) {
+        { ((_Fun&&) __fun)((_As&&) __as...) } noexcept;
+      };
+
   // For emplacing non-movable types into optionals:
   template <class _Fn>
       requires is_nothrow_move_constructible_v<_Fn>
     struct __conv {
       _Fn __fn_;
-      operator invoke_result_t<_Fn> () && {
+      operator __call_result_t<_Fn> () && {
         return ((_Fn&&) __fn_)();
       }
     };

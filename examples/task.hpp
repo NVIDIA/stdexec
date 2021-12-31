@@ -241,11 +241,6 @@ private:
     void unhandled_exception() noexcept {
       this->data_.template emplace<2>(std::current_exception());
     }
-
-    // To make it possible to issue receiver queries against this promise type,
-    // it must trivially satisfy the receiver concept.
-    friend void tag_invoke(std::execution::set_error_t, _promise&&, auto&&) noexcept;
-    friend void tag_invoke(std::execution::set_done_t, _promise&&) noexcept;
   };
 
   template <class ParentPromise = void>
@@ -308,21 +303,19 @@ template <class T>
 // Specify basic_task's sender traits
 //   This is only necessary when basic_task is not generally awaitable
 //   owing to constraints imposed by its Context parameter.
-template <bool SendsDone, class... Ts>
-  struct sender_of_traits {
-    template<template<class...> class Tuple, template<class...> class Variant>
-      using value_types = Variant<Tuple<Ts...>>;
-    template<template<class...> class Variant>
-      using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = SendsDone;
-  };
-
-template <bool SendsDone>
-  struct sender_of_traits<SendsDone, void>
-    : sender_of_traits<SendsDone> {};
+template <class... Ts>
+  using _task_traits =
+    std::execution::completion_signatures<
+      std::execution::set_value_t(Ts...),
+      std::execution::set_error_t(std::exception_ptr),
+      std::execution::set_done_t()>;
 
 namespace std::execution {
   template <class T, class Context>
     struct sender_traits<::basic_task<T, Context>>
-      : ::sender_of_traits<false, T> {};
+      : _task_traits<T> {};
+
+  template <class Context>
+    struct sender_traits<::basic_task<void, Context>>
+      : _task_traits<> {};
 }
