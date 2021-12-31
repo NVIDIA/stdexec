@@ -3207,10 +3207,10 @@ enum class forward_progress_guarantee {
 
 1. `execution::with_delegee_scheduler` is used to offer a scheduler an alternative scheduler to delegate work to.
 
-2. The name `execution::with_delegee_scheduler` denotes a customization point object. For some subexpressions `s` and `s'`, let `S` be `decltype((s))` and let `S'` be `decltype((s'))`. If `S` does not satisfy `execution::scheduler` or `S'` does not satisfy `execution::scheduler`, `execution::with_delegee_scheduler` is ill-formed.
+2. The name `execution::with_delegee_scheduler` denotes a customization point object. For some subexpressions `s` and `s2`, let `S` be `decltype((s))` and let `S2` be `decltype((s2))`. If `S` does not satisfy `execution::scheduler` or `S'` does not satisfy `execution::scheduler`, `execution::with_delegee_scheduler` is ill-formed.
     Otherwise, `execution::with_delegee_scheduler(s, s')` is expression equivalent to:
 
-    1. `tag_invoke(execution::with_delegee_scheduler, as_const(s), s')`, if this expression is well formed and its type is `execution::with_delegee_scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::with_delegee_scheduler, as_const(s), s2)`, if this expression is well formed and its type is `execution::with_delegee_scheduler`, and is `noexcept`.
 
     2. Otherwise, `s`.
 
@@ -3838,9 +3838,11 @@ are all well-formed.
 
             3. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
 
-        2. Calls `execution::schedule(sch)`, which results in `s2`. It then calls `execution::connect(s2, r)`, resulting in `op_state2`.
+        2. Replaces `scheduler` `sch` with the result of `execution::with_delegee_scheduler(sch, execution::get_scheduler(out_r))` if the expression `execution::get_scheduler(out_r)` is valid and its type satisfies `exection::scheduler`.
 
-        3. `op_state2` is wrapped by a new operation state, `op_state1`, that is returned to the caller.
+        3. Calls `execution::schedule(sch)`, which results in `s2`. It then calls `execution::connect(s2, r)`, resulting in `op_state2`.
+
+        4. `op_state2` is wrapped by a new operation state, `op_state1`, that is returned to the caller.
 
       2. `r2` is a receiver that wraps a reference to `out_r`. It forwards all receiver completion signals and receiver queries to `out_r`. Additionally, it implements the `get_scheduler` receiver query. The scheduler returned from the query is equivalent to the `sch` argument that was passed to `execution::on`.
 
