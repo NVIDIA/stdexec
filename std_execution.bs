@@ -1030,6 +1030,7 @@ The changes since R3 are as follows:
     * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
     * Add `completion_signatures` utility for declaratively defining a typed sender's metadata.
     * `done_as_error` respecified as a customization point object.
+    * Add `with_delegee_scheduler` scheduler mutator to support customisation of forward progress delegation.
     * ...
 
 ## R3 ## {#r3}
@@ -1665,6 +1666,12 @@ forward progress guarantees:
 
 This paper introduces a scheduler query function, `get_forward_progress_guarantee`, which returns one of the enumerators of a new `enum` type, `forward_progress_guarantee`. Each enumerator of `forward_progress_guarantee` corresponds to one of the aforementioned
 guarantees.
+
+## Schedulers may support forward progress delegation ## {#design-fpdelegation}
+
+The standard parallel algorithms support forward progress delegation such that the waiting thread can take over the work to ensure that the work completes.
+This paper introduces an operation `with_delegee_scheduler` that allows a `scheduler` to customise what happens when it is offered a `scheduler` to delegate work to.
+Algorithms like `on` allow chaining of schedulers, and will hook `schedulers` together using `with_delegee_scheduler`.
 
 ## Most sender adaptors are pipeable ## {#design-pipeable}
 
