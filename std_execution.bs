@@ -2832,6 +2832,12 @@ namespace std::execution {
     struct get_forward_progress_guarantee_t;
     inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
   }
+
+  // [execution.schedulers.mutators], scheduler mutators
+  inline namespace <i>unspecified</i> {
+    struct with_delegee_scheduler_t;
+    inline constexpr with_delegee_scheduler_t with_delegee_scheduler{};
+  }
 }
 
 namespace std::this_thread {
@@ -3185,6 +3191,20 @@ enum class forward_progress_guarantee {
     2. Otherwise, `true`.
 
 3. If `this_thread::execute_may_block_caller(s)` for some scheduler `s` returns `false`, no `execution::execute(s, f)` call with some invocable `f` shall block the calling thread.
+
+### Scheduler mutators <b>[execution.schedulers.mutators]</b> ### {#spec-execution.schedulers.mutators}
+
+#### `execution::with_delegee_scheduler` <b>[execution.schedulers.queries.with_delegee_scheduler]</b> #### {#spec-execution.schedulers.queries.with_delegee_scheduler}
+
+1. `execution::with_delegee_scheduler` is used to offer a scheduler an alternative scheduler to delegate work to.
+
+2. The name `execution::with_delegee_scheduler` denotes a customization point object. For some subexpressions `s` and `s'`, let `S` be `decltype((s))` and let `S'` be `decltype((s'))`. If `S` does not satisfy `execution::scheduler` or `S'` does not satisfy `execution::scheduler`, `execution::with_delegee_scheduler` is ill-formed.
+    Otherwise, `execution::with_delegee_scheduler(s, s')` is expression equivalent to:
+
+    1. `tag_invoke(execution::with_delegee_scheduler, as_const(s), s')`, if this expression is well formed and its type is `execution::with_delegee_scheduler`, and is `noexcept`.
+
+    2. Otherwise, `s`.
+
 
 ## Receivers <b>[execution.receivers]</b> ## {#spec-execution.receivers}
 
