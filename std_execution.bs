@@ -1670,8 +1670,10 @@ guarantees.
 ## Schedulers may support forward progress delegation ## {#design-fpdelegation}
 
 The standard parallel algorithms support forward progress delegation such that the waiting thread can take over the work to ensure that the work completes.
+In simple cases, like `sync_wait(schedule(sched))` `sched` will have access to `sync_wait`'s `run_loop` scheduler through the `get_scheduler` query on the receiver passed when `connect` is called.
+In more complex cases, where `on`, `transfer` or a similar algorithm introduces a transition between two schedulers this chain would be broken.
 This paper introduces an operation `with_delegee_scheduler` that allows a `scheduler` to customise what happens when it is offered a `scheduler` to delegate work to.
-Algorithms like `on` allow chaining of schedulers, and will hook `schedulers` together using `with_delegee_scheduler`.
+Algorithms like `on` will hook `schedulers` together using `with_delegee_scheduler`.
 
 ## Most sender adaptors are pipeable ## {#design-pipeable}
 
