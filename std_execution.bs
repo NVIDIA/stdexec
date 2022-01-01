@@ -1023,7 +1023,7 @@ The changes since R3 are as follows:
 
 <b>Fixes:</b>
 
-    * Fix specification of `get_completion_scheduler` on the `transfer`, `schedule_when` and `transfer_when_all` algorithms; the completion scheduler cannot be guaranteed for `set_error`.
+    * Fix specification of `get_completion_scheduler` on the `transfer`, `schedule_from` and `transfer_when_all` algorithms; the completion scheduler cannot be guaranteed for `set_error`.
     * ...
 
 <b>Enhancements:</b>

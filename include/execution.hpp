@@ -2571,7 +2571,7 @@ namespace std::execution {
             return {__self.__sched_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
           }
 
-          template <__one_of<set_value_t, set_error_t, set_done_t> _Tag>
+          template <__one_of<set_value_t, set_done_t> _Tag>
           friend _Scheduler tag_invoke(get_completion_scheduler_t<_Tag>, const __sender& __self) noexcept {
             return __self.__sched_;
           }
