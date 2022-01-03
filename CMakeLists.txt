@@ -86,11 +86,15 @@ set(test_sourceFiles
     test/concepts/test_concept_scheduler.cpp
     test/concepts/test_concepts_receiver.cpp
     test/concepts/test_concept_operation_state.cpp
-    test/concepts/test_concepts_sender.cpp)
+    test/concepts/test_concepts_sender.cpp
+    test/algos/factories/test_just.cpp
+    test/algos/factories/test_transfer_just.cpp
+    test/algos/factories/test_just_error.cpp
+    test/algos/factories/test_just_done.cpp)
 
 add_executable(test.P2300 ${test_sourceFiles})
 
-target_include_directories(test.P2300 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
+target_include_directories(test.P2300 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test.P2300 P2300)
 target_link_libraries(test.P2300 CONAN_PKG::catch2)
 
