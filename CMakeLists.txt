@@ -17,6 +17,8 @@ project(P2300-dev VERSION "${CONAN_PACKAGE_VERSION}")
 message(STATUS "System           : ${CMAKE_SYSTEM}")
 message(STATUS "System name      : ${CMAKE_SYSTEM_NAME}")
 message(STATUS "System ver       : ${CMAKE_SYSTEM_VERSION}")
+message(STATUS "Conan compiler   : ${CONAN_SETTINGS_COMPILER} ${CONAN_SETTINGS_COMPILER_VERSION}")
+message(STATUS "Conan libcxx     : ${CONAN_SETTINGS_COMPILER_LIBCXX}")
 message(STATUS)
 
 # The main library
@@ -52,10 +54,25 @@ target_link_libraries(P2300 INTERFACE Threads::Threads)
 # Use C++20 standard
 target_compile_features(P2300 INTERFACE cxx_std_20)
 
-# Prevent linking errors with CXX11 or older ABI (visible when linking with rapidcheck)
-target_compile_definitions(P2300 INTERFACE _GLIBCXX_USE_CXX11_ABI=1)
+# Turn all warnings
+target_compile_options(P2300 INTERFACE
+                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+                       -Wall>
+                       $<$<CXX_COMPILER_ID:MSVC>:
+                       /W4>)
+# template backtrace limit
+target_compile_options(P2300 INTERFACE
+                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+                       -ftemplate-backtrace-limit=0>
+                       )
+# Proper use of libc++
+if (CONAN_SETTINGS_COMPILER_LIBCXX STREQUAL "libc++")
+    target_compile_options(P2300 INTERFACE -stdlib=libc++)
+    target_link_options(P2300 INTERFACE -lc++)
+endif ()
 
 add_library(P2300::p2300 ALIAS P2300)
+
 
 # Now, set up test executable
 enable_testing()
@@ -68,7 +85,6 @@ set(test_sourceFiles
 add_executable(test.P2300 ${test_sourceFiles})
 
 target_link_libraries(test.P2300 P2300)
-target_include_directories(test.P2300 PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(test.P2300 CONAN_PKG::catch2)
 
 # Discover the Catch2 test built by the application
@@ -76,19 +92,11 @@ include(CTest)
 include(Catch)
 catch_discover_tests(test.P2300)
 
-# Turn all warnings
-target_compile_options(test.P2300 PUBLIC
-                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-                       -Wall>
-                       $<$<CXX_COMPILER_ID:MSVC>:
-                       /W4>)
-
 
 # Set up examples
 function(def_example target sourceFile)
     add_executable(${target} ${sourceFile})
     target_link_libraries(${target} P2300)
-    target_include_directories(${target} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 endfunction()
 
 def_example(example.hello_world "examples/hello_world.cpp")
