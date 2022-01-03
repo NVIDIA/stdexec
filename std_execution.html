@@ -3459,6 +3459,8 @@ essential when writing user code using standard execution concepts; we have also
    <p><b>Fixes:</b></p>
    <ul>
     <li data-md>
+     <p>Fix specification of <code class="highlight"><c- n>get_completion_scheduler</c-></code> on the <code class="highlight"><c- n>transfer</c-></code>, <code class="highlight"><c- n>schedule_from</c-></code> and <code class="highlight"><c- n>transfer_when_all</c-></code> algorithms; the completion scheduler cannot be guaranteed for <code class="highlight"><c- n>set_error</c-></code>.</p>
+    <li data-md>
      <p>...</p>
    </ul>
    <p><b>Enhancements:</b></p>
@@ -5988,7 +5990,7 @@ started, the program is ill-formed with no diagnostic required.</p>
      </ol>
      <p>If the function selected above does not return a sender which is a result of a call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s2</c-><c- p>)</c-></code>, where <code class="highlight"><c- n>s2</c-></code> is a sender which sends equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
     <li data-md>
-     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They will implement <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code>, where <code class="highlight"><c- n>CPO</c-></code> is one of <code class="highlight"><c- n>set_value_t</c-></code> and <code class="highlight"><c- n>set_done_t</c-></code>; this query returns a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries. The <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-></code> is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.</p>
    </ol>
    <h5 class="heading settled" data-level="9.7.5.5" id="spec-execution.senders.adaptors.schedule_from"><span class="secno">9.7.5.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> <b>[execution.senders.adaptors.schedule_from]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.schedule_from"></a></h5>
    <ol>
@@ -6024,7 +6026,7 @@ it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-
        </ol>
      </ol>
     <li data-md>
-     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They will implement <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code>, where <code class="highlight"><c- n>CPO</c-></code> is one of <code class="highlight"><c- n>set_value_t</c-></code> and <code class="highlight"><c- n>set_done_t</c-></code>; this query returns a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries. The <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-></code> is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.</p>
    </ol>
    <h5 class="heading settled" data-level="9.7.5.6" id="spec-execution.senders.adaptor.then"><span class="secno">9.7.5.6. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> <b>[execution.senders.adaptors.then]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.then"></a></h5>
    <ol>
@@ -6420,7 +6422,7 @@ required.</p>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>)...)</c-></code>.</p>
      </ol>
     <li data-md>
-     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to input senders. They shall return a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries.</p>
+     <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to input senders. They will implement <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code>, where <code class="highlight"><c- n>CPO</c-></code> is one of <code class="highlight"><c- n>set_value_t</c-></code> and <code class="highlight"><c- n>set_done_t</c-></code>; this query returns a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries. The <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-></code> is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.</p>
    </ol>
    <h5 class="heading settled" data-level="9.7.5.16" id="spec-execution.senders.adaptors.into_variant"><span class="secno">9.7.5.16. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code> <b>[execution.senders.adaptors.into_variant]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.into_variant"></a></h5>
    <ol>
