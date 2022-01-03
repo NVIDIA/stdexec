@@ -33,7 +33,7 @@ struct my_scheduler {
   friend my_sender tag_invoke(ex::schedule_t, my_scheduler) { return my_sender{true}; }
 };
 
-TEST_CASE("can call schedule on an appropriate type", "[execution][cpo_schedule]") {
+TEST_CASE("can call schedule on an appropriate type", "[cpo][cpo_schedule]") {
   static_assert(std::tag_invocable<ex::schedule_t, my_scheduler>, "invalid scheduler type");
   my_scheduler sched;
   auto snd = ex::schedule(sched);

@@ -82,7 +82,11 @@ set(test_sourceFiles
     test/cpos/test_cpo_receiver.cpp
     test/cpos/test_cpo_start.cpp
     test/cpos/test_cpo_connect.cpp
-    test/cpos/test_cpo_schedule.cpp)
+    test/cpos/test_cpo_schedule.cpp
+    test/concepts/test_concept_scheduler.cpp
+    test/concepts/test_concepts_receiver.cpp
+    test/concepts/test_concept_operation_state.cpp
+    test/concepts/test_concepts_sender.cpp)
 
 add_executable(test.P2300 ${test_sourceFiles})
 

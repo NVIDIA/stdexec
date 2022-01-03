@@ -45,13 +45,13 @@ struct my_sender {
   }
 };
 
-TEST_CASE("can call connect on an appropriate types", "[execution][cpo_connect]") {
+TEST_CASE("can call connect on an appropriate types", "[cpo][cpo_connect]") {
   auto op = ex::connect(my_sender{10}, expect_value_receiver{10});
   ex::start(op);
   // the receiver will check the received value
 }
 
-TEST_CASE("cannot connect sender with invalid receiver", "[execution][cpo_connect]") {
+TEST_CASE("cannot connect sender with invalid receiver", "[cpo][cpo_connect]") {
   // REQUIRE_FALSE(std::tag_invocable<ex::connect_t, my_sender, int>);
   // TODO: this should not work
   // invalid check:
@@ -73,7 +73,7 @@ struct strange_receiver {
   friend void tag_invoke(ex::set_error_t, strange_receiver, std::exception_ptr) noexcept {}
 };
 
-TEST_CASE("connect can be defined in the receiver", "[execution][cpo_connect]") {
+TEST_CASE("connect can be defined in the receiver", "[cpo][cpo_connect]") {
   static_assert(ex::sender<my_sender>);
   static_assert(ex::receiver<strange_receiver>);
   bool called{false};
