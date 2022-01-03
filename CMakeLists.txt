@@ -78,12 +78,15 @@ add_library(P2300::p2300 ALIAS P2300)
 enable_testing()
 
 set(test_sourceFiles
-    "test/test_main.cpp"
-    "test/test_include.cpp"
-    )
+    test/test_main.cpp
+    test/cpos/test_cpo_receiver.cpp
+    test/cpos/test_cpo_start.cpp
+    test/cpos/test_cpo_connect.cpp
+    test/cpos/test_cpo_schedule.cpp)
 
 add_executable(test.P2300 ${test_sourceFiles})
 
+target_include_directories(test.P2300 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
 target_link_libraries(test.P2300 P2300)
 target_link_libraries(test.P2300 CONAN_PKG::catch2)
 
