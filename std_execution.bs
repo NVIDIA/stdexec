@@ -1031,6 +1031,7 @@ The changes since R3 are as follows:
     * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
     * Add `completion_signatures` utility for declaratively defining a typed sender's metadata.
     * `done_as_error` respecified as a customization point object.
+    * Add `get_delegee_scheduler` receiver query to forward a scheduler that can be used by algorithms or by the scheduler to delegate work and forward progress.
     * ...
 
 ## R3 ## {#r3}
@@ -2807,6 +2808,8 @@ namespace std::execution {
   inline namespace <i>unspecified</i> {
     struct get_scheduler_t;
     inline constexpr get_scheduler_t get_scheduler{};
+    struct get_delegee_scheduler_t;
+    inline constexpr get_delegee_scheduler_t get_delegee_scheduler{};
     struct get_allocator_t;
     inline constexpr get_allocator_t get_allocator{};
     struct get_stop_token_t;
@@ -3094,6 +3097,16 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
 
+### `execution::get_delegee_scheduler` <b>[execution.queries.get_delegee_scheduler]</b> ### {#spec-execution.receivers.queries.get_delegee_scheduler}
+
+1. `execution::get_delegee_scheduler` is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.
+
+2. The name `execution::get_delegee_scheduler` denotes a customization point object. For some subexpression `r`, `execution::get_delegee_scheduler(r)` is expression equivalent to:
+
+    1. `tag_invoke(execution::get_delegee_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+
+    2. Otherwise, `execution::get_delegee_scheduler(r)` is ill-formed.
+
 ### `execution::get_allocator` <b>[execution.queries.get_allocator]</b> ### {#spec-execution.receivers.queries.get_allocator}
 
 1. `execution::get_allocator` is used to ask an object for its associated allocator.
@@ -3225,13 +3238,15 @@ enum class forward_progress_guarantee {
 5. `execution::get_scheduler` is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
 
-6. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
+6. `execution::get_delegee_scheduler` is used to ask a receiver object for a <i>delegee scheduler</i> to be used by an algorithm or scheduler to delegate work for the purpose of forward progress delegation. --<i>end note</i>]
+
+7. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
 
-7. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> of that receiver. A sender connected with that receiver can use this stop token to check whether a stop request has been made. [<i>Note</i>: such
+8. `execution::get_stop_token` is used to ask a receiver object for an <i>associated stop token</i> of that receiver. A sender connected with that receiver can use this stop token to check whether a stop request has been made. [<i>Note</i>: such
     a stop token being signalled does not bind the sender to actually cancel any work. --<i>end note</i>]
 
-8. Let `r` be a receiver, `s` be a sender, and `op_state` be an operation state resulting from an `execution::connect(s, r)` call. Let `token` be a stop token resulting from an `execution::get_stop_token(r)` call. `token` must remain valid at least until a call to
+9. Let `r` be a receiver, `s` be a sender, and `op_state` be an operation state resulting from an `execution::connect(s, r)` call. Let `token` be a stop token resulting from an `execution::get_stop_token(r)` call. `token` must remain valid at least until a call to
     a receiver completion-signal function of `r` returns successfully. [<i>Note</i>: this means that, unless it knows about further guarantees provided by the receiver `r`, the implementation of `op_state` should not use `token` after it makes a call to a receiver
     completion-signal function of `r`. This also implies that stop callbacks registered on `token` by the implementation of `op_state` or `s` must be destroyed before such a call to a receiver completion-signal function of `r`. --<i>end note</i>]
 
@@ -4391,8 +4406,9 @@ from the operation before the operation completes.
     3. Otherwise, `this_thread::sync_wait(execution::into_variant(s))`.
 
 4. Any receiver `r` created by an implementation of `sync_wait` and
-    `sync_wait_with_variant` shall implement the `get_scheduler` receiver query.
-    The scheduler returned from the query for the receiver created by the
+    `sync_wait_with_variant` shall implement the `get_scheduler` and
+    `get_delegee_scheduler` receiver queries.
+    The scheduler returned from the queries for the receiver created by the
     default implementation shall return an implementation-defined scheduler that
     is driven by the waiting thread, such that scheduled tasks run on the thread
     of the caller. [<i>Note:</i> The scheduler for a local instance of `execution::run_loop` is one valid implementation. -- <i>end note</i>]
