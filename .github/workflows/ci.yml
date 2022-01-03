@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: docker://lucteo/action-cxx-toolkit.main:latest
+      - uses: docker://lucteo/action-cxx-toolkit.clang12:latest
         with:
           cc: clang-12
           checks: build test
@@ -22,7 +22,7 @@ jobs:
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@master
-#      - uses: docker://lucteo/action-cxx-toolkit.main:latest
+#      - uses: docker://lucteo/action-cxx-toolkit.clang13:latest
 #        with:
 #          cc: clang-13
 #          checks: build test
