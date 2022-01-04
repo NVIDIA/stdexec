@@ -20,12 +20,10 @@
 namespace ex = std::execution;
 
 struct my_scheduler {
-  struct my_sender {
-    template <template <class...> class Tuple, template <class...> class Variant>
-    using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-    using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = true;
+  struct my_sender : ex::completion_signatures<               //
+                         ex::set_value_t(),                   //
+                         ex::set_error_t(std::exception_ptr), //
+                         ex::set_done_t()> {
 
     template <typename CPO>
     friend my_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
@@ -53,13 +51,10 @@ TEST_CASE("type without schedule CPO doesn't model scheduler", "[concepts][sched
 }
 
 struct my_scheduler_except {
-  struct my_sender {
-    template <template <class...> class Tuple, template <class...> class Variant>
-    using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-    using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = true;
-
+  struct my_sender : ex::completion_signatures<               //
+                         ex::set_value_t(),                   //
+                         ex::set_error_t(std::exception_ptr), //
+                         ex::set_done_t()> {
     template <typename CPO>
     friend my_scheduler_except tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
       return {};
@@ -80,13 +75,10 @@ TEST_CASE("type with schedule that throws is a scheduler", "[concepts][scheduler
 }
 
 struct noeq_sched {
-  struct my_sender {
-    template <template <class...> class Tuple, template <class...> class Variant>
-    using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-    using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = true;
-
+  struct my_sender : ex::completion_signatures<               //
+                         ex::set_value_t(),                   //
+                         ex::set_error_t(std::exception_ptr), //
+                         ex::set_done_t()> {
     template <typename CPO>
     friend noeq_sched tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
       return {};
@@ -101,13 +93,10 @@ TEST_CASE("type w/o equality operations do not model scheduler", "[concepts][sch
 }
 
 struct sched_no_completion {
-  struct my_sender {
-    template <template <class...> class Tuple, template <class...> class Variant>
-    using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-    using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = true;
-
+  struct my_sender : ex::completion_signatures<               //
+                         ex::set_value_t(),                   //
+                         ex::set_error_t(std::exception_ptr), //
+                         ex::set_done_t()> {
     friend sched_no_completion tag_invoke(
         ex::get_completion_scheduler_t<ex::set_error_t>, my_sender) {
       return {};

@@ -19,17 +19,16 @@
 
 namespace ex = std::execution;
 
-struct my_sender
-  : std::execution::completion_signatures<
-      std::execution::set_value_t(),
-      std::execution::set_error_t(std::exception_ptr),
-      std::execution::set_done_t()> {
+struct my_sender : ex::completion_signatures<               //
+                       ex::set_value_t(),                   //
+                       ex::set_error_t(std::exception_ptr), //
+                       ex::set_done_t()> {
 
   bool from_scheduler_{false};
 };
 
 struct my_scheduler {
-  friend my_sender tag_invoke(ex::schedule_t, my_scheduler) { return my_sender{true}; }
+  friend my_sender tag_invoke(ex::schedule_t, my_scheduler) { return my_sender{{}, true}; }
 };
 
 TEST_CASE("can call schedule on an appropriate type", "[cpo][cpo_schedule]") {

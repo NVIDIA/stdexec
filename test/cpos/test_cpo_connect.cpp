@@ -30,32 +30,40 @@ struct op_state {
   }
 };
 
-struct my_sender {
-  template <template <class...> class Tuple, template <class...> class Variant>
-  using value_types = Variant<Tuple<>>;
-  template <template <class...> class Variant>
-  using error_types = Variant<std::exception_ptr>;
-  static constexpr bool sends_done = false;
-
+struct my_sender : ex::completion_signatures< //
+                       ex::set_value_t(),     //
+                       ex::set_error_t(std::exception_ptr)> {
   int value_{0};
 
-  template <receiver_of R>
+  template <ex::receiver_of R>
   friend op_state<R> tag_invoke(ex::connect_t, my_sender&& s, R&& r) {
     return {s.value_, (R &&) r};
   }
 };
 
+struct my_sender_unconstrained : ex::completion_signatures< //
+                                     ex::set_value_t(),     //
+                                     ex::set_error_t(std::exception_ptr)> {
+  int value_{0};
+
+  template <typename R> // accept any type here
+  friend op_state<R> tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) {
+    return {s.value_, (R &&) r};
+  }
+};
+
 TEST_CASE("can call connect on an appropriate types", "[cpo][cpo_connect]") {
-  auto op = ex::connect(my_sender{10}, expect_value_receiver{10});
+  auto op = ex::connect(my_sender{{}, 10}, expect_value_receiver{10});
   ex::start(op);
   // the receiver will check the received value
 }
 
 TEST_CASE("cannot connect sender with invalid receiver", "[cpo][cpo_connect]") {
-  // REQUIRE_FALSE(std::tag_invocable<ex::connect_t, my_sender, int>);
+  static_assert(ex::sender<my_sender_unconstrained>);
+  // REQUIRE_FALSE(std::tag_invocable<ex::connect_t, my_sender_unconstrained, int>);
   // TODO: this should not work
   // invalid check:
-  REQUIRE(std::tag_invocable<ex::connect_t, my_sender, int>);
+  REQUIRE(std::tag_invocable<ex::connect_t, my_sender_unconstrained, int>);
 }
 
 struct strange_receiver {
@@ -77,7 +85,7 @@ TEST_CASE("connect can be defined in the receiver", "[cpo][cpo_connect]") {
   static_assert(ex::sender<my_sender>);
   static_assert(ex::receiver<strange_receiver>);
   bool called{false};
-  auto op = ex::connect(my_sender{10}, strange_receiver{&called});
+  auto op = ex::connect(my_sender{{}, 10}, strange_receiver{&called});
   ex::start(op);
   REQUIRE(called);
 }

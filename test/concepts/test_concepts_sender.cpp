@@ -63,12 +63,10 @@ TEST_CASE("type deriving from sender_base, doesn't model sender_of", "[concepts]
   REQUIRE_FALSE(ex::sender_of<simple_sender, int>);
 }
 
-struct my_sender0 {
-  template <template <class...> class Tuple, template <class...> class Variant>
-  using value_types = Variant<Tuple<>>;
-  template <template <class...> class Variant>
-  using error_types = Variant<std::exception_ptr>;
-  static constexpr bool sends_done = true;
+struct my_sender0 : ex::completion_signatures<               //
+                        ex::set_value_t(),                   //
+                        ex::set_error_t(std::exception_ptr), //
+                        ex::set_done_t()> {
 
   friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&& r) { return {}; }
 };
@@ -87,12 +85,10 @@ TEST_CASE("sender of void, doesn't model sender_of<int>", "[concepts][sender]") 
   REQUIRE_FALSE(ex::sender_of<my_sender0, int>);
 }
 
-struct my_sender_int {
-  template <template <class...> class Tuple, template <class...> class Variant>
-  using value_types = Variant<Tuple<int>>;
-  template <template <class...> class Variant>
-  using error_types = Variant<std::exception_ptr>;
-  static constexpr bool sends_done = true;
+struct my_sender_int : ex::completion_signatures<               //
+                           ex::set_value_t(int),                //
+                           ex::set_error_t(std::exception_ptr), //
+                           ex::set_done_t()> {
 
   friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&& r) { return {}; }
 };
@@ -146,12 +142,10 @@ TEST_CASE("can query sender traits for a typed sender that sends int", "[concept
   check_sends_done<true>(my_sender_int{});
 }
 
-struct multival_sender {
-  template <template <class...> class Tuple, template <class...> class Variant>
-  using value_types = Variant<Tuple<int, double>, Tuple<short, long>>;
-  template <template <class...> class Variant>
-  using error_types = Variant<std::exception_ptr>;
-  static constexpr bool sends_done = false;
+struct multival_sender : ex::completion_signatures<        //
+                             ex::set_value_t(int, double), //
+                             ex::set_value_t(short, long), //
+                             ex::set_error_t(std::exception_ptr)> {
 
   friend oper tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&& r) { return {}; }
 };
@@ -162,13 +156,10 @@ TEST_CASE("check sender traits for sender that advertises multiple sets of value
   check_sends_done<false>(multival_sender{});
 }
 
-struct ec_sender {
-  template <template <class...> class Tuple, template <class...> class Variant>
-  using value_types = Variant<Tuple<>>;
-  template <template <class...> class Variant>
-  using error_types = Variant<std::exception_ptr, int>;
-  static constexpr bool sends_done = false;
-
+struct ec_sender : ex::completion_signatures<               //
+                       ex::set_value_t(),                   //
+                       ex::set_error_t(std::exception_ptr), //
+                       ex::set_error_t(int)> {
   friend oper tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&& r) { return {}; }
 };
 TEST_CASE("check sender traits for sender that also supports error codes", "[concepts][sender]") {

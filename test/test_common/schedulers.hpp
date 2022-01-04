@@ -58,14 +58,11 @@ struct impulse_scheduler {
     }
   };
 
-  struct my_sender {
+  struct my_sender : ex::completion_signatures<               //
+                         ex::set_value_t(),                   //
+                         ex::set_error_t(std::exception_ptr), //
+                         ex::set_done_t()> {
     cmd_vec_t* all_commands_;
-
-    template <template <class...> class Tuple, template <class...> class Variant>
-    using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-    using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = true;
 
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
@@ -95,7 +92,7 @@ struct impulse_scheduler {
   }
 
   friend my_sender tag_invoke(ex::schedule_t, const impulse_scheduler& self) {
-    return my_sender{self.all_commands_.get()};
+    return my_sender{{}, self.all_commands_.get()};
   }
 
   friend bool operator==(impulse_scheduler, impulse_scheduler) noexcept { return true; }
@@ -116,13 +113,9 @@ struct inline_scheduler {
     }
   };
 
-  struct my_sender {
-    template <template <class...> class Tuple, template <class...> class Variant>
-    using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-    using error_types = Variant<std::exception_ptr>;
-    static constexpr bool sends_done = false;
-
+  struct my_sender : ex::completion_signatures< //
+                         ex::set_value_t(),     //
+                         ex::set_error_t(std::exception_ptr)> {
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {(R &&) r};
@@ -152,14 +145,10 @@ struct error_scheduler {
     }
   };
 
-  struct my_sender {
+  struct my_sender : ex::completion_signatures< //
+                         ex::set_value_t(),     //
+                         ex::set_error_t(E)> {
     E err_;
-
-    template <template <class...> class Tuple, template <class...> class Variant>
-    using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-    using error_types = Variant<E>;
-    static constexpr bool sends_done = false;
 
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
@@ -173,7 +162,9 @@ struct error_scheduler {
 
   E err_;
 
-  friend my_sender tag_invoke(ex::schedule_t, error_scheduler self) { return {(E &&) self.err_}; }
+  friend my_sender tag_invoke(ex::schedule_t, error_scheduler self) {
+    return {{}, (E &&) self.err_};
+  }
 
   friend bool operator==(error_scheduler, error_scheduler) noexcept { return true; }
   friend bool operator!=(error_scheduler, error_scheduler) noexcept { return false; }
@@ -187,13 +178,9 @@ struct done_scheduler {
     friend void tag_invoke(ex::start_t, oper& self) noexcept { ex::set_done((R &&) self.recv_); }
   };
 
-  struct my_sender {
-    template <template <class...> class Tuple, template <class...> class Variant>
-    using value_types = Variant<Tuple<>>;
-    template <template <class...> class Variant>
-    using error_types = Variant<>;
-    static constexpr bool sends_done = true;
-
+  struct my_sender : ex::completion_signatures< //
+                         ex::set_value_t(),     //
+                         ex::set_done_t()> {
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {(R &&) r};
