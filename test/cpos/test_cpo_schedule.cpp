@@ -19,12 +19,11 @@
 
 namespace ex = std::execution;
 
-struct my_sender {
-  template <template <class...> class Tuple, template <class...> class Variant>
-  using value_types = Variant<Tuple<>>;
-  template <template <class...> class Variant>
-  using error_types = Variant<std::exception_ptr>;
-  static constexpr bool sends_done = true;
+struct my_sender
+  : std::execution::completion_signatures<
+      std::execution::set_value_t(),
+      std::execution::set_error_t(std::exception_ptr),
+      std::execution::set_done_t()> {
 
   bool from_scheduler_{false};
 };
