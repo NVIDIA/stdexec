@@ -39,7 +39,7 @@ struct my_sender {
 
   int value_{0};
 
-  template <typename R>
+  template <receiver_of R>
   friend op_state<R> tag_invoke(ex::connect_t, my_sender&& s, R&& r) {
     return {s.value_, (R &&) r};
   }
