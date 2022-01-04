@@ -95,6 +95,8 @@ set(test_sourceFiles
     test/algos/adaptors/test_transfer.cpp
     test/algos/adaptors/test_schedule_from.cpp
     test/algos/adaptors/test_then.cpp
+    test/algos/adaptors/test_upon_error.cpp
+    test/algos/adaptors/test_upon_done.cpp
     )
 
 add_executable(test.P2300 ${test_sourceFiles})
