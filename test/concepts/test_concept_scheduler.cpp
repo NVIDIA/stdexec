@@ -41,9 +41,7 @@ struct my_scheduler {
 
 TEST_CASE("type with schedule CPO models scheduler", "[concepts][scheduler]") {
   REQUIRE(ex::scheduler<my_scheduler>);
-  // NOLINTNEXTLINE
-  auto snd = ex::schedule(my_scheduler{});
-  REQUIRE(ex::sender<decltype(snd)>);
+  REQUIRE(ex::sender<decltype(ex::schedule(my_scheduler{}))>);
 }
 
 struct no_schedule_cpo {
