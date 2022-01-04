@@ -90,7 +90,11 @@ set(test_sourceFiles
     test/algos/factories/test_just.cpp
     test/algos/factories/test_transfer_just.cpp
     test/algos/factories/test_just_error.cpp
-    test/algos/factories/test_just_done.cpp)
+    test/algos/factories/test_just_done.cpp
+    test/algos/adaptors/test_on.cpp
+    test/algos/adaptors/test_transfer.cpp
+    test/algos/adaptors/test_schedule_from.cpp
+    )
 
 add_executable(test.P2300 ${test_sourceFiles})
 

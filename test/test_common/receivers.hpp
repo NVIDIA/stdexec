@@ -147,7 +147,6 @@ class expect_value_receiver_ex {
   explicit expect_value_receiver_ex(T* dest)
       : dest_(dest) {}
 
-  template <typename... Ts>
   friend void tag_invoke(ex::set_value_t, expect_value_receiver_ex self, T val) noexcept {
     *self.dest_ = val;
   }
