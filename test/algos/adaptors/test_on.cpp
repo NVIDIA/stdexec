@@ -27,24 +27,24 @@ namespace ex = std::execution;
 
 using namespace std::chrono_literals;
 
-TEST_CASE("on returns a sender", "[factories][on]") {
+TEST_CASE("on returns a sender", "[adaptors][on]") {
   auto snd = ex::on(inline_scheduler{}, ex::just(13));
   static_assert(ex::sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("on returns a typed_sender", "[factories][on]") {
+TEST_CASE("on returns a typed_sender", "[adaptors][on]") {
   auto snd = ex::on(inline_scheduler{}, ex::just(13));
   static_assert(ex::typed_sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("on simple example", "[factories][on]") {
+TEST_CASE("on simple example", "[adaptors][on]") {
   auto snd = ex::on(inline_scheduler{}, ex::just(13));
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
 
-TEST_CASE("on calls the receiver when the scheduler dictates", "[factories][on]") {
+TEST_CASE("on calls the receiver when the scheduler dictates", "[adaptors][on]") {
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::on(sched, ex::just(13));
@@ -58,7 +58,7 @@ TEST_CASE("on calls the receiver when the scheduler dictates", "[factories][on]"
   CHECK(recv_value == 13);
 }
 
-TEST_CASE("on calls the given sender when the scheduler dictates", "[factories][on]") {
+TEST_CASE("on calls the given sender when the scheduler dictates", "[adaptors][on]") {
   bool called{false};
   auto snd_base = ex::just() | ex::then([&]() -> int {
     called = true;
@@ -82,7 +82,7 @@ TEST_CASE("on calls the given sender when the scheduler dictates", "[factories][
   CHECK(recv_value == 19);
 }
 
-TEST_CASE("on works when changing threads", "[factories][on]") {
+TEST_CASE("on works when changing threads", "[adaptors][on]") {
   example::static_thread_pool pool{2};
   bool called{false};
   {
@@ -100,20 +100,20 @@ TEST_CASE("on works when changing threads", "[factories][on]") {
   REQUIRE(called);
 }
 
-TEST_CASE("on can be called with rvalue ref scheduler", "[factories][on]") {
+TEST_CASE("on can be called with rvalue ref scheduler", "[adaptors][on]") {
   auto snd = ex::on(inline_scheduler{}, ex::just(13));
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
-TEST_CASE("on can be called with const ref scheduler", "[factories][on]") {
+TEST_CASE("on can be called with const ref scheduler", "[adaptors][on]") {
   const inline_scheduler sched;
   auto snd = ex::on(sched, ex::just(13));
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
-TEST_CASE("on can be called with ref scheduler", "[factories][on]") {
+TEST_CASE("on can be called with ref scheduler", "[adaptors][on]") {
   inline_scheduler sched;
   auto snd = ex::on(sched, ex::just(13));
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
@@ -121,21 +121,21 @@ TEST_CASE("on can be called with ref scheduler", "[factories][on]") {
   // The receiver checks if we receive the right value
 }
 
-TEST_CASE("on forwards set_error calls", "[factories][on]") {
+TEST_CASE("on forwards set_error calls", "[adaptors][on]") {
   error_scheduler<std::exception_ptr> sched{std::exception_ptr{}};
   auto snd = ex::on(sched, ex::just(13));
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
-TEST_CASE("on forwards set_error calls of other types", "[factories][on]") {
+TEST_CASE("on forwards set_error calls of other types", "[adaptors][on]") {
   error_scheduler<std::string> sched{std::string{"error"}};
   auto snd = ex::on(sched, ex::just(13));
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
-TEST_CASE("on forwards set_done calls", "[factories][on]") {
+TEST_CASE("on forwards set_done calls", "[adaptors][on]") {
   done_scheduler sched{};
   auto snd = ex::on(sched, ex::just(13));
   auto op = ex::connect(std::move(snd), expect_done_receiver{});
@@ -143,7 +143,7 @@ TEST_CASE("on forwards set_done calls", "[factories][on]") {
   // The receiver checks if we receive the done signal
 }
 
-TEST_CASE("on has the values_type corresponding to the given values", "[factories][on]") {
+TEST_CASE("on has the values_type corresponding to the given values", "[adaptors][on]") {
   inline_scheduler sched{};
 
   check_val_types<type_array<type_array<int>>>(ex::on(sched, ex::just(1)));
@@ -151,7 +151,7 @@ TEST_CASE("on has the values_type corresponding to the given values", "[factorie
   check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::on(sched, ex::just(3, 0.14, std::string{"pi"})));
 }
-TEST_CASE("on keeps error_types from scheduler's sender", "[factories][on]") {
+TEST_CASE("on keeps error_types from scheduler's sender", "[adaptors][on]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
@@ -163,7 +163,7 @@ TEST_CASE("on keeps error_types from scheduler's sender", "[factories][on]") {
   // incorrect check:
   check_err_types<type_array<std::exception_ptr>>(ex::on(sched3, ex::just(3)));
 }
-TEST_CASE("on keeps send_done from scheduler's sender", "[factories][on]") {
+TEST_CASE("on keeps send_done from scheduler's sender", "[adaptors][on]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   done_scheduler sched3{};
@@ -182,7 +182,7 @@ auto tag_invoke(decltype(ex::on), inline_scheduler sched, just_string_sender_t) 
   return ex::just(std::string{"Hello, world!"});
 }
 
-TEST_CASE("on can be customized", "[factories][on]") {
+TEST_CASE("on can be customized", "[adaptors][on]") {
   // The customization will return a different value
   auto snd = ex::on(inline_scheduler{}, ex::just(std::string{"world"}));
   std::string res;

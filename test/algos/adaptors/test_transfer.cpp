@@ -27,24 +27,24 @@ namespace ex = std::execution;
 
 using namespace std::chrono_literals;
 
-TEST_CASE("transfer returns a sender", "[factories][transfer]") {
+TEST_CASE("transfer returns a sender", "[adaptors][transfer]") {
   auto snd = ex::transfer(ex::just(13), inline_scheduler{});
   static_assert(ex::sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("transfer returns a typed_sender", "[factories][transfer]") {
+TEST_CASE("transfer returns a typed_sender", "[adaptors][transfer]") {
   auto snd = ex::transfer(ex::just(13), inline_scheduler{});
   static_assert(ex::typed_sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("transfer simple example", "[factories][transfer]") {
+TEST_CASE("transfer simple example", "[adaptors][transfer]") {
   auto snd = ex::transfer(ex::just(13), inline_scheduler{});
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
 
-TEST_CASE("transfer can be piped", "[factories][transfer]") {
+TEST_CASE("transfer can be piped", "[adaptors][transfer]") {
   // Just transfer a value to the impulse scheduler
   ex::scheduler auto sched = impulse_scheduler{};
   ex::sender auto snd = ex::just(13) | ex::transfer(sched);
@@ -59,7 +59,7 @@ TEST_CASE("transfer can be piped", "[factories][transfer]") {
   REQUIRE(res == 13);
 }
 
-TEST_CASE("transfer calls the receiver when the scheduler dictates", "[factories][transfer]") {
+TEST_CASE("transfer calls the receiver when the scheduler dictates", "[adaptors][transfer]") {
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::transfer(ex::just(13), sched);
@@ -73,7 +73,7 @@ TEST_CASE("transfer calls the receiver when the scheduler dictates", "[factories
   CHECK(recv_value == 13);
 }
 
-TEST_CASE("transfer calls the given sender when the scheduler dictates", "[factories][transfer]") {
+TEST_CASE("transfer calls the given sender when the scheduler dictates", "[adaptors][transfer]") {
   bool called{false};
   auto snd_base = ex::just() | ex::then([&]() -> int {
     called = true;
@@ -98,7 +98,7 @@ TEST_CASE("transfer calls the given sender when the scheduler dictates", "[facto
   CHECK(recv_value == 19);
 }
 
-TEST_CASE("transfer works when changing threads", "[factories][transfer]") {
+TEST_CASE("transfer works when changing threads", "[adaptors][transfer]") {
   example::static_thread_pool pool{2};
   bool called{false};
   {
@@ -116,20 +116,20 @@ TEST_CASE("transfer works when changing threads", "[factories][transfer]") {
   REQUIRE(called);
 }
 
-TEST_CASE("transfer can be called with rvalue ref scheduler", "[factories][transfer]") {
+TEST_CASE("transfer can be called with rvalue ref scheduler", "[adaptors][transfer]") {
   auto snd = ex::transfer(ex::just(13), inline_scheduler{});
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
-TEST_CASE("transfer can be called with const ref scheduler", "[factories][transfer]") {
+TEST_CASE("transfer can be called with const ref scheduler", "[adaptors][transfer]") {
   const inline_scheduler sched;
   auto snd = ex::transfer(ex::just(13), sched);
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
-TEST_CASE("transfer can be called with ref scheduler", "[factories][transfer]") {
+TEST_CASE("transfer can be called with ref scheduler", "[adaptors][transfer]") {
   inline_scheduler sched;
   auto snd = ex::transfer(ex::just(13), sched);
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
@@ -137,21 +137,21 @@ TEST_CASE("transfer can be called with ref scheduler", "[factories][transfer]") 
   // The receiver checks if we receive the right value
 }
 
-TEST_CASE("transfer forwards set_error calls", "[factories][transfer]") {
+TEST_CASE("transfer forwards set_error calls", "[adaptors][transfer]") {
   error_scheduler<std::exception_ptr> sched{std::exception_ptr{}};
   auto snd = ex::transfer(ex::just(13), sched);
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
-TEST_CASE("transfer forwards set_error calls of other types", "[factories][transfer]") {
+TEST_CASE("transfer forwards set_error calls of other types", "[adaptors][transfer]") {
   error_scheduler<std::string> sched{std::string{"error"}};
   auto snd = ex::transfer(ex::just(13), sched);
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
   // The receiver checks if we receive an error
 }
-TEST_CASE("transfer forwards set_done calls", "[factories][transfer]") {
+TEST_CASE("transfer forwards set_done calls", "[adaptors][transfer]") {
   done_scheduler sched{};
   auto snd = ex::transfer(ex::just(13), sched);
   auto op = ex::connect(std::move(snd), expect_done_receiver{});
@@ -160,7 +160,7 @@ TEST_CASE("transfer forwards set_done calls", "[factories][transfer]") {
 }
 
 TEST_CASE(
-    "transfer has the values_type corresponding to the given values", "[factories][transfer]") {
+    "transfer has the values_type corresponding to the given values", "[adaptors][transfer]") {
   inline_scheduler sched{};
 
   check_val_types<type_array<type_array<int>>>(ex::transfer(ex::just(1), sched));
@@ -168,7 +168,7 @@ TEST_CASE(
   check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::transfer(ex::just(3, 0.14, std::string{"pi"}), sched));
 }
-TEST_CASE("transfer keeps error_types from scheduler's sender", "[factories][transfer]") {
+TEST_CASE("transfer keeps error_types from scheduler's sender", "[adaptors][transfer]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
@@ -180,7 +180,7 @@ TEST_CASE("transfer keeps error_types from scheduler's sender", "[factories][tra
   // incorrect check:
   check_err_types<type_array<std::exception_ptr>>(ex::transfer(ex::just(3), sched3));
 }
-TEST_CASE("transfer keeps send_done from scheduler's sender", "[factories][transfer]") {
+TEST_CASE("transfer keeps send_done from scheduler's sender", "[adaptors][transfer]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   done_scheduler sched3{};
@@ -225,7 +225,7 @@ auto tag_invoke(decltype(ex::transfer), impulse_scheduler /*sched_src*/, just_va
   return ex::transfer_just(sched_dest, val_type3{61});
 }
 
-TEST_CASE("transfer can be customized", "[factories][transfer]") {
+TEST_CASE("transfer can be customized", "[adaptors][transfer]") {
   // The customization will return a different value
   auto snd = ex::transfer(ex::just(val_type1{1}), inline_scheduler{});
   val_type1 res{0};
@@ -234,7 +234,7 @@ TEST_CASE("transfer can be customized", "[factories][transfer]") {
   REQUIRE(res.val_ == 53);
 }
 
-TEST_CASE("transfer follows schedule_from customization", "[factories][transfer]") {
+TEST_CASE("transfer follows schedule_from customization", "[adaptors][transfer]") {
   // The schedule_from customization will return a different value
   auto snd = ex::transfer(ex::just(val_type2{2}), inline_scheduler{});
   val_type2 res{0};
@@ -243,7 +243,7 @@ TEST_CASE("transfer follows schedule_from customization", "[factories][transfer]
   REQUIRE(res.val_ == 59);
 }
 
-TEST_CASE("transfer can be customized with two schedulers", "[factories][transfer]") {
+TEST_CASE("transfer can be customized with two schedulers", "[adaptors][transfer]") {
   // The customization will return a different value
   ex::scheduler auto sched_src = impulse_scheduler{};
   ex::scheduler auto sched_dest = inline_scheduler{};
