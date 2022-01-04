@@ -3228,6 +3228,7 @@ namespace std::this_thread {
             tag_invoke(execution::get_scheduler_t, const __receiver& __rcvr) noexcept {
               return __rcvr.__loop_->get_scheduler();
             }
+            friend execution::run_loop::__scheduler
             tag_invoke(execution::get_delegee_scheduler_t, const __receiver& __rcvr) noexcept {
               return __rcvr.__loop_->get_scheduler();
             }
