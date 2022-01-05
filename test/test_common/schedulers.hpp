@@ -141,7 +141,7 @@ struct error_scheduler {
     E err_;
 
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
-      ex::set_error((R &&) self.recv_, self.err_);
+      ex::set_error((R &&) self.recv_, (E &&) self.err_);
     }
   };
 

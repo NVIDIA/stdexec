@@ -147,7 +147,6 @@ class expect_value_receiver_ex {
   explicit expect_value_receiver_ex(T* dest)
       : dest_(dest) {}
 
-  template <typename... Ts>
   friend void tag_invoke(ex::set_value_t, expect_value_receiver_ex self, T val) noexcept {
     *self.dest_ = val;
   }
@@ -336,4 +335,15 @@ struct fun_receiver {
 template <typename F>
 fun_receiver<F> make_fun_receiver(F f) {
   return fun_receiver<F>{std::forward<F>(f)};
+}
+
+template <ex::sender S, typename... Ts>
+inline void wait_for_value(S&& snd, Ts&&... val) {
+  std::optional<std::tuple<Ts...>> res = std::this_thread::sync_wait((S &&) snd);
+  CHECK(res.has_value());
+  std::tuple<Ts...> expected((Ts &&) val...);
+  if constexpr (std::tuple_size_v<std::tuple<Ts...>> == 1)
+    CHECK(std::get<0>(res.value()) == std::get<0>(expected));
+  else
+    CHECK(res.value() == expected);
 }
