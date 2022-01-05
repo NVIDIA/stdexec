@@ -71,6 +71,12 @@ if (CONAN_SETTINGS_COMPILER_LIBCXX STREQUAL "libc++")
     target_link_options(P2300 INTERFACE -lc++)
 endif ()
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    add_compile_options (-fdiagnostics-color=always)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    add_compile_options (-fcolor-diagnostics)
+endif ()
+
 add_library(P2300::p2300 ALIAS P2300)
 
 
