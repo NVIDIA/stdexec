@@ -67,7 +67,7 @@ TEST_CASE("then can be used with multiple parameters", "[adaptors][then]") {
   wait_for_value(std::move(snd), 3.1415);
 }
 
-TEST_CASE("then can throw, and set_done will be called", "[adaptors][then]") {
+TEST_CASE("then can throw, and set_error will be called", "[adaptors][then]") {
   auto snd = ex::just(13) //
              | ex::then([](int x) -> int {
                  throw std::logic_error{"err"};
