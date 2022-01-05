@@ -34,11 +34,11 @@ namespace example {
   };
 
   template <typename ReceiverID>
-    struct operation;
+    class operation;
 
   class static_thread_pool {
     template <typename ReceiverId>
-      friend struct operation;
+      friend class operation;
    public:
     static_thread_pool();
     static_thread_pool(std::uint32_t threadCount);
@@ -49,7 +49,7 @@ namespace example {
 
      private:
       template <typename ReceiverId>
-        friend struct operation;
+        friend class operation;
 
       using traits = std::execution::completion_signatures<
           std::execution::set_value_t(),
@@ -75,7 +75,7 @@ namespace example {
           return static_thread_pool::scheduler{s.pool_};
         }
 
-        friend class static_thread_pool::scheduler;
+        friend struct static_thread_pool::scheduler;
 
         explicit sender(static_thread_pool& pool) noexcept
           : pool_(pool) {}

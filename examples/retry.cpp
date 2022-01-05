@@ -35,7 +35,7 @@ struct fail_some
         std::printf("fail!\n");
         std::execution::set_error(std::move(self.r_), std::exception_ptr{});
       } else {
-        std:printf("success!\n");
+        std::printf("success!\n");
         std::execution::set_value(std::move(self.r_), 42);
       }
     }
@@ -54,4 +54,5 @@ int main() {
   //   fail!
   //   success!
   auto [a] = std::this_thread::sync_wait(std::move(x)).value();
+  (void) a;
 }

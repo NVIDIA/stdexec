@@ -2267,7 +2267,7 @@ namespace std::execution {
 
     class run_loop {
       template <class>
-        friend struct __impl::__operation;
+        friend class __impl::__operation;
      public:
       class __scheduler {
         struct __schedule_task
