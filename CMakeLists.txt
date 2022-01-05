@@ -106,6 +106,7 @@ set(test_sourceFiles
     test/algos/adaptors/test_let_value.cpp
     test/algos/adaptors/test_let_error.cpp
     test/algos/adaptors/test_let_done.cpp
+    test/algos/adaptors/test_bulk.cpp
     )
 
 add_executable(test.P2300 ${test_sourceFiles})
