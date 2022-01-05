@@ -343,7 +343,9 @@ namespace std::execution {
       struct forwarding_scheduler_query_t {
         template <class _Tag>
         constexpr bool operator()(_Tag __tag) const noexcept {
-          if constexpr (tag_invocable<forwarding_scheduler_query_t, _Tag>) {
+          if constexpr (nothrow_tag_invocable<forwarding_scheduler_query_t, _Tag> &&
+                        is_invocable_r_v<bool, tag_t<tag_invoke>,
+                                         forwarding_scheduler_query_t, _Tag>) {
             return tag_invoke(*this, (_Tag&&) __tag);
           } else {
             return false;
@@ -459,7 +461,9 @@ namespace std::execution {
       struct forwarding_receiver_query_t {
         template <class _Tag>
         constexpr bool operator()(_Tag __tag) const noexcept {
-          if constexpr (tag_invocable<forwarding_receiver_query_t, _Tag>) {
+          if constexpr (nothrow_tag_invocable<forwarding_receiver_query_t, _Tag> &&
+                        is_invocable_r_v<bool, tag_t<tag_invoke>,
+                                         forwarding_receiver_query_t, _Tag>) {
             return tag_invoke(*this, (_Tag&&) __tag);
           } else {
             return __none_of<_Tag, set_value_t, set_error_t, set_done_t>;
@@ -733,7 +737,9 @@ namespace std::execution {
       struct forwarding_sender_query_t {
         template <class _Tag>
         constexpr bool operator()(_Tag __tag) const noexcept {
-          if constexpr (tag_invocable<forwarding_sender_query_t, _Tag>) {
+          if constexpr (nothrow_tag_invocable<forwarding_sender_query_t, _Tag> &&
+                        is_invocable_r_v<bool, tag_t<tag_invoke>,
+                                         forwarding_sender_query_t, _Tag>) {
             return tag_invoke(*this, (_Tag&&) __tag);
           } else {
             return false;
