@@ -30,7 +30,7 @@ namespace ex = std::execution;
 // }
 // TEST_CASE("then returns a typed_sender", "[adaptors][upon_done]") {
 //   auto snd = ex::upon_done(ex::just_done(), []() {});
-//   static_assert(ex::typed_sender<decltype(snd), empty_context>);
+//   static_assert(ex::typed_sender<decltype(snd), empty_env>);
 //   (void)snd;
 // }
 // TEST_CASE("then simple example", "[adaptors][upon_done]") {

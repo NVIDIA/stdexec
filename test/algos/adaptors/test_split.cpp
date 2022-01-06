@@ -30,7 +30,7 @@ namespace ex = std::execution;
 // }
 // TEST_CASE("split returns a typed_sender", "[adaptors][split]") {
 //   auto snd = ex::split(ex::just(19));
-//   static_assert(ex::typed_sender<decltype(snd), empty_context>);
+//   static_assert(ex::typed_sender<decltype(snd), empty_env>);
 //   (void)snd;
 // }
 // TEST_CASE("split simple example", "[adaptors][split]") {

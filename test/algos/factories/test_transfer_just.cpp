@@ -29,7 +29,7 @@ TEST_CASE("transfer_just returns a sender", "[factories][transfer_just]") {
 }
 TEST_CASE("transfer_just returns a typed_sender", "[factories][transfer_just]") {
   auto snd = ex::transfer_just(inline_scheduler{}, 13);
-  static_assert(ex::typed_sender<decltype(snd), empty_context>);
+  static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("transfer_just simple example", "[factories][transfer_just]") {

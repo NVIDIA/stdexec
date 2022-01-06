@@ -49,7 +49,7 @@ struct impulse_scheduler {
       // Enqueue another command to the list of all commands
       // The scheduler will start this, whenever start_next() is called
       self.all_commands_->emplace_back([&self]() {
-        if (ex::get_stop_token(ex::get_context(self.receiver_)).stop_requested()) {
+        if (ex::get_stop_token(ex::get_env(self.receiver_)).stop_requested()) {
           ex::set_done((R &&) self.receiver_);
         } else {
           try {

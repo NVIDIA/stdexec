@@ -29,7 +29,7 @@ TEST_CASE("into_variant returns a sender", "[adaptors][into_variant]") {
 }
 TEST_CASE("into_variant returns a typed_sender", "[adaptors][into_variant]") {
   auto snd = ex::into_variant(ex::just(11));
-  static_assert(ex::typed_sender<decltype(snd), empty_context>);
+  static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("into_variant simple example", "[adaptors][into_variant]") {

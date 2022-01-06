@@ -29,7 +29,7 @@ TEST_CASE("done_as_error returns a sender", "[adaptors][done_as_error]") {
 }
 TEST_CASE("done_as_error returns a typed_sender", "[adaptors][done_as_error]") {
   auto snd = ex::done_as_error(ex::just(11), -1);
-  static_assert(ex::typed_sender<decltype(snd), empty_context>);
+  static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("done_as_error simple example", "[adaptors][done_as_error]") {

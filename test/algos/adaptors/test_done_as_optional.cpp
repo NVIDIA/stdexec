@@ -29,7 +29,7 @@ TEST_CASE("done_as_optional returns a sender", "[adaptors][done_as_optional]") {
 }
 TEST_CASE("done_as_optional returns a typed_sender", "[adaptors][done_as_optional]") {
   auto snd = ex::done_as_optional(ex::just(11));
-  static_assert(ex::typed_sender<decltype(snd), empty_context>);
+  static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("done_as_optional simple example", "[adaptors][done_as_optional]") {
