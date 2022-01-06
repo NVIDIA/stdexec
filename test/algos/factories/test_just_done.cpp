@@ -33,7 +33,7 @@ TEST_CASE("just_done returns a sender", "[factories][just_done]") {
 
 TEST_CASE("just_done returns a typed sender", "[factories][just_done]") {
   using t = decltype(ex::just_done());
-  static_assert(ex::typed_sender<t, empty_context>, "ex::just_done must return a typed_sender");
+  static_assert(ex::typed_sender<t, empty_env>, "ex::just_done must return a typed_sender");
 }
 
 TEST_CASE("value types are properly set for just_done", "[factories][just_done]") {

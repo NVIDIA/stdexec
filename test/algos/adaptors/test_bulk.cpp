@@ -30,7 +30,7 @@ namespace ex = std::execution;
 // }
 // TEST_CASE("bulk returns a typed_sender", "[adaptors][bulk]") {
 //   auto snd = ex::bulk(ex::just(19), 8, [](int idx, int val) {});
-//   static_assert(ex::typed_sender<decltype(snd), empty_context>);
+//   static_assert(ex::typed_sender<decltype(snd), empty_env>);
 //   (void)snd;
 // }
 // TEST_CASE("bulk simple example", "[adaptors][bulk]") {

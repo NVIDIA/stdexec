@@ -34,7 +34,7 @@ TEST_CASE("let_error returns a sender", "[adaptors][let_error]") {
 }
 TEST_CASE("let_error returns a typed_sender", "[adaptors][let_error]") {
   auto snd = ex::let_error(ex::just(), [](std::exception_ptr) { return ex::just(); });
-  static_assert(ex::typed_sender<decltype(snd), empty_context>);
+  static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("let_error simple example", "[adaptors][let_error]") {

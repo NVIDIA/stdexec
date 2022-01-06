@@ -32,7 +32,7 @@ TEST_CASE("type deriving from sender_base, w/o start, is a sender", "[concepts][
 }
 TEST_CASE(
     "type deriving from sender_base, w/o start, doesn't model typed_sender", "[concepts][sender]") {
-  REQUIRE_FALSE(ex::typed_sender<empty_sender, empty_context>);
+  REQUIRE_FALSE(ex::typed_sender<empty_sender, empty_env>);
 }
 TEST_CASE(
     "type deriving from sender_base, w/o start, doesn't model sender_to", "[concepts][sender]") {
@@ -51,7 +51,7 @@ TEST_CASE("type deriving from sender_base models sender and sender_to", "[concep
   REQUIRE(ex::sender_to<simple_sender, empty_recv::recv0>);
 }
 TEST_CASE("type deriving from sender_base, doesn't model typed_sender", "[concepts][sender]") {
-  REQUIRE_FALSE(ex::typed_sender<simple_sender, empty_context>);
+  REQUIRE_FALSE(ex::typed_sender<simple_sender, empty_env>);
 }
 
 struct my_sender0 : ex::completion_signatures<               //
@@ -63,7 +63,7 @@ struct my_sender0 : ex::completion_signatures<               //
 };
 TEST_CASE("type w/ proper types, is a sender & typed_sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender0>);
-  REQUIRE(ex::typed_sender<my_sender0, empty_context>);
+  REQUIRE(ex::typed_sender<my_sender0, empty_env>);
 }
 TEST_CASE(
     "sender that accepts a void sender models sender_to the given sender", "[concepts][sender]") {
@@ -79,7 +79,7 @@ struct my_sender_int : ex::completion_signatures<               //
 };
 TEST_CASE("my_sender_int is a sender & typed_sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender_int>);
-  REQUIRE(ex::typed_sender<my_sender_int, empty_context>);
+  REQUIRE(ex::typed_sender<my_sender_int, empty_env>);
 }
 TEST_CASE("sender that accepts an int receiver models sender_to the given receiver",
     "[concepts][sender]") {
@@ -97,11 +97,11 @@ TEST_CASE("not all combinations of senders & receivers satisfy the sender_to con
 }
 
 TEST_CASE("can apply sender traits to invalid sender", "[concepts][sender]") {
-  REQUIRE(sizeof(ex::sender_traits_t<empty_sender, empty_context>) <= sizeof(int));
+  REQUIRE(sizeof(ex::sender_traits_t<empty_sender, empty_env>) <= sizeof(int));
 }
 
 TEST_CASE("can apply sender traits to senders deriving from sender_base", "[concepts][sender]") {
-  REQUIRE(sizeof(ex::sender_traits_t<simple_sender, empty_context>) <= sizeof(int));
+  REQUIRE(sizeof(ex::sender_traits_t<simple_sender, empty_env>) <= sizeof(int));
 }
 
 TEST_CASE("can query sender traits for a typed sender that sends nothing", "[concepts][sender]") {

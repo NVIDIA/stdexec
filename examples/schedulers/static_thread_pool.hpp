@@ -145,7 +145,7 @@ namespace example {
           auto& op = *static_cast<operation*>(t);
           auto stoken =
             std::execution::get_stop_token(
-              std::execution::get_context(op.receiver_));
+              std::execution::get_env(op.receiver_));
           if (stoken.stop_requested()) {
             std::execution::set_done((Receiver &&) op.receiver_);
           } else {
