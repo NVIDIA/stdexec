@@ -136,17 +136,19 @@ TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::let_value([]() { return ex::just(17); });
   // TODO: this should work
-  // static_assert(std::tag_invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
   // auto op = ex::connect(std::move(snd), expect_error_receiver{});
   // ex::start(op);
+  // invalid check
+  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
 }
 TEST_CASE("let_value can be used with just_done", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_done() | //
                         ex::let_value([]() { return ex::just(17); });
   // TODO: this should work
-  // static_assert(std::tag_invocable<ex::connect_t, decltype(snd), expect_done_receiver>);
   // auto op = ex::connect(std::move(snd), expect_done_receiver{});
   // ex::start(op);
+  // invalid check:
+  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_done_receiver>);
 }
 
 TEST_CASE("let_value function is not called on error", "[adaptors][let_value]") {

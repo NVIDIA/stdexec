@@ -132,10 +132,10 @@ TEST_CASE("when_all can be used with just_*", "[adaptors][when_all]") {
       ex::just_done()                       //
   );
   // TODO: this should work
-  // static_assert(std::tag_invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
   // auto op = ex::connect(std::move(snd), expect_error_receiver{});
   // ex::start(op);
-  (void)snd;
+  // invalid check
+  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
 }
 
 TEST_CASE(

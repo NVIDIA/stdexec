@@ -32,7 +32,7 @@ struct my_scheduler {
 };
 
 TEST_CASE("can call schedule on an appropriate type", "[cpo][cpo_schedule]") {
-  static_assert(std::tag_invocable<ex::schedule_t, my_scheduler>, "invalid scheduler type");
+  static_assert(std::invocable<ex::schedule_t, my_scheduler>, "invalid scheduler type");
   my_scheduler sched;
   auto snd = ex::schedule(sched);
   CHECK(snd.from_scheduler_);
