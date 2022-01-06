@@ -115,6 +115,7 @@ set(test_sourceFiles
     test/algos/adaptors/test_done_as_error.cpp
     test/algos/adaptors/test_ensure_started.cpp
     test/algos/consumers/test_start_detached.cpp
+    test/algos/consumers/test_sync_wait.cpp
     )
 
 add_executable(test.P2300 ${test_sourceFiles})
