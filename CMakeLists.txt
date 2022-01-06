@@ -72,9 +72,9 @@ if (CONAN_SETTINGS_COMPILER_LIBCXX STREQUAL "libc++")
 endif ()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_compile_options (-fdiagnostics-color=always)
+    add_compile_options(-fdiagnostics-color=always)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    add_compile_options (-fcolor-diagnostics)
+    add_compile_options(-fcolor-diagnostics)
 endif ()
 
 add_library(P2300::p2300 ALIAS P2300)
@@ -114,6 +114,7 @@ set(test_sourceFiles
     test/algos/adaptors/test_done_as_optional.cpp
     test/algos/adaptors/test_done_as_error.cpp
     test/algos/adaptors/test_ensure_started.cpp
+    test/algos/consumers/test_start_detached.cpp
     )
 
 add_executable(test.P2300 ${test_sourceFiles})
