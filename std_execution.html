@@ -2695,7 +2695,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
                       <c- n>assert</c-><c- p>(</c-><c- n>bytes_read</c-> <c- o>==</c-> <c- k>sizeof</c-><c- p>(</c-><c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>));</c->                 <c- c1>// 10</c->
                       <c- n>buf</c-><c- p>.</c-><c- n>data</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>make_unique</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>byte</c-><c- p>[]</c-><c- o>></c-><c- p>(</c-><c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>);</c->     <c- c1>// 11</c->
                       <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>span</c-><c- p>(</c-><c- n>buf</c-><c- p>.</c-><c- n>data</c-><c- p>.</c-><c- n>get</c-><c- p>(),</c-> <c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>);</c->             <c- c1>// 12</c->
-                    <c- p>}</c->
+                    <c- p>})</c->
                 <c- o>|</c-> <c- n>async_read</c-><c- p>(</c-><c- n>handle</c-><c- p>)</c->                                          <c- c1>// 13</c->
                 <c- o>|</c-> <c- n>then</c-><c- p>(</c->
                     <c- p>[</c-><c- o>&amp;</c-><c- n>buf</c-><c- p>]</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>bytes_read</c-><c- p>)</c-> <c- p>{</c->
