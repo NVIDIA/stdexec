@@ -143,20 +143,3 @@ TEST_CASE("into_variant keeps send_done from input sender", "[adaptors][into_var
   check_sends_done<true>( //
       ex::just_done() | ex::into_variant());
 }
-
-using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-
-auto tag_invoke(decltype(ex::into_variant), my_string_sender_t) {
-  // Return a different sender when we invoke this custom defined on implementation
-  return ex::just(std::string{"hallo"});
-}
-
-TEST_CASE("TODO: into_variant can be customized", "[adaptors][into_variant]") {
-  // The customization will return a different value
-  auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
-             | ex::into_variant();
-  // TODO: into_variant cannot be customized
-  // wait_for_value(std::move(snd), std::variant<std::tuple<std::string>>{std::string{"hallo"}});
-  // Invalid check:
-  wait_for_value(std::move(snd), std::variant<std::tuple<std::string>>{std::string{"hello"}});
-}

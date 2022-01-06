@@ -111,6 +111,7 @@ set(test_sourceFiles
     test/algos/adaptors/test_when_all.cpp
     test/algos/adaptors/test_transfer_when_all.cpp
     test/algos/adaptors/test_into_variant.cpp
+    test/algos/adaptors/test_done_as_optional.cpp
     )
 
 add_executable(test.P2300 ${test_sourceFiles})
