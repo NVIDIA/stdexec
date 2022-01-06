@@ -3594,7 +3594,7 @@ enum class forward_progress_guarantee {
       template&lt;template&lt;class...> class Variant>
       using error_types = Variant&lt;exception_ptr>;
 
-      static const constexpr auto sends_done = false;
+      static constexpr bool sends_done = false;
 
       template&lt;class R>
       struct operation_state {
@@ -3667,7 +3667,7 @@ enum class forward_progress_guarantee {
       template&lt;template&lt;class...> class Variant>
       using error_types = Variant&lt;T>;
 
-      static const constexpr auto sends_done = false;
+      static constexpr bool sends_done = false;
 
       template&lt;class R>
       struct operation_state {
@@ -3717,7 +3717,7 @@ enum class forward_progress_guarantee {
       template&lt;template&lt;class...> class Variant>
       using error_types = Variant&lt;>;
 
-      static const constexpr auto sends_done = true;
+      static constexpr bool sends_done = true;
 
       template&lt;class R>
       struct operation_state {
