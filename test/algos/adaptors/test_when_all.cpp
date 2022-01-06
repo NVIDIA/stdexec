@@ -68,7 +68,7 @@ TEST_CASE("when_all with just one sender", "[adaptors][when_all]") {
   wait_for_value(std::move(snd), 2);
 }
 
-TEST_CASE("when_all with no senders sender -- should fail", "[adaptors][when_all]") {
+TEST_CASE("TODO: when_all with no senders sender -- should fail", "[adaptors][when_all]") {
   auto snd = ex::when_all();
   static_assert(ex::typed_sender<decltype(snd)>);
   // TODO: calling `ex::when_all()` should be ill-formed
@@ -82,7 +82,7 @@ TEST_CASE("when_all when one sender sends void", "[adaptors][when_all]") {
   wait_for_value(std::move(snd), 2);
 }
 
-TEST_CASE("when_all_with_variant basic example", "[adaptors][when_all]") {
+TEST_CASE("TODO: when_all_with_variant basic example", "[adaptors][when_all]") {
   // TODO: when_all_with_variant doesn't work
   // ex::sender auto snd = ex::when_all_with_variant( //
   //     ex::just(2),                                 //
@@ -91,7 +91,7 @@ TEST_CASE("when_all_with_variant basic example", "[adaptors][when_all]") {
   // wait_for_value(std::move(snd), std::variant<int, double>{2}, std::variant<int, double>{3.14});
 }
 
-TEST_CASE("when_all_with_variant with same type", "[adaptors][when_all]") {
+TEST_CASE("TODO: when_all_with_variant with same type", "[adaptors][when_all]") {
   // TODO: when_all_with_variant doesn't work
   // ex::sender auto snd = ex::when_all_with_variant( //
   //     ex::just(2),                                 //
@@ -125,7 +125,7 @@ TEST_CASE("when_all completes when children complete", "[adaptors][when_all]") {
   CHECK(called);
 }
 
-TEST_CASE("when_all can be used with just_*", "[adaptors][when_all]") {
+TEST_CASE("TODO: when_all can be used with just_*", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all(       //
       ex::just(2),                          //
       ex::just_error(std::exception_ptr{}), //
@@ -161,7 +161,7 @@ TEST_CASE("when_all terminates with done if one child is cancelled", "[adaptors]
   ex::start(op);
 }
 
-TEST_CASE("when_all cancels remaining children if error is detected", "[adaptors][when_all]") {
+TEST_CASE("TODO: when_all cancels remaining children if error is detected", "[adaptors][when_all]") {
   impulse_scheduler sched;
   error_scheduler err_sched;
   bool called1{false};
@@ -192,7 +192,7 @@ TEST_CASE("when_all cancels remaining children if error is detected", "[adaptors
   // CHECK(cancelled);
 }
 
-TEST_CASE("when_all cancels remaining children if cancel is detected", "[adaptors][when_all]") {
+TEST_CASE("TODO: when_all cancels remaining children if cancel is detected", "[adaptors][when_all]") {
   done_scheduler done_sched;
   impulse_scheduler sched;
   bool called1{false};
@@ -296,7 +296,7 @@ auto tag_invoke(ex::when_all_t, my_string_sender_t, my_string_sender_t) {
   return ex::just(std::string{"first program"});
 }
 
-TEST_CASE("when_all can be customized", "[adaptors][when_all]") {
+TEST_CASE("TODO: when_all can be customized", "[adaptors][when_all]") {
   // The customization will return a different value
   auto snd = ex::when_all(                                          //
       ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //
@@ -314,7 +314,7 @@ auto tag_invoke(ex::when_all_with_variant_t, my_string_sender_t, my_string_sende
 }
 
 // TODO: check when_all_with_variant
-TEST_CASE("when_all_with_variant can be customized", "[adaptors][when_all]") {
+TEST_CASE("TODO: when_all_with_variant can be customized", "[adaptors][when_all]") {
   // // The customization will return a different value
   // auto snd = ex::when_all_with_variant(                             //
   //     ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //

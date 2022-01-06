@@ -53,7 +53,7 @@ TEST_CASE("just_error cannot call set_done", "[factories][just_error]") {
   check_sends_done<false>(ex::just_error(1));
 }
 
-TEST_CASE("just_error removes cv qualifier for the given type", "[factories][just_error]") {
+TEST_CASE("TODO: just_error removes cv qualifier for the given type", "[factories][just_error]") {
   std::string str{"hello"};
   const std::string& crefstr = str;
   auto snd = ex::just_error(crefstr);

@@ -151,7 +151,7 @@ TEST_CASE("on has the values_type corresponding to the given values", "[adaptors
   check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::on(sched, ex::just(3, 0.14, std::string{"pi"})));
 }
-TEST_CASE("on keeps error_types from scheduler's sender", "[adaptors][on]") {
+TEST_CASE("TODO: on keeps error_types from scheduler's sender", "[adaptors][on]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
@@ -163,7 +163,7 @@ TEST_CASE("on keeps error_types from scheduler's sender", "[adaptors][on]") {
   // incorrect check:
   check_err_types<type_array<std::exception_ptr>>(ex::on(sched3, ex::just(3)));
 }
-TEST_CASE("on keeps send_done from scheduler's sender", "[adaptors][on]") {
+TEST_CASE("TODO: on keeps send_done from scheduler's sender", "[adaptors][on]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   done_scheduler sched3{};

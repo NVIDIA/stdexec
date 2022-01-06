@@ -155,7 +155,7 @@ TEST_CASE("schedule_from has the values_type corresponding to the given values",
   check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::schedule_from(sched, ex::just(3, 0.14, std::string{"pi"})));
 }
-TEST_CASE("schedule_from keeps error_types from scheduler's sender", "[adaptors][schedule_from]") {
+TEST_CASE("TODO: schedule_from keeps error_types from scheduler's sender", "[adaptors][schedule_from]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
@@ -167,7 +167,7 @@ TEST_CASE("schedule_from keeps error_types from scheduler's sender", "[adaptors]
   // incorrect check:
   check_err_types<type_array<std::exception_ptr>>(ex::schedule_from(sched3, ex::just(3)));
 }
-TEST_CASE("schedule_from keeps send_done from scheduler's sender", "[adaptors][schedule_from]") {
+TEST_CASE("TODO: schedule_from keeps send_done from scheduler's sender", "[adaptors][schedule_from]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   done_scheduler sched3{};

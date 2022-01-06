@@ -37,7 +37,7 @@ TEST_CASE("transfer_when_all returns a typed_sender", "[adaptors][transfer_when_
   static_assert(ex::typed_sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("transfer_when_all simple example", "[adaptors][transfer_when_all]") {
+TEST_CASE("TODO: transfer_when_all simple example", "[adaptors][transfer_when_all]") {
   auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
   // TODO: check why transfer_when_all doesn't work
@@ -46,7 +46,7 @@ TEST_CASE("transfer_when_all simple example", "[adaptors][transfer_when_all]") {
   (void)snd1;
 }
 
-TEST_CASE("transfer_when_all transfers the result when the scheduler dictates",
+TEST_CASE("TODO: transfer_when_all transfers the result when the scheduler dictates",
     "[adaptors][transfer_when_all]") {
   impulse_scheduler sched;
   auto snd = ex::transfer_when_all(sched, ex::just(3), ex::just(0.1415));
@@ -72,7 +72,7 @@ TEST_CASE(
   static_assert(ex::typed_sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("transfer_when_all_with_variant basic example", "[adaptors][transfer_when_all]") {
+TEST_CASE("TODO: transfer_when_all_with_variant basic example", "[adaptors][transfer_when_all]") {
   ex::sender auto snd = ex::transfer_when_all_with_variant( //
       inline_scheduler{},                                   //
       ex::just(2),                                          //

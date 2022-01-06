@@ -76,7 +76,7 @@ TEST_CASE("let_done can throw, calling set_error", "[adaptors][let_done]") {
   ex::start(op);
 }
 
-TEST_CASE("let_done can be used with just_error", "[adaptors][let_done]") {
+TEST_CASE("TODO: let_done can be used with just_error", "[adaptors][let_done]") {
   ex::sender auto snd = ex::just_error(1) //
                         | ex::let_done([] { return ex::just(17); });
   // TODO: check why this doesn't work

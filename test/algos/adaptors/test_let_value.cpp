@@ -132,7 +132,7 @@ TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_v
   ex::start(op);
 }
 
-TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
+TEST_CASE("TODO: let_value can be used with just_error", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::let_value([]() { return ex::just(17); });
   // TODO: this should work
@@ -141,7 +141,7 @@ TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
   // invalid check
   static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
 }
-TEST_CASE("let_value can be used with just_done", "[adaptors][let_value]") {
+TEST_CASE("TODO: let_value can be used with just_done", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_done() | //
                         ex::let_value([]() { return ex::just(17); });
   // TODO: this should work
@@ -176,7 +176,7 @@ TEST_CASE("let_value function is not called when cancelled", "[adaptors][let_val
   CHECK_FALSE(called);
 }
 
-TEST_CASE("let_value exposes a parameter that is destructed when the main operation is destructed",
+TEST_CASE("TODO: let_value exposes a parameter that is destructed when the main operation is destructed",
     "[adaptors][let_value]") {
 
   // Type that sets into a received boolean when the dtor is called
@@ -261,7 +261,7 @@ TEST_CASE(
   check_val_types<type_array<type_array<std::string>>>(
       ex::just() | ex::let_value([] { return ex::just(std::string{"hello"}); }));
 }
-TEST_CASE("let_value keeps error_types from input sender", "[adaptors][let_value]") {
+TEST_CASE("TODO: let_value keeps error_types from input sender", "[adaptors][let_value]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
@@ -277,7 +277,7 @@ TEST_CASE("let_value keeps error_types from input sender", "[adaptors][let_value
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
 }
-TEST_CASE("let_value keeps send_done from input sender", "[adaptors][let_value]") {
+TEST_CASE("TODO: let_value keeps send_done from input sender", "[adaptors][let_value]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   done_scheduler sched3{};

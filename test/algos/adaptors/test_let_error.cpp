@@ -55,8 +55,8 @@ TEST_CASE("let_error can be piped", "[adaptors][let_error]") {
   (void)snd;
 }
 
-TEST_CASE(
-    "let_error returning void can we waited on (error annihilation)", "[adaptors][let_error]") {
+TEST_CASE("TODO: let_error returning void can we waited on (error annihilation)",
+    "[adaptors][let_error]") {
   ex::sender auto snd = ex::just_error(std::exception_ptr{}) |
                         ex::let_error([](std::exception_ptr) { return ex::just(); });
   // TODO: check why this doesn't work
@@ -64,7 +64,7 @@ TEST_CASE(
   (void)snd;
 }
 
-TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
+TEST_CASE("TODO: let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just()                                                      //
                         | ex::then([] { throw std::logic_error{"error description"}; }) //
                         | ex::let_error([](std::exception_ptr eptr) {
@@ -158,7 +158,7 @@ struct my_type {
   }
 };
 
-TEST_CASE("let_error of just_error with custom type", "[adaptors][let_error]") {
+TEST_CASE("TODO: let_error of just_error with custom type", "[adaptors][let_error]") {
   // TODO: check why this doesn't work
   // bool param_destructed{false};
   // ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
@@ -166,7 +166,7 @@ TEST_CASE("let_error of just_error with custom type", "[adaptors][let_error]") {
   // wait_for_value(std::move(snd), 13);
 }
 
-TEST_CASE("let_error exposes a parameter that is destructed when the main operation is destructed ",
+TEST_CASE("TODO: let_error exposes a parameter that is destructed when the main operation is destructed ",
     "[adaptors][let_error]") {
 
   // TODO: make this work after just_error() | let_error() works
@@ -199,7 +199,7 @@ TEST_CASE("let_error exposes a parameter that is destructed when the main operat
   // CHECK(res == 13);
 }
 
-TEST_CASE("let_error works when changing threads", "[adaptors][let_error]") {
+TEST_CASE("TODO: let_error works when changing threads", "[adaptors][let_error]") {
   // TODO: this test produces a strange "undefined reference" linker error on CI
   // example::static_thread_pool pool{2};
   // bool called{false};
@@ -275,7 +275,7 @@ TEST_CASE("let_error overrides error_types from input sender (and adds std::exce
       | ex::let_error([](std::exception_ptr) { return ex::just(); }));
 }
 
-TEST_CASE("let_error keeps send_done from input sender", "[adaptors][let_error]") {
+TEST_CASE("TODO: let_error keeps send_done from input sender", "[adaptors][let_error]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   done_scheduler sched3{};
@@ -299,7 +299,7 @@ auto tag_invoke(ex::let_error_t, inline_scheduler sched, my_string_sender_t, Fun
   return ex::just(std::string{"what error?"});
 }
 
-TEST_CASE("let_error can be customized", "[adaptors][let_error]") {
+TEST_CASE("TODO: let_error can be customized", "[adaptors][let_error]") {
   // The customization will return a different value
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
