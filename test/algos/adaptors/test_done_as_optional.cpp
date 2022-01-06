@@ -39,7 +39,7 @@ TEST_CASE("done_as_optional simple example", "[adaptors][done_as_optional]") {
   ex::start(op);
 }
 
-TEST_CASE("done_as_optional returning void can we waited on", "[adaptors][done_as_optional]") {
+TEST_CASE("done_as_optional can we waited on", "[adaptors][done_as_optional]") {
   ex::sender auto snd = ex::just(11) | ex::done_as_optional();
   wait_for_value(std::move(snd), std::optional<int>{11});
 }
