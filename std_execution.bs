@@ -4471,7 +4471,7 @@ from the operation before the operation completes.
         };
     </pre>
 
-3. If `Base` is an alias for the unspecified default template parameter, then:
+3. If `Base` is an alias for the unspecified default template argument, then:
 
     - Let <code><i>HAS-BASE</i></code> be `false`, and
     - Let <code><i>GET-BASE</i>(d)</code> be `d.base()`.
