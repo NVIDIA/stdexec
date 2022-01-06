@@ -241,7 +241,7 @@ sender_of<dynamic_buffer> auto async_read_array(auto handle) {                //
                       assert(bytes_read == sizeof(buf.size));                 // 10
                       buf.data = std::make_unique<std::byte[]>(buf.size);     // 11
                       return std::span(buf.data.get(), buf.size);             // 12
-                    }
+                    })
                 | async_read(handle)                                          // 13
                 | then(
                     [&buf] (std::size_t bytes_read) {
