@@ -161,7 +161,7 @@ TEST_CASE("when_all terminates with done if one child is cancelled", "[adaptors]
   ex::start(op);
 }
 
-TEST_CASE("TODO: when_all cancels remaining children if error is detected", "[adaptors][when_all]") {
+TEST_CASE("when_all cancels remaining children if error is detected", "[adaptors][when_all]") {
   impulse_scheduler sched;
   error_scheduler err_sched;
   bool called1{false};
@@ -187,12 +187,11 @@ TEST_CASE("TODO: when_all cancels remaining children if error is detected", "[ad
   sched.start_next(); // start the second child; this will generate an error
   CHECK_FALSE(called3);
   sched.start_next(); // start the third child
-  // TODO: the third child sender should have been canceled
-  // CHECK_FALSE(called3);
-  // CHECK(cancelled);
+  CHECK_FALSE(called3);
+  CHECK(cancelled);
 }
 
-TEST_CASE("TODO: when_all cancels remaining children if cancel is detected", "[adaptors][when_all]") {
+TEST_CASE("when_all cancels remaining children if cancel is detected", "[adaptors][when_all]") {
   done_scheduler done_sched;
   impulse_scheduler sched;
   bool called1{false};
@@ -218,9 +217,8 @@ TEST_CASE("TODO: when_all cancels remaining children if cancel is detected", "[a
   sched.start_next(); // start the second child; this will call set_done
   CHECK_FALSE(called3);
   sched.start_next(); // start the third child
-  // TODO: the third child sender should have been canceled
-  // CHECK_FALSE(called3);
-  // CHECK(cancelled);
+  CHECK_FALSE(called3);
+  CHECK(cancelled);
 }
 
 TEST_CASE("when_all has the values_type based on the children", "[adaptors][when_all]") {
