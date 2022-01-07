@@ -2637,14 +2637,14 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
 <ins>
 <blockquote>
 
-1. The name `std::tag_invoke` denotes a customization point object. For some subexpressions `tag` and `args...`, `tag_invoke(tag, args...)` is expression-equivalent to an unqualified call to <code>tag_invoke(<i>decay-copy</i>(tag), args...)</code> with overload
+1. The name `tag_invoke` denotes a customization point object. For some subexpressions `tag` and `args...`, `tag_invoke(tag, args...)` is expression-equivalent to an unqualified call to <code>tag_invoke(<i>decay-copy</i>(tag), args...)</code> with overload
     resolution performed in a context that includes the declaration:
 
     <pre>
     void tag_invoke();
     </pre>
 
-    and that does not include the `std::tag_invoke` name.
+    and that does not include the `tag_invoke` name.
 
 </blockquote>
 </ins>
@@ -3205,7 +3205,7 @@ enum class forward_progress_guarantee {
 1. A <i>receiver</i> represents the continuation of an asynchronous operation. An asynchronous operation may complete with a (possibly empty) set of values, an error, or it may be cancelled. A receiver has three principal operations corresponding to the three ways
     an asynchronous operation may complete: `set_value`, `set_error`, and `set_done`. These are collectively known as a receiver’s <i>completion-signal operations</i>.
 
-2. The `receiver` concept defines the requirements for a receiver type with an unknown set of value types. The `receiver_of` concept defines the requirements for a receiver type with a known set of value types, whose error type is `std::exception_ptr`.
+2. The `receiver` concept defines the requirements for a receiver type with an unknown set of value types. The `receiver_of` concept defines the requirements for a receiver type with a known set of value types, whose error type is `exception_ptr`.
 
     <pre highlight=c++>
     template&lt;class T, class E = exception_ptr>
@@ -3213,15 +3213,15 @@ enum class forward_progress_guarantee {
       move_constructible&lt;remove_cvref_t&lt;T>> &&
       constructible_from&lt;remove_cvref_t&lt;T>, T> &&
       requires(remove_cvref_t&lt;T>&& t, E&& e) {
-        { execution::set_done(std::move(t)) } noexcept;
-        { execution::set_error(std::move(t), (E&&) e) } noexcept;
+        { execution::set_done(move(t)) } noexcept;
+        { execution::set_error(move(t), (E&&) e) } noexcept;
       };
 
     template&lt;class T, class... An>
     concept receiver_of =
       receiver&lt;T> &&
       requires(remove_cvref_t&lt;T>&& t, An&&... an) {
-        execution::set_value(std::move(t), (An&&) an...);
+        execution::set_value(move(t), (An&&) an...);
       };
     </pre>
 
@@ -3515,7 +3515,7 @@ enum class forward_progress_guarantee {
 
             [<i>Note</i>: If the call to `execution::set_value` exits normally, then the <code><i>connect-awaitable</i></code> coroutine is never resumed. --<i>end note</i>]
 
-          2. <i>set-error-expr</i> first suspends the coroutine and then executes `execution::set_error((R&&) r, std::move(ep))`.
+          2. <i>set-error-expr</i> first suspends the coroutine and then executes `execution::set_error((R&&) r, move(ep))`.
 
             [<i>Note</i>: The <code><i>connect-awaitable</i></code> coroutine is never resumed after the call to `execution::set_error`. --<i>end note</i>]
 
@@ -3523,7 +3523,7 @@ enum class forward_progress_guarantee {
 
           4. The type <code><i>connect-awaitable-promise</i></code> satisfies `receiver`. [<i>Note:</i> It need not model `receiver`. -- <i>end note</i>].
 
-          5. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
+          5. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
 
           6. The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
 
@@ -3605,11 +3605,11 @@ enum class forward_progress_guarantee {
           noexcept {
           try {
             apply([&s](Ts &... values_) {
-              execution::set_value(std::move(s.r_), std::move(values_)...);
+              execution::set_value(move(s.r_), move(values_)...);
             }, s.vs_);
           }
           catch (...) {
-            execution::set_error(std::move(s.r_), current_exception());
+            execution::set_error(move(s.r_), current_exception());
           }
         }
       };
@@ -3617,13 +3617,13 @@ enum class forward_progress_guarantee {
       template&lt;receiver R>
         requires receiver_of&lt;R, Ts...> && (copy_constructible&ltTs> &&...)
       friend auto tag_invoke(execution::connect_t, const <i>just-sender</i>& j, R && r) {
-        return operation_state&lt;R>{ j.vs_, std::forward&lt;R>(r) };
+        return operation_state&lt;R>{ j.vs_, forward&lt;R>(r) };
       }
 
       template&lt;receiver R>
         requires receiver_of&lt;R, Ts...>
       friend auto tag_invoke(execution::connect_t, <i>just-sender</i>&& j, R && r) {
-        return operation_state&lt;R>{ std::move(j.vs_), std::forward&lt;R>(r) };
+        return operation_state&lt;R>{ move(j.vs_), forward&lt;R>(r) };
       }
     };
 
@@ -3631,7 +3631,7 @@ enum class forward_progress_guarantee {
       <i>just-sender</i>&lt;decay_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
     </pre>
 
-1. <i>Effects</i>: Initializes `vs_` with <code><i>decayed-tuple</i>&lt;Ts...>(std::forward&lt;Ts>(ts)...)</code>.
+1. <i>Effects</i>: Initializes `vs_` with <code><i>decayed-tuple</i>&lt;Ts...>(forward&lt;Ts>(ts)...)</code>.
 
 2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
 
@@ -3675,20 +3675,20 @@ enum class forward_progress_guarantee {
         R r_;
 
         friend void tag_invoke(execution::start_t, operation_state& s) noexcept {
-          execution::set_error(std::move(s.r_), std::move(err_));
+          execution::set_error(move(s.r_), move(err_));
         }
       };
 
       template&lt;receiver R>
         requires receiver&lt;R, T> && copy_constructible&lt;T>
       friend auto tag_invoke(execution::connect_t, const <i>just-error-sender</i>& j, R && r) {
-        return operation_state&lt;remove_cvref_t&lt;R>>{ j.err_, std::forward&lt;R>(r) };
+        return operation_state&lt;remove_cvref_t&lt;R>>{ j.err_, forward&lt;R>(r) };
       }
 
       template&lt;receiver R>
         requires receiver&lt;R, T>
       friend auto tag_invoke(execution::connect_t, <i>just-error-sender</i>&& j, R && r) {
-        return operation_state&lt;remove_cvref_t&lt;R>>{ std::move(j.err_), std::forward&lt;R>(r) };
+        return operation_state&lt;remove_cvref_t&lt;R>>{ move(j.err_), forward&lt;R>(r) };
       }
     };
 
@@ -3725,13 +3725,13 @@ enum class forward_progress_guarantee {
 
         friend void tag_invoke(execution::start_t, operation_state& s)
           noexcept {
-          execution::set_done(std::move(s.r_));
+          execution::set_done(move(s.r_));
         }
       };
 
       template&lt;receiver R>
       friend auto tag_invoke(execution::connect_t, const <i>just-done-sender</i>& j, R && r) {
-        return operation_state&lt;R>{ std::forward&lt;R>(r) };
+        return operation_state&lt;R>{ forward&lt;R>(r) };
       }
     };
 
@@ -3798,7 +3798,7 @@ enum class forward_progress_guarantee {
 
     - Its target object is a copy of `adaptor`.
 
-    - Its bound argument entities `bound_args` consist of objects of types `BoundArgs...` direct-non-list-initialized with `std::forward<decltype((args))>(args)...`, respectively.
+    - Its bound argument entities `bound_args` consist of objects of types `BoundArgs...` direct-non-list-initialized with `forward<decltype((args))>(args)...`, respectively.
 
     - Its call pattern is `adaptor(r, bound_args...)`, where `r` is the argument used in a function call expression of `f`.
 
@@ -4287,8 +4287,8 @@ are all well-formed.
     <pre highlight=c++>
         execution::let_done(
           static_cast&lt;S&&>(s),
-          [e2 = std::move(e)] () mutable {
-            return execution::just_error(std::move(e2));
+          [e2 = move(e)] () mutable {
+            return execution::just_error(move(e2));
           }
         )
     </pre>
@@ -4392,7 +4392,7 @@ from the operation before the operation completes.
 
             1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-type</i>&lt;S>(<i>decayed-tuple</i>&lt;decltype(ts)...>(ts...))></code>.
 
-            2. If `execution::set_error(r, e...)` has been called, if `decay_t<decltype(e)>` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, throws `e`.
+            2. If `execution::set_error(r, e...)` has been called, if `decay_t<decltype(e)>` is `exception_ptr`, calls `rethrow_exception(e)`. Otherwise, throws `e`.
 
             3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-type</i>&lt;S(nullopt)></code>.
 
@@ -4535,7 +4535,7 @@ from the operation before the operation completes.
        class my_receiver : execution::receiver_adaptor&lt;my_receiver&lt;R>, R> {
          friend execution::receiver_adaptor&lt;my_receiver, R>;
          void set_value() && noexcept {
-           execution::set_value(std::move(*this).base(), 42);
+           execution::set_value(move(*this).base(), 42);
          }
         public:
          using execution::receiver_adaptor&lt;my_receiver, R>::receiver_adaptor;
@@ -4747,12 +4747,12 @@ from the operation before the operation completes.
         <pre highlight="c++">
         try {
           if (execution::get_stop_token(<i>REC</i>(<i>o</i>)).stop_requested()) {
-            execution::set_done(std::move(<i>REC</i>(<i>o</i>)));
+            execution::set_done(move(<i>REC</i>(<i>o</i>)));
           } else {
-            execution::set_value(std::move(<i>REC</i>(<i>o</i>)));
+            execution::set_value(move(<i>REC</i>(<i>o</i>)));
           }
         } catch(...) {
-          execution::set_error(std::move(<i>REC</i>(<i>o</i>)), current_exception());
+          execution::set_error(move(<i>REC</i>(<i>o</i>)), current_exception());
         }
         </pre>
 
@@ -4762,7 +4762,7 @@ from the operation before the operation completes.
         try {
           <i>o</i>.loop_->push_back(&<i>o</i>);
         } catch(...) {
-          execution::set_error(std::move(<i>REC</i>(<i>o</i>)), current_exception());
+          execution::set_error(move(<i>REC</i>(<i>o</i>)), current_exception());
         }
         </pre>
 
@@ -4923,9 +4923,9 @@ from the operation before the operation completes.
 
                 <pre highlight="c++">
                 if (result_.index()) == 2)
-                  rethrow_exception(std::get&lt;2>(result_));
+                  rethrow_exception(get&lt;2>(result_));
                 if constexpr (!is_void_v&lt;value_t>)
-                  return static_cast&lt;value_t&&>(std::get&lt;1>(result_));
+                  return static_cast&lt;value_t&&>(get&lt;1>(result_));
                 </pre>
 
 2. `as_awaitable` is a customization point object. For some subexpressions `e` and `p` where `p` is an lvalue, `E` names the type `decltype((e))` and `P` names the type `decltype((p))`, `as_awaitable(e, p)` is expression-equivalent to the following:
