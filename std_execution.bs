@@ -2804,7 +2804,7 @@ namespace std::execution {
   template&lt;class T>
     concept <i>class-type</i> = <i>decays-to</i>&lt;T, T> && is_class_v&lt;T>;  // exposition only
 
-  // [exec.qr], general queries
+  // [exec.queries], general queries
   inline namespace <i>unspecified</i> {
     struct get_scheduler_t;
     inline constexpr get_scheduler_t get_scheduler{};
@@ -2823,7 +2823,7 @@ namespace std::execution {
   template&lt;class S>
     concept scheduler = <i>see-below</i>;
 
-  // [exec.sched.qr], scheduler queries
+  // [exec.sched_queries], scheduler queries
   enum class forward_progress_guarantee;
   inline namespace <i>unspecified</i> {
     struct forwarding_scheduler_query_t;
@@ -2862,7 +2862,7 @@ namespace std::execution {
     inline constexpr set_done_t set_done{};
   }
 
-  // [exec.recv.qr], receiver queries
+  // [exec.recv_queries], receiver queries
   inline namespace <i>unspecified</i> {
     struct forwarding_receiver_query_t;
     inline constexpr forwarding_receiver_query_t forwarding_receiver_query{};
@@ -2939,7 +2939,7 @@ namespace std::execution {
     template &lt;class S, class R>
       using connect_result_t = decltype(connect(declval&lt;S>(), declval&lt;R>()));
 
-    // [exec.snd.qr], sender queries
+    // [exec.snd_queries], sender queries
     struct forwarding_sender_query_t;
     inline constexpr forwarding_sender_query_t forwarding_sender_query{};
 
@@ -3085,9 +3085,9 @@ namespace std::execution {
       constructible_from&lt;decay_t&lt;T>, T>;
     </pre>
 
-## General queries <b>[exec.qr]</b> ### {#spec-execution.queries}
+## General queries <b>[exec.queries]</b> ### {#spec-execution.queries}
 
-### `execution::get_scheduler` <b>[exec.qr.get_scheduler]</b> ### {#spec-execution.receivers.queries.get_scheduler}
+### `execution::get_scheduler` <b>[exec.queries.get_scheduler]</b> ### {#spec-execution.receivers.queries.get_scheduler}
 
 1. `execution::get_scheduler` is used to ask an object for its associated scheduler.
 
@@ -3097,7 +3097,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
 
-### `execution::get_delegee_scheduler` <b>[exec.qr.get_delegee_scheduler]</b> ### {#spec-execution.receivers.queries.get_delegee_scheduler}
+### `execution::get_delegee_scheduler` <b>[exec.queries.get_delegee_scheduler]</b> ### {#spec-execution.receivers.queries.get_delegee_scheduler}
 
 1. `execution::get_delegee_scheduler` is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.
 
@@ -3107,7 +3107,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_delegee_scheduler(r)` is ill-formed.
 
-### `execution::get_allocator` <b>[exec.qr.get_allocator]</b> ### {#spec-execution.receivers.queries.get_allocator}
+### `execution::get_allocator` <b>[exec.queries.get_allocator]</b> ### {#spec-execution.receivers.queries.get_allocator}
 
 1. `execution::get_allocator` is used to ask an object for its associated allocator.
 
@@ -3117,7 +3117,7 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_allocator(r)` is ill-formed.
 
-### `execution::get_stop_token` <b>[exec.qr.get_stop_token]</b> ### {#spec-execution.receivers.queries.get_stop_token}
+### `execution::get_stop_token` <b>[exec.queries.get_stop_token]</b> ### {#spec-execution.receivers.queries.get_stop_token}
 
 1. `execution::get_stop_token` is used to ask an object for an associated stop token.
 
@@ -3153,9 +3153,9 @@ namespace std::execution {
 6. A scheduler type's destructor shall not block pending completion of any receivers connected to the sender objects returned from `schedule`. [<i>Note:</i> The ability to wait for completion of submitted function objects may be provided by the associated execution
     context of the scheduler. <i>—end note</i>]
 
-### Scheduler queries <b>[exec.sched.qr]</b> ### {#spec-execution.schedulers.queries}
+### Scheduler queries <b>[exec.sched_queries]</b> ### {#spec-execution.schedulers.queries}
 
-#### `execution::forwarding_scheduler_query` <b>[exec.sched.qr.forwarding_scheduler_query]</b> #### {#spec-execution.schedulers.queries.forwarding_scheduler_query}
+#### `execution::forwarding_scheduler_query` <b>[exec.sched_queries.forwarding_scheduler_query]</b> #### {#spec-execution.schedulers.queries.forwarding_scheduler_query}
 
 1. `execution::forwarding_scheduler_query` is used to ask a customization point object whether it is a scheduler query that should be forwarded through scheduler adaptors.
 
@@ -3165,7 +3165,7 @@ namespace std::execution {
 
     2. Otherwise, `false`.
 
-#### `execution::get_forward_progress_guarantee` <b>[exec.sched.qr.get_forward_progress_guarantee]</b> #### {#spec-execution.schedulers.queries.get_forward_progress_guarantee}
+#### `execution::get_forward_progress_guarantee` <b>[exec.sched_queries.get_forward_progress_guarantee]</b> #### {#spec-execution.schedulers.queries.get_forward_progress_guarantee}
 
 <pre highlight=c++>
 enum class forward_progress_guarantee {
@@ -3187,7 +3187,7 @@ enum class forward_progress_guarantee {
 3. If `execution::get_forward_progress_guarantee(s)` for some scheduler `s` returns `execution::forward_progress_guarantee::concurrent`, all execution agents created by that scheduler shall provide the concurrent forward progress guarantee. If it returns
     `execution::forward_progress_guarantee::parallel`, all execution agents created by that scheduler shall provide at least the parallel forward progress guarantee.
 
-#### `this_thread::execute_may_block_caller` <b>[exec.sched.qr.execute_may_block_caller]</b> #### {#spec-execution.schedulers.queries.execute_may_block_caller}
+#### `this_thread::execute_may_block_caller` <b>[exec.sched_queries.execute_may_block_caller]</b> #### {#spec-execution.schedulers.queries.execute_may_block_caller}
 
 1. `this_thread::execute_may_block_caller` is used to ask a scheduler `s` whether a call `execution::execute(s, f)` with any invocable `f` may block the thread where such a call occurs.
 
@@ -3280,9 +3280,9 @@ enum class forward_progress_guarantee {
 
     2. Otherwise, `execution::set_done(R)` is ill-formed.
 
-### Receiver queries <b>[exec.recv.qr]</b> ### {#spec-execution.receivers.queries}
+### Receiver queries <b>[exec.recv_queries]</b> ### {#spec-execution.receivers.queries}
 
-#### `execution::forwarding_receiver_query` <b>[exec.recv.qr.forwarding_receiver_query]</b> #### {#spec-execution.receivers.queries.forwarding_receiver_query}
+#### `execution::forwarding_receiver_query` <b>[exec.recv_queries.forwarding_receiver_query]</b> #### {#spec-execution.receivers.queries.forwarding_receiver_query}
 
 1. `execution::forwarding_receiver_query` is used to ask a customization point object whether it is a receiver query that should be forwarded through receiver adaptors.
 
@@ -3535,9 +3535,9 @@ enum class forward_progress_guarantee {
 
 3. Standard sender types shall always expose an rvalue-qualified overload of a customization of `execution::connect`. Standard sender types shall only expose an lvalue-qualified overload of a customization of `execution::connect` if they are copyable.
 
-### Sender queries <b>[exec.snd.qr]</b> ### {#spec-execution.senders.queries}
+### Sender queries <b>[exec.snd_queries]</b> ### {#spec-execution.senders.queries}
 
-#### `execution::forwarding_sender_query` <b>[exec.snd.qr.forwarding_sender_query]</b> #### {#spec-execution.senders.queries.forwarding_sender_query}
+#### `execution::forwarding_sender_query` <b>[exec.snd_queries.forwarding_sender_query]</b> #### {#spec-execution.senders.queries.forwarding_sender_query}
 
 1. `execution::forwarding_sender_query` is used to ask a customization point object whether it is a sender query that should be forwarded through sender adaptors.
 
@@ -3547,7 +3547,7 @@ enum class forward_progress_guarantee {
 
     2. Otherwise, `false`.
 
-#### `execution::get_completion_scheduler` <b>[exec.snd.qr.get_completion_scheduler]</b> #### {#spec-execution.senders.queries.get_completion_scheduler}
+#### `execution::get_completion_scheduler` <b>[exec.snd_queries.get_completion_scheduler]</b> #### {#spec-execution.senders.queries.get_completion_scheduler}
 
 1. `execution::get_completion_scheduler` is used to ask a sender object for the <i>completion scheduler</i> for one of its signals.
 
@@ -4507,7 +4507,7 @@ from the operation before the operation completes.
         return static_cast&lt;Base&amp;&amp;>(base_);
       }
 
-      // [exec.utils.receiver_adaptor.nonmembers] Non-member functions
+      // [exec.utils.rcvr_adptr.nonmembers] Non-member functions
       template &lt;class D = Derived, class... As>
         friend void tag_invoke(set_value_t, Derived&amp;&amp; self, As&amp;&amp;... as) noexcept(<i>see below</i>);
 
@@ -4543,7 +4543,7 @@ from the operation before the operation completes.
      </pre>
      -- <i>end example</i>]
 
-#### Non-member functions <b>[exec.utils.receiver_adaptor.nonmembers]</b> #### {#spec-execution.snd_rec_utils.receiver_adaptor.nonmembers}
+#### Non-member functions <b>[exec.utils.rcvr_adptr.nonmembers]</b> #### {#spec-execution.snd_rec_utils.receiver_adaptor.nonmembers}
 
     <pre>
     template &lt;class D = Derived, class... As>
