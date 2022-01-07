@@ -2790,6 +2790,61 @@ template&lt;typename T>
 <tr><td><a href="#spec-execution.execute">[execution.execute]</a></td><td>One-way execution</td><td></td></tr>
 </table>
 
+3. [<i>Note:</i> A large number of execution control primitives are CPOs. For an object one might define multiple types of CPOs, for which different rules apply.**** Table 2 shows the types of CPOs used in the execution control library: 
+
+<table>
+<caption>Table 2: Types of CPOs in the execution control library <b>[tab:execution.cpos]</b></caption>
+<tr>
+    <th>CPO type</th>
+    <th>Purpose</th>
+    <th>Examples</th>
+</tr>
+<tr>
+    <td>core</td>
+    <td>provide core execution functionality, and connection between core components</td>
+    <td>`connect`, `start`, `execute`</td>
+</tr>
+<tr>
+    <td>completion signals</td>
+    <td>called by senders to announce the completion of the work (success, error, or cancellation)</td>
+    <td>`set_value`, `set_error`, `set_done`</td>
+</tr>
+<tr>
+    <td><a href="#spec-execution.senders">senders</a></td>
+    <td>allow the specialisation of the provided sender algorithms</td>
+    <td>
+        <ul>
+            <li>sender factories (`just`, `just_error`, `just_done`, ...)</li>
+            <li>sender adaptors (`transfer`, `then`, `let_value`, ...)</li>
+            <li>sender consumers (`start_detached`, `sync_wait`)</li>
+        </ul>
+    </td>
+</tr>
+<tr>
+    <td><a href="#spec-execution.queries">general queries</a></td>
+    <td>allow querying different properties of execution objects</td>
+    <td> `get_scheduler`, `get_delegee_scheduler`, `get_allocator`, `get_stop_token`</td>
+</tr>
+<tr>
+    <td><a href="#spec-execution.schedulers.queries">scheduler queries</a></td>
+    <td>allow querying schedulers properties</td>
+    <td> `forwarding_scheduler_query`, `get_forward_progress_guarantee`, `execute_may_block_caller`</td>
+</tr>
+<tr>
+    <td><a href="#spec-execution.receivers.queries">receiver queries</a></td>
+    <td>allow querying receivers properties</td>
+    <td> `forwarding_receiver_query`</td>
+</tr>
+<tr>
+    <td><a href="#spec-execution.senders.queries">sender queries</a></td>
+    <td>allow querying senders properties</td>
+    <td> `forwarding_sender_query`, `get_completion_scheduler`</td>
+</tr>
+</table>
+
+-- <i>end note</i>] 
+
+
 ## Header `<execution>` synopsis <b>[execution.syn]</b> ## {#spec-execution.syn}
 
 <pre highlight=c++>
@@ -4448,6 +4503,7 @@ from the operation before the operation completes.
     </pre>
 
 1. `receiver_adaptor` is used to simplify the implementation of one receiver type in terms of another. It defines `tag_invoke` overloads that forward to named members if they exist, and to the adapted receiver otherwise.
+Any receiver queries (e.g., `get_stop_token`) defined in the base receiver are forwarded to the new receiver. 
 
 2. This section makes use of the following exposition-only entities:
 
