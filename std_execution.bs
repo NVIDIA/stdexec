@@ -4556,13 +4556,13 @@ from the operation before the operation completes.
 
         1. <i>Effects:</i> Equivalent to `static_cast<Derived&&>(self).set_value(static_cast<As&&>(as)...)`
 
-        2. <i>Remarks:</i> The exception specification is equivalent to `noexcept(static_cast<Derived&&>(self).set_value(static_cast<As&&>(as)...))`.
+        2. <i>Remarks:</i> The exception specification is `noexcept(static_cast<Derived&&>(self).set_value(static_cast<As&&>(as)...))`.
 
     3. Otherwise:
 
         1. <i>Effects:</i> Equivalent to <code>execution::set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...)</code>
 
-        2. <i>Remarks:</i> The exception specification is equivalent to <code>noexcept(set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...))</code>
+        2. <i>Remarks:</i> The exception specification is <code>noexcept(set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...))</code>
 
     <pre>
     template &lt;class E, class D = Derived>
