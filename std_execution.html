@@ -6787,7 +6787,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
       <li data-md>
        <p><i>Effects:</i> Equivalent to <code class="highlight"><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...)</c-></code></p>
       <li data-md>
-       <p><i>Remarks:</i> The exception specification is equivalent to <code class="highlight"><c- k>noexcept</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...))</c-></code>.</p>
+       <p><i>Remarks:</i> The exception specification is <code class="highlight"><c- k>noexcept</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...))</c-></code>.</p>
      </ol>
     <li data-md>
      <p>Otherwise:</p>
@@ -6795,7 +6795,7 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
       <li data-md>
        <p><i>Effects:</i> Equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...)</c-></code></p>
       <li data-md>
-       <p><i>Remarks:</i> The exception specification is equivalent to <code class="highlight"><c- k>noexcept</c-><c- p>(</c-><c- n>set_value</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...))</c-></code></p>
+       <p><i>Remarks:</i> The exception specification is <code class="highlight"><c- k>noexcept</c-><c- p>(</c-><c- n>set_value</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...))</c-></code></p>
      </ol>
    </ol>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>E</c-><c- p>,</c-> <c- k>class</c-> <c- nc>D</c-> <c- o>=</c-> <c- n>Derived</c-><c- o>></c->
