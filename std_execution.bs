@@ -3825,7 +3825,7 @@ are all well-formed.
 
             3. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
 
-            4. Implements the `get_delegee_scheduler` receiver query to return the result of `get_delegee_schedler(out_r)`.
+            4. That forwards all receiver queries to `out_r`.
 
         2. Calls `execution::schedule(sch)`, which results in `s2`. It then calls `execution::connect(s2, r)`, resulting in `op_state2`.
 
