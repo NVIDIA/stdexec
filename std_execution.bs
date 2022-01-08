@@ -1840,7 +1840,7 @@ For example, consider the following trivial implementation of the sender-based `
 
 <pre highlight="c++">
 template &lt;class S>
-  requires <i>single-typed-sender</i>&lt;S&> // See <a href="#spec-execution.coro_utils.as_awaitable">[exec.coro_utils.as_awaitable]</a>
+  requires <i>single-typed-sender</i>&lt;S&> // See <a href="#spec-execution.coro_utils.as_awaitable">[exec.as_awaitable]</a>
 task&lt;<i>single-sender-value-type</i>&lt;S>> retry(S s) {
   for (;;) {
     try {
@@ -2906,7 +2906,7 @@ namespace std::execution {
   template &lt;class S>
     concept <i>single-typed-sender</i> = <i>see below</i>; // exposition only
 
-  // [exec.snd.traits], sender traits
+  // [exec.snd_traits], sender traits
   inline namespace <i>unspecified</i> {
     struct sender_base {};
   }
@@ -2932,7 +2932,7 @@ namespace std::execution {
       typename sender_traits&lt;remove_cvref_t&lt;S>>::template error_types&lt;Variant>;
 
   inline namespace <i>unspecified</i> {
-    // [exec.snd.connect], the connect sender algorithm
+    // [exec.connect], the connect sender algorithm
     struct connect_t;
     inline constexpr connect_t connect{};
 
@@ -2953,7 +2953,7 @@ namespace std::execution {
     template &lt;class CPO>
     inline constexpr get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
 
-    // [exec.snd.factories], sender factories
+    // [exec.factories], sender factories
     struct schedule_t;
     inline constexpr schedule_t schedule{};
     template&lt;<i>movable-value</i>... Ts>
@@ -2966,7 +2966,7 @@ namespace std::execution {
     struct transfer_just_t;
     inline constexpr transfer_just_t transfer_just{};
 
-    // [exec.snd.adapt], sender adaptors
+    // [exec.adapt], sender adaptors
     template&lt;<i>class-type</i> D>
       struct sender_adaptor_closure { };
 
@@ -3017,7 +3017,7 @@ namespace std::execution {
     struct done_as_error_t;
     inline constexpr done_as_error_t done_as_error;
 
-    // [exec.snd.consumers], sender consumers
+    // [exec.consumers], sender consumers
     struct ensure_started_t;
     inline constexpr ensure_started_t ensure_started{};
 
@@ -3064,13 +3064,13 @@ namespace std::execution {
     inline constexpr execute_t execute{};
   }
 
-  // [exec.coro_utils.as_awaitable]
+  // [exec.as_awaitable]
   inline namespace <i>unspecified</i> {
     struct as_awaitable_t;
     inline constexpr as_awaitable_t as_awaitable;
   }
 
-  // [exec.coro_utils.with_awaitable_senders]
+  // [exec.with_awaitable_senders]
   template &lt;<i>class-type</i> Promise>
     struct with_awaitable_senders;
 }
@@ -3250,7 +3250,7 @@ enum class forward_progress_guarantee {
     a receiver completion-signal function of `r` returns successfully. [<i>Note</i>: this means that, unless it knows about further guarantees provided by the receiver `r`, the implementation of `op_state` should not use `token` after it makes a call to a receiver
     completion-signal function of `r`. This also implies that stop callbacks registered on `token` by the implementation of `op_state` or `s` must be destroyed before such a call to a receiver completion-signal function of `r`. --<i>end note</i>]
 
-### `execution::set_value` <b>[exec.recv.set_value]</b> ### {#spec-execution.receivers.set_value}
+### `execution::set_value` <b>[exec.set_value]</b> ### {#spec-execution.receivers.set_value}
 
 1. `execution::set_value` is used to send a <i>value completion signal</i> to a receiver.
 
@@ -3260,7 +3260,7 @@ enum class forward_progress_guarantee {
 
     2. Otherwise, `execution::set_value(R, Vs...)` is ill-formed.
 
-### `execution::set_error` <b>[exec.recv.set_error]</b> ### {#spec-execution.receivers.set_error}
+### `execution::set_error` <b>[exec.set_error]</b> ### {#spec-execution.receivers.set_error}
 
 1. `execution::set_error` is used to send a <i>error signal</i> to a receiver.
 
@@ -3270,7 +3270,7 @@ enum class forward_progress_guarantee {
 
     2. Otherwise, `execution::set_error(R, E)` is ill-formed.
 
-### `execution::set_done` <b>[exec.recv.set_done]</b> ### {#spec-execution.receivers.set_done}
+### `execution::set_done` <b>[exec.set_done]</b> ### {#spec-execution.receivers.set_done}
 
 1. `execution::set_done` is used to send a <i>done signal</i> to a receiver.
 
@@ -3383,7 +3383,7 @@ enum class forward_progress_guarantee {
         >;
     </pre>
 
-### Sender traits <b>[exec.snd.traits]</b> ### {#spec-execution.senders.traits}
+### Sender traits <b>[exec.snd_traits]</b> ### {#spec-execution.senders.traits}
 
 1. The class `sender_base` is used as a base class to tag sender types which do not expose member templates `value_types`, `error_types`, and a static member constant expression `sends_done`.
 
@@ -3485,7 +3485,7 @@ enum class forward_progress_guarantee {
 
 9. Users may specialize `sender_traits` on program-defined types.
 
-### `execution::connect` <b>[exec.snd.connect]</b> ### {#spec-execution.senders.connect}
+### `execution::connect` <b>[exec.connect]</b> ### {#spec-execution.senders.connect}
 
 1. `execution::connect` is used to <i>connect</i> a sender with a receiver, producing an operation state object that represents the work that needs to be performed to satisfy the receiver contract of the receiver with values that are the result of the operations described by the sender.
 
@@ -3562,13 +3562,13 @@ enum class forward_progress_guarantee {
 3. If, for some sender `s` and customization point object `CPO`, `execution::get_completion_scheduler<decltype(CPO)>(s)` is well-formed and results in a scheduler `sch`, and the sender `s` invokes `CPO(r, args...)`, for some receiver `r` which has been connected to
     `s`, with additional arguments `args...`, on an execution agent which does not belong to the associated execution context of `sch`, the behavior is undefined.
 
-### Sender factories <b>[exec.snd.factories]</b> ### {#spec-execution.senders.factories}
+### Sender factories <b>[exec.factories]</b> ### {#spec-execution.senders.factories}
 
-#### General <b>[exec.snd.factories.general]</b> #### {#spec-execution.senders.factories.general}
+#### General <b>[exec.factories.general]</b> #### {#spec-execution.senders.factories.general}
 
-1. Subclause [exec.snd.factories] defines <i>sender factories</i>, which are utilities that return senders without accepting senders as arguments.
+1. Subclause [exec.factories] defines <i>sender factories</i>, which are utilities that return senders without accepting senders as arguments.
 
-#### `execution::schedule` <b>[exec.snd.schedule]</b> #### {#spec-execution.senders.schedule}
+#### `execution::schedule` <b>[exec.schedule]</b> #### {#spec-execution.senders.schedule}
 
 1. `execution::schedule` is used to obtain a sender associated with a scheduler, which can be used to describe work to be started on that scheduler's associated execution context.
 
@@ -3578,7 +3578,7 @@ enum class forward_progress_guarantee {
 
     2. Otherwise, `execution::schedule(s)` is ill-formed.
 
-#### `execution::just` <b>[exec.snd.just]</b> #### {#spec-execution.senders.just}
+#### `execution::just` <b>[exec.just]</b> #### {#spec-execution.senders.just}
 
 1. `execution::just` is used to create a sender that propagates a set of values to a connected receiver.
 
@@ -3639,7 +3639,7 @@ enum class forward_progress_guarantee {
     (is_nothrow_constructible_v&lt;decay_t&lt;Ts>, Ts> && ...)
     </pre>
 
-#### `execution::transfer_just` <b>[exec.snd.transfer_just]</b> #### {#spec-execution.senders.transfer_just}
+#### `execution::transfer_just` <b>[exec.transfer_just]</b> #### {#spec-execution.senders.transfer_just}
 
 1. `execution::transfer_just` is used to create a sender that propagates a set of values to a connected receiver on an execution agent belonging to the associated execution context of a specified scheduler.
 
@@ -3651,7 +3651,7 @@ enum class forward_progress_guarantee {
 
     2. Otherwise, `execution::transfer(execution::just(vs...), s)`.
 
-#### `execution::just_error` <b>[exec.snd.just_error]</b> #### {#spec-execution.senders.just_error}
+#### `execution::just_error` <b>[exec.just_error]</b> #### {#spec-execution.senders.just_error}
 
 1. `execution::just_error` is used to create a sender that propagates an error to a connected receiver.
 
@@ -3704,7 +3704,7 @@ enum class forward_progress_guarantee {
     is_nothrow_constructible_v&lt;decay_t&lt;T>, T>
     </pre>
 
-#### `execution::just_done` <b>[exec.snd.just_done]</b> #### {#spec-execution.senders.just_done}
+#### `execution::just_done` <b>[exec.just_done]</b> #### {#spec-execution.senders.just_done}
 
 1. `execution::just_done` is used to create a sender that propagates a done signal to a connected receiver.
 
@@ -3740,11 +3740,11 @@ enum class forward_progress_guarantee {
 
 1. <i>Effects</i>: Equivalent to <code><i>just-done-sender</i>{}</code>.
 
-### Sender adaptors <b>[exec.snd.adapt]</b> ### {#spec-execution.senders.adapt}
+### Sender adaptors <b>[exec.adapt]</b> ### {#spec-execution.senders.adapt}
 
-#### General <b>[exec.snd.adapt.general]</b> #### {#spec-execution.senders.adapt.general}
+#### General <b>[exec.adapt.general]</b> #### {#spec-execution.senders.adapt.general}
 
-1. Subclause [exec.snd.adapt] defines <i>sender adaptors</i>, which are utilities that transform one or more senders into a sender with custom behaviors. When they accept a single sender argument, they can be chained to create sender chains.
+1. Subclause [exec.adapt] defines <i>sender adaptors</i>, which are utilities that transform one or more senders into a sender with custom behaviors. When they accept a single sender argument, they can be chained to create sender chains.
 
 2. The bitwise OR operator is overloaded for the purpose of creating sender chains. The adaptors also support function call syntax with equivalent semantics.
 
@@ -3757,7 +3757,7 @@ enum class forward_progress_guarantee {
 5. A type `T` is a <i>forwarding receiver query</i> if it is the type of a customization point object that models <code>forwarding-receiver-query</code>. Unless otherwise specified, whenever a sender adaptor constructs a receiver that it passes to another sender's connect, that receiver shall propagate forwarding receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
     applies to any sender returned from a function that is selected by the implementation of such sender adaptor.
 
-#### Sender adaptor closure objects <b>[exec.snd.adapt.objects]</b> #### {#spec-execution.senders.adaptor.objects}
+#### Sender adaptor closure objects <b>[exec.adapt.objects]</b> #### {#spec-execution.senders.adaptor.objects}
 
 1. A <i>pipeable sender adaptor closure object</i> is a function object that accepts one or more `sender` arguments and returns a `sender`. For a sender adaptor closure object `C` and an expression `S` such that `decltype((S))` models `sender`, the following
     expressions are equivalent and yield a `sender`:
@@ -3793,7 +3793,7 @@ enum class forward_progress_guarantee {
 
 6. If a pipeable sender adaptor object `adaptor` accepts more than one argument, then let `s` be an expression such that `decltype((s))` models `sender`,
     let `args...` be arguments such that `adaptor(s, args...)` is a well-formed expression as specified in the rest of this subclause
-    ([exec.snd.adapt.objects]), and let `BoundArgs` be a pack that denotes `decay_t<decltype((args))>...`. The expression `adaptor(args...)`
+    ([exec.adapt.objects]), and let `BoundArgs` be a pack that denotes `decay_t<decltype((args))>...`. The expression `adaptor(args...)`
     produces a pipeable sender adaptor closure object `f` that is a perfect forwarding call wrapper with the following properties:
 
     - Its target object is a copy of `adaptor`.
@@ -3805,7 +3805,7 @@ enum class forward_progress_guarantee {
 The expression `adaptor(args...)` is well-formed if and only if the initializations of the bound argument entities of the result, as specified above,
 are all well-formed.
 
-#### `execution::on` <b>[exec.snd.on]</b> #### {#spec-execution.senders.adapt.on}
+#### `execution::on` <b>[exec.on]</b> #### {#spec-execution.senders.adapt.on}
 
 1. `execution::on` is used to adapt a sender in a sender that will start the input sender on an execution agent belonging to a specific execution context.
 
@@ -3835,7 +3835,7 @@ are all well-formed.
 
       4. The lifetime of `op_state2`, once constructed, lasts until either `op_state3` is constructed or `op_state1` is destroyed, whichever comes first. The lifetime of `op_state3`, once constructed, lasts until `op_state1` is destroyed.
 
-#### `execution::transfer` <b>[exec.snd.transfer]</b> #### {#spec-execution.senders.adapt.transfer}
+#### `execution::transfer` <b>[exec.transfer]</b> #### {#spec-execution.senders.adapt.transfer}
 
 1. `execution::transfer` is used to adapt a sender into a sender with a different associated `set_value` completion scheduler. [<i>Note</i>: it results in a transition between different execution contexts when executed. --<i>end note</i>]
 
@@ -3853,7 +3853,7 @@ are all well-formed.
 3. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_done_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
 
 
-#### `execution::schedule_from` <b>[exec.snd.schedule_from]</b> #### {#spec-execution.senders.adapt.schedule_from}
+#### `execution::schedule_from` <b>[exec.schedule_from]</b> #### {#spec-execution.senders.adapt.schedule_from}
 
 1. `execution::schedule_from` is used to schedule work dependent on the completion of a sender onto a scheduler's associated execution context. [<i>Note</i>: `schedule_from` is not meant to be used in user code; they are used in the implementation of
     `transfer`. -<i>end note</i>]
@@ -3885,7 +3885,7 @@ are all well-formed.
 
 4. Senders returned from `execution::schedule_from` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_done_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
 
-#### `execution::then` <b>[exec.snd.then]</b> #### {#spec-execution.senders.adaptor.then}
+#### `execution::then` <b>[exec.then]</b> #### {#spec-execution.senders.adaptor.then}
 
 1. `execution::then` is used to attach invocables as continuation for successful completion of the input sender.
 
@@ -3914,7 +3914,7 @@ are all well-formed.
     If the function selected above does not return a sender which invokes `f` with the result of the `set_value` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### `execution::upon_error` <b>[exec.snd.upon_error]</b> #### {#spec-execution.senders.adaptor.upon_error}
+#### `execution::upon_error` <b>[exec.upon_error]</b> #### {#spec-execution.senders.adaptor.upon_error}
 
 1. `execution::upon_error` is used to attach invocables as continuation for unsuccessul completion of the input sender.
 
@@ -3943,7 +3943,7 @@ are all well-formed.
     If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### `execution::upon_done` <b>[exec.snd.upon_done]</b> #### {#spec-execution.senders.adaptor.upon_done}
+#### `execution::upon_done` <b>[exec.upon_done]</b> #### {#spec-execution.senders.adaptor.upon_done}
 
 1. `execution::upon_done` is used to attach invocables as continuation for the completion of the input sender using the "done" channel.
 
@@ -3971,7 +3971,7 @@ are all well-formed.
     If the function selected above does not return a sender which invokes `f` when the `set_done` signal of `s` is called, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### `execution::let_value` <b>[exec.snd.let_value]</b> #### {#spec-execution.senders.adapt.let_value}
+#### `execution::let_value` <b>[exec.let_value]</b> #### {#spec-execution.senders.adapt.let_value}
 
 1. `execution::let_value` is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
 
@@ -4002,7 +4002,7 @@ are all well-formed.
     If the function selected above does not return a sender which invokes `f` when `set_value` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### `execution::let_error` <b>[exec.snd.let_error]</b> #### {#spec-execution.senders.adapt.let_error}
+#### `execution::let_error` <b>[exec.let_error]</b> #### {#spec-execution.senders.adapt.let_error}
 
 1. `execution::let_error` is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
 
@@ -4033,7 +4033,7 @@ are all well-formed.
     If the function selected above does not return a sender which invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### `execution::let_done` <b>[exec.snd.let_done]</b> #### {#spec-execution.senders.adapt.let_done}
+#### `execution::let_done` <b>[exec.let_done]</b> #### {#spec-execution.senders.adapt.let_done}
 
 1. `execution::let_done` is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
 
@@ -4064,7 +4064,7 @@ are all well-formed.
     If the function selected above does not return a sender which invokes `f` when `set_done` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### `execution::bulk` <b>[exec.snd.bulk]</b> #### {#spec-execution.senders.adapt.bulk}
+#### `execution::bulk` <b>[exec.bulk]</b> #### {#spec-execution.senders.adapt.bulk}
 
 1. `execution::bulk` is used to run a task repeatedly for every index in an index space.
 
@@ -4093,7 +4093,7 @@ are all well-formed.
     If the function selected above does not return a sender which invokes `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when the input sender sends values `args...`, or does not propagate the values of the signals sent by the input sender to
         a connected receiver, the program is ill-formed with no diagnostic required.
 
-#### `execution::split` <b>[exec.snd.split]</b> #### {#spec-execution.senders.adapt.split}
+#### `execution::split` <b>[exec.split]</b> #### {#spec-execution.senders.adapt.split}
 
 1. `execution::split` is used to adapt an arbitrary sender into a sender that can be connected multiple times.
 
@@ -4124,7 +4124,7 @@ are all well-formed.
 
     If the function selected above does not return a sender which sends references to values sent by `s`, propagating the other channels, the program is ill-formed with no diagnostic required.
 
-#### `execution::when_all` <b>[exec.snd.when_all]</b> #### {#spec-execution.senders.adaptor.when_all}
+#### `execution::when_all` <b>[exec.when_all]</b> #### {#spec-execution.senders.adaptor.when_all}
 
 1. `execution::when_all` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values. `execution::when_all_with_variant`
     is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders, each of which may have one or more sets of sent values.
@@ -4203,7 +4203,7 @@ are all well-formed.
 
 4. Senders returned from adaptors defined in this subclause shall not expose the sender queries `get_completion_scheduler<CPO>`.
 
-#### `execution::transfer_when_all` <b>[exec.snd.transfer_when_all]</b> #### {#spec-execution.senders.adaptor.transfer_when_all}
+#### `execution::transfer_when_all` <b>[exec.transfer_when_all]</b> #### {#spec-execution.senders.adaptor.transfer_when_all}
 
 1. `execution::transfer_when_all` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
     that they complete on the specified scheduler. `execution::transfer_when_all_with_variant` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input
@@ -4229,7 +4229,7 @@ are all well-formed.
 
 4. Senders returned from `execution::transfer_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to input senders. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_done_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
 
-#### `execution::into_variant` <b>[exec.snd.into_variant]</b> #### {#spec-execution.senders.adapt.into_variant}
+#### `execution::into_variant` <b>[exec.into_variant]</b> #### {#spec-execution.senders.adapt.into_variant}
 
 1. `execution::into_variant` can be used to turn a typed sender which sends multiple sets of values into a sender which sends a variant of all of those sets of values.
 
@@ -4258,7 +4258,7 @@ are all well-formed.
 
     3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
-#### `execution::done_as_optional` <b>[exec.snd.done_as_optional]</b> #### {#spec-execution.senders.adapt.done_as_optional}
+#### `execution::done_as_optional` <b>[exec.done_as_optional]</b> #### {#spec-execution.senders.adapt.done_as_optional}
 
 1. `execution::done_as_optional` is used to handle a done signal by mapping it into the value channel as an empty optional. The value channel is also converted into an optional. The result is a sender that never completes with done, reporting cancellation by completing with an empty optional.
 
@@ -4278,7 +4278,7 @@ are all well-formed.
         )
     </pre>
 
-#### `execution::done_as_error` <b>[exec.snd.done_as_error]</b> #### {#spec-execution.senders.adapt.done_as_error}
+#### `execution::done_as_error` <b>[exec.done_as_error]</b> #### {#spec-execution.senders.adapt.done_as_error}
 
 1. `execution::done_as_error` is used to handle a done signal by mapping it into the error channel as a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
 
@@ -4293,7 +4293,7 @@ are all well-formed.
         )
     </pre>
 
-#### `execution::ensure_started` <b>[exec.snd.ensure_started]</b> #### {#spec-execution.senders.adapt.ensure_started}
+#### `execution::ensure_started` <b>[exec.ensure_started]</b> #### {#spec-execution.senders.adapt.ensure_started}
 
 1. `execution::ensure_started` is used to eagerly start the execution of a sender, while also providing a way to attach further work to execute once it has completed.
 
@@ -4332,9 +4332,9 @@ Note: The wording for `execution::ensure_started` is incomplete as it does not c
 semantics for sending a stop-request to the eagerly-launched operation if the sender is destroyed and detaches
 from the operation before the operation completes.
 
-### Sender consumers <b>[exec.snd.consumers]</b> ### {#spec-execution.senders.consumers}
+### Sender consumers <b>[exec.consumers]</b> ### {#spec-execution.senders.consumers}
 
-#### `execution::start_detached` <b>[exec.snd.start_detached]</b> #### {#spec-execution.senders.consumers.start_detached}
+#### `execution::start_detached` <b>[exec.start_detached]</b> #### {#spec-execution.senders.consumers.start_detached}
 
 1. `execution::start_detached` is used to eagerly start a sender without the caller needing to manage the lifetimes of any objects.
 
@@ -4359,7 +4359,7 @@ from the operation before the operation completes.
 
     If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_done` signals and calls `std::terminate` on the `set_error` signal, the program is ill-formed with no diagnostic required.
 
-#### `this_thread::sync_wait` <b>[exec.snd.sync_wait]</b> #### {#spec-execution.senders.consumers.sync_wait}
+#### `this_thread::sync_wait` <b>[exec.sync_wait]</b> #### {#spec-execution.senders.consumers.sync_wait}
 
 1. `this_thread::sync_wait` and `this_thread::sync_wait_with_variant` are used to block a current thread until a sender passed into it as an argument has completed, and to obtain the values (if any) it completed with.
 
@@ -4663,7 +4663,7 @@ from the operation before the operation completes.
 
 1. This section specifies some execution contexts on which work can be scheduled.
 
-### `run_loop` <b>[exec.ctx.run_loop]</b> ### {#spec-execution.contexts.run_loop}
+### `run_loop` <b>[exec.run_loop]</b> ### {#spec-execution.contexts.run_loop}
 
 1. A `run_loop` is an execution context on which work can be scheduled. It maintains a simple, thread-safe first-in-first-out queue of work. Its `run()` member function removes elements from the queue and executes them in a loop on whatever thread of execution calls `run()`.
 
@@ -4675,7 +4675,7 @@ from the operation before the operation completes.
 
     <pre highlight="c++">
     class run_loop {
-      // [exec.ctx.run_loop.types] Associated types
+      // [exec.run_loop.types] Associated types
       class <i>run-loop-scheduler</i>; // exposition only
       class <i>run-loop-sender</i>; // exposition only
       struct <i>run-loop-opstate-base</i> { // exposition only
@@ -4686,24 +4686,24 @@ from the operation before the operation completes.
       template&lt;receiver_of R>
         using <i>run-loop-opstate</i> = <i>unspecified</i>; // exposition only
 
-      // [exec.ctx.run_loop.members] Member functions:
+      // [exec.run_loop.members] Member functions:
       <i>run-loop-opstate-base</i>* pop_front(); // exposition only
       void push_back(<i>run-loop-opstate-base</i>*); // exposition only
 
      public:
-      // [exec.ctx.run_loop.ctor] construct/copy/destroy
+      // [exec.run_loop.ctor] construct/copy/destroy
       run_loop() noexcept;
       run_loop(run_loop&&) = delete;
       ~run_loop();
 
-      // [exec.ctx.run_loop.members] Member functions:
+      // [exec.run_loop.members] Member functions:
       <i>run-loop-scheduler</i> get_scheduler();
       void run();
       void finish();
     };
     </pre>
 
-#### Associated types <b>[exec.ctx.run_loop.types]</b> #### {#spec-execution.contexts.run_loop.types}
+#### Associated types <b>[exec.run_loop.types]</b> #### {#spec-execution.contexts.run_loop.types}
 
     <pre highlight="c++">
     class <i>run-loop-scheduler</i>;
@@ -4766,7 +4766,7 @@ from the operation before the operation completes.
         }
         </pre>
 
-#### Constructor and destructor <b>[exec.ctx.run_loop.ctor]</b> #### {#spec-execution.contexts.run_loop.ctor}
+#### Constructor and destructor <b>[exec.run_loop.ctor]</b> #### {#spec-execution.contexts.run_loop.ctor}
 
     <pre highlight="c++">
     run_loop::run_loop() noexcept;
@@ -4780,7 +4780,7 @@ from the operation before the operation completes.
 
     1. <i>Effects:</i> If <i>count</i> is not `0` or if <i>state</i> is <i>running</i>, invokes `terminate()`. Otherwise, has no effects.
 
-#### Member functions <b>[exec.ctx.run_loop.members]</b> #### {#spec-execution.contexts.run_loop.members}
+#### Member functions <b>[exec.run_loop.members]</b> #### {#spec-execution.contexts.run_loop.members}
 
     <pre highlight="c++">
     <i>run-loop-opstate-base</i>* run_loop::pop_front();
@@ -4834,7 +4834,7 @@ from the operation before the operation completes.
 
 ## Coroutine utilities <b>[exec.coro_utils]</b> ## {#spec-execution.coro_utils}
 
-### `execution::as_awaitable` <b>[exec.coro_utils.as_awaitable]</b> ### {#spec-execution.coro_utils.as_awaitable}
+### `execution::as_awaitable` <b>[exec.as_awaitable]</b> ### {#spec-execution.coro_utils.as_awaitable}
 
 1. `as_awaitable` is used to transform an object into one that is awaitable within a particular coroutine. This section makes use of the following exposition-only entities:
 
@@ -4938,7 +4938,7 @@ from the operation before the operation completes.
 
     4. Otherwise, `e`.
 
-### `execution::with_awaitable_senders` <b>[exec.coro_utils.with_awaitable_senders]</b> ### {#spec-execution.coro_utils.with_awaitable_senders}
+### `execution::with_awaitable_senders` <b>[exec.with_awaitable_senders]</b> ### {#spec-execution.coro_utils.with_awaitable_senders}
 
   1. `with_awaitable_senders`, when used as the base class of a coroutine promise type, makes senders awaitable in that coroutine type.
 
