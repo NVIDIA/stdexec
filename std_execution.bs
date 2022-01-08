@@ -2861,12 +2861,11 @@ namespace std::execution {
   // [execution.receivers.queries], receiver queries
   namespace <i>receivers-queries</i> { // exposition only
     struct forwarding_receiver_query_t;
-
-    template &lt;class T>
-      concept <i>forwarding-receiver-query</i> = // exposition only
-        forwarding_receiver_query_t{}(T{});
-  }
+ }
   inline constexpr <i>receivers-queries</i>::forwarding_receiver_query_t forwarding_receiver_query{};
+  template &lt;class T>
+    concept <i>forwarding-receiver-query</i> = // exposition only
+      forwarding_receiver_query(T{});
 
   // [execution.op_state], operation states
   template&lt;class O>
