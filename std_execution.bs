@@ -4498,7 +4498,7 @@ from the operation before the operation completes.
     </pre>
 
 1. `receiver_adaptor` is used to simplify the implementation of one receiver type in terms of another. It defines `tag_invoke` overloads that forward to named members if they exist, and to the adapted receiver otherwise.
-Any query `<i>cpo</i>` defined in the base receiver (e.g., `get_stop_token`) for which `forwarding_receiver_query(<i>cpo</i>)` evaluates to `true` is forwarded to the new receiver. 
+Any query <code><i>cpo</i></code> defined in the base receiver (e.g., `get_stop_token`) for which <code>forwarding_receiver_query(<i>cpo</i>)</code> evaluates to `true` is forwarded to the new receiver.
 
 2. This section makes use of the following exposition-only entities:
 
