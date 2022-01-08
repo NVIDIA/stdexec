@@ -3825,11 +3825,13 @@ are all well-formed.
 
             3. When `execution::set_done(r)` is called, it calls `execution::set_done(out_r)`.
 
+            4. Implements the `get_delegee_scheduler` receiver query to return the result of `get_delegee_schedler(out_r)`.
+
         2. Calls `execution::schedule(sch)`, which results in `s2`. It then calls `execution::connect(s2, r)`, resulting in `op_state2`.
 
         3. `op_state2` is wrapped by a new operation state, `op_state1`, that is returned to the caller.
 
-      2. `r2` is a receiver that wraps a reference to `out_r`. It forwards all receiver completion signals and receiver queries to `out_r`. Additionally, it implements the `get_scheduler` receiver query. The scheduler returned from the query is equivalent to the `sch` argument that was passed to `execution::on`.
+      g2. `r2` is a receiver that wraps a reference to `out_r`. It forwards all receiver completion signals and receiver queries to `out_r`. Additionally, it implements the `get_scheduler` receiver query. The scheduler returned from the query is equivalent to the `sch` argument that was passed to `execution::on`.
 
       3. When `execution::start` is called on `op_state1`, it calls `execution::start` on `op_state2`.
 
