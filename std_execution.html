@@ -2411,7 +2411,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <a href="#spec-execution.queries"><span class="secno">9.3</span> <span class="content">General queries <b>[execution.queries]</b> #</span></a>
        <ol class="toc">
         <li><a href="#spec-execution.receivers.queries.get_scheduler"><span class="secno">9.3.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-></code> <b>[execution.queries.get_scheduler]</b></span></a>
-        <li><a href="#spec-execution.receivers.queries.get_delegee_scheduler"><span class="secno">9.3.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegee_scheduler</c-></code> <b>[execution.queries.get_delegee_scheduler]</b></span></a>
+        <li><a href="#spec-execution.receivers.queries.get_delegatee_scheduler"><span class="secno">9.3.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-></code> <b>[execution.queries.get_delegatee_scheduler]</b></span></a>
         <li><a href="#spec-execution.receivers.queries.get_allocator"><span class="secno">9.3.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-></code> <b>[execution.queries.get_allocator]</b></span></a>
         <li><a href="#spec-execution.receivers.queries.get_stop_token"><span class="secno">9.3.4</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> <b>[execution.queries.get_stop_token]</b></span></a>
        </ol>
@@ -3473,7 +3473,7 @@ essential when writing user code using standard execution concepts; we have also
     <li data-md>
      <p><code class="highlight"><c- n>done_as_error</c-></code> respecified as a customization point object.</p>
     <li data-md>
-     <p>Add <code class="highlight"><c- n>get_delegee_scheduler</c-></code> receiver query to forward a scheduler that can be used by algorithms or by the scheduler to delegate work and forward progress.</p>
+     <p>Add <code class="highlight"><c- n>get_delegatee_scheduler</c-></code> receiver query to forward a scheduler that can be used by algorithms or by the scheduler to delegate work and forward progress.</p>
     <li data-md>
      <p>...</p>
    </ul>
@@ -4990,7 +4990,9 @@ the shared stop state.</p>
   <c- c1>// [execution.queries], general queries</c->
   <c- k>namespace</c-> <i><c- n>general</c-><c- o>-</c-><c- n>queries</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>get_scheduler_t</c-><c- p>;</c->
-    <c- k>struct</c-> <c- nc>get_delegee_scheduler_t</c-><c- p>;</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_scheduler_t</c-> <c- n>get_scheduler</c-><c- p>{};</c->
+    <c- k>struct</c-> <c- nc>get_delegatee_scheduler_t</c-><c- p>;</c->
+    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_delegatee_scheduler_t</c-> <c- n>get_delegatee_scheduler</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>get_allocator_t</c-><c- p>;</c->
     <c- k>struct</c-> <c- nc>get_stop_token_t</c-><c- p>;</c->
   <c- p>}</c->
@@ -5286,17 +5288,17 @@ the shared stop state.</p>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
    </ol>
-   <h4 class="heading settled" data-level="9.3.2" id="spec-execution.receivers.queries.get_delegee_scheduler"><span class="secno">9.3.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegee_scheduler</c-></code> <b>[execution.queries.get_delegee_scheduler]</b></span><a class="self-link" href="#spec-execution.receivers.queries.get_delegee_scheduler"></a></h4>
+   <h4 class="heading settled" data-level="9.3.2" id="spec-execution.receivers.queries.get_delegatee_scheduler"><span class="secno">9.3.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-></code> <b>[execution.queries.get_delegatee_scheduler]</b></span><a class="self-link" href="#spec-execution.receivers.queries.get_delegatee_scheduler"></a></h4>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegee_scheduler</c-></code> is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-></code> is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.</p>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegee_scheduler</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegee_scheduler</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression equivalent to:</p>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_delegee_scheduler</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed and satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed and satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegee_scheduler</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed.</p>
+       <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
    </ol>
    <h4 class="heading settled" data-level="9.3.3" id="spec-execution.receivers.queries.get_allocator"><span class="secno">9.3.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-></code> <b>[execution.queries.get_allocator]</b></span><a class="self-link" href="#spec-execution.receivers.queries.get_allocator"></a></h4>
@@ -5440,7 +5442,7 @@ an asynchronous operation may complete: <code class="highlight"><c- n>set_value<
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-></code> is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
 its result. --<i>end note</i>]</p>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegee_scheduler</c-></code> is used to ask a receiver object for a <i>delegee scheduler</i> to be used by an algorithm or scheduler to delegate work for the purpose of forward progress delegation. --<i>end note</i>]</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-></code> is used to ask a receiver object for a <i>delegatee scheduler</i> to be used by an algorithm or scheduler to delegate work for the purpose of forward progress delegation. --<i>end note</i>]</p>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-></code> is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
 its result. --<i>end note</i>]</p>
@@ -6685,7 +6687,7 @@ from the operation before the operation completes.</p>
        <p>Otherwise, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>.</p>
      </ol>
     <li data-md>
-     <p>Any receiver <code class="highlight"><c- n>r</c-></code> created by an implementation of <code class="highlight"><c- n>sync_wait</c-></code> and <code class="highlight"><c- n>sync_wait_with_variant</c-></code> shall implement the <code class="highlight"><c- n>get_scheduler</c-></code> and <code class="highlight"><c- n>get_delegee_scheduler</c-></code> receiver queries.
+     <p>Any receiver <code class="highlight"><c- n>r</c-></code> created by an implementation of <code class="highlight"><c- n>sync_wait</c-></code> and <code class="highlight"><c- n>sync_wait_with_variant</c-></code> shall implement the <code class="highlight"><c- n>get_scheduler</c-></code> and <code class="highlight"><c- n>get_delegatee_scheduler</c-></code> receiver queries.
 The scheduler returned from the queries for the receiver created by the
 default implementation shall return an implementation-defined scheduler that
 is driven by the waiting thread, such that scheduled tasks run on the thread
