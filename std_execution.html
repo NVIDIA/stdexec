@@ -4988,16 +4988,17 @@ the shared stop state.</p>
     <c- k>concept</c-> <i><c- nc>class</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c-> <i><c- n>decays</c-><c- o>-</c-><c- n>to</c-></i><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- n>is_class_v</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-><c- p>;</c->  <c- c1>// exposition only</c->
 
   <c- c1>// [execution.queries], general queries</c->
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+  <c- k>namespace</c-> <i><c- n>general</c-><c- o>-</c-><c- n>queries</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>get_scheduler_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_scheduler_t</c-> <c- n>get_scheduler</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>get_delegee_scheduler_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_delegee_scheduler_t</c-> <c- n>get_delegee_scheduler</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>get_allocator_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_allocator_t</c-> <c- n>get_allocator</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>get_stop_token_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_stop_token_t</c-> <c- n>get_stop_token</c-><c- p>{};</c->
   <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>general</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>get_scheduler_t</c-> <c- n>get_scheduler</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>general</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>get_delegee_scheduler_t</c-> <c- n>get_delegee_scheduler</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>general</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>get_allocator_t</c-> <c- n>get_allocator</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>general</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>get_stop_token_t</c-> <c- n>get_stop_token</c-><c- p>{};</c->
+
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
     <c- k>using</c-> <c- n>stop_token_of_t</c-> <c- o>=</c->
       <c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-><c- p>()))</c-><c- o>></c-><c- p>;</c->
@@ -5008,24 +5009,19 @@ the shared stop state.</p>
 
   <c- c1>// [execution.schedulers.queries], scheduler queries</c->
   <c- k>enum</c-> <c- k>class</c-> <c- nc>forward_progress_guarantee</c-><c- p>;</c->
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+  <c- k>namespace</c-> <i><c- n>schedulers</c-><c- o>-</c-><c- n>queries</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>forwarding_scheduler_query_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>forwarding_scheduler_query_t</c-> <c- n>forwarding_scheduler_query</c-><c- p>{};</c->
-
-    <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
-      <c- k>concept</c-> <i><c- nc>forwarding</c-><c- o>-</c-><c- n>scheduler</c-><c- o>-</c-><c- n>query</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
-        <c- n>forwarding_scheduler_query</c-><c- p>(</c-><c- n>T</c-><c- p>{});</c->
-
     <c- k>struct</c-> <c- nc>get_forward_progress_guarantee_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_forward_progress_guarantee_t</c-> <c- n>get_forward_progress_guarantee</c-><c- p>{};</c->
   <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>schedulers</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>forwarding_scheduler_query_t</c-> <c- n>forwarding_scheduler_query</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>schedulers</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>get_forward_progress_guarantee_t</c-> <c- n>get_forward_progress_guarantee</c-><c- p>{};</c->
 <c- p>}</c->
 
 <c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-> <c- p>{</c->
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+  <c- k>namespace</c-> <i><c- k>this</c-><c- o>-</c-><c- kr>thread</c-><c- o>-</c-><c- n>queries</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>execute_may_block_caller_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>execute_may_block_caller_t</c-> <c- n>execute_may_block_caller</c-><c- p>{};</c->
   <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- k>this</c-><c- o>-</c-><c- kr>thread</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>execute_may_block_caller_t</c-> <c- n>execute_may_block_caller</c-><c- p>{};</c->
 <c- p>}</c->
 
 <c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-> <c- p>{</c->
@@ -5036,33 +5032,32 @@ the shared stop state.</p>
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>An</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>receiver_of</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+  <c- k>namespace</c-> <i><c- n>receivers</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>set_value_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>set_value_t</c-> <c- n>set_value</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>set_error_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>set_error_t</c-> <c- n>set_error</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>set_done_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>set_done_t</c-> <c- n>set_done</c-><c- p>{};</c->
   <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>receivers</c-></i><c- o>::</c-><c- n>set_value_t</c-> <c- n>set_value</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>receivers</c-></i><c- o>::</c-><c- n>set_error_t</c-> <c- n>set_error</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>receivers</c-></i><c- o>::</c-><c- n>set_done_t</c-> <c- n>set_done</c-><c- p>{};</c->
 
   <c- c1>// [execution.receivers.queries], receiver queries</c->
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+  <c- k>namespace</c-> <i><c- n>receivers</c-><c- o>-</c-><c- n>queries</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>forwarding_receiver_query_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>forwarding_receiver_query_t</c-> <c- n>forwarding_receiver_query</c-><c- p>{};</c->
-
-    <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
-      <c- k>concept</c-> <i><c- nc>forwarding</c-><c- o>-</c-><c- n>receiver</c-><c- o>-</c-><c- n>query</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
-        <c- n>forwarding_receiver_query</c-><c- p>(</c-><c- n>T</c-><c- p>{});</c->
-  <c- p>}</c->
+ <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>receivers</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>forwarding_receiver_query_t</c-> <c- n>forwarding_receiver_query</c-><c- p>{};</c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
+    <c- k>concept</c-> <i><c- nc>forwarding</c-><c- o>-</c-><c- n>receiver</c-><c- o>-</c-><c- n>query</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
+      <c- n>forwarding_receiver_query</c-><c- p>(</c-><c- n>T</c-><c- p>{});</c->
 
   <c- c1>// [execution.op_state], operation states</c->
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>O</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>operation_state</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+  <c- k>namespace</c-> <i><c- n>op</c-><c- o>-</c-><c- n>state</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>start_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>start_t</c-> <c- n>start</c-><c- p>{};</c->
   <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>op</c-><c- o>-</c-><c- n>state</c-></i><c- o>::</c-><c- n>start_t</c-> <c- n>start</c-><c- p>{};</c->
 
   <c- c1>// [execution.senders], senders</c->
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
@@ -5114,17 +5109,18 @@ the shared stop state.</p>
     <c- k>using</c-> <c- n>error_types_of_t</c-> <c- o>=</c->
       <c- k>typename</c-> <c- nc>sender_traits</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>>::</c-><c- k>template</c-> <c- n>error_types</c-><c- o>&lt;</c-><c- n>Variant</c-><c- o>></c-><c- p>;</c->
 
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
-    <c- c1>// [execution.senders.connect], the connect sender algorithm</c->
+  <c- c1>// [execution.senders.connect], the connect sender algorithm</c->
+  <c- k>namespace</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>connect</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>connect_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>connect_t</c-> <c- n>connect</c-><c- p>{};</c->
+  <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>connect</c-></i><c- o>::</c-><c- n>connect_t</c-> <c- n>connect</c-><c- p>{};</c->
 
-    <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>R</c-><c- o>></c->
-      <c- k>using</c-> <c- n>connect_result_t</c-> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>connect</c-><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(),</c-> <c- n>declval</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>()));</c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>R</c-><c- o>></c->
+    <c- k>using</c-> <c- n>connect_result_t</c-> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>connect</c-><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>(),</c-> <c- n>declval</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>()));</c->
 
-    <c- c1>// [execution.senders.queries], sender queries</c->
+  <c- c1>// [execution.senders.queries], sender queries</c->
+  <c- k>namespace</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>queries</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>forwarding_sender_query_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>forwarding_sender_query_t</c-> <c- n>forwarding_sender_query</c-><c- p>{};</c->
 
     <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
       <c- k>concept</c-> <i><c- nc>forwarding</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>query</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
@@ -5132,81 +5128,93 @@ the shared stop state.</p>
 
     <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>get_completion_scheduler_t</c-><c- p>;</c->
+  <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>forwarding_sender_query_t</c-> <c- n>forwarding_sender_query</c-><c- p>{};</c->
 
-    <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- o>></c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>get_completion_scheduler_t</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-> <c- n>get_completion_scheduler</c-><c- p>{};</c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- o>></c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>queries</c-></i><c- o>::</c-><c- n>get_completion_scheduler_t</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-> <c- n>get_completion_scheduler</c-><c- p>{};</c->
 
-    <c- c1>// [execution.senders.factories], sender factories</c->
+  <c- c1>// [execution.senders.factories], sender factories</c->
+  <c- k>namespace</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>schedule_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>schedule_t</c-> <c- n>schedule</c-><c- p>{};</c->
+    <c- k>struct</c-> <c- nc>transfer_just_t</c-><c- p>;</c->
     <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
       <i><c- n>unspecified</c-></i> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
     <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i> <c- n>Error</c-><c- o>></c->
       <i><c- n>unspecified</c-></i> <c- n>just_error</c-><c- p>(</c-><c- n>Error</c-> <c- o>&amp;&amp;</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
     <i><c- n>unspecified</c-></i> <c- nf>just_done</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
-      <i><c- n>unspecified</c-></i> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...);</c->
-    <c- k>struct</c-> <c- nc>transfer_just_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_just_t</c-> <c- n>transfer_just</c-><c- p>{};</c->
+  <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>schedule_t</c-> <c- n>schedule</c-><c- p>{};</c->
+  <c- k>using</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>just</c-><c- p>;</c->
+  <c- k>using</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>just_error</c-><c- p>;</c->
+  <c- k>using</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>just_done</c-><c- p>;</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>transfer_just_t</c-> <c- n>transfer_just</c-><c- p>{};</c->
 
-    <c- c1>// [execution.senders.adaptors], sender adaptors</c->
+  <c- c1>// [execution.senders.adaptors], sender adaptors</c->
+  <c- k>namespace</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-><c- o>-</c-><c- n>closure</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>template</c-><c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>D</c-><c- o>></c->
       <c- k>struct</c-> <c- nc>sender_adaptor_closure</c-> <c- p>{</c-> <c- p>};</c->
-
+  <c- p>}</c->
+  <c- k>namespace</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>on_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>on_t</c-> <c- n>on</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>transfer_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_t</c-> <c- n>transfer</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>schedule_from_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>schedule_from_t</c-> <c- n>schedule_from</c-><c- p>{};</c->
-
     <c- k>struct</c-> <c- nc>then_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>then_t</c-> <c- n>then</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>upon_error_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>upon_error_t</c-> <c- n>upon_error</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>upon_done_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>upon_done_t</c-> <c- n>upon_done</c-><c- p>{};</c->
-
     <c- k>struct</c-> <c- nc>let_value_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>let_value_t</c-> <c- n>let_value</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>let_error_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>let_error_t</c-> <c- n>let_error</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>let_done_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>let_done_t</c-> <c- n>let_done</c-><c- p>{};</c->
-
     <c- k>struct</c-> <c- nc>bulk_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>bulk_t</c-> <c- n>bulk</c-><c- p>{};</c->
-
     <c- k>struct</c-> <c- nc>split_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>split_t</c-> <c- n>split</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>when_all_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>when_all_t</c-> <c- n>when_all</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>when_all_with_variant_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>when_all_with_variant_t</c-> <c- n>when_all_with_variant</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>transfer_when_all_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_when_all_t</c-> <c- n>transfer_when_all</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>transfer_when_all_with_variant_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_when_all_with_variant_t</c->
-      <c- n>transfer_when_all_with_variant</c-><c- p>{};</c->
+    <c- k>struct</c-> <c- nc>done_as_optional_t</c-><c- p>;</c->
+    <c- k>struct</c-> <c- nc>done_as_error_t</c-><c- p>;</c->
+    <c- k>struct</c-> <c- nc>ensure_started_t</c-><c- p>;</c->
+  <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>on_t</c-> <c- n>on</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>transfer_t</c-> <c- n>transfer</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>schedule_from_t</c-> <c- n>schedule_from</c-><c- p>{};</c->
 
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>then_t</c-> <c- n>then</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>upon_error_t</c-> <c- n>upon_error</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>upon_done_t</c-> <c- n>upon_done</c-><c- p>{};</c->
+
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>let_value_t</c-> <c- n>let_value</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>let_error_t</c-> <c- n>let_error</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>let_done_t</c-> <c- n>let_done</c-><c- p>{};</c->
+
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>bulk_t</c-> <c- n>bulk</c-><c- p>{};</c->
+
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>split_t</c-> <c- n>split</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>when_all_t</c-> <c- n>when_all</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>when_all_with_variant_t</c-> <c- n>when_all_with_variant</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>transfer_when_all_t</c-> <c- n>transfer_when_all</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>transfer_when_all_with_variant_t</c->
+    <c- n>transfer_when_all_with_variant</c-><c- p>{};</c->
+
+  <c- k>namespace</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-><c- o>-</c-><c- n>into</c-><c- o>-</c-><c- n>variant</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>template</c-><c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- o>></c->
       <c- k>using</c-> <i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c-> <c- c1>// exposition-only</c->
     <c- k>template</c-><c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- o>></c->
       <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- n>into_variant</c-><c- p>(</c-><c- n>S</c-> <c- o>&amp;&amp;</c-><c- p>);</c->
-
-    <c- k>struct</c-> <c- nc>done_as_optional_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>done_as_optional_t</c-> <c- n>done_as_optional</c-><c- p>;</c->
-
-    <c- k>struct</c-> <c- nc>done_as_error_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>done_as_error_t</c-> <c- n>done_as_error</c-><c- p>;</c->
-
-    <c- c1>// [execution.senders.consumers], sender consumers</c->
-    <c- k>struct</c-> <c- nc>ensure_started_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>ensure_started_t</c-> <c- n>ensure_started</c-><c- p>{};</c->
-
-    <c- k>struct</c-> <c- nc>start_detached_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>start_detached_t</c-> <c- n>start_detached</c-><c- p>{};</c->
   <c- p>}</c->
+  <c- k>using</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-><c- o>-</c-><c- n>into</c-><c- o>-</c-><c- n>variant</c-></i><c- o>::</c-><c- n>into_variant</c-><c- p>;</c->
+
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>done_as_optional_t</c-> <c- n>done_as_optional</c-><c- p>;</c->
+
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>done_as_error_t</c-> <c- n>done_as_error</c-><c- p>;</c->
+
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>ensure_started_t</c-> <c- n>ensure_started</c-><c- p>{};</c->
+
+  <c- c1>// [execution.senders.consumers], sender consumers</c->
+  <c- k>namespace</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>consumers</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
+    <c- k>struct</c-> <c- nc>start_detached_t</c-><c- p>;</c->
+  <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>consumers</c-></i><c- o>::</c-><c- n>start_detached_t</c-> <c- n>start_detached</c-><c- p>{};</c->
 
   <c- c1>// [execution.snd_rec_utils], sender and receiver utilities</c->
   <c- c1>// [execution.snd_rec_utils.rcvr_adptr]</c->
@@ -5227,31 +5235,31 @@ the shared stop state.</p>
 <c- p>}</c->
 
 <c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-> <c- p>{</c->
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+  <c- k>namespace</c-> <i><c- k>this</c-><c- o>-</c-><c- kr>thread</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>template</c-><c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- o>></c->
       <c- k>using</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c-> <c- c1>// exposition-only</c->
     <c- k>template</c-><c- o>&lt;</c-><c- n>typed_sender</c-> <c- n>S</c-><c- o>></c->
       <c- k>using</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c-> <c- c1>// exposition-only</c->
 
     <c- k>struct</c-> <c- nc>sync_wait_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>sync_wait_t</c-> <c- n>sync_wait</c-><c- p>{};</c->
     <c- k>struct</c-> <c- nc>sync_wait_with_variant_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>sync_wait_with_variant_t</c-> <c- n>sync_wait_with_variant</c-><c- p>{};</c->
   <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- k>this</c-><c- o>-</c-><c- kr>thread</c-></i><c- o>::</c-><c- n>sync_wait_t</c-> <c- n>sync_wait</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- k>this</c-><c- o>-</c-><c- kr>thread</c-></i><c- o>::</c-><c- n>sync_wait_with_variant_t</c-> <c- n>sync_wait_with_variant</c-><c- p>{};</c->
 <c- p>}</c->
 
 <c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-> <c- p>{</c->
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
-    <c- c1>// [execution.execute], one-way execution</c->
+  <c- c1>// [execution.execute], one-way execution</c->
+  <c- k>namespace</c-> <i><c- n>execute</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>execute_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>execute_t</c-> <c- n>execute</c-><c- p>{};</c->
   <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>execute</c-></i><c- o>::</c-><c- n>execute_t</c-> <c- n>execute</c-><c- p>{};</c->
 
   <c- c1>// [execution.coro_utils.as_awaitable]</c->
-  <c- kr>inline</c-> <c- k>namespace</c-> <i><c- n>unspecified</c-></i> <c- p>{</c->
+  <c- k>namespace</c-> <i><c- n>coro</c-><c- o>-</c-><c- n>utils</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>as_awaitable_t</c-><c- p>;</c->
-    <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>as_awaitable_t</c-> <c- n>as_awaitable</c-><c- p>;</c->
   <c- p>}</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>coro</c-><c- o>-</c-><c- n>utils</c-></i><c- o>::</c-><c- n>as_awaitable_t</c-> <c- n>as_awaitable</c-><c- p>;</c->
 
   <c- c1>// [execution.coro_utils.with_awaitable_senders]</c->
   <c- k>template</c-> <c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Promise</c-><c- o>></c->
