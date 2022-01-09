@@ -2330,7 +2330,7 @@ namespace std::execution {
         }
 
         friend execution::forward_progress_guarantee tag_invoke(
-            get_forward_progress_guarantee_t, const __scheduler& __self) noexcept {
+            get_forward_progress_guarantee_t, const __scheduler&) noexcept {
           return execution::forward_progress_guarantee::parallel;
         }
 

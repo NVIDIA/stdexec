@@ -94,7 +94,7 @@ namespace example {
 
       friend std::execution::forward_progress_guarantee tag_invoke(
           std::execution::get_forward_progress_guarantee_t,
-          const static_thread_pool& __self) noexcept {
+          const static_thread_pool&) noexcept {
         return std::execution::forward_progress_guarantee::parallel;
       }
 
