@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-01-08">2022-01-08</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-01-09">2022-01-09</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4933,6 +4933,48 @@ the shared stop state.</p>
       <td>One-way execution
       <td>
    </table>
+   <ol start="3">
+    <li data-md>
+     <p>[<i>Note:</i> A large number of execution control primitives are customization point objects. For an object one might define multiple types of customization point objects, for which different rules apply.**** Table 2 shows the types of customization point objects used in the execution control library:</p>
+   </ol>
+   <table>
+    <caption>Table 2: Types of customization point objects in the execution control library <b>[tab:execution.cpos]</b></caption>
+    <tbody>
+     <tr>
+      <th>Customization point object type
+      <th>Purpose
+      <th>Examples
+     <tr>
+      <td>core
+      <td>provide core execution functionality, and connection between core components
+      <td><code class="highlight"><c- n>connect</c-></code>, <code class="highlight"><c- n>start</c-></code>, <code class="highlight"><c- n>execute</c-></code>
+     <tr>
+      <td>completion signals
+      <td>called by senders to announce the completion of the work (success, error, or cancellation)
+      <td><code class="highlight"><c- n>set_value</c-></code>, <code class="highlight"><c- n>set_error</c-></code>, <code class="highlight"><c- n>set_done</c-></code>
+     <tr>
+      <td><a href="#spec-execution.senders">senders</a>
+      <td>allow the specialization of the provided sender algorithms
+      <td>
+       <ul>
+        <li>sender factories (<code class="highlight"><c- n>just</c-></code>, <code class="highlight"><c- n>just_error</c-></code>, <code class="highlight"><c- n>just_done</c-></code>, ...)
+        <li>sender adaptors (<code class="highlight"><c- n>transfer</c-></code>, <code class="highlight"><c- n>then</c-></code>, <code class="highlight"><c- n>let_value</c-></code>, ...)
+        <li>sender consumers (<code class="highlight"><c- n>start_detached</c-></code>, <code class="highlight"><c- n>sync_wait</c-></code>)
+       </ul>
+     <tr>
+      <td><a href="#spec-execution.queries">general queries</a>
+      <td>allow querying different properties of execution objects
+      <td> <code class="highlight"><c- n>get_scheduler</c-></code>, <code class="highlight"><c- n>get_delegee_scheduler</c-></code>, <code class="highlight"><c- n>get_allocator</c-></code>, <code class="highlight"><c- n>get_stop_token</c-></code>
+     <tr>
+      <td><a href="#spec-execution.schedulers.queries">scheduler queries</a>
+      <td>allow querying schedulers properties
+      <td> <code class="highlight"><c- n>get_forward_progress_guarantee</c-></code>, <code class="highlight"><c- n>execute_may_block_caller</c-></code>
+     <tr>
+      <td><a href="#spec-execution.senders.queries">sender queries</a>
+      <td>allow querying senders properties
+      <td> <code class="highlight"><c- n>get_completion_scheduler</c-></code>
+   </table>
+   <p>-- <i>end note</i>]</p>
    <h3 class="heading settled" data-level="9.1" id="spec-execution.syn"><span class="secno">9.1. </span><span class="content">Header <code class="highlight"><c- o>&lt;</c-><c- n>execution</c-><c- o>></c-></code> synopsis <b>[execution.syn]</b></span><a class="self-link" href="#spec-execution.syn"></a></h3>
 <pre class="highlight"><c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-> <c- p>{</c->
   <c- c1>// [execution.helpers], helper concepts</c->
@@ -6679,7 +6721,8 @@ does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate
 </pre>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>receiver_adaptor</c-></code> is used to simplify the implementation of one receiver type in terms of another. It defines <code class="highlight"><c- n>tag_invoke</c-></code> overloads that forward to named members if they exist, and to the adapted receiver otherwise.</p>
+     <p><code class="highlight"><c- n>receiver_adaptor</c-></code> is used to simplify the implementation of one receiver type in terms of another. It defines <code class="highlight"><c- n>tag_invoke</c-></code> overloads that forward to named members if they exist, and to the adapted receiver otherwise.
+Any query <code class="highlight"><i><c- n>cpo</c-></i></code> defined in the base receiver (e.g., <code class="highlight"><c- n>get_stop_token</c-></code>) for which <code class="highlight"><c- n>forwarding_receiver_query</c-><c- p>(</c-><i><c- n>cpo</c-></i><c- p>)</c-></code> evaluates to <code class="highlight">true</code> is forwarded to the new receiver.</p>
     <li data-md>
      <p>This section makes use of the following exposition-only entities:</p>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Receiver</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
