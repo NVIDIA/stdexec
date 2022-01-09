@@ -540,7 +540,7 @@ namespace std::execution {
       copy_constructible<remove_cvref_t<_Scheduler>> &&
       equality_comparable<remove_cvref_t<_Scheduler>> &&
       requires(_Scheduler&& __sched, const get_completion_scheduler_t<set_value_t> __tag) {
-        schedule((_Scheduler&&) __sched);
+        { schedule((_Scheduler&&) __sched) } -> sender;
         { tag_invoke(__tag, schedule((_Scheduler&&) __sched)) } -> same_as<remove_cvref_t<_Scheduler>>;
       };
 
@@ -771,7 +771,7 @@ namespace std::execution {
         using __operation_t = __operation<__x<remove_cvref_t<_Receiver>>>;
     } // namespace __impl
 
-    inline constexpr struct __fn {
+    inline constexpr struct __connect_awaitable_t {
      private:
       template <class _Receiver, class... _Args>
         using __nothrow_ = bool_constant<nothrow_receiver_of<_Receiver, _Args...>>;
@@ -823,10 +823,6 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
   inline namespace __connect {
-    template <class _Receiver>
-      using __connect_awaitable_promise_t =
-        __connect_awaitable_::__impl::__promise_t<_Receiver>;
-
     inline constexpr struct connect_t {
       template <sender _Sender, receiver _Receiver>
         requires tag_invocable<connect_t, _Sender, _Receiver> &&
@@ -838,7 +834,7 @@ namespace std::execution {
       }
       template <class _Awaitable, receiver _Receiver>
         requires (!tag_invocable<connect_t, _Awaitable, _Receiver>) &&
-           __awaitable<_Awaitable, __connect_awaitable_promise_t<_Receiver>>
+           __callable<__connect_awaitable_t, _Awaitable, _Receiver>
       auto operator()(_Awaitable&& __await, _Receiver&& __rcvr) const
         -> __connect_awaitable_::__impl::__operation_t<_Receiver> {
         return __connect_awaitable((_Awaitable&&) __await, (_Receiver&&) __rcvr);
