@@ -1031,7 +1031,7 @@ The changes since R3 are as follows:
     * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
     * Add `completion_signatures` utility for declaratively defining a typed sender's metadata.
     * `done_as_error` respecified as a customization point object.
-    * Add `get_delegee_scheduler` receiver query to forward a scheduler that can be used by algorithms or by the scheduler to delegate work and forward progress.
+    * Add `get_delegatee_scheduler` receiver query to forward a scheduler that can be used by algorithms or by the scheduler to delegate work and forward progress.
     * ...
 
 ## R3 ## {#r3}
@@ -2790,7 +2790,7 @@ template&lt;typename T>
 <tr><td><a href="#spec-execution.execute">[execution.execute]</a></td><td>One-way execution</td><td></td></tr>
 </table>
 
-3. [<i>Note:</i> A large number of execution control primitives are customization point objects. For an object one might define multiple types of customization point objects, for which different rules apply.**** Table 2 shows the types of customization point objects used in the execution control library: 
+3. [<i>Note:</i> A large number of execution control primitives are customization point objects. For an object one might define multiple types of customization point objects, for which different rules apply.**** Table 2 shows the types of customization point objects used in the execution control library:
 
 <table>
 <caption>Table 2: Types of customization point objects in the execution control library <b>[tab:execution.cpos]</b></caption>
@@ -2837,7 +2837,7 @@ template&lt;typename T>
 </tr>
 </table>
 
--- <i>end note</i>] 
+-- <i>end note</i>]
 
 
 ## Header `<execution>` synopsis <b>[execution.syn]</b> ## {#spec-execution.syn}
@@ -2857,7 +2857,9 @@ namespace std::execution {
   // [execution.queries], general queries
   namespace <i>general-queries</i> { // exposition only
     struct get_scheduler_t;
-    struct get_delegee_scheduler_t;
+    inline constexpr get_scheduler_t get_scheduler{};
+    struct get_delegatee_scheduler_t;
+    inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
     struct get_allocator_t;
     struct get_stop_token_t;
   }
@@ -3155,15 +3157,15 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
 
-### `execution::get_delegee_scheduler` <b>[execution.queries.get_delegee_scheduler]</b> ### {#spec-execution.receivers.queries.get_delegee_scheduler}
+### `execution::get_delegatee_scheduler` <b>[execution.queries.get_delegatee_scheduler]</b> ### {#spec-execution.receivers.queries.get_delegatee_scheduler}
 
-1. `execution::get_delegee_scheduler` is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.
+1. `execution::get_delegatee_scheduler` is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.
 
-2. The name `execution::get_delegee_scheduler` denotes a customization point object. For some subexpression `r`, `execution::get_delegee_scheduler(r)` is expression equivalent to:
+2. The name `execution::get_delegatee_scheduler` denotes a customization point object. For some subexpression `r`, `execution::get_delegatee_scheduler(r)` is expression equivalent to:
 
-    1. `tag_invoke(execution::get_delegee_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::get_delegatee_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
 
-    2. Otherwise, `execution::get_delegee_scheduler(r)` is ill-formed.
+    2. Otherwise, `execution::get_delegatee_scheduler(r)` is ill-formed.
 
 ### `execution::get_allocator` <b>[execution.queries.get_allocator]</b> ### {#spec-execution.receivers.queries.get_allocator}
 
@@ -3296,7 +3298,7 @@ enum class forward_progress_guarantee {
 5. `execution::get_scheduler` is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
 
-6. `execution::get_delegee_scheduler` is used to ask a receiver object for a <i>delegee scheduler</i> to be used by an algorithm or scheduler to delegate work for the purpose of forward progress delegation. --<i>end note</i>]
+6. `execution::get_delegatee_scheduler` is used to ask a receiver object for a <i>delegatee scheduler</i> to be used by an algorithm or scheduler to delegate work for the purpose of forward progress delegation. --<i>end note</i>]
 
 7. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
@@ -4465,7 +4467,7 @@ from the operation before the operation completes.
 
 4. Any receiver `r` created by an implementation of `sync_wait` and
     `sync_wait_with_variant` shall implement the `get_scheduler` and
-    `get_delegee_scheduler` receiver queries.
+    `get_delegatee_scheduler` receiver queries.
     The scheduler returned from the queries for the receiver created by the
     default implementation shall return an implementation-defined scheduler that
     is driven by the waiting thread, such that scheduled tasks run on the thread
