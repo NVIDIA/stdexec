@@ -432,14 +432,14 @@ namespace std::execution {
         }
       };
 
-      struct get_delegee_scheduler_t {
+      struct get_delegatee_scheduler_t {
         template <class _T>
-          requires nothrow_tag_invocable<get_delegee_scheduler_t, __cref_t<_T>> &&
-            scheduler<tag_invoke_result_t<get_delegee_scheduler_t, __cref_t<_T>>>
+          requires nothrow_tag_invocable<get_delegatee_scheduler_t, __cref_t<_T>> &&
+            scheduler<tag_invoke_result_t<get_delegatee_scheduler_t, __cref_t<_T>>>
         auto operator()(_T&& __t) const
-          noexcept(nothrow_tag_invocable<get_delegee_scheduler_t, __cref_t<_T>>)
-          -> tag_invoke_result_t<get_delegee_scheduler_t, __cref_t<_T>> {
-          return tag_invoke(get_delegee_scheduler_t{}, std::as_const(__t));
+          noexcept(nothrow_tag_invocable<get_delegatee_scheduler_t, __cref_t<_T>>)
+          -> tag_invoke_result_t<get_delegatee_scheduler_t, __cref_t<_T>> {
+          return tag_invoke(get_delegatee_scheduler_t{}, std::as_const(__t));
         }
       };
 
@@ -469,10 +469,10 @@ namespace std::execution {
 
     using __impl::get_allocator_t;
     using __impl::get_scheduler_t;
-    using __impl::get_delegee_scheduler_t;
+    using __impl::get_delegatee_scheduler_t;
     using __impl::get_stop_token_t;
     inline constexpr get_scheduler_t get_scheduler{};
-    inline constexpr get_delegee_scheduler_t get_delegee_scheduler{};
+    inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
     inline constexpr get_allocator_t get_allocator{};
     inline constexpr get_stop_token_t get_stop_token{};
   } // namespace __general_queries
@@ -3266,7 +3266,7 @@ namespace std::this_thread {
               return __rcvr.__loop_->get_scheduler();
             }
             friend execution::run_loop::__scheduler
-            tag_invoke(execution::get_delegee_scheduler_t, const __receiver& __rcvr) noexcept {
+            tag_invoke(execution::get_delegatee_scheduler_t, const __receiver& __rcvr) noexcept {
               return __rcvr.__loop_->get_scheduler();
             }
           };
