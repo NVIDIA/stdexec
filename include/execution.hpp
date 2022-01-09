@@ -62,6 +62,12 @@ namespace std::execution {
       typename bool_constant<_T::sends_done>;
     };
 
+  enum class forward_progress_guarantee {
+    concurrent,
+    parallel,
+    weakly_parallel
+  };
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
   inline namespace __receiver_cpo {
@@ -338,8 +344,12 @@ namespace std::execution {
     } schedule {};
   }
 
+  // [execution.schedulers.queries], scheduler queries
   inline namespace __scheduler_queries {
     namespace __impl {
+      template <class _T>
+        using __cref_t = const remove_reference_t<_T>&;
+
       struct forwarding_scheduler_query_t {
         template <class _Tag>
         constexpr bool operator()(_Tag __tag) const noexcept {
@@ -352,10 +362,26 @@ namespace std::execution {
           }
         }
       };
+
+      struct get_forward_progress_guarantee_t {
+        template <class _T>
+          requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>
+        tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> operator()(
+            _T&& __t) const
+          noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>) {
+          return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t));
+        }
+        execution::forward_progress_guarantee operator()(auto&&) const noexcept {
+          return execution::forward_progress_guarantee::weakly_parallel;
+        }
+      };
     } // namespace __impl
 
     using __impl::forwarding_scheduler_query_t;
     inline constexpr forwarding_scheduler_query_t forwarding_scheduler_query{};
+
+    using __impl::get_forward_progress_guarantee_t;
+    inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 
     template <class _Tag>
       concept __scheduler_query =
@@ -2301,6 +2327,11 @@ namespace std::execution {
        public:
         friend __schedule_task tag_invoke(schedule_t, const __scheduler& __self) noexcept {
           return __self.__schedule();
+        }
+
+        friend execution::forward_progress_guarantee tag_invoke(
+            get_forward_progress_guarantee_t, const __scheduler&) noexcept {
+          return execution::forward_progress_guarantee::parallel;
         }
 
         bool operator==(const __scheduler&) const noexcept = default;
