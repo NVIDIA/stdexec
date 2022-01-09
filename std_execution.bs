@@ -3831,7 +3831,7 @@ are all well-formed.
 
         3. `op_state2` is wrapped by a new operation state, `op_state1`, that is returned to the caller.
 
-      g2. `r2` is a receiver that wraps a reference to `out_r`. It forwards all receiver completion signals and receiver queries to `out_r`. Additionally, it implements the `get_scheduler` receiver query. The scheduler returned from the query is equivalent to the `sch` argument that was passed to `execution::on`.
+      2. `r2` is a receiver that wraps a reference to `out_r`. It forwards all receiver completion signals and receiver queries to `out_r`. Additionally, it implements the `get_scheduler` receiver query. The scheduler returned from the query is equivalent to the `sch` argument that was passed to `execution::on`.
 
       3. When `execution::start` is called on `op_state1`, it calls `execution::start` on `op_state2`.
 
