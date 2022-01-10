@@ -1052,6 +1052,10 @@ The changes since R3 are as follows:
     generally awaitable was changed from `false` to `true` to acknowledge the
     fact that some coroutine types are generally awaitable and may implement the
     `unhandled_done()` protocol in their promise types.
+  * Fix the incorrect use of inline namespaces in the `<execution>` header.
+  * Shorten the stable names for the sections.
+  * `sync_wait` now handles `std::error_code` specially by throwing a
+    `std::system_error` on failure.
 
 <b>Enhancements:</b>
 
