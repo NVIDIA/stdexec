@@ -2818,7 +2818,7 @@ At the end of this subclause, insert the following declarations into the synopsi
 <ins>
 <blockquote>
 <pre highlight=c++>
-// Expositon-only callable concepts and utilities
+// Expositon-only:
 template &lt;class Fn, class... Args>
   using <i>call-result-t</i> = decltype(declval<Fn>(), declval<Args>()...);
 
@@ -2866,7 +2866,7 @@ template&lt;auto& Tag>
 </blockquote>
 </ins>
 
-### `execution::tag_invoke` <b>[func.tag_invoke]</b> ### {#spec-func.tag_invoke}
+### `tag_invoke` <b>[func.tag_invoke]</b> ### {#spec-func.tag_invoke}
 
 Insert this section as a new subclause, between Searchers <b>[func.search]</b> and Class template `hash` <b>[unord.hash]</b>.
 
@@ -2878,10 +2878,10 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
     <pre highlight="c++">
     struct <i>tag-invoke</i>::<i>tag</i> {
       template &lt;class Tag, class... Args>
-          requires tag_invocable<Tag, Args...>
+          requires tag_invocable&lt;Tag, Args...>
         constexpr auto operator()(Tag tag, Args&&... args) const
-          noexcept(nothrow_tag_invocable<Tag, Args...>)
-          -> tag_invoke_result_t<Tag, Args...> {
+          noexcept(nothrow_tag_invocable&lt;Tag, Args...>)
+          -> tag_invoke_result_t&lt;Tag, Args...> {
           return tag_invoke(auto(tag), (Args&&) args...);
         }
     };
