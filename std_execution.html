@@ -2393,7 +2393,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <a href="#spec-function.objects"><span class="secno">7.1</span> <span class="content">Function objects <b>[function.objects]</b></span></a>
        <ol class="toc">
         <li><a href="#spec-functional.syn"><span class="secno">7.1.1</span> <span class="content">Header <code class="highlight"><c- o>&lt;</c-><c- n>functional</c-><c- o>></c-></code> synopsis <b>[functional.syn]</b></span></a>
-        <li><a href="#spec-func.tag_invoke"><span class="secno">7.1.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>tag_invoke</c-></code> <b>[func.tag_invoke]</b></span></a>
+        <li><a href="#spec-func.tag_invoke"><span class="secno">7.1.2</span> <span class="content"><code class="highlight"><c- n>tag_invoke</c-></code> <b>[func.tag_invoke]</b></span></a>
        </ol>
      </ol>
     <li>
@@ -4925,7 +4925,7 @@ themselves using <code class="highlight"><c- n>tag_invoke</c-></code>, dispatchi
    <p>At the end of this subclause, insert the following declarations into the synopsis within <code class="highlight"><c- k>namespace</c-> <c- n>std</c-></code>:</p>
    <ins>
     <blockquote>
-<pre class="highlight"><c- c1>// Expositon-only callable concepts and utilities</c->
+<pre class="highlight"><c- c1>// Expositon-only:</c->
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Fn</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
   <c- k>using</c-> <i><c- n>call</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>t</c-></i> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>declval</c-><fn><c- p>(),</c-> <c- n>declval</c-><args><c- p>()...);</c->
 
@@ -4972,7 +4972,7 @@ themselves using <code class="highlight"><c- n>tag_invoke</c-></code>, dispatchi
 </args></tag></args></tag></args></tag></args></fn></pre>
     </blockquote>
    </ins>
-   <h4 class="heading settled" data-level="7.1.2" id="spec-func.tag_invoke"><span class="secno">7.1.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>tag_invoke</c-></code> <b>[func.tag_invoke]</b></span><a class="self-link" href="#spec-func.tag_invoke"></a></h4>
+   <h4 class="heading settled" data-level="7.1.2" id="spec-func.tag_invoke"><span class="secno">7.1.2. </span><span class="content"><code class="highlight"><c- n>tag_invoke</c-></code> <b>[func.tag_invoke]</b></span><a class="self-link" href="#spec-func.tag_invoke"></a></h4>
    <p>Insert this section as a new subclause, between Searchers <b>[func.search]</b> and Class template <code class="highlight"><c- n>hash</c-></code> <b>[unord.hash]</b>.</p>
    <ins>
     <blockquote>
@@ -4981,14 +4981,14 @@ themselves using <code class="highlight"><c- n>tag_invoke</c-></code>, dispatchi
        <p>The name <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-></code> denotes a customization point object. Its type is an unspecified class type equivalent to:</p>
 <pre class="highlight"><c- k>struct</c-> <i><c- nc>tag</c-><c- o>-</c-><c- n>invoke</c-></i><c- o>::</c-><i><c- n>tag</c-></i> <c- p>{</c->
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
-      <c- k>requires</c-> <c- n>tag_invocable</c-><tagU0002C args...>
+      <c- k>requires</c-> <c- n>tag_invocable</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c->
     <c- k>constexpr</c-> <c- k>auto</c-> <c- k>operator</c-><c- p>()(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- k>const</c->
-      <c- k>noexcept</c-><c- p>(</c-><c- n>nothrow_tag_invocable</c-><tagU0002C args...><c- p>)</c->
-      <c- o>-></c-> <c- n>tag_invoke_result_t</c-><tagU0002C args...> <c- p>{</c->
+      <c- k>noexcept</c-><c- p>(</c-><c- n>nothrow_tag_invocable</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
+      <c- o>-></c-> <c- n>tag_invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
       <c- k>return</c-> <c- nf>tag_invoke</c-><c- p>(</c-><c- k>auto</c-><c- p>(</c-><c- n>tag</c-><c- p>),</c-> <c- p>(</c-><c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>args</c-><c- p>...);</c->
     <c- p>}</c->
 <c- p>};</c->
-</tagU0002C></tagU0002C></tagU0002C></pre>
+</pre>
      </ol>
     </blockquote>
    </ins>
