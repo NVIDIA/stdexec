@@ -168,7 +168,7 @@ TEST_CASE(
   check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::transfer(ex::just(3, 0.14, std::string{"pi"}), sched));
 }
-TEST_CASE("transfer keeps error_types from scheduler's sender", "[adaptors][transfer]") {
+TEST_CASE("TODO: transfer keeps error_types from scheduler's sender", "[adaptors][transfer]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
@@ -180,7 +180,7 @@ TEST_CASE("transfer keeps error_types from scheduler's sender", "[adaptors][tran
   // incorrect check:
   check_err_types<type_array<std::exception_ptr>>(ex::transfer(ex::just(3), sched3));
 }
-TEST_CASE("transfer keeps send_done from scheduler's sender", "[adaptors][transfer]") {
+TEST_CASE("TODO: transfer keeps send_done from scheduler's sender", "[adaptors][transfer]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   done_scheduler sched3{};

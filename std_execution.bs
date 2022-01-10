@@ -1031,7 +1031,7 @@ The changes since R3 are as follows:
     * Add customization points for controlling the forwarding of scheduler, sender, and receiver queries through layers of adaptors; specify the behavior of the standard adaptors in terms of the new customization points.
     * Add `completion_signatures` utility for declaratively defining a typed sender's metadata.
     * `done_as_error` respecified as a customization point object.
-    * Add `get_delegee_scheduler` receiver query to forward a scheduler that can be used by algorithms or by the scheduler to delegate work and forward progress.
+    * Add `get_delegatee_scheduler` receiver query to forward a scheduler that can be used by algorithms or by the scheduler to delegate work and forward progress.
     * ...
 
 ## R3 ## {#r3}
@@ -2637,14 +2637,14 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
 <ins>
 <blockquote>
 
-1. The name `std::tag_invoke` denotes a customization point object. For some subexpressions `tag` and `args...`, `tag_invoke(tag, args...)` is expression-equivalent to an unqualified call to <code>tag_invoke(<i>decay-copy</i>(tag), args...)</code> with overload
+1. The name `tag_invoke` denotes a customization point object. For some subexpressions `tag` and `args...`, `tag_invoke(tag, args...)` is expression-equivalent to an unqualified call to <code>tag_invoke(<i>decay-copy</i>(tag), args...)</code> with overload
     resolution performed in a context that includes the declaration:
 
     <pre>
     void tag_invoke();
     </pre>
 
-    and that does not include the `std::tag_invoke` name.
+    and that does not include the `tag_invoke` name.
 
 </blockquote>
 </ins>
@@ -2790,6 +2790,56 @@ template&lt;typename T>
 <tr><td><a href="#spec-execution.execute">[exec.execute]</a></td><td>One-way execution</td><td></td></tr>
 </table>
 
+3. [<i>Note:</i> A large number of execution control primitives are customization point objects. For an object one might define multiple types of customization point objects, for which different rules apply.**** Table 2 shows the types of customization point objects used in the execution control library:
+
+<table>
+<caption>Table 2: Types of customization point objects in the execution control library <b>[tab:execution.cpos]</b></caption>
+<tr>
+    <th>Customization point object type</th>
+    <th>Purpose</th>
+    <th>Examples</th>
+</tr>
+<tr>
+    <td>core</td>
+    <td>provide core execution functionality, and connection between core components</td>
+    <td>`connect`, `start`, `execute`</td>
+</tr>
+<tr>
+    <td>completion signals</td>
+    <td>called by senders to announce the completion of the work (success, error, or cancellation)</td>
+    <td>`set_value`, `set_error`, `set_done`</td>
+</tr>
+<tr>
+    <td><a href="#spec-execution.senders">senders</a></td>
+    <td>allow the specialization of the provided sender algorithms</td>
+    <td>
+        <ul>
+            <li>sender factories (`just`, `just_error`, `just_done`, ...)</li>
+            <li>sender adaptors (`transfer`, `then`, `let_value`, ...)</li>
+            <li>sender consumers (`start_detached`, `sync_wait`)</li>
+        </ul>
+    </td>
+</tr>
+<tr>
+    <td><a href="#spec-execution.queries">general queries</a></td>
+    <td>allow querying different properties of execution objects</td>
+    <td> `get_scheduler`, `get_delegatee_scheduler`, `get_allocator`, `get_stop_token`</td>
+</tr>
+<tr>
+    <td><a href="#spec-execution.schedulers.queries">scheduler queries</a></td>
+    <td>allow querying schedulers properties</td>
+    <td> `get_forward_progress_guarantee`, `execute_may_block_caller`</td>
+</tr>
+<tr>
+    <td><a href="#spec-execution.senders.queries">sender queries</a></td>
+    <td>allow querying senders properties</td>
+    <td> `get_completion_scheduler`</td>
+</tr>
+</table>
+
+-- <i>end note</i>]
+
+
 ## Header `<execution>` synopsis <b>[exec.syn]</b> ## {#spec-execution.syn}
 
 <pre highlight=c++>
@@ -2805,16 +2855,19 @@ namespace std::execution {
     concept <i>class-type</i> = <i>decays-to</i>&lt;T, T> && is_class_v&lt;T>;  // exposition only
 
   // [exec.queries], general queries
-  inline namespace <i>unspecified</i> {
+  namespace <i>general-queries</i> { // exposition only
     struct get_scheduler_t;
     inline constexpr get_scheduler_t get_scheduler{};
-    struct get_delegee_scheduler_t;
-    inline constexpr get_delegee_scheduler_t get_delegee_scheduler{};
+    struct get_delegatee_scheduler_t;
+    inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
     struct get_allocator_t;
-    inline constexpr get_allocator_t get_allocator{};
     struct get_stop_token_t;
-    inline constexpr get_stop_token_t get_stop_token{};
   }
+  inline constexpr <i>general-queries</i>::get_scheduler_t get_scheduler{};
+  inline constexpr <i>general-queries</i>::get_delegatee_scheduler_t get_delegatee_scheduler{};
+  inline constexpr <i>general-queries</i>::get_allocator_t get_allocator{};
+  inline constexpr <i>general-queries</i>::get_stop_token_t get_stop_token{};
+
   template &lt;class T>
     using stop_token_of_t =
       remove_cvref_t&lt;decltype(get_stop_token(declval&lt;T>()))>;
@@ -2825,24 +2878,19 @@ namespace std::execution {
 
   // [exec.sched_queries], scheduler queries
   enum class forward_progress_guarantee;
-  inline namespace <i>unspecified</i> {
+  namespace <i>schedulers-queries</i> { // exposition only
     struct forwarding_scheduler_query_t;
-    inline constexpr forwarding_scheduler_query_t forwarding_scheduler_query{};
-
-    template &lt;class T>
-      concept <i>forwarding-scheduler-query</i> = // exposition only
-        forwarding_scheduler_query(T{});
-
     struct get_forward_progress_guarantee_t;
-    inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
   }
+  inline constexpr <i>schedulers-queries</i>::forwarding_scheduler_query_t forwarding_scheduler_query{};
+  inline constexpr <i>schedulers-queries</i>::get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 }
 
 namespace std::this_thread {
-  inline namespace <i>unspecified</i> {
+  namespace <i>this-thread-queries</i> { // exposition only
     struct execute_may_block_caller_t;
-    inline constexpr execute_may_block_caller_t execute_may_block_caller{};
   }
+  inline constexpr <i>this-thread-queries</i>::execute_may_block_caller_t execute_may_block_caller{};
 }
 
 namespace std::execution {
@@ -2853,33 +2901,32 @@ namespace std::execution {
   template &lt;class T, class... An>
     concept receiver_of = <i>see-below</i>;
 
-  inline namespace <i>unspecified</i> {
+  namespace <i>receivers</i> { // exposition only
     struct set_value_t;
-    inline constexpr set_value_t set_value{};
     struct set_error_t;
-    inline constexpr set_error_t set_error{};
     struct set_done_t;
-    inline constexpr set_done_t set_done{};
   }
+  inline constexpr <i>receivers</i>::set_value_t set_value{};
+  inline constexpr <i>receivers</i>::set_error_t set_error{};
+  inline constexpr <i>receivers</i>::set_done_t set_done{};
 
   // [exec.recv_queries], receiver queries
-  inline namespace <i>unspecified</i> {
+  namespace <i>receivers-queries</i> { // exposition only
     struct forwarding_receiver_query_t;
-    inline constexpr forwarding_receiver_query_t forwarding_receiver_query{};
-
-    template &lt;class T>
-      concept <i>forwarding-receiver-query</i> = // exposition only
-        forwarding_receiver_query(T{});
-  }
+ }
+  inline constexpr <i>receivers-queries</i>::forwarding_receiver_query_t forwarding_receiver_query{};
+  template &lt;class T>
+    concept <i>forwarding-receiver-query</i> = // exposition only
+      forwarding_receiver_query(T{});
 
   // [exec.op_state], operation states
   template&lt;class O>
     concept operation_state = <i>see-below</i>;
 
-  inline namespace <i>unspecified</i> {
+  namespace <i>op-state</i> { // exposition only
     struct start_t;
-    inline constexpr start_t start{};
   }
+  inline constexpr <i>op-state</i>::start_t start{};
 
   // [exec.snd], senders
   template&lt;class S>
@@ -2931,17 +2978,18 @@ namespace std::execution {
     using error_types_of_t =
       typename sender_traits&lt;remove_cvref_t&lt;S>>::template error_types&lt;Variant>;
 
-  inline namespace <i>unspecified</i> {
-    // [exec.connect], the connect sender algorithm
+  // [exec.connect], the connect sender algorithm
+  namespace <i>senders-connect</i> { // exposition only
     struct connect_t;
-    inline constexpr connect_t connect{};
+  }
+  inline constexpr <i>senders-connect</i>::connect_t connect{};
 
-    template &lt;class S, class R>
-      using connect_result_t = decltype(connect(declval&lt;S>(), declval&lt;R>()));
+  template &lt;class S, class R>
+    using connect_result_t = decltype(connect(declval&lt;S>(), declval&lt;R>()));
 
-    // [exec.snd_queries], sender queries
+  // [exec.snd_queries], sender queries
+  namespace <i>senders-queries</i> { // exposition only
     struct forwarding_sender_query_t;
-    inline constexpr forwarding_sender_query_t forwarding_sender_query{};
 
     template &lt;class T>
       concept <i>forwarding-sender-query</i> = // exposition only
@@ -2949,81 +2997,93 @@ namespace std::execution {
 
     template &lt;class CPO>
     struct get_completion_scheduler_t;
+  }
+  inline constexpr <i>senders-queries</i>::forwarding_sender_query_t forwarding_sender_query{};
 
-    template &lt;class CPO>
-    inline constexpr get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
+  template &lt;class CPO>
+  inline constexpr <i>senders-queries</i>::get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
 
-    // [exec.factories], sender factories
+  // [exec.factories], sender factories
+  namespace <i>senders-factories</i> { // exposition only
     struct schedule_t;
-    inline constexpr schedule_t schedule{};
+    struct transfer_just_t;
     template&lt;<i>movable-value</i>... Ts>
       <i>unspecified</i> just(Ts &&...) noexcept(<i>see below</i>);
     template&lt;<i>movable-value</i> Error>
       <i>unspecified</i> just_error(Error &&) noexcept(<i>see below</i>);
     <i>unspecified</i> just_done() noexcept;
-    template&lt;<i>movable-value</i>... Ts>
-      <i>unspecified</i> just(Ts &&...);
-    struct transfer_just_t;
-    inline constexpr transfer_just_t transfer_just{};
+  }
+  inline constexpr <i>senders-factories</i>::schedule_t schedule{};
+  using <i>senders-factories</i>::just;
+  using <i>senders-factories</i>::just_error;
+  using <i>senders-factories</i>::just_done;
+  inline constexpr <i>senders-factories</i>::transfer_just_t transfer_just{};
 
-    // [exec.adapt], sender adaptors
+  // [exec.adapt], sender adaptors
+  namespace <i>senders-adaptors-closure</i> { // exposition only
     template&lt;<i>class-type</i> D>
       struct sender_adaptor_closure { };
-
+  }
+  namespace <i>senders-adaptors</i> { // exposition only
     struct on_t;
-    inline constexpr on_t on{};
     struct transfer_t;
-    inline constexpr transfer_t transfer{};
     struct schedule_from_t;
-    inline constexpr schedule_from_t schedule_from{};
-
     struct then_t;
-    inline constexpr then_t then{};
     struct upon_error_t;
-    inline constexpr upon_error_t upon_error{};
     struct upon_done_t;
-    inline constexpr upon_done_t upon_done{};
-
     struct let_value_t;
-    inline constexpr let_value_t let_value{};
     struct let_error_t;
-    inline constexpr let_error_t let_error{};
     struct let_done_t;
-    inline constexpr let_done_t let_done{};
-
     struct bulk_t;
-    inline constexpr bulk_t bulk{};
-
     struct split_t;
-    inline constexpr split_t split{};
     struct when_all_t;
-    inline constexpr when_all_t when_all{};
     struct when_all_with_variant_t;
-    inline constexpr when_all_with_variant_t when_all_with_variant{};
     struct transfer_when_all_t;
-    inline constexpr transfer_when_all_t transfer_when_all{};
     struct transfer_when_all_with_variant_t;
-    inline constexpr transfer_when_all_with_variant_t
-      transfer_when_all_with_variant{};
+    struct done_as_optional_t;
+    struct done_as_error_t;
+    struct ensure_started_t;
+  }
+  inline constexpr <i>senders-adaptors</i>::on_t on{};
+  inline constexpr <i>senders-adaptors</i>::transfer_t transfer{};
+  inline constexpr <i>senders-adaptors</i>::schedule_from_t schedule_from{};
 
+  inline constexpr <i>senders-adaptors</i>::then_t then{};
+  inline constexpr <i>senders-adaptors</i>::upon_error_t upon_error{};
+  inline constexpr <i>senders-adaptors</i>::upon_done_t upon_done{};
+
+  inline constexpr <i>senders-adaptors</i>::let_value_t let_value{};
+  inline constexpr <i>senders-adaptors</i>::let_error_t let_error{};
+  inline constexpr <i>senders-adaptors</i>::let_done_t let_done{};
+
+  inline constexpr <i>senders-adaptors</i>::bulk_t bulk{};
+
+  inline constexpr <i>senders-adaptors</i>::split_t split{};
+  inline constexpr <i>senders-adaptors</i>::when_all_t when_all{};
+  inline constexpr <i>senders-adaptors</i>::when_all_with_variant_t when_all_with_variant{};
+  inline constexpr <i>senders-adaptors</i>::transfer_when_all_t transfer_when_all{};
+  inline constexpr <i>senders-adaptors</i>::transfer_when_all_with_variant_t
+    transfer_when_all_with_variant{};
+
+  namespace <i>senders-adaptors-into-variant</i> { // exposition only
     template&lt;typed_sender S>
       using <i>into-variant-type</i> = <i>see-below</i>; // exposition-only
     template&lt;typed_sender S>
       <i>see-below</i> into_variant(S &&);
-
-    struct done_as_optional_t;
-    inline constexpr done_as_optional_t done_as_optional;
-
-    struct done_as_error_t;
-    inline constexpr done_as_error_t done_as_error;
-
-    // [exec.consumers], sender consumers
-    struct ensure_started_t;
-    inline constexpr ensure_started_t ensure_started{};
-
-    struct start_detached_t;
-    inline constexpr start_detached_t start_detached{};
   }
+  using <i>senders-adaptors-into-variant</i>::into_variant;
+
+  inline constexpr <i>senders-adaptors</i>::done_as_optional_t done_as_optional;
+
+  inline constexpr <i>senders-adaptors</i>::done_as_error_t done_as_error;
+
+  inline constexpr <i>senders-adaptors</i>::ensure_started_t ensure_started{};
+
+  // [exec.consumers], sender consumers
+  namespace <i>senders-consumers</i> { // exposition only
+    struct start_detached_t;
+  }
+  inline constexpr <i>senders-consumers</i>::start_detached_t start_detached{};
 
   // [exec.utils], sender and receiver utilities
   // [exec.utils.rcvr_adptr]
@@ -3044,31 +3104,31 @@ namespace std::execution {
 }
 
 namespace std::this_thread {
-  inline namespace <i>unspecified</i> {
+  namespace <i>this-thread</i> { // exposition only
     template&lt;typed_sender S>
       using <i>sync-wait-type</i> = <i>see-below</i>; // exposition-only
     template&lt;typed_sender S>
       using <i>sync-wait-with-variant-type</i> = <i>see-below</i>; // exposition-only
 
     struct sync_wait_t;
-    inline constexpr sync_wait_t sync_wait{};
     struct sync_wait_with_variant_t;
-    inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
   }
+  inline constexpr <i>this-thread</i>::sync_wait_t sync_wait{};
+  inline constexpr <i>this-thread</i>::sync_wait_with_variant_t sync_wait_with_variant{};
 }
 
 namespace std::execution {
-  inline namespace <i>unspecified</i> {
-    // [exec.execute], one-way execution
+  // [exec.execute], one-way execution
+  namespace <i>execute</i> { // exposition only
     struct execute_t;
-    inline constexpr execute_t execute{};
   }
+  inline constexpr <i>execute</i>::execute_t execute{};
 
   // [exec.as_awaitable]
-  inline namespace <i>unspecified</i> {
+  namespace <i>coro-utils</i> { // exposition only
     struct as_awaitable_t;
-    inline constexpr as_awaitable_t as_awaitable;
   }
+  inline constexpr <i>coro-utils</i>::as_awaitable_t as_awaitable;
 
   // [exec.with_awaitable_senders]
   template &lt;<i>class-type</i> Promise>
@@ -3097,15 +3157,15 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
 
-### `execution::get_delegee_scheduler` <b>[exec.queries.get_delegee_scheduler]</b> ### {#spec-execution.receivers.queries.get_delegee_scheduler}
+### `execution::get_delegatee_scheduler` <b>[exec.queries.get_delegatee_scheduler]</b> ### {#spec-execution.receivers.queries.get_delegatee_scheduler}
 
-1. `execution::get_delegee_scheduler` is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.
+1. `execution::get_delegatee_scheduler` is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.
 
-2. The name `execution::get_delegee_scheduler` denotes a customization point object. For some subexpression `r`, `execution::get_delegee_scheduler(r)` is expression equivalent to:
+2. The name `execution::get_delegatee_scheduler` denotes a customization point object. For some subexpression `r`, `execution::get_delegatee_scheduler(r)` is expression equivalent to:
 
-    1. `tag_invoke(execution::get_delegee_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::get_delegatee_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
 
-    2. Otherwise, `execution::get_delegee_scheduler(r)` is ill-formed.
+    2. Otherwise, `execution::get_delegatee_scheduler(r)` is ill-formed.
 
 ### `execution::get_allocator` <b>[exec.queries.get_allocator]</b> ### {#spec-execution.receivers.queries.get_allocator}
 
@@ -3205,7 +3265,7 @@ enum class forward_progress_guarantee {
 1. A <i>receiver</i> represents the continuation of an asynchronous operation. An asynchronous operation may complete with a (possibly empty) set of values, an error, or it may be cancelled. A receiver has three principal operations corresponding to the three ways
     an asynchronous operation may complete: `set_value`, `set_error`, and `set_done`. These are collectively known as a receiver’s <i>completion-signal operations</i>.
 
-2. The `receiver` concept defines the requirements for a receiver type with an unknown set of value types. The `receiver_of` concept defines the requirements for a receiver type with a known set of value types, whose error type is `std::exception_ptr`.
+2. The `receiver` concept defines the requirements for a receiver type with an unknown set of value types. The `receiver_of` concept defines the requirements for a receiver type with a known set of value types, whose error type is `exception_ptr`.
 
     <pre highlight=c++>
     template&lt;class T, class E = exception_ptr>
@@ -3238,7 +3298,7 @@ enum class forward_progress_guarantee {
 5. `execution::get_scheduler` is used to ask a receiver object for a <i>suggested scheduler</i> to be used by a sender it is connected to when it needs to launch additional work. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
 
-6. `execution::get_delegee_scheduler` is used to ask a receiver object for a <i>delegee scheduler</i> to be used by an algorithm or scheduler to delegate work for the purpose of forward progress delegation. --<i>end note</i>]
+6. `execution::get_delegatee_scheduler` is used to ask a receiver object for a <i>delegatee scheduler</i> to be used by an algorithm or scheduler to delegate work for the purpose of forward progress delegation. --<i>end note</i>]
 
 7. `execution::get_allocator` is used to ask a receiver object for a <i>suggested allocator</i> to be used by a sender it is connected to when it needs to allocate memory. [<i>Note:</i> the presence of this query on a receiver does not bind a sender to use
     its result. --<i>end note</i>]
@@ -3523,7 +3583,7 @@ enum class forward_progress_guarantee {
 
           4. The type <code><i>connect-awaitable-promise</i></code> satisfies `receiver`. [<i>Note:</i> It need not model `receiver`. -- <i>end note</i>].
 
-          5. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `std::tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
+          5. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`, and let `c` be any customization point object excluding those of type `set_value_t`, `set_error_t` and `set_done_t`. Then `tag_invoke(c, p, as...)` is expression-equivalent to `c(b, as...)` for any set of arguments `as...`.
 
           6. The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
 
@@ -4392,7 +4452,7 @@ from the operation before the operation completes.
 
             1. If `execution::set_value(r, ts...)` has been called, returns <code><i>sync-wait-type</i>&lt;S>(<i>decayed-tuple</i>&lt;decltype(ts)...>(ts...))></code>.
 
-            2. If `execution::set_error(r, e...)` has been called, if `decay_t<decltype(e)>` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, throws `e`.
+            2. If `execution::set_error(r, e...)` has been called, if `decay_t<decltype(e)>` is `exception_ptr`, calls `rethrow_exception(e)`. Otherwise, throws `e`.
 
             3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-type</i>&lt;S(nullopt)></code>.
 
@@ -4407,7 +4467,7 @@ from the operation before the operation completes.
 
 4. Any receiver `r` created by an implementation of `sync_wait` and
     `sync_wait_with_variant` shall implement the `get_scheduler` and
-    `get_delegee_scheduler` receiver queries.
+    `get_delegatee_scheduler` receiver queries.
     The scheduler returned from the queries for the receiver created by the
     default implementation shall return an implementation-defined scheduler that
     is driven by the waiting thread, such that scheduled tasks run on the thread
@@ -4448,6 +4508,7 @@ from the operation before the operation completes.
     </pre>
 
 1. `receiver_adaptor` is used to simplify the implementation of one receiver type in terms of another. It defines `tag_invoke` overloads that forward to named members if they exist, and to the adapted receiver otherwise.
+Any query <code><i>cpo</i></code> defined in the base receiver (e.g., `get_stop_token`) for which <code>forwarding_receiver_query(<i>cpo</i>)</code> evaluates to `true` is forwarded to the new receiver.
 
 2. This section makes use of the following exposition-only entities:
 
@@ -4556,13 +4617,13 @@ from the operation before the operation completes.
 
         1. <i>Effects:</i> Equivalent to `static_cast<Derived&&>(self).set_value(static_cast<As&&>(as)...)`
 
-        2. <i>Remarks:</i> The exception specification is equivalent to `noexcept(static_cast<Derived&&>(self).set_value(static_cast<As&&>(as)...))`.
+        2. <i>Remarks:</i> The exception specification is `noexcept(static_cast<Derived&&>(self).set_value(static_cast<As&&>(as)...))`.
 
     3. Otherwise:
 
         1. <i>Effects:</i> Equivalent to <code>execution::set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...)</code>
 
-        2. <i>Remarks:</i> The exception specification is equivalent to <code>noexcept(set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...))</code>
+        2. <i>Remarks:</i> The exception specification is <code>noexcept(set_value(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;As&amp;&amp;>(as)...))</code>
 
     <pre>
     template &lt;class E, class D = Derived>
@@ -4923,9 +4984,9 @@ from the operation before the operation completes.
 
                 <pre highlight="c++">
                 if (result_.index()) == 2)
-                  rethrow_exception(std::get&lt;2>(result_));
+                  rethrow_exception(get&lt;2>(result_));
                 if constexpr (!is_void_v&lt;value_t>)
-                  return static_cast&lt;value_t&&>(std::get&lt;1>(result_));
+                  return static_cast&lt;value_t&&>(get&lt;1>(result_));
                 </pre>
 
 2. `as_awaitable` is a customization point object. For some subexpressions `e` and `p` where `p` is an lvalue, `E` names the type `decltype((e))` and `P` names the type `decltype((p))`, `as_awaitable(e, p)` is expression-equivalent to the following:

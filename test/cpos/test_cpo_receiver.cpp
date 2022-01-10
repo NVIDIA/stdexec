@@ -89,21 +89,21 @@ TEST_CASE("set_value with a value passes the value to the receiver", "[cpo][cpo_
 
 TEST_CASE("can call set_value on a receiver with plain value type", "[cpo][cpo_receiver]") {
   static_assert(
-      std::tag_invocable<ex::set_value_t, recv_value, int>, "cannot call set_value on recv_value");
+      std::invocable<ex::set_value_t, recv_value, int>, "cannot call set_value on recv_value");
   int val = 0;
   ex::set_value(recv_value{&val}, 10);
   REQUIRE(val == 10);
 }
 TEST_CASE("can call set_value on a receiver with r-value ref type", "[cpo][cpo_receiver]") {
-  static_assert(std::tag_invocable<ex::set_value_t, recv_rvalref, int>,
-      "cannot call set_value on recv_rvalref");
+  static_assert(
+      std::invocable<ex::set_value_t, recv_rvalref, int>, "cannot call set_value on recv_rvalref");
   int val = 0;
   ex::set_value(recv_rvalref{&val}, 10);
   REQUIRE(val == 10);
 }
 TEST_CASE("can call set_value on a receiver with ref type", "[cpo][cpo_receiver]") {
   static_assert(
-      std::tag_invocable<ex::set_value_t, recv_ref&, int>, "cannot call set_value on recv_ref");
+      std::invocable<ex::set_value_t, recv_ref&, int>, "cannot call set_value on recv_ref");
   int val = 0;
   recv_ref recv{&val};
   ex::set_value(recv, 10);
@@ -111,7 +111,7 @@ TEST_CASE("can call set_value on a receiver with ref type", "[cpo][cpo_receiver]
 }
 TEST_CASE("can call set_value on a receiver with const ref type", "[cpo][cpo_receiver]") {
   static_assert(
-      std::tag_invocable<ex::set_value_t, recv_cref, int>, "cannot call set_value on recv_cref");
+      std::invocable<ex::set_value_t, recv_cref, int>, "cannot call set_value on recv_cref");
   int val = 0;
   ex::set_value(recv_cref{&val}, 10);
   REQUIRE(val == 10);
@@ -119,21 +119,21 @@ TEST_CASE("can call set_value on a receiver with const ref type", "[cpo][cpo_rec
 
 TEST_CASE("can call set_error on a receiver with plain value type", "[cpo][cpo_receiver]") {
   static_assert(
-      std::tag_invocable<ex::set_error_t, recv_value, int>, "cannot call set_error on recv_value");
+      std::invocable<ex::set_error_t, recv_value, int>, "cannot call set_error on recv_value");
   int val = 0;
   ex::set_error(recv_value{&val}, 10);
   REQUIRE(val == -10);
 }
 TEST_CASE("can call set_error on a receiver with r-value ref type", "[cpo][cpo_receiver]") {
-  static_assert(std::tag_invocable<ex::set_error_t, recv_rvalref, int>,
-      "cannot call set_error on recv_rvalref");
+  static_assert(
+      std::invocable<ex::set_error_t, recv_rvalref, int>, "cannot call set_error on recv_rvalref");
   int val = 0;
   ex::set_error(recv_rvalref{&val}, 10);
   REQUIRE(val == -10);
 }
 TEST_CASE("can call set_error on a receiver with ref type", "[cpo][cpo_receiver]") {
   static_assert(
-      std::tag_invocable<ex::set_error_t, recv_ref&, int>, "cannot call set_error on recv_ref");
+      std::invocable<ex::set_error_t, recv_ref&, int>, "cannot call set_error on recv_ref");
   int val = 0;
   recv_ref recv{&val};
   ex::set_error(recv, 10);
@@ -141,35 +141,34 @@ TEST_CASE("can call set_error on a receiver with ref type", "[cpo][cpo_receiver]
 }
 TEST_CASE("can call set_error on a receiver with const ref type", "[cpo][cpo_receiver]") {
   static_assert(
-      std::tag_invocable<ex::set_error_t, recv_cref, int>, "cannot call set_error on recv_cref");
+      std::invocable<ex::set_error_t, recv_cref, int>, "cannot call set_error on recv_cref");
   int val = 0;
   ex::set_error(recv_cref{&val}, 10);
   REQUIRE(val == -10);
 }
 
 TEST_CASE("can call set_done on a receiver with plain value type", "[cpo][cpo_receiver]") {
-  static_assert(
-      std::tag_invocable<ex::set_done_t, recv_value>, "cannot call set_done on recv_value");
+  static_assert(std::invocable<ex::set_done_t, recv_value>, "cannot call set_done on recv_value");
   int val = 0;
   ex::set_done(recv_value{&val});
   REQUIRE(val == INT_MAX);
 }
 TEST_CASE("can call set_done on a receiver with r-value ref type", "[cpo][cpo_receiver]") {
   static_assert(
-      std::tag_invocable<ex::set_done_t, recv_rvalref>, "cannot call set_done on recv_rvalref");
+      std::invocable<ex::set_done_t, recv_rvalref>, "cannot call set_done on recv_rvalref");
   int val = 0;
   ex::set_done(recv_rvalref{&val});
   REQUIRE(val == INT_MAX);
 }
 TEST_CASE("can call set_done on a receiver with ref type", "[cpo][cpo_receiver]") {
-  static_assert(std::tag_invocable<ex::set_done_t, recv_ref&>, "cannot call set_done on recv_ref");
+  static_assert(std::invocable<ex::set_done_t, recv_ref&>, "cannot call set_done on recv_ref");
   int val = 0;
   recv_ref recv{&val};
   ex::set_done(recv);
   REQUIRE(val == INT_MAX);
 }
 TEST_CASE("can call set_done on a receiver with const ref type", "[cpo][cpo_receiver]") {
-  static_assert(std::tag_invocable<ex::set_done_t, recv_cref>, "cannot call set_done on recv_cref");
+  static_assert(std::invocable<ex::set_done_t, recv_cref>, "cannot call set_done on recv_cref");
   int val = 0;
   ex::set_done(recv_cref{&val});
   REQUIRE(val == INT_MAX);

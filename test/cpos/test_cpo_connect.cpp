@@ -60,10 +60,7 @@ TEST_CASE("can call connect on an appropriate types", "[cpo][cpo_connect]") {
 
 TEST_CASE("cannot connect sender with invalid receiver", "[cpo][cpo_connect]") {
   static_assert(ex::sender<my_sender_unconstrained>);
-  // REQUIRE_FALSE(std::tag_invocable<ex::connect_t, my_sender_unconstrained, int>);
-  // TODO: this should not work
-  // invalid check:
-  REQUIRE(std::tag_invocable<ex::connect_t, my_sender_unconstrained, int>);
+  REQUIRE_FALSE(std::invocable<ex::connect_t, my_sender_unconstrained, int>);
 }
 
 struct strange_receiver {

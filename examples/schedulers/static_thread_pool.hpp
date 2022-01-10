@@ -92,6 +92,12 @@ namespace example {
         return s.make_sender_();
       }
 
+      friend std::execution::forward_progress_guarantee tag_invoke(
+          std::execution::get_forward_progress_guarantee_t,
+          const static_thread_pool&) noexcept {
+        return std::execution::forward_progress_guarantee::parallel;
+      }
+
       friend class static_thread_pool;
       explicit scheduler(static_thread_pool& pool) noexcept
         : pool_(&pool) {}

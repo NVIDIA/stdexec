@@ -51,6 +51,12 @@ namespace example {
       return {};
     }
 
+    friend std::execution::forward_progress_guarantee tag_invoke(
+        std::execution::get_forward_progress_guarantee_t,
+        const inline_scheduler&) noexcept {
+      return std::execution::forward_progress_guarantee::weakly_parallel;
+    }
+
     bool operator==(const inline_scheduler&) const noexcept = default;
   };
 }
