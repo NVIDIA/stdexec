@@ -3098,9 +3098,7 @@ namespace std::execution {
   // [exec.queries], general queries
   namespace <i>general-queries</i> { // exposition only
     struct get_scheduler_t;
-    inline constexpr get_scheduler_t get_scheduler{};
     struct get_delegatee_scheduler_t;
-    inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
     struct get_allocator_t;
     struct get_stop_token_t;
   }
