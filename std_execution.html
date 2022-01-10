@@ -3497,6 +3497,12 @@ for <code class="highlight"><c- n>set_error</c-></code>.</p>
      <p>The value of <code class="highlight"><c- n>sends_done</c-></code> for the default sender traits of types that are
 generally awaitable was changed from <code class="highlight">false</code> to <code class="highlight">true</code> to acknowledge the
 fact that some coroutine types are generally awaitable and may implement the <code class="highlight"><c- n>unhandled_done</c-><c- p>()</c-></code> protocol in their promise types.</p>
+    <li data-md>
+     <p>Fix the incorrect use of inline namespaces in the <code class="highlight"><c- o>&lt;</c-><c- n>execution</c-><c- o>></c-></code> header.</p>
+    <li data-md>
+     <p>Shorten the stable names for the sections.</p>
+    <li data-md>
+     <p><code class="highlight"><c- n>sync_wait</c-></code> now handles <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>error_code</c-></code> specially by throwing a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>system_error</c-></code> on failure.</p>
    </ul>
    <p><b>Enhancements:</b></p>
    <ul>
