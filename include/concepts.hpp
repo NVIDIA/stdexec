@@ -110,4 +110,14 @@ namespace std {
 
   template <class _Trait>
     concept __is_true = _Trait::value;
+
+  template <class, template <class...> class>
+    constexpr bool __is_instance_of_ = false;
+  template <class... _As, template <class...> class _T>
+    constexpr bool __is_instance_of_<_T<_As...>, _T> = true;
+
+  template <class _Ty, template <class...> class _T>
+    concept __is_instance_of =
+      __is_instance_of_<_Ty, _T>;
+
 } // namespace std

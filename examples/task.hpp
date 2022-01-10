@@ -23,6 +23,9 @@
 #include <coroutine.hpp>
 #include <execution.hpp>
 
+_PRAGMA_PUSH()
+_PRAGMA_IGNORE("-Wundefined-inline")
+
 template <template<class...> class T, class... As>
   concept well_formed =
     requires { typename T<As...>; };
@@ -31,6 +34,12 @@ template <class T>
   concept stop_token_provider =
     requires(const T& t) {
       std::execution::get_stop_token(t);
+    };
+
+template <class T>
+  concept indirect_stop_token_provider =
+    requires(const T& t) {
+      { std::execution::get_env(t) } -> stop_token_provider;
     };
 
 template <std::invocable Fn>
@@ -64,11 +73,11 @@ class default_task_context_impl {
       {}
     };
 
-  template <std::derived_from<default_task_context_impl> Self>
-    friend auto tag_invoke(std::execution::get_stop_token_t, const Self& self)
-        noexcept -> std::in_place_stop_token {
-      return self.stop_token_;
-    }
+  friend auto tag_invoke(
+        std::execution::get_stop_token_t, const default_task_context_impl& self)
+      noexcept -> std::in_place_stop_token {
+    return self.stop_token_;
+  }
 
 public:
   default_task_context_impl() = default;
@@ -77,12 +86,10 @@ public:
     return stop_token_.stop_requested();
   }
 
-  template <class DerivedPromise>
+  template <class ThisPromise>
     using promise_context_t = default_task_context_impl;
 
-  template <
-      std::derived_from<default_task_context_impl>,
-      class ParentPromise = void>
+  template <class ThisPromise, class ParentPromise = void>
     using awaiter_context_t = awaiter_context<ParentPromise>;
 };
 
@@ -90,9 +97,9 @@ public:
 // This is the context to be associated with basic_task's awaiter when
 // the parent coroutine's promise type is known, is a stop_token_provider,
 // and its stop token type is neither in_place_stop_token nor unstoppable.
-template <stop_token_provider ParentPromise>
+template <indirect_stop_token_provider ParentPromise>
   struct default_task_context_impl::awaiter_context<ParentPromise> {
-    using stop_token_t = std::execution::stop_token_of_t<ParentPromise&>;
+    using stop_token_t = std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>;
     using stop_callback_t =
       typename stop_token_t::template callback_type<forward_stop_request>;
 
@@ -102,7 +109,7 @@ template <stop_token_provider ParentPromise>
         // stop_source when stop is requested on the parent coroutine's stop
         // token.
       : stop_callback_{
-          std::execution::get_stop_token(parent),
+          std::execution::get_stop_token(std::execution::get_env(parent)),
           forward_stop_request{stop_source_}} {
       static_assert(std::is_nothrow_constructible_v<
           stop_callback_t, stop_token_t, forward_stop_request>);
@@ -115,22 +122,23 @@ template <stop_token_provider ParentPromise>
 
 // If the parent coroutine's type has a stop token of type in_place_stop_token,
 // we don't need to register a stop callback.
-template <stop_token_provider ParentPromise>
+template <indirect_stop_token_provider ParentPromise>
     requires std::same_as<
         std::in_place_stop_token,
-        std::execution::stop_token_of_t<ParentPromise&>>
+        std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>>
   struct default_task_context_impl::awaiter_context<ParentPromise> {
     explicit awaiter_context(
         default_task_context_impl& self, ParentPromise& parent) noexcept {
-      self.stop_token_ = std::execution::get_stop_token(parent);
+      self.stop_token_ =
+        std::execution::get_stop_token(std::execution::get_env(parent));
     }
   };
 
 // If the parent coroutine's stop token is unstoppable, there's no point
 // forwarding stop tokens or stop requests at all.
-template <stop_token_provider ParentPromise>
+template <indirect_stop_token_provider ParentPromise>
     requires std::unstoppable_token<
-        std::execution::stop_token_of_t<ParentPromise&>>
+        std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>>
   struct default_task_context_impl::awaiter_context<ParentPromise> {
     explicit awaiter_context(
         default_task_context_impl&, ParentPromise&) noexcept
@@ -145,19 +153,24 @@ template<>
         default_task_context_impl& self, auto&) noexcept
     {}
 
-    template <stop_token_provider ParentPromise>
+    template <indirect_stop_token_provider ParentPromise>
       explicit awaiter_context(
           default_task_context_impl& self, ParentPromise& parent) {
         // Register a callback that will request stop on this basic_task's
         // stop_source when stop is requested on the parent coroutine's stop
         // token.
-        using stop_token_t = std::execution::stop_token_of_t<ParentPromise&>;
+        using stop_token_t =
+          std::execution::stop_token_of_t<
+            std::execution::env_of_t<ParentPromise>>;
         using stop_callback_t =
           typename stop_token_t::template callback_type<forward_stop_request>;
 
         if constexpr (std::same_as<stop_token_t, std::in_place_stop_token>) {
-          self.stop_token_ = std::execution::get_stop_token(parent);
-        } else if(auto token = std::execution::get_stop_token(parent);
+          self.stop_token_ =
+            std::execution::get_stop_token(std::execution::get_env(parent));
+        } else if(auto token =
+                    std::execution::get_stop_token(
+                      std::execution::get_env(parent));
                   token.stop_possible()) {
           stop_callback_.emplace<stop_callback_t>(
               std::move(token), forward_stop_request{stop_source_});
@@ -174,7 +187,8 @@ template <class ValueType>
 
 template <class Promise, class ParentPromise = void>
   using awaiter_context_t =
-    typename Promise::template awaiter_context_t<Promise, ParentPromise>;
+    typename std::execution::env_of_t<Promise>::
+      template awaiter_context_t<Promise, ParentPromise>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // In a base class so it can be specialized when T is void:
@@ -227,7 +241,6 @@ private:
 
   struct _promise
     : _promise_base<T>
-    , Context::template promise_context_t<_promise>
     , std::execution::with_awaitable_senders<_promise> {
     basic_task get_return_object() noexcept {
       return basic_task(__coro::coroutine_handle<_promise>::from_promise(*this));
@@ -241,6 +254,12 @@ private:
     void unhandled_exception() noexcept {
       this->data_.template emplace<2>(std::current_exception());
     }
+    using _context_t =
+      typename Context::template promise_context_t<_promise>;
+    friend _context_t tag_invoke(std::execution::get_env_t, const _promise& self) {
+      return self.context_;
+    }
+    _context_t context_;
   };
 
   template <class ParentPromise = void>
@@ -256,7 +275,7 @@ private:
     await_suspend(__coro::coroutine_handle<ParentPromise2> parent) noexcept {
       static_assert(std::__one_of<ParentPromise, ParentPromise2, void>);
       coro_.promise().set_continuation(parent);
-      context_.emplace(coro_.promise(), parent.promise());
+      context_.emplace(coro_.promise().context_, parent.promise());
       if constexpr (requires { coro_.promise().stop_requested() ? 0 : 1; }) {
         if (coro_.promise().stop_requested())
           return parent.promise().unhandled_done();
@@ -289,6 +308,19 @@ private:
     return _task_awaitable<>{std::exchange(self.coro_, {})};
   }
 
+  // Specify basic_task's sender traits
+  //   This is only necessary when basic_task is not generally awaitable
+  //   owing to constraints imposed by its Context parameter.
+  template <class... Ts>
+    using _task_traits_t =
+      std::execution::completion_signatures<
+        std::execution::set_value_t(Ts...),
+        std::execution::set_error_t(std::exception_ptr),
+        std::execution::set_done_t()>;
+
+  friend auto tag_invoke(std::execution::get_sender_traits_t, const basic_task&, auto)
+    -> std::conditional_t<std::is_void_v<T>, _task_traits_t<>, _task_traits_t<T>>;
+
   explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
     : coro_(__coro)
   {}
@@ -299,23 +331,4 @@ private:
 template <class T>
   using task = basic_task<T, default_task_context<T>>;
 
-////////////////////////////////////////////////////////////////////////////////
-// Specify basic_task's sender traits
-//   This is only necessary when basic_task is not generally awaitable
-//   owing to constraints imposed by its Context parameter.
-template <class... Ts>
-  using _task_traits =
-    std::execution::completion_signatures<
-      std::execution::set_value_t(Ts...),
-      std::execution::set_error_t(std::exception_ptr),
-      std::execution::set_done_t()>;
-
-namespace std::execution {
-  template <class T, class Context>
-    struct sender_traits<::basic_task<T, Context>>
-      : _task_traits<T> {};
-
-  template <class Context>
-    struct sender_traits<::basic_task<void, Context>>
-      : _task_traits<> {};
-}
+_PRAGMA_POP()

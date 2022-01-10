@@ -189,16 +189,26 @@ namespace std {
   template <class _Fn, class _First, class _Second, class _Third>
     concept __minvocable3 = __valid3<_Fn::template __f, _First, _Second, _Third>;
 
-  template <template<class...> class _T>
+  template <template <class...> class _T>
     struct __defer {
-      template <class... _Args> requires __valid<_T, _Args...>
+      template <class... _Args>
+          requires __valid<_T, _Args...>
         struct __f_ { using type = _T<_Args...>; };
-      template <class _A> requires __valid<_T, _A>
+      template <class _A>
+          requires requires { typename _T<_A>; }
         struct __f_<_A> { using type = _T<_A>; };
-      template <class _A, class _B> requires __valid<_T, _A, _B>
+      template <class _A, class _B>
+          requires requires { typename _T<_A, _B>; }
         struct __f_<_A, _B> { using type = _T<_A, _B>; };
-      template <class _A, class _B, class _C> requires __valid<_T, _A, _B, _C>
+      template <class _A, class _B, class _C>
+          requires requires { typename _T<_A, _B, _C>; }
         struct __f_<_A, _B, _C> { using type = _T<_A, _B, _C>; };
+      template <class _A, class _B, class _C, class _D>
+          requires requires { typename _T<_A, _B, _C, _D>; }
+        struct __f_<_A, _B, _C, _D> { using type = _T<_A, _B, _C, _D>; };
+      template <class _A, class _B, class _C, class _D, class _E>
+          requires requires { typename _T<_A, _B, _C, _D, _E>; }
+        struct __f_<_A, _B, _C, _D, _E> { using type = _T<_A, _B, _C, _D, _E>; };
       template <class... _Args>
         using __f = __t<__f_<_Args...>>;
     };
@@ -236,16 +246,31 @@ namespace std {
     struct __concat {
       template <class...>
         struct __f_ {};
-      template <template <class...> class _A, class... _As,
-                template <class...> class _B, class... _Bs,
-                class... _Tail>
-        struct __f_<_A<_As...>, _B<_Bs...>, _Tail...>
-          : __f_<__types<_As..., _Bs...>, _Tail...> {};
       template <template <class...> class _A, class... _As>
           requires __minvocable<_Continuation, _As...>
         struct __f_<_A<_As...>> {
           using type = __minvoke<_Continuation, _As...>;
         };
+      template <template <class...> class _A, class... _As,
+                template <class...> class _B, class... _Bs,
+                class... _Tail>
+        struct __f_<_A<_As...>, _B<_Bs...>, _Tail...>
+          : __f_<__types<_As..., _Bs...>, _Tail...> {};
+      template <template <class...> class _A, class... _As,
+                template <class...> class _B, class... _Bs,
+                template <class...> class _C, class... _Cs,
+                class... _Tail>
+        struct __f_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _Tail...>
+          : __f_<__types<_As..., _Bs..., _Cs...>, _Tail...> {};
+      template <template <class...> class _A, class... _As,
+                template <class...> class _B, class... _Bs,
+                template <class...> class _C, class... _Cs,
+                template <class...> class _D, class... _Ds,
+                class... _Tail>
+        struct __f_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
+          : __f_<__types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
+      template <>
+        struct __f_<> : __f_<__types<>> {};
       template <class... _Args>
         using __f = __t<__f_<_Args...>>;
     };
@@ -370,9 +395,6 @@ namespace std {
     using __single_or_void_t = __t<__front<_As..., void>>;
 
   template <class _Fun, class... _As>
-    using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
-
-  template <class _Fun, class... _As>
     concept __callable =
       requires (_Fun&& __fun, _As&&... __as) {
         ((_Fun&&) __fun)((_As&&) __as...);
@@ -383,6 +405,19 @@ namespace std {
       requires (_Fun&& __fun, _As&&... __as) {
         { ((_Fun&&) __fun)((_As&&) __as...) } noexcept;
       };
+  template <class _Fun, class... _As>
+    using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
+
+  // For working around clang's lack of support for CWG#2369:
+  // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369
+  struct __qcall_result {
+    template <class _Fun, class... _As>
+      using __f = __call_result_t<_Fun, _As...>;
+  };
+  template <bool _Enable, class _Fun, class... _As>
+    using __call_result_if_t =
+      typename __if<__bool<_Enable>, __qcall_result, __>
+        ::template __f<_Fun, _As...>;
 
   // For emplacing non-movable types into optionals:
   template <class _Fn>
@@ -395,4 +430,7 @@ namespace std {
     };
   template <class _Fn>
     __conv(_Fn) -> __conv<_Fn>;
+
+  template <class _T>
+    using __cref_t = const remove_reference_t<_T>&;
 }

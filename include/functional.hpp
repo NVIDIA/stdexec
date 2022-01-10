@@ -20,61 +20,63 @@
 
 #include <functional>
 
+// A std::declval that doesn't instantiate templates:
+#define _DECLVAL(...) \
+  ((static_cast<__VA_ARGS__(*)()noexcept>(0))())
+
 namespace std {
   // [func.tag_invoke], tag_invoke
-  inline namespace __tag_invoke {
-    namespace __impl {
-      void tag_invoke();
+  namespace __tag_invoke {
+    void tag_invoke();
 
-      // NOT TO SPEC: Don't require tag_invocable to subsume invocable.
-      // std::invoke is more expensive at compile time than necessary,
-      // and results in diagnostics that are more verbose than necessary.
-      template <class _Tag, class... _Args>
-        concept tag_invocable =
-          requires (_Tag __tag, _Args&&... __args) {
-            tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
-          };
+    // NOT TO SPEC: Don't require tag_invocable to subsume invocable.
+    // std::invoke is more expensive at compile time than necessary,
+    // and results in diagnostics that are more verbose than necessary.
+    template <class _Tag, class... _Args>
+      concept tag_invocable =
+        requires (_Tag __tag, _Args&&... __args) {
+          tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
+        };
 
-      // NOT TO SPEC: nothrow_tag_invocable subsumes tag_invocable
-      template<class _Tag, class... _Args>
-        concept nothrow_tag_invocable =
-          tag_invocable<_Tag, _Args...> &&
-          requires (_Tag __tag, _Args&&... __args) {
-            { tag_invoke((_Tag&&) __tag, (_Args&&) __args...) } noexcept;
-          };
+    // NOT TO SPEC: nothrow_tag_invocable subsumes tag_invocable
+    template<class _Tag, class... _Args>
+      concept nothrow_tag_invocable =
+        tag_invocable<_Tag, _Args...> &&
+        requires (_Tag __tag, _Args&&... __args) {
+          { tag_invoke((_Tag&&) __tag, (_Args&&) __args...) } noexcept;
+        };
 
-      template<class _Tag, class... _Args>
-        using tag_invoke_result_t =
-          decltype(tag_invoke(__declval<_Tag>(), __declval<_Args>()...));
+    template<class _Tag, class... _Args>
+      using tag_invoke_result_t =
+        decltype(tag_invoke(__declval<_Tag>(), __declval<_Args>()...));
 
-      struct tag_invoke_t {
-        template <class _Tag, class... _Args>
-            requires tag_invocable<_Tag, _Args...>
-          constexpr decltype(auto) operator()(_Tag __tag, _Args&&... __args) const
-            noexcept(nothrow_tag_invocable<_Tag, _Args...>) {
-            return tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
-          }
+    template<class _Tag, class... _Args>
+      struct tag_invoke_result {};
+
+    template<class _Tag, class... _Args>
+        requires tag_invocable<_Tag, _Args...>
+      struct tag_invoke_result<_Tag, _Args...> {
+        using type = tag_invoke_result_t<_Tag, _Args...>;
       };
-    } // namespace __impl
 
-    inline constexpr struct tag_invoke_t : __impl::tag_invoke_t {} tag_invoke {};
-  }
+    struct __tag {
+      template <class _Tag, class... _Args>
+          requires tag_invocable<_Tag, _Args...>
+        constexpr auto operator()(_Tag __tag, _Args&&... __args) const
+          noexcept(nothrow_tag_invocable<_Tag, _Args...>)
+          -> tag_invoke_result_t<_Tag, _Args...> {
+          return tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
+        }
+    };
+  } // namespace __tag_invoke
+
+  inline constexpr __tag_invoke::__tag tag_invoke {};
 
   template<auto& _Tag>
     using tag_t = decay_t<decltype(_Tag)>;
 
-  using __impl::tag_invocable;
-  using __impl::nothrow_tag_invocable;
-  using __impl::tag_invoke_result_t;
-
-  template<class _Tag, class... _Args>
-    struct tag_invoke_result
-      : __minvoke<
-          __if<
-            __bool<tag_invocable<_Tag, _Args...>>,
-            __compose<__q1<__x>, __q<tag_invoke_result_t>>,
-            __constant<__>>,
-          _Tag,
-          _Args...>
-    {};
+  using __tag_invoke::tag_invocable;
+  using __tag_invoke::nothrow_tag_invocable;
+  using __tag_invoke::tag_invoke_result_t;
+  using __tag_invoke::tag_invoke_result;
 }

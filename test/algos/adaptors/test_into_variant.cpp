@@ -29,7 +29,7 @@ TEST_CASE("into_variant returns a sender", "[adaptors][into_variant]") {
 }
 TEST_CASE("into_variant returns a typed_sender", "[adaptors][into_variant]") {
   auto snd = ex::into_variant(ex::just(11));
-  static_assert(ex::typed_sender<decltype(snd)>);
+  static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("into_variant simple example", "[adaptors][into_variant]") {
@@ -52,10 +52,7 @@ TEST_CASE("into_variant returning void can we waited on", "[adaptors][into_varia
 TEST_CASE("TODO: into_variant with senders that sends multiple values at once",
     "[adaptors][into_variant]") {
   ex::sender auto snd = ex::just(3, 0.1415) | ex::into_variant();
-  // TODO: into_variant with multiple input values doesn't work
-  // wait_for_value(std::move(snd), std::variant<std::tuple<int, double>>{std::make_tuple(3,
-  // 0.1415)}); Invalid check:
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
+  wait_for_value(std::move(snd), std::variant<std::tuple<int, double>>{std::make_tuple(3, 0.1415)});
 }
 
 TEST_CASE("into_variant with senders that have multiple alternatives", "[adaptors][into_variant]") {
@@ -109,11 +106,8 @@ TEST_CASE("TODO: into_variant has the values_type corresponding to the given val
   check_val_types<type_array<type_array<std::variant<std::tuple<double>>>>>(
       ex::just(3.1415) | ex::into_variant());
 
-  // TODO: check why this doesn't work
-  // check_val_types<type_array<type_array<std::variant<std::tuple<int, double>>>>>(
-  //     ex::just(3, 0.1415) | ex::into_variant());
-  // invalid check:
-  check_val_types<type_array<>>(ex::just(3, 0.1415) | ex::into_variant());
+  check_val_types<type_array<type_array<std::variant<std::tuple<int, double>>>>>(
+      ex::just(3, 0.1415) | ex::into_variant());
 
   check_val_types<type_array<type_array<std::variant<std::tuple<int>, std::tuple<std::string>>>>>(
       ex::just(13)                                                                     //

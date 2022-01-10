@@ -33,7 +33,7 @@ TEST_CASE("let_done returns a sender", "[adaptors][let_done]") {
 }
 TEST_CASE("let_done returns a typed_sender", "[adaptors][let_done]") {
   auto snd = ex::let_done(ex::just(), [] { return ex::just(); });
-  static_assert(ex::typed_sender<decltype(snd)>);
+  static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("let_done simple example", "[adaptors][let_done]") {

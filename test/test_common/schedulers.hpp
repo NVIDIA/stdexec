@@ -48,14 +48,14 @@ struct impulse_scheduler {
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
       // Enqueue another command to the list of all commands
       // The scheduler will start this, whenever start_next() is called
-      self.all_commands_->emplace_back([recv = (R &&) self.receiver_]() {
-        if (std::execution::get_stop_token(recv).stop_requested()) {
-          ex::set_done((R &&) recv);
+      self.all_commands_->emplace_back([&self]() {
+        if (ex::get_stop_token(ex::get_env(self.receiver_)).stop_requested()) {
+          ex::set_done((R &&) self.receiver_);
         } else {
           try {
-            ex::set_value((R &&) recv);
+            ex::set_value((R &&) self.receiver_);
           } catch (...) {
-            ex::set_error((R &&) recv, std::current_exception());
+            ex::set_error((R &&) self.receiver_, std::current_exception());
           }
         }
       });
@@ -68,8 +68,9 @@ struct impulse_scheduler {
                          ex::set_done_t()> {
     cmd_vec_t* all_commands_;
 
-    template <typename R>
-    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
+    template <ex::receiver_of R>
+    friend oper<std::decay_t<R>>
+    tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {self.all_commands_, (R &&) r};
     }
 

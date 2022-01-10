@@ -18,6 +18,7 @@
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/type_helpers.hpp>
 
 namespace ex = std::execution;
 
@@ -34,7 +35,7 @@ TEST_CASE("transfer_when_all returns a sender", "[adaptors][transfer_when_all]")
 }
 TEST_CASE("transfer_when_all returns a typed_sender", "[adaptors][transfer_when_all]") {
   auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
-  static_assert(ex::typed_sender<decltype(snd)>);
+  static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("TODO: transfer_when_all simple example", "[adaptors][transfer_when_all]") {
@@ -69,7 +70,7 @@ TEST_CASE("transfer_when_all_with_variant returns a sender", "[adaptors][transfe
 TEST_CASE(
     "transfer_when_all_with_variant returns a typed_sender", "[adaptors][transfer_when_all]") {
   auto snd = ex::transfer_when_all_with_variant(inline_scheduler{}, ex::just(3), ex::just(0.1415));
-  static_assert(ex::typed_sender<decltype(snd)>);
+  static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("TODO: transfer_when_all_with_variant basic example", "[adaptors][transfer_when_all]") {

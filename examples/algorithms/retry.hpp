@@ -25,6 +25,8 @@ using _copy_cvref_t = std::__member_t<From, To>;
 template <class From, class To>
 concept _decays_to = std::same_as<std::decay_t<From>, To>;
 
+namespace stdex = std::execution;
+
 ///////////////////////////////////////////////////////////////////////////////
 // retry algorithm:
 
@@ -40,68 +42,70 @@ struct _conv {
   }
 };
 
+template<class S, class R>
+struct _op;
+
 // pass through all customizations except set_error, which retries the operation.
-template<class O, class R>
+template<class S, class R>
 struct _retry_receiver
-  : std::execution::receiver_adaptor<_retry_receiver<O, R>> {
-  O* o_;
+  : stdex::receiver_adaptor<_retry_receiver<S, R>> {
+  _op<S, R>* o_;
 
   R&& base() && noexcept { return (R&&) o_->r_; }
   const R& base() const & noexcept { return o_->r_; }
 
-  explicit _retry_receiver(O* o) : o_(o) {}
+  explicit _retry_receiver(_op<S, R>* o) : o_(o) {}
 
   void set_error(auto&&) && noexcept {
     o_->_retry(); // This causes the op to be retried
   }
 };
 
-template<class S>
-struct _retry_sender : std::execution::sender_base {
+// Hold the nested operation state in an optional so we can
+// re-construct and re-start it if the operation fails.
+template<class S, class R>
+struct _op {
   S s_;
-  explicit _retry_sender(S s) : s_((S&&) s) {}
+  R r_;
+  std::optional<
+      stdex::connect_result_t<S&, _retry_receiver<S, R>>> o_;
 
-  // Hold the nested operation state in an optional so we can
-  // re-construct and re-start it if the operation fails.
-  template<class R>
-  struct _op {
-    S s_;
-    R r_;
-    std::optional<
-        std::execution::connect_result_t<S&, _retry_receiver<_op, R>>> o_;
+  _op(S s, R r): s_((S&&)s), r_((R&&)r), o_{_connect()} {}
+  _op(_op&&) = delete;
 
-    _op(S s, R r): s_((S&&)s), r_((R&&)r), o_{_connect()} {}
-    _op(_op&&) = delete;
-
-    auto _connect() noexcept {
-      return _conv{[this] {
-        return std::execution::connect(s_, _retry_receiver<_op, R>{this});
-      }};
-    }
-    void _retry() noexcept try {
-      o_.emplace(_connect()); // potentially throwing
-      std::execution::start(*o_);
-    } catch(...) {
-      std::execution::set_error((R&&) r_, std::current_exception());
-    }
-    friend void tag_invoke(std::execution::start_t, _op& o) noexcept {
-      std::execution::start(*o.o_);
-    }
-  };
-
-  template<std::execution::receiver R>
-    requires std::execution::sender_to<S&, R>
-  friend _op<R> tag_invoke(std::execution::connect_t, _retry_sender&& self, R r) {
-    return {(S&&) self.s_, (R&&) r};
+  auto _connect() noexcept {
+    return _conv{[this] {
+      return stdex::connect(s_, _retry_receiver<S, R>{this});
+    }};
+  }
+  void _retry() noexcept try {
+    o_.emplace(_connect()); // potentially throwing
+    stdex::start(*o_);
+  } catch(...) {
+    stdex::set_error((R&&) r_, std::current_exception());
+  }
+  friend void tag_invoke(stdex::start_t, _op& o) noexcept {
+    stdex::start(*o.o_);
   }
 };
 
-namespace std::execution {
-  template <typed_sender S>
-  struct sender_traits<_retry_sender<S>> : sender_traits<S> { };
-}
+template<class S>
+struct _retry_sender {
+  S s_;
+  explicit _retry_sender(S s) : s_((S&&) s) {}
 
-template<std::execution::sender S>
-std::execution::sender auto retry(S s) {
+  template<stdex::receiver R>
+    requires stdex::sender_to<S&, R>
+  friend _op<S, R> tag_invoke(stdex::connect_t, _retry_sender&& self, R r) {
+    return {(S&&) self.s_, (R&&) r};
+  }
+
+  template <class Env>
+  friend auto tag_invoke(stdex::get_sender_traits_t, const _retry_sender&, Env)
+    -> stdex::sender_traits_t<const S&, Env>;
+};
+
+template<stdex::sender S>
+stdex::sender auto retry(S s) {
   return _retry_sender{(S&&) s};
 }

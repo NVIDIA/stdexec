@@ -28,23 +28,26 @@ struct type_printer;
 template <typename... Ts>
 struct type_array {};
 
+//! Used as a default empty context
+struct empty_env {};
+
 //! Check that the value_types of a sender matches the expected type
-template <typename ExpectedValType, typename S>
+template <typename ExpectedValType, typename Env = empty_env, typename S>
 inline void check_val_types(S snd) {
-  using t = typename ex::sender_traits<S>::template value_types<type_array, type_array>;
+  using t = typename ex::sender_traits_t<S, Env>::template value_types<type_array, type_array>;
   static_assert(std::is_same<t, ExpectedValType>::value);
 }
 
 //! Check that the error_types of a sender matches the expected type
-template <typename ExpectedValType, typename S>
+template <typename ExpectedValType, typename Env = empty_env, typename S>
 inline void check_err_types(S snd) {
-  using t = typename ex::sender_traits<S>::template error_types<type_array>;
+  using t = typename ex::sender_traits_t<S, Env>::template error_types<type_array>;
   static_assert(std::is_same<t, ExpectedValType>::value);
 }
 
 //! Check that the send_done of a sender matches the expected value
-template <bool Expected, typename S>
+template <bool Expected, typename Env = empty_env, typename S>
 inline void check_sends_done(S snd) {
-  constexpr bool val = ex::sender_traits<S>::sends_done;
+  constexpr bool val = ex::sender_traits_t<S, Env>::sends_done;
   static_assert(val == Expected);
 }
