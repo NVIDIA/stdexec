@@ -1063,11 +1063,14 @@ The changes since R3 are as follows:
     thus the sender metadata -- depend on the type of the receiver connected
     to it. See the section [dependently-typed
     senders](#dependently-typed-senders) below for more information.
+  * Add a <code>read(<i>query</i>)</code> sender factory for issuing a query
+    against a receiver and sending the result through the value channel. (This is
+    a useful instance of a dependently-typed sender.)
+  * Add `completion_signatures` utility for declaratively defining a typed
+    sender's metadata.
   * Add customization points for controlling the forwarding of scheduler, sender
     and receiver queries through layers of adaptors; specify the behavior of the
     standard adaptors in terms of the new customization points.
-  * Add `completion_signatures` utility for declaratively defining a typed
-    sender's metadata.
   * Add `get_delegatee_scheduler` query to forward a scheduler that can be used
     by algorithms or by the scheduler to delegate work and forward progress.
   * Add `schedule_result_t` alias template.
@@ -2218,6 +2221,42 @@ execution::sender auto just_done();
 
 Returns a sender with no [=completion scheduler|completion schedulers=], which completes immediately by calling the receiver's `set_done`.
 
+### `execution::read<Tag>` ### {#design-sender-factory-read}
+
+<pre highlight="c++">
+template &lt;class Tag>
+execution::sender auto read(Tag);
+
+execution::sender auto get_scheduler() {
+  return read(execution::get_scheduler);
+}
+execution::sender auto get_delegatee_scheduler() {
+  return read(execution::get_delegatee_scheduler);
+}
+execution::sender auto get_allocator() {
+  return read(execution::get_allocator);
+}
+execution::sender auto get_stop_token() {
+  return read(execution::get_stop_token);
+}
+</pre>
+
+Returns a sender that reaches into a receiver's environment and pulls out the current value associated with the customization point denoted by `Tag`. It then sends the value read back to the receiver through the value channel. For instance, `get_scheduler()` (with no arguments) is a sender that asks the receiver for the currently suggested `scheduler` and passes it to the receiver's `set_value` completion-signal.
+
+This can be useful when scheduling nested dependent work. The following sender pulls the current schduler into the value channel and then schedules more work onto it.
+
+    <pre highlight="c++">
+    execution::sender auto task =
+      execution::get_scheduler()
+        | execution::let_value([](auto sched) {
+            return execution::on(sched, <i>some nested work here</i>);
+        });
+
+    this_thread::sync_wait( std::move(task) ); // wait for it to finish
+    </pre>
+
+This code uses the fact that `sync_wait` associates a scheduler with the receiver that it connects with `task`. `get_scheduler()` reads that scheduler out of the receiver, and passes it to `let_value`'s receiver's `set_value` function, which in turn passes it to the lambda. That lambda returns a new sender that uses the scheduler to schedule some nested work onto `sync_wait`'s scheduler.
+
 ## User-facing sender adaptors ## {#design-sender-adaptors}
 
 A <dfn>sender adaptor</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
@@ -2823,6 +2862,11 @@ At the end of this subclause, insert the following declarations into the synopsi
 <blockquote>
 <pre highlight=c++>
 // Expositon-only:
+template &lt;class Tag, class... Args>
+  concept <i>callable</i> =
+    requires (Fn&& fn, Args&&... args) {
+      std::forward<Fn>(fn)(std::forward<Args>()...);
+    };
 template &lt;class Fn, class... Args>
   using <i>call-result-t</i> = decltype(declval<Fn>(), declval<Args>()...);
 
@@ -3269,19 +3313,21 @@ namespace std::execution {
 
   // [exec.factories], sender factories
   namespace <i>senders-factories</i> { // exposition only
-    struct schedule_t;
-    struct transfer_just_t;
     template&lt;<i>movable-value</i>... Ts>
       <i>unspecified</i> just(Ts &&...) noexcept(<i>see below</i>);
     template&lt;<i>movable-value</i> Error>
       <i>unspecified</i> just_error(Error &&) noexcept(<i>see below</i>);
     <i>unspecified</i> just_done() noexcept;
+
+    struct schedule_t;
+    struct transfer_just_t;
   }
-  inline constexpr <i>senders-factories</i>::schedule_t schedule{};
   using <i>senders-factories</i>::just;
   using <i>senders-factories</i>::just_error;
   using <i>senders-factories</i>::just_done;
+  inline constexpr <i>senders-factories</i>::schedule_t schedule{};
   inline constexpr <i>senders-factories</i>::transfer_just_t transfer_just{};
+  inline constexpr <i>unspecified</i> read{};
 
   template &lt;scheduler S>
     using schedule_result_t = decltype(schedule(declval&lt;S>()));
@@ -3415,7 +3461,7 @@ namespace std::execution {
       constructible_from&lt;decay_t&lt;T>, T>;
     </pre>
 
-## General queries <b>[exec.queries]</b> ### {#spec-execution.queries}
+## General queries <b>[exec.queries]</b> ## {#spec-execution.queries}
 
 ### `execution::get_scheduler` <b>[exec.queries.get_scheduler]</b> ### {#spec-execution.receivers.queries.get_scheduler}
 
@@ -3427,6 +3473,8 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
 
+3. `execution::get_scheduler()` (with no arguments) is expression-equivalent to `execution::read(execution::get_scheduler)`.
+
 ### `execution::get_delegatee_scheduler` <b>[exec.queries.get_delegatee_scheduler]</b> ### {#spec-execution.receivers.queries.get_delegatee_scheduler}
 
 1. `execution::get_delegatee_scheduler` is used to ask an object for a scheduler that may be used to delegate work to for the purpose of forward progress delegation.
@@ -3436,6 +3484,8 @@ namespace std::execution {
     1. `tag_invoke(execution::get_delegatee_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
 
     2. Otherwise, `execution::get_delegatee_scheduler(r)` is ill-formed.
+
+3. `execution::get_delegatee_scheduler()` (with no arguments) is expression-equivalent to `execution::read(execution::get_delegatee_scheduler)`.
 
 ### `execution::get_allocator` <b>[exec.queries.get_allocator]</b> ### {#spec-execution.receivers.queries.get_allocator}
 
@@ -3447,6 +3497,8 @@ namespace std::execution {
 
     2. Otherwise, `execution::get_allocator(r)` is ill-formed.
 
+3. `execution::get_allocator()` (with no arguments) is expression-equivalent to `execution::read(execution::get_allocator)`.
+
 ### `execution::get_stop_token` <b>[exec.queries.get_stop_token]</b> ### {#spec-execution.receivers.queries.get_stop_token}
 
 1. `execution::get_stop_token` is used to ask an object for an associated stop token.
@@ -3457,7 +3509,9 @@ namespace std::execution {
 
     2. Otherwise, `never_stop_token{}`.
 
-## Execution environments <b>[exec.env]</b> ## {#spec-exec.env}
+3. `execution::get_stop_token()` (with no arguments) is expression-equivalent to `execution::read(execution::get_stop_token)`.
+
+## Execution environments <b>[exec.env]</b> ## {#spec-execution.environment}
 
 1. An <i>execution environment</i> contains state associated with the completion of an asynchronous operation. Every receiver has an associated execution environment, accessible with the `get_env` receiver query. The state of an execution environment is accessed with customization point objects. An execution environment may respond to any number of these environment queries.
 
@@ -4109,6 +4163,56 @@ enum class forward_progress_guarantee {
     </pre>
 
 1. <i>Effects</i>: Equivalent to <code><i>just-done-sender</i>{}</code>.
+
+#### `execution::read` <b>[exec.read]</b> #### {#spec-execution.senders.read}
+
+1. `execution::read` is used to create a sender that retrieves a value from the receiver's associated environment and sends it back to the receiver through the value channel.
+
+2. `execution::read` is a customization point object of an unspecified class type equivalent to:
+
+    <pre highlight=c++>
+    template &lt;class Tag>
+      struct <i>read-sender</i>; // exposition only
+
+    struct <i>read-t</i> { // exposition only
+      template &lt;class Tag>
+        <i>read-sender</i>&lt;Tag> operator()(Tag) const noexcept { return {}; }
+    };
+    </pre>
+
+3. <code><i>read-sender</i></code> is an exposition only class template equivalent to:
+
+    <pre highlight=c++>
+    template &lt;class Tag>
+      struct <i>read-sender</i> { // exposition only
+        template&lt;class R>
+          struct <i>operation-state</i> { // exposition only
+            R r_;
+
+            friend void tag_invoke(start_t, <i>operation-state</i>& s) noexcept try {
+              auto value = Tag{}(get_env(s.r_));
+              set_value(std::move(s.r_), std::move(value));
+            } catch(...) {
+              set_error(std::move(s.r_), current_exception());
+            }
+          };
+
+        template&lt;receiver R>
+          requires <i>callable</i>&lt;Tag, env_of_t&lt;R>> &amp;&amp;
+            receiver_of&lt;R, <i>call-result-t</i>&lt;Tag, env_of_t&lt;R>>>
+        friend <i>operation-state</i>&lt;decay_t&lt;R>> tag_invoke(connect_t, <i>read-sender</i>, R && r) {
+          return { std::forward&lt;R>(r) };
+        }
+
+        friend <i>empty-env</i> tag_invoke(get_sender_traits_t, <i>read-sender</i>, auto);
+
+        template&lt;class Env>
+          requires (!same_as&lt;Env, no_env>) &amp;&amp; <i>callable</i>&lt;Tag, Env>
+        friend auto tag_invoke(get_sender_traits_t, <i>read-sender</i>, Env)
+          -> completion_signatures&lt;
+              set_value_t(<i>call-result-t</i>&lt;Tag, Env>), set_error_t(exception_ptr)>;
+      };
+    </pre>
 
 ### Sender adaptors <b>[exec.adapt]</b> ### {#spec-execution.senders.adapt}
 
