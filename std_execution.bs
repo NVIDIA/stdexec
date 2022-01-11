@@ -1056,6 +1056,8 @@ The changes since R3 are as follows:
   * Shorten the stable names for the sections.
   * `sync_wait` now handles `std::error_code` specially by throwing a
     `std::system_error` on failure.
+  * Fix how ADL isolation from class template arguments is specified so it
+    doesn't constrain implmentations.
 
 <b>Enhancements:</b>
 
@@ -1104,12 +1106,12 @@ otherwise could be.
 
 **Example:**
 
-To get concrete, consider the case of a "`current_scheduler`" sender: when
+To get concrete, consider the case of the "`get_scheduler()`" sender: when
 `connect`-ed and `start`-ed, it queries the receiver for its associated
 scheduler and passes it back to the receiver through the value channel. That
 sender's "value type" is the type of the *receiver's* scheduler. What then
-should `sender_traits<current_scheduler_sender>::value_types` report for the
-`current_scheduler`'s value type? It can't answer because it doesn't know.
+should `sender_traits<get_scheduler_sender>::value_types` report for the
+`get_scheduler()`'s value type? It can't answer because it doesn't know.
 
 This causes knock-on problems since some important algorithms require a typed
 sender, such as `sync_wait`. To illustrate the problem, consider the following
@@ -1120,10 +1122,10 @@ namespace ex = std::execution;
 
 ex::sender auto task =
   ex::let_value(
-    current_scheduler(), // Fetches scheduler from receiver.
+    ex::get_scheduler(), // Fetches scheduler from receiver.
     [](auto current_sched) {
       // Lauch some nested work on the current scheduler:
-      return ex::on(current_sched, <i>nexted work...</i>);
+      return ex::on(current_sched, <i>nested work...</i>);
     });
 
 std::this_thread::sync_wait(std::move(task));
@@ -1131,7 +1133,7 @@ std::this_thread::sync_wait(std::move(task));
 
 The code above is attempting to schedule some work onto the `sync_wait`'s
 `run_loop` execution context. But `let_value` only returns a typed sender when
-the input sender is typed. As we explained above, `current_scheduler()` is not
+the input sender is typed. As we explained above, `get_scheduler()` is not
 typed, so `task` is likewise not typed. Since `task` isn't typed, it cannot be
 passed to `sync_wait` which is expecting a typed sender. The above code would
 fail to compile.
@@ -1170,6 +1172,10 @@ This change, apart from increasing the expressive power of the sender/receiver a
     to satisfy the `typed_sender` concept can no longer do so as the receiver is
     not available yet. This can result in type-checking that is done later, when
     `connect` is ultimately called on the resulting sender adaptor.
+
+  * Operation states that own receivers that add to or change the environment
+    are typically larger by one pointer. It comes with the benefit of far fewer
+    indirections to evaluate queries.
 
 **"Has it been implemented?"**
 
@@ -3540,7 +3546,10 @@ namespace std::execution {
 
 2. The name `execution::get_scheduler` denotes a customization point object. For some subexpression `r`, if the type of `r` is (possibly cv-qualified) `no_env`, then `execution::get_scheduler(r)` is ill-formed. Otherwise, it is expression equivalent to:
 
-    1. `tag_invoke(execution::get_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::get_scheduler, as_const(r))`, if this expression is well formed.
+    
+        * <i>Mandates:</i> The `tag_invoke` expression above is not
+            potentially-throwing and its type satisfies `execution::scheduler`.
 
     2. Otherwise, `execution::get_scheduler(r)` is ill-formed.
 
@@ -3552,7 +3561,10 @@ namespace std::execution {
 
 2. The name `execution::get_delegatee_scheduler` denotes a customization point object. For some subexpression `r`, if the type of `r` is (possibly cv-qualified) `no_env`, then `execution::get_delegatee_scheduler(r)` is ill-formed. Otherwise, it is expression equivalent to:
 
-    1. `tag_invoke(execution::get_delegatee_scheduler, as_const(r))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::get_delegatee_scheduler, as_const(r))`, if this expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression above is not
+            potentially-throwing and its type satisfies `execution::scheduler`.
 
     2. Otherwise, `execution::get_delegatee_scheduler(r)` is ill-formed.
 
@@ -3564,7 +3576,10 @@ namespace std::execution {
 
 2. The name `execution::get_allocator` denotes a customization point object. For some subexpression `r`, if the type of `r` is (possibly cv-qualified) `no_env`, then `execution::get_allocator(r)` is ill-formed. Otherwise, it is expression equivalent to:
 
-    1. `tag_invoke(execution::get_allocator, as_const(r))`, if this expression is well formed and models <i>Allocator</i>, and is `noexcept`.
+    1. `tag_invoke(execution::get_allocator, as_const(r))`, if this expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression above is not
+            potentially-throwing and its type satisfies <i>Allocator</i>.
 
     2. Otherwise, `execution::get_allocator(r)` is ill-formed.
 
@@ -3576,7 +3591,10 @@ namespace std::execution {
 
 2. The name `execution::get_stop_token` denotes a customization point object. For some subexpression `r`, if the type of `r` is (possibly cv-qualified) `no_env`, then `execution::get_stop_token(r)` is ill-formed. Otherwise, it is expression equivalent to:
 
-    1. `tag_invoke(execution::get_stop_token, as_const(r))`, if this expression is well formed and satisfies `stoppable_token`, and is `noexcept`.
+    1. `tag_invoke(execution::get_stop_token, as_const(r))`, if this expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression above is not
+            potentially-throwing and its type satisfies `stoppable_token`.
 
     2. Otherwise, `never_stop_token{}`.
 
@@ -3649,7 +3667,11 @@ namespace std::execution {
 
 2. The name `execution::forwarding_scheduler_query` denotes a customization point object. For some subexpression `t`, `execution::forwarding_scheduler_query(t)` is expression equivalent to:
 
-    1. `tag_invoke(execution::forwarding_scheduler_query, t)`, if this expression is well formed, its type is implicitly convertible to `bool`, and is `noexcept`.
+    1. `tag_invoke(execution::forwarding_scheduler_query, t)`, contextually converted to `bool`, if the `tag_invoke` expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression is indeed contextually
+            convertible to `bool`, that expression and the contextual conversion
+            are not potentially-throwing and are core constant expressions.
 
     2. Otherwise, `false`.
 
@@ -3668,7 +3690,10 @@ enum class forward_progress_guarantee {
 2. The name `execution::get_forward_progress_guarantee` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::scheduler`, `execution::get_forward_progress_guarantee` is ill-formed.
     Otherwise, `execution::get_forward_progress_guarantee(s)` is expression equivalent to:
 
-    1. `tag_invoke(execution::get_forward_progress_guarantee, as_const(s))`, if this expression is well formed and its type is `execution::forward_progress_guarantee`, and is `noexcept`.
+    1. `tag_invoke(execution::get_forward_progress_guarantee, as_const(s))`, if this expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
+            throwing and its type is `execution::forward_progress_guarantee`.
 
     2. Otherwise, `execution::forward_progress_guarantee::weakly_parallel`.
 
@@ -3682,7 +3707,10 @@ enum class forward_progress_guarantee {
 2. The name `this_thread::execute_may_block_caller` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::scheduler`, `this_thread::execute_may_block_caller` is ill-formed. Otherwise,
     `this_thread::execute_may_block_caller(s)` is expression equivalent to:
 
-    1. `tag_invoke(this_thread::execute_may_block_caller, as_const(s))`, if this expression is well formed and its type is `bool`, and is `noexcept`.
+    1. `tag_invoke(this_thread::execute_may_block_caller, as_const(s))`, if this expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
+            throwing and its type is `bool`.
 
     2. Otherwise, `true`.
 
@@ -3774,6 +3802,9 @@ enum class forward_progress_guarantee {
 
     1. `tag_invoke(execution::set_error, R, E)`, if that expression is valid. If the function selected by `tag_invoke` does not send the error `E` to the receiver `R`’s error channel, the program is ill-formed with no diagnostic required.
 
+        * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
+            throwing.
+
     2. Otherwise, `execution::set_error(R, E)` is ill-formed.
 
 ### `execution::set_done` <b>[exec.set_done]</b> ### {#spec-execution.receivers.set_done}
@@ -3783,6 +3814,9 @@ enum class forward_progress_guarantee {
 2. The name `execution::set_done` denotes a customization point object. The expression `execution::set_done(R)` for some subexpression `R` is expression-equivalent to:
 
     1. `tag_invoke(execution::set_done, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s done channel, the program is ill-formed with no diagnostic required.
+
+        * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
+            throwing.
 
     2. Otherwise, `execution::set_done(R)` is ill-formed.
 
@@ -3794,7 +3828,11 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::forwarding_receiver_query` denotes a customization point object. For some subexpression `t`, `execution::forwarding_receiver_query(t)` is expression equivalent to:
 
-    1. `tag_invoke(execution::forwarding_receiver_query, t)`, if this expression is well formed, its type is implicitly convertible to `bool`, and is `noexcept`.
+    1. `tag_invoke(execution::forwarding_receiver_query, t)`, contextually converted to `bool`, if the `tag_invoke` expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression is indeed contextually
+            convertible to `bool`, that expression and the contextual conversion
+            are not potentially-throwing and are core constant expressions.
 
     2. Otherwise, `false` if the type of `t` is one of `set_value_t`, `set_error_t`, or `set_done_t`.
 
@@ -3825,6 +3863,9 @@ enum class forward_progress_guarantee {
 2. The name `execution::start` denotes a customization point object. The expression `execution::start(O)` for some lvalue subexpression `O` is expression-equivalent to:
 
     1. `tag_invoke(execution::start, O)`, if that expression is valid. If the function selected by `tag_invoke` does not start the work represented by the operation state `O`, the program is ill-formed with no diagnostic required.
+
+        * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
+            throwing.
 
     2. Otherwise, `execution::start(O)` is ill-formed.
 
@@ -3957,7 +3998,7 @@ enum class forward_progress_guarantee {
               set_done_t()>
             </pre>
 
-    4. Otherwise, <code><i>no-sender-traitse</i>{}</code>.
+    4. Otherwise, <code><i>no-sender-traits</i>{}</code>.
 
 7. The exposition-only type <code><i>variant-or-empty&lt;Ts...></i></code> is
      defined as follows:
@@ -4011,7 +4052,9 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::connect` denotes a customization point object. For some subexpressions `s` and `r`, let `S` be `decltype((s))` and `R` be `decltype((r))`, and let `S'` and `R'` be the decayed types of `S` and `R`, respectively. If `R` does not satisfy `execution::receiver`, `execution::connect(s, r)` is ill-formed. Otherwise, the expression `execution::connect(s, r)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::connect, s, r)`, if that expression is valid, its type satisfies `execution::operation_state`, and `S` satisfies `execution::sender`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::connect, s, r)`, if that expression is valid and `S` satisfies `execution::sender`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program is ill-formed with no diagnostic required.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `operation_state`.
 
     2. Otherwise, <code><i>connect-awaitable</i>(s, r)</code> if <code><i>is-awaitable</i>&lt;S, <i>connect-awaitable-promise</i>></code> is `true` and that expression is valid, where <code><i>connect-awaitable</i></code> is a coroutine equivalent to the following:
 
@@ -4073,7 +4116,9 @@ enum class forward_progress_guarantee {
     argument `CPO` in `execution::get_completion_scheduler<CPO>` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution::set_done_t`, `execution::get_completion_scheduler<CPO>` is ill-formed. Otherwise,
     `execution::get_completion_scheduler<CPO>(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::get_completion_scheduler<CPO>, as_const(s))`, if this expression is well formed and satisfies `execution::scheduler`, and is `noexcept`.
+    1. `tag_invoke(execution::get_completion_scheduler<CPO>, as_const(s))` if this expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression above is not potentially throwing and its type satisfies `execution::scheduler`.
 
     2. Otherwise, `execution::get_completion_scheduler<CPO>(s)` is ill-formed.
 
@@ -4092,7 +4137,9 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::schedule` denotes a customization point object. For some subexpression `s`, the expression `execution::schedule(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::schedule, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::schedule, s)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s`, the program is ill-formed with no diagnostic required.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     2. Otherwise, `execution::schedule(s)` is ill-formed.
 
@@ -4156,8 +4203,10 @@ enum class forward_progress_guarantee {
 2. The name `execution::transfer_just` denotes a customization point object. For some subexpressions `s` and `vs...`, let `S` be `decltype((s))` and `Vs...` be `decltype((vs))`. If `S` does not satisfy `execution::scheduler`, or any type `V` in `Vs` does not
     satisfy <code><i>movable-value</i></code>, `execution::transfer_just(s, vs...)` is ill-formed. Otherwise, `execution::transfer_just(s, vs...)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::transfer_just, s, vs...)`, if that expression is valid and its type `S` is such that `execution::sender_of<S, no_env, decltype(auto(vs))...>` is `true`. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s` and sends
+    1. `tag_invoke(execution::transfer_just, s, vs...)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s` and sends
         values equivalent to `auto(vs)...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
+
+        * <i>Mandates:</i>  `execution::sender_of<R, no_env, decltype(auto(vs))...>`, where `R` is the type of the `tag_invoke` expression above.
 
     2. Otherwise, `execution::transfer(execution::just(vs...), s)`.
 
@@ -4380,8 +4429,10 @@ are all well-formed.
 2. The name `execution::on` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
     `execution::on` is ill-formed. Otherwise, the expression `execution::on(sch, s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::on, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch` when
+    1. `tag_invoke(execution::on, sch, s)`, if that expression is valid. If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch` when
         started, the program is ill-formed with no diagnostic required.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     2. Otherwise, constructs a sender `s1`. When `s1` is connected with some receiver `out_r`, it:
 
@@ -4418,9 +4469,13 @@ are all well-formed.
 2. The name `execution::transfer` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
     `execution::sender`, `execution::transfer` is ill-formed. Otherwise, the expression `execution::transfer(s, sch)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::transfer, get_completion_scheduler<set_value_t>(s), s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::transfer, get_completion_scheduler<set_value_t>(s), s, sch)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::transfer, s, sch)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::transfer, s, sch)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise, `schedule_from(sch, s)`.
 
@@ -4436,8 +4491,10 @@ are all well-formed.
 3. The name `execution::schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
     `execution::typed_sender`, `execution::schedule_from` is ill-formed. Otherwise, the expression `execution::schedule_from(sch, s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::schedule_from, sch, s)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated
+    1. `tag_invoke(execution::schedule_from, sch, s)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated
         execution context of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     2. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -4495,9 +4552,13 @@ are all well-formed.
     ill-formed. Otherwise, the expression `execution::then(s, f)` is
     expression-equivalent to:
 
-    1. `tag_invoke(execution::then, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::then, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::then, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::then, s, f)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -4568,9 +4629,13 @@ are all well-formed.
     ill-formed. Otherwise, the expression `execution::upon_error(s, f)` is
     expression-equivalent to:
 
-    1. `tag_invoke(execution::upon_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::upon_error, get_completion_scheduler<set_error_t>(s), s, f)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::upon_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::upon_error, s, f)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -4649,9 +4714,13 @@ are all well-formed.
     `execution::upon_done` is ill-formed. Otherwise, the expression
     `execution::upon_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::upon_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::upon_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::upon_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::upon_done, s, f)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -4708,9 +4777,13 @@ are all well-formed.
 2. The name `execution::let_value` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`, let `F` be the decayed type of `f`, and let `f'` be an xvalue that refers to an object decay-copied from `f`. If `S` does not satisfy `execution::sender`, `execution::let_value` is ill-formed. Otherwise, the expression
     `execution::let_value(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::let_value, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::let_value, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::let_value, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::let_value, s, f)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise, given a receiver `out_r` and an lvalue `out_r'` refering to an object decay-copied from `out_r`.
     
@@ -4775,9 +4848,13 @@ are all well-formed.
 2. The name `execution::let_error` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`, let `F` be the decayed type of `f`, and let `f'` be an xvalue that refers to an object decay-copied from `f`. If `S` does not satisfy `execution::sender`, `execution::let_error` is ill-formed. Otherwise, the expression
     `execution::let_error(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::let_error, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::let_error, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::let_error, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::let_error, s, f)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise, given a receiver `out_r` and an lvalue `out_r'` refering to an object decay-copied from `out_r`.
     
@@ -4845,9 +4922,13 @@ are all well-formed.
 2. The name `execution::let_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`, let `F` be the decayed type of `f`, and let `f'` be an xvalue that refers to an object decay-copied from `f`. If `S` does not satisfy `execution::sender` or if `F` does not satisfy `invocable`, `execution::let_done` is ill-formed. Otherwise, the expression
     `execution::let_done(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::let_done, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::let_done, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::let_done, s, f)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::let_done, s, f)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise, given a receiver `out_r` and an lvalue `out_r'` refering to an object decay-copied from `out_r`.
     
@@ -4903,9 +4984,13 @@ are all well-formed.
 2. The name `execution::bulk` denotes a customization point object. For some subexpressions `s`, `shape`, and `f`, let `S` be `decltype((s))`, `Shape` be `decltype((shape))`, and `F` be `decltype((f))`. If `S` does not satisfy `execution::sender` or `Shape`
     does not satisfy `integral`, `execution::bulk` is ill-formed. Otherwise, the expression `execution::bulk(s, shape, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value_t>(s), s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::bulk, get_completion_scheduler<set_value_t>(s), s, shape, f)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::bulk, s, shape, f)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::bulk, s, shape, f)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
@@ -4922,7 +5007,14 @@ are all well-formed.
 
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
-    4. TODO: `get_sender_traits`
+    4. Given an expression `e`, let `E` be `decltype((e))`. If `typed_sender<S, E>` is `false`, the type of `tag_invoke(get_sender_traits, s2, e)` shall
+        be equivalent to <code><i>empty-sender-traits</i></code>. Otherwise, let `Es...` be the types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E, <i>type-list</i>></code>, and let `Bs...` be the set of unique types in `[Es..., exception_ptr]`. The type of `tag_invoke(get_sender_traits, s2, e)` shall be a class type `Tr` such that, for variadic templates `Tuple` and `Variant`:
+
+        1. `Tr::value_types<Tuple, Variant>` names the same type as `value_types_of_t<S, E, Tuple, Variant>`.
+
+        2. `Tr::error_types<Variant>` names the type `Variant<Bs...>`.
+
+        3. `Tr::sends_done` is a core constant expression of type `bool` and value `sender_traits_t<S, E>::sends_done`.
 
     If the function selected above does not return a sender which invokes `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when the input sender sends values `args...`, or does not propagate the values of the signals sent by the input sender to
         a connected receiver, the program is ill-formed with no diagnostic required.
@@ -4934,9 +5026,13 @@ are all well-formed.
 2. The name `execution::split` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::split` is ill-formed. Otherwise, the expression
     `execution::split(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::split, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::split, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::split, s)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::split, s)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise, constructs a sender `s2`, which:
 
@@ -4944,7 +5040,7 @@ are all well-formed.
 
         2. Constructs a receiver `r`:
 
-            1. When `execution::set_value(r, args...)` is called, saves the expressions `args...` as subobjects of `sh_state`.
+            1. When `execution::set_value(r, args...)` is called, decay-copies the expressions `args...` as subobjects of `sh_state`. If any exceptions are thrown, the exception is caught and `execution::set_error(r, current_exception())` is called instead.
 
             2. When `execution::set_error(r, e)` is called, saves the expression `e` as a subobject of `sh_state`.
 
@@ -4952,11 +5048,41 @@ are all well-formed.
 
         3. Calls `execution::connect(s, r)`, resulting in an operation state `op_state2`. `op_state2` is saved as a subobject of `sh_state`.
 
-        4. When `s2` is connected with a receiver `out_r`, it returns an operation state object `op_state`. When `execution::start(op_state)` is called, it calls `execution::start(op_state2)`, if this is the first time this expression would be evaluated. When both
+        4. Let <code><i>Signal</i></code> be whichever receiver completion-signal was used to complete `r`'s receiver contract ([exec.recv]). When `s2` is connected with a receiver `out_r`, it returns an operation state object `op_state`. When `execution::start(op_state)` is called, it calls `execution::start(op_state2)`, if this is the first time this expression would be evaluated. When both
             `execution::start(op_state)` and <code><i>Signal</i>(r, args...)</code> have been called, calls <code><i>Signal</i>(out_r, args2...)</code>, where `args2...` is a pack of lvalues referencing the subobjects of `sh_state` that have been saved by the
             original call to <code><i>Signal</i>(r, args...)</code>.
 
-    4. TODO: `get_sender_traits`
+    4. Given an expression `e`, let `E` be `decltype((e))`. If `typed_sender<S,
+        E>` is `false`, the type of `tag_invoke(get_sender_traits, s2, e)` shall
+        be equivalent to <code><i>empty-sender-traits</i></code>. Otherwise, let
+        `Vs...` be the set of unique types in the <code><i>type-list</i></code>
+        named by <code>value_types_of_t&lt;S, E, <i>set-value-signature</i>,
+        <i>type-list</i>></code>, and let `Es...` be the set of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E, <i>error-types</i>></code>, where <code><i>set-value-signature</i></code>
+        is the alias template:
+
+            <pre highlight="c++">
+            template &lt;class... Ts>
+              using <i>set-value-signature</i> = set_value_t(decay_t&lt;Ts>&amp;...);
+            </pre>
+
+            and <code><i>error-types</i></code> is the alias template:
+
+            <pre highlight="c++">
+            template &lt;class... Es>
+              using <i>error-types</i> = <i>type-list</i>&lt;decay_t&lt;Es>&amp;...>;
+            </pre>
+
+            Let `Bs...` be the set of unique types in `[Es..., exception_ptr&]`. If `sender_traits_t<S, E>::sends_done` is `true`, then the type of `tag_invoke(get_sender_traits, s2, e)` is a class type equivalent to:
+
+            <pre highlight="c++">
+            completion_signatures&lt;Vs..., set_error_t(Bs)..., set_done_t()>
+            </pre>
+
+            Otherwise:
+
+            <pre highlight="c++">
+            completion_signatures&lt;Vs..., set_error_t(Bs)...>
+            </pre>
 
     If the function selected above does not return a sender which sends references to values sent by `s`, propagating the other channels, the program is ill-formed with no diagnostic required.
 
@@ -4972,7 +5098,9 @@ are all well-formed.
 
     Otherwise, the expression <code>execution::when_all(s<i><sub>i</sub></i>...)</code> is expression-equivalent to:
 
-    1. <code>tag_invoke(execution::when_all, s<i><sub>i</sub></i>...)</code>, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by <code>s<i><sub>i</sub></i>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
+    1. <code>tag_invoke(execution::when_all, s<i><sub>i</sub></i>...)</code>, if that expression is valid. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by <code>s<i><sub>i</sub></i>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     2. Otherwise, constructs a sender `w` of type `W`. When `w` is connected with some receiver `out_r` of type `OutR`, it returns an operation state `op_state` specified as below:
 
@@ -4984,7 +5112,7 @@ are all well-formed.
 
             3. Otherwise, `request_stop` is called on `op_state`'s associated stop source. When all child operations have completed, `op_state`'s associated stop callback optional is reset and `execution::set_done(out_r)` is called.
 
-            4. For each receiver <code>r<i><sub>i</sub></i></code>, <code>get_env(r<i><sub>i</sub></i>)</code> is an expression <code><i>e</i></code> such that <code>execution::get_stop_token(<i>e</i>)</code> is well-formed and returns the results of calling `get_token()` on `op_state`'s associated stop source, and for which <code>tag_invoke(tag, <i>e</i>, as...)</code> is expression-equivalent to `tag(get_env(out_r), as...)` for all arguments `args...` and all `tag` whose type is not `get_stop_token_t`.
+            4. For each receiver <code>r<i><sub>i</sub></i></code>, <code>get_env(r<i><sub>i</sub></i>)</code> is an expression <code><i>e</i></code> such that <code>execution::get_stop_token(<i>e</i>)</code> is well-formed and returns the results of calling `get_token()` on `op_state`'s associated stop source, and for which <code>tag_invoke(tag, <i>e</i>, args...)</code> is expression-equivalent to `tag(get_env(out_r), args...)` for all arguments `args...` and all `tag` whose type is not `get_stop_token_t`.
 
         2. For each sender <code>s<i><sub>i</sub></i></code>, calls <code>execution::connect(s<i><sub>i</sub></i>, r<i><sub>i</sub></i>)</code>, resulting in operation states <code>child_op<i><sub>i</sub></i></code>.
 
@@ -5031,7 +5159,7 @@ are all well-formed.
 
                 * Otherwise, <code>Variant&lt;Tuple&lt;V<i><sub>0</sub></i>..., V<i><sub>1</sub></i>,..., V<i><sub>n-1</sub></i>...>></code> where <code><i>n</i></code> is the count of types in <code>S<i><sub>i</sub></i>...</code>, and where <code>V<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>value_types_of_t&lt;S<i><sub>i</sub></i>, WE, Tuple, Variant></code> is an alias for <code>Variant&lt;Tuple&lt;V<i><sub>i</sub></i>...>></code>.
 
-            * `Tr::error_types<Variant>` is <code>Variant&lt;exception_ptr, U<i><sub>i</sub></i>...></code>, where <code>U<i><sub>i</sub></i>...</code> is the unique set of types in <code>E<i><sub>0</sub></i>..., E<i><sub>1</sub></i>,..., E<i><sub>n-1</sub></i>...</code>, where <code>E<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>error_types_of_t&lt;S<i><sub>i</sub></i>, WE, Variant></code> is an alias for <code>Variant&lt;E<i><sub>i</sub></i>...></code>.
+            * `Tr::error_types<Variant>` is <code>Variant&lt;U<i><sub>i</sub></i>...></code>, where <code>U<i><sub>i</sub></i>...</code> is the unique set of types in <code>[exception_ptr, E<i><sub>0</sub></i>..., E<i><sub>1</sub></i>,..., E<i><sub>n-1</sub></i>...]</code>, where <code>E<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>error_types_of_t&lt;S<i><sub>i</sub></i>, WE, Variant></code> is an alias for <code>Variant&lt;E<i><sub>i</sub></i>...></code>.
 
             * `Tr::sends_done` is `true`.
 
@@ -5039,12 +5167,13 @@ are all well-formed.
     `execution::when_all_with_variant` is ill-formed. Otherwise, the expression `execution::when_all_with_variant(s...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::when_all_with_variant, s...)`, if that expression
-        is valid and its type satisfies `execution::sender`. If the function
-        selected by `tag_invoke` does not return a sender that, when connected
-        with a receiver of type `R`, sends the types
+        is valid. If the function selected by `tag_invoke` does not return a
+        sender that, when connected with a receiver of type `R`, sends the types
         <code><i>into-variant-type</i>&lt;S, env_of_t&lt;R>>...</code> when they
         all complete with `set_value`, the program is ill-formed with no
         diagnostic required.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     2. Otherwise, `execution::when_all(execution::into_variant(s)...)`.
 
@@ -5060,9 +5189,11 @@ are all well-formed.
     <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::sender`,
     `execution::transfer_when_all` is ill-formed. Otherwise, the expression `execution::transfer_when_all(sch, s...)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::transfer_when_all, sch, s...)`, if that expression is valid and its type satisfies `execution::sender`. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by `s...` when
+    1. `tag_invoke(execution::transfer_when_all, sch, s...)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by `s...` when
         they all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic
         required.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     2. Otherwise, `execution::transfer(execution::when_all(s...), sch)`.
 
@@ -5076,12 +5207,13 @@ are all well-formed.
     to:
 
     1. `tag_invoke(execution::transfer_when_all_with_variant, s...)`, if that
-        expression is valid and its type satisfies `execution::sender`. If the
-        function selected by `tag_invoke` does not return a sender that, when
-        connected with a receiver of type `R`, sends the types
-        <code><i>into-variant-type</i>&lt;S, env_of_t&lt;R>>...</code> when they
-        all complete with `set_value`, the program is ill-formed with no
-        diagnostic required.
+        expression is valid. If the function selected by `tag_invoke` does not
+        return a sender that, when connected with a receiver of type `R`, sends
+        the types <code><i>into-variant-type</i>&lt;S, env_of_t&lt;R>>...</code>
+        when they all complete with `set_value`, the program is ill-formed with
+        no diagnostic required.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     2. Otherwise, if both <code>tag_invocable&lt;execution::transfer_when_all_t, Sch, <i>into-variant-t</i>&lt;S>...></code> and `tag_invocable<execution::when_all_with_variant_t, S...>` are `true`, `execution::transfer_when_all_with_variant(sch, s...)` is ill-formed, where <code><i>into-variant-t</i></code> is the alias template:
 
@@ -5171,9 +5303,13 @@ are all well-formed.
 2. The name `execution::ensure_started` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::ensure_started` is ill-formed. Otherwise, the expression
     `execution::ensure_started(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::ensure_started, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid and its type satisfies `execution::sender`.
+    1. `tag_invoke(execution::ensure_started, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::ensure_started, s)`, if that expression is valid and its type satisfies `execution::sender`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
+
+    2. Otherwise, `tag_invoke(execution::ensure_started, s)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
     3. Otherwise:
 
@@ -5212,9 +5348,13 @@ from the operation before the operation completes.
 2. The name `execution::start_detached` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::start_detached` is ill-formed. Otherwise, the expression
     `execution::start_detached(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::start_detached, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if that expression is valid and its type is `void`.
+    1. `tag_invoke(execution::start_detached, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if that expression is valid.
 
-    2. Otherwise, `tag_invoke(execution::start_detached, s)`, if that expression is valid and its type is `void`.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above is `void`.
+
+    2. Otherwise, `tag_invoke(execution::start_detached, s)`, if that expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above is `void`.
 
     3. Otherwise:
 
@@ -5268,9 +5408,13 @@ from the operation before the operation completes.
     parameter is not 1, `this_thread::sync_wait` is ill-formed. Otherwise,
     `this_thread::sync_wait` is expression-equivalent to:
 
-    1. `tag_invoke(this_thread::sync_wait, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid and its type is <code><i>sync-wait-type</i>&lt;S, <i>sync-wait-env</i>></code>.
+    1. `tag_invoke(this_thread::sync_wait, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid.
 
-    2. Otherwise, `tag_invoke(this_thread::sync_wait, s)`, if this expression is valid and its type is <code><i>sync-wait-type</i>&lt;S, <i>sync-wait-env</i>></code>.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above is <code><i>sync-wait-type</i>&lt;S, <i>sync-wait-env</i>></code>.
+
+    2. Otherwise, `tag_invoke(this_thread::sync_wait, s)`, if this expression is valid and its type is.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above is <code><i>sync-wait-type</i>&lt;S, <i>sync-wait-env</i>></code>.
 
     3. Otherwise:
 
@@ -5293,9 +5437,13 @@ from the operation before the operation completes.
     `this_thread::sync_wait_with_variant` is ill-formed. Otherwise,
     `this_thread::sync_wait_with_variant` is expression-equivalent to:
 
-    1. `tag_invoke(this_thread::sync_wait_with_variant, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid and its type is <code><i>sync-wait-with-variant-type</i>&lt;S, <i>sync-wait-env</i>></code>.
+    1. `tag_invoke(this_thread::sync_wait_with_variant, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid.
 
-    2. Otherwise, `tag_invoke(this_thread::sync_wait_with_variant, s)`, if this expression is valid and its type is <code><i>sync-wait-with-variant-type</i>&lt;S, <i>sync-wait-env</i>></code>.
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above is <code><i>sync-wait-with-variant-type</i>&lt;S, <i>sync-wait-env</i>></code>.
+
+    2. Otherwise, `tag_invoke(this_thread::sync_wait_with_variant, s)`, if this expression is valid.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above is <code><i>sync-wait-with-variant-type</i>&lt;S, <i>sync-wait-env</i>></code>.
 
     3. Otherwise, `this_thread::sync_wait(execution::into_variant(s))`.
 
@@ -5306,13 +5454,14 @@ from the operation before the operation completes.
 2. The name `execution::execute` denotes a customization point object. For some subexpressions `sch` and `f`, let `Sch` be `decltype((sch))` and `F` be `decltype((f))`. If `Sch` does not satisfy `execution::scheduler` or `F` does not satisfy `invocable`,
     `execution::execute` is ill-formed. Otherwise, `execution::execute` is expression-equivalent to:
 
-    1. `tag_invoke(execution::execute, sch, f)`, if that expression is valid and
-        its type is `void`. If the function selected by `tag_invoke` does not
-        invoke the function `f` (or an object decay-copied from `f`) on an
-        execution agent belonging to the associated execution context of `sch`,
-        or if it does not call `std::terminate` if an error occurs after control
-        is returned to the caller, the program is ill-formed with no diagnostic
-        required.
+    1. `tag_invoke(execution::execute, sch, f)`, if that expression is valid. If
+        the function selected by `tag_invoke` does not invoke the function `f`
+        (or an object decay-copied from `f`) on an execution agent belonging to
+        the associated execution context of `sch`, or if it does not call
+        `std::terminate` if an error occurs after control is returned to the
+        caller, the program is ill-formed with no diagnostic required.
+
+        * <i>Mandates:</i> The type of the `tag_invoke` expression above is `void`.
 
     2. Otherwise, `execution::start_detached(execution::then(execution::schedule(sch), f))`.
 
@@ -5472,6 +5621,8 @@ from the operation before the operation completes.
 
         - `static_cast<Derived&&>(self).set_error(static_cast<E&&>(e))` if <code><i>has-set-error</i>&lt;D, E></code> is `true`,
 
+            * <i>Mandates:</i> The member function call expression above is not potentially throwing.
+
         - Otherwise, <code>execution::set_error(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)), static_cast&lt;E&amp;&amp;>(e))</code>
 
     <pre>
@@ -5484,6 +5635,8 @@ from the operation before the operation completes.
     2. <i>Effects:</i> Equivalent to:
 
         - `static_cast<Derived&&>(self).set_done()` if <code><i>has-set-done</i>&lt;D></code> is `true`,
+
+            * <i>Mandates:</i> The member function call expression above is not potentially throwing.
 
         - Otherwise, <code>execution::set_done(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
 
@@ -5747,7 +5900,7 @@ from the operation before the operation completes.
         };
 
     template &lt;class S, class P>
-      using <i>sender-awaitable</i> = <i>see below</i>;
+      class <i>sender-awaitable</i>;
     </pre>
 
     1. Alias template <i>single-sender-value-type</i> is defined as follows:
@@ -5774,7 +5927,7 @@ from the operation before the operation completes.
          public:
           <i>sender-awaitable</i>(S&& s, P& p);
           bool await_ready() const noexcept { return false; }
-          void await_suspend(coro::coroutine_handle&lt;P>) noexcept { start(state_); }
+          void await_suspend(coroutine_handle&lt;P>) noexcept { start(state_); }
           value_t await_resume();
         };
         </pre>
@@ -5801,7 +5954,8 @@ from the operation before the operation completes.
 
                 3. Otherwise, `make_exception_ptr(err)`.
 
-              3. `execution::set_done(r)` is expression-equivalent to `r.continuation_.promise().unhandled_done().resume()`.
+              3. `execution::set_done(r)` is expression-equivalent to
+                `static_cast<coroutine_handle<>>(r.continuation_.promise().unhandled_done()).resume()`.
 
               4. `tag_invoke(get_env, cr)` is expression-equivalent to `get_env(as_const(cr.continuation_.promise()))`.
 
@@ -5822,7 +5976,9 @@ from the operation before the operation completes.
 
 2. `as_awaitable` is a customization point object. For some subexpressions `e` and `p` where `p` is an lvalue, `E` names the type `decltype((e))` and `P` names the type `decltype((p))`, `as_awaitable(e, p)` is expression-equivalent to the following:
 
-    1. `tag_invoke(as_awaitable, e, p)` if that expression is well-formed and <code><i>is-awaitable</i>&lt;tag_invoke_result_t&lt;as_awaitable_t, E, P>, decay_t&lt;P>></code> is `true`.
+    1. `tag_invoke(as_awaitable, e, p)` if that expression is well-formed.
+
+        * <i>Mandates:</i> <code><i>is-awaitable</i>&lt;A></code> is `true`, where `A` is the type of the `tag_invoke` expression above.
 
     2. Otherwise, `e` if <code><i>is-awaitable</i>&lt;E></code> is `true`.
 
