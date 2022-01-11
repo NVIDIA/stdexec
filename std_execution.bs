@@ -2843,11 +2843,80 @@ Using `tag_invoke` has the following benefits:
 
 Much of this wording follows the wording of [[P0443R14]].
 
+[[#spec-library]] is meant to be a diff relative to the wording of the <b>[library]</b> clause of [[N4885]].
+
 [[#spec-utilities]] is meant to be a diff relative to the wording of the <b>[utilities]</b> clause of [[N4885]]. This diff applies changes from [[P1895R0]].
 
 [[#spec-thread]] is meant to be a diff relative to the wording of the <b>[thread]</b> clause of [[N4885]]. This diff applies changes from [[P2175R0]].
 
 [[#spec-execution]] is meant to be added as a new library clause to the working draft of C++.
+
+# Library introduction <b>[library]</b> # {#spec-library}
+
+[*Editorial:* Add the header `<execution>` to Table 23: C++ library headers [tab:headers.cpp]]
+
+In subclause [conforming], after [lib.types.movedfrom], add the following new subclause with suggested stable name [lib.tmpl-heads].
+
+<ins>
+<blockquote>
+**16.4.6.17  Class template-heads**
+
+1. If a class template's template-head is marked with "*arguments are not
+    associated entities*"", any template arguments do not contribute to the
+    associated entities ([basic.lookup.argdep]) of a function call where a
+    specialization of the class template is an associated entity. In such a case,
+    the class template may be implemented as an alias template referring to a
+    templated class, or as a class template where the template arguments
+    themselves are templated classes.
+
+2. [*Example:*
+
+    <pre highlight="c++">
+    template&lt;class T> // arguments are not associated entities
+    struct S {};
+
+    namespace N {
+      int f(auto);
+      struct A {};
+    }
+
+    int x = f(S&lt;N::A>{});  // error: N::f not a candidate
+    </pre>
+
+    The template `S` specified above may be implemented as
+
+    <pre highlight="c++">
+    template&lt;class T>
+    struct <i>s-impl</i> {
+      struct type { };
+    };
+
+    template&lt;class T>
+    using S = typename <i>s-impl</i>&lt;T>::type;
+    </pre>
+
+    or as
+
+    <pre highlight="c++">
+    template&lt;class T>
+    struct <i>hidden</i> {
+      using type = struct _ {
+        using type = T;
+      };
+    };
+
+    template&lt;class HiddenT>
+    struct <i>s-impl</i> {
+      using T = typename HiddenT::type;
+    };
+
+    template&lt;class T>
+    using S = <i>s-impl</i>&lt;typename <i>hidden</i>&lt;T>::type>;
+    </pre>
+
+    -- <i>end example</i>]
+    </blockquote>
+    </ins>
 
 # General utilities library <b>[utilities]</b> # {#spec-utilities}
 
@@ -3213,7 +3282,7 @@ namespace std::execution {
   // [exec.recv_queries], receiver queries
   namespace <i>receivers-queries</i> { // exposition only
     struct forwarding_receiver_query_t;
- }
+  }
   inline constexpr <i>receivers-queries</i>::forwarding_receiver_query_t forwarding_receiver_query{};
   template &lt;class T>
     concept <i>forwarding-receiver-query</i> = // exposition only
@@ -3245,7 +3314,7 @@ namespace std::execution {
     concept sender_of = <i>see below</i>;
 
   template&lt;class... Ts>
-    struct <i>type-list</i>;
+    struct <i>type-list</i>; // exposition only
 
   template&lt;class S, class E = no_env>
     using <i>single-sender-value-type</i> = <i>see below</i>; // exposition only
@@ -3332,11 +3401,13 @@ namespace std::execution {
     using schedule_result_t = decltype(schedule(declval&lt;S>()));
 
   // [exec.adapt], sender adaptors
-  namespace <i>senders-adaptors-closure</i> { // exposition only
+  namespace <i>sender-adaptor-closure</i> { // exposition only
     template&lt;<i>class-type</i> D>
       struct sender_adaptor_closure { };
   }
-  namespace <i>senders-adaptors</i> { // exposition only
+  using <i>sender-adaptor-closure</i>::sender_adaptor_closure;
+
+  namespace <i>sender-adaptors</i> { // exposition only
     struct on_t;
     struct transfer_t;
     struct schedule_from_t;
@@ -3356,61 +3427,62 @@ namespace std::execution {
     struct done_as_error_t;
     struct ensure_started_t;
   }
-  inline constexpr <i>senders-adaptors</i>::on_t on{};
-  inline constexpr <i>senders-adaptors</i>::transfer_t transfer{};
-  inline constexpr <i>senders-adaptors</i>::schedule_from_t schedule_from{};
+  inline constexpr <i>sender-adaptors</i>::on_t on{};
+  inline constexpr <i>sender-adaptors</i>::transfer_t transfer{};
+  inline constexpr <i>sender-adaptors</i>::schedule_from_t schedule_from{};
 
-  inline constexpr <i>senders-adaptors</i>::then_t then{};
-  inline constexpr <i>senders-adaptors</i>::upon_error_t upon_error{};
-  inline constexpr <i>senders-adaptors</i>::upon_done_t upon_done{};
+  inline constexpr <i>sender-adaptors</i>::then_t then{};
+  inline constexpr <i>sender-adaptors</i>::upon_error_t upon_error{};
+  inline constexpr <i>sender-adaptors</i>::upon_done_t upon_done{};
 
-  inline constexpr <i>senders-adaptors</i>::let_value_t let_value{};
-  inline constexpr <i>senders-adaptors</i>::let_error_t let_error{};
-  inline constexpr <i>senders-adaptors</i>::let_done_t let_done{};
+  inline constexpr <i>sender-adaptors</i>::let_value_t let_value{};
+  inline constexpr <i>sender-adaptors</i>::let_error_t let_error{};
+  inline constexpr <i>sender-adaptors</i>::let_done_t let_done{};
 
-  inline constexpr <i>senders-adaptors</i>::bulk_t bulk{};
+  inline constexpr <i>sender-adaptors</i>::bulk_t bulk{};
 
-  inline constexpr <i>senders-adaptors</i>::split_t split{};
-  inline constexpr <i>senders-adaptors</i>::when_all_t when_all{};
-  inline constexpr <i>senders-adaptors</i>::when_all_with_variant_t when_all_with_variant{};
-  inline constexpr <i>senders-adaptors</i>::transfer_when_all_t transfer_when_all{};
-  inline constexpr <i>senders-adaptors</i>::transfer_when_all_with_variant_t
+  inline constexpr <i>sender-adaptors</i>::split_t split{};
+  inline constexpr <i>sender-adaptors</i>::when_all_t when_all{};
+  inline constexpr <i>sender-adaptors</i>::when_all_with_variant_t when_all_with_variant{};
+  inline constexpr <i>sender-adaptors</i>::transfer_when_all_t transfer_when_all{};
+  inline constexpr <i>sender-adaptors</i>::transfer_when_all_with_variant_t
     transfer_when_all_with_variant{};
 
-  namespace <i>senders-adaptors-into-variant</i> { // exposition only
+  namespace <i>sender-adaptor-into-variant</i> { // exposition only
     template&lt;class S, class E>
         requires typed_sender&lt;S, E>
       using <i>into-variant-type</i> = <i>see-below</i>; // exposition-only
     template&lt;sender S>
       <i>see-below</i> into_variant(S &&);
   }
-  using <i>senders-adaptors-into-variant</i>::into_variant;
+  using <i>sender-adaptor-into-variant</i>::into_variant;
 
-  inline constexpr <i>senders-adaptors</i>::done_as_optional_t done_as_optional;
+  inline constexpr <i>sender-adaptors</i>::done_as_optional_t done_as_optional;
 
-  inline constexpr <i>senders-adaptors</i>::done_as_error_t done_as_error;
+  inline constexpr <i>sender-adaptors</i>::done_as_error_t done_as_error;
 
-  inline constexpr <i>senders-adaptors</i>::ensure_started_t ensure_started{};
+  inline constexpr <i>sender-adaptors</i>::ensure_started_t ensure_started{};
 
   // [exec.consumers], sender consumers
-  namespace <i>senders-consumers</i> { // exposition only
+  namespace <i>sender-consumers</i> { // exposition only
     struct start_detached_t;
   }
-  inline constexpr <i>senders-consumers</i>::start_detached_t start_detached{};
+  inline constexpr <i>sender-consumers</i>::start_detached_t start_detached{};
 
   // [exec.utils], sender and receiver utilities
   // [exec.utils.rcvr_adptr]
-  template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
-    using receiver_adaptor = <i>unspecified</i>;
+  template&lt;
+      <i>class-type</i> Derived,
+      receiver Base = <i>unspecified</i>> // arguments are not associated entities ([lib.tmpl-heads])
+    class receiver_adaptor;
 
   template &lt;class Fn>
     concept <i>completion-signature</i> = <i>// exposition only</i>
       <i>see below</i>;
 
   // [exec.utils.completion_sigs]
-  template &lt;<i>completion-signature</i>... Fns>
-    using completion_signatures =
-      <i>see below</i>;
+  template &lt;<i>completion-signature</i>... Fns> // arguments are not associated entities ([lib.tmpl-heads])
+    struct completion_signature;
 
   // [exec.ctx], execution contexts
   class run_loop;
@@ -4229,6 +4301,29 @@ enum class forward_progress_guarantee {
 
 5. A type `T` is a <i>forwarding receiver query</i> if it is the type of a customization point object that models <code>forwarding-receiver-query</code>. Unless otherwise specified, whenever a sender adaptor constructs a receiver that it passes to another sender's connect, that receiver shall propagate forwarding receiver queries to a receiver accepted as an argument of `execution::connect`. This requirements
     applies to any sender returned from a function that is selected by the implementation of such sender adaptor.
+
+6. For any sender type, receiver type, operation state type, execution environment type, or coroutine promise type that is part of the implementation of any sender adaptor in this subclause and that is a class template, the template arguments do not contribute to the associated entities ([basic.lookup.argdep]) of a function call where a specialization of the class template is an associated entity.
+
+    [*Example:*
+
+    <pre highlight="c++">
+    namespace <i>sender-adaptors</i> { // exposition only
+      template &lt;class Sch, class S> // arguments are not associated entities ([lib.tmpl-heads])
+      class <i>on-sender</i> {
+        // ...
+      };
+
+      struct on_t {
+        template &lt;scheduler Sch, sender S>
+        <i>on-sender</i>&lt;Sch, S> operator()(Sch&& sch, S&& s) const {
+          // ...
+        }
+      };
+    }
+    inline constexpr <i>sender-adaptors</i>::on_t on{};
+    </pre>  
+
+    -- <i>end example</i>]
 
 #### Sender adaptor closure objects <b>[exec.adapt.objects]</b> #### {#spec-execution.senders.adaptor.objects}
 
@@ -5264,17 +5359,20 @@ from the operation before the operation completes.
 
     Let <code><i>BASE-TYPE</i>(D)</code> be the type of <code><i>GET-BASE</i>(declval&lt;D>())</code>.
 
-4. `receiver_adaptor<Derived, Base>` is an alias for a non-template class type equivalent to the following:
+4. `receiver_adaptor<Derived, Base>` is equivalent to the following:
 
     <pre highlight="c++">
-    class <i>receiver-adaptor</i> { // <i>exposition only</i>
+    template &lt;
+      <i>class-type</i> Derived,
+      receiver Base = <i>unspecified</i>> // arguments are not associated entities ([lib.tmpl-heads])
+    class receiver_adaptor {
       friend Derived;
      public:
       // Constructors
-      <i>receiver-adaptor</i>() = default;
+      receiver_adaptor() = default;
       template &lt;class B>
           requires <i>HAS-BASE</i> && constructible_from&lt;Base, B>
-        explicit <i>receiver-adaptor</i>(B&& base) : base_(static_cast&lt;B&amp;&amp;>(base)) {}
+        explicit receiver_adaptor(B&& base) : base_(std::forward&lt;B>(base)) {}
 
      private:
       using set_value = <i>unspecified</i>;
@@ -5419,29 +5517,23 @@ from the operation before the operation completes.
     2. Otherwise, `Fn` does not satisfy <code><i>completion-signature</i></code>.
 
 4.  <pre highlight="c++">
-    template &lt;<i>completion-signature</i>... Fns>
-      using completion_signatures = <i>see below</i>;
+    template &lt;<i>completion-signature</i>... Fns> // arguments are not associated entities ([lib.tmpl-heads])
+      struct completion_signatures {
+        template &lt;template &lt;class...> class Tuple, template &lt;class...> class Variant>
+          using value_types = <i>see below</i>;
+
+        template &lt;template &lt;class...> class Variant>
+          using error_types = <i>see below</i>;
+
+        static constexpr bool sends_done = <i>see below</i>;
+      };
     </pre>
 
-    Given a template parameter pack <code><i>Fns</i></code> of types that satisfy <code><i>completion-signature</i></code>, <code>completion_signatures&lt;<i>Fns</i>...></code> names a non-template class type equivalent to the following:
+    1. Let <code><i>ValueFns</i></code> be a template parameter pack of the function types in `Fns` whose return types are `execution::set_value_t`, and let <code><i>Values<i><sub>n</sub></i></i></code> be a template parameter pack of the function argument types in the <code><i>n</i></code>-th type in <code><i>ValueFns</i></code>. Then, given two variadic templates <code><i>Tuple</i></code> and <code><i>Variant</i></code>, the type <code>completion_signatures&lt;Fns...>::value_types&lt;<i>Tuple</i>, <i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Tuple</i>&lt;<i>Values<i><sub>0</sub></i></i>...>, <i>Tuple</i>&lt;<i>Values<i><sub>1</sub></i></i>...>, ... <i>Tuple</i>&lt;<i>Values<i><sub>m-1</sub></i></i>...>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ValueFns</i></code>.
 
-        <pre highlight="c++">
-        struct <i>completion-signatures-impl</i> {
-          template &lt;template &lt;class...> class Tuple, template &lt;class...> class Variant>
-            using value_types = <i>see below</i>;
+    2. Let <code><i>ErrorFns</i></code> be a template parameter pack of the function types in `Fns` whose return types are `execution::set_error_t`, and let <code><i>Error<i><sub>n</sub></i></i></code> be the function argument type in the <code><i>n</i></code>-th type in <code><i>ErrorFns</i></code>. Then, given a variadic template <code><i>Variant</i></code>, the type <code>completion_signatures&lt;Fns...>::error_types&lt;<i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Error<i><sub>0</sub></i></i>, <i>Error<i><sub>1</sub></i></i>, ... <i>Error<i><sub>m-1</sub></i></i>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ErrorFns</i></code>.
 
-          template &lt;template &lt;class...> class Variant>
-            using error_types = <i>see below</i>;
-
-          static constexpr bool sends_done = <i>see below</i>;
-        };
-        </pre>
-
-        1. Let <code><i>ValueFns</i></code> be a template parameter pack of the function types in <code><i>Fns</i></code> whose return types are `execution::set_value_t`, and let <code><i>Values<i><sub>n</sub></i></i></code> be a template parameter pack of the function argument types in the <code><i>n</i></code>-th type in <code><i>ValueFns</i></code>. Then, given two variadic templates <code><i>Tuple</i></code> and <code><i>Variant</i></code>, the type <code><i>completion-signatures-impl</i>::value_types&lt;<i>Tuple</i>, <i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Tuple</i>&lt;<i>Values<i><sub>0</sub></i></i>...>, <i>Tuple</i>&lt;<i>Values<i><sub>1</sub></i></i>...>, ... <i>Tuple</i>&lt;<i>Values<i><sub>m-1</sub></i></i>...>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ValueFns</i></code>.
-
-        2. Let <code><i>ErrorFns</i></code> be a template parameter pack of the function types in <code><i>Fns</i></code> whose return types are `execution::set_error_t`, and let <code><i>Error<i><sub>n</sub></i></i></code> be the function argument type in the <code><i>n</i></code>-th type in <code><i>ErrorFns</i></code>. Then, given a variadic template <code><i>Variant</i></code>, the type <code><i>completion-signatures-impl</i>::error_types&lt;<i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Error<i><sub>0</sub></i></i>, <i>Error<i><sub>1</sub></i></i>, ... <i>Error<i><sub>m-1</sub></i></i>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ErrorFns</i></code>.
-
-        3. <code><i>completion-signatures-impl</i>::sends_done</code> is `true` if at least one of the types in <code><i>Fns</i></code> is `execution::set_done_t()`; otherwise, `false`.
+    3. `completion_signatures<Fns...>::sends_done` is `true` if at least one of the types in `Fns` is `execution::set_done_t()`; otherwise, `false`.
 
 ## Execution contexts <b>[exec.ctx]</b> ## {#spec-execution.contexts}
 
@@ -5516,11 +5608,11 @@ from the operation before the operation completes.
     * The expression <code>get_completion_scheduler&lt;C>(<i>s</i>)</code> is not potentially throwing, has type <code><i>run-loop-scheduler</i></code>, and compares equal to the <code><i>run-loop-scheduler</i></code> instance from which <code><i>s</i></code> was obtained.
 
   <pre highlight="c++">
-  template&lt;receiver_of R>
-    using <i>run-loop-opstate</i> = <i>unspecified</i>;
+  template&lt;receiver_of R> // arguments are not associated entities ([lib.tmpl-heads])
+    struct <i>run-loop-opstate</i>;
   </pre>
 
-  1. <code><i>run-loop-opstate</i>&lt;<i>R</i>></code> is an alias for an unspecified non-template class type that inherits unambiguously from <code><i>run-loop-opstate-base</i></code>.
+  1. <code><i>run-loop-opstate</i>&lt;<i>R</i>></code> inherits unambiguously from <code><i>run-loop-opstate-base</i></code>.
 
   2. Let <code><i>o</i></code> be a non-`const` lvalue of type <code><i>run-loop-opstate</i>&lt;R></code>, and let <code><i>REC</i>(<i>o</i>)</code> be a non-`const` lvalue reference to an instance of type <code><i>R</i></code> that was initialized with the expression <code><i>r</i></code> passed to the invocation of `execution::connect` that returned <code><i>o</i></code>. Then:
 
@@ -5651,10 +5743,11 @@ from the operation before the operation completes.
 
         3. Otherwise, <code><i>single-sender-value-type</i>&lt;S, E></code> is ill-formed.
 
-    2. The type <code><i>sender-awaitable</i>&lt;S, P></code> names an unspecified non-template class type equivalent to the following:
+    2. The type <code><i>sender-awaitable</i>&lt;S, P></code> is equivalent to the following:
 
         <pre highlight="c++">
-        class <i>sender-awaitable-impl</i> {
+        template &lt;class S, class P> // arguments are not associated entities ([lib.tmpl-heads])
+        class <i>sender-awaitable</i> {
           struct unit {};
           using value_t = <i>single-sender-value-type</i>&lt;S, env_of_t&lt;P>>;
           using result_t = conditional_t&lt;is_void_v&lt;value_t>, unit, value_t>;
@@ -5664,14 +5757,14 @@ from the operation before the operation completes.
           connect_result_t&lt;S, <i>awaitable-receiver</i>> state_;
 
          public:
-          <i>sender-awaitable-impl</i>(S&& s, P& p);
+          <i>sender-awaitable</i>(S&& s, P& p);
           bool await_ready() const noexcept { return false; }
           void await_suspend(coro::coroutine_handle&lt;P>) noexcept { start(state_); }
           value_t await_resume();
         };
         </pre>
 
-        1. <code><i>awaitable-receiver</i></code> is an implementation-defined non-template class type equivalent to the following:
+        1. <code><i>awaitable-receiver</i></code> is equivalent to the following:
 
             <pre highlight=c++>
             struct <i>awaitable-receiver</i> {
@@ -5697,11 +5790,11 @@ from the operation before the operation completes.
 
               4. `tag_invoke(get_env, cr)` is expression-equivalent to `get_env(as_const(cr.continuation_.promise()))`.
 
-        2. <b><code><i>sender-awaitable-impl</i>::<i>sender-awaitable-impl</i>(S&& s, P& p)</code></b>
+        2. <b><code><i>sender-awaitable</i>::<i>sender-awaitable</i>(S&& s, P& p)</code></b>
 
             - <i>Effects:</i> initializes `state_` with <code>connect((S&&) s, <i>awaitable-receiver</i>{&result_, coroutine_handle&lt;P>::from_promise(p)})</code>.
 
-        3. <b><code>value_t <i>sender-awaitable-impl</i>::await_resume()</code></b>
+        3. <b><code>value_t <i>sender-awaitable</i>::await_resume()</code></b>
 
             - <i>Effects:</i> equivalent to:
 
