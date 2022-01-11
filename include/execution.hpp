@@ -565,7 +565,6 @@ namespace std::execution {
           -> tag_invoke_result_t<get_scheduler_t, const _Env&> {
           return tag_invoke(get_scheduler_t{}, __env);
         }
-        // NOT TO SPEC
         auto operator()() const noexcept;
       };
 
@@ -578,6 +577,7 @@ namespace std::execution {
           -> tag_invoke_result_t<get_delegatee_scheduler_t, __cref_t<_T>> {
           return tag_invoke(get_delegatee_scheduler_t{}, std::as_const(__t));
         }
+        auto operator()() const noexcept;
       };
 
       struct get_allocator_t {
@@ -589,7 +589,6 @@ namespace std::execution {
           -> tag_invoke_result_t<get_allocator_t, const _Env&> {
           return tag_invoke(get_allocator_t{}, __env);
         }
-        // NOT TO SPEC
         auto operator()() const noexcept;
       };
 
@@ -606,7 +605,6 @@ namespace std::execution {
           -> tag_invoke_result_t<get_stop_token_t, const _Env&> {
           return tag_invoke(get_stop_token_t{}, __env);
         }
-        // NOT TO SPEC
         auto operator()() const noexcept;
       };
     } // namespace __impl
@@ -3559,58 +3557,61 @@ namespace std::execution {
     } transfer_when_all_with_variant {};
   } // namespace __when_all
 
-  inline namespace __read_ {
-    namespace __impl {
-      template <class _Tag, class _ReceiverId>
-        struct __operation {
-          __t<_ReceiverId> __rcvr_;
-          friend void tag_invoke(start_t, __operation& __self) noexcept try {
-            auto __env = get_env(__self.__rcvr_);
-            set_value(std::move(__self.__rcvr_), _Tag{}(__env));
-          } catch(...) {
-            set_error(std::move(__self.__rcvr_), current_exception());
-          }
-        };
+  namespace __read {
+    template <class _Tag, class _ReceiverId>
+      struct __operation {
+        __t<_ReceiverId> __rcvr_;
+        friend void tag_invoke(start_t, __operation& __self) noexcept try {
+          auto __env = get_env(__self.__rcvr_);
+          set_value(std::move(__self.__rcvr_), _Tag{}(__env));
+        } catch(...) {
+          set_error(std::move(__self.__rcvr_), current_exception());
+        }
+      };
 
+    template <class _Tag>
+      struct __sender {
+        template <class _Receiver>
+          requires __callable<_Tag, env_of_t<_Receiver>> &&
+            receiver_of<_Receiver, __call_result_t<_Tag, env_of_t<_Receiver>>>
+        friend auto tag_invoke(connect_t, __sender, _Receiver&& __rcvr)
+          noexcept(is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
+          -> __operation<_Tag, __x<decay_t<_Receiver>>> {
+          return {(_Receiver&&) __rcvr};
+        }
+
+        friend auto tag_invoke(get_sender_traits_t, __sender, auto)
+          -> __empty_sender_traits;
+        template <__none_of<no_env> _Env>
+          requires __callable<_Tag, _Env>
+        friend auto tag_invoke(get_sender_traits_t, __sender, _Env)
+          -> completion_signatures<
+              set_value_t(__call_result_t<_Tag, _Env>),
+              set_error_t(exception_ptr)>;
+      };
+
+    struct __read_t {
       template <class _Tag>
-        struct __sender {
-          template <class _Receiver>
-            requires __callable<_Tag, env_of_t<_Receiver>> &&
-              receiver_of<_Receiver, invoke_result_t<_Tag, env_of_t<_Receiver>>>
-          friend auto tag_invoke(connect_t, __sender, _Receiver&& __rcvr)
-            noexcept(is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
-            -> __operation<_Tag, __x<decay_t<_Receiver>>> {
-            return {(_Receiver&&) __rcvr};
-          }
-
-          friend auto tag_invoke(get_sender_traits_t, __sender, auto)
-            -> __empty_sender_traits;
-          template <__none_of<no_env> _Env>
-            requires __callable<_Tag, _Env>
-          friend auto tag_invoke(get_sender_traits_t, __sender, _Env)
-            -> completion_signatures<
-                set_value_t(__call_result_t<_Tag, _Env>),
-                set_error_t(exception_ptr)>;
-        };
-    } // namespace __impl
-
-    inline constexpr struct __read_t {
-      template <class _Tag>
-      constexpr __impl::__sender<_Tag> operator()(_Tag) const noexcept {
+      constexpr __sender<_Tag> operator()(_Tag) const noexcept {
         return {};
       }
-    } __read {};
-  } // namespace __read_
+    };
+  } // namespace __read
+
+  inline constexpr __read::__read_t read {};
 
   namespace __general_queries::__impl {
     inline auto get_scheduler_t::operator()() const noexcept {
-      return __read_::__impl::__sender<get_scheduler_t>{};
+      return read(get_scheduler);
+    }
+    inline auto get_delegatee_scheduler_t::operator()() const noexcept {
+      return read(get_delegatee_scheduler);
     }
     inline auto get_allocator_t::operator()() const noexcept {
-      return __read_::__impl::__sender<get_allocator_t>{};
+      return read(get_allocator);
     }
     inline auto get_stop_token_t::operator()() const noexcept {
-      return __read_::__impl::__sender<get_stop_token_t>{};
+      return read(get_stop_token);
     }
   }
 } // namespace std::execution
