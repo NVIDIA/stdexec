@@ -2221,11 +2221,10 @@ execution::sender auto just_done();
 
 Returns a sender with no [=completion scheduler|completion schedulers=], which completes immediately by calling the receiver's `set_done`.
 
-### `execution::read<Tag>` ### {#design-sender-factory-read}
+### `execution::read` ### {#design-sender-factory-read}
 
 <pre highlight="c++">
-template &lt;class Tag>
-execution::sender auto read(Tag);
+execution::sender auto read(auto tag);
 
 execution::sender auto get_scheduler() {
   return read(execution::get_scheduler);
