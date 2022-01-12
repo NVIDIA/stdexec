@@ -3201,8 +3201,7 @@ namespace std {
     [[nodiscard]] bool stop_requested() const noexcept;
     [[nodiscard]] bool stop_possible() const noexcept;
 
-    [[nodiscard]] friend bool operator==(
-      const in_place_stop_token& lhs, const in_place_stop_token& rhs) noexcept;
+    [[nodiscard]] bool operator==(const in_place_stop_token&) const noexcept = default;
     friend void swap(in_place_stop_token& lhs, in_place_stop_token& rhs) noexcept;
 
   private:
