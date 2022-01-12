@@ -7712,13 +7712,6 @@ no diagnostic required.</p>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
        </ul>
       <li data-md>
-       <p>Otherwise, if both <code class="highlight"><c- n>tag_invocable</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_t</c-><c- p>,</c-> <c- n>Sch</c-><c- p>,</c-> <i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>t</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>...</c-><c- o>></c-></code> and <code class="highlight"><c- n>tag_invocable</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant_t</c-><c- p>,</c-> <c- n>S</c-><c- p>...</c-><c- o>></c-></code> are <code class="highlight">true</code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is ill-formed, where <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>t</c-></i></code> is the alias template:</p>
-<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
-  <c- k>using</c-> <i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>t</c-></i> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>()));</c->
-</pre>
-      <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant</c-><c- p>(</c-><c- n>s</c-><c- p>...))</c-></code> if <code class="highlight"><c- n>tag_invocable</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant_t</c-><c- p>,</c-> <c- n>S</c-><c- p>...</c-><c- o>></c-></code> is <code class="highlight">true</code>.</p>
-      <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>)...)</c-></code>.</p>
      </ol>
     <li data-md>
