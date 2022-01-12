@@ -3225,6 +3225,7 @@ explicit in_place_stop_token(const in_place_stop_source* source) noexcept;
 </pre>
 
 1. *Effects*: initializes `source_` with `source`.
+
 <pre highlight=c++>
 void swap(stop_token& rhs) noexcept;
 </pre>
