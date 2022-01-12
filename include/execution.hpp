@@ -490,10 +490,9 @@ namespace std::execution {
       struct forwarding_scheduler_query_t {
         template <class _Tag>
         constexpr bool operator()(_Tag __tag) const noexcept {
-          if constexpr (nothrow_tag_invocable<forwarding_scheduler_query_t, _Tag> &&
-                        is_invocable_r_v<bool, tag_t<tag_invoke>,
-                                         forwarding_scheduler_query_t, _Tag>) {
-            return tag_invoke(*this, (_Tag&&) __tag);
+          if constexpr (tag_invocable<forwarding_scheduler_query_t, _Tag>) {
+            static_assert(noexcept(tag_invoke(*this, (_Tag&&) __tag) ? true : false));
+            return tag_invoke(*this, (_Tag&&) __tag) ? true : false;
           } else {
             return false;
           }
@@ -506,7 +505,7 @@ namespace std::execution {
         tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> operator()(
             _T&& __t) const
           noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>) {
-          return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t));
+          return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t)) ? true : false;
         }
         execution::forward_progress_guarantee operator()(auto&&) const noexcept {
           return execution::forward_progress_guarantee::weakly_parallel;
@@ -1005,7 +1004,9 @@ namespace std::execution {
             friend void tag_invoke(set_done_t, __receiver&& __self) noexcept {
               auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
                 __self.__continuation_.address());
-              __continuation.promise().unhandled_done().resume();
+              __coro::coroutine_handle<> __done_continuation =
+                __continuation.promise().unhandled_done();
+              __done_continuation.resume();
             }
 
             // Forward get_env query to the coroutine promise
