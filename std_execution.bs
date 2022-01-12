@@ -3390,9 +3390,9 @@ explicit in_place_stop_callback(in_place_stop_token st, C&& cb)
     Otherwise, if `st` has an associated `in_place_stop_source` object, registers the callback with the stop state of the `in_place_stop_source` that `st` is associated with such that `std::forward<Callback>(callback_)()` is evaluated by the first call to `request_stop()` on an associated `in_place_stop_source`.
     The `in_place_stop_callback` object being initialized becomes associated with the `in_place_stop_source` object that `st` is associated with, if any.
 
-4. *Throws*: Any exception thrown by the initialization of callback.
+4. *Throws*: Any exception thrown by the initialization of `callback_`.
 
-5. *Remarks*: If evaluating `std::forward<Callback>(callback)()` exits via an exception, then `terminate` is invoked ([except.terminate]).
+5. *Remarks*: If evaluating `std::forward<Callback>(callback_)()` exits via an exception, then `terminate` is invoked ([except.terminate]).
 
 <pre highlight=c++>
 ~stop_callback();
