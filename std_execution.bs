@@ -3400,8 +3400,8 @@ explicit in_place_stop_callback(in_place_stop_token st, C&& cb)
 
 6. *Effects*: Unregisters the callback from the stop state of the associated `in_place_stop_source` object, if any.
     The destructor does not block waiting for the execution of another callback registered by an associated stop_­callback.
-    If callback is concurrently executing on another thread, then the return from the invocation of callback strongly happens before ([intro.races]) callback is destroyed.
-    If callback is executing on the current thread, then the destructor does not block ([defns.block]) waiting for the return from the invocation of callback.
+    If `callback_` is concurrently executing on another thread, then the return from the invocation of `callback_` strongly happens before ([intro.races]) `callback_` is destroyed.
+    If `callback_` is executing on the current thread, then the destructor does not block ([defns.block]) waiting for the return from the invocation of `callback_`.
 
 7. *Remarks*: A program has undefined behavior if the invocation of this function does not strongly happen before the beginning of the invocation of the destructor of the associated `in_place_stop_source` object, if any.
 
