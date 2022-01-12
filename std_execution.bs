@@ -3020,9 +3020,6 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
 
 # Thread support library <b>[thread]</b> # {#spec-thread}
 
-Note: The specification in this section is incomplete; it does not provide an API specification for the new types added into `<stop_token>`. For a less formal specification of the missing pieces, see the "Proposed Changes" section of [[P2175R0]]. A future revision
-of this paper will contain a full specification for the new types.
-
 ## Stop tokens <b>[thread.stoptoken]</b> ## {#spec-thread.stoptoken}
 
 ### Header `<stop_token>` synopsis <b>[thread.stoptoken.syn]</b> ### {#spec-thread.stoptoken.syn}
