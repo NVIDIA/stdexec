@@ -3215,11 +3215,16 @@ namespace std {
 #### Constructors, copy, and assignment <b>[stoptoken.inplace.cons]</b> #### {#spec-stoptoken.inplace.cons}
 
 <pre highlight=c++>
-stop_token() noexcept;
+in_place_stop_token() noexcept;
 </pre>
 
 1. *Effects*: initializes `source_` with `nullptr`.
 
+<pre highlight=c++>
+explicit in_place_stop_token(const in_place_stop_source* source) noexcept;
+</pre>
+
+1. *Effects*: initializes `source_` with `source`.
 <pre highlight=c++>
 void swap(stop_token& rhs) noexcept;
 </pre>
@@ -3247,13 +3252,7 @@ void swap(stop_token& rhs) noexcept;
 #### Non-member functions <b>[stoptoken.inplace.nonmembers]</b> #### {#spec-stoptoken.inplace.nonmembers}
 
 <pre highlight=c++>
-[[nodiscard]] bool operator==(const stop_token& lhs, const stop_token& rhs) noexcept;
-</pre>
-
-1. *Returns*: `lhs.source_ == rhs.source_`.
-
-<pre highlight=c++>
-friend void swap(stop_token& x, stop_token& y) noexcept;
+friend void swap(in_place_stop_token& x, in_place_stop_token& y) noexcept;
 </pre>
 
 2. *Effects*: Equivalent to: `x.swap(y)`.
@@ -3301,10 +3300,10 @@ in_place_stop_source() noexcept;
 #### Members <b>[stopsource.inplace.mem]</b> #### {#spec-stopsource.inplace.mem}
 
 <pre highlight=c++>
-[[nodiscard]] stop_token get_token() const noexcept;
+[[nodiscard]] in_place_stop_token get_token() const noexcept;
 </pre>
 
-1. *Returns*: a new associated `in_place_stop_token` object.
+1. *Returns*: `in_place_stop_token{this}`
 
 <pre highlight=c++>
 [[nodiscard]] bool stop_possible() const noexcept;
@@ -3352,10 +3351,7 @@ Insert a new subclause, Class template `in_place_stop_callback` <b>[stopcallback
             noexcept(is_nothrow_constructible_v&lt;Callback, C>);
         ~in_place_stop_callback();
 
-        in_place_stop_callback(const in_place_stop_callback&) = delete;
         in_place_stop_callback(in_place_stop_callback&&) = delete;
-        in_place_stop_callback& operator=(const in_place_stop_callback&) = delete;
-        in_place_stop_callback& operator=(in_place_stop_callback&&) = delete;
 
       private:
         Callback callback_;      // exposition only
