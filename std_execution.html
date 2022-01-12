@@ -2452,7 +2452,13 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#spec-execution.receivers.queries.get_allocator"><span class="secno">10.3.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-></code> <b>[exec.queries.get_allocator]</b></span></a>
         <li><a href="#spec-execution.receivers.queries.get_stop_token"><span class="secno">10.3.4</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> <b>[exec.queries.get_stop_token]</b></span></a>
        </ol>
-      <li><a href="#spec-execution.environment"><span class="secno">10.4</span> <span class="content">Execution environments <b>[exec.env]</b></span></a>
+      <li>
+       <a href="#spec-execution.environment"><span class="secno">10.4</span> <span class="content">Execution environments <b>[exec.env]</b></span></a>
+       <ol class="toc">
+        <li><a href="#spec-execution.environment.no_env"><span class="secno">10.4.1</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>no_env</c-></code> <b>[exec.no_env]</b></span></a>
+        <li><a href="#spec-execution.environment.get_env"><span class="secno">10.4.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-></code> <b>[exec.get_env]</b></span></a>
+        <li><a href="#spec-execution.environment.forwarding_env_query"><span class="secno">10.4.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_env_query</c-></code> <b>[exec.fwd_env]</b></span></a>
+       </ol>
       <li>
        <a href="#spec-execution.schedulers"><span class="secno">10.5</span> <span class="content">Schedulers <b>[exec.sched] </b></span></a>
        <ol class="toc">
@@ -3537,6 +3543,9 @@ fact that some coroutine types are generally awaitable and may implement the <co
      <p>Shorten the stable names for the sections.</p>
     <li data-md>
      <p><code class="highlight"><c- n>sync_wait</c-></code> now handles <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>error_code</c-></code> specially by throwing a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>system_error</c-></code> on failure.</p>
+    <li data-md>
+     <p>Fix how ADL isolation from class template arguments is specified so it
+doesn’t constrain implmentations.</p>
    </ul>
    <p><b>Enhancements:</b></p>
    <ul>
@@ -3587,10 +3596,10 @@ consideration the type information that will come in late via the receiver. The
 effect of this is that some senders cannot be typed senders when they
 otherwise could be.</p>
    <p><strong>Example:</strong></p>
-   <p>To get concrete, consider the case of a "<code class="highlight"><c- n>current_scheduler</c-></code>" sender: when <code class="highlight"><c- n>connect</c-></code>-ed and <code class="highlight"><c- n>start</c-></code>-ed, it queries the receiver for its associated
+   <p>To get concrete, consider the case of the "<code class="highlight"><c- n>get_scheduler</c-><c- p>()</c-></code>" sender: when <code class="highlight"><c- n>connect</c-></code>-ed and <code class="highlight"><c- n>start</c-></code>-ed, it queries the receiver for its associated
 scheduler and passes it back to the receiver through the value channel. That
 sender’s "value type" is the type of the <em>receiver’s</em> scheduler. What then
-should <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>current_scheduler_sender</c-><c- o>>::</c-><c- n>value_types</c-></code> report for the <code class="highlight"><c- n>current_scheduler</c-></code>'s value type? It can’t answer because it doesn’t know.</p>
+should <code class="highlight"><c- n>sender_traits</c-><c- o>&lt;</c-><c- n>get_scheduler_sender</c-><c- o>>::</c-><c- n>value_types</c-></code> report for the <code class="highlight"><c- n>get_scheduler</c-><c- p>()</c-></code>'s value type? It can’t answer because it doesn’t know.</p>
    <p>This causes knock-on problems since some important algorithms require a typed
 sender, such as <code class="highlight"><c- n>sync_wait</c-></code>. To illustrate the problem, consider the following
 code:</p>
@@ -3598,16 +3607,16 @@ code:</p>
 
 <c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>task</c-> <c- o>=</c->
   <c- n>ex</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c->
-    <c- n>current_scheduler</c-><c- p>(),</c-> <c- c1>// Fetches scheduler from receiver.</c->
+    <c- n>ex</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>(),</c-> <c- c1>// Fetches scheduler from receiver.</c->
     <c- p>[](</c-><c- k>auto</c-> <c- n>current_sched</c-><c- p>)</c-> <c- p>{</c->
       <c- c1>// Lauch some nested work on the current scheduler:</c->
-      <c- k>return</c-> <c- n>ex</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>current_sched</c-><c- p>,</c-> <i><c- n>nexted</c-> <c- n>work</c-><c- p>...</c-></i><c- p>);</c->
+      <c- k>return</c-> <c- n>ex</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>current_sched</c-><c- p>,</c-> <i><c- n>nested</c-> <c- n>work</c-><c- p>...</c-></i><c- p>);</c->
     <c- p>});</c->
 
 <c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>task</c-><c- p>));</c->
 </pre>
    <p>The code above is attempting to schedule some work onto the <code class="highlight"><c- n>sync_wait</c-></code>'s <code class="highlight"><c- n>run_loop</c-></code> execution context. But <code class="highlight"><c- n>let_value</c-></code> only returns a typed sender when
-the input sender is typed. As we explained above, <code class="highlight"><c- n>current_scheduler</c-><c- p>()</c-></code> is not
+the input sender is typed. As we explained above, <code class="highlight"><c- n>get_scheduler</c-><c- p>()</c-></code> is not
 typed, so <code class="highlight"><c- n>task</c-></code> is likewise not typed. Since <code class="highlight"><c- n>task</c-></code> isn’t typed, it cannot be
 passed to <code class="highlight"><c- n>sync_wait</c-></code> which is expecting a typed sender. The above code would
 fail to compile.</p>
@@ -3636,6 +3645,10 @@ environment entirely, passing then as separate arguments along with the sender t
      <p>Sender adaptor algorithms that previously constrained their sender arguments
 to satisfy the <code class="highlight"><c- n>typed_sender</c-></code> concept can no longer do so as the receiver is
 not available yet. This can result in type-checking that is done later, when <code class="highlight"><c- n>connect</c-></code> is ultimately called on the resulting sender adaptor.</p>
+    <li data-md>
+     <p>Operation states that own receivers that add to or change the environment
+are typically larger by one pointer. It comes with the benefit of far fewer
+indirections to evaluate queries.</p>
    </ul>
    <p><strong>"Has it been implemented?"</strong></p>
    <p>Yes, the reference implementation, which can be found at
@@ -5059,6 +5072,12 @@ themselves are templated classes.</p>
     <c- k>requires</c-> <c- p>(</c-><c- n>Fn</c-><c- o>&amp;&amp;</c-> <c- n>fn</c-><c- p>,</c-> <c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
       <c- n>std</c-><c- o>::</c-><c- n>forward</c-><fn><c- p>(</c-><c- n>fn</c-><c- p>)(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><args><c- p>()...);</c->
     <c- p>};</c->
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
+  <c- k>concept</c-> <i><c- nc>nothrow</c-><c- o>-</c-><c- n>callable</c-></i> <c- o>=</c->
+    <i><c- n>callable</c-></i><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-> <c- o>&amp;&amp;</c->
+    <c- k>requires</c-> <c- p>(</c-><c- n>Fn</c-><c- o>&amp;&amp;</c-> <c- n>fn</c-><c- p>,</c-> <c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
+      <c- p>{</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><fn><c- p>(</c-><c- n>fn</c-><c- p>)(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><args><c- p>()...)</c-> <c- p>}</c-> <c- k>noexcept</c-><c- p>;</c->
+    <c- p>};</c->
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Fn</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
   <c- k>using</c-> <i><c- n>call</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>t</c-></i> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>declval</c-><fn><c- p>(),</c-> <c- n>declval</c-><args><c- p>()...);</c->
 
@@ -5102,7 +5121,7 @@ themselves are templated classes.</p>
 
 <c- k>template</c-><c- o>&lt;</c-><c- k>auto</c-><c- o>&amp;</c-> <c- n>Tag</c-><c- o>></c->
   <c- k>using</c-> <c- n>tag_t</c-> <c- o>=</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><c- n>Tag</c-><c- p>)</c-><c- o>></c-><c- p>;</c->
-</args></tag></args></tag></args></tag></args></fn></args></fn></pre>
+</args></tag></args></tag></args></tag></args></fn></args></fn></args></fn></pre>
     </blockquote>
    </ins>
    <h4 class="heading settled" data-level="8.1.2" id="spec-func.tag_invoke"><span class="secno">8.1.2. </span><span class="content"><code class="highlight"><c- n>tag_invoke</c-></code> <b>[func.tag_invoke]</b></span><a class="self-link" href="#spec-func.tag_invoke"></a></h4>
@@ -5601,11 +5620,17 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
     <c- k>struct</c-> <c- nc>no_env</c-><c- p>;</c->
     <c- k>struct</c-> <i><c- nc>empty</c-><c- o>-</c-><c- n>env</c-></i> <c- p>{};</c-> <c- c1>// exposition only</c->
     <c- k>struct</c-> <c- nc>get_env_t</c-><c- p>;</c->
+    <c- k>struct</c-> <c- nc>forwarding_env_query_t</c-><c- p>;</c->
   <c- p>}</c->
   <c- k>using</c-> <i><c- n>exec</c-><c- o>-</c-><c- n>envs</c-></i><c- o>::</c-><c- n>no_env</c-><c- p>;</c->
   <c- k>using</c-> <i><c- n>exec</c-><c- o>-</c-><c- n>envs</c-></i><c- o>::</c-><i><c- n>empty</c-><c- o>-</c-><c- n>env</c-></i><c- p>;</c->
   <c- k>using</c-> <i><c- n>exec</c-><c- o>-</c-><c- n>envs</c-></i><c- o>::</c-><c- n>get_env_t</c-><c- p>;</c->
+  <c- k>using</c-> <i><c- n>exec</c-><c- o>-</c-><c- n>envs</c-></i><c- o>::</c-><c- n>forwarding_env_query_t</c-><c- p>;</c->
   <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>exec</c-><c- o>-</c-><c- n>envs</c-></i><c- o>::</c-><c- n>get_env_t</c-> <c- n>get_env</c-> <c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>exec</c-><c- o>-</c-><c- n>envs</c-></i><c- o>::</c-><c- n>forwarding_env_query_t</c-> <c- n>forwarding_env_query</c-><c- p>{};</c->
+  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
+    <c- k>concept</c-> <i><c- nc>forwarding</c-><c- o>-</c-><c- n>env</c-><c- o>-</c-><c- n>query</c-></i> <c- o>=</c-> <c- c1>// exposition only</c->
+      <c- n>forwarding_env_query</c-><c- p>(</c-><c- n>T</c-><c- p>{});</c->
 
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
     <c- k>using</c-> <c- n>env_of_t</c-> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>get_env</c-><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-><c- p>()));</c->
@@ -5906,7 +5931,12 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, if the type of <code class="highlight"><c- n>r</c-></code> is (possibly cv-qualified) <code class="highlight"><c- n>no_env</c-></code>, then <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed. Otherwise, it is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed and satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not
+potentially-throwing and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
@@ -5921,7 +5951,12 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, if the type of <code class="highlight"><c- n>r</c-></code> is (possibly cv-qualified) <code class="highlight"><c- n>no_env</c-></code>, then <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed. Otherwise, it is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed and satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not
+potentially-throwing and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
@@ -5936,7 +5971,12 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, if the type of <code class="highlight"><c- n>r</c-></code> is (possibly cv-qualified) <code class="highlight"><c- n>no_env</c-></code>, then <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed. Otherwise, it is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed and models <i>Allocator</i>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not
+potentially-throwing and its type satisfies <i>Allocator</i>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
@@ -5951,7 +5991,12 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, if the type of <code class="highlight"><c- n>r</c-></code> is (possibly cv-qualified) <code class="highlight"><c- n>no_env</c-></code>, then <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed. Otherwise, it is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed and satisfies <code class="highlight"><c- n>stoppable_token</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>r</c-><c- p>))</c-></code>, if this expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not
+potentially-throwing and its type satisfies <code class="highlight"><c- n>stoppable_token</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>never_stop_token</c-><c- p>{}</c-></code>.</p>
      </ol>
@@ -5964,32 +6009,53 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
      <p>An <i>execution environment</i> contains state associated with the completion of an asynchronous operation. Every receiver has an associated execution environment, accessible with the <code class="highlight"><c- n>get_env</c-></code> receiver query. The state of an execution environment is accessed with customization point objects. An execution environment may respond to any number of these environment queries.</p>
     <li data-md>
      <p>An <i>environment query</i> is a customization point object that accepts as its first argument an execution environment. For an environment query <code class="highlight"><c- n>EQ</c-></code> and an object <code class="highlight"><c- n>e</c-></code> of type <code class="highlight"><c- n>no_env</c-></code>, the expression <code class="highlight"><c- n>EQ</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> shall be ill-formed.</p>
-    <li data-md>
+   </ol>
+   <h4 class="heading settled" data-level="10.4.1" id="spec-execution.environment.no_env"><span class="secno">10.4.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>no_env</c-></code> <b>[exec.no_env]</b></span><a class="self-link" href="#spec-execution.environment.no_env"></a></h4>
 <pre class="highlight"><c- k>namespace</c-> <i><c- n>exec</c-><c- o>-</c-><c- n>envs</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
   <c- k>struct</c-> <c- nc>no_env</c-> <c- p>{</c->
     <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- k>auto</c-><c- p>,</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>no_env</c-><c- o>></c-> <c- k>auto</c-><c- p>,</c-> <c- k>auto</c-><c- o>&amp;&amp;</c-><c- p>...)</c-> <c- o>=</c-> <c- k>delete</c-><c- p>;</c->
   <c- p>};</c->
 <c- p>}</c->
 </pre>
-     <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>no_env</c-></code> is a special environment used by the <code class="highlight"><c- n>typed_sender</c-></code> concept and the sender traits when the user has specified no environment argument. [_Note:_ A user may choose to not specify an environment in order to see if a sender is typed independent of any particular execution environment. -- <i>end note</i>]</p>
-     </ol>
+   <ol>
     <li data-md>
+     <p><code class="highlight"><c- n>no_env</c-></code> is a special environment used by the <code class="highlight"><c- n>typed_sender</c-></code> concept and the sender traits when the user has specified no environment argument. [<i>Note:</i> A user may choose to not specify an environment in order to see if a sender is typed independent of any particular execution environment. -- <i>end note</i>]</p>
+   </ol>
+   <h4 class="heading settled" data-level="10.4.2" id="spec-execution.environment.get_env"><span class="secno">10.4.2. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-></code> <b>[exec.get_env]</b></span><a class="self-link" href="#spec-execution.environment.get_env"></a></h4>
 <pre class="highlight"><c- k>namespace</c-> <i><c- n>exec</c-><c- o>-</c-><c- n>envs</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
   <c- k>struct</c-> <c- nc>get_env_t</c-><c- p>;</c->
 <c- p>}</c->
 <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>exec</c-><c- o>-</c-><c- n>envs</c-></i><c- o>::</c-><c- n>get_env_t</c-> <c- n>get_env</c-> <c- p>{};</c->
 </pre>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>get_env</c-></code> is a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to</p>
      <ol>
-      <li data-md>
-       <p><code class="highlight"><c- n>get_env</c-></code> is a customization point object. For some subexpression <code class="highlight"><c- n>r</c-></code>, <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to</p>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> if that expression is well-formed.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><i><c- n>empty</c-><c- o>-</c-><c- n>env</c-></i><c- p>{}</c-></code>.</p>
+     </ol>
+    <li data-md>
+     <p>If <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is an lvalue, the object it refers to shall be valid while <code class="highlight"><c- n>r</c-></code> is valid.</p>
+   </ol>
+   <h4 class="heading settled" data-level="10.4.3" id="spec-execution.environment.forwarding_env_query"><span class="secno">10.4.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_env_query</c-></code> <b>[exec.fwd_env]</b></span><a class="self-link" href="#spec-execution.environment.forwarding_env_query"></a></h4>
+   <ol>
+    <li data-md>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_env_query</c-></code> is used to ask a customization point object whether it is a environment query that should be forwarded through environment adaptors.</p>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_env_query</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>t</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_env_query</c-><c- p>(</c-><c- n>t</c-><c- p>)</c-></code> is expression equivalent to:</p>
+     <ol>
       <li data-md>
-       <p>If <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is an lvalue, the object it refers to shall be valid while <code class="highlight"><c- n>r</c-></code> is valid.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>forwarding_env_query</c-><c- p>,</c-> <c- n>t</c-><c- p>)</c-></code>, contextually converted to <code class="highlight"><c- b>bool</c-></code>, if the <code class="highlight"><c- n>tag_invoke</c-></code> expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression is indeed contextually
+convertible to <code class="highlight"><c- b>bool</c-></code>, that expression and the contextual conversion
+are not potentially-throwing and are core constant expressions if <code class="highlight"><c- n>t</c-></code> is a core constant expression.</p>
+       </ul>
+      <li data-md>
+       <p>Otherwise, <code class="highlight">true</code>.</p>
      </ol>
    </ol>
    <h3 class="heading settled" data-level="10.5" id="spec-execution.schedulers"><span class="secno">10.5. </span><span class="content">Schedulers <b>[exec.sched] </b></span><a class="self-link" href="#spec-execution.schedulers"></a></h3>
@@ -6028,7 +6094,13 @@ context of the scheduler. <i>—end note</i>]</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_scheduler_query</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>t</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_scheduler_query</c-><c- p>(</c-><c- n>t</c-><c- p>)</c-></code> is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>forwarding_scheduler_query</c-><c- p>,</c-> <c- n>t</c-><c- p>)</c-></code>, if this expression is well formed, its type is implicitly convertible to <code class="highlight"><c- b>bool</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>forwarding_scheduler_query</c-><c- p>,</c-> <c- n>t</c-><c- p>)</c-></code>, contextually converted to <code class="highlight"><c- b>bool</c-></code>, if the <code class="highlight"><c- n>tag_invoke</c-></code> expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression is indeed contextually
+convertible to <code class="highlight"><c- b>bool</c-></code>, that expression and the contextual conversion
+are not potentially-throwing and are core constant expressions if <code class="highlight"><c- n>t</c-></code> is a core constant expression.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight">false</code>.</p>
      </ol>
@@ -6048,7 +6120,12 @@ context of the scheduler. <i>—end note</i>]</p>
 Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>, if this expression is well formed and its type is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forward_progress_guarantee</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_forward_progress_guarantee</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>, if this expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not potentially
+throwing and its type is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forward_progress_guarantee</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forward_progress_guarantee</c-><c- o>::</c-><c- n>weakly_parallel</c-></code>.</p>
      </ol>
@@ -6063,7 +6140,12 @@ Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_fo
      <p>The name <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>, if this expression is well formed and its type is <code class="highlight"><c- b>bool</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>execute_may_block_caller</c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>, if this expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not potentially
+throwing and its type is <code class="highlight"><c- b>bool</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight">true</code>.</p>
      </ol>
@@ -6161,6 +6243,11 @@ completion-signal function of <code class="highlight"><c- n>r</c-></code>. --<i>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>,</c-> <c- n>R</c-><c- p>,</c-> <c- n>E</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not send the error <code class="highlight"><c- n>E</c-></code> to the receiver <code class="highlight"><c- n>R</c-></code>’s error channel, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not potentially
+throwing.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>R</c-><c- p>,</c-> <c- n>E</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
@@ -6174,6 +6261,11 @@ completion-signal function of <code class="highlight"><c- n>r</c-></code>. --<i>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>,</c-> <c- n>R</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not signal the receiver <code class="highlight"><c- n>R</c-></code>’s done channel, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not potentially
+throwing.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>R</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
@@ -6187,14 +6279,20 @@ completion-signal function of <code class="highlight"><c- n>r</c-></code>. --<i>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_receiver_query</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>t</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_receiver_query</c-><c- p>(</c-><c- n>t</c-><c- p>)</c-></code> is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>forwarding_receiver_query</c-><c- p>,</c-> <c- n>t</c-><c- p>)</c-></code>, if this expression is well formed, its type is implicitly convertible to <code class="highlight"><c- b>bool</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>forwarding_receiver_query</c-><c- p>,</c-> <c- n>t</c-><c- p>)</c-></code>, contextually converted to <code class="highlight"><c- b>bool</c-></code>, if the <code class="highlight"><c- n>tag_invoke</c-></code> expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression is indeed contextually
+convertible to <code class="highlight"><c- b>bool</c-></code>, that expression and the contextual conversion
+are not potentially-throwing and are core constant expressions if <code class="highlight"><c- n>t</c-></code> is a core constant expression.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight">false</code> if the type of <code class="highlight"><c- n>t</c-></code> is one of <code class="highlight"><c- n>set_value_t</c-></code>, <code class="highlight"><c- n>set_error_t</c-></code>, or <code class="highlight"><c- n>set_done_t</c-></code>.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight">true</code>.</p>
      </ol>
     <li data-md>
-     <p>[<em>Note:</em> Currently the only receiver query is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-></code> -- <em>end note</em>]</p>
+     <p>[<em>Note:</em> Currently the only standard receiver query is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-></code> -- <em>end note</em>]</p>
    </ol>
    <h3 class="heading settled" data-level="10.7" id="spec-execution.op_state"><span class="secno">10.7. </span><span class="content">Operation states <b>[exec.op_state]</b></span><a class="self-link" href="#spec-execution.op_state"></a></h3>
    <ol>
@@ -6220,6 +6318,11 @@ completion-signal function of <code class="highlight"><c- n>r</c-></code>. --<i>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>,</c-> <c- n>O</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not start the work represented by the operation state <code class="highlight"><c- n>O</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not potentially
+throwing.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>O</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
@@ -6344,7 +6447,7 @@ to successfully return. [<i>Note:</i> this allows for the receiver to manage the
 </pre>
        </ol>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><i><c- n>no</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>traitse</c-></i><c- p>{}</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><i><c- n>no</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>traits</c-></i><c- p>{}</c-></code>.</p>
      </ol>
     <li data-md>
      <p>The exposition-only type <code class="highlight"><i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-></i></code> is
@@ -6384,7 +6487,11 @@ is ill-formed with no diagnostic required.</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>r</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code> and <code class="highlight"><c- n>R</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>r</c-><c- p>))</c-></code>, and let <code class="highlight"><c- n>S</c->'</code> and <code class="highlight"><c- n>R</c->'</code> be the decayed types of <code class="highlight"><c- n>S</c-></code> and <code class="highlight"><c- n>R</c-></code>, respectively. If <code class="highlight"><c- n>R</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, if that expression is valid, its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>operation_state</c-></code>, and <code class="highlight"><c- n>S</c-></code> satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return an operation state for which <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> starts work described by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, if that expression is valid and <code class="highlight"><c- n>S</c-></code> satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return an operation state for which <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> starts work described by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>operation_state</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> if <code class="highlight"><i><c- n>is</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-><c- o>-</c-><c- n>promise</c-></i><c- o>></c-></code> is <code class="highlight">true</code> and that expression is valid, where <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> is a coroutine equivalent to the following:</p>
 <pre class="highlight"><i><c- n>operation</c-><c- o>-</c-><c- n>state</c-><c- o>-</c-><c- n>task</c-></i> <i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>S</c->' <c- n>s</c-><c- p>,</c-> <c- n>R</c->' <c- n>r</c-><c- p>)</c-> <c- k>requires</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- p>{</c->
@@ -6409,7 +6516,7 @@ is ill-formed with no diagnostic required.</p>
         <li data-md>
          <p><code class="highlight"><i><c- n>operation</c-><c- o>-</c-><c- n>state</c-><c- o>-</c-><c- n>task</c-></i></code> is a type that models <code class="highlight"><c- n>operation_state</c-></code>. Its <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> resumes the <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine, advancing it past the initial suspend point.</p>
         <li data-md>
-         <p>Let <code class="highlight"><c- n>p</c-></code> be an lvalue reference to the promise of the <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine, let <code class="highlight"><c- n>b</c-></code> be a <code class="highlight"><c- k>const</c-></code> lvalue reference to the receiver <code class="highlight"><c- n>r</c-></code>. Then <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_env</c-><c- p>,</c-> <c- n>p</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>b</c-><c- p>)</c-></code>.</p>
+         <p>Let <code class="highlight"><c- n>p</c-></code> be an lvalue reference to the promise of the <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code> coroutine, let <code class="highlight"><c- n>b</c-></code> be a <code class="highlight"><c- k>const</c-></code> lvalue reference to the receiver <code class="highlight"><c- n>r</c-></code>. Then <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>tag</c-><c- p>,</c-> <c- n>p</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>tag</c-><c- p>(</c-><c- n>b</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> for any set of arguments <code class="highlight"><c- n>as</c-><c- p>...</c-></code> and for any <code class="highlight"><c- n>tag</c-></code> whose type satisfies <code class="highlight"><i><c- n>forwarding</c-><c- o>-</c-><c- n>receiver</c-><c- o>-</c-><c- n>query</c-></i></code>.</p>
         <li data-md>
          <p>The expression <code class="highlight"><c- n>p</c-><c- p>.</c-><c- n>unhandled_done</c-><c- p>()</c-></code> is expression-equivalent to <code class="highlight"><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>((</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>),</c-> <c- n>noop_coroutine</c-><c- p>())</c-></code>.</p>
         <li data-md>
@@ -6431,7 +6538,13 @@ is ill-formed with no diagnostic required.</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_sender_query</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>t</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>forwarding_sender_query</c-><c- p>(</c-><c- n>t</c-><c- p>)</c-></code> is expression equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>forwarding_sender_query</c-><c- p>,</c-> <c- n>t</c-><c- p>)</c-></code>, if this expression is well formed, its type is implicitly convertible to <code class="highlight"><c- b>bool</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>forwarding_sender_query</c-><c- p>,</c-> <c- n>t</c-><c- p>)</c-></code> contextually converted to <code class="highlight"><c- b>bool</c-></code>, if the <code class="highlight"><c- n>tag_invoke</c-></code> expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression is indeed contextually
+convertible to <code class="highlight"><c- b>bool</c-></code>, that expression and the contextual conversion
+are not potentially-throwing and are core constant expressions if <code class="highlight"><c- n>t</c-></code> is a core constant expression.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight">false</code>.</p>
      </ol>
@@ -6445,7 +6558,11 @@ is ill-formed with no diagnostic required.</p>
 argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> is not one of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-></code>, or <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done_t</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>, if this expression is well formed and satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, and is <code class="highlight"><c- k>noexcept</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-><c- p>,</c-> <c- n>as_const</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code> if this expression is well formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not potentially throwing and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
@@ -6466,7 +6583,11 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
@@ -6530,8 +6651,12 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
 satisfy <code class="highlight"><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code>, if that expression is valid and its type <code class="highlight"><c- n>S</c-></code> is such that <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>no_env</c-><c- p>,</c-> <c- k>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>(</c-><c- n>vs</c-><c- p>))...</c-><c- o>></c-></code> is <code class="highlight">true</code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code> and sends
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code> and sends
 values equivalent to <code class="highlight"><c- k>auto</c-><c- p>(</c-><c- n>vs</c-><c- p>)...</c-></code> to a receiver connected to it, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>no_env</c-><c- p>,</c-> <c- k>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>(</c-><c- n>vs</c-><c- p>))...</c-><c- o>></c-></code>, where <code class="highlight"><c- n>R</c-></code> is the type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>vs</c-><c- p>...),</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
      </ol>
@@ -6741,8 +6866,12 @@ are all well-formed.</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected above does not return a sender which starts <code class="highlight"><c- n>s</c-></code> on an execution agent of the associated execution context of <code class="highlight"><c- n>sch</c-></code> when
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid. If the function selected above does not return a sender which starts <code class="highlight"><c- n>s</c-></code> on an execution agent of the associated execution context of <code class="highlight"><c- n>sch</c-></code> when
 started, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s1</c-></code>. When <code class="highlight"><c- n>s1</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -6755,8 +6884,6 @@ started, the program is ill-formed with no diagnostic required.</p>
            <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>.</p>
           <li data-md>
            <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
-          <li data-md>
-           <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expresion-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
          </ol>
         <li data-md>
          <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code>, which results in <code class="highlight"><c- n>s2</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s2</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in <code class="highlight"><c- n>op_state2</c-></code>.</p>
@@ -6765,8 +6892,8 @@ started, the program is ill-formed with no diagnostic required.</p>
        </ol>
       <li data-md>
        <p><code class="highlight"><c- n>r2</c-></code> is a receiver that wraps a reference to <code class="highlight"><c- n>out_r</c-></code> and forwards all
-   receiver completion-signals to it. In addition, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>r2</c-><c- p>)</c-></code> returns an object <code class="highlight"><c- n>e</c-></code> such that <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> returns a copy of <code class="highlight"><c- n>sch</c-></code>, and <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>tag</c-><c- p>,</c-> <c- n>e</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>tag</c-><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> for all arguments <code class="highlight"><c- n>args</c-><c- p>...</c-></code> and for all <code class="highlight"><c- n>tag</c-></code> whose type is
-   not <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler_t</c-></code>.</p>
+   receiver completion-signals to it. In addition, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>r2</c-><c- p>)</c-></code> returns an object <code class="highlight"><c- n>e</c-></code> such that <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> returns a copy of <code class="highlight"><c- n>sch</c-></code>, and <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>tag</c-><c- p>,</c-> <c- n>e</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>tag</c-><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> for all arguments <code class="highlight"><c- n>args</c-><c- p>...</c-></code> and for all <code class="highlight"><c- n>tag</c-></code> whose type
+   satisfies <code class="highlight"><i><c- n>forwarding</c-><c- o>-</c-><c- n>env</c-><c- o>-</c-><c- n>query</c-></i></code> and is not <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler_t</c-></code>.</p>
       <li data-md>
        <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state1</c-></code>, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> on <code class="highlight"><c- n>op_state2</c-></code>.</p>
       <li data-md>
@@ -6781,9 +6908,17 @@ started, the program is ill-formed with no diagnostic required.</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
      </ol>
@@ -6799,8 +6934,12 @@ started, the program is ill-formed with no diagnostic required.</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which completes on an execution agent belonging to the associated
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which completes on an execution agent belonging to the associated
 execution context of <code class="highlight"><c- n>sch</c-></code> and sends signals equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -6850,9 +6989,17 @@ ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c
 expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -6910,9 +7057,17 @@ ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c
 expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -6972,9 +7127,17 @@ decayed type of <code class="highlight"><c- n>f</c-></code>, and let <code class
 decay-copied from <code class="highlight"><c- n>f</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, or <code class="highlight"><c- n>F</c-></code> does not model both <code class="highlight"><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i></code> and <code class="highlight"><c- n>invocable</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_done_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_done_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>upon_done</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -7020,9 +7183,17 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>, let <code class="highlight"><c- n>F</c-></code> be the decayed type of <code class="highlight"><c- n>f</c-></code>, and let <code class="highlight"><c- n>f</c->'</code> be an xvalue that refers to an object decay-copied from <code class="highlight"><c- n>f</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, given a receiver <code class="highlight"><c- n>out_r</c-></code> and an lvalue <code class="highlight"><c- n>out_r</c->'</code> refering to an object decay-copied from <code class="highlight"><c- n>out_r</c-></code>.</p>
        <ol>
@@ -7035,8 +7206,6 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
            <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>),</c-> <c- n>e</c-><c- p>)</c-></code>.</p>
           <li data-md>
            <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code>.</p>
-          <li data-md>
-           <p><code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>as_const</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code>.</p>
          </ol>
         <li data-md>
          <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> returns a sender <code class="highlight"><c- n>s2</c-></code> such that:</p>
@@ -7086,9 +7255,17 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>, let <code class="highlight"><c- n>F</c-></code> be the decayed type of <code class="highlight"><c- n>f</c-></code>, and let <code class="highlight"><c- n>f</c->'</code> be an xvalue that refers to an object decay-copied from <code class="highlight"><c- n>f</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, given a receiver <code class="highlight"><c- n>out_r</c-></code> and an lvalue <code class="highlight"><c- n>out_r</c->'</code> refering to an object decay-copied from <code class="highlight"><c- n>out_r</c-></code>.</p>
        <ol>
@@ -7101,8 +7278,6 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
            <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called, decay-copies <code class="highlight"><c- n>e</c-></code> into <code class="highlight"><c- n>op_state2</c-></code> as <code class="highlight"><c- n>e</c->'</code>, then calls <code class="highlight"><c- n>invoke</c-><c- p>(</c-><c- n>f</c->'<c- p>,</c-> <c- n>e</c->'<c- p>)</c-></code>, resulting in a sender <code class="highlight"><c- n>s3</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s3</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state3</c-></code>. <code class="highlight"><c- n>op_state3</c-></code> is saved as a part of <code class="highlight"><c- n>op_state2</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state3</c-><c- p>)</c-></code>. If any of these throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>),</c-> <c- n>current_exception</c-><c- p>())</c-></code>. If any of these expressions would be ill-formed, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is ill-formed.</p>
           <li data-md>
            <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code>.</p>
-          <li data-md>
-           <p><code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>as_const</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code>.</p>
          </ol>
         <li data-md>
          <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> returns a sender <code class="highlight"><c- n>s2</c-></code> such that:</p>
@@ -7154,9 +7329,17 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>, let <code class="highlight"><c- n>F</c-></code> be the decayed type of <code class="highlight"><c- n>f</c-></code>, and let <code class="highlight"><c- n>f</c->'</code> be an xvalue that refers to an object decay-copied from <code class="highlight"><c- n>f</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code> or if <code class="highlight"><c- n>F</c-></code> does not satisfy <code class="highlight"><c- n>invocable</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, given a receiver <code class="highlight"><c- n>out_r</c-></code> and an lvalue <code class="highlight"><c- n>out_r</c->'</code> refering to an object decay-copied from <code class="highlight"><c- n>out_r</c-></code>.</p>
        <ol>
@@ -7169,8 +7352,6 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
            <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>),</c-> <c- n>e</c-><c- p>)</c-></code>.</p>
           <li data-md>
            <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>invoke</c-><c- p>(</c-><c- n>f</c->'<c- p>)</c-></code>, resulting in a sender <code class="highlight"><c- n>s3</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s3</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state3</c-></code>. <code class="highlight"><c- n>op_state3</c-></code> is saved as a part of <code class="highlight"><c- n>op_state2</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state3</c-><c- p>)</c-></code>. If any of these throws an exception, it catches it and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>),</c-> <c- n>current_exception</c-><c- p>())</c-></code>. If any of these expressions would be ill-formed, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is ill-formed.</p>
-          <li data-md>
-           <p><code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>as_const</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code>.</p>
          </ol>
         <li data-md>
          <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_done</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> returns a sender <code class="highlight"><c- n>s2</c-></code> such that:</p>
@@ -7213,9 +7394,17 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code>, <code class="highlight"><c- n>shape</c-></code>, and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>, <code class="highlight"><c- n>Shape</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>shape</c-><c- p>))</c-></code>, and <code class="highlight"><c- n>F</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>f</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code> or <code class="highlight"><c- n>Shape</c-></code> does not satisfy <code class="highlight"><c- n>integral</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
        <ol>
@@ -7235,7 +7424,16 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
          <p>Returns an operation state <code class="highlight"><c- n>op_state</c-></code> that contains <code class="highlight"><c- n>op_state2</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
        </ol>
       <li data-md>
-       <p>TODO: <code class="highlight"><c- n>get_sender_traits</c-></code></p>
+       <p>Given an expression <code class="highlight"><c- n>e</c-></code>, let <code class="highlight"><c- n>E</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>e</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>typed_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">false</code>, the type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_sender_traits</c-><c- p>,</c-> <c- n>s2</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> shall
+be equivalent to <code class="highlight"><i><c- n>empty</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>traits</c-></i></code>. Otherwise, let <code class="highlight"><c- n>Es</c-><c- p>...</c-></code> be the types in the <code class="highlight"><i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i></code> named by <code class="highlight"><c- n>error_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>></c-></code>, and let <code class="highlight"><c- n>Bs</c-><c- p>...</c-></code> be the set of unique types in <code class="highlight"><c- p>[</c-><c- n>Es</c-><c- p>...,</c-> <c- n>exception_ptr</c-><c- p>]</c-></code>. The type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_sender_traits</c-><c- p>,</c-> <c- n>s2</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> shall be a class type <code class="highlight"><c- n>Tr</c-></code> such that, for variadic templates <code class="highlight"><c- n>Tuple</c-></code> and <code class="highlight"><c- n>Variant</c-></code>:</p>
+       <ol>
+        <li data-md>
+         <p><code class="highlight"><c- n>Tr</c-><c- o>::</c-><c- n>value_types</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> names the same type as <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code>.</p>
+        <li data-md>
+         <p><code class="highlight"><c- n>Tr</c-><c- o>::</c-><c- n>error_types</c-><c- o>&lt;</c-><c- n>Variant</c-><c- o>></c-></code> names the type <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Bs</c-><c- p>...</c-><c- o>></c-></code>.</p>
+        <li data-md>
+         <p><code class="highlight"><c- n>Tr</c-><c- o>::</c-><c- n>sends_done</c-></code> is a core constant expression of type <code class="highlight"><c- b>bool</c-></code> and value <code class="highlight"><c- n>sender_traits_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>>::</c-><c- n>sends_done</c-></code>.</p>
+       </ol>
      </ol>
      <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-><c- p>(</c-><c- n>i</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> for each <code class="highlight"><c- n>i</c-></code> of type <code class="highlight"><c- n>Shape</c-></code> from <code class="highlight"><c- mi>0</c-></code> to <code class="highlight"><c- n>shape</c-></code> when the input sender sends values <code class="highlight"><c- n>args</c-><c- p>...</c-></code>, or does not propagate the values of the signals sent by the input sender to
     a connected receiver, the program is ill-formed with no diagnostic required.</p>
@@ -7245,35 +7443,124 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> is used to adapt an arbitrary sender into a sender that can be connected multiple times.</p>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
+     <p>Let <code class="highlight"><i><c- n>split</c-><c- o>-</c-><c- n>env</c-></i></code> be the type of an execution environment such that, given an instance <code class="highlight"><c- n>e</c-></code>, the expression <code class="highlight"><c- n>get_stop_token</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> is well formed and has type <code class="highlight"><c- n>stop_token</c-></code>.</p>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> denotes a customization point object. For some
+subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>split</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code> is <code class="highlight">false</code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>,
+if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>, which:</p>
        <ol>
         <li data-md>
-         <p>Creates an object <code class="highlight"><c- n>sh_state</c-></code>. The lifetime of <code class="highlight"><c- n>sh_state</c-></code> shall last for at least as long as the lifetime of the last operation state object returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>some_r</c-><c- p>)</c-></code> for some receiver <code class="highlight"><c- n>some_r</c-></code>.</p>
+         <p>Creates an object <code class="highlight"><c- n>sh_state</c-></code> that contains a <code class="highlight"><c- n>stop_source</c-></code>, a list of
+pointers to operation states awaiting the completion of <code class="highlight"><c- n>s</c-></code>, and that
+also reserves space for storing:</p>
+         <ul>
+          <li data-md>
+           <p>the operation state that results from connecting <code class="highlight"><c- n>s</c-></code> with <code class="highlight"><c- n>r</c-></code> described below, and</p>
+          <li data-md>
+           <p>the sets of values and errors with which <code class="highlight"><c- n>s</c-></code> may complete, with
+the addition of <code class="highlight"><c- n>exception_ptr</c-></code>.</p>
+         </ul>
         <li data-md>
-         <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>:</p>
+         <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code> such that:</p>
          <ol>
           <li data-md>
-           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is called, saves the expressions <code class="highlight"><c- n>args</c-><c- p>...</c-></code> as subobjects of <code class="highlight"><c- n>sh_state</c-></code>.</p>
+           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is called, decay-copies
+the expressions <code class="highlight"><c- n>args</c-><c- p>...</c-></code> into <code class="highlight"><c- n>sh_state</c-></code>. It then notifies all
+the operation states in <code class="highlight"><c- n>sh_state</c-></code>'s list of operation states
+that the results are ready. If any exceptions are thrown, the
+exception is caught and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code> is called instead.</p>
           <li data-md>
-           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called, saves the expression <code class="highlight"><c- n>e</c-></code> as a subobject of <code class="highlight"><c- n>sh_state</c-></code>.</p>
+           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called, decay-copies <code class="highlight"><c- n>e</c-></code> into <code class="highlight"><c- n>sh_state</c-></code>. It then notifies the operation states in <code class="highlight"><c- n>sh_state</c-></code>'s list of operation states that the results are ready.</p>
           <li data-md>
-           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, saves this fact in <code class="highlight"><c- n>sh_state</c-></code>.</p>
+           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, it then notifies the
+operation states in <code class="highlight"><c- n>sh_state</c-></code>'s list of operation states that
+the results are ready.</p>
+          <li data-md>
+           <p><code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is an expression <code class="highlight"><i><c- n>e</c-></i></code> of type <code class="highlight"><i><c- n>split</c-><c- o>-</c-><c- n>env</c-></i></code> such that <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><i><c- n>e</c-></i><c- p>)</c-></code> is well-formed
+and returns the results of calling <code class="highlight"><c- n>get_token</c-><c- p>()</c-></code> on <code class="highlight"><c- n>sh_state</c-></code>'s
+stop source.</p>
          </ol>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state2</c-></code>. <code class="highlight"><c- n>op_state2</c-></code> is saved as a subobject of <code class="highlight"><c- n>sh_state</c-></code>.</p>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state2</c-></code>. <code class="highlight"><c- n>op_state2</c-></code> is saved in <code class="highlight"><c- n>sh_state</c-></code>.</p>
         <li data-md>
-         <p>When <code class="highlight"><c- n>s2</c-></code> is connected with a receiver <code class="highlight"><c- n>out_r</c-></code>, it returns an operation state object <code class="highlight"><c- n>op_state</c-></code>. When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>, if this is the first time this expression would be evaluated. When both <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> and <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> have been called, calls <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>args2</c-><c- p>...)</c-></code>, where <code class="highlight"><c- n>args2</c-><c- p>...</c-></code> is a pack of lvalues referencing the subobjects of <code class="highlight"><c- n>sh_state</c-></code> that have been saved by the
-original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code>.</p>
+         <p>When <code class="highlight"><c- n>s2</c-></code> is connected with a receiver <code class="highlight"><c- n>out_r</c-></code> of type <code class="highlight"><c- n>OutR</c-></code>, it
+returns an operation state object <code class="highlight"><c- n>op_state</c-></code> that contains:</p>
+         <ul>
+          <li data-md>
+           <p>An object <code class="highlight"><c- n>out_r</c->'</code> of type <code class="highlight"><c- n>OutR</c-></code> decay-copied from <code class="highlight"><c- n>out_r</c-></code>,</p>
+          <li data-md>
+           <p>A reference to <code class="highlight"><c- n>sh_state</c-></code>,</p>
+          <li data-md>
+           <p>A stop callback of type <code class="highlight"><c- n>optional</c-><c- o>&lt;</c-><c- n>stop_token_of_t</c-><c- o>&lt;</c-><c- n>env_of_t</c-><c- o>&lt;</c-><c- n>OutR</c-><c- o>>>::</c-><c- n>callback_type</c-><c- o>&lt;</c-><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i><c- o>>></c-></code>,
+where <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i></code> is an implementation
+defined class type equivalent to the following:</p>
+<pre class="highlight"><c- k>struct</c-> <i><c- nc>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i> <c- p>{</c->
+  <c- n>stop_source</c-><c- o>&amp;</c-> <c- n>stop_src_</c-><c- p>;</c->
+  <c- b>void</c-> <c- nf>operator</c-><c- p>()()</c-> <c- k>noexcept</c-> <c- p>{</c->
+    <c- n>stop_src_</c-><c- p>.</c-><c- n>request_stop</c-><c- p>();</c->
+  <c- p>}</c->
+<c- p>};</c->
+</pre>
+         </ul>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called:</p>
+         <ul>
+          <li data-md>
+           <p>If <code class="highlight"><c- n>r</c-></code>'s receiver contract has already been satisfied, then let <code class="highlight"><i><c- n>Signal</c-></i></code> be whichever receiver completion-signal
+was used to complete r’s receiver contract ([exec.recv]). Calls <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>out_r</c->'<c- p>,</c-> <c- n>args2</c-><c- p>...)</c-></code>, where <code class="highlight"><c- n>args2</c-><c- p>...</c-></code> is a
+pack of lvalues referencing the subobjects of <code class="highlight"><c- n>sh_state</c-></code> that have
+been saved by the original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> and returns.</p>
+          <li data-md>
+           <p>Otherwise, it emplace constructs the stop callback optional with
+the arguments <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>get_env</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code> and <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i><c- p>{</c-><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i><c- p>}</c-></code>, where <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i></code> refers to the stop source of <code class="highlight"><c- n>sh_state</c-></code>.</p>
+          <li data-md>
+           <p>Then, it checks to see if <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i><c- p>.</c-><c- n>stop_requested</c-><c- p>()</c-></code> is <code class="highlight">true</code>. If so, it
+calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c->'<c- p>)</c-></code>.</p>
+          <li data-md>
+           <p>Otherwise, it adds a pointer to <code class="highlight"><c- n>op_state</c-></code> to the list of
+operation states in <code class="highlight"><c- n>sh_state</c-></code> and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code> if this would be the first such
+invocation.</p>
+         </ul>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>r</c-></code> completes it will notify <code class="highlight"><c- n>op_state</c-></code> that the result are
+ready. Let <code class="highlight"><i><c- n>Signal</c-></i></code> be whichever receiver
+completion-signal was used to complete <code class="highlight"><c- n>r</c-></code>'s receiver contract
+([exec.recv]). <code class="highlight"><c- n>op_state</c-></code>'s stop callback optional is reset. Then <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>),</c-> <c- n>args2</c-><c- p>...)</c-></code> is called,
+where <code class="highlight"><c- n>args2</c-><c- p>...</c-></code> is a pack of lvalues referencing the subobjects of <code class="highlight"><c- n>sh_state</c-></code> that have been saved by the original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code>.</p>
+        <li data-md>
+         <p>Ownership of <code class="highlight"><c- n>sh_state</c-></code> is shared by <code class="highlight"><c- n>s2</c-></code> and by every <code class="highlight"><c- n>op_state</c-></code> that results from connecting <code class="highlight"><c- n>s2</c-></code> to a receiver.</p>
        </ol>
       <li data-md>
-       <p>TODO: <code class="highlight"><c- n>get_sender_traits</c-></code></p>
+       <p>Given an expression <code class="highlight"><c- n>e</c-></code>, let <code class="highlight"><c- n>E</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>e</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>typed_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">false</code>, the type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_sender_traits</c-><c- p>,</c-> <c- n>s2</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> shall
+be equivalent to <code class="highlight"><i><c- n>empty</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>traits</c-></i></code>. Otherwise, let <code class="highlight"><c- n>Vs</c-><c- p>...</c-></code> be the set of unique types in the <code class="highlight"><i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i></code> named by <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>set</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>signature</c-></i><c- p>,</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>></c-></code>, and let <code class="highlight"><c- n>Es</c-><c- p>...</c-></code> be the set of types in the <code class="highlight"><i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i></code> named by <code class="highlight"><c- n>error_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>error</c-><c- o>-</c-><c- n>types</c-></i><c- o>></c-></code>, where <code class="highlight"><i><c- n>set</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>signature</c-></i></code> is the alias template:</p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
+  <c- k>using</c-> <i><c- n>set</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>signature</c-></i> <c- o>=</c-> <c- n>set_value_t</c-><c- p>(</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>>&amp;</c-><c- p>...);</c->
+</pre>
+       <p>and <code class="highlight"><i><c- n>error</c-><c- o>-</c-><c- n>types</c-></i></code> is the alias template:</p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Es</c-><c- o>></c->
+  <c- k>using</c-> <i><c- n>error</c-><c- o>-</c-><c- n>types</c-></i> <c- o>=</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Es</c-><c- o>>&amp;</c-><c- p>...</c-><c- o>></c-><c- p>;</c->
+</pre>
+       <p>Let <code class="highlight"><c- n>Bs</c-><c- p>...</c-></code> be the set of unique types in <code class="highlight"><c- p>[</c-><c- n>Es</c-><c- p>...,</c-> <c- n>exception_ptr</c-><c- o>&amp;</c-><c- p>]</c-></code>. If <code class="highlight"><c- n>sender_traits_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>>::</c-><c- n>sends_done</c-></code> is <code class="highlight">true</code>, then the type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_sender_traits</c-><c- p>,</c-> <c- n>s2</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is a class type equivalent to:</p>
+<pre class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>Vs</c-><c- p>...,</c-> <c- n>set_error_t</c-><c- p>(</c-><c- n>Bs</c-><c- p>)...,</c-> <c- n>set_done_t</c-><c- p>()</c-><c- o>></c->
+</pre>
+       <p>Otherwise:</p>
+<pre class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>Vs</c-><c- p>...,</c-> <c- n>set_error_t</c-><c- p>(</c-><c- n>Bs</c-><c- p>)...</c-><c- o>></c->
+</pre>
      </ol>
      <p>If the function selected above does not return a sender which sends references to values sent by <code class="highlight"><c- n>s</c-></code>, propagating the other channels, the program is ill-formed with no diagnostic required.</p>
    </ol>
@@ -7292,7 +7579,11 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
      <p>Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>,</c-> <c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>,</c-> <c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, constructs a sender <code class="highlight"><c- n>w</c-></code> of type <code class="highlight"><c- n>W</c-></code>. When <code class="highlight"><c- n>w</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code> of type <code class="highlight"><c- n>OutR</c-></code>, it returns an operation state <code class="highlight"><c- n>op_state</c-></code> specified as below:</p>
        <ol>
@@ -7306,7 +7597,7 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
           <li data-md>
            <p>Otherwise, <code class="highlight"><c- n>request_stop</c-></code> is called on <code class="highlight"><c- n>op_state</c-></code>'s associated stop source. When all child operations have completed, <code class="highlight"><c- n>op_state</c-></code>'s associated stop callback optional is reset and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code> is called.</p>
           <li data-md>
-           <p>For each receiver <code class="highlight"><c- n>r</c-><i><sub><c- n>i</c-></sub></i></code>, <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><i><sub><c- n>i</c-></sub></i><c- p>)</c-></code> is an expression <code class="highlight"><i><c- n>e</c-></i></code> such that <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><i><c- n>e</c-></i><c- p>)</c-></code> is well-formed and returns the results of calling <code class="highlight"><c- n>get_token</c-><c- p>()</c-></code> on <code class="highlight"><c- n>op_state</c-></code>'s associated stop source, and for which <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>tag</c-><c- p>,</c-> <i><c- n>e</c-></i><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>tag</c-><c- p>(</c-><c- n>get_env</c-><c- p>(</c-><c- n>out_r</c-><c- p>),</c-> <c- n>as</c-><c- p>...)</c-></code> for all arguments <code class="highlight"><c- n>args</c-><c- p>...</c-></code> and all <code class="highlight"><c- n>tag</c-></code> whose type is not <code class="highlight"><c- n>get_stop_token_t</c-></code>.</p>
+           <p>For each receiver <code class="highlight"><c- n>r</c-><i><sub><c- n>i</c-></sub></i></code>, <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><i><sub><c- n>i</c-></sub></i><c- p>)</c-></code> is an expression <code class="highlight"><i><c- n>e</c-></i></code> such that <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><i><c- n>e</c-></i><c- p>)</c-></code> is well-formed and returns the results of calling <code class="highlight"><c- n>get_token</c-><c- p>()</c-></code> on <code class="highlight"><c- n>op_state</c-></code>'s associated stop source, and for which <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>tag</c-><c- p>,</c-> <i><c- n>e</c-></i><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>tag</c-><c- p>(</c-><c- n>get_env</c-><c- p>(</c-><c- n>out_r</c-><c- p>),</c-> <c- n>args</c-><c- p>...)</c-></code> for all arguments <code class="highlight"><c- n>args</c-><c- p>...</c-></code> and all <code class="highlight"><c- n>tag</c-></code> whose type satisfies <code class="highlight"><i><c- n>forwarding</c-><c- o>-</c-><c- n>env</c-><c- o>-</c-><c- n>query</c-></i></code> and is not <code class="highlight"><c- n>get_stop_token_t</c-></code>.</p>
          </ol>
         <li data-md>
          <p>For each sender <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i></code>, calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>,</c-> <c- n>r</c-><i><sub><c- n>i</c-></sub></i><c- p>)</c-></code>, resulting in operation states <code class="highlight"><c- n>child_op</c-><i><sub><c- n>i</c-></sub></i></code>.</p>
@@ -7361,7 +7652,7 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
              <p>Otherwise, <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>V</c-><i><sub><c- n>0</c-></sub></i><c- p>...,</c-> <c- n>V</c-><i><sub><c- n>1</c-></sub></i><c- p>,...,</c-> <c- n>V</c-><i><sub><c- n>n</c-><c- mf>-1</c-></sub></i><c- mf>.</c-><c- p>..</c-><c- o>>></c-></code> where <code class="highlight"><i><c- n>n</c-></i></code> is the count of types in <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code>, and where <code class="highlight"><c- n>V</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> is a set of types such that for the type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code>, <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- p>,</c-> <c- n>WE</c-><c- p>,</c-> <c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> is an alias for <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>V</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-><c- o>>></c-></code>.</p>
            </ul>
           <li data-md>
-           <p><code class="highlight"><c- n>Tr</c-><c- o>::</c-><c- n>error_types</c-><c- o>&lt;</c-><c- n>Variant</c-><c- o>></c-></code> is <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>exception_ptr</c-><c- p>,</c-> <c- n>U</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-><c- o>></c-></code>, where <code class="highlight"><c- n>U</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> is the unique set of types in <code class="highlight"><c- n>E</c-><i><sub><c- n>0</c-></sub></i><c- p>...,</c-> <c- n>E</c-><i><sub><c- n>1</c-></sub></i><c- p>,...,</c-> <c- n>E</c-><i><sub><c- n>n</c-><c- mf>-1</c-></sub></i><c- mf>.</c-><c- p>..</c-></code>, where <code class="highlight"><c- n>E</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> is a set of types such that for the type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code>, <code class="highlight"><c- n>error_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- p>,</c-> <c- n>WE</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> is an alias for <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>E</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-><c- o>></c-></code>.</p>
+           <p><code class="highlight"><c- n>Tr</c-><c- o>::</c-><c- n>error_types</c-><c- o>&lt;</c-><c- n>Variant</c-><c- o>></c-></code> is <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>U</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-><c- o>></c-></code>, where <code class="highlight"><c- n>U</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> is the unique set of types in <code class="highlight"><c- p>[</c-><c- n>exception_ptr</c-><c- p>,</c-> <c- n>E</c-><i><sub><c- n>0</c-></sub></i><c- p>...,</c-> <c- n>E</c-><i><sub><c- n>1</c-></sub></i><c- p>,...,</c-> <c- n>E</c-><i><sub><c- n>n</c-><c- mf>-1</c-></sub></i><c- mf>.</c-><c- p>..]</c-></code>, where <code class="highlight"><c- n>E</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> is a set of types such that for the type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code>, <code class="highlight"><c- n>error_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><i><sub><c- n>i</c-></sub></i><c- p>,</c-> <c- n>WE</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> is an alias for <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>E</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-><c- o>></c-></code>.</p>
           <li data-md>
            <p><code class="highlight"><c- n>Tr</c-><c- o>::</c-><c- n>sends_done</c-></code> is <code class="highlight">true</code>.</p>
          </ul>
@@ -7372,11 +7663,14 @@ original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c-
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression
-is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function
-selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that, when connected
-with a receiver of type <code class="highlight"><c- n>R</c-></code>, sends the types <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-><c- p>...</c-></code> when they
+is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a
+sender that, when connected with a receiver of type <code class="highlight"><c- n>R</c-></code>, sends the types <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-><c- p>...</c-></code> when they
 all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no
 diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>)...)</c-></code>.</p>
      </ol>
@@ -7393,9 +7687,13 @@ senders, which may have one or more sets of sent values. [<i>Note:</i> this can 
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>scheduler</c-></code>, or any type <code class="highlight"><c- n>S</c-><i><sub><c- n>i</c-></sub></i></code> in <code class="highlight"><c- n>S</c-><c- p>...</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when
 they all complete with <code class="highlight"><c- n>set_value</c-></code>, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of <code class="highlight"><c- n>sch</c-></code>, the program is ill-formed with no diagnostic
 required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><c- p>...),</c-> <c- n>sch</c-><c- p>)</c-></code>.</p>
      </ol>
@@ -7407,11 +7705,14 @@ to:</p>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that
-expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the
-function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that, when
-connected with a receiver of type <code class="highlight"><c- n>R</c-></code>, sends the types <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-><c- p>...</c-></code> when they
-all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no
-diagnostic required.</p>
+expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not
+return a sender that, when connected with a receiver of type <code class="highlight"><c- n>R</c-></code>, sends
+the types <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with
+no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, if both <code class="highlight"><c- n>tag_invocable</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_t</c-><c- p>,</c-> <c- n>Sch</c-><c- p>,</c-> <i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>t</c-></i><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>...</c-><c- o>></c-></code> and <code class="highlight"><c- n>tag_invocable</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant_t</c-><c- p>,</c-> <c- n>S</c-><c- p>...</c-><c- o>></c-></code> are <code class="highlight">true</code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is ill-formed, where <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>t</c-></i></code> is the alias template:</p>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- o>></c->
@@ -7451,8 +7752,6 @@ diagnostic required.</p>
          <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>.</p>
         <li data-md>
          <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
-        <li data-md>
-         <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
        </ol>
       <li data-md>
        <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state2</c-></code>.</p>
@@ -7502,9 +7801,17 @@ diagnostic required.</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise:</p>
        <ol>
@@ -7547,9 +7854,17 @@ from the operation before the operation completes.</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type is <code class="highlight"><c- b>void</c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above is <code class="highlight"><c- b>void</c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid and its type is <code class="highlight"><c- b>void</c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above is <code class="highlight"><c- b>void</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise:</p>
        <ol>
@@ -7599,9 +7914,17 @@ or the number of the arguments <code class="highlight"><c- n>sender_traits_t</c-
 parameter is not 1, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if this expression is valid and its type is <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if this expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above is <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if this expression is valid and its type is <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if this expression is valid and its type is.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above is <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise:</p>
        <ol>
@@ -7626,9 +7949,17 @@ parameter is not 1, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><
 object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be the type of <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code>. If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code> is <code class="highlight">false</code>, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait_with_variant</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait_with_variant</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait_with_variant</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if this expression is valid and its type is <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait_with_variant</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if this expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above is <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code>.</p>
+       </ul>
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait_with_variant</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if this expression is valid and its type is <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code>.</p>
+       <p>Otherwise, <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait_with_variant</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if this expression is valid.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above is <code class="highlight"><i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>with</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>sync</c-><c- o>-</c-><c- n>wait</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>))</c-></code>.</p>
      </ol>
@@ -7641,13 +7972,14 @@ object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let 
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>f</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>F</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>f</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code> or <code class="highlight"><c- n>F</c-></code> does not satisfy <code class="highlight"><c- n>invocable</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>execute</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid and
-its type is <code class="highlight"><c- b>void</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not
-invoke the function <code class="highlight"><c- n>f</c-></code> (or an object decay-copied from <code class="highlight"><c- n>f</c-></code>) on an
-execution agent belonging to the associated execution context of <code class="highlight"><c- n>sch</c-></code>,
-or if it does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> if an error occurs after control
-is returned to the caller, the program is ill-formed with no diagnostic
-required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>execute</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid. If
+the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not invoke the function <code class="highlight"><c- n>f</c-></code> (or an object decay-copied from <code class="highlight"><c- n>f</c-></code>) on an execution agent belonging to
+the associated execution context of <code class="highlight"><c- n>sch</c-></code>, or if it does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> if an error occurs after control is returned to the
+caller, the program is ill-formed with no diagnostic required.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above is <code class="highlight"><c- b>void</c-></code>.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>),</c-> <c- n>f</c-><c- p>))</c-></code>.</p>
      </ol>
@@ -7660,7 +7992,7 @@ required.</p>
 <c- c1>// Mandates: is_base_of_v&lt;T, remove_reference_t&lt;U>> is true</c->
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- p>,</c-> <c- k>class</c-> <c- nc>U</c-><c- o>></c->
   <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-> <i><c- n>c</c-><c- o>-</c-><c- n>style</c-><c- o>-</c-><c- n>cast</c-></i><c- p>(</c-><c- n>U</c-><c- o>&amp;&amp;</c-> <c- n>u</c-><c- p>)</c-> <c- k>noexcept</c-> <c- k>requires</c-> <i><c- n>decays</c-><c- o>-</c-><c- n>to</c-></i><c- o>&lt;</c-><c- n>T</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-> <c- p>{</c->
-    <c- k>return</c-> <c- p>(</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-><c- p>)</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>u</c-><c- p>);</c->
+    <c- k>return</c-> <c- p>(</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>U</c-><c- o>&amp;&amp;</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-><c- p>)</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>U</c-><c- o>></c-><c- p>(</c-><c- n>u</c-><c- p>);</c->
   <c- p>}</c->
 </pre>
     <li data-md>
@@ -7671,8 +8003,10 @@ required.</p>
      </p>
    </ol>
    <h4 class="heading settled" data-level="10.10.1" id="spec-execution.snd_rec_utils.rcvr_adptr"><span class="secno">10.10.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver_adaptor</c-></code> <b>[exec.utils.rcvr_adptr]</b></span><a class="self-link" href="#spec-execution.snd_rec_utils.rcvr_adptr"></a></h4>
-<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Derived</c-><c- p>,</c-> <c- n>receiver</c-> <c- n>Base</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- o>></c->
-  <c- k>using</c-> <c- n>receiver_adaptor</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c->
+    <i><c- k>class</c-><c- o>-</c-><c- n>type</c-></i> <c- n>Derived</c-><c- p>,</c->
+    <c- n>receiver</c-> <c- n>Base</c-> <c- o>=</c-> <i><c- n>unspecified</c-></i><c- o>></c-> <c- c1>// arguments are not associated entities ([lib.tmpl-heads])</c->
+  <c- k>class</c-> <c- nc>receiver_adaptor</c-><c- p>;</c->
 </pre>
    <ol>
     <li data-md>
@@ -7682,7 +8016,7 @@ required.</p>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Receiver</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
   <c- k>concept</c-> <i><c- nc>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i> <c- o>=</c->
     <c- k>requires</c-><c- p>(</c-><c- n>Receiver</c-><c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- p>{</c->
-      <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>r</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>...));</c->
+      <c- k>static_cast</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>r</c-><c- p>).</c-><c- n>set_value</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>As</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>as</c-><c- p>)...);</c->
     <c- p>};</c->
 
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Receiver</c-><c- p>,</c-> <c- k>class</c-> <c- nc>A</c-><c- o>></c->
@@ -7710,7 +8044,7 @@ required.</p>
       <li data-md>
        <p>Let <code class="highlight"><i><c- n>HAS</c-><c- o>-</c-><c- n>BASE</c-></i></code> be <code class="highlight">true</code>, and</p>
       <li data-md>
-       <p>Let <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>d</c-><c- p>)</c-></code> be <code class="highlight"><i><c- n>c</c-><c- o>-</c-><c- n>style</c-><c- o>-</c-><c- n>cast</c-></i><c- o>&lt;</c-><i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i><c- o>></c-><c- p>(</c-><c- n>d</c-><c- p>).</c-><c- n>base</c-><c- p>()</c-></code>.</p>
+       <p>Let <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>d</c-><c- p>)</c-></code> be <code class="highlight"><i><c- n>c</c-><c- o>-</c-><c- n>style</c-><c- o>-</c-><c- n>cast</c-></i><c- o>&lt;</c-><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>Derived</c-><c- p>,</c-> <c- n>Base</c-><c- o>>></c-><c- p>(</c-><c- n>d</c-><c- p>).</c-><c- n>base</c-><c- p>()</c-></code>.</p>
      </ul>
      <p>Let <code class="highlight"><i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- n>D</c-><c- p>)</c-></code> be the type of <code class="highlight"><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>D</c-><c- o>></c-><c- p>())</c-></code>.</p>
     <li data-md>
@@ -7749,18 +8083,21 @@ required.</p>
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>D</c-> <c- o>=</c-> <c- n>Derived</c-><c- o>></c->
     <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_done_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
 
-  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>D</c-> <c- o>=</c-> <c- n>Derived</c-><c- o>></c->
-    <c- k>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>get_env_t</c-><c- p>,</c-> <c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>)</c->
-      <c- k>noexcept</c-><c- p>(</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>get_env_t</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- k>const</c-> <c- n>D</c-><c- o>&amp;</c-><c- p>)</c-><c- o>></c-><c- p>)</c->
-      <c- o>-></c-> <c- n>env_of_t</c-><c- o>&lt;</c-><i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- k>const</c-> <c- n>D</c-><c- o>&amp;</c-><c- p>)</c-><c- o>></c-> <c- p>{</c->
-      <c- k>return</c-> <c- nf>get_env</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>self</c-><c- p>));</c->
+  <c- k>template</c-> <c- o>&lt;</c-><i><c- n>forwarding</c-><c- o>-</c-><c- n>receiver</c-><c- o>-</c-><c- n>query</c-></i> <c- n>Tag</c-><c- p>,</c-> <c- k>class</c-> <c- nc>D</c-> <c- o>=</c-> <c- n>Derived</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
+      <c- k>requires</c-> <i><c- n>callable</c-></i><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- k>const</c-> <c- n>D</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c->
+    <c- k>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c->
+      <c- k>noexcept</c-><c- p>(</c-><i><c- n>nothrow</c-><c- o>-</c-><c- n>callable</c-></i><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- k>const</c-> <c- n>D</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
+      <c- o>-></c-> <i><c- n>call</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>t</c-></i><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <i><c- n>BASE</c-><c- o>-</c-><c- n>TYPE</c-></i><c- p>(</c-><c- k>const</c-> <c- n>D</c-><c- o>&amp;</c-><c- p>),</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
+      <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>tag</c-><c- p>)(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>self</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>As</c-><c- o>></c-><c- p>(</c-><c- n>as</c-><c- p>)...);</c->
     <c- p>}</c->
 
   <c- p>[[</c-><c- n>no_unique_address</c-><c- p>]]</c-> <c- n>Base</c-> <c- n>base_</c-><c- p>;</c-> <c- c1>// present if and only if </c-><i><c- c1>HAS-BASE</c-></i><c- c1> is true</c->
 <c- p>};</c->
 </pre>
     <li data-md>
-     <p>[<i>Note:</i> The <code class="highlight"><i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i></code> provides <code class="highlight"><c- n>tag_invoke</c-></code> overloads on behalf of the derived class <code class="highlight"><c- n>Derived</c-></code>, which is incomplete when <code class="highlight"><i><c- n>receiver</c-><c- o>-</c-><c- n>adaptor</c-></i></code> is instantiated.]</p>
+     <p>[<i>Note:</i> <code class="highlight"><c- n>receiver_adaptor</c-></code> provides <code class="highlight"><c- n>tag_invoke</c-></code> overloads on behalf of
+the derived class <code class="highlight"><c- n>Derived</c-></code>, which is incomplete when <code class="highlight"><c- n>receiver_adaptor</c-></code> is
+instantiated.]</p>
     <li data-md>
      <p>[<i>Example:</i></p>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>receiver_of</c-><c- o>&lt;</c-><c- b>int</c-><c- o>></c-> <c- n>R</c-><c- o>></c->
@@ -7810,6 +8147,10 @@ required.</p>
      <ul>
       <li data-md>
        <p><code class="highlight"><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>).</c-><c- n>set_error</c-><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>E</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>e</c-><c- p>))</c-></code> if <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>error</c-></i><c- o>&lt;</c-><c- n>D</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code>,</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The member function call expression above is not potentially throwing.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)),</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>E</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>e</c-><c- p>))</c-></code></p>
      </ul>
@@ -7825,6 +8166,10 @@ required.</p>
      <ul>
       <li data-md>
        <p><code class="highlight"><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>).</c-><c- n>set_done</c-><c- p>()</c-></code> if <code class="highlight"><i><c- n>has</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>done</c-></i><c- o>&lt;</c-><c- n>D</c-><c- o>></c-></code> is <code class="highlight">true</code>,</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> The member function call expression above is not potentially throwing.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>Derived</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>self</c-><c- p>)))</c-></code></p>
      </ul>
@@ -8089,7 +8434,7 @@ required.</p>
     <c- p>};</c->
 
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>P</c-><c- o>></c->
-  <c- k>using</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+  <c- k>class</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>;</c->
 </pre>
      <ol>
       <li data-md>
@@ -8117,7 +8462,7 @@ required.</p>
  <c- k>public</c-><c- o>:</c->
   <i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>P</c-><c- o>&amp;</c-> <c- n>p</c-><c- p>);</c->
   <c- b>bool</c-> <c- nf>await_ready</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- k>return</c-> false<c- p>;</c-> <c- p>}</c->
-  <c- b>void</c-> <c- nf>await_suspend</c-><c- p>(</c-><c- n>coro</c-><c- o>::</c-><c- n>coroutine_handle</c-><c- o>&lt;</c-><c- n>P</c-><c- o>></c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- n>start</c-><c- p>(</c-><c- n>state_</c-><c- p>);</c-> <c- p>}</c->
+  <c- b>void</c-> <c- nf>await_suspend</c-><c- p>(</c-><c- n>coroutine_handle</c-><c- o>&lt;</c-><c- n>P</c-><c- o>></c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- n>start</c-><c- p>(</c-><c- n>state_</c-><c- p>);</c-> <c- p>}</c->
   <c- n>value_t</c-> <c- nf>await_resume</c-><c- p>();</c->
 <c- p>};</c->
 </pre>
@@ -8145,9 +8490,9 @@ required.</p>
              <p>Otherwise, <code class="highlight"><c- n>make_exception_ptr</c-><c- p>(</c-><c- n>err</c-><c- p>)</c-></code>.</p>
            </ol>
           <li data-md>
-           <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>r</c-><c- p>.</c-><c- n>continuation_</c-><c- p>.</c-><c- n>promise</c-><c- p>().</c-><c- n>unhandled_done</c-><c- p>().</c-><c- n>resume</c-><c- p>()</c-></code>.</p>
+           <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_done</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- k>static_cast</c-><c- o>&lt;</c-><c- n>coroutine_handle</c-><c- o>&lt;>></c-><c- p>(</c-><c- n>r</c-><c- p>.</c-><c- n>continuation_</c-><c- p>.</c-><c- n>promise</c-><c- p>().</c-><c- n>unhandled_done</c-><c- p>()).</c-><c- n>resume</c-><c- p>()</c-></code>.</p>
           <li data-md>
-           <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_env</c-><c- p>,</c-> <c- n>cr</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>as_const</c-><c- p>(</c-><c- n>cr</c-><c- p>.</c-><c- n>continuation_</c-><c- p>.</c-><c- n>promise</c-><c- p>()))</c-></code>.</p>
+           <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>tag</c-><c- p>,</c-> <c- n>cr</c-><c- p>,</c-> <c- n>as</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>tag</c-><c- p>(</c-><c- n>as_const</c-><c- p>(</c-><c- n>cr</c-><c- p>.</c-><c- n>continuation_</c-><c- p>.</c-><c- n>promise</c-><c- p>()),</c-> <c- n>as</c-><c- p>...)</c-></code> for any expression <code class="highlight"><c- n>tag</c-></code> whose type satisfies <code class="highlight"><i><c- n>forwarding</c-><c- o>-</c-><c- n>receiver</c-><c- o>-</c-><c- n>query</c-></i></code> and for any set of arguments <code class="highlight"><c- n>as</c-><c- p>...</c-></code>.</p>
          </ol>
         <li data-md>
          <p><b><code class="highlight"><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>::</c-><i><c- n>sender</c-><c- o>-</c-><c- n>awaitable</c-></i><c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>,</c-> <c- n>P</c-><c- o>&amp;</c-> <c- n>p</c-><c- p>)</c-></code></b></p>
@@ -8172,7 +8517,11 @@ required.</p>
      <p><code class="highlight"><c- n>as_awaitable</c-></code> is a customization point object. For some subexpressions <code class="highlight"><c- n>e</c-></code> and <code class="highlight"><c- n>p</c-></code> where <code class="highlight"><c- n>p</c-></code> is an lvalue, <code class="highlight"><c- n>E</c-></code> names the type <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>e</c-><c- p>))</c-></code> and <code class="highlight"><c- n>P</c-></code> names the type <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>p</c-><c- p>))</c-></code>, <code class="highlight"><c- n>as_awaitable</c-><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>p</c-><c- p>)</c-></code> is expression-equivalent to the following:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>as_awaitable</c-><c- p>,</c-> <c- n>e</c-><c- p>,</c-> <c- n>p</c-><c- p>)</c-></code> if that expression is well-formed and <code class="highlight"><i><c- n>is</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>&lt;</c-><c- n>tag_invoke_result_t</c-><c- o>&lt;</c-><c- n>as_awaitable_t</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <c- n>P</c-><c- o>></c-><c- p>,</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- n>P</c-><c- o>>></c-></code> is <code class="highlight">true</code>.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>as_awaitable</c-><c- p>,</c-> <c- n>e</c-><c- p>,</c-> <c- n>p</c-><c- p>)</c-></code> if that expression is well-formed.</p>
+       <ul>
+        <li data-md>
+         <p><i>Mandates:</i> <code class="highlight"><i><c- n>is</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>&lt;</c-><c- n>A</c-><c- o>></c-></code> is <code class="highlight">true</code>, where <code class="highlight"><c- n>A</c-></code> is the type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above.</p>
+       </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>e</c-></code> if <code class="highlight"><i><c- n>is</c-><c- o>-</c-><c- n>awaitable</c-></i><c- o>&lt;</c-><c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code>.</p>
       <li data-md>
