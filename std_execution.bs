@@ -5054,10 +5054,16 @@ are all well-formed.
 
 1. `execution::split` is used to adapt an arbitrary sender into a sender that can be connected multiple times.
 
-2. The name `execution::split` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::split` is ill-formed. Otherwise, the expression
+2. Let <code><i>split-env</i></code> be the type of an execution environment such that, given an instance `e`, the expression `get_stop_token(e)` is well formed and has type `stop_token`.
+
+2. The name `execution::split` denotes a customization point object. For some
+    subexpression `s`, let `S` be `decltype((s))`. If
+    <code>execution::typed_sender&lt;S, <i>split-env</i>></code> is `false`,
+    `execution::split` is ill-formed. Otherwise, the expression
     `execution::split(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::split, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid.
+    1. `tag_invoke(execution::split, get_completion_scheduler<set_value_t>(s), s)`,
+        if that expression is valid.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -5067,21 +5073,95 @@ are all well-formed.
 
     3. Otherwise, constructs a sender `s2`, which:
 
-        1. Creates an object `sh_state`. The lifetime of `sh_state` shall last for at least as long as the lifetime of the last operation state object returned from `execution::connect(s, some_r)` for some receiver `some_r`.
+        1. Creates an object `sh_state` that contains a `stop_source`, a list of
+            pointers to operation states awaiting the completion of `s`, and that
+            also reserves space for storing:
+        
+            * the operation state that results from connecting `s` with `r` described below, and
+            * the sets of values and errors with which `s` may complete, with
+                the addition of `exception_ptr`.
 
-        2. Constructs a receiver `r`:
+        2. Constructs a receiver `r` such that:
 
-            1. When `execution::set_value(r, args...)` is called, decay-copies the expressions `args...` as subobjects of `sh_state`. If any exceptions are thrown, the exception is caught and `execution::set_error(r, current_exception())` is called instead.
+            1. When `execution::set_value(r, args...)` is called, decay-copies
+                the expressions `args...` into `sh_state`. It then notifies all
+                the operation states in `sh_state`'s list of operation states
+                that the results are ready. If any exceptions are thrown, the
+                exception is caught and `execution::set_error(r,
+                current_exception())` is called instead.
 
-            2. When `execution::set_error(r, e)` is called, saves the expression `e` as a subobject of `sh_state`.
+            2. When `execution::set_error(r, e)` is called, decay-copies `e`
+                into `sh_state`. It then notifies the operation states in
+                `sh_state`'s list of operation states that the results are ready.
 
-            3. When `execution::set_done(r)` is called, saves this fact in `sh_state`.
+            3. When `execution::set_done(r)` is called, it then notifies the
+                operation states in `sh_state`'s list of operation states that
+                the results are ready.
 
-        3. Calls `execution::connect(s, r)`, resulting in an operation state `op_state2`. `op_state2` is saved as a subobject of `sh_state`.
+            4. `get_env(r)` is an expression <code><i>e</i></code> of type
+                <code><i>split-env</i></code> such that
+                <code>execution::get_stop_token(<i>e</i>)</code> is well-formed
+                and returns the results of calling `get_token()` on `sh_state`'s
+                stop source.
 
-        4. Let <code><i>Signal</i></code> be whichever receiver completion-signal was used to complete `r`'s receiver contract ([exec.recv]). When `s2` is connected with a receiver `out_r`, it returns an operation state object `op_state`. When `execution::start(op_state)` is called, it calls `execution::start(op_state2)`, if this is the first time this expression would be evaluated. When both
-            `execution::start(op_state)` and <code><i>Signal</i>(r, args...)</code> have been called, calls <code><i>Signal</i>(out_r, args2...)</code>, where `args2...` is a pack of lvalues referencing the subobjects of `sh_state` that have been saved by the
-            original call to <code><i>Signal</i>(r, args...)</code>.
+        3. Calls `execution::connect(s, r)`, resulting in an operation state
+            `op_state2`. `op_state2` is saved in `sh_state`.
+
+        4. When `s2` is connected with a receiver `out_r` of type `OutR`, it
+            returns an operation state object `op_state` that contains:
+        
+              * An object `out_r'` of type `OutR` decay-copied from `out_r`,
+              * A reference to `sh_state`,
+              * A stop callback of type
+                <code>optional&lt;stop_token_of_t&lt;env_of_t&lt;OutR>>::callback_type&lt;<i>stop-callback-fn</i>>></code>,
+                where <code><i>stop-callback-fn</i></code> is an implementation
+                defined class type equivalent to the following:
+
+                <pre highlight="c++">
+                struct <i>stop-callback-fn</i> {
+                  stop_source& stop_src_;
+                  void operator()() noexcept {
+                    stop_src_.request_stop();
+                  }
+                };
+                </pre>
+        
+        5. When `execution::start(op_state)` is called:
+            
+            * If `r`'s receiver contract has already been satisfied, then let
+                <code><i>Signal</i></code> be whichever receiver completion-signal
+                was used to complete r's receiver contract ([exec.recv]). Calls
+                <code><i>Signal</i>(out_r', args2...)</code>, where `args2...` is a
+                pack of lvalues referencing the subobjects of `sh_state` that have
+                been saved by the original call to <code><i>Signal</i>(r,
+                args...)</code> and returns.
+
+            * Otherwise, it emplace constructs the stop callback optional with
+                the arguments `execution::get_stop_token(get_env(out_r'))` and
+                <code><i>stop-callback-fn</i>{<i>stop-src</i>}</code>, where
+                <code><i>stop-src</i></code> refers to the stop source of
+                `sh_state`.
+            
+            * Then, it checks to see if
+                <code><i>stop-src</i>.stop_requested()</code> is `true`. If so, it
+                calls `execution::set_done(out_r')`.
+
+            * Otherwise, it adds a pointer to `op_state` to the list of
+                operation states in `sh_state` and calls
+                `execution::start(op_state2)` if this would be the first such
+                invocation.
+
+        6. When `r` completes it will notify `op_state` that the result are
+            ready. Let <code><i>Signal</i></code> be whichever receiver
+            completion-signal was used to complete `r`'s receiver contract
+            ([exec.recv]). `op_state`'s stop callback optional is reset. Then
+            <code><i>Signal</i>(std::move(out_r'), args2...)</code> is called,
+            where `args2...` is a pack of lvalues referencing the subobjects of
+            `sh_state` that have been saved by the original call to
+            <code><i>Signal</i>(r, args...)</code>.
+        
+        5. Ownership of `sh_state` is shared by `s2` and by every `op_state`
+            that results from connecting `s2` to a receiver.
 
     4. Given an expression `e`, let `E` be `decltype((e))`. If `typed_sender<S,
         E>` is `false`, the type of `tag_invoke(get_sender_traits, s2, e)` shall
