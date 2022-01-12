@@ -3163,10 +3163,8 @@ namespace std
 {
   class never_stop_token {
     // exposition only
-    class callback {
-    public:
-      template&lt;class C>
-      explicit callback_type(never_stop_token, C&&) noexcept {}
+    struct <i>callback</i> {
+      explicit <i>callback</i>(never_stop_token, auto&&) noexcept {}
     };
   public:
     template&lt;invocable CB>
