@@ -3395,7 +3395,7 @@ explicit in_place_stop_callback(in_place_stop_token st, C&& cb)
 5. *Remarks*: If evaluating `std::forward<Callback>(callback_)()` exits via an exception, then `terminate` is invoked ([except.terminate]).
 
 <pre highlight=c++>
-~stop_callback();
+~in_place_stop_callback();
 </pre>
 
 6. *Effects*: Unregisters the callback from the stop state of the associated `in_place_stop_source` object, if any.
