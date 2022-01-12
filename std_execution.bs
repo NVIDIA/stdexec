@@ -3274,10 +3274,7 @@ namespace std {
     // [stopsource.inplace.cons], constructors, copy, and assignment
     in_place_stop_source() noexcept;
 
-    in_place_stop_source(const in_place_stop_source&) noexcept = delete;
     in_place_stop_source(in_place_stop_source&&) noexcept = delete;
-    in_place_stop_source& operator=(const in_place_stop_source&) noexcept = delete;
-    in_place_stop_source& operator=(in_place_stop_source&&) noexcept = delete;
     ~in_place_stop_source();
 
     //[stopsource.inplace.mem], stop handling
