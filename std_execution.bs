@@ -3205,7 +3205,9 @@ namespace std {
     friend void swap(in_place_stop_token& lhs, in_place_stop_token& rhs) noexcept;
 
   private:
-    in_place_stop_source * source_; // exposition only
+    friend class in_place_stop_source;
+    const in_place_stop_source* source_; // exposition only
+    explicit in_place_stop_token(const in_place_stop_source* source) noexcept;
   };
 }
 </pre>
