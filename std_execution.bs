@@ -3167,8 +3167,8 @@ namespace std
       explicit <i>callback</i>(never_stop_token, auto&&) noexcept {}
     };
   public:
-    template&lt;invocable CB>
-    using callback_type = callback;
+    template&lt;class>
+    using callback_type = <i>callback</i>;
 
     static constexpr bool stop_requested() const noexcept { return false; }
     static constexpr bool stop_possible() const noexcept { return false; }
