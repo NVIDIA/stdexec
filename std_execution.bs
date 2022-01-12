@@ -3614,7 +3614,7 @@ namespace std::execution {
     }
     </pre>
 
-    1. `no_env` is a special environment used by the `typed_sender` concept and the sender traits when the user has specified no environment argument. [_Note:_ A user may choose to not specify an environment in order to see if a sender is typed independent of any particular execution environment. -- <i>end note</i>]
+    1. `no_env` is a special environment used by the `typed_sender` concept and the sender traits when the user has specified no environment argument. [<i>Note:</i> A user may choose to not specify an environment in order to see if a sender is typed independent of any particular execution environment. -- <i>end note</i>]
 
 3. <pre highlight="c++">
     namespace <i>exec-envs</i> { // exposition only
