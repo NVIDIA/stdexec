@@ -3131,6 +3131,284 @@ template&lt;typename T>
 </blockquote>
 </ins>
 
+### Class `stop_token` <b>[stoptoken]</b> ### {#spec-stoptoken}
+
+#### General <b>[stoptoken.general]</b> #### {#spec-stoptoken.general}
+
+Modify the synopsis of class `stop_token` in section General <b>[stoptoken.general]</b> as follows:
+
+<pre highlight=c++>
+namespace std {
+  class stop_token {
+  public:
+<ins>    template&lt;class T>
+    using callback_type = stop_callback&lt;T>;</ins>
+
+    // [stoptoken.cons], constructors, copy, and assignment
+    stop_token() noexcept;
+
+    // ...
+</pre>
+
+### Class `never_stop_token` <b>[stoptoken.never]</b> ### {#spec-stoptoken.never}
+
+Insert a new subclause, Class `never_stop_token` <b>[stoptoken.never]</b>, after section Class template `stop_callback` <b>[stopcallback]</b>, as a new subclause of Stop tokens <b>[thread.stoptoken]</b>.
+
+#### General <b>[stoptoken.never.general]</b> #### {#spec-stoptoken.never.general}
+
+1. The class `never_stop_token` provides an implementation of the `unstoppable_token` concept. It provides a stop token interface, but also provides static information that a stop is never possible nor requested.
+
+<pre highlight=c++>
+namespace std
+{
+  class never_stop_token {
+    // exposition only
+    class callback {
+    public:
+      template&lt;class C>
+      explicit callback_type(never_stop_token, C&&) noexcept {}
+    };
+  public:
+    template&lt;invocable CB>
+    using callback_type = callback;
+
+    static constexpr bool stop_requested() const noexcept { return false; }
+    static constexpr bool stop_possible() const noexcept { return false; }
+  };
+}
+</pre>
+
+### Class `in_place_stop_token` <b>[stoptoken.inplace]</b> ### {#spec-stoptoken.inplace}
+
+Insert a new subclause, Class `in_place_stop_token` <b>[stoptoken.inplace]</b>, after the section added above, as a new subclause of Stop tokens <b>[thread.stoptoken]</b>.
+
+#### General <b>[stoptoken.inplace.general]</b> #### {#spec-stoptoken.inplace.general}
+
+1. The class `in_place_stop_token` provides an interface for querying whether a stop request has been made (`stop_requested`) or can ever be made (`stop_possible`) using an associated `in_place_stop_source` object ([stopsource.inplace]).
+    An `in_place_stop_token` can also be passed to an `in_place_stop_callback` ([stopcallback.inplace]) constructor to register a callback to be called when a stop request has been made from an associated `in_place_stop_source`.
+
+<pre highlight=c++>
+namespace std {
+  class in_place_stop_token {
+  public:
+    template&lt;class CB>
+    using callback_type = in_place_stop_callback&lt;CB>;
+
+    // [stoptoken.inplace.cons], constructors, copy, and assignment
+    in_place_stop_token() noexcept;
+    ~in_place_stop_token();
+    void swap(in_place_stop_token&) noexcept;
+
+    // [stoptoken.inplace.mem], stop handling
+    [[nodiscard]] bool stop_requested() const noexcept;
+    [[nodiscard]] bool stop_possible() const noexcept;
+
+    [[nodiscard]] friend bool operator==(
+      const in_place_stop_token& lhs, const in_place_stop_token& rhs) noexcept;
+    friend void swap(in_place_stop_token& lhs, in_place_stop_token& rhs) noexcept;
+
+  private:
+    in_place_stop_source * source_; // exposition only
+  };
+}
+</pre>
+
+#### Constructors, copy, and assignment <b>[stoptoken.inplace.cons]</b> #### {#spec-stoptoken.inplace.cons}
+
+<pre highlight=c++>
+stop_token() noexcept;
+</pre>
+
+1. *Effects*: initializes `source_` with `nullptr`.
+
+<pre highlight=c++>
+void swap(stop_token& rhs) noexcept;
+</pre>
+
+2. *Effects*: Exchanges the values of `source_` and `rhs.source_`.
+
+#### Members <b>[stoptoken.inplace.mem]</b>
+
+<pre highlight=c++>
+[[nodiscard]] bool stop_requested() const noexcept;
+</pre>
+
+1. Returns: `source_ != nullptr && source_->stop_requested()`.
+
+2. *Remarks*: If `source_ != nullptr`, then any calls to this function must strongly happen before the beginning of invocation of the destructor of `*source_`.
+
+<pre highlight=c++>
+[[nodiscard]] bool stop_possible() const noexcept;
+</pre>
+
+3. *Returns*: `source_ != nullptr && source_->stop_possible()`.
+
+2. *Remarks*: If `source_ != nullptr`, then any calls to this function must strongly happen before the beginning of invocation of the destructor of `*source_`.
+
+#### Non-member functions <b>[stoptoken.inplace.nonmembers]</b> #### {#spec-stoptoken.inplace.nonmembers}
+
+<pre highlight=c++>
+[[nodiscard]] bool operator==(const stop_token& lhs, const stop_token& rhs) noexcept;
+</pre>
+
+1. *Returns*: `lhs.source_ == rhs.source_`.
+
+<pre highlight=c++>
+friend void swap(stop_token& x, stop_token& y) noexcept;
+</pre>
+
+2. *Effects*: Equivalent to: `x.swap(y)`.
+
+### Class `in_place_stop_source` <b>[stopsource.inplace]</b> ### {#spec-stopsource.inplace}
+
+Insert a new subclause, Class `in_place_stop_source` <b>[stopsource.inplace]</b>, after the section added above, as a new subclause of Stop tokens <b>[thread.stoptoken]</b>.
+
+#### General <b>[stopsource.inplace.general]</b> #### {#spec-stopsource.inplace.general}
+
+1. The class `in_place_stop_source` implements the semantics of making a stop request, without the need for a dynamic allocation of a shared state.
+    A stop request made on a `in_place_stop_source` object is visible to all associated `in_place_stop_token` ([stoptoken.inplace]) objects.
+    Once a stop request has been made it cannot be withdrawn (a subsequent stop request has no effect).
+    All uses of `in_place_stop_token` objects associated with a given `in_place_stop_source` object must happen before the invocation of the destructor of that `in_place_stop_token` object.
+
+<pre highlight=c++>
+namespace std {
+  class in_place_stop_source {
+  public:
+    // [stopsource.inplace.cons], constructors, copy, and assignment
+    in_place_stop_source() noexcept;
+
+    in_place_stop_source(const in_place_stop_source&) noexcept = delete;
+    in_place_stop_source(in_place_stop_source&&) noexcept = delete;
+    in_place_stop_source& operator=(const in_place_stop_source&) noexcept = delete;
+    in_place_stop_source& operator=(in_place_stop_source&&) noexcept = delete;
+    ~in_place_stop_source();
+
+    //[stopsource.inplace.mem], stop handling
+    [[nodiscard]] in_place_stop_token get_token() const noexcept;
+    [[nodiscard]] bool stop_possible() const noexcept;
+    [[nodiscard]] bool stop_requested() const noexcept;
+    bool request_stop() noexcept;
+  };
+}
+</pre>
+
+#### Constructors, copy, and assignment <b>[stopsource.inplace.cons]</b> #### {#spec-stopsource.inplace.cons}
+
+<pre highlight=c++>
+in_place_stop_source() noexcept;
+</pre>
+
+1. *Effects*: Initializes a new stop state inside `*this`.
+
+2. *Postconditions*: `stop_possible()` is `true` and `stop_requested()` is `false`.
+
+#### Members <b>[stopsource.inplace.mem]</b> #### {#spec-stopsource.inplace.mem}
+
+<pre highlight=c++>
+[[nodiscard]] stop_token get_token() const noexcept;
+</pre>
+
+1. *Returns*: a new associated `in_place_stop_token` object.
+
+<pre highlight=c++>
+[[nodiscard]] bool stop_possible() const noexcept;
+</pre>
+
+2. Returns: `true` if the stop state inside `*this` has not yet received a stop request; otherwise, `false`.
+
+<pre highlight=c++>
+[[nodiscard]] bool stop_requested() const noexcept;
+</pre>
+
+3. *Returns*: `true` if the stop state inside `*this` has received a stop request; otherwise, `false`.
+
+<pre highlight=c++>
+bool request_stop() noexcept;
+</pre>
+
+4. *Effects*: Atomically determines whether the stop state inside `*this` has received a stop request, and if not, makes a stop request.
+    The determination and making of the stop request are an atomic read-modify-write operation ([intro.races]).
+    If the request was made, the callbacks registered by associated `in_place_stop_callback` objects are synchronously called.
+    If an invocation of a callback exits via an exception then `terminate` is invoked ([except.terminate]).
+
+5. *Postconditions*: `stop_possible()` is `false` and `stop_requested()` is true.
+
+6. *Returns*: `true` if this call made a stop request; otherwise `false`.
+
+### Class template `in_place_stop_callback` <b>[stopcallback.inplace]</b> ### {#spec-stopcallback.inplace}
+
+Insert a new subclause, Class template `in_place_stop_callback` <b>[stopcallback.inplace]</b>, after the section added above, as a new subclause of Stop tokens <b>[thread.stoptoken]</b>.
+
+#### General <b>[stopcallback.inplace.general]</b> #### {#spec-stopcallback.inplace.general}
+
+1.
+
+    <pre highlight=c++>
+    namespace std {
+      template&lt;class Callback>
+      class in_place_stop_callback {
+      public:
+        using callback_type = Callback;
+
+        // [stopcallback.inplace.cons], constructors and destructor
+        template&lt;class C>
+          explicit in_place_stop_callback(in_place_stop_token st, C&& cb)
+            noexcept(is_nothrow_constructible_v&lt;Callback, C>);
+        ~in_place_stop_callback();
+
+        in_place_stop_callback(const in_place_stop_callback&) = delete;
+        in_place_stop_callback(in_place_stop_callback&&) = delete;
+        in_place_stop_callback& operator=(const in_place_stop_callback&) = delete;
+        in_place_stop_callback& operator=(in_place_stop_callback&&) = delete;
+
+      private:
+        Callback callback;      // exposition only
+      };
+
+      template&lt;class Callback>
+        in_place_stop_callback(in_place_stop_token, Callback)
+          -> in_place_stop_callback&lt;Callback>;
+    }
+    </pre>
+
+2. *Mandates*: `in_place_stop_callback` is instantiated with an argument for the template parameter `Callback` that satisfies both `invocable` and `destructible`.
+
+3. *Preconditions*: `in_place_stop_callback` is instantiated with an argument for the template parameter `Callback` that models both `invocable` and `destructible`.
+
+4. *Recommended practice*: Implementation should use the storage of the `in_place_stop_callback` objects to store the state necessary for their association with an `in_place_stop_source` object.
+
+#### Constructors and destructor <b>[stopcallback.inplace.cons]</b> #### {#spec-stopcallback.inplace.cons}
+
+<pre highlight=c++>
+template<class C>
+explicit in_place_stop_callback(in_place_stop_token st, C&& cb)
+  noexcept(is_nothrow_constructible_v&lt;Callback, C>);
+</pre>
+
+1. *Constraints*: `Callback` and `C` satisfy `constructible_from<Callback, C>`.
+
+2. *Preconditions*: `Callback` and `C` model `constructible_from<Callback, C>`.
+
+3. *Effects*: Initializes `callback` with `std::forward<C>(cb)`.
+    If `st.stop_requested()` is `true`, then `std::forward<Callback>(callback)()` is evaluated in the current thread before the constructor returns.
+    Otherwise, if `st` has an associated `in_place_stop_source` object, registers the callback with the stop state of the `in_place_stop_source` that `st` is associated with such that `std::forward<Callback>(callback)()` is evaluated by the first call to `request_stop()` on an associated `in_place_stop_source`.
+    The `in_place_stop_callback` object being initialized becomes associated with the `in_place_stop_source` object that `st` is associated with, if any.
+
+4. *Throws*: Any exception thrown by the initialization of callback.
+
+5. *Remarks*: If evaluating `std::forward<Callback>(callback)()` exits via an exception, then `terminate` is invoked ([except.terminate]).
+
+<pre highlight=c++>
+~stop_callback();
+</pre>
+
+6. *Effects*: Unregisters the callback from the stop state of the associated `in_place_stop_source` object, if any.
+    The destructor does not block waiting for the execution of another callback registered by an associated stop_­callback.
+    If callback is concurrently executing on another thread, then the return from the invocation of callback strongly happens before ([intro.races]) callback is destroyed.
+    If callback is executing on the current thread, then the destructor does not block ([defns.block]) waiting for the return from the invocation of callback.
+
+7. *Remarks*: A program has undefined behavior if the invocation of this function does not strongly happen before the beginning of the invocation of the destructor of the associated `in_place_stop_source` object, if any.
+
 # Execution control library <b>[exec]</b> # {#spec-execution}
 
 1. This Clause describes components supporting execution of function objects [function.objects].
