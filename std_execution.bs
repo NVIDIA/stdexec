@@ -3170,8 +3170,8 @@ namespace std
     template&lt;class>
     using callback_type = <i>callback</i>;
 
-    static constexpr bool stop_requested() const noexcept { return false; }
-    static constexpr bool stop_possible() const noexcept { return false; }
+    static constexpr bool stop_requested() noexcept { return false; }
+    static constexpr bool stop_possible() noexcept { return false; }
   };
 }
 </pre>
