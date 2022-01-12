@@ -2941,6 +2941,12 @@ template &lt;class Tag, class... Args>
     requires (Fn&& fn, Args&&... args) {
       std::forward<Fn>(fn)(std::forward<Args>()...);
     };
+template &lt;class Tag, class... Args>
+  concept <i>nothrow-callable</i> =
+    <i>callable</i>&lt;Tag, Args...> &amp;&amp;
+    requires (Fn&& fn, Args&&... args) {
+      { std::forward<Fn>(fn)(std::forward<Args>()...) } noexcept;
+    };
 template &lt;class Fn, class... Args>
   using <i>call-result-t</i> = decltype(declval<Fn>(), declval<Args>()...);
 
@@ -3238,11 +3244,17 @@ namespace std::execution {
     struct no_env;
     struct <i>empty-env</i> {}; // exposition only
     struct get_env_t;
+    struct forwarding_env_query_t;
   }
   using <i>exec-envs</i>::no_env;
   using <i>exec-envs</i>::<i>empty-env</i>;
   using <i>exec-envs</i>::get_env_t;
+  using <i>exec-envs</i>::forwarding_env_query_t;
   inline constexpr <i>exec-envs</i>::get_env_t get_env {};
+  inline constexpr <i>exec-envs</i>::forwarding_env_query_t forwarding_env_query{};
+  template &lt;class T>
+    concept <i>forwarding-env-query</i> = // exposition only
+      forwarding_env_query(T{});
 
   template &lt;class T>
     using env_of_t = decltype(get_env(declval&lt;T>()));
@@ -3606,7 +3618,9 @@ namespace std::execution {
 
 2. An <i>environment query</i> is a customization point object that accepts as its first argument an execution environment. For an environment query `EQ` and an object `e` of type `no_env`, the expression `EQ(e)` shall be ill-formed.
 
-3. <pre highlight="c++">
+### `execution::no_env` <b>[exec.no_env]</b> ### {#spec-execution.environment.no_env}
+
+   <pre highlight="c++">
     namespace <i>exec-envs</i> { // exposition only
       struct no_env {
         friend void tag_invoke(auto, same_as&lt;no_env> auto, auto&&...) = delete;
@@ -3614,22 +3628,39 @@ namespace std::execution {
     }
     </pre>
 
-    1. `no_env` is a special environment used by the `typed_sender` concept and the sender traits when the user has specified no environment argument. [<i>Note:</i> A user may choose to not specify an environment in order to see if a sender is typed independent of any particular execution environment. -- <i>end note</i>]
+  1. `no_env` is a special environment used by the `typed_sender` concept and the sender traits when the user has specified no environment argument. [<i>Note:</i> A user may choose to not specify an environment in order to see if a sender is typed independent of any particular execution environment. -- <i>end note</i>]
 
-3. <pre highlight="c++">
+### `execution::get_env` <b>[exec.get_env]</b> ### {#spec-execution.environment.get_env}
+
+    <pre highlight="c++">
     namespace <i>exec-envs</i> { // exposition only
       struct get_env_t;
     }
     inline constexpr <i>exec-envs</i>::get_env_t get_env {};
     </pre>
 
-    1. `get_env` is a customization point object. For some subexpression `r`, `get_env(r)` is expression-equivalent to
-    
-      1. `tag_invoke(execution::get_env, r)` if that expression is well-formed.
+1. `get_env` is a customization point object. For some subexpression `r`, `get_env(r)` is expression-equivalent to
 
-      2. Otherwise, <code><i>empty-env</i>{}</code>.
+    1. `tag_invoke(execution::get_env, r)` if that expression is well-formed.
 
-    2. If `get_env(r)` is an lvalue, the object it refers to shall be valid while `r` is valid.
+    2. Otherwise, <code><i>empty-env</i>{}</code>.
+
+2. If `get_env(r)` is an lvalue, the object it refers to shall be valid while `r` is valid.
+
+### `execution::forwarding_env_query` <b>[exec.fwd_env]</b> ### {#spec-execution.environment.forwarding_env_query}
+
+1. `execution::forwarding_env_query` is used to ask a customization point object whether it is a environment query that should be forwarded through environment adaptors.
+
+2. The name `execution::forwarding_env_query` denotes a customization point object. For some subexpression `t`, `execution::forwarding_env_query(t)` is expression equivalent to:
+
+    1. `tag_invoke(execution::forwarding_env_query, t)`, contextually converted to `bool`, if the `tag_invoke` expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression is indeed contextually
+            convertible to `bool`, that expression and the contextual conversion
+            are not potentially-throwing and are core constant expressions if
+            `t` is a core constant expression.
+
+    2. Otherwise, `true`.
 
 ## Schedulers <b>[exec.sched] </b> ## {#spec-execution.schedulers}
 
@@ -3671,7 +3702,8 @@ namespace std::execution {
 
         * <i>Mandates:</i> The `tag_invoke` expression is indeed contextually
             convertible to `bool`, that expression and the contextual conversion
-            are not potentially-throwing and are core constant expressions.
+            are not potentially-throwing and are core constant expressions if
+            `t` is a core constant expression.
 
     2. Otherwise, `false`.
 
@@ -3832,13 +3864,14 @@ enum class forward_progress_guarantee {
 
         * <i>Mandates:</i> The `tag_invoke` expression is indeed contextually
             convertible to `bool`, that expression and the contextual conversion
-            are not potentially-throwing and are core constant expressions.
+            are not potentially-throwing and are core constant expressions if
+            `t` is a core constant expression.
 
     2. Otherwise, `false` if the type of `t` is one of `set_value_t`, `set_error_t`, or `set_done_t`.
 
     3. Otherwise, `true`.
 
-3. [*Note:* Currently the only receiver query is `execution::get_env` -- *end note*]
+3. [*Note:* Currently the only standard receiver query is `execution::get_env` -- *end note*]
 
 ## Operation states <b>[exec.op_state]</b> ## {#spec-execution.op_state}
 
@@ -4084,7 +4117,7 @@ enum class forward_progress_guarantee {
 
           3. <code><i>operation-state-task</i></code> is a type that models `operation_state`. Its `execution::start` resumes the <code><i>connect-awaitable</i></code> coroutine, advancing it past the initial suspend point.
 
-          4. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`. Then `tag_invoke(get_env, p)` is expression-equivalent to `get_env(b)`.
+          4. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`. Then `tag_invoke(tag, p, as...)` is expression-equivalent to `tag(b, as...)` for any set of arguments `as...` and for any `tag` whose type satisfies <code><i>forwarding-receiver-query</i></code>.
 
           5. The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
 
@@ -4104,7 +4137,12 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::forwarding_sender_query` denotes a customization point object. For some subexpression `t`, `execution::forwarding_sender_query(t)` is expression equivalent to:
 
-    1. `tag_invoke(execution::forwarding_sender_query, t)`, if this expression is well formed, its type is implicitly convertible to `bool`, and is `noexcept`.
+    1. `tag_invoke(execution::forwarding_sender_query, t)` contextually converted to `bool`, if the `tag_invoke` expression is well formed.
+
+        * <i>Mandates:</i> The `tag_invoke` expression is indeed contextually
+            convertible to `bool`, that expression and the contextual conversion
+            are not potentially-throwing and are core constant expressions if
+            `t` is a core constant expression.
 
     2. Otherwise, `false`.
 
@@ -4444,8 +4482,6 @@ are all well-formed.
 
             3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(out_r)`.
 
-            4. `execution::get_env(r)` is expresion-equivalent to `execution::get_env(out_r)`.
-
         2. Calls `execution::schedule(sch)`, which results in `s2`. It then calls `execution::connect(s2, r)`, resulting in `op_state2`.
 
         3. `op_state2` is wrapped by a new operation state, `op_state1`, that is returned to the caller.
@@ -4455,8 +4491,9 @@ are all well-formed.
            `execution::get_env(r2)` returns an object `e` such that
            `execution::get_scheduler(e)` returns a copy of `sch`, and
            `tag_invoke(tag, e, args...)` is expression-equivalent to `tag(e,
-           args...)` for all arguments `args...` and for all `tag` whose type is
-           not `execution::get_scheduler_t`.
+           args...)` for all arguments `args...` and for all `tag` whose type
+           satisfies <code><i>forwarding-env-query</i></code> and is not
+           `execution::get_scheduler_t`.
 
       3. When `execution::start` is called on `op_state1`, it calls `execution::start` on `op_state2`.
 
@@ -4796,8 +4833,6 @@ are all well-formed.
 
             3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(std::move(out_r'))`.
 
-            4. `get_env(r)` is expression-equivalent to `get_env(as_const(out_r'))`.
-
         2. `execution::let_value(s, f)` returns a sender `s2` such that:
         
             1. If the expression `execution::connect(s, r)` is ill-formed, `execution::connect(s2, out_r)` is ill-formed.
@@ -4866,8 +4901,6 @@ are all well-formed.
                 `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(std::move(out_r'), current_exception())`. If any of these expressions would be ill-formed, `execution::set_error(r, e)` is ill-formed.
 
             3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(std::move(out_r'))`.
-
-            4. `get_env(r)` is expression-equivalent to `get_env(as_const(out_r'))`.
 
         2. `execution::let_error(s, f)` returns a sender `s2` such that:
         
@@ -4940,8 +4973,6 @@ are all well-formed.
 
             3. When `execution::set_done(r)` is called, calls `invoke(f')`, resulting in a sender `s3`. It then calls `execution::connect(s3, std::move(out_r'))`, resulting in an operation state
                 `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(std::move(out_r'), current_exception())`. If any of these expressions would be ill-formed, `execution::set_done(r)` is ill-formed.
-
-            4. `get_env(r)` is expression-equivalent to `get_env(as_const(out_r'))`.
 
         2. `execution::let_done(s, f)` returns a sender `s2` such that:
         
@@ -5112,7 +5143,7 @@ are all well-formed.
 
             3. Otherwise, `request_stop` is called on `op_state`'s associated stop source. When all child operations have completed, `op_state`'s associated stop callback optional is reset and `execution::set_done(out_r)` is called.
 
-            4. For each receiver <code>r<i><sub>i</sub></i></code>, <code>get_env(r<i><sub>i</sub></i>)</code> is an expression <code><i>e</i></code> such that <code>execution::get_stop_token(<i>e</i>)</code> is well-formed and returns the results of calling `get_token()` on `op_state`'s associated stop source, and for which <code>tag_invoke(tag, <i>e</i>, args...)</code> is expression-equivalent to `tag(get_env(out_r), args...)` for all arguments `args...` and all `tag` whose type is not `get_stop_token_t`.
+            4. For each receiver <code>r<i><sub>i</sub></i></code>, <code>get_env(r<i><sub>i</sub></i>)</code> is an expression <code><i>e</i></code> such that <code>execution::get_stop_token(<i>e</i>)</code> is well-formed and returns the results of calling `get_token()` on `op_state`'s associated stop source, and for which <code>tag_invoke(tag, <i>e</i>, args...)</code> is expression-equivalent to `tag(get_env(out_r), args...)` for all arguments `args...` and all `tag` whose type satisfies <code><i>forwarding-env-query</i></code> and is not `get_stop_token_t`.
 
         2. For each sender <code>s<i><sub>i</sub></i></code>, calls <code>execution::connect(s<i><sub>i</sub></i>, r<i><sub>i</sub></i>)</code>, resulting in operation states <code>child_op<i><sub>i</sub></i></code>.
 
@@ -5254,8 +5285,6 @@ are all well-formed.
 
         3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(out_r)`.
         
-        4. `execution::get_env(r)` is expression-equivalent to `execution::get_env(out_r)`.
-
     2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state2`.
 
     3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
@@ -5474,7 +5503,7 @@ from the operation before the operation completes.
     // Mandates: is_base_of_v&lt;T, remove_reference_t&lt;U>> is true
     template &lt;class T, class U>
       copy_cvref_t&lt;U&amp;&amp;, T> <i>c-style-cast</i>(U&amp;&amp; u) noexcept requires <i>decays-to</i>&lt;T, T> {
-        return (copy_cvref_t&lt;U&amp;&amp;, T>) static_cast&lt;U&amp;&amp;>(u);
+        return (copy_cvref_t&lt;U&amp;&amp;, T>) std::forward&lt;U>(u);
       }
     </pre>
 
@@ -5483,8 +5512,10 @@ from the operation before the operation completes.
 ### `execution::receiver_adaptor` <b>[exec.utils.rcvr_adptr]</b> ### {#spec-execution.snd_rec_utils.rcvr_adptr}
 
     <pre highlight="c++">
-    template&lt;<i>class-type</i> Derived, receiver Base = <i>unspecified</i>>
-      using receiver_adaptor = <i>see below</i>;
+    template&lt;
+        <i>class-type</i> Derived,
+        receiver Base = <i>unspecified</i>> // arguments are not associated entities ([lib.tmpl-heads])
+      class receiver_adaptor;
     </pre>
 
 1. `receiver_adaptor` is used to simplify the implementation of one receiver type in terms of another. It defines `tag_invoke` overloads that forward to named members if they exist, and to the adapted receiver otherwise.
@@ -5495,7 +5526,7 @@ from the operation before the operation completes.
     template &lt;class Receiver, class... As>
       concept <i>has-set-value</i> =
         requires(Receiver&amp;&amp; r, As&amp;&amp;... as) {
-          static_cast&lt;Receiver&amp;&amp;>(r).set_value(static_cast&lt;As&amp;&amp;>(as...));
+          static_cast&lt;Receiver&amp;&amp;>(r).set_value(static_cast&lt;As&amp;&amp;>(as)...);
         };
 
     template &lt;class Receiver, class A>
@@ -5519,7 +5550,7 @@ from the operation before the operation completes.
     otherwise, let:
 
     - Let <code><i>HAS-BASE</i></code> be `true`, and
-    - Let <code><i>GET-BASE</i>(d)</code> be <code><i>c-style-cast</i>&lt;<i>receiver-adaptor</i>>(d).base()</code>.
+    - Let <code><i>GET-BASE</i>(d)</code> be <code><i>c-style-cast</i>&lt;receiver_adaptor&lt;Derived, Base>>(d).base()</code>.
 
     Let <code><i>BASE-TYPE</i>(D)</code> be the type of <code><i>GET-BASE</i>(declval&lt;D>())</code>.
 
@@ -5560,20 +5591,21 @@ from the operation before the operation completes.
       template &lt;class D = Derived>
         friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
 
-      template &lt;class D = Derived>
-        friend auto tag_invoke(get_env_t, const Derived&amp; self)
-          noexcept(is_nothrow_invocable_v&lt;get_env_t, <i>BASE-TYPE</i>(const D&)>)
-          -> env_of_t&lt;<i>BASE-TYPE</i>(const D&)> {
-          return get_env(<i>GET-BASE</i>(self));
+      template &lt;<i>forwarding-receiver-query</i> Tag, class D = Derived, class... As>
+          requires <i>callable</i>&lt;Tag, <i>BASE-TYPE</i>(const D&amp;), As...>
+        friend auto tag_invoke(Tag tag, const Derived&amp; self, As&amp;&amp;... as)
+          noexcept(<i>nothrow-callable</i>&lt;Tag, <i>BASE-TYPE</i>(const D&amp;), As...>)
+          -> <i>call-result-t</i>&lt;Tag, <i>BASE-TYPE</i>(const D&), As...> {
+          return std::move(tag)(<i>GET-BASE</i>(self), std::forward&lt;As>(as)...);
         }
 
       [[no_unique_address]] Base base_; // present if and only if <i>HAS-BASE</i> is true
     };
     </pre>
 
-5. [<i>Note:</i> The <code><i>receiver-adaptor</i></code> provides `tag_invoke`
-    overloads on behalf of the derived class `Derived`, which is incomplete when
-    <code><i>receiver-adaptor</i></code> is instantiated.]
+5. [<i>Note:</i> `receiver_adaptor` provides `tag_invoke` overloads on behalf of
+    the derived class `Derived`, which is incomplete when `receiver_adaptor` is
+    instantiated.]
 
 6. [<i>Example:</i>
      <pre highlight="c++">
@@ -5957,7 +5989,7 @@ from the operation before the operation completes.
               3. `execution::set_done(r)` is expression-equivalent to
                 `static_cast<coroutine_handle<>>(r.continuation_.promise().unhandled_done()).resume()`.
 
-              4. `tag_invoke(get_env, cr)` is expression-equivalent to `get_env(as_const(cr.continuation_.promise()))`.
+              4. `tag_invoke(tag, cr, as...)` is expression-equivalent to `tag(as_const(cr.continuation_.promise()), as...)` for any expression `tag` whose type satisfies <code><i>forwarding-receiver-query</i></code> and for any set of arguments `as...`.
 
         2. <b><code><i>sender-awaitable</i>::<i>sender-awaitable</i>(S&& s, P& p)</code></b>
 
