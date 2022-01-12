@@ -5066,8 +5066,14 @@ are all well-formed.
 
     2. Otherwise, `execution::transfer(execution::when_all(s...), sch)`.
 
-3. The name `execution::transfer_when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::sender`,
-    `execution::transfer_when_all_with_variant` is ill-formed. Otherwise, the expression `execution::transfer_when_all_with_variant(s...)` is expression-equivalent to:
+3. The name `execution::transfer_when_all_with_variant` denotes a customization
+    point object. For some subexpressions `sch` and `s...`, let `Sch` be
+    `decltype((sch))` and let `S` be `decltype((s))`. If any type
+    <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy
+    `execution::sender`, `execution::transfer_when_all_with_variant` is
+    ill-formed. Otherwise, the expression
+    `execution::transfer_when_all_with_variant(sch, s...)` is expression-equivalent
+    to:
 
     1. `tag_invoke(execution::transfer_when_all_with_variant, s...)`, if that
         expression is valid and its type satisfies `execution::sender`. If the
@@ -5077,7 +5083,16 @@ are all well-formed.
         all complete with `set_value`, the program is ill-formed with no
         diagnostic required.
 
-    2. Otherwise, `execution::transfer_when_all(sch, execution::into_variant(s)...)`.
+    2. Otherwise, if both <code>tag_invocable&lt;execution::transfer_when_all_t, Sch, <i>into-variant-t</i>&lt;S>...></code> and `tag_invocable<execution::when_all_with_variant_t, S...>` are `true`, `execution::transfer_when_all_with_variant(sch, s...)` is ill-formed, where <code><i>into-variant-t</i></code> is the alias template:
+
+        <pre highlight="c++">
+        template &lt;class S>
+          using <i>into-variant-t</i> = decltype(execution::into_variant(declval&lt;S>()));
+        </pre>
+
+    3. Otherwise, `execution::transfer(sch, execution::when_all_with_variant(s...))` if `tag_invocable<execution::when_all_with_variant_t, S...>` is `true`.
+
+    4. Otherwise, `execution::transfer_when_all(sch, execution::into_variant(s)...)`.
 
 4. Senders returned from `execution::transfer_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to input senders. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_done_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
 
