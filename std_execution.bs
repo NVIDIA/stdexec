@@ -3358,7 +3358,7 @@ Insert a new subclause, Class template `in_place_stop_callback` <b>[stopcallback
         in_place_stop_callback& operator=(in_place_stop_callback&&) = delete;
 
       private:
-        Callback callback;      // exposition only
+        Callback callback_;      // exposition only
       };
 
       template&lt;class Callback>
