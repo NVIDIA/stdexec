@@ -2406,6 +2406,37 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <ol class="toc">
         <li><a href="#spec-thread.stoptoken.syn"><span class="secno">9.1.1</span> <span class="content">Header <code class="highlight"><c- o>&lt;</c-><c- n>stop_token</c-><c- o>></c-></code> synopsis <b>[thread.stoptoken.syn]</b></span></a>
         <li><a href="#spec-thread.stoptoken.concepts"><span class="secno">9.1.2</span> <span class="content">Stop token concepts <b>[thread.stoptoken.concepts]</b></span></a>
+        <li>
+         <a href="#spec-stoptoken"><span class="secno">9.1.3</span> <span class="content">Class <code class="highlight"><c- n>stop_token</c-></code> <b>[stoptoken]</b></span></a>
+         <ol class="toc">
+          <li><a href="#spec-stoptoken.general"><span class="secno">9.1.3.1</span> <span class="content">General <b>[stoptoken.general]</b></span></a>
+         </ol>
+        <li>
+         <a href="#spec-stoptoken.never"><span class="secno">9.1.4</span> <span class="content">Class <code class="highlight"><c- n>never_stop_token</c-></code> <b>[stoptoken.never]</b></span></a>
+         <ol class="toc">
+          <li><a href="#spec-stoptoken.never.general"><span class="secno">9.1.4.1</span> <span class="content">General <b>[stoptoken.never.general]</b></span></a>
+         </ol>
+        <li>
+         <a href="#spec-stoptoken.inplace"><span class="secno">9.1.5</span> <span class="content">Class <code class="highlight"><c- n>in_place_stop_token</c-></code> <b>[stoptoken.inplace]</b></span></a>
+         <ol class="toc">
+          <li><a href="#spec-stoptoken.inplace.general"><span class="secno">9.1.5.1</span> <span class="content">General <b>[stoptoken.inplace.general]</b></span></a>
+          <li><a href="#spec-stoptoken.inplace.cons"><span class="secno">9.1.5.2</span> <span class="content">Constructors, copy, and assignment <b>[stoptoken.inplace.cons]</b></span></a>
+          <li><a href="#members-stoptokeninplacemem"><span class="secno">9.1.5.3</span> <span class="content">Members <b>[stoptoken.inplace.mem]</b></span></a>
+          <li><a href="#spec-stoptoken.inplace.nonmembers"><span class="secno">9.1.5.4</span> <span class="content">Non-member functions <b>[stoptoken.inplace.nonmembers]</b></span></a>
+         </ol>
+        <li>
+         <a href="#spec-stopsource.inplace"><span class="secno">9.1.6</span> <span class="content">Class <code class="highlight"><c- n>in_place_stop_source</c-></code> <b>[stopsource.inplace]</b></span></a>
+         <ol class="toc">
+          <li><a href="#spec-stopsource.inplace.general"><span class="secno">9.1.6.1</span> <span class="content">General <b>[stopsource.inplace.general]</b></span></a>
+          <li><a href="#spec-stopsource.inplace.cons"><span class="secno">9.1.6.2</span> <span class="content">Constructors, copy, and assignment <b>[stopsource.inplace.cons]</b></span></a>
+          <li><a href="#spec-stopsource.inplace.mem"><span class="secno">9.1.6.3</span> <span class="content">Members <b>[stopsource.inplace.mem]</b></span></a>
+         </ol>
+        <li>
+         <a href="#spec-stopcallback.inplace"><span class="secno">9.1.7</span> <span class="content">Class template <code class="highlight"><c- n>in_place_stop_callback</c-></code> <b>[stopcallback.inplace]</b></span></a>
+         <ol class="toc">
+          <li><a href="#spec-stopcallback.inplace.general"><span class="secno">9.1.7.1</span> <span class="content">General <b>[stopcallback.inplace.general]</b></span></a>
+          <li><a href="#spec-stopcallback.inplace.cons"><span class="secno">9.1.7.2</span> <span class="content">Constructors and destructor <b>[stopcallback.inplace.cons]</b></span></a>
+         </ol>
        </ol>
      </ol>
     <li>
@@ -5213,6 +5244,253 @@ the shared stop state.</p>
      </ol>
     </blockquote>
    </ins>
+   <h4 class="heading settled" data-level="9.1.3" id="spec-stoptoken"><span class="secno">9.1.3. </span><span class="content">Class <code class="highlight"><c- n>stop_token</c-></code> <b>[stoptoken]</b></span><a class="self-link" href="#spec-stoptoken"></a></h4>
+   <h5 class="heading settled" data-level="9.1.3.1" id="spec-stoptoken.general"><span class="secno">9.1.3.1. </span><span class="content">General <b>[stoptoken.general]</b></span><a class="self-link" href="#spec-stoptoken.general"></a></h5>
+   <p>Modify the synopsis of class <code class="highlight"><c- n>stop_token</c-></code> in section General <b>[stoptoken.general]</b> as follows:</p>
+<pre class="highlight"><c- k>namespace</c-> <c- n>std</c-> <c- p>{</c->
+  <c- k>class</c-> <c- nc>stop_token</c-> <c- p>{</c->
+  <c- k>public</c-><c- o>:</c->
+<ins>    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
+    <c- k>using</c-> <c- n>callback_type</c-> <c- o>=</c-> <c- n>stop_callback</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-><c- p>;</c-></ins>
+
+    <c- c1>// [stoptoken.cons], constructors, copy, and assignment</c->
+    <c- n>stop_token</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+
+    <c- c1>// ...</c->
+</pre>
+   <h4 class="heading settled" data-level="9.1.4" id="spec-stoptoken.never"><span class="secno">9.1.4. </span><span class="content">Class <code class="highlight"><c- n>never_stop_token</c-></code> <b>[stoptoken.never]</b></span><a class="self-link" href="#spec-stoptoken.never"></a></h4>
+   <p>Insert a new subclause, Class <code class="highlight"><c- n>never_stop_token</c-></code> <b>[stoptoken.never]</b>, after section Class template <code class="highlight"><c- n>stop_callback</c-></code> <b>[stopcallback]</b>, as a new subclause of Stop tokens <b>[thread.stoptoken]</b>.</p>
+   <h5 class="heading settled" data-level="9.1.4.1" id="spec-stoptoken.never.general"><span class="secno">9.1.4.1. </span><span class="content">General <b>[stoptoken.never.general]</b></span><a class="self-link" href="#spec-stoptoken.never.general"></a></h5>
+   <ol>
+    <li data-md>
+     <p>The class <code class="highlight"><c- n>never_stop_token</c-></code> provides an implementation of the <code class="highlight"><c- n>unstoppable_token</c-></code> concept. It provides a stop token interface, but also provides static information that a stop is never possible nor requested.</p>
+   </ol>
+<pre class="highlight"><c- k>namespace</c-> <c- n>std</c->
+<c- p>{</c->
+  <c- k>class</c-> <c- nc>never_stop_token</c-> <c- p>{</c->
+    <c- c1>// exposition only</c->
+    <c- k>struct</c-> <i><c- nc>callback</c-></i> <c- p>{</c->
+      <c- k>explicit</c-> <i><c- nf>callback</c-></i><c- p>(</c-><c- n>never_stop_token</c-><c- p>,</c-> <c- k>auto</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{}</c->
+    <c- p>};</c->
+  <c- k>public</c-><c- o>:</c->
+    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- o>></c->
+    <c- k>using</c-> <c- n>callback_type</c-> <c- o>=</c-> <i><c- n>callback</c-></i><c- p>;</c->
+
+    <c- k>static</c-> <c- k>constexpr</c-> <c- b>bool</c-> <c- n>stop_requested</c-><c- p>()</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- k>return</c-> false<c- p>;</c-> <c- p>}</c->
+    <c- k>static</c-> <c- k>constexpr</c-> <c- b>bool</c-> <c- n>stop_possible</c-><c- p>()</c-> <c- k>noexcept</c-> <c- p>{</c-> <c- k>return</c-> false<c- p>;</c-> <c- p>}</c->
+  <c- p>};</c->
+<c- p>}</c->
+</pre>
+   <h4 class="heading settled" data-level="9.1.5" id="spec-stoptoken.inplace"><span class="secno">9.1.5. </span><span class="content">Class <code class="highlight"><c- n>in_place_stop_token</c-></code> <b>[stoptoken.inplace]</b></span><a class="self-link" href="#spec-stoptoken.inplace"></a></h4>
+   <p>Insert a new subclause, Class <code class="highlight"><c- n>in_place_stop_token</c-></code> <b>[stoptoken.inplace]</b>, after the section added above, as a new subclause of Stop tokens <b>[thread.stoptoken]</b>.</p>
+   <h5 class="heading settled" data-level="9.1.5.1" id="spec-stoptoken.inplace.general"><span class="secno">9.1.5.1. </span><span class="content">General <b>[stoptoken.inplace.general]</b></span><a class="self-link" href="#spec-stoptoken.inplace.general"></a></h5>
+   <ol>
+    <li data-md>
+     <p>The class <code class="highlight"><c- n>in_place_stop_token</c-></code> provides an interface for querying whether a stop request has been made (<code class="highlight"><c- n>stop_requested</c-></code>) or can ever be made (<code class="highlight"><c- n>stop_possible</c-></code>) using an associated <code class="highlight"><c- n>in_place_stop_source</c-></code> object ([stopsource.inplace]).
+An <code class="highlight"><c- n>in_place_stop_token</c-></code> can also be passed to an <code class="highlight"><c- n>in_place_stop_callback</c-></code> ([stopcallback.inplace]) constructor to register a callback to be called when a stop request has been made from an associated <code class="highlight"><c- n>in_place_stop_source</c-></code>.</p>
+   </ol>
+<pre class="highlight"><c- k>namespace</c-> <c- n>std</c-> <c- p>{</c->
+  <c- k>class</c-> <c- nc>in_place_stop_token</c-> <c- p>{</c->
+  <c- k>public</c-><c- o>:</c->
+    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>CB</c-><c- o>></c->
+    <c- k>using</c-> <c- n>callback_type</c-> <c- o>=</c-> <c- n>in_place_stop_callback</c-><c- o>&lt;</c-><c- n>CB</c-><c- o>></c-><c- p>;</c->
+
+    <c- c1>// [stoptoken.inplace.cons], constructors, copy, and assignment</c->
+    <c- n>in_place_stop_token</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+    <c- o>~</c-><c- n>in_place_stop_token</c-><c- p>();</c->
+    <c- b>void</c-> <c- nf>swap</c-><c- p>(</c-><c- n>in_place_stop_token</c-><c- o>&amp;</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+
+    <c- c1>// [stoptoken.inplace.mem], stop handling</c->
+    <c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- b>bool</c-> <c- n>stop_requested</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+    <c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- b>bool</c-> <c- n>stop_possible</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+
+    <c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- b>bool</c-> <c- k>operator</c-><c- o>==</c-><c- p>(</c-><c- k>const</c-> <c- n>in_place_stop_token</c-><c- o>&amp;</c-><c- p>)</c-> <c- k>const</c-> <c- k>noexcept</c-> <c- o>=</c-> <c- k>default</c-><c- p>;</c->
+    <c- k>friend</c-> <c- b>void</c-> <c- n>swap</c-><c- p>(</c-><c- n>in_place_stop_token</c-><c- o>&amp;</c-> <c- n>lhs</c-><c- p>,</c-> <c- n>in_place_stop_token</c-><c- o>&amp;</c-> <c- n>rhs</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+
+  <c- k>private</c-><c- o>:</c->
+    <c- k>friend</c-> <c- k>class</c-> <c- nc>in_place_stop_source</c-><c- p>;</c->
+    <c- k>const</c-> <c- n>in_place_stop_source</c-><c- o>*</c-> <c- n>source_</c-><c- p>;</c-> <c- c1>// exposition only</c->
+    <c- k>explicit</c-> <c- nf>in_place_stop_token</c-><c- p>(</c-><c- k>const</c-> <c- n>in_place_stop_source</c-><c- o>*</c-> <c- n>source</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+  <c- p>};</c->
+<c- p>}</c->
+</pre>
+   <h5 class="heading settled" data-level="9.1.5.2" id="spec-stoptoken.inplace.cons"><span class="secno">9.1.5.2. </span><span class="content">Constructors, copy, and assignment <b>[stoptoken.inplace.cons]</b></span><a class="self-link" href="#spec-stoptoken.inplace.cons"></a></h5>
+<pre class="highlight"><c- n>in_place_stop_token</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><em>Effects</em>: initializes <code class="highlight"><c- n>source_</c-></code> with <code class="highlight"><c- k>nullptr</c-></code>.</p>
+   </ol>
+<pre class="highlight"><c- k>explicit</c-> <c- nf>in_place_stop_token</c-><c- p>(</c-><c- k>const</c-> <c- n>in_place_stop_source</c-><c- o>*</c-> <c- n>source</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><em>Effects</em>: initializes <code class="highlight"><c- n>source_</c-></code> with <code class="highlight"><c- n>source</c-></code>.</p>
+   </ol>
+<pre class="highlight"><c- b>void</c-> <c- nf>swap</c-><c- p>(</c-><c- n>stop_token</c-><c- o>&amp;</c-> <c- n>rhs</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol start="2">
+    <li data-md>
+     <p><em>Effects</em>: Exchanges the values of <code class="highlight"><c- n>source_</c-></code> and <code class="highlight"><c- n>rhs</c-><c- p>.</c-><c- n>source_</c-></code>.</p>
+   </ol>
+   <h5 class="heading settled" data-level="9.1.5.3" id="members-stoptokeninplacemem"><span class="secno">9.1.5.3. </span><span class="content">Members <b>[stoptoken.inplace.mem]</b></span><a class="self-link" href="#members-stoptokeninplacemem"></a></h5>
+<pre class="highlight"><c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- b>bool</c-> <c- n>stop_requested</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p>Returns: <code class="highlight"><c- n>source_</c-> <c- o>!=</c-> <c- k>nullptr</c-> <c- o>&amp;&amp;</c-> <c- n>source_</c-><c- o>-></c-><c- n>stop_requested</c-><c- p>()</c-></code>.</p>
+    <li data-md>
+     <p><em>Remarks</em>: If <code class="highlight"><c- n>source_</c-> <c- o>!=</c-> <c- k>nullptr</c-></code>, then any calls to this function must strongly happen before the beginning of invocation of the destructor of <code class="highlight"><c- o>*</c-><c- n>source_</c-></code>.</p>
+   </ol>
+<pre class="highlight"><c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- b>bool</c-> <c- n>stop_possible</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol start="3">
+    <li data-md>
+     <p><em>Returns</em>: <code class="highlight"><c- n>source_</c-> <c- o>!=</c-> <c- k>nullptr</c-> <c- o>&amp;&amp;</c-> <c- n>source_</c-><c- o>-></c-><c- n>stop_possible</c-><c- p>()</c-></code>.</p>
+    <li data-md>
+     <p><em>Remarks</em>: If <code class="highlight"><c- n>source_</c-> <c- o>!=</c-> <c- k>nullptr</c-></code>, then any calls to this function must strongly happen before the beginning of invocation of the destructor of <code class="highlight"><c- o>*</c-><c- n>source_</c-></code>.</p>
+   </ol>
+   <h5 class="heading settled" data-level="9.1.5.4" id="spec-stoptoken.inplace.nonmembers"><span class="secno">9.1.5.4. </span><span class="content">Non-member functions <b>[stoptoken.inplace.nonmembers]</b></span><a class="self-link" href="#spec-stoptoken.inplace.nonmembers"></a></h5>
+<pre class="highlight"><c- k>friend</c-> <c- b>void</c-> <c- n>swap</c-><c- p>(</c-><c- n>in_place_stop_token</c-><c- o>&amp;</c-> <c- n>x</c-><c- p>,</c-> <c- n>in_place_stop_token</c-><c- o>&amp;</c-> <c- n>y</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol start="2">
+    <li data-md>
+     <p><em>Effects</em>: Equivalent to: <code class="highlight"><c- n>x</c-><c- p>.</c-><c- n>swap</c-><c- p>(</c-><c- n>y</c-><c- p>)</c-></code>.</p>
+   </ol>
+   <h4 class="heading settled" data-level="9.1.6" id="spec-stopsource.inplace"><span class="secno">9.1.6. </span><span class="content">Class <code class="highlight"><c- n>in_place_stop_source</c-></code> <b>[stopsource.inplace]</b></span><a class="self-link" href="#spec-stopsource.inplace"></a></h4>
+   <p>Insert a new subclause, Class <code class="highlight"><c- n>in_place_stop_source</c-></code> <b>[stopsource.inplace]</b>, after the section added above, as a new subclause of Stop tokens <b>[thread.stoptoken]</b>.</p>
+   <h5 class="heading settled" data-level="9.1.6.1" id="spec-stopsource.inplace.general"><span class="secno">9.1.6.1. </span><span class="content">General <b>[stopsource.inplace.general]</b></span><a class="self-link" href="#spec-stopsource.inplace.general"></a></h5>
+   <ol>
+    <li data-md>
+     <p>The class <code class="highlight"><c- n>in_place_stop_source</c-></code> implements the semantics of making a stop request, without the need for a dynamic allocation of a shared state.
+A stop request made on a <code class="highlight"><c- n>in_place_stop_source</c-></code> object is visible to all associated <code class="highlight"><c- n>in_place_stop_token</c-></code> ([stoptoken.inplace]) objects.
+Once a stop request has been made it cannot be withdrawn (a subsequent stop request has no effect).
+All uses of <code class="highlight"><c- n>in_place_stop_token</c-></code> objects associated with a given <code class="highlight"><c- n>in_place_stop_source</c-></code> object must happen before the invocation of the destructor of that <code class="highlight"><c- n>in_place_stop_token</c-></code> object.</p>
+   </ol>
+<pre class="highlight"><c- k>namespace</c-> <c- n>std</c-> <c- p>{</c->
+  <c- k>class</c-> <c- nc>in_place_stop_source</c-> <c- p>{</c->
+  <c- k>public</c-><c- o>:</c->
+    <c- c1>// [stopsource.inplace.cons], constructors, copy, and assignment</c->
+    <c- n>in_place_stop_source</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+
+    <c- n>in_place_stop_source</c-><c- p>(</c-><c- n>in_place_stop_source</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- k>noexcept</c-> <c- o>=</c-> <c- k>delete</c-><c- p>;</c->
+    <c- o>~</c-><c- n>in_place_stop_source</c-><c- p>();</c->
+
+    <c- c1>//[stopsource.inplace.mem], stop handling</c->
+    <c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- n>in_place_stop_token</c-> <c- n>get_token</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+    <c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- b>bool</c-> <c- n>stop_possible</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+    <c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- b>bool</c-> <c- n>stop_requested</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+    <c- b>bool</c-> <c- nf>request_stop</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+  <c- p>};</c->
+<c- p>}</c->
+</pre>
+   <h5 class="heading settled" data-level="9.1.6.2" id="spec-stopsource.inplace.cons"><span class="secno">9.1.6.2. </span><span class="content">Constructors, copy, and assignment <b>[stopsource.inplace.cons]</b></span><a class="self-link" href="#spec-stopsource.inplace.cons"></a></h5>
+<pre class="highlight"><c- n>in_place_stop_source</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><em>Effects</em>: Initializes a new stop state inside <code class="highlight"><c- o>*</c-><c- k>this</c-></code>.</p>
+    <li data-md>
+     <p><em>Postconditions</em>: <code class="highlight"><c- n>stop_possible</c-><c- p>()</c-></code> is <code class="highlight">true</code> and <code class="highlight"><c- n>stop_requested</c-><c- p>()</c-></code> is <code class="highlight">false</code>.</p>
+   </ol>
+   <h5 class="heading settled" data-level="9.1.6.3" id="spec-stopsource.inplace.mem"><span class="secno">9.1.6.3. </span><span class="content">Members <b>[stopsource.inplace.mem]</b></span><a class="self-link" href="#spec-stopsource.inplace.mem"></a></h5>
+<pre class="highlight"><c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- n>in_place_stop_token</c-> <c- n>get_token</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol>
+    <li data-md>
+     <p><em>Returns</em>: <code class="highlight"><c- n>in_place_stop_token</c-><c- p>{</c-><c- k>this</c-><c- p>}</c-></code></p>
+   </ol>
+<pre class="highlight"><c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- b>bool</c-> <c- n>stop_possible</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol start="2">
+    <li data-md>
+     <p>Returns: <code class="highlight">true</code> if the stop state inside <code class="highlight"><c- o>*</c-><c- k>this</c-></code> has not yet received a stop request; otherwise, <code class="highlight">false</code>.</p>
+   </ol>
+<pre class="highlight"><c- p>[[</c-><c- n>nodiscard</c-><c- p>]]</c-> <c- b>bool</c-> <c- n>stop_requested</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol start="3">
+    <li data-md>
+     <p><em>Returns</em>: <code class="highlight">true</code> if the stop state inside <code class="highlight"><c- o>*</c-><c- k>this</c-></code> has received a stop request; otherwise, <code class="highlight">false</code>.</p>
+   </ol>
+<pre class="highlight"><c- b>bool</c-> <c- nf>request_stop</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
+</pre>
+   <ol start="4">
+    <li data-md>
+     <p><em>Effects</em>: Atomically determines whether the stop state inside <code class="highlight"><c- o>*</c-><c- k>this</c-></code> has received a stop request, and if not, makes a stop request.
+The determination and making of the stop request are an atomic read-modify-write operation ([intro.races]).
+If the request was made, the callbacks registered by associated <code class="highlight"><c- n>in_place_stop_callback</c-></code> objects are synchronously called.
+If an invocation of a callback exits via an exception then <code class="highlight"><c- n>terminate</c-></code> is invoked ([except.terminate]).</p>
+    <li data-md>
+     <p><em>Postconditions</em>: <code class="highlight"><c- n>stop_possible</c-><c- p>()</c-></code> is <code class="highlight">false</code> and <code class="highlight"><c- n>stop_requested</c-><c- p>()</c-></code> is true.</p>
+    <li data-md>
+     <p><em>Returns</em>: <code class="highlight">true</code> if this call made a stop request; otherwise <code class="highlight">false</code>.</p>
+   </ol>
+   <h4 class="heading settled" data-level="9.1.7" id="spec-stopcallback.inplace"><span class="secno">9.1.7. </span><span class="content">Class template <code class="highlight"><c- n>in_place_stop_callback</c-></code> <b>[stopcallback.inplace]</b></span><a class="self-link" href="#spec-stopcallback.inplace"></a></h4>
+   <p>Insert a new subclause, Class template <code class="highlight"><c- n>in_place_stop_callback</c-></code> <b>[stopcallback.inplace]</b>, after the section added above, as a new subclause of Stop tokens <b>[thread.stoptoken]</b>.</p>
+   <h5 class="heading settled" data-level="9.1.7.1" id="spec-stopcallback.inplace.general"><span class="secno">9.1.7.1. </span><span class="content">General <b>[stopcallback.inplace.general]</b></span><a class="self-link" href="#spec-stopcallback.inplace.general"></a></h5>
+   <ol>
+    <li data-md>
+<pre class="highlight"><c- k>namespace</c-> <c- n>std</c-> <c- p>{</c->
+  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>Callback</c-><c- o>></c->
+  <c- k>class</c-> <c- nc>in_place_stop_callback</c-> <c- p>{</c->
+  <c- k>public</c-><c- o>:</c->
+    <c- k>using</c-> <c- n>callback_type</c-> <c- o>=</c-> <c- n>Callback</c-><c- p>;</c->
+
+    <c- c1>// [stopcallback.inplace.cons], constructors and destructor</c->
+    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>C</c-><c- o>></c->
+      <c- k>explicit</c-> <c- n>in_place_stop_callback</c-><c- p>(</c-><c- n>in_place_stop_token</c-> <c- n>st</c-><c- p>,</c-> <c- n>C</c-><c- o>&amp;&amp;</c-> <c- n>cb</c-><c- p>)</c->
+        <c- k>noexcept</c-><c- p>(</c-><c- n>is_nothrow_constructible_v</c-><c- o>&lt;</c-><c- n>Callback</c-><c- p>,</c-> <c- n>C</c-><c- o>></c-><c- p>);</c->
+    <c- o>~</c-><c- n>in_place_stop_callback</c-><c- p>();</c->
+
+    <c- n>in_place_stop_callback</c-><c- p>(</c-><c- n>in_place_stop_callback</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- o>=</c-> <c- k>delete</c-><c- p>;</c->
+
+  <c- k>private</c-><c- o>:</c->
+    <c- n>Callback</c-> <c- n>callback_</c-><c- p>;</c->      <c- c1>// exposition only</c->
+  <c- p>};</c->
+
+  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>Callback</c-><c- o>></c->
+    <c- n>in_place_stop_callback</c-><c- p>(</c-><c- n>in_place_stop_token</c-><c- p>,</c-> <c- n>Callback</c-><c- p>)</c->
+      <c- o>-></c-> <c- n>in_place_stop_callback</c-><c- o>&lt;</c-><c- n>Callback</c-><c- o>></c-><c- p>;</c->
+<c- p>}</c->
+</pre>
+    <li data-md>
+     <p><em>Mandates</em>: <code class="highlight"><c- n>in_place_stop_callback</c-></code> is instantiated with an argument for the template parameter <code class="highlight"><c- n>Callback</c-></code> that satisfies both <code class="highlight"><c- n>invocable</c-></code> and <code class="highlight"><c- n>destructible</c-></code>.</p>
+    <li data-md>
+     <p><em>Preconditions</em>: <code class="highlight"><c- n>in_place_stop_callback</c-></code> is instantiated with an argument for the template parameter <code class="highlight"><c- n>Callback</c-></code> that models both <code class="highlight"><c- n>invocable</c-></code> and <code class="highlight"><c- n>destructible</c-></code>.</p>
+    <li data-md>
+     <p><em>Recommended practice</em>: Implementation should use the storage of the <code class="highlight"><c- n>in_place_stop_callback</c-></code> objects to store the state necessary for their association with an <code class="highlight"><c- n>in_place_stop_source</c-></code> object.</p>
+   </ol>
+   <h5 class="heading settled" data-level="9.1.7.2" id="spec-stopcallback.inplace.cons"><span class="secno">9.1.7.2. </span><span class="content">Constructors and destructor <b>[stopcallback.inplace.cons]</b></span><a class="self-link" href="#spec-stopcallback.inplace.cons"></a></h5>
+<pre class="highlight"><c- k>template</c-><class c>
+<c- k>explicit</c-> <c- n>in_place_stop_callback</c-><c- p>(</c-><c- n>in_place_stop_token</c-> <c- n>st</c-><c- p>,</c-> <c- n>C</c-><c- o>&amp;&amp;</c-> <c- n>cb</c-><c- p>)</c->
+  <c- k>noexcept</c-><c- p>(</c-><c- n>is_nothrow_constructible_v</c-><c- o>&lt;</c-><c- n>Callback</c-><c- p>,</c-> <c- n>C</c-><c- o>></c-><c- p>);</c->
+</class></pre>
+   <ol>
+    <li data-md>
+     <p><em>Constraints</em>: <code class="highlight"><c- n>Callback</c-></code> and <code class="highlight"><c- n>C</c-></code> satisfy <code class="highlight"><c- n>constructible_from</c-><c- o>&lt;</c-><c- n>Callback</c-><c- p>,</c-> <c- n>C</c-><c- o>></c-></code>.</p>
+    <li data-md>
+     <p><em>Preconditions</em>: <code class="highlight"><c- n>Callback</c-></code> and <code class="highlight"><c- n>C</c-></code> model <code class="highlight"><c- n>constructible_from</c-><c- o>&lt;</c-><c- n>Callback</c-><c- p>,</c-> <c- n>C</c-><c- o>></c-></code>.</p>
+    <li data-md>
+     <p><em>Effects</em>: Initializes <code class="highlight"><c- n>callback_</c-></code> with <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>C</c-><c- o>></c-><c- p>(</c-><c- n>cb</c-><c- p>)</c-></code>.
+If <code class="highlight"><c- n>st</c-><c- p>.</c-><c- n>stop_requested</c-><c- p>()</c-></code> is <code class="highlight">true</code>, then <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Callback</c-><c- o>></c-><c- p>(</c-><c- n>callback_</c-><c- p>)()</c-></code> is evaluated in the current thread before the constructor returns.
+Otherwise, if <code class="highlight"><c- n>st</c-></code> has an associated <code class="highlight"><c- n>in_place_stop_source</c-></code> object, registers the callback with the stop state of the <code class="highlight"><c- n>in_place_stop_source</c-></code> that <code class="highlight"><c- n>st</c-></code> is associated with such that <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Callback</c-><c- o>></c-><c- p>(</c-><c- n>callback_</c-><c- p>)()</c-></code> is evaluated by the first call to <code class="highlight"><c- n>request_stop</c-><c- p>()</c-></code> on an associated <code class="highlight"><c- n>in_place_stop_source</c-></code>.
+The <code class="highlight"><c- n>in_place_stop_callback</c-></code> object being initialized becomes associated with the <code class="highlight"><c- n>in_place_stop_source</c-></code> object that <code class="highlight"><c- n>st</c-></code> is associated with, if any.</p>
+    <li data-md>
+     <p><em>Throws</em>: Any exception thrown by the initialization of <code class="highlight"><c- n>callback_</c-></code>.</p>
+    <li data-md>
+     <p><em>Remarks</em>: If evaluating <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Callback</c-><c- o>></c-><c- p>(</c-><c- n>callback_</c-><c- p>)()</c-></code> exits via an exception, then <code class="highlight"><c- n>terminate</c-></code> is invoked ([except.terminate]).</p>
+   </ol>
+<pre class="highlight"><c- o>~</c-><c- n>in_place_stop_callback</c-><c- p>();</c->
+</pre>
+   <ol start="6">
+    <li data-md>
+     <p><em>Effects</em>: Unregisters the callback from the stop state of the associated <code class="highlight"><c- n>in_place_stop_source</c-></code> object, if any.
+The destructor does not block waiting for the execution of another callback registered by an associated stop_­callback.
+If <code class="highlight"><c- n>callback_</c-></code> is concurrently executing on another thread, then the return from the invocation of <code class="highlight"><c- n>callback_</c-></code> strongly happens before ([intro.races]) <code class="highlight"><c- n>callback_</c-></code> is destroyed.
+If <code class="highlight"><c- n>callback_</c-></code> is executing on the current thread, then the destructor does not block ([defns.block]) waiting for the return from the invocation of <code class="highlight"><c- n>callback_</c-></code>.</p>
+    <li data-md>
+     <p><em>Remarks</em>: A program has undefined behavior if the invocation of this function does not strongly happen before the beginning of the invocation of the destructor of the associated <code class="highlight"><c- n>in_place_stop_source</c-></code> object, if any.</p>
+   </ol>
    <h2 class="heading settled" data-level="10" id="spec-execution"><span class="secno">10. </span><span class="content">Execution control library <b>[exec]</b></span><a class="self-link" href="#spec-execution"></a></h2>
    <ol>
     <li data-md>
