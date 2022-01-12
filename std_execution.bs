@@ -3385,9 +3385,9 @@ explicit in_place_stop_callback(in_place_stop_token st, C&& cb)
 
 2. *Preconditions*: `Callback` and `C` model `constructible_from<Callback, C>`.
 
-3. *Effects*: Initializes `callback` with `std::forward<C>(cb)`.
-    If `st.stop_requested()` is `true`, then `std::forward<Callback>(callback)()` is evaluated in the current thread before the constructor returns.
-    Otherwise, if `st` has an associated `in_place_stop_source` object, registers the callback with the stop state of the `in_place_stop_source` that `st` is associated with such that `std::forward<Callback>(callback)()` is evaluated by the first call to `request_stop()` on an associated `in_place_stop_source`.
+3. *Effects*: Initializes `callback_` with `std::forward<C>(cb)`.
+    If `st.stop_requested()` is `true`, then `std::forward<Callback>(callback_)()` is evaluated in the current thread before the constructor returns.
+    Otherwise, if `st` has an associated `in_place_stop_source` object, registers the callback with the stop state of the `in_place_stop_source` that `st` is associated with such that `std::forward<Callback>(callback_)()` is evaluated by the first call to `request_stop()` on an associated `in_place_stop_source`.
     The `in_place_stop_callback` object being initialized becomes associated with the `in_place_stop_source` object that `st` is associated with, if any.
 
 4. *Throws*: Any exception thrown by the initialization of callback.
