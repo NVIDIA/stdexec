@@ -278,7 +278,7 @@ private:
       context_.emplace(coro_.promise().context_, parent.promise());
       if constexpr (requires { coro_.promise().stop_requested() ? 0 : 1; }) {
         if (coro_.promise().stop_requested())
-          return parent.promise().unhandled_done();
+          return parent.promise().unhandled_stopped();
       }
       return coro_;
     }
@@ -316,7 +316,7 @@ private:
       std::execution::completion_signatures<
         std::execution::set_value_t(Ts...),
         std::execution::set_error_t(std::exception_ptr),
-        std::execution::set_done_t()>;
+        std::execution::set_stopped_t()>;
 
   friend auto tag_invoke(std::execution::get_sender_traits_t, const basic_task&, auto)
     -> std::conditional_t<std::is_void_v<T>, _task_traits_t<>, _task_traits_t<T>>;

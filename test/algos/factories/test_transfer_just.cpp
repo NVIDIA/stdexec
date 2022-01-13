@@ -95,12 +95,12 @@ TEST_CASE("transfer_just forwards set_error calls of other types", "[factories][
   ex::start(op);
   // The receiver checks if we receive an error
 }
-TEST_CASE("transfer_just forwards set_done calls", "[factories][transfer_just]") {
-  done_scheduler sched{};
+TEST_CASE("transfer_just forwards set_stopped calls", "[factories][transfer_just]") {
+  stopped_scheduler sched{};
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
-  // The receiver checks if we receive the done signal
+  // The receiver checks if we receive the stopped signal
 }
 
 TEST_CASE("transfer_just has the values_type corresponding to the given values",
@@ -125,32 +125,32 @@ TEST_CASE(
   // incorrect check:
   check_err_types<type_array<std::exception_ptr>>(ex::transfer_just(sched3, 3));
 }
-TEST_CASE("TODO: transfer_just keeps send_done from scheduler's sender", "[factories][transfer_just]") {
+TEST_CASE("TODO: transfer_just keeps sends_stopped from scheduler's sender", "[factories][transfer_just]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
-  done_scheduler sched3{};
+  stopped_scheduler sched3{};
 
-  check_sends_done<false>(ex::transfer_just(sched1, 1));
-  check_sends_done<false>(ex::transfer_just(sched2, 2));
-  // check_sends_done<true>(ex::transfer_just(sched3, 3));
-  // TODO: transfer_just should forward its "sends_done" info
+  check_sends_stopped<false>(ex::transfer_just(sched1, 1));
+  check_sends_stopped<false>(ex::transfer_just(sched2, 2));
+  // check_sends_stopped<true>(ex::transfer_just(sched3, 3));
+  // TODO: transfer_just should forward its "sends_stopped" info
   // incorrect check:
-  check_sends_done<false>(ex::transfer_just(sched3, 3));
+  check_sends_stopped<false>(ex::transfer_just(sched3, 3));
 }
 
 TEST_CASE("transfer_just advertises its completion scheduler", "[factories][transfer_just]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
-  done_scheduler sched3{};
+  stopped_scheduler sched3{};
 
   REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::transfer_just(sched1, 1)) == sched1);
-  REQUIRE(ex::get_completion_scheduler<ex::set_done_t>(ex::transfer_just(sched1, 1)) == sched1);
+  REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::transfer_just(sched1, 1)) == sched1);
 
   REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::transfer_just(sched2, 2)) == sched2);
-  REQUIRE(ex::get_completion_scheduler<ex::set_done_t>(ex::transfer_just(sched2, 2)) == sched2);
+  REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::transfer_just(sched2, 2)) == sched2);
 
   REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::transfer_just(sched3, 3)) == sched3);
-  REQUIRE(ex::get_completion_scheduler<ex::set_done_t>(ex::transfer_just(sched3, 3)) == sched3);
+  REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::transfer_just(sched3, 3)) == sched3);
 }
 
 // Modify the value when we invoke this custom defined transfer_just implementation

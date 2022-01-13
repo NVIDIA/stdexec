@@ -43,8 +43,8 @@ TEST_CASE("start_detached works with multi-value senders", "[consumers][start_de
 // We don't want that
 
 TEST_CASE(
-    "start_detached works with sender ending with `set_done`", "[consumers][start_detached]") {
-  ex::start_detached(ex::just_done());
+    "start_detached works with sender ending with `set_stopped`", "[consumers][start_detached]") {
+  ex::start_detached(ex::just_stopped());
 }
 
 TEST_CASE("start_detached works with senders that do not complete immediately",

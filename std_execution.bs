@@ -148,10 +148,10 @@ auto [i] = this_thread::sync_wait(add_42).value();                            //
 This example demonstrates the basics of schedulers, senders, and receivers:
 
 1. First we need to get a scheduler from somewhere, such as a thread pool. A scheduler is a lightweight handle to an execution resource.
-2. To start a chain of work on a scheduler, we call [[#design-sender-factory-schedule]], which returns a sender that completes on the scheduler.  sender describes asynchronous work and sends a signal (value, error, or done) to some recipient(s) when that work completes.
+2. To start a chain of work on a scheduler, we call [[#design-sender-factory-schedule]], which returns a sender that completes on the scheduler.  sender describes asynchronous work and sends a signal (value, error, or stopped) to some recipient(s) when that work completes.
 3. We use sender algorithms to produce senders and compose asynchronous work. [[#design-sender-adaptor-then]] is a sender adaptor that takes an input sender and a `std::invocable`, and calls the `std::invocable` on the signal sent by the input sender. The sender returned by `then` sends the result of that invocation. In this case, the input sender came from `schedule`, so its `void`, meaning it won't send us a value, so our `std::invocable` takes no parameters. But we return an `int`, which will be sent to the next recipient.
 4. Now, we add another operation to the chain, again using [[#design-sender-adaptor-then]]. This time, we get sent a value - the `int` from the previous step. We add `42` to it, and then return the result.
-5. Finally, we're ready to submit the entire asynchronous pipeline and wait for its completion. Everything up until this point has been completely asynchronous; the work may not have even started yet. To ensure the work has started and then block pending its completion, we use [[#design-sender-consumer-sync_wait]], which will either return a `std::optional<std::tuple<...>>` with the value sent by the last sender, or an empty `std::optional` if the last sender sent a done signal, or it throws an exception if the last sender sent an error.
+5. Finally, we're ready to submit the entire asynchronous pipeline and wait for its completion. Everything up until this point has been completely asynchronous; the work may not have even started yet. To ensure the work has started and then block pending its completion, we use [[#design-sender-consumer-sync_wait]], which will either return a `std::optional<std::tuple<...>>` with the value sent by the last sender, or an empty `std::optional` if the last sender sent a stopped signal, or it throws an exception if the last sender sent an error.
 
 ### Asynchronous inclusive scan ### {#example-async-inclusive-scan}
 
@@ -303,7 +303,7 @@ struct recv_op : operation_base {
         auto st = std::execution::get_stop_token(
           std::execution::get_env(self.receiver));
         if (st.stop_requested()) {
-            std::execution::set_done(std::move(self.receiver));
+            std::execution::set_stopped(std::move(self.receiver));
             return;
         }
 
@@ -322,7 +322,7 @@ struct recv_op : operation_base {
             int errorCode = WSAGetLastError();
             if (errorCode != WSA_IO_PENDING)) {
                 if (errorCode == WSA_OPERATION_ABORTED) {
-                    std::execution::set_done(std::move(self.receiver));
+                    std::execution::set_stopped(std::move(self.receiver));
                 } else {
                     std::execution::set_error(std::move(self.receiver),
                                               std::error_code(errorCode, std::system_category()));
@@ -509,7 +509,7 @@ sender auto then(S s, F f) {
 
 This code builds a `then` algorithm that transforms the value(s) from the input sender
 with a transformation function. The result of the transformation becomes the new value.
-The other receiver functions (`set_error` and `set_done`), as well as all receiver queries,
+The other receiver functions (`set_error` and `set_stopped`), as well as all receiver queries,
 are passed through unchanged.
 
 In detail, it does the following:
@@ -618,7 +618,7 @@ std::execution::sender auto retry(std::execution::sender auto s) {
 ```
 
 The `retry` algorithm takes a multi-shot sender and causes it to repeat on error, passing
-through values and done signals. Each time the input sender is restarted, a new receiver
+through values and stopped signals. Each time the input sender is restarted, a new receiver
 is connected and the resulting operation state is stored in an `optional`, which allows us
 to reinitialize it multiple times.
 
@@ -701,7 +701,7 @@ implementing one. The `inline_scheduler`:
     `_sender`.
 2. The `_sender` type models the `typed_sender` concept and provides the
     metadata needed to describe it as a sender of no values that can send an
-    `exception_ptr` as an error and that never calls `set_done`. This metadata
+    `exception_ptr` as an error and that never calls `set_stopped`. This metadata
     is provided with the help of the `execution::completion_signatures` utility.
 3. The `_sender` type customizes `execution::connect` to accept a receiver of no
     values. It returns an instance of type `_op` that holds the receiver by
@@ -780,7 +780,7 @@ Example context:
 
 Goals:
 - show how one can break more complex flows into steps with let_* functions
-- exemplify the use of `let_value`, `let_error`, `let_done`, and `just` algorithms
+- exemplify the use of `let_value`, `let_error`, `let_stopped`, and `just` algorithms
 
 ```c++
 namespace ex = std::execution;
@@ -811,7 +811,7 @@ ex::sender auto error_to_response(std::exception_ptr err) {
   }
 }
 // Transforms cancellation of the server into responses to be sent to the client
-ex::sender auto done_to_response() {
+ex::sender auto stopped_to_response() {
   return ex::just(http_response{503, "Service temporarily unavailable"});
 }
 //...
@@ -826,7 +826,7 @@ ex::sender auto snd =
     // If there are errors transform them into proper responses
     | ex::let_error(error_to_response)
     // If the flow is cancelled, send back a proper response
-    | ex::let_done(done_to_response)
+    | ex::let_stopped(stopped_to_response)
     // write the result back to the client
     | ex::let_value(send_response)
     // done
@@ -1048,10 +1048,10 @@ The changes since R3 are as follows:
   * Fix specification of `get_completion_scheduler` on the `transfer`, `schedule_from` 
     and `transfer_when_all` algorithms; the completion scheduler cannot be guaranteed 
     for `set_error`.
-  * The value of `sends_done` for the default sender traits of types that are
+  * The value of `sends_stopped` for the default sender traits of types that are
     generally awaitable was changed from `false` to `true` to acknowledge the
     fact that some coroutine types are generally awaitable and may implement the
-    `unhandled_done()` protocol in their promise types.
+    `unhandled_stopped()` protocol in their promise types.
   * Fix the incorrect use of inline namespaces in the `<execution>` header.
   * Shorten the stable names for the sections.
   * `sync_wait` now handles `std::error_code` specially by throwing a
@@ -1078,7 +1078,7 @@ The changes since R3 are as follows:
   * Add `schedule_result_t` alias template.
   * More precisely specify the sender algorithms, including when they produce
     typed senders and what the sender traits of them are.
-  * `done_as_error` respecified as a customization point object.
+  * `stopped_as_error` respecified as a customization point object.
   * `tag_invoke` respecified to improve diagnostics.
 
 ### Dependently-typed senders ### {#dependently-typed-senders}
@@ -1293,8 +1293,8 @@ The changes since R1 are as follows:
 * Refined the forward progress guarantees on the `bulk` algorithm.
 * Add a section describing how to use a range of senders to represent async sequences.
 * Add a section showing how to use senders to represent partial success.
-* Add sender factories `execution::just_error` and `execution::just_done`.
-* Add sender adaptors `execution::done_as_optional` and `execution::done_as_error`.
+* Add sender factories `execution::just_error` and `execution::just_stopped`.
+* Add sender adaptors `execution::stopped_as_optional` and `execution::stopped_as_error`.
 * Document more production uses of sender/receiver at scale.
 * Various fixes of typos and bugs.
 
@@ -1419,7 +1419,7 @@ of the work described by a sender, but we have found those sender algorithms to 
 None of these implementation strategies are acceptable for many classes of parallel runtimes, such as task frameworks (like <a href="https://github.com/STEllAR-GROUP/hpx">HPX</a>) or accelerator runtimes (like CUDA or SYCL).
 
 Therefore, in addition to the `on` sender algorithm from [[P1897R3]], we are proposing a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
-Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or done) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
+Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or stopped) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
 When further work is attached to that sender by invoking sender algorithms, that work will also complete on an appropriate completion scheduler.
 
 ### `execution::get_completion_scheduler` ### {#design-sender-query-get_completion_scheduler}
@@ -1609,7 +1609,7 @@ sender auto composed_cancellation_example(auto query) {
 In this example, if we take the operation returned by `query_server_b(query)`, this operation will
 receive a stop-request when any of the following happens:
 * `first_successful` algorithm will send a stop-request if `query_server_a(query)` completes successfully
-* `when_all` algorithm will send a stop-request if the `load_file("some_file.jpg")` operation completes with an error or done result.
+* `when_all` algorithm will send a stop-request if the `load_file("some_file.jpg")` operation completes with an error or stopped result.
 * `timeout` algorithm will send a stop-request if the operation does not complete within 5 seconds.
 * `stop_when` algorithm will send a stop-request if the user clicks on the "Cancel" button in the user-interface.
 * The parent operation consuming the `composed_cancellation_example()` sends a stop-request
@@ -1977,7 +1977,7 @@ Given some expression <code><i>R</i></code> that is a range of senders, consider
 
     <pre highlight="c++">
     for (auto snd : <i>R</i>) {
-      if (auto opt = co_await execution::done_as_optional(std::move(snd)))
+      if (auto opt = co_await execution::stopped_as_optional(std::move(snd)))
         co_yield fn(*std::move(opt));
       else
         break;
@@ -2025,7 +2025,7 @@ Another possibility is for an async API to return a *range* of senders: if the A
     for (auto snd : read_socket_async(socket, span{buff})) {
       try {
         if (optional&lt;size_t> bytes_read =
-              co_await execution::done_as_optional(std::move(snd)))
+              co_await execution::stopped_as_optional(std::move(snd)))
           // OK, we read some bytes into buff. Process them here....
         } else {
           // The socket read was cancelled and returned no data. React
@@ -2082,23 +2082,23 @@ Only *some* senders can be made awaitable directly because of the fact that call
 
 ## Cancellation of a sender can unwind a stack of coroutines ## {#design-native-coro-unwind}
 
-When looking at the sender-based `retry` algorithm in the previous section, we can see that the value and error cases are correctly handled. But what about cancellation? What happens to a coroutine that is suspended awaiting a sender that completes by calling `execution::set_done`?
+When looking at the sender-based `retry` algorithm in the previous section, we can see that the value and error cases are correctly handled. But what about cancellation? What happens to a coroutine that is suspended awaiting a sender that completes by calling `execution::set_stopped`?
 
-When your task type's promise inherits from `with_awaitable_senders`, what happens is this: the coroutine behaves as if an *uncatchable exception* had been thrown from the `co_await` expression. (It is not really an exception, but it's helpful to think of it that way.) Provided that the promise types of the calling coroutines also inherit from `with_awaitable_senders`, or more generally implement a member function called `unhandled_done`, the exception unwinds the chain of coroutines as if an exception were thrown except that it bypasses `catch(...)` clauses.
+When your task type's promise inherits from `with_awaitable_senders`, what happens is this: the coroutine behaves as if an *uncatchable exception* had been thrown from the `co_await` expression. (It is not really an exception, but it's helpful to think of it that way.) Provided that the promise types of the calling coroutines also inherit from `with_awaitable_senders`, or more generally implement a member function called `unhandled_stopped`, the exception unwinds the chain of coroutines as if an exception were thrown except that it bypasses `catch(...)` clauses.
 
-In order to "catch" this uncatchable done exception, one of the calling coroutines in the stack would have to await a sender that maps the done channel into either a value or an error. That is achievable with the `execution::let_done`, `execution::upon_done`, `execution::done_as_optional`, or `execution::done_as_error` sender adaptors. For instance, we can use `execution::done_as_optional` to "catch" the done signal and map it into an empty optional as shown below:
+In order to "catch" this uncatchable stopped exception, one of the calling coroutines in the stack would have to await a sender that maps the stopped channel into either a value or an error. That is achievable with the `execution::let_stopped`, `execution::upon_stopped`, `execution::stopped_as_optional`, or `execution::stopped_as_error` sender adaptors. For instance, we can use `execution::stopped_as_optional` to "catch" the stopped signal and map it into an empty optional as shown below:
 
 ```c++
-if (auto opt = co_await execution::done_as_optional(some_sender)) {
+if (auto opt = co_await execution::stopped_as_optional(some_sender)) {
   // OK, some_sender completed successfully, and opt contains the result.
 } else {
   // some_sender completed with a cancellation signal.
 }
 ```
 
-As described in the section <a href="#design-awaitables-are-senders">"All awaitables are senders"</a>, the sender customization points recognize awaitables and adapt them transparently to model the sender concept. When `connect`-ing an awaitable and a receiver, the adaptation layer awaits the awaitable within a coroutine that implements `unhandled_done` in its promise type. The effect of this is that an "uncatchable" done exception propagates seamlessly out of awaitables, causing `execution::set_done` to be called on the receiver.
+As described in the section <a href="#design-awaitables-are-senders">"All awaitables are senders"</a>, the sender customization points recognize awaitables and adapt them transparently to model the sender concept. When `connect`-ing an awaitable and a receiver, the adaptation layer awaits the awaitable within a coroutine that implements `unhandled_stopped` in its promise type. The effect of this is that an "uncatchable" stopped exception propagates seamlessly out of awaitables, causing `execution::set_stopped` to be called on the receiver.
 
-Obviously, `unhandled_done` is a library extension of the coroutine promise interface. Many promise types will not implement `unhandled_done`. When an uncatchable done exception tries to propagate through such a coroutine, it is treated as an unhandled exception and `terminate` is called. The solution, as described above, is to use a sender adaptor to handle the done exception before awaiting it. It goes without saying that any future Standard Library coroutine types ought to implement `unhandled_done`. The author of [[P1056R1]], which proposes a standard coroutine task type, is in agreement.
+Obviously, `unhandled_stopped` is a library extension of the coroutine promise interface. Many promise types will not implement `unhandled_stopped`. When an uncatchable stopped exception tries to propagate through such a coroutine, it is treated as an unhandled exception and `terminate` is called. The solution, as described above, is to use a sender adaptor to handle the stopped exception before awaiting it. It goes without saying that any future Standard Library coroutine types ought to implement `unhandled_stopped`. The author of [[P1056R1]], which proposes a standard coroutine task type, is in agreement.
 
 ## Composition with parallel algorithms ## {#design-parallel-algorithms}
 
@@ -2219,13 +2219,13 @@ execution::sender auto just_error(
 
 Returns a sender with no [=completion scheduler|completion schedulers=], which completes with the specified error. If the provided error is an lvalue reference, a copy is made inside the returned sender and a non-const lvalue reference to the copy is sent to the receiver's `set_error`. If the provided value is an rvalue reference, it is moved into the returned sender and an rvalue reference to it is sent to the receiver's `set_error`.
 
-### `execution::just_done` ### {#design-sender-factory-just_done}
+### `execution::just_stopped` ### {#design-sender-factory-just_stopped}
 
 <pre highlight="c++">
-execution::sender auto just_done();
+execution::sender auto just_stopped();
 </pre>
 
-Returns a sender with no [=completion scheduler|completion schedulers=], which completes immediately by calling the receiver's `set_done`.
+Returns a sender with no [=completion scheduler|completion schedulers=], which completes immediately by calling the receiver's `set_stopped`.
 
 ### `execution::read` ### {#design-sender-factory-read}
 
@@ -2325,13 +2325,13 @@ execution::sender auto upon_error(
     std::invocable&lt;<i>errors-sent-by(input)</i>...> function
 );
 
-execution::sender auto upon_done(
+execution::sender auto upon_stopped(
     execution::sender auto input,
     std::invocable auto function
 );
 </pre>
 
-`upon_error` and `upon_done` are similar to `then`, but where `then` works with values sent by the input sender, `upon_error` works with errors, and `upon_done` is invoked when the "done" signal is sent.
+`upon_error` and `upon_stopped` are similar to `then`, but where `then` works with values sent by the input sender, `upon_error` works with errors, and `upon_stopped` is invoked when the "stopped" signal is sent.
 
 ### `execution::let_*` ### {#design-sender-adaptor-let}
 
@@ -2346,7 +2346,7 @@ execution::sender auto let_error(
     std::invocable<<i>errors-sent-by(input)</i>...> function
 );
 
-execution::sender auto let_done(
+execution::sender auto let_stopped(
     execution::sender auto input,
     std::invocable auto function
 );
@@ -2357,7 +2357,7 @@ execution::sender auto let_done(
 
 `let_value` is **guaranteed** to not begin executing `function` until the returned sender is started.
 
-`let_error` and `let_done` are similar to `let_value`, but where `let_value` works with values sent by the input sender, `let_error` works with errors, and `let_done` is invoked when the "done" signal is sent.
+`let_error` and `let_stopped` are similar to `let_value`, but where `let_value` works with values sent by the input sender, `let_error` works with errors, and `let_stopped` is invoked when the "stopped" signal is sent.
 
 ### `execution::on` ### {#design-sender-adaptor-on}
 
@@ -2380,27 +2380,27 @@ execution::sender auto into_variant(
 
 Returns a sender which sends a variant of tuples of all the possible sets of types sent by the input sender. Senders can send multiple sets of values depending on runtime conditions; this is a helper function that turns them into a single variant value.
 
-### `execution::done_as_optional` ### {#design-sender-adaptor-done_as_optional}
+### `execution::stopped_as_optional` ### {#design-sender-adaptor-stopped_as_optional}
 
 <pre highlight=c++>
-execution::sender auto done_as_optional(
+execution::sender auto stopped_as_optional(
     <i>single-typed-sender</i> auto snd
 );
 </pre>
 
-Returns a sender that maps the value channel from a `T` to an `optional<decay_t<T>>`, and maps the done channel to a value of an empty `optional<decay_t<T>>`.
+Returns a sender that maps the value channel from a `T` to an `optional<decay_t<T>>`, and maps the stopped channel to a value of an empty `optional<decay_t<T>>`.
 
-### `execution::done_as_error` ### {#design-sender-adaptor-done_as_error}
+### `execution::stopped_as_error` ### {#design-sender-adaptor-stopped_as_error}
 
 <pre highlight=c++>
 template&lt;move_constructible Error>
-execution::sender auto done_as_error(
+execution::sender auto stopped_as_error(
     execution::sender auto snd,
     Error err
 );
 </pre>
 
-Returns a sender that maps the done channel to an error of `err`.
+Returns a sender that maps the stopped channel to an error of `err`.
 
 ### `execution::bulk` ### {#design-sender-adaptor-bulk}
 
@@ -2536,7 +2536,7 @@ senders, retrieving the result of the task graph.
 
 If the provided sender sends an error instead of values, `sync_wait` throws that error as an exception, or rethrows the original exception if the error is of type `std::exception_ptr`.
 
-If the provided sender sends the "done" signal instead of values, `sync_wait` returns an empty optional.
+If the provided sender sends the "stopped" signal instead of values, `sync_wait` returns an empty optional.
 
 For an explanation of the `requires` clause, see [[#design-typed]]. That clause also explains another sender consumer, built on top of `sync_wait`: `sync_wait_with_variant`.
 
@@ -2572,10 +2572,10 @@ A <dfn>receiver</dfn> is a callback that supports more than one channel. In fact
 
 * `set_value`, which is the moral equivalent of an `operator()` or a function call, which signals successful completion of the operation its execution depends on;
 * `set_error`, which signals that an error has happened during scheduling of the current work, executing the current work, or at some earlier point in the sender chain; and
-* `set_done`, which signals that the operation completed without succeeding (`set_value`) and without failing (`set_error`). This result is often used to indicate that the operation stopped early, typically because it was asked to do so because the result is no
+* `set_stopped`, which signals that the operation completed without succeeding (`set_value`) and without failing (`set_error`). This result is often used to indicate that the operation stopped early, typically because it was asked to do so because the result is no
     longer needed.
 
-Exactly one of these channels must be successfully (i.e. without an exception being thrown) invoked on a receiver before it is destroyed; if a call to `set_value` failed with an exception, either `set_error` or `set_done` must be invoked on the same receiver. These
+Exactly one of these channels must be successfully (i.e. without an exception being thrown) invoked on a receiver before it is destroyed; if a call to `set_value` failed with an exception, either `set_error` or `set_stopped` must be invoked on the same receiver. These
 requirements are know as the <dfn>receiver contract</dfn>.
 
 While the receiver interface may look novel, it is in fact very similar to the interface of `std::promise`, which provides the first two signals as `set_value` and `set_error`, and it's possible to emulate the third channel with lifetime management of the promise.
@@ -2678,7 +2678,7 @@ equivalent to:
   2. `tag_invoke(<sender-algorithm>, sender, args...)`, if that expression is well-formed; otherwise
   4. a default implementation, if there exists a default implementation of the given sender algorithm.
 
-where <code><i>Signal</i></code> is one of `set_value`, `set_error`, or `set_done`; for most sender algorithms, the completion scheduler for `set_value` would be used, but for some (like `upon_error` or `let_done`), one of the others would be used.
+where <code><i>Signal</i></code> is one of `set_value`, `set_error`, or `set_stopped`; for most sender algorithms, the completion scheduler for `set_value` would be used, but for some (like `upon_error` or `let_stopped`), one of the others would be used.
 
 For sender algorithms which accept concepts other than `sender` as their first argument, we propose that the customization scheme remains as it has been in [[P0443R14]] so far, except it should also use `tag_invoke`.
 
@@ -2727,7 +2727,7 @@ The mechanism for this advertisement is the same as in [[P0443R14]]; the way to 
 `sender_traits_t::value_types` is a template that takes two arguments: one is a tuple-like template, the other is a variant-like template. The tuple-like argument is required to represent senders sending more than one value (such as `when_all`). The variant-like
 argument is required to represent senders that choose which specific values to send at runtime.
 
-There's a choice made in the specification of [[#design-sender-consumer-sync_wait]]: it returns a tuple of values sent by the sender passed to it, wrapped in `std::optional` to handle the `set_done` signal. However, this assumes that those values can be represented as a
+There's a choice made in the specification of [[#design-sender-consumer-sync_wait]]: it returns a tuple of values sent by the sender passed to it, wrapped in `std::optional` to handle the `set_stopped` signal. However, this assumes that those values can be represented as a
 tuple, like here:
 
 <pre highlight=c++>
@@ -3444,14 +3444,14 @@ explicit in_place_stop_callback(in_place_stop_token st, C&& cb)
 <tr>
     <td>completion signals</td>
     <td>called by senders to announce the completion of the work (success, error, or cancellation)</td>
-    <td>`set_value`, `set_error`, `set_done`</td>
+    <td>`set_value`, `set_error`, `set_stopped`</td>
 </tr>
 <tr>
     <td><a href="#spec-execution.senders">senders</a></td>
     <td>allow the specialization of the provided sender algorithms</td>
     <td>
         <ul>
-            <li>sender factories (`just`, `just_error`, `just_done`, ...)</li>
+            <li>sender factories (`just`, `just_error`, `just_stopped`, ...)</li>
             <li>sender adaptors (`transfer`, `then`, `let_value`, ...)</li>
             <li>sender consumers (`start_detached`, `sync_wait`)</li>
         </ul>
@@ -3559,11 +3559,11 @@ namespace std::execution {
   namespace <i>receivers</i> { // exposition only
     struct set_value_t;
     struct set_error_t;
-    struct set_done_t;
+    struct set_stopped_t;
   }
   inline constexpr <i>receivers</i>::set_value_t set_value{};
   inline constexpr <i>receivers</i>::set_error_t set_error{};
-  inline constexpr <i>receivers</i>::set_done_t set_done{};
+  inline constexpr <i>receivers</i>::set_stopped_t set_stopped{};
 
   // [exec.recv_queries], receiver queries
   namespace <i>receivers-queries</i> { // exposition only
@@ -3671,14 +3671,14 @@ namespace std::execution {
       <i>unspecified</i> just(Ts &&...) noexcept(<i>see below</i>);
     template&lt;<i>movable-value</i> Error>
       <i>unspecified</i> just_error(Error &&) noexcept(<i>see below</i>);
-    <i>unspecified</i> just_done() noexcept;
+    <i>unspecified</i> just_stopped() noexcept;
 
     struct schedule_t;
     struct transfer_just_t;
   }
   using <i>senders-factories</i>::just;
   using <i>senders-factories</i>::just_error;
-  using <i>senders-factories</i>::just_done;
+  using <i>senders-factories</i>::just_stopped;
   inline constexpr <i>senders-factories</i>::schedule_t schedule{};
   inline constexpr <i>senders-factories</i>::transfer_just_t transfer_just{};
   inline constexpr <i>unspecified</i> read{};
@@ -3699,18 +3699,18 @@ namespace std::execution {
     struct schedule_from_t;
     struct then_t;
     struct upon_error_t;
-    struct upon_done_t;
+    struct upon_stopped_t;
     struct let_value_t;
     struct let_error_t;
-    struct let_done_t;
+    struct let_stopped_t;
     struct bulk_t;
     struct split_t;
     struct when_all_t;
     struct when_all_with_variant_t;
     struct transfer_when_all_t;
     struct transfer_when_all_with_variant_t;
-    struct done_as_optional_t;
-    struct done_as_error_t;
+    struct stopped_as_optional_t;
+    struct stopped_as_error_t;
     struct ensure_started_t;
   }
   inline constexpr <i>sender-adaptors</i>::on_t on{};
@@ -3719,11 +3719,11 @@ namespace std::execution {
 
   inline constexpr <i>sender-adaptors</i>::then_t then{};
   inline constexpr <i>sender-adaptors</i>::upon_error_t upon_error{};
-  inline constexpr <i>sender-adaptors</i>::upon_done_t upon_done{};
+  inline constexpr <i>sender-adaptors</i>::upon_stopped_t upon_stopped{};
 
   inline constexpr <i>sender-adaptors</i>::let_value_t let_value{};
   inline constexpr <i>sender-adaptors</i>::let_error_t let_error{};
-  inline constexpr <i>sender-adaptors</i>::let_done_t let_done{};
+  inline constexpr <i>sender-adaptors</i>::let_stopped_t let_stopped{};
 
   inline constexpr <i>sender-adaptors</i>::bulk_t bulk{};
 
@@ -3743,9 +3743,9 @@ namespace std::execution {
   }
   using <i>sender-adaptor-into-variant</i>::into_variant;
 
-  inline constexpr <i>sender-adaptors</i>::done_as_optional_t done_as_optional;
+  inline constexpr <i>sender-adaptors</i>::stopped_as_optional_t stopped_as_optional;
 
-  inline constexpr <i>sender-adaptors</i>::done_as_error_t done_as_error;
+  inline constexpr <i>sender-adaptors</i>::stopped_as_error_t stopped_as_error;
 
   inline constexpr <i>sender-adaptors</i>::ensure_started_t ensure_started{};
 
@@ -4019,7 +4019,7 @@ enum class forward_progress_guarantee {
 ## Receivers <b>[exec.recv]</b> ## {#spec-execution.receivers}
 
 1. A <i>receiver</i> represents the continuation of an asynchronous operation. An asynchronous operation may complete with a (possibly empty) set of values, an error, or it may be cancelled. A receiver has three principal operations corresponding to the three ways
-    an asynchronous operation may complete: `set_value`, `set_error`, and `set_done`. These are collectively known as a receiver’s <i>completion-signal operations</i>.
+    an asynchronous operation may complete: `set_value`, `set_error`, and `set_stopped`. These are collectively known as a receiver’s <i>completion-signal operations</i>.
 
 2. The `receiver` concept defines the requirements for a receiver type with an unknown set of value types. The `receiver_of` concept defines the requirements for a receiver type with a known set of value types, whose error type is `exception_ptr`.
 
@@ -4029,7 +4029,7 @@ enum class forward_progress_guarantee {
       move_constructible&lt;remove_cvref_t&lt;T>> &&
       constructible_from&lt;remove_cvref_t&lt;T>, T> &&
       requires(remove_cvref_t&lt;T>&& t, E&& e) {
-        { execution::set_done(std::move(t)) } noexcept;
+        { execution::set_stopped(std::move(t)) } noexcept;
         { execution::set_error(std::move(t), (E&&) e) } noexcept;
       };
 
@@ -4047,7 +4047,7 @@ enum class forward_progress_guarantee {
 
     2. Once `execution::start` has been called on the operation state object, exactly one of the receiver’s completion-signal operations shall complete non-exceptionally before the receiver is destroyed.
 
-    3. If `execution::set_value` exits with an exception, it is still valid to call `execution::set_error` or `execution::set_done` on the receiver, but it is no longer valid to call `execution::set_value` on the receiver.
+    3. If `execution::set_value` exits with an exception, it is still valid to call `execution::set_error` or `execution::set_stopped` on the receiver, but it is no longer valid to call `execution::set_value` on the receiver.
 
 4. Once one of a receiver’s completion-signal operations has completed non-exceptionally, the receiver contract has been satisfied.
 
@@ -4107,18 +4107,18 @@ enum class forward_progress_guarantee {
 
     2. Otherwise, `execution::set_error(R, E)` is ill-formed.
 
-### `execution::set_done` <b>[exec.set_done]</b> ### {#spec-execution.receivers.set_done}
+### `execution::set_stopped` <b>[exec.set_stopped]</b> ### {#spec-execution.receivers.set_stopped}
 
-1. `execution::set_done` is used to send a <i>done signal</i> to a receiver.
+1. `execution::set_stopped` is used to send a <i>stopped signal</i> to a receiver.
 
-2. The name `execution::set_done` denotes a customization point object. The expression `execution::set_done(R)` for some subexpression `R` is expression-equivalent to:
+2. The name `execution::set_stopped` denotes a customization point object. The expression `execution::set_stopped(R)` for some subexpression `R` is expression-equivalent to:
 
-    1. `tag_invoke(execution::set_done, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s done channel, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::set_stopped, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s stopped channel, the program is ill-formed with no diagnostic required.
 
         * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
             throwing.
 
-    2. Otherwise, `execution::set_done(R)` is ill-formed.
+    2. Otherwise, `execution::set_stopped(R)` is ill-formed.
 
 ### Receiver queries <b>[exec.recv_queries]</b> ### {#spec-execution.receivers.queries}
 
@@ -4135,7 +4135,7 @@ enum class forward_progress_guarantee {
             are not potentially-throwing and are core constant expressions if
             `t` is a core constant expression.
 
-    2. Otherwise, `false` if the type of `t` is one of `set_value_t`, `set_error_t`, or `set_done_t`.
+    2. Otherwise, `false` if the type of `t` is one of `set_value_t`, `set_error_t`, or `set_stopped_t`.
 
     3. Otherwise, `true`.
 
@@ -4210,7 +4210,7 @@ enum class forward_progress_guarantee {
         requires {
           typename <i>has-value-types</i>&lt;S::template value_types>;
           typename <i>has-error-types</i>&lt;S::template error_types>;
-          typename bool_constant&lt;S::sends_done>;
+          typename bool_constant&lt;S::sends_stopped>;
         };
 
     template&lt;class S, class E = no_env>
@@ -4240,7 +4240,7 @@ enum class forward_progress_guarantee {
     struct <i>no-sender-traits</i> {};
     </pre>
 
-2. The class `sender_base` is used as a base class to tag sender types which do not expose member templates `value_types`, `error_types`, and a static member constant expression `sends_done`.
+2. The class `sender_base` is used as a base class to tag sender types which do not expose member templates `value_types`, `error_types`, and a static member constant expression `sends_stopped`.
 
 3. The alias template `sender_traits_t` is used to query a sender type for facts associated with the signals it sends.
 
@@ -4269,7 +4269,7 @@ enum class forward_progress_guarantee {
             template&lt;template&lt;class...> class Variant>
               using error_types = typename S::template error_types&lt;Variant>;
 
-            static constexpr bool sends_done = S::sends_done;
+            static constexpr bool sends_stopped = S::sends_stopped;
           };
         </pre>
 
@@ -4287,7 +4287,7 @@ enum class forward_progress_guarantee {
             completion_signatures<
               set_value_t(),
               set_error_t(exception_ptr),
-              set_done_t()>
+              set_stopped_t()>
             </pre>
 
         2. Otherwise, a prvalue of a type equivalent to:
@@ -4296,7 +4296,7 @@ enum class forward_progress_guarantee {
             completion_signatures<
               set_value_t(<i>await-result-type</i>&lt;S>),
               set_error_t(exception_ptr),
-              set_done_t()>
+              set_stopped_t()>
             </pre>
 
     4. Otherwise, <code><i>no-sender-traits</i>{}</code>.
@@ -4343,8 +4343,8 @@ enum class forward_progress_guarantee {
     ill-formed with no diagnostic required.
 
 9. Let `r` be an rvalue receiver of type `R`, and let `S` be the type of a
-    sender. If `sender_traits_t<S, env_of_t<R>>::sends_done` is well formed and
-    `false`, and such sender `S` odr-uses `execution::set_done(r)`, the program
+    sender. If `sender_traits_t<S, env_of_t<R>>::sends_stopped` is well formed and
+    `false`, and such sender `S` odr-uses `execution::set_stopped(r)`, the program
     is ill-formed with no diagnostic required.
 
 ### `execution::connect` <b>[exec.connect]</b> ### {#spec-execution.senders.connect}
@@ -4387,7 +4387,7 @@ enum class forward_progress_guarantee {
 
           4. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`. Then `tag_invoke(tag, p, as...)` is expression-equivalent to `tag(b, as...)` for any set of arguments `as...` and for any `tag` whose type satisfies <code><i>forwarding-receiver-query</i></code>.
 
-          5. The expression `p.unhandled_done()` is expression-equivalent to `(execution::set_done((R&&) r), noop_coroutine())`.
+          5. The expression `p.unhandled_stopped()` is expression-equivalent to `(execution::set_stopped((R&&) r), noop_coroutine())`.
 
           6. For some expression `e`, the expression `p.await_transform(e)` is expression-equivalent to `tag_invoke(as_awaitable, e, p)` if that expression is well-formed; otherwise, it is expression-equivalent to `e`.
 
@@ -4419,7 +4419,7 @@ enum class forward_progress_guarantee {
 1. `execution::get_completion_scheduler` is used to ask a sender object for the <i>completion scheduler</i> for one of its signals.
 
 2. The name `execution::get_completion_scheduler` denotes a customization point object template. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::get_completion_scheduler<CPO>(s)` is ill-formed for all template arguments `CPO`. If the template
-    argument `CPO` in `execution::get_completion_scheduler<CPO>` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution::set_done_t`, `execution::get_completion_scheduler<CPO>` is ill-formed. Otherwise,
+    argument `CPO` in `execution::get_completion_scheduler<CPO>` is not one of `execution::set_value_t`, `execution::set_error_t`, or `execution::set_stopped_t`, `execution::get_completion_scheduler<CPO>` is ill-formed. Otherwise,
     `execution::get_completion_scheduler<CPO>(s)` is expression-equivalent to:
 
     1. `tag_invoke(execution::get_completion_scheduler<CPO>, as_const(s))` if this expression is well formed.
@@ -4562,33 +4562,33 @@ enum class forward_progress_guarantee {
     is_nothrow_constructible_v&lt;decay_t&lt;T>, T>
     </pre>
 
-#### `execution::just_done` <b>[exec.just_done]</b> #### {#spec-execution.senders.just_done}
+#### `execution::just_stopped` <b>[exec.just_stopped]</b> #### {#spec-execution.senders.just_stopped}
 
-1. `execution::just_done` is used to create a sender that propagates a done signal to a connected receiver.
+1. `execution::just_stopped` is used to create a sender that propagates a stopped signal to a connected receiver.
 
     <pre highlight=c++>
-    struct <i>just-done-sender</i> // exposition only
-      : completion_signatures&lt;set_done_t()>
+    struct <i>just-stopped-sender</i> // exposition only
+      : completion_signatures&lt;set_stopped_t()>
     {
       template&lt;class R>
       struct operation_state {
         R r_;
 
         friend void tag_invoke(start_t, operation_state& s) noexcept {
-          set_done(std::move(s.r_));
+          set_stopped(std::move(s.r_));
         }
       };
 
       template&lt;receiver R>
-      friend operation_state&lt;decay_t&lt;R>> tag_invoke(connect_t, const <i>just-done-sender</i>& j, R && r) {
+      friend operation_state&lt;decay_t&lt;R>> tag_invoke(connect_t, const <i>just-stopped-sender</i>& j, R && r) {
         return { std::forward&lt;R>(r) };
       }
     };
 
-    <i>just-done-sender</i> just_done() noexcept;
+    <i>just-stopped-sender</i> just_stopped() noexcept;
     </pre>
 
-1. <i>Effects</i>: Equivalent to <code><i>just-done-sender</i>{}</code>.
+1. <i>Effects</i>: Equivalent to <code><i>just-stopped-sender</i>{}</code>.
 
 #### `execution::read` <b>[exec.read]</b> #### {#spec-execution.senders.read}
 
@@ -4748,7 +4748,7 @@ are all well-formed.
 
             2. `execution::set_error(r, e)` is expression-equivalent to `execution::set_error(out_r, e)`.
 
-            3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(out_r)`.
+            3. `execution::set_stopped(r)` is expression-equivalent to `execution::set_stopped(out_r)`.
 
         2. Calls `execution::schedule(sch)`, which results in `s2`. It then calls `execution::connect(s2, r)`, resulting in `op_state2`.
 
@@ -4786,7 +4786,7 @@ are all well-formed.
 
     If the function selected above does not return a sender which is a result of a call to `execution::schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
 
-3. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_done_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
+3. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_stopped_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
 
 #### `execution::schedule_from` <b>[exec.schedule_from]</b> #### {#spec-execution.senders.adaptors.schedule_from}
 
@@ -4809,7 +4809,7 @@ are all well-formed.
 
             2. `execution::set_error(r2, e)` is expression-equivalent to `execution::set_error(out_r, e)`.
 
-            3. `execution::set_done(r2)` is expression-equivalent to `execution::set_done(out_r)`.
+            3. `execution::set_stopped(r2)` is expression-equivalent to `execution::set_stopped(out_r)`.
 
             It then calls `execution::schedule(sch)`, resulting in a sender `s3`. It then calls `execution::connect(s3, r2)`, resulting in an operation state `op_state3`. It then calls `execution::start(op_state3)`. If any of these throws an exception,
             it catches it and calls `execution::set_error(out_r, current_exception())`. If any of these expressions would be ill-formed, then <code><i>Signal</i>(r, args...)</code> is ill-formed.
@@ -4831,10 +4831,10 @@ are all well-formed.
               using <i>set-value-signature</i> = set_value_t(Ts...);
             </pre>
 
-            Let `Bs...` be the set of unique types in `[Es..., exception_ptr]`. If either `sender_traits_t<schedule_result_t<Sch>, E>::sends_done` or `sender_traits_t<S, E>::sends_done` is `true`, then the type of `tag_invoke(get_sender_traits, s2, e)` is a class type equivalent to:
+            Let `Bs...` be the set of unique types in `[Es..., exception_ptr]`. If either `sender_traits_t<schedule_result_t<Sch>, E>::sends_stopped` or `sender_traits_t<S, E>::sends_stopped` is `true`, then the type of `tag_invoke(get_sender_traits, s2, e)` is a class type equivalent to:
 
             <pre highlight="c++">
-            completion_signatures&lt;Vs..., set_error_t(Bs)..., set_done_t()>
+            completion_signatures&lt;Vs..., set_error_t(Bs)..., set_stopped_t()>
             </pre>
 
             Otherwise:
@@ -4843,7 +4843,7 @@ are all well-formed.
             completion_signatures&lt;Vs..., set_error_t(Bs)...>
             </pre>
 
-4. Senders returned from `execution::schedule_from` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_done_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
+4. Senders returned from `execution::schedule_from` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_stopped_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
 
 #### `execution::then` <b>[exec.then]</b> #### {#spec-execution.senders.adaptor.then}
 
@@ -4878,7 +4878,7 @@ are all well-formed.
 
             2. `execution::set_error(r, e)` is expression-equivalent to `execution::set_error(out_r, e)`.
 
-            3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(out_r)`.
+            3. `execution::set_stopped(r)` is expression-equivalent to `execution::set_stopped(out_r)`.
 
         2. Returns an expression equivalent to `execution::connect(s, r)`.
 
@@ -4902,12 +4902,12 @@ are all well-formed.
                 the unique set of types in the <code><i>type-list</i></code>
                 named by <code>error_types_of_t&lt;S, E, <i>type-list</i>></code>
                 with the addition of `exception_ptr`. If `sender_traits_t<S,
-                E>::sends_done` is `true`, the type of
+                E>::sends_stopped` is `true`, the type of
                 `tag_invoke(get_sender_traits, s2, e)` shall be equivalent to:
 
                 <pre highlight="c++">
                 completion_signatures&lt;
-                  <i>unary-set-value-signature</i>&lt;As>..., set_error_t(Bs)..., set_done_t()>
+                  <i>unary-set-value-signature</i>&lt;As>..., set_error_t(Bs)..., set_stopped_t()>
                 </pre>
 
                 Otherwise:
@@ -4957,7 +4957,7 @@ are all well-formed.
                 ill-formed, the expression `execution::set_error(r, e)` is
                 ill-formed.
 
-            3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(out_r)`.
+            3. `execution::set_stopped(r)` is expression-equivalent to `execution::set_stopped(out_r)`.
 
         2. Returns an expression equivalent to `execution::connect(s, r)`.
 
@@ -4992,10 +4992,10 @@ are all well-formed.
                       using <i>set-value-signature</i> = set_value_t(Ts...);
                     </pre>
             
-            3. If `sender_traits_t<S, E>::sends_done` is `true`, the type of `tag_invoke(get_sender_traits, s2, e)` shall be equivalent to:
+            3. If `sender_traits_t<S, E>::sends_stopped` is `true`, the type of `tag_invoke(get_sender_traits, s2, e)` shall be equivalent to:
 
                 <pre highlight="c++">
-                completion_signatures&lt;Cs..., set_error_t(exception_ptr), set_done_t()>
+                completion_signatures&lt;Cs..., set_error_t(exception_ptr), set_stopped_t()>
                 </pre>
 
                 Otherwise:
@@ -5007,23 +5007,23 @@ are all well-formed.
     If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### `execution::upon_done` <b>[exec.upon_done]</b> #### {#spec-execution.senders.adaptor.upon_done}
+#### `execution::upon_stopped` <b>[exec.upon_stopped]</b> #### {#spec-execution.senders.adaptor.upon_stopped}
 
-1. `execution::upon_done` is used to attach an invocable as a continuation for the completion of the input sender using the "done" channel.
+1. `execution::upon_stopped` is used to attach an invocable as a continuation for the completion of the input sender using the "stopped" channel.
 
-2. The name `execution::upon_done` denotes a customization point object. For
+2. The name `execution::upon_stopped` denotes a customization point object. For
     some subexpressions `s` and `f`, let `S` be `decltype((s))`, let `F` be the
     decayed type of `f`, and let `f'` be an xvalue refering to an object
     decay-copied from `f`. If `S` does not satisfy `execution::sender`, or `F`
     does not model both <code><i>movable-value</i></code> and `invocable`,
-    `execution::upon_done` is ill-formed. Otherwise, the expression
-    `execution::upon_done(s, f)` is expression-equivalent to:
+    `execution::upon_stopped` is ill-formed. Otherwise, the expression
+    `execution::upon_stopped(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::upon_done, get_completion_scheduler<set_done_t>(s), s, f)`, if that expression is valid.
+    1. `tag_invoke(execution::upon_stopped, get_completion_scheduler<set_stopped_t>(s), s, f)`, if that expression is valid.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(execution::upon_done, s, f)`, if that expression is valid.
+    2. Otherwise, `tag_invoke(execution::upon_stopped, s, f)`, if that expression is valid.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -5035,13 +5035,13 @@ are all well-formed.
 
             2. `execution::set_error(r, e)` is expression-equivalent to `execution::set_error(out_r, e)`.
 
-            1. When `execution::set_done(r)` is called, let `v` be the
+            1. When `execution::set_stopped(r)` is called, let `v` be the
                 expression `invoke(f')`. If `v` has type `void`, calls
                 `execution::set_value(out_r)`; otherwise, calls
                 `execution::set_value(out_r, v)`. If any of these throw an
                 exception, it catches it and calls `execution::set_error(out_r,
                 current_exception())`. If any of these expressions would be
-                ill-formed, the expression `execution::set_done(r)` is
+                ill-formed, the expression `execution::set_stopped(r)` is
                 ill-formed.
 
         2. Returns an expression equivalent to `execution::connect(s, r)`.
@@ -5072,7 +5072,7 @@ are all well-formed.
                 completion_signatures&lt;As..., set_error_t(Es)...>
                 </pre>
 
-    If the function selected above does not return a sender which invokes `f` when `s` completes by calling `set_done`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
+    If the function selected above does not return a sender which invokes `f` when `s` completes by calling `set_stopped`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
 #### `execution::let_value` <b>[exec.let_value]</b> #### {#spec-execution.senders.adapt.let_value}
@@ -5099,7 +5099,7 @@ are all well-formed.
 
             2. `execution::set_error(r, e)` is expression-equivalent to `execution::set_error(std::move(out_r'), e)`.
 
-            3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(std::move(out_r'))`.
+            3. `execution::set_stopped(r)` is expression-equivalent to `execution::set_stopped(std::move(out_r'))`.
 
         2. `execution::let_value(s, f)` returns a sender `s2` such that:
         
@@ -5120,7 +5120,7 @@ are all well-formed.
 
             2. Otherwise, let  `S3s...` be the unique set of types in the <code><i>type-list</i></code> named by `V`. If `(typed_sender<S3s, E> &&...)` is `false`, the type of `tag_invoke(get_sender_traits, s2, e)` shall be equivalent to <code><i>empty-sender-traits</i></code>.
             
-            3. Otherwise, for each type <code>S3<i><sub>i</sub></i></code> in `S3s...`, let <code>Vs<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>set-value-signature</i>, <i>type-list</i>></code>, let <code>Es<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>type-list</i>></code>, and let <code>Ds<i><sub>i</sub></i>...</code> be the list of values <code>sender_traits_t&lt;S3s, E>::sends_done...</code>, where <code><i>set-value-signature</i></code> is the following alias template:
+            3. Otherwise, for each type <code>S3<i><sub>i</sub></i></code> in `S3s...`, let <code>Vs<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>set-value-signature</i>, <i>type-list</i>></code>, let <code>Es<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>type-list</i>></code>, and let <code>Ds<i><sub>i</sub></i>...</code> be the list of values <code>sender_traits_t&lt;S3s, E>::sends_stopped...</code>, where <code><i>set-value-signature</i></code> is the following alias template:
 
                     <pre highlight="c++">
                     template &lt;class... Ts>
@@ -5129,10 +5129,10 @@ are all well-formed.
 
             4. Let `Us...` be the set of unique types in <code>[Vs<i><sub>0</sub></i>..., Vs<i><sub>1</sub></i>..., ... Vs<i><sub>n-1</sub></i>...]</code> and let `Ws...` be the unique set of types in <code>[exception_ptr, Xs..., Es<i><sub>0</sub></i>..., Es<i><sub>1</sub></i>..., ... Es<i><sub>n-1</sub></i>...]</code>, where <code><i>n</i></code> is `sizeof...(S3s)`.
 
-            5. If either `sender_traits_t<S, E>::sends_done` or `(Ds ||...)` is `true`, the type of `get_sender_traits(s2, e)` is equivalent to:
+            5. If either `sender_traits_t<S, E>::sends_stopped` or `(Ds ||...)` is `true`, the type of `get_sender_traits(s2, e)` is equivalent to:
 
                 <pre highlight="c++">
-                completion_signatures &ltUs..., set_error_t(Ws)..., set_done_t()>
+                completion_signatures &ltUs..., set_error_t(Ws)..., set_stopped_t()>
                 </pre>
 
                 Otherwise:
@@ -5168,7 +5168,7 @@ are all well-formed.
             2. When `execution::set_error(r, e)` is called, decay-copies `e` into `op_state2` as `e'`, then calls `invoke(f', e')`, resulting in a sender `s3`. It then calls `execution::connect(s3, std::move(out_r'))`, resulting in an operation state
                 `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(std::move(out_r'), current_exception())`. If any of these expressions would be ill-formed, `execution::set_error(r, e)` is ill-formed.
 
-            3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(std::move(out_r'))`.
+            3. `execution::set_stopped(r)` is expression-equivalent to `execution::set_stopped(std::move(out_r'))`.
 
         2. `execution::let_error(s, f)` returns a sender `s2` such that:
         
@@ -5197,14 +5197,14 @@ are all well-formed.
 
             2. Otherwise, let  `S3s...` be the unique set of types in the <code><i>type-list</i></code> named by `W`. If `(typed_sender<S3s, E> &&...)` is `false`, the type of `tag_invoke(get_sender_traits, s2, e)` shall be equivalent to <code><i>empty-sender-traits</i></code>.
             
-            3. Otherwise, for each type <code>S3<i><sub>i</sub></i></code> in `S3s...`, let <code>Vs<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>set-value-signature</i>, <i>type-list</i>></code>, let <code>Es<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>type-list</i>></code>, and let <code>Ds<i><sub>i</sub></i>...</code> be the list of values <code>sender_traits_t&lt;S3s, E>::sends_done...</code>.
+            3. Otherwise, for each type <code>S3<i><sub>i</sub></i></code> in `S3s...`, let <code>Vs<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>set-value-signature</i>, <i>type-list</i>></code>, let <code>Es<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>type-list</i>></code>, and let <code>Ds<i><sub>i</sub></i>...</code> be the list of values <code>sender_traits_t&lt;S3s, E>::sends_stopped...</code>.
 
             4. Let `Us...` be the set of unique types in <code>[As..., Vs<i><sub>0</sub></i>..., Vs<i><sub>1</sub></i>..., ... Vs<i><sub>n-1</sub></i>...]</code> and let `Ws...` be the unique set of types in <code>[exception_ptr, Es<i><sub>0</sub></i>..., Es<i><sub>1</sub></i>..., ... Es<i><sub>n-1</sub></i>...]</code>, where <code><i>n</i></code> is `sizeof...(S3s)`.
 
-            5. If either `sender_traits_t<S, E>::sends_done` or `(Ds ||...)` is `true`, the type of `get_sender_traits(s2, e)` is equivalent to:
+            5. If either `sender_traits_t<S, E>::sends_stopped` or `(Ds ||...)` is `true`, the type of `get_sender_traits(s2, e)` is equivalent to:
 
                 <pre highlight="c++">
-                completion_signatures &ltUs..., set_error_t(Ws)..., set_done_t()>
+                completion_signatures &ltUs..., set_error_t(Ws)..., set_stopped_t()>
                 </pre>
 
                 Otherwise:
@@ -5216,18 +5216,18 @@ are all well-formed.
     If `execution::let_error(s, f)` does not return a sender that invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
-#### `execution::let_done` <b>[exec.let_done]</b> #### {#spec-execution.senders.adapt.let_done}
+#### `execution::let_stopped` <b>[exec.let_stopped]</b> #### {#spec-execution.senders.adapt.let_stopped}
 
-1. `execution::let_done` is used to insert continuations creating more work dependent on the error its input senders into a sender chain.
+1. `execution::let_stopped` is used to insert continuations creating more work dependent on the error its input senders into a sender chain.
 
-2. The name `execution::let_done` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`, let `F` be the decayed type of `f`, and let `f'` be an xvalue that refers to an object decay-copied from `f`. If `S` does not satisfy `execution::sender` or if `F` does not satisfy `invocable`, `execution::let_done` is ill-formed. Otherwise, the expression
-    `execution::let_done(s, f)` is expression-equivalent to:
+2. The name `execution::let_stopped` denotes a customization point object. For some subexpressions `s` and `f`, let `S` be `decltype((s))`, let `F` be the decayed type of `f`, and let `f'` be an xvalue that refers to an object decay-copied from `f`. If `S` does not satisfy `execution::sender` or if `F` does not satisfy `invocable`, `execution::let_stopped` is ill-formed. Otherwise, the expression
+    `execution::let_stopped(s, f)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::let_done, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid.
+    1. `tag_invoke(execution::let_stopped, get_completion_scheduler<set_value_t>(s), s, f)`, if that expression is valid.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
-    2. Otherwise, `tag_invoke(execution::let_done, s, f)`, if that expression is valid.
+    2. Otherwise, `tag_invoke(execution::let_stopped, s, f)`, if that expression is valid.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -5239,10 +5239,10 @@ are all well-formed.
 
             2. `execution::set_error(r, e)` is expression-equivalent to `execution::set_value(std::move(out_r'), e)`.
 
-            3. When `execution::set_done(r)` is called, calls `invoke(f')`, resulting in a sender `s3`. It then calls `execution::connect(s3, std::move(out_r'))`, resulting in an operation state
-                `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(std::move(out_r'), current_exception())`. If any of these expressions would be ill-formed, `execution::set_done(r)` is ill-formed.
+            3. When `execution::set_stopped(r)` is called, calls `invoke(f')`, resulting in a sender `s3`. It then calls `execution::connect(s3, std::move(out_r'))`, resulting in an operation state
+                `op_state3`. `op_state3` is saved as a part of `op_state2`. It then calls `execution::start(op_state3)`. If any of these throws an exception, it catches it and calls `execution::set_error(std::move(out_r'), current_exception())`. If any of these expressions would be ill-formed, `execution::set_stopped(r)` is ill-formed.
 
-        2. `execution::let_done(s, f)` returns a sender `s2` such that:
+        2. `execution::let_stopped(s, f)` returns a sender `s2` such that:
         
             1. If the expression `execution::connect(s, r)` is ill-formed, `execution::connect(s2, out_r)` is ill-formed.
             
@@ -5261,10 +5261,10 @@ are all well-formed.
 
             4. Let `Us...` be the set of unique types in `[As..., Vs...]` and let `Ws...` be the unique set of types in `[exception_ptr, Es...]`,.
 
-            5. If `sender_traits_t<S3, E>::sends_done` is `true`, the type of `get_sender_traits(s2, e)` is equivalent to:
+            5. If `sender_traits_t<S3, E>::sends_stopped` is `true`, the type of `get_sender_traits(s2, e)` is equivalent to:
 
                 <pre highlight="c++">
-                completion_signatures &ltUs..., set_error_t(Ws)..., set_done_t()>
+                completion_signatures &ltUs..., set_error_t(Ws)..., set_stopped_t()>
                 </pre>
 
                 Otherwise:
@@ -5273,7 +5273,7 @@ are all well-formed.
                 completion_signatures &ltUs..., set_error_t(Ws)...>
                 </pre>
 
-    If `execution::let_done(s, f)` does not return a sender that invokes `f` when `set_done` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
+    If `execution::let_stopped(s, f)` does not return a sender that invokes `f` when `set_stopped` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
         ill-formed with no diagnostic required.
 
 #### `execution::bulk` <b>[exec.bulk]</b> #### {#spec-execution.senders.adapt.bulk}
@@ -5300,7 +5300,7 @@ are all well-formed.
 
             2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
 
-            3. When `execution::set_done(r)` is called, calls `execution::set_done(out_r, e)`.
+            3. When `execution::set_stopped(r)` is called, calls `execution::set_stopped(out_r, e)`.
 
         2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
 
@@ -5313,7 +5313,7 @@ are all well-formed.
 
         2. `Tr::error_types<Variant>` names the type `Variant<Bs...>`.
 
-        3. `Tr::sends_done` is a core constant expression of type `bool` and value `sender_traits_t<S, E>::sends_done`.
+        3. `Tr::sends_stopped` is a core constant expression of type `bool` and value `sender_traits_t<S, E>::sends_stopped`.
 
     If the function selected above does not return a sender which invokes `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when the input sender sends values `args...`, or does not propagate the values of the signals sent by the input sender to
         a connected receiver, the program is ill-formed with no diagnostic required.
@@ -5362,7 +5362,7 @@ are all well-formed.
                 into `sh_state`. It then notifies the operation states in
                 `sh_state`'s list of operation states that the results are ready.
 
-            3. When `execution::set_done(r)` is called, it then notifies the
+            3. When `execution::set_stopped(r)` is called, it then notifies the
                 operation states in `sh_state`'s list of operation states that
                 the results are ready.
 
@@ -5412,7 +5412,7 @@ are all well-formed.
             
             * Then, it checks to see if
                 <code><i>stop-src</i>.stop_requested()</code> is `true`. If so, it
-                calls `execution::set_done(out_r')`.
+                calls `execution::set_stopped(out_r')`.
 
             * Otherwise, it adds a pointer to `op_state` to the list of
                 operation states in `sh_state` and calls
@@ -5451,10 +5451,10 @@ are all well-formed.
               using <i>error-types</i> = <i>type-list</i>&lt;decay_t&lt;Es>&amp;...>;
             </pre>
 
-            Let `Bs...` be the set of unique types in `[Es..., exception_ptr&]`. If `sender_traits_t<S, E>::sends_done` is `true`, then the type of `tag_invoke(get_sender_traits, s2, e)` is a class type equivalent to:
+            Let `Bs...` be the set of unique types in `[Es..., exception_ptr&]`. If `sender_traits_t<S, E>::sends_stopped` is `true`, then the type of `tag_invoke(get_sender_traits, s2, e)` is a class type equivalent to:
 
             <pre highlight="c++">
-            completion_signatures&lt;Vs..., set_error_t(Bs)..., set_done_t()>
+            completion_signatures&lt;Vs..., set_error_t(Bs)..., set_stopped_t()>
             </pre>
 
             Otherwise:
@@ -5487,9 +5487,9 @@ are all well-formed.
 
             1. If <code>execution::set_value(r<i><sub>i</sub></i>, t<i><sub>i</sub></i>...)</code> is called for every <code>r<i><sub>i</sub></i></code>, `op_state`'s associated stop callback optional is reset and <code>execution::set_value(out_r, t<i><sub>0</sub></i>..., t<i><sub>1</sub></i>..., ..., t<i><sub>n-1</sub></i>...)</code> is called, where `n` the number of subexpressions in <code>s<i><sub>i</sub></i>...</code>.
 
-            2. Otherwise, `execution::set_error` or `execution::set_done` was called for at least one receiver <code>r<i><sub>i</sub></i></code>. If the first such to complete did so with the call <code>execution::set_error(r<i><sub>i</sub></i>, e)</code>, `request_stop` is called on `op_state`'s associated stop source. When all child operations have completed, `op_state`'s associated stop callback optional is reset and `execution::set_error(out_r, e)` is called.
+            2. Otherwise, `execution::set_error` or `execution::set_stopped` was called for at least one receiver <code>r<i><sub>i</sub></i></code>. If the first such to complete did so with the call <code>execution::set_error(r<i><sub>i</sub></i>, e)</code>, `request_stop` is called on `op_state`'s associated stop source. When all child operations have completed, `op_state`'s associated stop callback optional is reset and `execution::set_error(out_r, e)` is called.
 
-            3. Otherwise, `request_stop` is called on `op_state`'s associated stop source. When all child operations have completed, `op_state`'s associated stop callback optional is reset and `execution::set_done(out_r)` is called.
+            3. Otherwise, `request_stop` is called on `op_state`'s associated stop source. When all child operations have completed, `op_state`'s associated stop callback optional is reset and `execution::set_stopped(out_r)` is called.
 
             4. For each receiver <code>r<i><sub>i</sub></i></code>, <code>get_env(r<i><sub>i</sub></i>)</code> is an expression <code><i>e</i></code> such that <code>execution::get_stop_token(<i>e</i>)</code> is well-formed and returns the results of calling `get_token()` on `op_state`'s associated stop source, and for which <code>tag_invoke(tag, <i>e</i>, args...)</code> is expression-equivalent to `tag(get_env(out_r), args...)` for all arguments `args...` and all `tag` whose type satisfies <code><i>forwarding-env-query</i></code> and is not `get_stop_token_t`.
 
@@ -5514,7 +5514,7 @@ are all well-formed.
 
             * Emplace constructs the stop callback optional with the arguments `execution::get_stop_token(get_env(out_r))` and <code><i>stop-callback-fn</i>{<i>stop-src</i>}</code>, where <code><i>stop-src</i></code> refers to the stop source of `op_state`.
 
-            * Then, it checks to see if <code><i>stop-src</i>.stop_requested()</code> is true. If so, it calls `execution::set_done(out_r)`.
+            * Then, it checks to see if <code><i>stop-src</i>.stop_requested()</code> is true. If so, it calls `execution::set_stopped(out_r)`.
 
             * Otherwise, calls <code>execution::start(child_op<i><sub>i</sub></i>)</code> for each <code>child_op<i><sub>i</sub></i></code>.
 
@@ -5540,7 +5540,7 @@ are all well-formed.
 
             * `Tr::error_types<Variant>` is <code>Variant&lt;U<i><sub>i</sub></i>...></code>, where <code>U<i><sub>i</sub></i>...</code> is the unique set of types in <code>[exception_ptr, E<i><sub>0</sub></i>..., E<i><sub>1</sub></i>,..., E<i><sub>n-1</sub></i>...]</code>, where <code>E<i><sub>i</sub></i>...</code> is a set of types such that for the type <code>S<i><sub>i</sub></i></code>, <code>error_types_of_t&lt;S<i><sub>i</sub></i>, WE, Variant></code> is an alias for <code>Variant&lt;E<i><sub>i</sub></i>...></code>.
 
-            * `Tr::sends_done` is `true`.
+            * `Tr::sends_stopped` is `true`.
 
 3. The name `execution::when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::sender`,
     `execution::when_all_with_variant` is ill-formed. Otherwise, the expression `execution::when_all_with_variant(s...)` is expression-equivalent to:
@@ -5596,7 +5596,7 @@ are all well-formed.
 
     2. Otherwise, `execution::transfer_when_all(sch, execution::into_variant(s)...)`.
 
-4. Senders returned from `execution::transfer_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to input senders. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_done_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
+4. Senders returned from `execution::transfer_when_all` shall not propagate the sender queries `get_completion_scheduler<CPO>` to input senders. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_stopped_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
 
 #### `execution::into_variant` <b>[exec.into_variant]</b> #### {#spec-execution.senders.adapt.into_variant}
 
@@ -5622,23 +5622,23 @@ are all well-formed.
 
         2. `execution::set_error(r, e)` is expression-equivalent to `execution::set_error(out_r, e)`.
 
-        3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(out_r)`.
+        3. `execution::set_stopped(r)` is expression-equivalent to `execution::set_stopped(out_r)`.
         
     2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state2`.
 
     3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
-#### `execution::done_as_optional` <b>[exec.done_as_optional]</b> #### {#spec-execution.senders.adapt.done_as_optional}
+#### `execution::stopped_as_optional` <b>[exec.stopped_as_optional]</b> #### {#spec-execution.senders.adapt.stopped_as_optional}
 
-1. `execution::done_as_optional` is used to handle a done signal by mapping it into the value channel as an empty optional. The value channel is also converted into an optional. The result is a sender that never completes with done, reporting cancellation by completing with an empty optional.
+1. `execution::stopped_as_optional` is used to handle a stopped signal by mapping it into the value channel as an empty optional. The value channel is also converted into an optional. The result is a sender that never completes with stopped, reporting cancellation by completing with an empty optional.
 
-2. The name `execution::done_as_optional` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. Let <code><i>get-env-sender</i></code> be an expression such that, when it is `connect`ed with a receiver `r`, `start` on the resulting operation state completes immediately by calling `execution::set_value(r, get_env(r))`. The expression `execution::done_as_optional(s)` is expression-equivalent to:
+2. The name `execution::stopped_as_optional` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. Let <code><i>get-env-sender</i></code> be an expression such that, when it is `connect`ed with a receiver `r`, `start` on the resulting operation state completes immediately by calling `execution::set_value(r, get_env(r))`. The expression `execution::stopped_as_optional(s)` is expression-equivalent to:
 
     <pre highlight=c++>
     execution::let_value(
       <i>get-env-sender</i>,
       []&lt;class E>(const E&) requires <i>single-typed-sender</i>&lt;S, E> {
-        return execution::let_done(
+        return execution::let_stopped(
           execution::then(s,
             []&lt;class T>(T&& t) {
               return optional&lt;decay_t&lt;<i>single-sender-value-type</i>&lt;S, E>>>{
@@ -5654,14 +5654,14 @@ are all well-formed.
     )
     </pre>
 
-#### `execution::done_as_error` <b>[exec.done_as_error]</b> #### {#spec-execution.senders.adapt.done_as_error}
+#### `execution::stopped_as_error` <b>[exec.stopped_as_error]</b> #### {#spec-execution.senders.adapt.stopped_as_error}
 
-1. `execution::done_as_error` is used to handle a done signal by mapping it into the error channel as a custom exception type. The result is a sender that never completes with done, reporting cancellation by completing with an error.
+1. `execution::stopped_as_error` is used to handle a stopped signal by mapping it into the error channel as a custom exception type. The result is a sender that never completes with stopped, reporting cancellation by completing with an error.
 
-2. The name `execution::done_as_error` denotes a customization point object. For some subexpressions `s` and `e`, let `S` be `decltype((s))` and let `E` be `decltype((e))`. If the type `S` does not satisfy `sender` or if the type `E` doesn't satisfy <code><i>movable-value</i></code>, `execution::done_as_error(s, e)` is ill-formed. Otherwise, the expression `execution::done_as_error(s, e)` is expression-equivalent to:
+2. The name `execution::stopped_as_error` denotes a customization point object. For some subexpressions `s` and `e`, let `S` be `decltype((s))` and let `E` be `decltype((e))`. If the type `S` does not satisfy `sender` or if the type `E` doesn't satisfy <code><i>movable-value</i></code>, `execution::stopped_as_error(s, e)` is ill-formed. Otherwise, the expression `execution::stopped_as_error(s, e)` is expression-equivalent to:
 
     <pre highlight=c++>
-    execution::let_done(s, [] { return execution::just_error(e); })
+    execution::let_stopped(s, [] { return execution::just_error(e); })
     </pre>
 
 #### `execution::ensure_started` <b>[exec.ensure_started]</b> #### {#spec-execution.senders.adapt.ensure_started}
@@ -5691,7 +5691,7 @@ are all well-formed.
 
             2. `execution::set_error(r, e)` is expression-equivalent to `execution::set_error(out_r, e)`.
 
-            3. `execution::set_done(r)` is expression-equivalent to `execution::set_done(out_r)`.
+            3. `execution::set_stopped(r)` is expression-equivalent to `execution::set_stopped(out_r)`.
 
             The lifetime of `op_state` lasts until all three of the following have occured:
 
@@ -5732,11 +5732,11 @@ from the operation before the operation completes.
 
             2. When `set_error(r, e)` is called, it calls `std::terminate`.
 
-            3. When `set_done(r)` is called, it does nothing.
+            3. When `set_stopped(r)` is called, it does nothing.
 
         2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`. The lifetime of `op_state` lasts until one of the receiver completion-signals of `r` is called.
 
-    If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_done` signals and calls `std::terminate` on the `set_error` signal, the program is ill-formed with no diagnostic required.
+    If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_stopped` signals and calls `std::terminate` on the `set_error` signal, the program is ill-formed with no diagnostic required.
 
 #### `this_thread::sync_wait` <b>[exec.sync_wait]</b> #### {#spec-execution.senders.consumers.sync_wait}
 
@@ -5796,7 +5796,7 @@ from the operation before the operation completes.
 
             2. If `execution::set_error(r, e)` has been called, let `E` be the decayed type of `e`. If `E` is `exception_ptr`, calls `std::rethrow_exception(e)`. Otherwise, if the `E` is `error_code`, throws `system_error(e)`. Otherwise, throws `e`.
 
-            3. If `execution::set_done(r)` has been called, returns <code><i>sync-wait-type</i>&lt;S, <i>sync-wait-env</i>>{}</code>.
+            3. If `execution::set_stopped(r)` has been called, returns <code><i>sync-wait-type</i>&lt;S, <i>sync-wait-env</i>>{}</code>.
 
 5. The name `this_thread::sync_wait_with_variant` denotes a customization point
     object. For some subexpression `s`, let `S` be the type of
@@ -5875,9 +5875,9 @@ from the operation before the operation completes.
         };
 
     template &lt;class Receiver>
-      concept <i>has-set-done</i> =
+      concept <i>has-set-stopped</i> =
         requires(Receiver&amp;&amp; r) {
-          static_cast&lt;Receiver&amp;&amp;>(r).set_done();
+          static_cast&lt;Receiver&amp;&amp;>(r).set_stopped();
         };
     </pre>
 
@@ -5911,7 +5911,7 @@ from the operation before the operation completes.
      private:
       using set_value = <i>unspecified</i>;
       using set_error = <i>unspecified</i>;
-      using set_done = <i>unspecified</i>;
+      using set_stopped = <i>unspecified</i>;
 
       // Member functions
       template &lt;class Self>
@@ -5928,7 +5928,7 @@ from the operation before the operation completes.
         friend void tag_invoke(set_error_t, Derived&amp;&amp; self, E&amp;&amp; e) noexcept;
 
       template &lt;class D = Derived>
-        friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
+        friend void tag_invoke(set_stopped_t, Derived&amp;&amp; self) noexcept;
 
       template &lt;<i>forwarding-receiver-query</i> Tag, class D = Derived, class... As>
           requires <i>callable</i>&lt;Tag, <i>BASE-TYPE</i>(const D&amp;), As...>
@@ -5998,22 +5998,22 @@ from the operation before the operation completes.
 
     <pre>
     template &lt;class D = Derived>
-      friend void tag_invoke(set_done_t, Derived&amp;&amp; self) noexcept;
+      friend void tag_invoke(set_stopped_t, Derived&amp;&amp; self) noexcept;
     </pre>
 
-    1. <i>Constraints:</i> Either <code><i>has-set-done</i>&lt;D></code> is `true` or <code>requires {typename D::set_done;}</code> is `true`.
+    1. <i>Constraints:</i> Either <code><i>has-set-stopped</i>&lt;D></code> is `true` or <code>requires {typename D::set_stopped;}</code> is `true`.
 
     2. <i>Effects:</i> Equivalent to:
 
-        - `static_cast<Derived&&>(self).set_done()` if <code><i>has-set-done</i>&lt;D></code> is `true`,
+        - `static_cast<Derived&&>(self).set_stopped()` if <code><i>has-set-stopped</i>&lt;D></code> is `true`,
 
             * <i>Mandates:</i> The member function call expression above is not potentially throwing.
 
-        - Otherwise, <code>execution::set_done(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
+        - Otherwise, <code>execution::set_stopped(<i>GET-BASE</i>(static_cast&lt;Derived&amp;&amp;>(self)))</code>
 
 ### `execution::completion_signatures` <b>[exec.utils.completion_sigs]</b> ### {#spec-execution.snd_rec_utils.completion_sigs}
 
-1. `completion_signatures` is used to define a type that implements the nested `value_types`, `error_types`, and `sends_done` members that describe a typed sender. Its arguments are a flat list of function types that describe the signatures of the receiver's completion-signal operations that the sender invokes.
+1. `completion_signatures` is used to define a type that implements the nested `value_types`, `error_types`, and `sends_stopped` members that describe a typed sender. Its arguments are a flat list of function types that describe the signatures of the receiver's completion-signal operations that the sender invokes.
 
 2. [<i>Example:</i>
      <pre highlight="c++">
@@ -6023,7 +6023,7 @@ from the operation before the operation completes.
          execution::set_value_t(int, float),
          execution::set_error_t(exception_ptr),
          execution::set_error_t(error_code),
-         execution::set_done_t()
+         execution::set_stopped_t()
        >;
 
       // my_sender_traits::value_types&lt;tuple, variant> names the type:
@@ -6032,7 +6032,7 @@ from the operation before the operation completes.
       // my_sender_traits::error_types&lt;variant> names the type:
       //   variant&lt;exception_ptr, error_code>
       //
-      // my_sender_traits::sends_done is true
+      // my_sender_traits::sends_stopped is true
 
       class my_sender : public my_sender_traits {
         // ...
@@ -6051,7 +6051,7 @@ from the operation before the operation completes.
 
         * <code>set_value_t(<i>Vs</i>...)</code>, where <code><i>Vs</i></code> is an arbitrary parameter pack.
         * <code>set_error_t(<i>E</i>)</code>, where <code><i>E</i></code> is an arbitrary type.
-        * `set_done_t()`
+        * `set_stopped_t()`
 
     2. Otherwise, `Fn` does not satisfy <code><i>completion-signature</i></code>.
 
@@ -6064,7 +6064,7 @@ from the operation before the operation completes.
         template &lt;template &lt;class...> class Variant>
           using error_types = <i>see below</i>;
 
-        static constexpr bool sends_done = <i>see below</i>;
+        static constexpr bool sends_stopped = <i>see below</i>;
       };
     </pre>
 
@@ -6072,7 +6072,7 @@ from the operation before the operation completes.
 
     2. Let <code><i>ErrorFns</i></code> be a template parameter pack of the function types in `Fns` whose return types are `execution::set_error_t`, and let <code><i>Error<i><sub>n</sub></i></i></code> be the function argument type in the <code><i>n</i></code>-th type in <code><i>ErrorFns</i></code>. Then, given a variadic template <code><i>Variant</i></code>, the type <code>completion_signatures&lt;Fns...>::error_types&lt;<i>Variant</i>></code> names the type <code><i>Variant</i>&lt;<i>Error<i><sub>0</sub></i></i>, <i>Error<i><sub>1</sub></i></i>, ... <i>Error<i><sub>m-1</sub></i></i>></code>, where <code><i>m</i></code> is the size of the parameter pack <code><i>ErrorFns</i></code>.
 
-    3. `completion_signatures<Fns...>::sends_done` is `true` if at least one of the types in `Fns` is `execution::set_done_t()`; otherwise, `false`.
+    3. `completion_signatures<Fns...>::sends_stopped` is `true` if at least one of the types in `Fns` is `execution::set_stopped_t()`; otherwise, `false`.
 
 ## Execution contexts <b>[exec.ctx]</b> ## {#spec-execution.contexts}
 
@@ -6136,11 +6136,11 @@ from the operation before the operation completes.
   class <i>run-loop-sender</i>;
   </pre>
 
-  1. <code><i>run-loop-sender</i></code> is an implementation defined type that models the `sender_of` concept; <i>i.e.,</i> <code>sender_of&lt;<i>run-loop-sender</i>></code> is `true`. Additionally, the types reported by its `error_types` associated type is `exception_ptr`, and the value of its `sends_done` trait is `true`.
+  1. <code><i>run-loop-sender</i></code> is an implementation defined type that models the `sender_of` concept; <i>i.e.,</i> <code>sender_of&lt;<i>run-loop-sender</i>></code> is `true`. Additionally, the types reported by its `error_types` associated type is `exception_ptr`, and the value of its `sends_stopped` trait is `true`.
 
   2. An instance of <code><i>run-loop-sender</i></code> remains valid until the end of the lifetime of its associated `execution::run_loop` instance.
 
-  3. Let <code><i>s</i></code> be an expression of type <code><i>run-loop-sender</i></code>, let <code><i>r</i></code> be an expression such that <code>decltype(<i>r</i>)</code> models the `receiver_of` concept, and let `C` be either `set_value_t` or `set_done_t`. Then:
+  3. Let <code><i>s</i></code> be an expression of type <code><i>run-loop-sender</i></code>, let <code><i>r</i></code> be an expression such that <code>decltype(<i>r</i>)</code> models the `receiver_of` concept, and let `C` be either `set_value_t` or `set_stopped_t`. Then:
 
     * The expression <code>execution::connect(<i>s</i>, <i>r</i>)</code> has type <code><i>run-loop-opstate</i>&lt;decay_t&lt;decltype(<i>r</i>)>></code> and is potentially throwing if and only if the initialiation of <code>decay_t&lt;decltype(<i>r</i>)></code> from <code><i>r</i></code> is potentially throwing.
 
@@ -6162,7 +6162,7 @@ from the operation before the operation completes.
         <pre highlight="c++">
         try {
           if (execution::get_stop_token(<i>REC</i>(<i>o</i>)).stop_requested()) {
-            execution::set_done(std::move(<i>REC</i>(<i>o</i>)));
+            execution::set_stopped(std::move(<i>REC</i>(<i>o</i>)));
           } else {
             execution::set_value(std::move(<i>REC</i>(<i>o</i>)));
           }
@@ -6267,7 +6267,7 @@ from the operation before the operation completes.
         <i>single-typed-sender</i>&lt;S, env_of_t&lt;P>> &amp;&amp;
         sender_to&lt;S, <i>awaitable-receiver</i>> &amp;&amp; // see below
         requires (P&amp; p) {
-          { p.unhandled_done() } -> convertible_to&lt;coroutine_handle&lt;>>;
+          { p.unhandled_stopped() } -> convertible_to&lt;coroutine_handle&lt;>>;
         };
 
     template &lt;class S, class P>
@@ -6325,8 +6325,8 @@ from the operation before the operation completes.
 
                 3. Otherwise, `make_exception_ptr(err)`.
 
-              3. `execution::set_done(r)` is expression-equivalent to
-                `static_cast<coroutine_handle<>>(r.continuation_.promise().unhandled_done()).resume()`.
+              3. `execution::set_stopped(r)` is expression-equivalent to
+                `static_cast<coroutine_handle<>>(r.continuation_.promise().unhandled_stopped()).resume()`.
 
               4. `tag_invoke(tag, cr, as...)` is expression-equivalent to `tag(as_const(cr.continuation_.promise()), as...)` for any expression `tag` whose type satisfies <code><i>forwarding-receiver-query</i></code> and for any set of arguments `as...`.
 
@@ -6361,7 +6361,7 @@ from the operation before the operation completes.
 
   1. `with_awaitable_senders`, when used as the base class of a coroutine promise type, makes senders awaitable in that coroutine type.
 
-    In addition, it provides a default implementation of `unhandled_done()` such that if a sender completes by calling `execution::set_done`, it is treated as if an uncatchable "done" exception were thrown from the <i>await-expression</i>. In practice, the coroutine is never resumed, and the `unhandled_done` of the coroutine caller's promise type is called.
+    In addition, it provides a default implementation of `unhandled_stopped()` such that if a sender completes by calling `execution::set_stopped`, it is treated as if an uncatchable "stopped" exception were thrown from the <i>await-expression</i>. In practice, the coroutine is never resumed, and the `unhandled_stopped` of the coroutine caller's promise type is called.
 
     <pre highlight="c++">
     template &lt;<i>class-type</i> Promise>
@@ -6372,8 +6372,8 @@ from the operation before the operation completes.
 
         coroutine_handle&lt;> continuation() const noexcept { return continuation_; }
 
-        coroutine_handle&lt;> unhandled_done() noexcept {
-          return done_handler_(continuation_.address());
+        coroutine_handle&lt;> unhandled_stopped() noexcept {
+          return stopped_handler_(continuation_.address());
         }
 
         template&lt;class Value>
@@ -6381,12 +6381,12 @@ from the operation before the operation completes.
 
        private:
         // exposition only
-        [[noreturn]] static coroutine_handle&lt;> default_unhandled_done(void*) noexcept {
+        [[noreturn]] static coroutine_handle&lt;> default_unhandled_stopped(void*) noexcept {
           terminate();
         }
         coroutine_handle&lt;> continuation_{}; // exposition only
         // exposition only
-        coroutine_handle&lt;> (*done_handler_)(void*) noexcept = &default_unhandled_done;
+        coroutine_handle&lt;> (*stopped_handler_)(void*) noexcept = &default_unhandled_stopped;
       };
     </pre>
 
@@ -6396,13 +6396,13 @@ from the operation before the operation completes.
 
         <pre highlight="c++">
         continuation_ = h;
-        if constexpr ( requires(OtherPromise& other) { other.unhandled_done(); } ) {
-          done_handler_ = [](void* p) noexcept -> coroutine_handle&lt;> {
+        if constexpr ( requires(OtherPromise& other) { other.unhandled_stopped(); } ) {
+          stopped_handler_ = [](void* p) noexcept -> coroutine_handle&lt;> {
             return coroutine_handle&lt;OtherPromise>::from_address(p)
-              .promise().unhandled_done();
+              .promise().unhandled_stopped();
           };
         } else {
-          done_handler_ = default_unhandled_done;
+          stopped_handler_ = default_unhandled_stopped;
         }
         </pre>
 

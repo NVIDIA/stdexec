@@ -79,7 +79,7 @@ TEST_CASE("TODO: sync_wait handling non-exception errors", "[consumers][sync_wai
 }
 
 TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_wait]") {
-  done_scheduler sched;
+  stopped_scheduler sched;
   optional<tuple<int>> res = sync_wait(ex::transfer_just(sched, 19));
   CHECK_FALSE(res.has_value());
 }
@@ -94,7 +94,7 @@ TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wa
 
 TEST_CASE("TODO: sync_wait works if signaled from a different thread", "[consumers][sync_wait]") {
   bool thread_started{false};
-  bool thread_done{false};
+  bool thread_stopped{false};
   impulse_scheduler sched;
 
   // Thread that calls `sync_wait`
@@ -108,19 +108,19 @@ TEST_CASE("TODO: sync_wait works if signaled from a different thread", "[consume
     CHECK(res.has_value());
     CHECK(std::get<0>(res.value()) == 49);
 
-    thread_done = true;
+    thread_stopped = true;
   }};
   // Wait for the thread to start (poor-man's sync)
   for (int i = 0; i < 10'000 && !thread_started; i++)
     std::this_thread::sleep_for(100us);
 
   // The thread should be waiting on the impulse
-  CHECK_FALSE(thread_done);
+  CHECK_FALSE(thread_stopped);
   sched.start_next();
 
   // Now, the thread should exit
   waiting_thread.join();
-  CHECK(thread_done);
+  CHECK(thread_stopped);
 }
 
 TEST_CASE(

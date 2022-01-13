@@ -103,10 +103,10 @@ TEST_CASE("let_error can throw, and yield a different error type", "[adaptors][l
   ex::start(op);
 }
 
-TEST_CASE("let_error can be used with just_done", "[adaptors][let_error]") {
-  ex::sender auto snd = ex::just_done() //
+TEST_CASE("let_error can be used with just_stopped", "[adaptors][let_error]") {
+  ex::sender auto snd = ex::just_stopped() //
                         | ex::let_error([](std::exception_ptr) { return ex::just(17); });
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
 }
 
@@ -125,13 +125,13 @@ TEST_CASE("let_error function is not called on regular flow", "[adaptors][let_er
 }
 TEST_CASE("let_error function is not called when cancelled", "[adaptors][let_error]") {
   bool called{false};
-  done_scheduler sched;
+  stopped_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 13) //
                         | ex::let_error([&](std::exception_ptr) {
                             called = true;
                             return ex::just(0);
                           });
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
   CHECK_FALSE(called);
 }
@@ -275,20 +275,20 @@ TEST_CASE("let_error overrides error_types from input sender (and adds std::exce
       | ex::let_error([](std::exception_ptr) { return ex::just(); }));
 }
 
-TEST_CASE("TODO: let_error keeps send_done from input sender", "[adaptors][let_error]") {
+TEST_CASE("TODO: let_error keeps sends_stopped from input sender", "[adaptors][let_error]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
-  done_scheduler sched3{};
+  stopped_scheduler sched3{};
 
-  check_sends_done<false>( //
+  check_sends_stopped<false>( //
       ex::transfer_just(sched1) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-  check_sends_done<false>( //
+  check_sends_stopped<false>( //
       ex::transfer_just(sched2) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-  // check_sends_done<true>( //
+  // check_sends_stopped<true>( //
   //     ex::transfer_just(sched3) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-  // TODO: transfer should forward its "sends_done" info
+  // TODO: transfer should forward its "sends_stopped" info
   // incorrect check:
-  check_sends_done<false>( //
+  check_sends_stopped<false>( //
       ex::transfer_just(sched3) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
 }
 

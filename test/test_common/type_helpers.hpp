@@ -45,9 +45,9 @@ inline void check_err_types(S snd) {
   static_assert(std::is_same<t, ExpectedValType>::value);
 }
 
-//! Check that the send_done of a sender matches the expected value
+//! Check that the sends_stopped of a sender matches the expected value
 template <bool Expected, typename Env = empty_env, typename S>
-inline void check_sends_done(S snd) {
-  constexpr bool val = ex::sender_traits_t<S, Env>::sends_done;
+inline void check_sends_stopped(S snd) {
+  constexpr bool val = ex::sender_traits_t<S, Env>::sends_stopped;
   static_assert(val == Expected);
 }

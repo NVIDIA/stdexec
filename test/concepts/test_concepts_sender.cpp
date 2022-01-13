@@ -57,7 +57,7 @@ TEST_CASE("type deriving from sender_base, doesn't model typed_sender", "[concep
 struct my_sender0 : ex::completion_signatures<               //
                         ex::set_value_t(),                   //
                         ex::set_error_t(std::exception_ptr), //
-                        ex::set_done_t()> {
+                        ex::set_stopped_t()> {
 
   friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&& r) { return {}; }
 };
@@ -73,7 +73,7 @@ TEST_CASE(
 struct my_sender_int : ex::completion_signatures<               //
                            ex::set_value_t(int),                //
                            ex::set_error_t(std::exception_ptr), //
-                           ex::set_done_t()> {
+                           ex::set_stopped_t()> {
 
   friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&& r) { return {}; }
 };
@@ -107,12 +107,12 @@ TEST_CASE("can apply sender traits to senders deriving from sender_base", "[conc
 TEST_CASE("can query sender traits for a typed sender that sends nothing", "[concepts][sender]") {
   check_val_types<type_array<type_array<>>>(my_sender0{});
   check_err_types<type_array<std::exception_ptr>>(my_sender0{});
-  check_sends_done<true>(my_sender0{});
+  check_sends_stopped<true>(my_sender0{});
 }
 TEST_CASE("can query sender traits for a typed sender that sends int", "[concepts][sender]") {
   check_val_types<type_array<type_array<int>>>(my_sender_int{});
   check_err_types<type_array<std::exception_ptr>>(my_sender_int{});
-  check_sends_done<true>(my_sender_int{});
+  check_sends_stopped<true>(my_sender_int{});
 }
 
 struct multival_sender : ex::completion_signatures<        //
@@ -126,7 +126,7 @@ TEST_CASE("check sender traits for sender that advertises multiple sets of value
     "[concepts][sender]") {
   check_val_types<type_array<type_array<int, double>, type_array<short, long>>>(multival_sender{});
   check_err_types<type_array<std::exception_ptr>>(multival_sender{});
-  check_sends_done<false>(multival_sender{});
+  check_sends_stopped<false>(multival_sender{});
 }
 
 struct ec_sender : ex::completion_signatures<               //
@@ -138,5 +138,5 @@ struct ec_sender : ex::completion_signatures<               //
 TEST_CASE("check sender traits for sender that also supports error codes", "[concepts][sender]") {
   check_val_types<type_array<type_array<>>>(ec_sender{});
   check_err_types<type_array<std::exception_ptr, int>>(ec_sender{});
-  check_sends_done<false>(ec_sender{});
+  check_sends_stopped<false>(ec_sender{});
 }

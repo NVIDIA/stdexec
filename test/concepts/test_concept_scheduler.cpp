@@ -23,7 +23,7 @@ struct my_scheduler {
   struct my_sender : ex::completion_signatures<               //
                          ex::set_value_t(),                   //
                          ex::set_error_t(std::exception_ptr), //
-                         ex::set_done_t()> {
+                         ex::set_stopped_t()> {
 
     template <typename CPO>
     friend my_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
@@ -54,7 +54,7 @@ struct my_scheduler_except {
   struct my_sender : ex::completion_signatures<               //
                          ex::set_value_t(),                   //
                          ex::set_error_t(std::exception_ptr), //
-                         ex::set_done_t()> {
+                         ex::set_stopped_t()> {
     template <typename CPO>
     friend my_scheduler_except tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
       return {};
@@ -78,7 +78,7 @@ struct noeq_sched {
   struct my_sender : ex::completion_signatures<               //
                          ex::set_value_t(),                   //
                          ex::set_error_t(std::exception_ptr), //
-                         ex::set_done_t()> {
+                         ex::set_stopped_t()> {
     template <typename CPO>
     friend noeq_sched tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
       return {};
@@ -96,7 +96,7 @@ struct sched_no_completion {
   struct my_sender : ex::completion_signatures<               //
                          ex::set_value_t(),                   //
                          ex::set_error_t(std::exception_ptr), //
-                         ex::set_done_t()> {
+                         ex::set_stopped_t()> {
     friend sched_no_completion tag_invoke(
         ex::get_completion_scheduler_t<ex::set_error_t>, my_sender) {
       return {};

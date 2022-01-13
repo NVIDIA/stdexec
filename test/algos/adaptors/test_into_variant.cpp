@@ -75,12 +75,12 @@ TEST_CASE("TODO: into_variant can be used with just_error", "[adaptors][into_var
   // invalid check:
   static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
 }
-TEST_CASE("TODO: into_variant can be used with just_done", "[adaptors][into_variant]") {
-  ex::sender auto snd = ex::just_done() | ex::into_variant();
+TEST_CASE("TODO: into_variant can be used with just_stopped", "[adaptors][into_variant]") {
+  ex::sender auto snd = ex::just_stopped() | ex::into_variant();
   // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  // auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   // ex::start(op);
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_done_receiver>);
+  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_stopped_receiver>);
 }
 
 TEST_CASE("into_variant forwards errors", "[adaptors][into_variant]") {
@@ -91,9 +91,9 @@ TEST_CASE("into_variant forwards errors", "[adaptors][into_variant]") {
 }
 
 TEST_CASE("into_variant forwards cancellation", "[adaptors][into_variant]") {
-  done_scheduler sched;
+  stopped_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 13) | ex::into_variant();
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
 }
 
@@ -126,14 +126,14 @@ TEST_CASE("into_variant keeps error_types from input sender", "[adaptors][into_v
   check_err_types<type_array<int, std::exception_ptr>>( //
       ex::just_error(-1) | ex::into_variant());
 }
-TEST_CASE("into_variant keeps send_done from input sender", "[adaptors][into_variant]") {
+TEST_CASE("into_variant keeps sends_stopped from input sender", "[adaptors][into_variant]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
 
-  check_sends_done<false>( //
+  check_sends_stopped<false>( //
       ex::transfer_just(sched1) | ex::into_variant());
-  check_sends_done<false>( //
+  check_sends_stopped<false>( //
       ex::transfer_just(sched2) | ex::into_variant());
-  check_sends_done<true>( //
-      ex::just_done() | ex::into_variant());
+  check_sends_stopped<true>( //
+      ex::just_stopped() | ex::into_variant());
 }

@@ -26,19 +26,19 @@ namespace ex = std::execution;
 
 using namespace std::chrono_literals;
 
-TEST_CASE("let_done returns a sender", "[adaptors][let_done]") {
-  auto snd = ex::let_done(ex::just(), [] { return ex::just(); });
+TEST_CASE("let_stopped returns a sender", "[adaptors][let_stopped]") {
+  auto snd = ex::let_stopped(ex::just(), [] { return ex::just(); });
   static_assert(ex::sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("let_done returns a typed_sender", "[adaptors][let_done]") {
-  auto snd = ex::let_done(ex::just(), [] { return ex::just(); });
+TEST_CASE("let_stopped returns a typed_sender", "[adaptors][let_stopped]") {
+  auto snd = ex::let_stopped(ex::just(), [] { return ex::just(); });
   static_assert(ex::typed_sender<decltype(snd), empty_env>);
   (void)snd;
 }
-TEST_CASE("let_done simple example", "[adaptors][let_done]") {
+TEST_CASE("let_stopped simple example", "[adaptors][let_stopped]") {
   bool called{false};
-  auto snd = ex::let_done(ex::just_done(), [&] {
+  auto snd = ex::let_stopped(ex::just_stopped(), [&] {
     called = true;
     return ex::just();
   });
@@ -49,26 +49,26 @@ TEST_CASE("let_done simple example", "[adaptors][let_done]") {
   CHECK(called);
 }
 
-TEST_CASE("let_done can be piped", "[adaptors][let_done]") {
-  ex::sender auto snd = ex::just() | ex::let_done([] { return ex::just(); });
+TEST_CASE("let_stopped can be piped", "[adaptors][let_stopped]") {
+  ex::sender auto snd = ex::just() | ex::let_stopped([] { return ex::just(); });
   (void)snd;
 }
 
 TEST_CASE(
-    "let_done returning void can we waited on (cancel annihilation)", "[adaptors][let_done]") {
-  ex::sender auto snd = ex::just_done() | ex::let_done([] { return ex::just(); });
+    "let_stopped returning void can we waited on (cancel annihilation)", "[adaptors][let_stopped]") {
+  ex::sender auto snd = ex::just_stopped() | ex::let_stopped([] { return ex::just(); });
   std::this_thread::sync_wait(std::move(snd));
 }
 
-TEST_CASE("let_done can be used to produce values (cancel to value)", "[adaptors][let_done]") {
-  ex::sender auto snd = ex::just_done() //
-                        | ex::let_done([] { return ex::just(std::string{"cancelled"}); });
+TEST_CASE("let_stopped can be used to produce values (cancel to value)", "[adaptors][let_stopped]") {
+  ex::sender auto snd = ex::just_stopped() //
+                        | ex::let_stopped([] { return ex::just(std::string{"cancelled"}); });
   wait_for_value(std::move(snd), std::string{"cancelled"});
 }
 
-TEST_CASE("let_done can throw, calling set_error", "[adaptors][let_done]") {
-  auto snd = ex::just_done() //
-             | ex::let_done([] {
+TEST_CASE("let_stopped can throw, calling set_error", "[adaptors][let_stopped]") {
+  auto snd = ex::just_stopped() //
+             | ex::let_stopped([] {
                  throw std::logic_error{"err"};
                  return ex::just(1);
                });
@@ -76,20 +76,20 @@ TEST_CASE("let_done can throw, calling set_error", "[adaptors][let_done]") {
   ex::start(op);
 }
 
-TEST_CASE("TODO: let_done can be used with just_error", "[adaptors][let_done]") {
+TEST_CASE("TODO: let_stopped can be used with just_error", "[adaptors][let_stopped]") {
   ex::sender auto snd = ex::just_error(1) //
-                        | ex::let_done([] { return ex::just(17); });
+                        | ex::let_stopped([] { return ex::just(17); });
   // TODO: check why this doesn't work
-  // auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  // auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   // ex::start(op);
   (void)snd;
 }
 
-TEST_CASE("let_done function is not called on regular flow", "[adaptors][let_done]") {
+TEST_CASE("let_stopped function is not called on regular flow", "[adaptors][let_stopped]") {
   bool called{false};
   error_scheduler sched;
   ex::sender auto snd = ex::just(13) //
-                        | ex::let_done([&] {
+                        | ex::let_stopped([&] {
                             called = true;
                             return ex::just(0);
                           });
@@ -97,11 +97,11 @@ TEST_CASE("let_done function is not called on regular flow", "[adaptors][let_don
   ex::start(op);
   CHECK_FALSE(called);
 }
-TEST_CASE("let_done function is not called on error flow", "[adaptors][let_done]") {
+TEST_CASE("let_stopped function is not called on error flow", "[adaptors][let_stopped]") {
   bool called{false};
   error_scheduler<int> sched;
   ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::let_done([&] {
+                        | ex::let_stopped([&] {
                             called = true;
                             return ex::just(0);
                           });
@@ -110,89 +110,89 @@ TEST_CASE("let_done function is not called on error flow", "[adaptors][let_done]
   CHECK_FALSE(called);
 }
 
-TEST_CASE("let_done has the values_type from the input sender if returning error",
-    "[adaptors][let_done]") {
+TEST_CASE("let_stopped has the values_type from the input sender if returning error",
+    "[adaptors][let_stopped]") {
   check_val_types<type_array<type_array<int>>>(ex::just(7) //
-                                               | ex::let_done([] { return ex::just_error(0); }));
+                                               | ex::let_stopped([] { return ex::just_error(0); }));
   check_val_types<type_array<type_array<double>>>(ex::just(3.14) //
-                                                  | ex::let_done([] { return ex::just_error(0); }));
+                                                  | ex::let_stopped([] { return ex::just_error(0); }));
   check_val_types<type_array<type_array<std::string>>>(
       ex::just(std::string{"hello"}) //
-      | ex::let_done([] { return ex::just_error(0); }));
+      | ex::let_stopped([] { return ex::just_error(0); }));
 }
 TEST_CASE(
-    "let_done adds to values_type the value types of the returned sender", "[adaptors][let_done]") {
+    "let_stopped adds to values_type the value types of the returned sender", "[adaptors][let_stopped]") {
   check_val_types<type_array<type_array<int>>>(ex::just(1) //
-                                               | ex::let_done([] { return ex::just(11); }));
+                                               | ex::let_stopped([] { return ex::just(11); }));
   check_val_types<type_array<type_array<int>, type_array<double>>>(
       ex::just(1) //
-      | ex::let_done([] { return ex::just(3.14); }));
+      | ex::let_stopped([] { return ex::just(3.14); }));
   check_val_types<type_array<type_array<int>, type_array<std::string>>>(
       ex::just(1) //
-      | ex::let_done([] { return ex::just(std::string{"hello"}); }));
+      | ex::let_stopped([] { return ex::just(std::string{"hello"}); }));
 }
-TEST_CASE("let_done has the error_type from the input sender if returning value",
-    "[adaptors][let_done]") {
+TEST_CASE("let_stopped has the error_type from the input sender if returning value",
+    "[adaptors][let_stopped]") {
   check_err_types<type_array<std::exception_ptr, int>>( //
       ex::just_error(7)                                 //
-      | ex::let_done([] { return ex::just(0); }));
+      | ex::let_stopped([] { return ex::just(0); }));
   check_err_types<type_array<std::exception_ptr, double>>( //
       ex::just_error(3.14)                                 //
-      | ex::let_done([] { return ex::just(0); }));
+      | ex::let_stopped([] { return ex::just(0); }));
   check_err_types<type_array<std::exception_ptr, std::string>>( //
       ex::just_error(std::string{"hello"})                      //
-      | ex::let_done([] { return ex::just(0); }));
+      | ex::let_stopped([] { return ex::just(0); }));
 }
-TEST_CASE("let_done adds to error_type of the input sender", "[adaptors][let_done]") {
+TEST_CASE("let_stopped adds to error_type of the input sender", "[adaptors][let_stopped]") {
   check_err_types<type_array<std::exception_ptr, std::string, int>>( //
       ex::just_error(std::string{})                                  //
-      | ex::let_done([] { return ex::just_error(0); }));
+      | ex::let_stopped([] { return ex::just_error(0); }));
   check_err_types<type_array<std::exception_ptr, std::string, double>>( //
       ex::just_error(std::string{})                                     //
-      | ex::let_done([] { return ex::just_error(3.14); }));
+      | ex::let_stopped([] { return ex::just_error(3.14); }));
   check_err_types<type_array<std::exception_ptr, std::string>>( //
       ex::just_error(std::string{})                             //
-      | ex::let_done([] { return ex::just_error(std::string{"err"}); }));
+      | ex::let_stopped([] { return ex::just_error(std::string{"err"}); }));
 }
 
-TEST_CASE("let_done overrides send_done from input sender", "[adaptors][let_done]") {
+TEST_CASE("let_stopped overrides sends_stopped from input sender", "[adaptors][let_stopped]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
   // Returning ex::just
-  check_sends_done<false>(      //
+  check_sends_stopped<false>(      //
       ex::transfer_just(sched1) //
-      | ex::let_done([] { return ex::just(); }));
-  check_sends_done<false>(      //
+      | ex::let_stopped([] { return ex::just(); }));
+  check_sends_stopped<false>(      //
       ex::transfer_just(sched2) //
-      | ex::let_done([] { return ex::just(); }));
-  check_sends_done<false>(      //
+      | ex::let_stopped([] { return ex::just(); }));
+  check_sends_stopped<false>(      //
       ex::transfer_just(sched3) //
-      | ex::let_done([] { return ex::just(); }));
+      | ex::let_stopped([] { return ex::just(); }));
 
-  // Returning ex::just_done
-  check_sends_done<true>(       //
+  // Returning ex::just_stopped
+  check_sends_stopped<true>(       //
       ex::transfer_just(sched1) //
-      | ex::let_done([] { return ex::just_done(); }));
-  check_sends_done<true>(       //
+      | ex::let_stopped([] { return ex::just_stopped(); }));
+  check_sends_stopped<true>(       //
       ex::transfer_just(sched2) //
-      | ex::let_done([] { return ex::just_done(); }));
-  check_sends_done<true>(       //
+      | ex::let_stopped([] { return ex::just_stopped(); }));
+  check_sends_stopped<true>(       //
       ex::transfer_just(sched3) //
-      | ex::let_done([] { return ex::just_done(); }));
+      | ex::let_stopped([] { return ex::just_stopped(); }));
 }
 
 // Return a different sender when we invoke this custom defined on implementation
 using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 template <typename Fun>
-auto tag_invoke(ex::let_done_t, inline_scheduler sched, my_string_sender_t, Fun) {
+auto tag_invoke(ex::let_stopped_t, inline_scheduler sched, my_string_sender_t, Fun) {
   return ex::just(std::string{"Don't stop me now"});
 }
 
-TEST_CASE("let_done can be customized", "[adaptors][let_done]") {
+TEST_CASE("let_stopped can be customized", "[adaptors][let_stopped]") {
   // The customization will return a different value
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
-             | ex::let_done([] { return ex::just(std::string{"done"}); });
+             | ex::let_stopped([] { return ex::just(std::string{"stopped"}); });
   wait_for_value(std::move(snd), std::string{"Don't stop me now"});
 }

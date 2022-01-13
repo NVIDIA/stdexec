@@ -49,8 +49,8 @@ TEST_CASE("value types are properly set for just_error", "[factories][just_error
   // there is no variant of calling `set_value(recv)`
   check_val_types<type_array<>>(ex::just_error(1));
 }
-TEST_CASE("just_error cannot call set_done", "[factories][just_error]") {
-  check_sends_done<false>(ex::just_error(1));
+TEST_CASE("just_error cannot call set_stopped", "[factories][just_error]") {
+  check_sends_stopped<false>(ex::just_error(1));
 }
 
 TEST_CASE("TODO: just_error removes cv qualifier for the given type", "[factories][just_error]") {

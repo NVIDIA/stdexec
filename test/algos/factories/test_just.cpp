@@ -67,8 +67,8 @@ TEST_CASE("error types are properly set for just", "[factories][just]") {
   check_err_types<type_array<std::exception_ptr>>(ex::just(1));
 }
 
-TEST_CASE("just cannot call set_done", "[factories][just]") {
-  check_sends_done<false>(ex::just(1));
+TEST_CASE("just cannot call set_stopped", "[factories][just]") {
+  check_sends_stopped<false>(ex::just(1));
 }
 
 TEST_CASE("just works with value type", "[factories][just]") {

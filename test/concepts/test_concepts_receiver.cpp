@@ -21,32 +21,32 @@
 namespace ex = std::execution;
 
 struct recv_no_set_value {
-  friend void tag_invoke(ex::set_done_t, recv_no_set_value) noexcept {}
+  friend void tag_invoke(ex::set_stopped_t, recv_no_set_value) noexcept {}
   friend void tag_invoke(ex::set_error_t, recv_no_set_value, std::exception_ptr) noexcept {}
 };
 
 struct recv_set_value_except {
   friend void tag_invoke(ex::set_value_t, recv_set_value_except) {}
-  friend void tag_invoke(ex::set_done_t, recv_set_value_except) noexcept {}
+  friend void tag_invoke(ex::set_stopped_t, recv_set_value_except) noexcept {}
   friend void tag_invoke(ex::set_error_t, recv_set_value_except, std::exception_ptr) noexcept {}
 };
 struct recv_set_value_noexcept {
   friend void tag_invoke(ex::set_value_t, recv_set_value_noexcept) noexcept {}
-  friend void tag_invoke(ex::set_done_t, recv_set_value_noexcept) noexcept {}
+  friend void tag_invoke(ex::set_stopped_t, recv_set_value_noexcept) noexcept {}
   friend void tag_invoke(ex::set_error_t, recv_set_value_noexcept, std::exception_ptr) noexcept {}
 };
 
 struct recv_set_error_except {
   friend void tag_invoke(ex::set_value_t, recv_set_error_except) noexcept {}
-  friend void tag_invoke(ex::set_done_t, recv_set_error_except) noexcept {}
+  friend void tag_invoke(ex::set_stopped_t, recv_set_error_except) noexcept {}
   friend void tag_invoke(ex::set_error_t, recv_set_error_except, std::exception_ptr) {
     throw std::logic_error{"err"};
   }
 };
-struct recv_set_done_except {
-  friend void tag_invoke(ex::set_value_t, recv_set_done_except) noexcept {}
-  friend void tag_invoke(ex::set_done_t, recv_set_done_except) { throw std::logic_error{"err"}; }
-  friend void tag_invoke(ex::set_error_t, recv_set_done_except, std::exception_ptr) noexcept {}
+struct recv_set_stopped_except {
+  friend void tag_invoke(ex::set_value_t, recv_set_stopped_except) noexcept {}
+  friend void tag_invoke(ex::set_stopped_t, recv_set_stopped_except) { throw std::logic_error{"err"}; }
+  friend void tag_invoke(ex::set_error_t, recv_set_stopped_except, std::exception_ptr) noexcept {}
 };
 
 struct recv_non_movable {
@@ -58,7 +58,7 @@ struct recv_non_movable {
   recv_non_movable& operator=(const recv_non_movable&) = default;
 
   friend void tag_invoke(ex::set_value_t, recv_non_movable) noexcept {}
-  friend void tag_invoke(ex::set_done_t, recv_non_movable) noexcept {}
+  friend void tag_invoke(ex::set_stopped_t, recv_non_movable) noexcept {}
   friend void tag_invoke(ex::set_error_t, recv_non_movable, std::exception_ptr) noexcept {}
 };
 
@@ -75,8 +75,8 @@ TEST_CASE("receiver types satisfy the receiver concept", "[concepts][receiver]")
   REQUIRE(ex::receiver<expect_void_receiver_ex>);
   REQUIRE(ex::receiver<expect_value_receiver<int>>);
   REQUIRE(ex::receiver<expect_value_receiver<double>>);
-  REQUIRE(ex::receiver<expect_done_receiver>);
-  REQUIRE(ex::receiver<expect_done_receiver_ex>);
+  REQUIRE(ex::receiver<expect_stopped_receiver>);
+  REQUIRE(ex::receiver<expect_stopped_receiver_ex>);
   REQUIRE(ex::receiver<expect_error_receiver>);
   REQUIRE(ex::receiver<expect_error_receiver_ex>);
   REQUIRE(ex::receiver<logging_receiver>);
@@ -93,8 +93,8 @@ TEST_CASE("receiver types satisfy the receiver_of concept", "[concepts][receiver
   REQUIRE(ex::receiver_of<expect_void_receiver_ex>);
   REQUIRE(ex::receiver_of<expect_value_receiver<int>, int>);
   REQUIRE(ex::receiver_of<expect_value_receiver<double>, double>);
-  REQUIRE(ex::receiver_of<expect_done_receiver, char>);
-  REQUIRE(ex::receiver_of<expect_done_receiver_ex, char>);
+  REQUIRE(ex::receiver_of<expect_stopped_receiver, char>);
+  REQUIRE(ex::receiver_of<expect_stopped_receiver_ex, char>);
   REQUIRE(ex::receiver_of<expect_error_receiver, char>);
   REQUIRE(ex::receiver_of<expect_error_receiver_ex, char>);
   REQUIRE(ex::receiver_of<logging_receiver>);
@@ -118,9 +118,9 @@ TEST_CASE("type with throwing set_error is not a receiver", "[concepts][receiver
   REQUIRE(!ex::receiver<recv_set_error_except>);
   REQUIRE(!ex::receiver_of<recv_set_error_except>);
 }
-TEST_CASE("type with throwing set_done is not a receiver", "[concepts][receiver]") {
-  REQUIRE(!ex::receiver<recv_set_done_except>);
-  REQUIRE(!ex::receiver_of<recv_set_done_except>);
+TEST_CASE("type with throwing set_stopped is not a receiver", "[concepts][receiver]") {
+  REQUIRE(!ex::receiver<recv_set_stopped_except>);
+  REQUIRE(!ex::receiver_of<recv_set_stopped_except>);
 }
 
 TEST_CASE("non-movable type is not a receiver", "[concepts][receiver]") {

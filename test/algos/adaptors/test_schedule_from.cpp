@@ -138,12 +138,12 @@ TEST_CASE("schedule_from forwards set_error calls of other types", "[adaptors][s
   ex::start(op);
   // The receiver checks if we receive an error
 }
-TEST_CASE("schedule_from forwards set_done calls", "[adaptors][schedule_from]") {
-  done_scheduler sched{};
+TEST_CASE("schedule_from forwards set_stopped calls", "[adaptors][schedule_from]") {
+  stopped_scheduler sched{};
   auto snd = ex::schedule_from(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
-  // The receiver checks if we receive the done signal
+  // The receiver checks if we receive the stopped signal
 }
 
 TEST_CASE("schedule_from has the values_type corresponding to the given values",
@@ -167,17 +167,17 @@ TEST_CASE("TODO: schedule_from keeps error_types from scheduler's sender", "[ada
   // incorrect check:
   check_err_types<type_array<std::exception_ptr>>(ex::schedule_from(sched3, ex::just(3)));
 }
-TEST_CASE("TODO: schedule_from keeps send_done from scheduler's sender", "[adaptors][schedule_from]") {
+TEST_CASE("TODO: schedule_from keeps sends_stopped from scheduler's sender", "[adaptors][schedule_from]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
-  done_scheduler sched3{};
+  stopped_scheduler sched3{};
 
-  check_sends_done<false>(ex::schedule_from(sched1, ex::just(1)));
-  check_sends_done<false>(ex::schedule_from(sched2, ex::just(2)));
-  // check_sends_done<true>(ex::schedule_from(sched3, ex::just(3)));
-  // TODO: schedule_from should forward its "sends_done" info
+  check_sends_stopped<false>(ex::schedule_from(sched1, ex::just(1)));
+  check_sends_stopped<false>(ex::schedule_from(sched2, ex::just(2)));
+  // check_sends_stopped<true>(ex::schedule_from(sched3, ex::just(3)));
+  // TODO: schedule_from should forward its "sends_stopped" info
   // incorrect check:
-  check_sends_done<false>(ex::schedule_from(sched3, ex::just(3)));
+  check_sends_stopped<false>(ex::schedule_from(sched3, ex::just(3)));
 }
 
 using just_string_sender_t = decltype(ex::just(std::string{}));
