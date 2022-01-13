@@ -50,7 +50,7 @@ struct impulse_scheduler {
       // The scheduler will start this, whenever start_next() is called
       self.all_commands_->emplace_back([&self]() {
         if (ex::get_stop_token(ex::get_env(self.receiver_)).stop_requested()) {
-          ex::set_done((R &&) self.receiver_);
+          ex::set_stopped((R &&) self.receiver_);
         } else {
           try {
             ex::set_value((R &&) self.receiver_);
@@ -65,7 +65,7 @@ struct impulse_scheduler {
   struct my_sender : ex::completion_signatures<               //
                          ex::set_value_t(),                   //
                          ex::set_error_t(std::exception_ptr), //
-                         ex::set_done_t()> {
+                         ex::set_stopped_t()> {
     cmd_vec_t* all_commands_;
 
     template <ex::receiver_of R>
@@ -176,29 +176,29 @@ struct error_scheduler {
 };
 
 //! Scheduler that returns a sender that always completes with cancellation.
-struct done_scheduler {
+struct stopped_scheduler {
   template <typename R>
   struct oper {
     R recv_;
-    friend void tag_invoke(ex::start_t, oper& self) noexcept { ex::set_done((R &&) self.recv_); }
+    friend void tag_invoke(ex::start_t, oper& self) noexcept { ex::set_stopped((R &&) self.recv_); }
   };
 
   struct my_sender : ex::completion_signatures< //
                          ex::set_value_t(),     //
-                         ex::set_done_t()> {
+                         ex::set_stopped_t()> {
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {(R &&) r};
     }
 
     template <typename CPO>
-    friend done_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
+    friend stopped_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
       return {};
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, done_scheduler) { return {}; }
+  friend my_sender tag_invoke(ex::schedule_t, stopped_scheduler) { return {}; }
 
-  friend bool operator==(done_scheduler, done_scheduler) noexcept { return true; }
-  friend bool operator!=(done_scheduler, done_scheduler) noexcept { return false; }
+  friend bool operator==(stopped_scheduler, stopped_scheduler) noexcept { return true; }
+  friend bool operator!=(stopped_scheduler, stopped_scheduler) noexcept { return false; }
 };

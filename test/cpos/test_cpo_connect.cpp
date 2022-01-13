@@ -74,7 +74,7 @@ struct strange_receiver {
   }
 
   friend inline void tag_invoke(ex::set_value_t, strange_receiver, int val) { REQUIRE(val == 19); }
-  friend void tag_invoke(ex::set_done_t, strange_receiver) noexcept {}
+  friend void tag_invoke(ex::set_stopped_t, strange_receiver) noexcept {}
   friend void tag_invoke(ex::set_error_t, strange_receiver, std::exception_ptr) noexcept {}
 };
 

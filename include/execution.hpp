@@ -79,14 +79,14 @@ namespace std::execution {
       }
     } set_error {};
 
-    inline constexpr struct set_done_t {
+    inline constexpr struct set_stopped_t {
       template <class _Receiver>
-        requires tag_invocable<set_done_t, _Receiver>
+        requires tag_invocable<set_stopped_t, _Receiver>
       void operator()(_Receiver&& __rcvr) const
-        noexcept(nothrow_tag_invocable<set_done_t, _Receiver>) {
-        (void) tag_invoke(set_done_t{}, (_Receiver&&) __rcvr);
+        noexcept(nothrow_tag_invocable<set_stopped_t, _Receiver>) {
+        (void) tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
       }
-    } set_done{};
+    } set_stopped{};
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -96,7 +96,7 @@ namespace std::execution {
       move_constructible<remove_cvref_t<_Receiver>> &&
       constructible_from<remove_cvref_t<_Receiver>, _Receiver> &&
       requires(remove_cvref_t<_Receiver>&& __rcvr, _Error&& __err) {
-        { set_done(std::move(__rcvr)) } noexcept;
+        { set_stopped(std::move(__rcvr)) } noexcept;
         { set_error(std::move(__rcvr), (_Error&&) __err) } noexcept;
       };
 
@@ -121,7 +121,7 @@ namespace std::execution {
       __types<__minvoke<_Ty, _Args...>> __test(_Tag(*)(_Args...));
     template <same_as<set_error_t> _Tag, class _Ty = __q<__types>, class _Error>
       __types<__minvoke1<_Ty, _Error>> __test(_Tag(*)(_Error));
-    template <same_as<set_done_t> _Tag, class _Ty = __q<__types>>
+    template <same_as<set_stopped_t> _Tag, class _Ty = __q<__types>>
       __types<__minvoke<_Ty>> __test(_Tag(*)());
     template <class, class = void>
       __types<> __test(...);
@@ -149,10 +149,10 @@ namespace std::execution {
                 __concat<__q<_Variant>>,
                 __signal_args_t<_Sigs, set_error_t, __q1<__id>>...>;
 
-          static constexpr bool sends_done =
+          static constexpr bool sends_stopped =
             __minvoke<
               __concat<__count>,
-              __signal_args_t<_Sigs, set_done_t>...>::value != 0;
+              __signal_args_t<_Sigs, set_stopped_t>...>::value != 0;
         };
       };
   } // namespace __completion_signatures
@@ -267,7 +267,7 @@ namespace std::execution {
         concept __has_sender_types = requires {
           typename __test_has_values<_T::template value_types>;
           typename __test_has_errors<_T::template error_types>;
-          typename bool_constant<_T::sends_done>;
+          typename bool_constant<_T::sends_stopped>;
         };
 
       struct __empty_sender_traits {};
@@ -278,7 +278,7 @@ namespace std::execution {
             using value_types = typename _Sender::template value_types<_Tuple, _Variant>;
           template <template <class...> class _Variant>
             using error_types = typename _Sender::template error_types<_Variant>;
-          static constexpr bool sends_done = _Sender::sends_done;
+          static constexpr bool sends_stopped = _Sender::sends_stopped;
         };
 
       struct __no_sender_traits {};
@@ -364,7 +364,7 @@ namespace std::execution {
       using _WithEnv = __sender_traits_t<_Sender, _Env>;
       using _WithoutEnv = __sender_traits_t<_Sender, no_env>;
 
-      static_assert(_WithEnv::sends_done == _WithoutEnv::sends_done);
+      static_assert(_WithEnv::sends_stopped == _WithoutEnv::sends_stopped);
 
       template <template <class...> class _Tuple, template <class...> class _Variant>
           requires __valid_t<_WithEnv::template value_types, _Tuple, _Variant>
@@ -389,8 +389,8 @@ namespace std::execution {
       template <template <class...> class _Variant>
         using error_types = __t<__error_types<_Variant>>;
 
-      static constexpr bool sends_done =
-        __sender_traits_t<_Sender, _Env>::sends_done;
+      static constexpr bool sends_stopped =
+        __sender_traits_t<_Sender, _Env>::sends_stopped;
     };
 
 #if defined(NDEBUG)
@@ -455,8 +455,8 @@ namespace std::execution {
 
   template <class _Sender, class _Env = no_env>
       requires typed_sender<_Sender, _Env>
-    using __sends_done =
-      __bool<sender_traits_t<_Sender, _Env>::sends_done>;
+    using __sends_stopped =
+      __bool<sender_traits_t<_Sender, _Env>::sends_stopped>;
 
   template <class _Sender, class _Env = no_env>
     using __single_sender_value_t =
@@ -526,7 +526,7 @@ namespace std::execution {
 
   inline namespace __sender_queries {
     namespace __impl {
-      template <__one_of<set_value_t, set_error_t, set_done_t> _CPO>
+      template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
         struct get_completion_scheduler_t;
     }
     using __impl::get_completion_scheduler_t;
@@ -726,8 +726,8 @@ namespace std::execution {
             : __rcvr_(__rcvr)
           {}
 
-          __coro::coroutine_handle<> unhandled_done() noexcept {
-            set_done(std::move(__rcvr_));
+          __coro::coroutine_handle<> unhandled_stopped() noexcept {
+            set_stopped(std::move(__rcvr_));
             // Returning noop_coroutine here causes the __connect_awaitable
             // coroutine to never resume past the point where it co_await's
             // the awaitable.
@@ -888,7 +888,7 @@ namespace std::execution {
       class _Fun,
       class = __q1<__id>,
       class _Continuation = __q<__types>>
-    using __tfx_sender_done =
+    using __tfx_sender_stopped =
       __minvoke<_Continuation, invoke_result_t<_Fun>>;
 
   template <class _Fun, class _Sender, class _Env, class _WhichTfx, class _Tfx = __q1<__id>>
@@ -903,7 +903,7 @@ namespace std::execution {
   // [execution.senders.queries], sender queries
   inline namespace __sender_queries {
     namespace __impl {
-      template <__one_of<set_value_t, set_error_t, set_done_t> _CPO>
+      template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
         struct get_completion_scheduler_t {
           template <sender _Sender>
             requires tag_invocable<get_completion_scheduler_t, const _Sender&> &&
@@ -935,7 +935,7 @@ namespace std::execution {
     using __impl::get_completion_scheduler_t;
     using __impl::forwarding_sender_query_t;
 
-    template <__one_of<set_value_t, set_error_t, set_done_t> _CPO>
+    template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
       inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
 
     inline constexpr forwarding_sender_query_t forwarding_sender_query{};
@@ -1001,12 +1001,12 @@ namespace std::execution {
         struct __sender_awaitable_base {
           using _Promise = __t<_PromiseId>;
           struct __receiver : __receiver_base<_Value> {
-            friend void tag_invoke(set_done_t, __receiver&& __self) noexcept {
+            friend void tag_invoke(set_stopped_t, __receiver&& __self) noexcept {
               auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
                 __self.__continuation_.address());
-              __coro::coroutine_handle<> __done_continuation =
-                __continuation.promise().unhandled_done();
-              __done_continuation.resume();
+              __coro::coroutine_handle<> __stopped_continuation =
+                __continuation.promise().unhandled_stopped();
+              __stopped_continuation.resume();
             }
 
             // Forward get_env query to the coroutine promise
@@ -1086,7 +1086,7 @@ namespace std::execution {
           __single_typed_sender<_Sender, env_of_t<_Promise>> &&
           sender_to<_Sender, __receiver<_Sender, _Promise>> &&
           requires (_Promise& __promise) {
-            { __promise.unhandled_done() } -> convertible_to<__coro::coroutine_handle<>>;
+            { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;
           };
     } // namespace __impl
 
@@ -1128,16 +1128,16 @@ namespace std::execution {
         void set_continuation(__coro::coroutine_handle<_OtherPromise> __hcoro) noexcept {
           static_assert(!is_void_v<_OtherPromise>);
           __continuation_ = __hcoro;
-          if constexpr (requires(_OtherPromise& __other) { __other.unhandled_done(); }) {
-            __done_callback_ = [](void* __address) noexcept -> __coro::coroutine_handle<> {
+          if constexpr (requires(_OtherPromise& __other) { __other.unhandled_stopped(); }) {
+            __stopped_callback_ = [](void* __address) noexcept -> __coro::coroutine_handle<> {
               // This causes the rest of the coroutine (the part after the co_await
               // of the sender) to be skipped and invokes the calling coroutine's
-              // done handler.
+              // stopped handler.
               return __coro::coroutine_handle<_OtherPromise>::from_address(__address)
-                  .promise().unhandled_done();
+                  .promise().unhandled_stopped();
             };
           }
-          // If _OtherPromise doesn't implement unhandled_done(), then if a "done" unwind
+          // If _OtherPromise doesn't implement unhandled_stopped(), then if a "stopped" unwind
           // reaches this point, it's considered an unhandled exception and terminate()
           // is called.
         }
@@ -1146,13 +1146,13 @@ namespace std::execution {
           return __continuation_;
         }
 
-        __coro::coroutine_handle<> unhandled_done() noexcept {
-          return (*__done_callback_)(__continuation_.address());
+        __coro::coroutine_handle<> unhandled_stopped() noexcept {
+          return (*__stopped_callback_)(__continuation_.address());
         }
 
        private:
         __coro::coroutine_handle<> __continuation_{};
-        __coro::coroutine_handle<> (*__done_callback_)(void*) noexcept =
+        __coro::coroutine_handle<> (*__stopped_callback_)(void*) noexcept =
           [](void*) noexcept -> __coro::coroutine_handle<> {
             std::terminate();
           };
@@ -1181,7 +1181,7 @@ namespace std::execution {
           struct __receiver {
             __operation* __op_state_;
             // Forward all the receiver ops, and delete the operation state.
-            template <__one_of<set_value_t, set_error_t, set_done_t> _Tag, class... _As>
+            template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
               requires __callable<_Tag, _Receiver, _As...>
             friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as)
                 noexcept(__nothrow_callable<_Tag, _Receiver, _As...>) {
@@ -1223,7 +1223,7 @@ namespace std::execution {
         friend void tag_invoke(set_error_t, __detached_receiver&&, auto&&) noexcept {
           terminate();
         }
-        friend void tag_invoke(set_done_t, __detached_receiver&&) noexcept {}
+        friend void tag_invoke(set_stopped_t, __detached_receiver&&) noexcept {}
       };
     } // namespace __impl
 
@@ -1317,11 +1317,11 @@ namespace std::execution {
       }
     } just_error {};
 
-    inline constexpr struct __just_done_t {
-      __impl::__sender<set_done_t> operator()() const noexcept {
+    inline constexpr struct __just_stopped_t {
+      __impl::__sender<set_stopped_t> operator()() const noexcept {
         return {{}};
       }
-    } just_done {};
+    } just_stopped {};
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1338,7 +1338,7 @@ namespace std::execution {
           friend void tag_invoke(set_error_t, __as_receiver&&, exception_ptr) noexcept {
             terminate();
           }
-          friend void tag_invoke(set_done_t, __as_receiver&&) noexcept {}
+          friend void tag_invoke(set_stopped_t, __as_receiver&&) noexcept {}
         };
     }
 
@@ -1447,7 +1447,7 @@ namespace std::execution {
       struct __nope {};
       struct __receiver : __nope {};
       void tag_invoke(set_error_t, __receiver, exception_ptr) noexcept;
-      void tag_invoke(set_done_t, __receiver) noexcept;
+      void tag_invoke(set_stopped_t, __receiver) noexcept;
     }
     using __not_a_receiver = __no::__receiver;
 
@@ -1532,9 +1532,9 @@ namespace std::execution {
         };
 
     template <class _Receiver>
-      concept __has_set_done =
+      concept __has_set_stopped =
         requires(_Receiver&& __rcvr) {
-          ((_Receiver&&) __rcvr).set_done();
+          ((_Receiver&&) __rcvr).set_stopped();
         };
 
     template <__class _Derived, receiver _Base>
@@ -1543,7 +1543,7 @@ namespace std::execution {
           friend _Derived;
           using set_value = void;
           using set_error = void;
-          using set_done = void;
+          using set_stopped = void;
 
           static constexpr bool __has_base = !derived_from<_Base, __no::__nope>;
 
@@ -1598,16 +1598,16 @@ namespace std::execution {
           }
 
           template <class _D = _Derived>
-            requires __has_set_done<_D>
-          friend void tag_invoke(set_done_t, _Derived&& __self) noexcept {
-            static_assert(noexcept(((_Derived&&) __self).set_done()));
-            ((_Derived&&) __self).set_done();
+            requires __has_set_stopped<_D>
+          friend void tag_invoke(set_stopped_t, _Derived&& __self) noexcept {
+            static_assert(noexcept(((_Derived&&) __self).set_stopped()));
+            ((_Derived&&) __self).set_stopped();
           }
 
           template <class _D = _Derived>
-            requires requires {typename _D::set_done;}
-          friend void tag_invoke(set_done_t, _Derived&& __self) noexcept {
-            execution::set_done(__get_base((_Derived&&) __self));
+            requires requires {typename _D::set_stopped;}
+          friend void tag_invoke(set_stopped_t, _Derived&& __self) noexcept {
+            execution::set_stopped(__get_base((_Derived&&) __self));
           }
 
           // Pass through the get_env receiver query
@@ -1803,7 +1803,7 @@ namespace std::execution {
                 error_types_of_t<_Sender, _Env, __types>,
                 exception_ptr>;
 
-          static constexpr bool sends_done = __v<__sends_done<_Sender, _Env>>;
+          static constexpr bool sends_stopped = __v<__sends_stopped<_Sender, _Env>>;
         };
 
       template <class _SenderId, class _Fun>
@@ -1874,7 +1874,7 @@ namespace std::execution {
   //////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.let_value]
   // [execution.senders.adaptors.let_error]
-  // [execution.senders.adaptors.let_done]
+  // [execution.senders.adaptors.let_stopped]
   inline namespace __let {
     namespace __impl {
       using __nullable_variant_t = __munique<__bind_front<__q<variant>, monostate>>;
@@ -1989,9 +1989,9 @@ namespace std::execution {
           __op_state3_t __op_state3_;
         };
 
-      // Storage for let_done
+      // Storage for let_stopped
       template <class _Sender, class _Receiver, class _Fun>
-        struct __storage<_Sender, _Receiver, _Fun, set_done_t> {
+        struct __storage<_Sender, _Receiver, _Fun, set_stopped_t> {
           variant<tuple<>> __args_;
           variant<monostate, connect_result_t<__call_result_t<_Fun>, _Receiver>> __op_state3_;
         };
@@ -2019,8 +2019,8 @@ namespace std::execution {
 
       // Call the _Continuation with the result of calling _Fun:
       template <class _Sender, class _Env, class _Fun, class _Continuation>
-        using __done_senders_of =
-          __tfx_sender_done<_Sender, _Env, _Fun, __q1<__decay_ref>, _Continuation>;
+        using __stopped_senders_of =
+          __tfx_sender_stopped<_Sender, _Env, _Fun, __q1<__decay_ref>, _Continuation>;
 
       // A let_xxx sender is typed if and only if the input sender is a typed
       // sender, and if all the possible return types of the function are also
@@ -2054,12 +2054,12 @@ namespace std::execution {
                     __types<exception_ptr>,
                     error_types_of_t<_Sender, _Env, __types>>>>;
 
-          static constexpr bool sends_done =
+          static constexpr bool sends_stopped =
             __result_senders_t<
               __transform<
-                __bind_back_q1<__sends_done, _Env>,
+                __bind_back_q1<__sends_stopped, _Env>,
                 __right_fold<
-                  __sends_done<_Sender, _Env>,
+                  __sends_stopped<_Sender, _Env>,
                   __q2<__or>>>>::value;
         };
 
@@ -2090,23 +2090,23 @@ namespace std::execution {
                     __concat<__munique<__q<_Variant>>>,
                     __types<exception_ptr>>>>;
 
-          static constexpr bool sends_done =
+          static constexpr bool sends_stopped =
             __result_senders_t<
               __transform<
-                __bind_back_q1<__sends_done, _Env>,
+                __bind_back_q1<__sends_stopped, _Env>,
                 __right_fold<
-                  __sends_done<_Sender, _Env>,
+                  __sends_stopped<_Sender, _Env>,
                   __q2<__or>>>>::value;
         };
 
       template <class _Sender, class _Env, class _Fun>
           requires typed_sender<_Sender, _Env> &&
-            __valid<__done_senders_of, _Sender, _Env, _Fun, __typed_senders<_Env>>
-        struct __traits<_Sender, _Env, _Fun, set_done_t>
+            __valid<__stopped_senders_of, _Sender, _Env, _Fun, __typed_senders<_Env>>
+        struct __traits<_Sender, _Env, _Fun, set_stopped_t>
         {
           template <class _Continuation>
             using __result_senders_t =
-              __done_senders_of<_Sender, _Env, _Fun, _Continuation>;
+              __stopped_senders_of<_Sender, _Env, _Fun, _Continuation>;
 
           template <template <class...> class _Tuple, template <class...> class _Variant>
             using value_types =
@@ -2127,10 +2127,10 @@ namespace std::execution {
                     __types<exception_ptr>,
                     error_types_of_t<_Sender, _Env, __types>>>>;
 
-          static constexpr bool sends_done =
+          static constexpr bool sends_stopped =
             __result_senders_t<
               __transform<
-                __bind_back_q1<__sends_done, _Env>,
+                __bind_back_q1<__sends_stopped, _Env>,
                 __right_fold<false_type, __q2<__or>>>>::value;
         };
 
@@ -2176,7 +2176,7 @@ namespace std::execution {
               set_error(std::move(__self).base(), current_exception());
             }
 
-          template <__one_of<set_value_t, set_error_t, set_done_t> _Tag, class... _As>
+          template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
               requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
             friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept try {
               __tag(std::move(__self).base(), (_As&&) __as...);
@@ -2309,15 +2309,15 @@ namespace std::execution {
       : __let::__impl::__let_xxx_t<let_error_t, set_error_t, __defer<__tfx_sender_errors>>
     {} let_error {};
 
-    inline constexpr struct let_done_t
-      : __let::__impl::__let_xxx_t<let_done_t, set_done_t, __defer<__tfx_sender_done>>
-    {} let_done {};
+    inline constexpr struct let_stopped_t
+      : __let::__impl::__let_xxx_t<let_stopped_t, set_stopped_t, __defer<__tfx_sender_stopped>>
+    {} let_stopped {};
   } // namespace __let
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.done_as_optional]
-  // [execution.senders.adaptors.done_as_error]
-  inline namespace __done_as_xxx {
+  // [execution.senders.adaptors.stopped_as_optional]
+  // [execution.senders.adaptors.stopped_as_error]
+  inline namespace __stopped_as_xxx {
     namespace __impl {
       template <class _Ty, class _Sender, class _Env>
         concept __constructible_from =
@@ -2341,7 +2341,7 @@ namespace std::execution {
             } catch(...) {
               set_error(((__receiver&&) *this).base(), current_exception());
             }
-          void set_done() && noexcept {
+          void set_stopped() && noexcept {
             execution::set_value(((__receiver&&) *this).base(), optional<_Value>{nullopt});
           }
 
@@ -2384,7 +2384,7 @@ namespace std::execution {
                 __error_types_of_t<_Sender, _Env>,
                 exception_ptr>;
 
-          static constexpr bool sends_done = false;
+          static constexpr bool sends_stopped = false;
         };
 
       template <class _SenderId>
@@ -2424,32 +2424,32 @@ namespace std::execution {
         };
     } // namespace __impl
 
-    inline constexpr struct __done_as_optional_t {
+    inline constexpr struct __stopped_as_optional_t {
       template <sender _Sender>
         auto operator()(_Sender&& __sndr) const
           -> __impl::__sender<__x<decay_t<_Sender>>> {
           return {(_Sender&&) __sndr};
         }
-      __binder_back<__done_as_optional_t> operator()() const noexcept {
+      __binder_back<__stopped_as_optional_t> operator()() const noexcept {
         return {};
       }
-    } done_as_optional {};
+    } stopped_as_optional {};
 
-    inline constexpr struct __done_as_error_t {
+    inline constexpr struct __stopped_as_error_t {
       template <sender _Sender, __movable_value _Error>
         auto operator()(_Sender&& __sndr, _Error __err) const {
           return (_Sender&&) __sndr
-            | let_done([__err2 = (_Error&&) __err] () mutable {
+            | let_stopped([__err2 = (_Error&&) __err] () mutable {
                 return just_error((_Error&&) __err2);
               });
         }
       template <__movable_value _Error>
         auto operator()(_Error __err) const
-          -> __binder_back<__done_as_error_t, _Error> {
+          -> __binder_back<__stopped_as_error_t, _Error> {
           return {{}, {}, {(_Error&&) __err}};
         }
-    } done_as_error {};
-  } // namespace __done_as_xxx
+    } stopped_as_error {};
+  } // namespace __stopped_as_xxx
 
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
@@ -2472,7 +2472,7 @@ namespace std::execution {
 
           void __execute_() noexcept override try {
             if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
-              set_done((_Receiver&&) __rcvr_);
+              set_stopped((_Receiver&&) __rcvr_);
             } else {
               set_value((_Receiver&&) __rcvr_);
             }
@@ -2499,7 +2499,7 @@ namespace std::execution {
      public:
       class __scheduler {
         struct __schedule_task
-          : completion_signatures<set_value_t(), set_error_t(exception_ptr), set_done_t()> {
+          : completion_signatures<set_value_t(), set_error_t(exception_ptr), set_stopped_t()> {
          private:
           friend __scheduler;
 
@@ -2661,7 +2661,7 @@ namespace std::execution {
           // Compute a variant type that is capable of storing the results of the
           // input sender when it completes. The variant has type:
           //   variant<
-          //     tuple<set_done_t>,
+          //     tuple<set_stopped_t>,
           //     tuple<set_value_t, decay_t<_Values1>...>,
           //     tuple<set_value_t, decay_t<_Values2>...>,
           //        ...
@@ -2671,7 +2671,7 @@ namespace std::execution {
           //   >
           template <class... _Ts>
             using __bind_tuples =
-              __bind_front_q<variant, tuple<set_done_t>, _Ts...>;
+              __bind_front_q<variant, tuple<set_stopped_t>, _Ts...>;
 
           using __bound_values_t =
             __value_types_of_t<
@@ -2730,7 +2730,7 @@ namespace std::execution {
             __self.__op_state_->__data_.__complete(__self.__op_state_->__rcvr_);
           }
 
-          template <__one_of<set_error_t, set_done_t> _Tag, class... _Args>
+          template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Args>
             requires __callable<_Tag, _Receiver, _Args...>
           friend void tag_invoke(_Tag, __receiver2&& __self, _Args&&... __args) noexcept {
             _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_, (_Args&&) __args...);
@@ -2757,7 +2757,7 @@ namespace std::execution {
             __receiver2<_SchedulerId, _CvrefSenderId, _ReceiverId>;
           __operation1<_SchedulerId, _CvrefSenderId, _ReceiverId>* __op_state_;
 
-          template <__one_of<set_value_t, set_error_t, set_done_t> _Tag, class... _Args>
+          template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args>
             requires __callable<_Tag, _Receiver, _Args...>
           friend void tag_invoke(_Tag, __receiver1&& __self, _Args&&... __args) noexcept try {
             // Write the tag and the args into the operation state so that
@@ -2822,7 +2822,7 @@ namespace std::execution {
             return {__self.__sched_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
           }
 
-          template <__one_of<set_value_t, set_done_t> _Tag>
+          template <__one_of<set_value_t, set_stopped_t> _Tag>
           friend _Scheduler tag_invoke(get_completion_scheduler_t<_Tag>, const __sender& __self) noexcept {
             return __self.__sched_;
           }
@@ -3124,7 +3124,7 @@ namespace std::execution {
                 error_types_of_t<_Sender, _Env, __types>,
                 exception_ptr>;
 
-          static constexpr bool sends_done = __v<__sends_done<_Sender, _Env>>;
+          static constexpr bool sends_stopped = __v<__sends_stopped<_Sender, _Env>>;
         };
 
       template <class _SenderId>
@@ -3172,7 +3172,7 @@ namespace std::execution {
   // [execution.senders.adaptors.when_all_with_variant]
   inline namespace __when_all {
     namespace __impl {
-      enum __state_t { __started, __error, __done };
+      enum __state_t { __started, __error, __stopped };
 
       struct __on_stop_requested {
         in_place_stop_source& __stop_source_;
@@ -3243,7 +3243,7 @@ namespace std::execution {
                 void set_value(_Values&&... __vals) && noexcept {
                   if constexpr (_Traits::__has_values) {
                     // We only need to bother recording the completion values
-                    // if we're not already in the "error" or "done" state.
+                    // if we're not already in the "error" or "stopped" state.
                     if (__op_state_->__state_ == __started) {
                       try {
                         std::get<_Index>(__op_state_->__values_).emplace(
@@ -3260,12 +3260,12 @@ namespace std::execution {
                 void set_error(_Error&& __err) && noexcept {
                   __set_error((_Error&&) __err, __started);
                 }
-              void set_done() && noexcept {
+              void set_stopped() && noexcept {
                 __state_t __expected = __started;
-                // Transition to the "done" state if and only if we're in the
+                // Transition to the "stopped" state if and only if we're in the
                 // "started" state. (_If this fails, it's because we're in an
                 // error state, which trumps cancellation.)
-                if (__op_state_->__state_.compare_exchange_strong(__expected, __done)) {
+                if (__op_state_->__state_.compare_exchange_strong(__expected, __stopped)) {
                   __op_state_->__stop_source_.request_stop();
                 }
                 __op_state_->__arrive();
@@ -3329,7 +3329,7 @@ namespace std::execution {
                 using error_types =
                   __error_types<__q<_Variant>, _CvrefEnv>;
 
-              static constexpr bool sends_done = true;
+              static constexpr bool sends_stopped = true;
             };
 
           template <class _CvrefReceiverId>
@@ -3406,8 +3406,8 @@ namespace std::execution {
                     execution::set_error((_Receiver&&) __recvr_, std::move(__err));
                   }, __errors_);
                   break;
-                case __done:
-                  execution::set_done((_Receiver&&) __recvr_);
+                case __stopped:
+                  execution::set_stopped((_Receiver&&) __recvr_);
                   break;
                 default:
                   ;
@@ -3427,7 +3427,7 @@ namespace std::execution {
                 if (__self.__stop_source_.stop_requested()) {
                   // Stop has already been requested. Don't bother starting
                   // the child operations.
-                  execution::set_done((_Receiver&&) __self.__recvr_);
+                  execution::set_stopped((_Receiver&&) __self.__recvr_);
                 } else {
                   apply([](auto&&... __child_ops) noexcept -> void {
                     (execution::start(__child_ops), ...);
@@ -3641,7 +3641,7 @@ namespace std::this_thread {
         }
       };
 
-      // What should sync_wait(just_done()) return?
+      // What should sync_wait(just_stopped()) return?
       template <class _Sender>
           requires execution::typed_sender<_Sender, __env>
         using __sync_wait_result_t =
@@ -3673,7 +3673,7 @@ namespace std::this_thread {
             __rcvr.__state_->__data_.template emplace<2>((exception_ptr&&) __err);
             __rcvr.__loop_->finish();
           }
-          friend void tag_invoke(execution::set_done_t __d, __receiver&& __rcvr) noexcept {
+          friend void tag_invoke(execution::set_stopped_t __d, __receiver&& __rcvr) noexcept {
             __rcvr.__state_->__data_.template emplace<3>(__d);
             __rcvr.__loop_->finish();
           }
@@ -3686,7 +3686,7 @@ namespace std::this_thread {
       template <class _SenderId>
         struct __state {
           using _Tuple = __sync_wait_result_t<__t<_SenderId>>;
-          variant<monostate, _Tuple, exception_ptr, execution::set_done_t> __data_;
+          variant<monostate, _Tuple, exception_ptr, execution::set_stopped_t> __data_;
         };
 
       template <class _Sender>

@@ -22,20 +22,20 @@
 
 namespace ex = std::execution;
 
-// TODO: implement upon_done
-// TEST_CASE("then returns a sender", "[adaptors][upon_done]") {
-//   auto snd = ex::upon_done(ex::just_done(), []() {});
+// TODO: implement upon_stopped
+// TEST_CASE("then returns a sender", "[adaptors][upon_stopped]") {
+//   auto snd = ex::upon_stopped(ex::just_stopped(), []() {});
 //   static_assert(ex::sender<decltype(snd)>);
 //   (void)snd;
 // }
-// TEST_CASE("then returns a typed_sender", "[adaptors][upon_done]") {
-//   auto snd = ex::upon_done(ex::just_done(), []() {});
+// TEST_CASE("then returns a typed_sender", "[adaptors][upon_stopped]") {
+//   auto snd = ex::upon_stopped(ex::just_stopped(), []() {});
 //   static_assert(ex::typed_sender<decltype(snd), empty_env>);
 //   (void)snd;
 // }
-// TEST_CASE("then simple example", "[adaptors][upon_done]") {
+// TEST_CASE("then simple example", "[adaptors][upon_stopped]") {
 //   bool called{false};
-//   auto snd = ex::upon_done(ex::just_done(), [&]() { called = true; });
+//   auto snd = ex::upon_stopped(ex::just_stopped(), [&]() { called = true; });
 //   auto op = ex::connect(std::move(snd), expect_error_receiver{});
 //   ex::start(op);
 //   // The receiver checks that it's called

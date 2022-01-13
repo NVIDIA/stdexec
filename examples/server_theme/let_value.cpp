@@ -37,7 +37,7 @@
  *
  * Example goals:
  * - show how one can break more complex flows into steps with let_* functions
- * - exemplify the use of let_value, let_error, let_done, transfer_just and just
+ * - exemplify the use of let_value, let_error, let_stopped, transfer_just and just
  * algorithms
  */
 
@@ -115,7 +115,7 @@ ex::sender auto error_to_response(std::exception_ptr err) {
 }
 
 // Transforms cancellation of the server into responses to be sent to the client
-ex::sender auto done_to_response() {
+ex::sender auto stopped_to_response() {
   return ex::just(http_response{503, "Service temporarily unavailable"});
 }
 
@@ -137,7 +137,7 @@ int main() {
         // If there are errors transform them into proper responses
         | ex::let_error(error_to_response)
         // If the flow is cancelled, send back a proper response
-        | ex::let_done(done_to_response)
+        | ex::let_stopped(stopped_to_response)
         // write the result back to the client
         | ex::let_value(send_response)
         // done

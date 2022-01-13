@@ -135,12 +135,12 @@ TEST_CASE("on forwards set_error calls of other types", "[adaptors][on]") {
   ex::start(op);
   // The receiver checks if we receive an error
 }
-TEST_CASE("on forwards set_done calls", "[adaptors][on]") {
-  done_scheduler sched{};
+TEST_CASE("on forwards set_stopped calls", "[adaptors][on]") {
+  stopped_scheduler sched{};
   auto snd = ex::on(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
-  // The receiver checks if we receive the done signal
+  // The receiver checks if we receive the stopped signal
 }
 
 TEST_CASE("on has the values_type corresponding to the given values", "[adaptors][on]") {
@@ -163,17 +163,17 @@ TEST_CASE("TODO: on keeps error_types from scheduler's sender", "[adaptors][on]"
   // incorrect check:
   check_err_types<type_array<std::exception_ptr>>(ex::on(sched3, ex::just(3)));
 }
-TEST_CASE("TODO: on keeps send_done from scheduler's sender", "[adaptors][on]") {
+TEST_CASE("TODO: on keeps sends_stopped from scheduler's sender", "[adaptors][on]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
-  done_scheduler sched3{};
+  stopped_scheduler sched3{};
 
-  check_sends_done<false>(ex::on(sched1, ex::just(1)));
-  check_sends_done<false>(ex::on(sched2, ex::just(2)));
-  // check_sends_done<true>(ex::on(sched3, ex::just(3)));
-  // TODO: on should forward its "sends_done" info
+  check_sends_stopped<false>(ex::on(sched1, ex::just(1)));
+  check_sends_stopped<false>(ex::on(sched2, ex::just(2)));
+  // check_sends_stopped<true>(ex::on(sched3, ex::just(3)));
+  // TODO: on should forward its "sends_stopped" info
   // incorrect check:
-  check_sends_done<false>(ex::on(sched3, ex::just(3)));
+  check_sends_stopped<false>(ex::on(sched3, ex::just(3)));
 }
 
 // Return a different sender when we invoke this custom defined on implementation

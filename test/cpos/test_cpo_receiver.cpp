@@ -28,28 +28,28 @@ struct recv_value {
 
   friend void tag_invoke(ex::set_value_t, recv_value self, int val) { *self.target_ = val; }
   friend void tag_invoke(ex::set_error_t, recv_value self, int ec) { *self.target_ = -ec; }
-  friend void tag_invoke(ex::set_done_t, recv_value self) { *self.target_ = INT_MAX; }
+  friend void tag_invoke(ex::set_stopped_t, recv_value self) { *self.target_ = INT_MAX; }
 };
 struct recv_rvalref {
   int* target_;
 
   friend void tag_invoke(ex::set_value_t, recv_rvalref&& self, int val) { *self.target_ = val; }
   friend void tag_invoke(ex::set_error_t, recv_rvalref&& self, int ec) { *self.target_ = -ec; }
-  friend void tag_invoke(ex::set_done_t, recv_rvalref&& self) { *self.target_ = INT_MAX; }
+  friend void tag_invoke(ex::set_stopped_t, recv_rvalref&& self) { *self.target_ = INT_MAX; }
 };
 struct recv_ref {
   int* target_;
 
   friend void tag_invoke(ex::set_value_t, recv_ref& self, int val) { *self.target_ = val; }
   friend void tag_invoke(ex::set_error_t, recv_ref& self, int ec) { *self.target_ = -ec; }
-  friend void tag_invoke(ex::set_done_t, recv_ref& self) { *self.target_ = INT_MAX; }
+  friend void tag_invoke(ex::set_stopped_t, recv_ref& self) { *self.target_ = INT_MAX; }
 };
 struct recv_cref {
   int* target_;
 
   friend void tag_invoke(ex::set_value_t, const recv_cref& self, int val) { *self.target_ = val; }
   friend void tag_invoke(ex::set_error_t, const recv_cref& self, int ec) { *self.target_ = -ec; }
-  friend void tag_invoke(ex::set_done_t, const recv_cref& self) { *self.target_ = INT_MAX; }
+  friend void tag_invoke(ex::set_stopped_t, const recv_cref& self) { *self.target_ = INT_MAX; }
 };
 
 TEST_CASE("can call set_value on a void receiver", "[cpo][cpo_receiver]") {
@@ -64,8 +64,8 @@ TEST_CASE("can call set_value on a string receiver", "[cpo][cpo_receiver]") {
   ex::set_value(expect_value_receiver<std::string>{"hello"}, std::string{"hello"});
 }
 
-TEST_CASE("can call set_done on a receiver", "[cpo][cpo_receiver]") {
-  ex::set_done(expect_done_receiver{});
+TEST_CASE("can call set_stopped on a receiver", "[cpo][cpo_receiver]") {
+  ex::set_stopped(expect_stopped_receiver{});
 }
 
 TEST_CASE("can call set_error on a receiver", "[cpo][cpo_receiver]") {
@@ -147,30 +147,30 @@ TEST_CASE("can call set_error on a receiver with const ref type", "[cpo][cpo_rec
   REQUIRE(val == -10);
 }
 
-TEST_CASE("can call set_done on a receiver with plain value type", "[cpo][cpo_receiver]") {
-  static_assert(std::invocable<ex::set_done_t, recv_value>, "cannot call set_done on recv_value");
+TEST_CASE("can call set_stopped on a receiver with plain value type", "[cpo][cpo_receiver]") {
+  static_assert(std::invocable<ex::set_stopped_t, recv_value>, "cannot call set_stopped on recv_value");
   int val = 0;
-  ex::set_done(recv_value{&val});
+  ex::set_stopped(recv_value{&val});
   REQUIRE(val == INT_MAX);
 }
-TEST_CASE("can call set_done on a receiver with r-value ref type", "[cpo][cpo_receiver]") {
+TEST_CASE("can call set_stopped on a receiver with r-value ref type", "[cpo][cpo_receiver]") {
   static_assert(
-      std::invocable<ex::set_done_t, recv_rvalref>, "cannot call set_done on recv_rvalref");
+      std::invocable<ex::set_stopped_t, recv_rvalref>, "cannot call set_stopped on recv_rvalref");
   int val = 0;
-  ex::set_done(recv_rvalref{&val});
+  ex::set_stopped(recv_rvalref{&val});
   REQUIRE(val == INT_MAX);
 }
-TEST_CASE("can call set_done on a receiver with ref type", "[cpo][cpo_receiver]") {
-  static_assert(std::invocable<ex::set_done_t, recv_ref&>, "cannot call set_done on recv_ref");
+TEST_CASE("can call set_stopped on a receiver with ref type", "[cpo][cpo_receiver]") {
+  static_assert(std::invocable<ex::set_stopped_t, recv_ref&>, "cannot call set_stopped on recv_ref");
   int val = 0;
   recv_ref recv{&val};
-  ex::set_done(recv);
+  ex::set_stopped(recv);
   REQUIRE(val == INT_MAX);
 }
-TEST_CASE("can call set_done on a receiver with const ref type", "[cpo][cpo_receiver]") {
-  static_assert(std::invocable<ex::set_done_t, recv_cref>, "cannot call set_done on recv_cref");
+TEST_CASE("can call set_stopped on a receiver with const ref type", "[cpo][cpo_receiver]") {
+  static_assert(std::invocable<ex::set_stopped_t, recv_cref>, "cannot call set_stopped on recv_cref");
   int val = 0;
-  ex::set_done(recv_cref{&val});
+  ex::set_stopped(recv_cref{&val});
   REQUIRE(val == INT_MAX);
 }
 
@@ -184,15 +184,15 @@ TEST_CASE("set_error can be called through tag_invoke", "[cpo][cpo_receiver]") {
   tag_invoke(ex::set_error, recv_value{&val}, 10);
   REQUIRE(val == -10);
 }
-TEST_CASE("set_done can be called through tag_invoke", "[cpo][cpo_receiver]") {
+TEST_CASE("set_stopped can be called through tag_invoke", "[cpo][cpo_receiver]") {
   int val = 0;
-  tag_invoke(ex::set_done, recv_value{&val});
+  tag_invoke(ex::set_stopped, recv_value{&val});
   REQUIRE(val == INT_MAX);
 }
 
 TEST_CASE(
-    "tag types can be deduced from set_value, set_error and set_done", "[cpo][cpo_receiver]") {
+    "tag types can be deduced from set_value, set_error and set_stopped", "[cpo][cpo_receiver]") {
   static_assert(std::is_same_v<const ex::set_value_t, decltype(ex::set_value)>, "type mismatch");
   static_assert(std::is_same_v<const ex::set_error_t, decltype(ex::set_error)>, "type mismatch");
-  static_assert(std::is_same_v<const ex::set_done_t, decltype(ex::set_done)>, "type mismatch");
+  static_assert(std::is_same_v<const ex::set_stopped_t, decltype(ex::set_stopped)>, "type mismatch");
 }

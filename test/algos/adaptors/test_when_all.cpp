@@ -129,7 +129,7 @@ TEST_CASE("TODO: when_all can be used with just_*", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all(       //
       ex::just(2),                          //
       ex::just_error(std::exception_ptr{}), //
-      ex::just_done()                       //
+      ex::just_stopped()                       //
   );
   // TODO: this should work
   // auto op = ex::connect(std::move(snd), expect_error_receiver{});
@@ -150,14 +150,14 @@ TEST_CASE(
   ex::start(op);
 }
 
-TEST_CASE("when_all terminates with done if one child is cancelled", "[adaptors][when_all]") {
-  done_scheduler sched;
+TEST_CASE("when_all terminates with stopped if one child is cancelled", "[adaptors][when_all]") {
+  stopped_scheduler sched;
   ex::sender auto snd = ex::when_all( //
       ex::just(2),                    //
       ex::transfer_just(sched, 5),    //
       ex::just(7)                     //
   );
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
 }
 
@@ -172,7 +172,7 @@ TEST_CASE("when_all cancels remaining children if error is detected", "[adaptors
       ex::on(sched, ex::transfer_just(err_sched, 5)),                //
       ex::on(sched, ex::just())                                      //
           | ex::then([&] { called3 = true; })                        //
-          | ex::let_done([&] {
+          | ex::let_stopped([&] {
               cancelled = true;
               return ex::just();
             }) //
@@ -192,29 +192,29 @@ TEST_CASE("when_all cancels remaining children if error is detected", "[adaptors
 }
 
 TEST_CASE("when_all cancels remaining children if cancel is detected", "[adaptors][when_all]") {
-  done_scheduler done_sched;
+  stopped_scheduler stopped_sched;
   impulse_scheduler sched;
   bool called1{false};
   bool called3{false};
   bool cancelled{false};
   ex::sender auto snd = ex::when_all(                                //
       ex::on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
-      ex::on(sched, ex::transfer_just(done_sched, 5)),               //
+      ex::on(sched, ex::transfer_just(stopped_sched, 5)),               //
       ex::on(sched, ex::just())                                      //
           | ex::then([&] { called3 = true; })                        //
-          | ex::let_done([&] {
+          | ex::let_stopped([&] {
               cancelled = true;
               return ex::just();
             }) //
   );
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
   // The first child will complete; the third one will be cancelled
   CHECK_FALSE(called1);
   CHECK_FALSE(called3);
   sched.start_next(); // start the first child
   CHECK(called1);
-  sched.start_next(); // start the second child; this will call set_done
+  sched.start_next(); // start the second child; this will call set_stopped
   CHECK_FALSE(called3);
   sched.start_next(); // start the third child
   CHECK_FALSE(called3);
@@ -267,22 +267,22 @@ TEST_CASE("when_all has the error_types based on the children", "[adaptors][when
       ex::when_all(                                //
           ex::just(13),                            //
           ex::just_error(std::exception_ptr{}),    //
-          ex::just_done()                          //
+          ex::just_stopped()                          //
           )                                        //
   );
 }
 
-TEST_CASE("when_all has the sends_done == true", "[adaptors][when_all]") {
-  check_sends_done<true>(ex::when_all(ex::just(13)));
-  check_sends_done<true>(ex::when_all(ex::just_error(-1)));
-  check_sends_done<true>(ex::when_all(ex::just_done()));
+TEST_CASE("when_all has the sends_stopped == true", "[adaptors][when_all]") {
+  check_sends_stopped<true>(ex::when_all(ex::just(13)));
+  check_sends_stopped<true>(ex::when_all(ex::just_error(-1)));
+  check_sends_stopped<true>(ex::when_all(ex::just_stopped()));
 
-  check_sends_done<true>(ex::when_all(ex::just(3), ex::just(0.14)));
-  check_sends_done<true>(     //
+  check_sends_stopped<true>(ex::when_all(ex::just(3), ex::just(0.14)));
+  check_sends_stopped<true>(     //
       ex::when_all(           //
           ex::just(3),        //
           ex::just_error(-1), //
-          ex::just_done()     //
+          ex::just_stopped()     //
           )                   //
   );
 }

@@ -22,7 +22,7 @@ namespace ex = std::execution;
 struct my_sender : ex::completion_signatures<               //
                        ex::set_value_t(),                   //
                        ex::set_error_t(std::exception_ptr), //
-                       ex::set_done_t()> {
+                       ex::set_stopped_t()> {
 
   bool from_scheduler_{false};
 };

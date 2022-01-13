@@ -151,12 +151,12 @@ TEST_CASE("transfer forwards set_error calls of other types", "[adaptors][transf
   ex::start(op);
   // The receiver checks if we receive an error
 }
-TEST_CASE("transfer forwards set_done calls", "[adaptors][transfer]") {
-  done_scheduler sched{};
+TEST_CASE("transfer forwards set_stopped calls", "[adaptors][transfer]") {
+  stopped_scheduler sched{};
   auto snd = ex::transfer(ex::just(13), sched);
-  auto op = ex::connect(std::move(snd), expect_done_receiver{});
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
-  // The receiver checks if we receive the done signal
+  // The receiver checks if we receive the stopped signal
 }
 
 TEST_CASE(
@@ -180,17 +180,17 @@ TEST_CASE("TODO: transfer keeps error_types from scheduler's sender", "[adaptors
   // incorrect check:
   check_err_types<type_array<std::exception_ptr>>(ex::transfer(ex::just(3), sched3));
 }
-TEST_CASE("TODO: transfer keeps send_done from scheduler's sender", "[adaptors][transfer]") {
+TEST_CASE("TODO: transfer keeps sends_stopped from scheduler's sender", "[adaptors][transfer]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
-  done_scheduler sched3{};
+  stopped_scheduler sched3{};
 
-  check_sends_done<false>(ex::transfer(ex::just(1), sched1));
-  check_sends_done<false>(ex::transfer(ex::just(2), sched2));
-  // check_sends_done<true>(ex::transfer(ex::just(3), sched3));
-  // TODO: transfer should forward its "sends_done" info
+  check_sends_stopped<false>(ex::transfer(ex::just(1), sched1));
+  check_sends_stopped<false>(ex::transfer(ex::just(2), sched2));
+  // check_sends_stopped<true>(ex::transfer(ex::just(3), sched3));
+  // TODO: transfer should forward its "sends_stopped" info
   // incorrect check:
-  check_sends_done<false>(ex::transfer(ex::just(3), sched3));
+  check_sends_stopped<false>(ex::transfer(ex::just(3), sched3));
 }
 
 struct val_type1 {
