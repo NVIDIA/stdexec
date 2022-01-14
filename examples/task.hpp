@@ -74,7 +74,7 @@ class default_task_context_impl {
     };
 
   friend auto tag_invoke(
-        std::execution::get_stop_token_t, const default_task_context_impl& self)
+        decltype(std::execution::get_stop_token), const default_task_context_impl& self)
       noexcept -> std::in_place_stop_token {
     return self.stop_token_;
   }

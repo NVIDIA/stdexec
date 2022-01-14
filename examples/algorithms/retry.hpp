@@ -84,7 +84,7 @@ struct _op {
   } catch(...) {
     stdex::set_error((R&&) r_, std::current_exception());
   }
-  friend void tag_invoke(stdex::start_t, _op& o) noexcept {
+  friend void tag_invoke(decltype(stdex::start), _op& o) noexcept {
     stdex::start(*o.o_);
   }
 };

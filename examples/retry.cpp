@@ -31,7 +31,7 @@ struct fail_some
   template <class R>
   struct op {
     R r_;
-    friend void tag_invoke(std::execution::start_t, op& self) noexcept {
+    friend void tag_invoke(decltype(std::execution::start), op& self) noexcept {
       static int i = 0;
       if (++i < 3) {
         std::printf("fail!\n");
