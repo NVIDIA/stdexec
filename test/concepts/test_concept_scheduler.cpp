@@ -34,7 +34,7 @@ struct my_scheduler {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, my_scheduler) { return {}; }
+  friend my_sender tag_invoke(decltype(ex::schedule), my_scheduler) { return {}; }
 
   friend bool operator==(my_scheduler, my_scheduler) noexcept { return true; }
   friend bool operator!=(my_scheduler, my_scheduler) noexcept { return false; }
@@ -64,7 +64,7 @@ struct my_scheduler_except {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, my_scheduler_except) {
+  friend my_sender tag_invoke(decltype(ex::schedule), my_scheduler_except) {
     throw std::logic_error("err");
     return {};
   }
@@ -88,7 +88,7 @@ struct noeq_sched {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, noeq_sched) { return {}; }
+  friend my_sender tag_invoke(decltype(ex::schedule), noeq_sched) { return {}; }
 };
 
 TEST_CASE("type w/o equality operations do not model scheduler", "[concepts][scheduler]") {
@@ -105,7 +105,7 @@ struct sched_no_completion {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, sched_no_completion) { return {}; }
+  friend my_sender tag_invoke(decltype(ex::schedule), sched_no_completion) { return {}; }
 
   friend bool operator==(sched_no_completion, sched_no_completion) noexcept { return true; }
   friend bool operator!=(sched_no_completion, sched_no_completion) noexcept { return false; }

@@ -31,16 +31,12 @@ struct my_sender : ex::completion_signatures<           //
 };
 
 struct my_scheduler {
-  friend my_sender tag_invoke(ex::schedule_t, my_scheduler) { return my_sender{{}, true}; }
+  friend my_sender tag_invoke(decltype(ex::schedule), my_scheduler) { return my_sender{{}, true}; }
 };
 
 TEST_CASE("can call schedule on an appropriate type", "[cpo][cpo_schedule]") {
-  static_assert(std::invocable<ex::schedule_t, my_scheduler>, "invalid scheduler type");
+  static_assert(std::invocable<decltype(ex::schedule), my_scheduler>, "invalid scheduler type");
   my_scheduler sched;
   auto snd = ex::schedule(sched);
   CHECK(snd.from_scheduler_);
-}
-
-TEST_CASE("tag types can be deduced from ex::schedule", "[cpo][cpo_schedule]") {
-  static_assert(std::is_same_v<const ex::schedule_t, decltype(ex::schedule)>, "type mismatch");
 }

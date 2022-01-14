@@ -476,8 +476,8 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
-  inline namespace __schedule {
-    inline constexpr struct schedule_t {
+  namespace __schedule {
+    struct schedule_t {
       template <class _Scheduler>
         requires tag_invocable<schedule_t, _Scheduler> &&
           sender<tag_invoke_result_t<schedule_t, _Scheduler>>
@@ -485,8 +485,9 @@ namespace std::execution {
         noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
         return tag_invoke(schedule_t{}, (_Scheduler&&) __sched);
       }
-    } schedule {};
+    };
   }
+  inline constexpr __schedule::schedule_t schedule{};
 
   // [execution.schedulers.queries], scheduler queries
   inline namespace __scheduler_queries {
@@ -552,7 +553,7 @@ namespace std::execution {
 
   // NOT TO SPEC
   template <scheduler _Scheduler>
-    using schedule_result_t = __call_result_t<schedule_t, _Scheduler>;
+    using schedule_result_t = __call_result_t<__schedule::schedule_t, _Scheduler>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.general.queries], general queries
@@ -1684,7 +1685,7 @@ namespace std::execution {
 
           template <__decays_to<_Derived> _Self>
             requires __has_schedule<_Self>
-          friend auto tag_invoke(schedule_t, _Self&& __self)
+          friend auto tag_invoke(__schedule::schedule_t, _Self&& __self)
             noexcept(noexcept(((_Self&&) __self).schedule()))
             -> decltype(((_Self&&) __self).schedule()) {
             return ((_Self&&) __self).schedule();
@@ -1693,17 +1694,17 @@ namespace std::execution {
           template <__decays_to<_Derived> _Self>
             requires requires {typename decay_t<_Self>::schedule;} &&
               scheduler<__member_t<_Self, _Base>>
-          friend auto tag_invoke(schedule_t, _Self&& __self)
+          friend auto tag_invoke(__schedule::schedule_t, _Self&& __self)
             noexcept(noexcept(execution::schedule(__declval<__member_t<_Self, _Base>>())))
             -> schedule_result_t<_Self> {
             return execution::schedule(__c_cast<__t>((_Self&&) __self).base());
           }
 
-          template <__none_of<schedule_t> _Tag, same_as<_Derived> _Self, class... _As>
+          template <__none_of<__schedule::schedule_t> _Tag, same_as<_Derived> _Self, class... _As>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
-            -> __call_result_if_t<__none_of<_Tag, schedule_t>, _Tag, const _Base&, _As...> {
+            -> __call_result_if_t<__none_of<_Tag, __schedule::schedule_t>, _Tag, const _Base&, _As...> {
             return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
           }
 
@@ -2534,7 +2535,7 @@ namespace std::execution {
         explicit __scheduler(run_loop* __loop) noexcept : __loop_(__loop) {}
 
        public:
-        friend __schedule_task tag_invoke(schedule_t, const __scheduler& __self) noexcept {
+        friend __schedule_task tag_invoke(__schedule::schedule_t, const __scheduler& __self) noexcept {
           return __self.__schedule();
         }
 

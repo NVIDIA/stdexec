@@ -97,7 +97,7 @@ struct impulse_scheduler {
     }
   }
 
-  friend my_sender tag_invoke(ex::schedule_t, const impulse_scheduler& self) {
+  friend my_sender tag_invoke(decltype(ex::schedule), const impulse_scheduler& self) {
     return my_sender{{}, self.all_commands_.get()};
   }
 
@@ -132,7 +132,7 @@ struct inline_scheduler {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, inline_scheduler) { return {}; }
+  friend my_sender tag_invoke(decltype(ex::schedule), inline_scheduler) { return {}; }
 
   friend bool operator==(inline_scheduler, inline_scheduler) noexcept { return true; }
   friend bool operator!=(inline_scheduler, inline_scheduler) noexcept { return false; }
@@ -168,7 +168,7 @@ struct error_scheduler {
 
   E err_;
 
-  friend my_sender tag_invoke(ex::schedule_t, error_scheduler self) {
+  friend my_sender tag_invoke(decltype(ex::schedule), error_scheduler self) {
     return {{}, (E &&) self.err_};
   }
 
@@ -198,7 +198,7 @@ struct stopped_scheduler {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, stopped_scheduler) { return {}; }
+  friend my_sender tag_invoke(decltype(ex::schedule), stopped_scheduler) { return {}; }
 
   friend bool operator==(stopped_scheduler, stopped_scheduler) noexcept { return true; }
   friend bool operator!=(stopped_scheduler, stopped_scheduler) noexcept { return false; }

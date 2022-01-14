@@ -91,7 +91,7 @@ namespace example {
       }
 
       friend sender
-      tag_invoke(std::execution::schedule_t, const scheduler& s) noexcept {
+      tag_invoke(decltype(std::execution::schedule), const scheduler& s) noexcept {
         return s.make_sender_();
       }
 
