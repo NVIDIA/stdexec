@@ -556,7 +556,7 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.general.queries], general queries
-  inline namespace __general_queries {
+  namespace __general_queries {
     namespace __impl {
       // TODO: implement allocator concept
       template <class _T0>
@@ -619,11 +619,11 @@ namespace std::execution {
     using __impl::get_scheduler_t;
     using __impl::get_delegatee_scheduler_t;
     using __impl::get_stop_token_t;
-    inline constexpr get_scheduler_t get_scheduler{};
-    inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
-    inline constexpr get_allocator_t get_allocator{};
-    inline constexpr get_stop_token_t get_stop_token{};
   } // namespace __general_queries
+  inline constexpr __general_queries::get_scheduler_t get_scheduler{};
+  inline constexpr __general_queries::get_delegatee_scheduler_t get_delegatee_scheduler{};
+  inline constexpr __general_queries::get_allocator_t get_allocator{};
+  inline constexpr __general_queries::get_stop_token_t get_stop_token{};
 
   template <class _T>
     using stop_token_of_t =
@@ -2920,8 +2920,8 @@ namespace std::execution {
           }
           friend auto tag_invoke(
               __env::get_env_t, const __receiver_ref& __self)
-            -> make_env_t<get_scheduler_t, _Scheduler, env_of_t<_Receiver>> {
-            return make_env<get_scheduler_t>(
+            -> make_env_t<__general_queries::get_scheduler_t, _Scheduler, env_of_t<_Receiver>> {
+            return make_env<__general_queries::get_scheduler_t>(
               __self.__op_state_->__scheduler_,
               get_env(__self.base()));
           }
@@ -3032,7 +3032,7 @@ namespace std::execution {
           friend auto tag_invoke(__sender_traits::get_sender_traits_t, _Self&&, _Env)
             -> sender_traits_t<
                 __member_t<_Self, _Sender>,
-                make_env_t<get_scheduler_t, _Scheduler, _Env>>;
+                make_env_t<__general_queries::get_scheduler_t, _Scheduler, _Env>>;
         };
     } // namespace __impl
 
@@ -3202,7 +3202,7 @@ namespace std::execution {
 
       template <class _Env>
         using __env_t =
-          make_env_t<get_stop_token_t, in_place_stop_token, _Env>;
+          make_env_t<__general_queries::get_stop_token_t, in_place_stop_token, _Env>;
 
       template <class... _SenderIds>
         struct __sender {
@@ -3277,7 +3277,7 @@ namespace std::execution {
               }
               friend auto tag_invoke(__env::get_env_t, const __receiver& __self)
                 -> __env_t<env_of_t<_Receiver>> {
-                return make_env<get_stop_token_t>(
+                return make_env<__general_queries::get_stop_token_t>(
                   __self.__op_state_->__stop_source_.get_token(),
                   get_env(__self.base()));
               }
@@ -3635,12 +3635,12 @@ namespace std::this_thread {
       struct __env {
         execution::run_loop::__scheduler __sched_;
 
-        friend auto tag_invoke(execution::get_scheduler_t, const __env& __self) noexcept
+        friend auto tag_invoke(execution::__general_queries::get_scheduler_t, const __env& __self) noexcept
           -> execution::run_loop::__scheduler {
           return __self.__sched_;
         }
 
-        friend auto tag_invoke(execution::get_delegatee_scheduler_t, const __env& __self) noexcept
+        friend auto tag_invoke(execution::__general_queries::get_delegatee_scheduler_t , const __env& __self) noexcept
           -> execution::run_loop::__scheduler {
           return __self.__sched_;
         }
