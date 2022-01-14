@@ -18,11 +18,14 @@
 #include <execution.hpp>
 
 namespace ex = std::execution;
+using set_value_t = std::decay_t<decltype(ex::set_value)>;
+using set_error_t = std::decay_t<decltype(ex::set_error)>;
+using set_stopped_t = std::decay_t<decltype(ex::set_stopped)>;
 
-struct my_sender : ex::completion_signatures<               //
-                       ex::set_value_t(),                   //
-                       ex::set_error_t(std::exception_ptr), //
-                       ex::set_stopped_t()> {
+struct my_sender : ex::completion_signatures<           //
+                       set_value_t(),                   //
+                       set_error_t(std::exception_ptr), //
+                       set_stopped_t()> {
 
   bool from_scheduler_{false};
 };

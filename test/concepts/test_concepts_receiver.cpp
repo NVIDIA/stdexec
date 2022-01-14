@@ -19,34 +19,37 @@
 #include <test_common/receivers.hpp>
 
 namespace ex = std::execution;
+using set_value_t = std::decay_t<decltype(ex::set_value)>;
+using set_error_t = std::decay_t<decltype(ex::set_error)>;
+using set_stopped_t = std::decay_t<decltype(ex::set_stopped)>;
 
 struct recv_no_set_value {
-  friend void tag_invoke(ex::set_stopped_t, recv_no_set_value) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_no_set_value, std::exception_ptr) noexcept {}
+  friend void tag_invoke(set_stopped_t, recv_no_set_value) noexcept {}
+  friend void tag_invoke(set_error_t, recv_no_set_value, std::exception_ptr) noexcept {}
 };
 
 struct recv_set_value_except {
-  friend void tag_invoke(ex::set_value_t, recv_set_value_except) {}
-  friend void tag_invoke(ex::set_stopped_t, recv_set_value_except) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_set_value_except, std::exception_ptr) noexcept {}
+  friend void tag_invoke(set_value_t, recv_set_value_except) {}
+  friend void tag_invoke(set_stopped_t, recv_set_value_except) noexcept {}
+  friend void tag_invoke(set_error_t, recv_set_value_except, std::exception_ptr) noexcept {}
 };
 struct recv_set_value_noexcept {
-  friend void tag_invoke(ex::set_value_t, recv_set_value_noexcept) noexcept {}
-  friend void tag_invoke(ex::set_stopped_t, recv_set_value_noexcept) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_set_value_noexcept, std::exception_ptr) noexcept {}
+  friend void tag_invoke(set_value_t, recv_set_value_noexcept) noexcept {}
+  friend void tag_invoke(set_stopped_t, recv_set_value_noexcept) noexcept {}
+  friend void tag_invoke(set_error_t, recv_set_value_noexcept, std::exception_ptr) noexcept {}
 };
 
 struct recv_set_error_except {
-  friend void tag_invoke(ex::set_value_t, recv_set_error_except) noexcept {}
-  friend void tag_invoke(ex::set_stopped_t, recv_set_error_except) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_set_error_except, std::exception_ptr) {
+  friend void tag_invoke(set_value_t, recv_set_error_except) noexcept {}
+  friend void tag_invoke(set_stopped_t, recv_set_error_except) noexcept {}
+  friend void tag_invoke(set_error_t, recv_set_error_except, std::exception_ptr) {
     throw std::logic_error{"err"};
   }
 };
 struct recv_set_stopped_except {
-  friend void tag_invoke(ex::set_value_t, recv_set_stopped_except) noexcept {}
-  friend void tag_invoke(ex::set_stopped_t, recv_set_stopped_except) { throw std::logic_error{"err"}; }
-  friend void tag_invoke(ex::set_error_t, recv_set_stopped_except, std::exception_ptr) noexcept {}
+  friend void tag_invoke(set_value_t, recv_set_stopped_except) noexcept {}
+  friend void tag_invoke(set_stopped_t, recv_set_stopped_except) { throw std::logic_error{"err"}; }
+  friend void tag_invoke(set_error_t, recv_set_stopped_except, std::exception_ptr) noexcept {}
 };
 
 struct recv_non_movable {
@@ -57,9 +60,9 @@ struct recv_non_movable {
   recv_non_movable(const recv_non_movable&) = default;
   recv_non_movable& operator=(const recv_non_movable&) = default;
 
-  friend void tag_invoke(ex::set_value_t, recv_non_movable) noexcept {}
-  friend void tag_invoke(ex::set_stopped_t, recv_non_movable) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_non_movable, std::exception_ptr) noexcept {}
+  friend void tag_invoke(set_value_t, recv_non_movable) noexcept {}
+  friend void tag_invoke(set_stopped_t, recv_non_movable) noexcept {}
+  friend void tag_invoke(set_error_t, recv_non_movable, std::exception_ptr) noexcept {}
 };
 
 TEST_CASE("receiver types satisfy the receiver concept", "[concepts][receiver]") {

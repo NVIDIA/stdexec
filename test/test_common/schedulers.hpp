@@ -22,6 +22,9 @@
 #include <vector>
 
 namespace ex = std::execution;
+using set_value_t = std::decay_t<decltype(ex::set_value)>;
+using set_error_t = std::decay_t<decltype(ex::set_error)>;
+using set_stopped_t = std::decay_t<decltype(ex::set_stopped)>;
 
 //! Scheduler that will send impulses on user's request.
 //! One can obtain senders from this, connect them to receivers and start the operation states.
@@ -62,20 +65,18 @@ struct impulse_scheduler {
     }
   };
 
-  struct my_sender : ex::completion_signatures<               //
-                         ex::set_value_t(),                   //
-                         ex::set_error_t(std::exception_ptr), //
-                         ex::set_stopped_t()> {
+  struct my_sender : ex::completion_signatures<           //
+                         set_value_t(),                   //
+                         set_error_t(std::exception_ptr), //
+                         set_stopped_t()> {
     cmd_vec_t* all_commands_;
 
     template <ex::receiver_of R>
-    friend oper<std::decay_t<R>>
-    tag_invoke(ex::connect_t, my_sender self, R&& r) {
+    friend oper<std::decay_t<R>> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {self.all_commands_, (R &&) r};
     }
 
-    friend impulse_scheduler tag_invoke(
-        ex::get_completion_scheduler_t<ex::set_value_t>, my_sender) {
+    friend impulse_scheduler tag_invoke(ex::get_completion_scheduler_t<set_value_t>, my_sender) {
       return {};
     }
   };
@@ -119,14 +120,14 @@ struct inline_scheduler {
   };
 
   struct my_sender : ex::completion_signatures< //
-                         ex::set_value_t(),     //
-                         ex::set_error_t(std::exception_ptr)> {
+                         set_value_t(),         //
+                         set_error_t(std::exception_ptr)> {
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {(R &&) r};
     }
 
-    friend inline_scheduler tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, my_sender) {
+    friend inline_scheduler tag_invoke(ex::get_completion_scheduler_t<set_value_t>, my_sender) {
       return {};
     }
   };
@@ -151,8 +152,8 @@ struct error_scheduler {
   };
 
   struct my_sender : ex::completion_signatures< //
-                         ex::set_value_t(),     //
-                         ex::set_error_t(E)> {
+                         set_value_t(),         //
+                         set_error_t(E)> {
     E err_;
 
     template <typename R>
@@ -160,7 +161,7 @@ struct error_scheduler {
       return {(R &&) r, (E &&) self.err_};
     }
 
-    friend error_scheduler tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, my_sender) {
+    friend error_scheduler tag_invoke(ex::get_completion_scheduler_t<set_value_t>, my_sender) {
       return {};
     }
   };
@@ -184,8 +185,8 @@ struct stopped_scheduler {
   };
 
   struct my_sender : ex::completion_signatures< //
-                         ex::set_value_t(),     //
-                         ex::set_stopped_t()> {
+                         set_value_t(),         //
+                         set_stopped_t()> {
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {(R &&) r};

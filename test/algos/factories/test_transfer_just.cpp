@@ -143,14 +143,17 @@ TEST_CASE("transfer_just advertises its completion scheduler", "[factories][tran
   error_scheduler sched2{};
   stopped_scheduler sched3{};
 
-  REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::transfer_just(sched1, 1)) == sched1);
-  REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::transfer_just(sched1, 1)) == sched1);
+  using set_value_t = std::decay_t<decltype(ex::set_value)>;
+  using set_stopped_t = std::decay_t<decltype(ex::set_stopped)>;
 
-  REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::transfer_just(sched2, 2)) == sched2);
-  REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::transfer_just(sched2, 2)) == sched2);
+  REQUIRE(ex::get_completion_scheduler<set_value_t>(ex::transfer_just(sched1, 1)) == sched1);
+  REQUIRE(ex::get_completion_scheduler<set_stopped_t>(ex::transfer_just(sched1, 1)) == sched1);
 
-  REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::transfer_just(sched3, 3)) == sched3);
-  REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::transfer_just(sched3, 3)) == sched3);
+  REQUIRE(ex::get_completion_scheduler<set_value_t>(ex::transfer_just(sched2, 2)) == sched2);
+  REQUIRE(ex::get_completion_scheduler<set_stopped_t>(ex::transfer_just(sched2, 2)) == sched2);
+
+  REQUIRE(ex::get_completion_scheduler<set_value_t>(ex::transfer_just(sched3, 3)) == sched3);
+  REQUIRE(ex::get_completion_scheduler<set_stopped_t>(ex::transfer_just(sched3, 3)) == sched3);
 }
 
 // Modify the value when we invoke this custom defined transfer_just implementation

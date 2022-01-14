@@ -19,6 +19,9 @@
 #include "test_common/receivers.hpp"
 
 namespace ex = std::execution;
+using set_value_t = std::decay_t<decltype(ex::set_value)>;
+using set_error_t = std::decay_t<decltype(ex::set_error)>;
+using set_stopped_t = std::decay_t<decltype(ex::set_stopped)>;
 
 template <typename R>
 struct op_state {
@@ -31,8 +34,8 @@ struct op_state {
 };
 
 struct my_sender : ex::completion_signatures< //
-                       ex::set_value_t(),     //
-                       ex::set_error_t(std::exception_ptr)> {
+                       set_value_t(),         //
+                       set_error_t(std::exception_ptr)> {
   int value_{0};
 
   template <ex::receiver_of R>
@@ -42,8 +45,8 @@ struct my_sender : ex::completion_signatures< //
 };
 
 struct my_sender_unconstrained : ex::completion_signatures< //
-                                     ex::set_value_t(),     //
-                                     ex::set_error_t(std::exception_ptr)> {
+                                     set_value_t(),         //
+                                     set_error_t(std::exception_ptr)> {
   int value_{0};
 
   template <typename R> // accept any type here
@@ -73,9 +76,9 @@ struct strange_receiver {
     return {19, std::move(self)};
   }
 
-  friend inline void tag_invoke(ex::set_value_t, strange_receiver, int val) { REQUIRE(val == 19); }
-  friend void tag_invoke(ex::set_stopped_t, strange_receiver) noexcept {}
-  friend void tag_invoke(ex::set_error_t, strange_receiver, std::exception_ptr) noexcept {}
+  friend inline void tag_invoke(set_value_t, strange_receiver, int val) { REQUIRE(val == 19); }
+  friend void tag_invoke(set_stopped_t, strange_receiver) noexcept {}
+  friend void tag_invoke(set_error_t, strange_receiver, std::exception_ptr) noexcept {}
 };
 
 TEST_CASE("connect can be defined in the receiver", "[cpo][cpo_connect]") {

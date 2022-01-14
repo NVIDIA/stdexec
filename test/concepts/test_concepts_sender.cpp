@@ -20,6 +20,9 @@
 #include <test_common/type_helpers.hpp>
 
 namespace ex = std::execution;
+using set_value_t = std::decay_t<decltype(ex::set_value)>;
+using set_error_t = std::decay_t<decltype(ex::set_error)>;
+using set_stopped_t = std::decay_t<decltype(ex::set_stopped)>;
 
 struct oper {
   friend void tag_invoke(ex::start_t, oper&) noexcept {}
@@ -54,10 +57,10 @@ TEST_CASE("type deriving from sender_base, doesn't model typed_sender", "[concep
   REQUIRE_FALSE(ex::typed_sender<simple_sender, empty_env>);
 }
 
-struct my_sender0 : ex::completion_signatures<               //
-                        ex::set_value_t(),                   //
-                        ex::set_error_t(std::exception_ptr), //
-                        ex::set_stopped_t()> {
+struct my_sender0 : ex::completion_signatures<           //
+                        set_value_t(),                   //
+                        set_error_t(std::exception_ptr), //
+                        set_stopped_t()> {
 
   friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&& r) { return {}; }
 };
@@ -70,10 +73,10 @@ TEST_CASE(
   REQUIRE(ex::sender_to<my_sender0, empty_recv::recv0>);
 }
 
-struct my_sender_int : ex::completion_signatures<               //
-                           ex::set_value_t(int),                //
-                           ex::set_error_t(std::exception_ptr), //
-                           ex::set_stopped_t()> {
+struct my_sender_int : ex::completion_signatures<           //
+                           set_value_t(int),                //
+                           set_error_t(std::exception_ptr), //
+                           set_stopped_t()> {
 
   friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&& r) { return {}; }
 };
@@ -115,10 +118,10 @@ TEST_CASE("can query sender traits for a typed sender that sends int", "[concept
   check_sends_stopped<true>(my_sender_int{});
 }
 
-struct multival_sender : ex::completion_signatures<        //
-                             ex::set_value_t(int, double), //
-                             ex::set_value_t(short, long), //
-                             ex::set_error_t(std::exception_ptr)> {
+struct multival_sender : ex::completion_signatures<    //
+                             set_value_t(int, double), //
+                             set_value_t(short, long), //
+                             set_error_t(std::exception_ptr)> {
 
   friend oper tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&& r) { return {}; }
 };
@@ -129,10 +132,10 @@ TEST_CASE("check sender traits for sender that advertises multiple sets of value
   check_sends_stopped<false>(multival_sender{});
 }
 
-struct ec_sender : ex::completion_signatures<               //
-                       ex::set_value_t(),                   //
-                       ex::set_error_t(std::exception_ptr), //
-                       ex::set_error_t(int)> {
+struct ec_sender : ex::completion_signatures<           //
+                       set_value_t(),                   //
+                       set_error_t(std::exception_ptr), //
+                       set_error_t(int)> {
   friend oper tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&& r) { return {}; }
 };
 TEST_CASE("check sender traits for sender that also supports error codes", "[concepts][sender]") {
