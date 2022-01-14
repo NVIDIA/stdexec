@@ -924,14 +924,60 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
-  inline namespace __connect {
-    inline constexpr struct connect_t {
+  namespace __connect {
+    struct __is_debug_env_t {
+      template <class _Env>
+          requires tag_invocable<__is_debug_env_t, _Env>
+        void operator()(_Env&&) const noexcept;
+    };
+    template <class _Env>
+      using __debug_env_t =
+        make_env_t<__is_debug_env_t, int, _Env>;
+
+    struct __debug_receiver_base {};
+
+    template <class _Sig>
+      struct __completion;
+
+    template <class _Tag, class... _Args>
+      struct __completion<_Tag(_Args...)> {
+        friend void tag_invoke(_Tag, __debug_receiver_base&&, _Args&&...) noexcept;
+      };
+
+    template <class _Env, class _Sigs>
+      struct __debug_receiver;
+
+    template <class _Env, class... _Sigs>
+      struct __debug_receiver<_Env, __types<_Sigs...>>
+        : __debug_receiver_base, __completion<_Sigs>... {
+        friend void tag_invoke(set_error_t, __debug_receiver&&, exception_ptr) noexcept;
+        friend void tag_invoke(set_stopped_t, __debug_receiver&&) noexcept;
+        friend __debug_env_t<_Env> tag_invoke(get_env_t, __debug_receiver) noexcept;
+      };
+
+    template <class _Env>
+      struct __any_debug_receiver {
+        friend void tag_invoke(set_value_t, __any_debug_receiver&&, auto&&...);
+        friend void tag_invoke(set_error_t, __any_debug_receiver&&, auto&&) noexcept;
+        friend void tag_invoke(set_stopped_t, __any_debug_receiver&&) noexcept;
+        friend __debug_env_t<_Env> tag_invoke(get_env_t, __any_debug_receiver) noexcept;
+      };
+
+    struct connect_t {
+      struct __debug_op_state {
+        __debug_op_state(auto&&);
+        friend void tag_invoke(start_t, __debug_op_state&) noexcept;
+      };
+
       template <sender _Sender, receiver _Receiver>
-        requires tag_invocable<connect_t, _Sender, _Receiver> &&
-          operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>
+        requires tag_invocable<connect_t, _Sender, _Receiver>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(nothrow_tag_invocable<connect_t, _Sender, _Receiver>)
         -> tag_invoke_result_t<connect_t, _Sender, _Receiver> {
+        static_assert(
+          operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
+          "execution::connect(sender, receiver) must return a type that "
+          "satisfies the operation_state concept");
         return tag_invoke(connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
       }
       template <class _Awaitable, receiver _Receiver>
@@ -941,8 +987,89 @@ namespace std::execution {
         -> __connect_awaitable_::__impl::__operation_t<_Receiver> {
         return __connect_awaitable((_Awaitable&&) __await, (_Receiver&&) __rcvr);
       }
-    } connect {};
-  }
+      // This overload is purely for the purposes of debugging why a
+      // sender will not connect. Use the __debug_sender function below.
+      template <class _Sender, receiver _Receiver>
+        requires (!tag_invocable<connect_t, _Sender, _Receiver>) &&
+           (!__callable<__connect_awaitable_t, _Sender, _Receiver>) &&
+           __callable<__is_debug_env_t, env_of_t<_Receiver>>
+      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
+        -> __debug_op_state {
+        // This should generate an instantiate backtrace that contains useful
+        // debugging information.
+        using std::__tag_invoke::tag_invoke;
+        return tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+      }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // `__debug_sender`
+    // ===============
+    //
+    // Understanding why a particular sender doesn't connect to a particular
+    // receiver is nigh impossible in the current design due to limitations in
+    // how the compiler reports overload resolution failure in the presence of
+    // constraints. `__debug_sender` is a utility to assist with the process. It
+    // gives you the deep template instantiation backtrace that you need to
+    // understand where in a chain of senders the problem is occurring.
+    //
+    // ```c++
+    // template <class _Sigs, class _Env = __empty_env, class _Sender>
+    //   void __debug_sender(_Sender&& __sndr, _Env = {});
+    //
+    // template <class _Sender>
+    //   void __debug_sender(_Sender&& __sndr);
+    //
+    // template <class _Env, class _Sender>
+    //   void __debug_sender(_Sender&& __sndr, _Env);
+    // ```
+    //
+    // **Usage:**
+    //
+    // To find out where in a chain of senders, a sender is failing to connect
+    // to a receiver, pass it to `__debug_sender`, optionally with an
+    // environment argument; e.g. `__debug_sender(sndr [, env])`
+    //
+    // To find out why a sender will not connect to a receiver of a particular
+    // signature, specify the error and value types as an explicit template
+    // argument that names an instantiation of `completion_signatures`; e.g.:
+    // `__debug_sender<completion_signatures<set_value_t(int)>>(sndr [, env])`.
+    //
+    // **How it works:**
+    //
+    // The `__debug_sender` function `connect`'s the sender to a
+    // `__debug_receiver`, whose environment is augmented with a special
+    // `__is_debug_env_t` query. An additional fall-back overload is added to
+    // the `connect` CPO that recognizes receivers whose environments respond to
+    // that query and lets them through. Then in a non-immediate context, it
+    // looks for a `tag_invoke(connect_t...)` overload for the input sender and
+    // receiver. This will recurse until it hits the `tag_invoke` call that is
+    // causing the failure.
+    //
+    // At least with clang, this gives me a nice backtrace, at the bottom of
+    // which is the faulty `tag_invoke` overload with a mention of the
+    // constraint that failed.
+    template <class _Sigs, class _Env = __empty_env, class _Sender>
+      void __debug_sender(_Sender&& __sndr, _Env = {}) {
+        using _Receiver = __debug_receiver<_Env, typename _Sigs::__sigs_t>;
+        (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
+      }
+
+    template <class _Sender>
+      void __debug_sender(_Sender&& __sndr) {
+        using _Receiver = __any_debug_receiver<__empty_env>;
+        (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
+      }
+
+    template <class _Env, class _Sender>
+      void __debug_sender(_Sender&& __sndr, _Env) {
+        using _Receiver = __any_debug_receiver<_Env>;
+        (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
+      }
+  } // namespace __connect
+
+  using __connect::connect_t;
+  inline constexpr __connect::connect_t connect {};
 
   template <class _Sender, class _Receiver>
     using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
@@ -950,6 +1077,8 @@ namespace std::execution {
   template <class _Sender, class _Receiver>
     concept __has_nothrow_connect =
       noexcept(connect(__declval<_Sender>(), __declval<_Receiver>()));
+
+  using __connect::__debug_sender;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
