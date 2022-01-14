@@ -217,13 +217,13 @@ namespace std::execution {
     inline constexpr struct get_env_t {
       template <class _EnvProvider>
           requires tag_invocable<get_env_t, const _EnvProvider&>
-        auto operator()(const _EnvProvider& __with_env) const
+        constexpr auto operator()(const _EnvProvider& __with_env) const
           noexcept(nothrow_tag_invocable<get_env_t, const _EnvProvider&>)
           -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
           return tag_invoke(*this, __with_env);
         }
 
-      __empty_env operator()(const auto&) const noexcept {
+      constexpr __empty_env operator()(const auto&) const noexcept {
         return {};
       }
     } get_env {};
