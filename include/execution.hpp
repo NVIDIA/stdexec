@@ -490,7 +490,7 @@ namespace std::execution {
   inline constexpr __schedule::schedule_t schedule{};
 
   // [execution.schedulers.queries], scheduler queries
-  inline namespace __scheduler_queries {
+  namespace __scheduler_queries {
     namespace __impl {
       template <class _T>
         using __cref_t = const remove_reference_t<_T>&;
@@ -522,15 +522,14 @@ namespace std::execution {
     } // namespace __impl
 
     using __impl::forwarding_scheduler_query_t;
-    inline constexpr forwarding_scheduler_query_t forwarding_scheduler_query{};
-
     using __impl::get_forward_progress_guarantee_t;
-    inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 
     template <class _Tag>
       concept __scheduler_query =
         forwarding_scheduler_query(_Tag{});
   } // namespace __scheduler_queries
+  inline constexpr __scheduler_queries::forwarding_scheduler_query_t forwarding_scheduler_query{};
+  inline constexpr __scheduler_queries::get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 
   inline namespace __sender_queries {
     namespace __impl {
@@ -2540,7 +2539,7 @@ namespace std::execution {
         }
 
         friend execution::forward_progress_guarantee tag_invoke(
-            get_forward_progress_guarantee_t, const __scheduler&) noexcept {
+            __scheduler_queries::get_forward_progress_guarantee_t, const __scheduler&) noexcept {
           return execution::forward_progress_guarantee::parallel;
         }
 
