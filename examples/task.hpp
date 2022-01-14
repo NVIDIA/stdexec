@@ -308,15 +308,19 @@ private:
     return _task_awaitable<>{std::exchange(self.coro_, {})};
   }
 
+  using set_value_t = std::decay_t<decltype(std::execution::set_value)>;
+  using set_error_t = std::decay_t<decltype(std::execution::set_error)>;
+  using set_stopped_t = std::decay_t<decltype(std::execution::set_stopped)>;
+
   // Specify basic_task's sender traits
   //   This is only necessary when basic_task is not generally awaitable
   //   owing to constraints imposed by its Context parameter.
   template <class... Ts>
     using _task_traits_t =
       std::execution::completion_signatures<
-        std::execution::set_value_t(Ts...),
-        std::execution::set_error_t(std::exception_ptr),
-        std::execution::set_stopped_t()>;
+        set_value_t(Ts...),
+        set_error_t(std::exception_ptr),
+        set_stopped_t()>;
 
   friend auto tag_invoke(std::execution::get_sender_traits_t, const basic_task&, auto)
     -> std::conditional_t<std::is_void_v<T>, _task_traits_t<>, _task_traits_t<T>>;

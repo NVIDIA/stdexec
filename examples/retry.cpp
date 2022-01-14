@@ -19,13 +19,15 @@
 #include "./algorithms/retry.hpp"
 
 #include <cstdio>
+using set_value_t = std::decay_t<decltype(std::execution::set_value)>;
+using set_error_t = std::decay_t<decltype(std::execution::set_error)>;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
 struct fail_some
  : std::execution::completion_signatures<
-      std::execution::set_value_t(int),
-      std::execution::set_error_t(std::exception_ptr)> {
+      set_value_t(int),
+      set_error_t(std::exception_ptr)> {
   template <class R>
   struct op {
     R r_;

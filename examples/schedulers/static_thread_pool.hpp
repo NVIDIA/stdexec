@@ -51,9 +51,9 @@ namespace example {
       template <typename ReceiverId>
         friend class operation;
 
-      using set_value_t = std::decay_t<decltype(ex::set_value)>;
-      using set_error_t = std::decay_t<decltype(ex::set_error)>;
-      using set_stopped_t = std::decay_t<decltype(ex::set_stopped)>;
+      using set_value_t = std::decay_t<decltype(std::execution::set_value)>;
+      using set_error_t = std::decay_t<decltype(std::execution::set_error)>;
+      using set_stopped_t = std::decay_t<decltype(std::execution::set_stopped)>;
       using traits = std::execution::completion_signatures<
           set_value_t(),
           set_error_t(std::exception_ptr),
