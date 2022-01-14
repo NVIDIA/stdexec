@@ -48,7 +48,7 @@ struct impulse_scheduler {
         : all_commands_(all_commands)
         , receiver_((R &&) recv) {}
 
-    friend void tag_invoke(ex::start_t, oper& self) noexcept {
+    friend void tag_invoke(decltype(ex::start), oper& self) noexcept {
       // Enqueue another command to the list of all commands
       // The scheduler will start this, whenever start_next() is called
       self.all_commands_->emplace_back([&self]() {
@@ -111,7 +111,7 @@ struct inline_scheduler {
   template <typename R>
   struct oper {
     R recv_;
-    friend void tag_invoke(ex::start_t, oper& self) noexcept {
+    friend void tag_invoke(decltype(ex::start), oper& self) noexcept {
       try {
         ex::set_value((R &&) self.recv_);
       } catch (...) {
@@ -148,7 +148,7 @@ struct error_scheduler {
     R recv_;
     E err_;
 
-    friend void tag_invoke(ex::start_t, oper& self) noexcept {
+    friend void tag_invoke(decltype(ex::start), oper& self) noexcept {
       ex::set_error((R &&) self.recv_, (E &&) self.err_);
     }
   };
@@ -184,7 +184,9 @@ struct stopped_scheduler {
   template <typename R>
   struct oper {
     R recv_;
-    friend void tag_invoke(ex::start_t, oper& self) noexcept { ex::set_stopped((R &&) self.recv_); }
+    friend void tag_invoke(decltype(ex::start), oper& self) noexcept {
+      ex::set_stopped((R &&) self.recv_);
+    }
   };
 
   struct my_sender : ex::completion_signatures< //
@@ -195,7 +197,8 @@ struct stopped_scheduler {
       return {(R &&) r};
     }
 
-    friend stopped_scheduler tag_invoke(decltype(ex::get_completion_scheduler<set_value_t>), my_sender) {
+    friend stopped_scheduler tag_invoke(
+        decltype(ex::get_completion_scheduler<set_value_t>), my_sender) {
       return {};
     }
   };

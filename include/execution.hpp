@@ -631,15 +631,16 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
-  inline namespace __start {
-    inline constexpr struct start_t {
+  namespace __start {
+    struct start_t {
       template <class _O>
         requires tag_invocable<start_t, _O&>
       void operator()(_O& o) const noexcept(nothrow_tag_invocable<start_t, _O&>) {
         (void) tag_invoke(start_t{}, o);
       }
-    } start {};
+    };
   }
+  inline constexpr __start::start_t start{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
@@ -710,7 +711,7 @@ namespace std::execution {
             __coro_.destroy();
         }
 
-        friend void tag_invoke(start_t, __operation_base& __self) noexcept {
+        friend void tag_invoke(__start::start_t, __operation_base& __self) noexcept {
           __self.__coro_.resume();
         }
       };
@@ -1265,14 +1266,14 @@ namespace std::execution {
             tuple<_Ts...> __vals_;
             _Receiver __rcvr_;
 
-            friend void tag_invoke(start_t, __operation& __op_state) noexcept
+            friend void tag_invoke(__start::start_t, __operation& __op_state) noexcept
                 requires __v<__is_nothrow<_Receiver>> {
               std::apply([&__op_state](_Ts&... __ts) {
                 _CPO{}((_Receiver&&) __op_state.__rcvr_, (_Ts&&) __ts...);
               }, __op_state.__vals_);
             }
 
-            friend void tag_invoke(start_t, __operation& __op_state) noexcept try {
+            friend void tag_invoke(__start::start_t, __operation& __op_state) noexcept try {
               std::apply([&__op_state](_Ts&... __ts) {
                 _CPO{}((_Receiver&&) __op_state.__rcvr_, (_Ts&&) __ts...);
               }, __op_state.__vals_);
@@ -1641,22 +1642,22 @@ namespace std::execution {
 
           template <class _D = _Derived>
             requires __has_start<_D>
-          friend void tag_invoke(start_t, _Derived& __self) noexcept {
+          friend void tag_invoke(__start::start_t, _Derived& __self) noexcept {
             static_assert(noexcept(__self.start()));
             __self.start();
           }
 
           template <class _D = _Derived>
             requires requires {typename _D::start;}
-          friend void tag_invoke(start_t, _Derived& __self) noexcept {
+          friend void tag_invoke(__start::start_t, _Derived& __self) noexcept {
             execution::start(__c_cast<__t>(__self).base());
           }
 
-          template <__none_of<start_t> _Tag, class... _As>
+          template <__none_of<__start::start_t> _Tag, class... _As>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
-            -> __call_result_if_t<__none_of<_Tag, start_t>, _Tag, const _Base&, _As...> {
+            -> __call_result_if_t<__none_of<_Tag, __start::start_t>, _Tag, const _Base&, _As...> {
             return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
           }
 
@@ -2203,7 +2204,7 @@ namespace std::execution {
           using _Receiver = __t<_ReceiverId>;
           using __receiver_t = __receiver<_SenderId, _ReceiverId, _Fun, _Let>;
 
-          friend void tag_invoke(start_t, __operation& __self) noexcept {
+          friend void tag_invoke(__start::start_t, __operation& __self) noexcept {
             start(__self.__op_state2_);
           }
 
@@ -2364,7 +2365,7 @@ namespace std::execution {
             , __rcvr_((_Receiver&&) __rcvr)
           {}
 
-          friend void tag_invoke(start_t, __operation& __self) noexcept {
+          friend void tag_invoke(__start::start_t, __operation& __self) noexcept {
             start(__self.__op_state_);
           }
 
@@ -2471,7 +2472,7 @@ namespace std::execution {
         class __operation final : __task {
           using _Receiver = __t<_ReceiverId>;
 
-          friend void tag_invoke(start_t, __operation& __op_state) noexcept {
+          friend void tag_invoke(__start::start_t, __operation& __op_state) noexcept {
             __op_state.__start_();
           }
 
@@ -2808,7 +2809,7 @@ namespace std::execution {
             , __rcvr_((decltype(__rcvr)&&) __rcvr)
             , __state1_(connect((_CvrefSender&&) __sndr, __receiver1_t{this})) {}
 
-          friend void tag_invoke(start_t, __operation1& __op_state) noexcept {
+          friend void tag_invoke(__start::start_t, __operation1& __op_state) noexcept {
             start(__op_state.__state1_);
           }
         };
@@ -2969,7 +2970,7 @@ namespace std::execution {
           using __receiver_t = __receiver<_SchedulerId, _SenderId, _ReceiverId>;
           using __receiver_ref_t = __receiver_ref<_SchedulerId, _SenderId, _ReceiverId>;
 
-          friend void tag_invoke(start_t, __operation& __self) noexcept {
+          friend void tag_invoke(__start::start_t, __operation& __self) noexcept {
             start(std::get<0>(__self.__data_));
           }
 
@@ -3424,7 +3425,7 @@ namespace std::execution {
                 , __recvr_((_Receiver&&) __rcvr)
               {}
 
-              friend void tag_invoke(start_t, __operation& __self) noexcept {
+              friend void tag_invoke(__start::start_t, __operation& __self) noexcept {
                 // register stop callback:
                 __self.__on_stop_.emplace(
                     get_stop_token(get_env(__self.__recvr_)),
@@ -3567,7 +3568,7 @@ namespace std::execution {
     template <class _Tag, class _ReceiverId>
       struct __operation {
         __t<_ReceiverId> __rcvr_;
-        friend void tag_invoke(start_t, __operation& __self) noexcept try {
+        friend void tag_invoke(__start::start_t, __operation& __self) noexcept try {
           auto __env = get_env(__self.__rcvr_);
           set_value(std::move(__self.__rcvr_), _Tag{}(__env));
         } catch(...) {

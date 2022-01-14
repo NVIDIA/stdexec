@@ -25,7 +25,7 @@ using set_error_t = std::decay_t<decltype(ex::set_error)>;
 using set_stopped_t = std::decay_t<decltype(ex::set_stopped)>;
 
 struct oper {
-  friend void tag_invoke(ex::start_t, oper&) noexcept {}
+  friend void tag_invoke(decltype(ex::start), oper&) noexcept {}
 };
 
 struct empty_sender : ex::sender_base {};

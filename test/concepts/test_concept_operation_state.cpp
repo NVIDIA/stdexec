@@ -20,10 +20,10 @@
 namespace ex = std::execution;
 
 struct op_except {
-  friend void tag_invoke(ex::start_t, op_except) {}
+  friend void tag_invoke(decltype(ex::start), op_except) {}
 };
 struct op_noexcept {
-  friend void tag_invoke(ex::start_t, op_noexcept) noexcept {}
+  friend void tag_invoke(decltype(ex::start), op_noexcept) noexcept {}
 };
 
 TEST_CASE(

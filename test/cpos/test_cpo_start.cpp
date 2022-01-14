@@ -22,24 +22,24 @@ namespace ex = std::execution;
 struct my_oper {
   bool started_{false};
 
-  friend void tag_invoke(ex::start_t, my_oper& self) { self.started_ = true; }
+  friend void tag_invoke(decltype(ex::start), my_oper& self) { self.started_ = true; }
 };
 
 struct op_value {
   bool* started_;
-  friend void tag_invoke(ex::start_t, op_value self) { *self.started_ = true; }
+  friend void tag_invoke(decltype(ex::start), op_value self) { *self.started_ = true; }
 };
 struct op_rvalref {
   bool* started_;
-  friend void tag_invoke(ex::start_t, op_rvalref&& self) { *self.started_ = true; }
+  friend void tag_invoke(decltype(ex::start), op_rvalref&& self) { *self.started_ = true; }
 };
 struct op_ref {
   bool* started_;
-  friend void tag_invoke(ex::start_t, op_ref& self) { *self.started_ = true; }
+  friend void tag_invoke(decltype(ex::start), op_ref& self) { *self.started_ = true; }
 };
 struct op_cref {
   bool* started_;
-  friend void tag_invoke(ex::start_t, const op_cref& self) { *self.started_ = true; }
+  friend void tag_invoke(decltype(ex::start), const op_cref& self) { *self.started_ = true; }
 };
 
 TEST_CASE("can call start on an operation state", "[cpo][cpo_start]") {
@@ -49,25 +49,26 @@ TEST_CASE("can call start on an operation state", "[cpo][cpo_start]") {
 }
 
 TEST_CASE("can call start on an oper with plain value type", "[cpo][cpo_start]") {
-  static_assert(!std::invocable<ex::start_t, op_value>, "cannot call start on op_value");
+  static_assert(!std::invocable<decltype(ex::start), op_value>, "cannot call start on op_value");
   bool started{false};
   op_value op{&started};
   ex::start(op);
   REQUIRE(started);
 }
 TEST_CASE("can call start on an oper with r-value ref type", "[cpo][cpo_start]") {
-  static_assert(
-      !std::invocable<ex::start_t, op_rvalref&&>, "should not be able to call start on op_rvalref");
+  static_assert(!std::invocable<decltype(ex::start), op_rvalref&&>,
+      "should not be able to call start on op_rvalref");
 }
 TEST_CASE("can call start on an oper with ref type", "[cpo][cpo_start]") {
-  static_assert(std::invocable<ex::start_t, op_ref&>, "cannot call start on op_ref");
+  static_assert(std::invocable<decltype(ex::start), op_ref&>, "cannot call start on op_ref");
   bool started{false};
   op_ref op{&started};
   ex::start(op);
   REQUIRE(started);
 }
 TEST_CASE("can call start on an oper with const ref type", "[cpo][cpo_start]") {
-  static_assert(std::invocable<ex::start_t, const op_cref&>, "cannot call start on op_cref");
+  static_assert(
+      std::invocable<decltype(ex::start), const op_cref&>, "cannot call start on op_cref");
   bool started{false};
   const op_cref op{&started};
   ex::start(op);
@@ -75,5 +76,5 @@ TEST_CASE("can call start on an oper with const ref type", "[cpo][cpo_start]") {
 }
 
 TEST_CASE("tag types can be deduced from ex::start", "[cpo][cpo_start]") {
-  static_assert(std::is_same_v<const ex::start_t, decltype(ex::start)>, "type mismatch");
+  static_assert(std::is_same_v<const decltype(ex::start), decltype(ex::start)>, "type mismatch");
 }

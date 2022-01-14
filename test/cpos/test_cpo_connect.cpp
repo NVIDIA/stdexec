@@ -28,7 +28,7 @@ struct op_state {
   int val_;
   R recv_;
 
-  friend void tag_invoke(ex::start_t, op_state& self) noexcept {
+  friend void tag_invoke(decltype(ex::start), op_state& self) noexcept {
     ex::set_value((R &&) self.recv_, self.val_);
   }
 };

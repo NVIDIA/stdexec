@@ -174,7 +174,7 @@ namespace example {
         pool_.enqueue(op);
       }
 
-      friend void tag_invoke(std::execution::start_t, operation& op) noexcept {
+      friend void tag_invoke(decltype(std::execution::start), operation& op) noexcept {
         op.enqueue_(&op);
       }
     };
