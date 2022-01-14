@@ -260,7 +260,7 @@ namespace std::execution {
   }
   using __sender_base::sender_base;
 
-  inline namespace __sender_traits {
+  namespace __sender_traits {
     namespace __impl {
       struct get_sender_traits_t;
 
@@ -321,14 +321,14 @@ namespace std::execution {
       using __is_valid_sender_traits = _Traits;
 
     using __impl::get_sender_traits_t;
-    inline constexpr get_sender_traits_t get_sender_traits {};
   } // namespace __sender_traits
+  inline constexpr __sender_traits::get_sender_traits_t get_sender_traits {};
 
   template <class _Sender, class _Env>
     using __sender_traits_t =
-      __is_valid_sender_traits<
+      __sender_traits::__is_valid_sender_traits<
         __call_result_t<
-          get_sender_traits_t,
+          __sender_traits::get_sender_traits_t,
           _Sender,
           _Env>>;
 
@@ -344,7 +344,7 @@ namespace std::execution {
     concept typed_sender =
       sender<_Sender> &&
       __valid<__sender_traits_t, _Sender, _Env> &&
-      __has_sender_types<__sender_traits_t<_Sender, _Env>>;
+      __sender_traits::__has_sender_types<__sender_traits_t<_Sender, _Env>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
@@ -1301,11 +1301,11 @@ namespace std::execution {
 
         template <class... _Ts>
         completion_signatures<__receiver_cpo::set_value_t(_Ts...), __receiver_cpo::set_error_t(exception_ptr)>
-        tag_invoke(get_sender_traits_t, const __sender<__receiver_cpo::set_value_t, _Ts...>&, auto) noexcept;
+        tag_invoke(__sender_traits::get_sender_traits_t, const __sender<__receiver_cpo::set_value_t, _Ts...>&, auto) noexcept;
 
         template <class _Tag, class... _Ts>
         completion_signatures<_Tag(_Ts...)>
-        tag_invoke(get_sender_traits_t, const __sender<_Tag, _Ts...>&, auto) noexcept;
+        tag_invoke(__sender_traits::get_sender_traits_t, const __sender<_Tag, _Ts...>&, auto) noexcept;
     }
 
     inline constexpr struct __just_t {
@@ -1836,7 +1836,7 @@ namespace std::execution {
 
           template <class _Env>
           friend __traits<_Sender, _Env, _Fun>
-          tag_invoke(get_sender_traits_t, const __sender&, _Env);
+          tag_invoke(__sender_traits::get_sender_traits_t, const __sender&, _Env);
 
          public:
           explicit __sender(_Sender __sndr, _Fun __fun)
@@ -2267,7 +2267,7 @@ namespace std::execution {
             }
 
           template <__decays_to<__sender> _Self, class _Env>
-            friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
+            friend auto tag_invoke(__sender_traits::get_sender_traits_t, _Self&&, _Env)
               -> __traits<__member_t<_Self, _Sender>, _Env, _Fun, _Let>;
 
           _Sender __sndr_;
@@ -2424,7 +2424,7 @@ namespace std::execution {
             }
 
           template <__decays_to<__sender> _Self, class _Env>
-            friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
+            friend auto tag_invoke(__sender_traits::get_sender_traits_t, _Self&&, _Env)
               -> __traits_t<_Self, _Env>;
 
           _Sender __sndr_;
@@ -2843,7 +2843,7 @@ namespace std::execution {
           }
 
           template <__decays_to<__sender> _Self, class _Env>
-            friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
+            friend auto tag_invoke(__sender_traits::get_sender_traits_t, _Self&&, _Env)
               -> sender_traits_t<__member_t<_Self, _Sender>, _Env>;
         };
     } // namespace __impl
@@ -3031,7 +3031,7 @@ namespace std::execution {
           }
 
           template <__decays_to<__sender> _Self, class _Env>
-          friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
+          friend auto tag_invoke(__sender_traits::get_sender_traits_t, _Self&&, _Env)
             -> sender_traits_t<
                 __member_t<_Self, _Sender>,
                 make_env_t<get_scheduler_t, _Scheduler, _Env>>;
@@ -3154,7 +3154,7 @@ namespace std::execution {
           }
 
           template <class _Env>
-            friend auto tag_invoke(get_sender_traits_t, const __sender&, _Env)
+            friend auto tag_invoke(__sender_traits::get_sender_traits_t, const __sender&, _Env)
               -> __traits<_Sender, _Env>;
 
          public:
@@ -3479,7 +3479,7 @@ namespace std::execution {
             }
 
           template <__decays_to<__sender> _Self, class _Env>
-            friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
+            friend auto tag_invoke(__sender_traits::get_sender_traits_t, _Self&&, _Env)
               -> __traits<__member_t<_Self, __env_t<_Env>>>;
 
           tuple<__t<_SenderIds>...> __sndrs_;
@@ -3588,11 +3588,11 @@ namespace std::execution {
           return {(_Receiver&&) __rcvr};
         }
 
-        friend auto tag_invoke(get_sender_traits_t, __sender, auto)
-          -> __empty_sender_traits;
+        friend auto tag_invoke(__sender_traits::get_sender_traits_t, __sender, auto)
+          -> __sender_traits::__empty_sender_traits;
         template <__none_of<no_env> _Env>
           requires __callable<_Tag, _Env>
-        friend auto tag_invoke(get_sender_traits_t, __sender, _Env)
+        friend auto tag_invoke(__sender_traits::get_sender_traits_t, __sender, _Env)
           -> completion_signatures<
               __receiver_cpo::set_value_t(__call_result_t<_Tag, _Env>),
               __receiver_cpo::set_error_t(exception_ptr)>;

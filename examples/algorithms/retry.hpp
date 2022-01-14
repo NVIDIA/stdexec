@@ -101,7 +101,7 @@ struct _retry_sender {
   }
 
   template <class Env>
-  friend auto tag_invoke(stdex::get_sender_traits_t, const _retry_sender&, Env)
+  friend auto tag_invoke(decltype(stdex::get_sender_traits), const _retry_sender&, Env)
     -> stdex::sender_traits_t<const S&, Env>;
 };
 
