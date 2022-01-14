@@ -167,7 +167,7 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC
   // env_of
-  inline namespace __env {
+  namespace __env {
     namespace __impl {
       struct __empty_env {};
       struct no_env {
@@ -216,7 +216,7 @@ namespace std::execution {
     using __impl::no_env;
 
     // For getting an evaluation environment from a receiver
-    inline constexpr struct get_env_t {
+    struct get_env_t {
       template <class _EnvProvider>
           requires tag_invocable<get_env_t, const _EnvProvider&>
         auto operator()(const _EnvProvider& __with_env) const
@@ -228,18 +228,22 @@ namespace std::execution {
       __empty_env operator()(const auto&) const noexcept {
         return {};
       }
-    } get_env {};
+    };
 
     // For making an evaluation environment from a key/value pair, and optionally
     // another environment.
     template <__class _Tag>
       inline constexpr __impl::__make_env_t<_Tag> make_env {};
   } // namespace __env
+  inline constexpr __env::get_env_t get_env{};
+  using __env::no_env;
+  using __env::make_env;
+
 
   template <class _EnvProvider>
     using env_of_t = decay_t<decltype(get_env(__declval<_EnvProvider>()))>;
 
-  template <__class _Tag, class _Value, class _BaseEnv = __empty_env>
+  template <__class _Tag, class _Value, class _BaseEnv = __env::__empty_env>
     using make_env_t =
       decltype(make_env<_Tag>(__declval<_Value>(), __declval<_BaseEnv>()));
 
@@ -756,7 +760,7 @@ namespace std::execution {
           }
 
           // Pass through the get_env receiver query
-          friend auto tag_invoke(get_env_t, const __promise& __self)
+          friend auto tag_invoke(__env::get_env_t, const __promise& __self)
             -> env_of_t<_Receiver> {
             return get_env(__self.__rcvr_);
           }
@@ -1013,7 +1017,7 @@ namespace std::execution {
             }
 
             // Forward get_env query to the coroutine promise
-            friend auto tag_invoke(get_env_t, const __receiver& __self)
+            friend auto tag_invoke(__env::get_env_t, const __receiver& __self)
               -> env_of_t<_Promise> {
               auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
                 __self.__continuation_.address());
@@ -1193,7 +1197,7 @@ namespace std::execution {
               return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
             }
             // Forward all receiever queries.
-            friend auto tag_invoke(get_env_t, const __receiver& __self)
+            friend auto tag_invoke(__env::get_env_t, const __receiver& __self)
               -> env_of_t<_Receiver> {
               return get_env((const _Receiver&) __self.__op_state_->__rcvr_);
             }
@@ -1615,7 +1619,7 @@ namespace std::execution {
 
           // Pass through the get_env receiver query
           template <class _D = _Derived>
-          friend auto tag_invoke(get_env_t, const _Derived& __self)
+          friend auto tag_invoke(__env::get_env_t, const _Derived& __self)
             -> env_of_t<__base_t<const _D&>> {
             return get_env(__get_base(__self));
           }
@@ -2187,7 +2191,7 @@ namespace std::execution {
               set_error(std::move(__self).base(), current_exception());
             }
 
-          friend auto tag_invoke(get_env_t, const __receiver& __self)
+          friend auto tag_invoke(__env::get_env_t, const __receiver& __self)
             -> env_of_t<_Receiver> {
             return get_env(__self.base());
           }
@@ -2739,7 +2743,7 @@ namespace std::execution {
             _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_, (_Args&&) __args...);
           }
 
-          friend auto tag_invoke(get_env_t, const __receiver2& __self)
+          friend auto tag_invoke(__env::get_env_t, const __receiver2& __self)
             -> env_of_t<_Receiver> {
             return get_env(__self.__op_state_->__rcvr_);
           }
@@ -2779,7 +2783,7 @@ namespace std::execution {
             set_error((_Receiver&&) __self.__op_state_->__rcvr_, current_exception());
           }
 
-          friend auto tag_invoke(get_env_t, const __receiver1& __self)
+          friend auto tag_invoke(__env::get_env_t, const __receiver1& __self)
             -> env_of_t<_Receiver> {
             return get_env(__self.__op_state_->__rcvr_);
           }
@@ -2917,7 +2921,7 @@ namespace std::execution {
             return __op_state_->__rcvr_;
           }
           friend auto tag_invoke(
-              get_env_t, const __receiver_ref& __self)
+              __env::get_env_t, const __receiver_ref& __self)
             -> make_env_t<get_scheduler_t, _Scheduler, env_of_t<_Receiver>> {
             return make_env<get_scheduler_t>(
               __self.__op_state_->__scheduler_,
@@ -3273,7 +3277,7 @@ namespace std::execution {
                 }
                 __op_state_->__arrive();
               }
-              friend auto tag_invoke(get_env_t, const __receiver& __self)
+              friend auto tag_invoke(__env::get_env_t, const __receiver& __self)
                 -> __env_t<env_of_t<_Receiver>> {
                 return make_env<get_stop_token_t>(
                   __self.__op_state_->__stop_source_.get_token(),
@@ -3681,7 +3685,7 @@ namespace std::this_thread {
             __rcvr.__loop_->finish();
           }
           friend __env
-          tag_invoke(execution::get_env_t, const __receiver& __rcvr) noexcept {
+          tag_invoke(execution::__env::get_env_t, const __receiver& __rcvr) noexcept {
             return {__rcvr.__loop_->get_scheduler()};
           }
         };

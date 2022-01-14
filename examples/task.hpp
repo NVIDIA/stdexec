@@ -256,7 +256,7 @@ private:
     }
     using _context_t =
       typename Context::template promise_context_t<_promise>;
-    friend _context_t tag_invoke(std::execution::get_env_t, const _promise& self) {
+    friend _context_t tag_invoke(decltype(std::execution::get_env), const _promise& self) {
       return self.context_;
     }
     _context_t context_;
