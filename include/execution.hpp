@@ -135,7 +135,7 @@ namespace std::execution {
         requires { typename __id<decltype(__test((_Sig*) nullptr))>; };
 
     template <class... _Sigs>
-      struct completion_signatures {
+      struct __ {
         struct type {
           template <template <class...> class _Tuple, template <class...> class _Variant>
             using value_types =
@@ -153,16 +153,17 @@ namespace std::execution {
             __minvoke<
               __concat<__count>,
               __signal_args_t<_Sigs, set_stopped_t>...>::value != 0;
+
+          using __sigs_t = __types<_Sigs...>;
         };
       };
   } // namespace __completion_signatures
 
   template <__completion_signatures::__completion_signal... _Sigs>
     using completion_signatures =
-      __t<__completion_signatures::completion_signatures<_Sigs...>>;
+      __t<__minvoke<__q<__completion_signatures::__>, _Sigs...>>;
 
   /////////////////////////////////////////////////////////////////////////////
-  // NOT TO SPEC
   // env_of
   inline namespace __env {
     namespace __impl {
@@ -216,13 +217,13 @@ namespace std::execution {
     inline constexpr struct get_env_t {
       template <class _EnvProvider>
           requires tag_invocable<get_env_t, const _EnvProvider&>
-        auto operator()(const _EnvProvider& __with_env) const
+        constexpr auto operator()(const _EnvProvider& __with_env) const
           noexcept(nothrow_tag_invocable<get_env_t, const _EnvProvider&>)
           -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
           return tag_invoke(*this, __with_env);
         }
 
-      __empty_env operator()(const auto&) const noexcept {
+      constexpr __empty_env operator()(const auto&) const noexcept {
         return {};
       }
     } get_env {};
@@ -466,6 +467,110 @@ namespace std::execution {
     concept __single_typed_sender =
       typed_sender<_Sender, _Env> &&
       __valid<__single_sender_value_t, _Sender, _Env>;
+
+  /////////////////////////////////////////////////////////////////////////////
+  namespace __completion_signatures {
+    template <class... _Args>
+      using __set_value_sig = set_value_t(_Args...);
+
+    template <class _Err>
+      using __set_error_sig = set_error_t(_Err);
+
+    template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, class _SendsStopped>
+    using __compl_sigs_t =
+      __minvoke<
+        __concat<__remove<void, __munique<__q<completion_signatures>>>>,
+        typename _Sigs::__sigs_t,
+        __value_types_of_t<_Sender, _Env, _SetValue, __q<__types>>,
+        __error_types_of_t<_Sender, _Env, __transform<_SetError, __q<__types>>>,
+        __if<_SendsStopped, __types<set_stopped_t()>, __types<>>>;
+
+    template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, bool _SendsStopped>
+    auto __make() ->
+        __compl_sigs_t<
+          _Sender, _Env, _Sigs, _SetValue, _SetError, __bool<_SendsStopped>>
+        requires true;
+
+    template<class, class _Env, class, class, class, bool>
+    auto __make() -> __empty_sender_traits;
+  } // namespace __completion_signatures
+
+  /////////////////////////////////////////////////////////////////////////////
+  // NOT TO SPEC
+  //
+  // make_completion_signatures
+  // ==========================
+  //
+  // `make_completion_signatures` takes a sender, and environment, and a bunch
+  // of other template arguments for munging the completion signatures of a
+  // sender in interesting ways.
+  //
+  //  ```c++
+  //  template <class... Args>
+  //    using __default_set_value = set_value_t(Args...);
+  //
+  //  template <class Err>
+  //    using __default_set_error = set_error_t(Err);
+  //
+  //  template <
+  //    sender Sndr,
+  //    class Env = no_env,
+  //    class AddlSigs = completion_signatures<>,
+  //    template <class...> class SetValue = __default_set_value,
+  //    template <class> class SetError = __default_set_error,
+  //    bool SendsStopped = sender_traits_t<Sndr, Env>::sends_stopped>
+  //      requires typed_sender<Sndr, Env>
+  //  using make_completion_signatures =
+  //    completion_signatures< ... >;
+  //  ```
+  //
+  //  * `SetValue` : an alias template that accepts a set of value types and
+  //    returns a function type of the form `set_value_t(Types...)`, or `void`
+  //    to mean "no signature".
+  //  * `SetError` : an alias template that accepts an error types and returns a
+  //    function type of the form `set_error_t(T)` or `void` to mean "no
+  //    signature".
+  //  * `SendsStopped` : a bool that controls whether the signature
+  //    `set_stopped_t()` will be added to the list of completion signatures or
+  //    not.
+  //  * `AddlSigs` : an instantiation of `completion_signatures` with a list of
+  //    completion signatures `Sigs...` to the added to the list.
+  //
+  //  `make_completion_signatures` does the following:
+  //  * Let `Vs...` be a pack of the non-`void` types in the `__typelist` named
+  //    by `value_types_of_t<Sndr, Env, SetValue, __typelist>`.
+  //  * Let `Es...` be a pack of the non-`void` types in the `__typelist` named
+  //    by `error_types_of_t<Sndr, Env, __errorlist>`, where `__errorlist` is an
+  //    alias template such that `__errorlist<Ts...>` names
+  //    `__typelist<SetError<Ts>...>`.
+  //  * Let `Ss...` be an empty pack if `SendsStopped` is `false`; otherwise, a
+  //    pack containing the single type `set_stopped_t()`.
+  //  * Let `MoreSigs...` be a pack of the template arguments of the
+  //    `completion_signatures` instantiation named by `AddlSigs`.
+  //
+  //  Then `make_completion_signatures<Sndr, Env, AddlSigs, SetValue, SetDone,
+  //  SendsStopped>` names the type `completion_signatures< Sigs... >` where
+  //  `Sigs...` is the unique set of types in `[Vs..., Es..., Ss...,
+  //  MoreSigs...]`.
+  //
+  //  If any of the above type computations are ill-formed,
+  //  `make_completion_signatures<Sndr, Env, AddlSigs, SetValue, SetDone,
+  //  SendsStopped>` is an alias for an empty struct
+  template<
+    class _Sender,
+    class _Env = no_env,
+    class _Sigs = completion_signatures<>,
+    template <class...> class _SetValue = __completion_signatures::__set_value_sig,
+    template <class> class _SetError = __completion_signatures::__set_error_sig,
+    bool _SendsStopped = __v<__sends_stopped<_Sender, _Env>>>
+      requires typed_sender<_Sender, _Env>
+  using make_completion_signatures =
+    decltype(__completion_signatures::
+      __make<_Sender, _Env, _Sigs, __q<_SetValue>, __q1<_SetError>, _SendsStopped>());
+
+  // Needed fairly often
+  using __with_exception_ptr =
+    completion_signatures<set_error_t(exception_ptr)>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
@@ -819,14 +924,60 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
-  inline namespace __connect {
-    inline constexpr struct connect_t {
+  namespace __connect {
+    struct __is_debug_env_t {
+      template <class _Env>
+          requires tag_invocable<__is_debug_env_t, _Env>
+        void operator()(_Env&&) const noexcept;
+    };
+    template <class _Env>
+      using __debug_env_t =
+        make_env_t<__is_debug_env_t, int, _Env>;
+
+    struct __debug_receiver_base {};
+
+    template <class _Sig>
+      struct __completion;
+
+    template <class _Tag, class... _Args>
+      struct __completion<_Tag(_Args...)> {
+        friend void tag_invoke(_Tag, __debug_receiver_base&&, _Args&&...) noexcept;
+      };
+
+    template <class _Env, class _Sigs>
+      struct __debug_receiver;
+
+    template <class _Env, class... _Sigs>
+      struct __debug_receiver<_Env, __types<_Sigs...>>
+        : __debug_receiver_base, __completion<_Sigs>... {
+        friend void tag_invoke(set_error_t, __debug_receiver&&, exception_ptr) noexcept;
+        friend void tag_invoke(set_stopped_t, __debug_receiver&&) noexcept;
+        friend __debug_env_t<_Env> tag_invoke(get_env_t, __debug_receiver) noexcept;
+      };
+
+    template <class _Env>
+      struct __any_debug_receiver {
+        friend void tag_invoke(set_value_t, __any_debug_receiver&&, auto&&...);
+        friend void tag_invoke(set_error_t, __any_debug_receiver&&, auto&&) noexcept;
+        friend void tag_invoke(set_stopped_t, __any_debug_receiver&&) noexcept;
+        friend __debug_env_t<_Env> tag_invoke(get_env_t, __any_debug_receiver) noexcept;
+      };
+
+    struct connect_t {
+      struct __debug_op_state {
+        __debug_op_state(auto&&);
+        friend void tag_invoke(start_t, __debug_op_state&) noexcept;
+      };
+
       template <sender _Sender, receiver _Receiver>
-        requires tag_invocable<connect_t, _Sender, _Receiver> &&
-          operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>
+        requires tag_invocable<connect_t, _Sender, _Receiver>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(nothrow_tag_invocable<connect_t, _Sender, _Receiver>)
         -> tag_invoke_result_t<connect_t, _Sender, _Receiver> {
+        static_assert(
+          operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
+          "execution::connect(sender, receiver) must return a type that "
+          "satisfies the operation_state concept");
         return tag_invoke(connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
       }
       template <class _Awaitable, receiver _Receiver>
@@ -836,8 +987,89 @@ namespace std::execution {
         -> __connect_awaitable_::__impl::__operation_t<_Receiver> {
         return __connect_awaitable((_Awaitable&&) __await, (_Receiver&&) __rcvr);
       }
-    } connect {};
-  }
+      // This overload is purely for the purposes of debugging why a
+      // sender will not connect. Use the __debug_sender function below.
+      template <class _Sender, receiver _Receiver>
+        requires (!tag_invocable<connect_t, _Sender, _Receiver>) &&
+           (!__callable<__connect_awaitable_t, _Sender, _Receiver>) &&
+           __callable<__is_debug_env_t, env_of_t<_Receiver>>
+      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
+        -> __debug_op_state {
+        // This should generate an instantiate backtrace that contains useful
+        // debugging information.
+        using std::__tag_invoke::tag_invoke;
+        return tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+      }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // `__debug_sender`
+    // ===============
+    //
+    // Understanding why a particular sender doesn't connect to a particular
+    // receiver is nigh impossible in the current design due to limitations in
+    // how the compiler reports overload resolution failure in the presence of
+    // constraints. `__debug_sender` is a utility to assist with the process. It
+    // gives you the deep template instantiation backtrace that you need to
+    // understand where in a chain of senders the problem is occurring.
+    //
+    // ```c++
+    // template <class _Sigs, class _Env = __empty_env, class _Sender>
+    //   void __debug_sender(_Sender&& __sndr, _Env = {});
+    //
+    // template <class _Sender>
+    //   void __debug_sender(_Sender&& __sndr);
+    //
+    // template <class _Env, class _Sender>
+    //   void __debug_sender(_Sender&& __sndr, _Env);
+    // ```
+    //
+    // **Usage:**
+    //
+    // To find out where in a chain of senders, a sender is failing to connect
+    // to a receiver, pass it to `__debug_sender`, optionally with an
+    // environment argument; e.g. `__debug_sender(sndr [, env])`
+    //
+    // To find out why a sender will not connect to a receiver of a particular
+    // signature, specify the error and value types as an explicit template
+    // argument that names an instantiation of `completion_signatures`; e.g.:
+    // `__debug_sender<completion_signatures<set_value_t(int)>>(sndr [, env])`.
+    //
+    // **How it works:**
+    //
+    // The `__debug_sender` function `connect`'s the sender to a
+    // `__debug_receiver`, whose environment is augmented with a special
+    // `__is_debug_env_t` query. An additional fall-back overload is added to
+    // the `connect` CPO that recognizes receivers whose environments respond to
+    // that query and lets them through. Then in a non-immediate context, it
+    // looks for a `tag_invoke(connect_t...)` overload for the input sender and
+    // receiver. This will recurse until it hits the `tag_invoke` call that is
+    // causing the failure.
+    //
+    // At least with clang, this gives me a nice backtrace, at the bottom of
+    // which is the faulty `tag_invoke` overload with a mention of the
+    // constraint that failed.
+    template <class _Sigs, class _Env = __empty_env, class _Sender>
+      void __debug_sender(_Sender&& __sndr, _Env = {}) {
+        using _Receiver = __debug_receiver<_Env, typename _Sigs::__sigs_t>;
+        (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
+      }
+
+    template <class _Sender>
+      void __debug_sender(_Sender&& __sndr) {
+        using _Receiver = __any_debug_receiver<__empty_env>;
+        (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
+      }
+
+    template <class _Env, class _Sender>
+      void __debug_sender(_Sender&& __sndr, _Env) {
+        using _Receiver = __any_debug_receiver<_Env>;
+        (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
+      }
+  } // namespace __connect
+
+  using __connect::connect_t;
+  inline constexpr __connect::connect_t connect {};
 
   template <class _Sender, class _Receiver>
     using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
@@ -845,6 +1077,8 @@ namespace std::execution {
   template <class _Sender, class _Receiver>
     concept __has_nothrow_connect =
       noexcept(connect(__declval<_Sender>(), __declval<_Receiver>()));
+
+  using __connect::__debug_sender;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
@@ -1775,37 +2009,6 @@ namespace std::execution {
           {}
         };
 
-      template <class, class, class>
-        struct __traits {};
-
-      template <class _Sender, class _Env, class _Fun>
-          requires typed_sender<_Sender, _Env> &&
-            __valid<__tfx_sender_values, _Sender, _Env, _Fun>
-        struct __traits<_Sender, _Env, _Fun> {
-          template <template <class...> class _Tuple, template <class...> class _Variant>
-            using value_types =
-              __tfx_sender_values<
-                _Sender,
-                _Env,
-                _Fun,
-                __q1<__id>,
-                __transform<
-                  __q<__types>,
-                  __replace<
-                    __types<void>,
-                    __types<>,
-                    __transform<__uncurry<__q<_Tuple>>, __q<_Variant>>>>>;
-
-          template <template <class...> class _Variant>
-            using error_types =
-              __minvoke2<
-                __push_back_unique<__q<_Variant>>,
-                error_types_of_t<_Sender, _Env, __types>,
-                exception_ptr>;
-
-          static constexpr bool sends_stopped = __v<__sends_stopped<_Sender, _Env>>;
-        };
-
       template <class _SenderId, class _Fun>
         class __sender
           : sender_adaptor<__sender<_SenderId, _Fun>, __t<_SenderId>> {
@@ -1827,9 +2030,19 @@ namespace std::execution {
                 __receiver<_Receiver>{(_Receiver&&) __rcvr, (_Fun&&) __fun_});
           }
 
+          template <class _Result>
+          using __set_value =
+            __minvoke1<
+              __uncurry<__qf<set_value_t>>,
+              __if<is_void<_Result>, __types<>, __types<_Result>>>;
+          template <class... _Args>
+              requires invocable<_Fun, _Args...>
+            using __result = __set_value<invoke_result_t<_Fun, _Args...>>;
+
           template <class _Env>
-          friend __traits<_Sender, _Env, _Fun>
-          tag_invoke(get_sender_traits_t, const __sender&, _Env);
+          friend auto tag_invoke(get_sender_traits_t, const __sender&, _Env) ->
+            make_completion_signatures<
+              _Sender, _Env, __with_exception_ptr, __result>;
 
          public:
           explicit __sender(_Sender __sndr, _Fun __fun)
