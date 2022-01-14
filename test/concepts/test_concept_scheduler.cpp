@@ -28,8 +28,7 @@ struct my_scheduler {
                          set_error_t(std::exception_ptr), //
                          set_stopped_t()> {
 
-    template <typename CPO>
-    friend my_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
+    friend my_scheduler tag_invoke(decltype(ex::get_completion_scheduler<set_value_t>), my_sender) {
       return {};
     }
   };
@@ -58,8 +57,8 @@ struct my_scheduler_except {
                          set_value_t(),                   //
                          set_error_t(std::exception_ptr), //
                          set_stopped_t()> {
-    template <typename CPO>
-    friend my_scheduler_except tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
+    friend my_scheduler_except tag_invoke(
+        decltype(ex::get_completion_scheduler<set_value_t>), my_sender) {
       return {};
     }
   };
@@ -83,7 +82,7 @@ struct noeq_sched {
                          set_error_t(std::exception_ptr), //
                          set_stopped_t()> {
     template <typename CPO>
-    friend noeq_sched tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
+    friend noeq_sched tag_invoke(decltype(ex::get_completion_scheduler<CPO>), my_sender) {
       return {};
     }
   };
@@ -100,7 +99,8 @@ struct sched_no_completion {
                          set_value_t(),                   //
                          set_error_t(std::exception_ptr), //
                          set_stopped_t()> {
-    friend sched_no_completion tag_invoke(ex::get_completion_scheduler_t<set_error_t>, my_sender) {
+    friend sched_no_completion tag_invoke(
+        decltype(ex::get_completion_scheduler<set_error_t>), my_sender) {
       return {};
     }
   };

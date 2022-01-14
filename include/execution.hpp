@@ -531,7 +531,7 @@ namespace std::execution {
   inline constexpr __scheduler_queries::forwarding_scheduler_query_t forwarding_scheduler_query{};
   inline constexpr __scheduler_queries::get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 
-  inline namespace __sender_queries {
+  namespace __sender_queries {
     namespace __impl {
       template <__one_of<__receiver_cpo::set_value_t, __receiver_cpo::set_error_t, __receiver_cpo::set_stopped_t> _CPO>
         struct get_completion_scheduler_t;
@@ -545,7 +545,7 @@ namespace std::execution {
     concept scheduler =
       copy_constructible<remove_cvref_t<_Scheduler>> &&
       equality_comparable<remove_cvref_t<_Scheduler>> &&
-      requires(_Scheduler&& __sched, const get_completion_scheduler_t<__receiver_cpo::set_value_t> __tag) {
+      requires(_Scheduler&& __sched, const __sender_queries::get_completion_scheduler_t<__receiver_cpo::set_value_t> __tag) {
         { schedule((_Scheduler&&) __sched) } -> sender;
         { tag_invoke(__tag, schedule((_Scheduler&&) __sched)) } -> same_as<remove_cvref_t<_Scheduler>>;
       };
@@ -908,7 +908,7 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.queries], sender queries
-  inline namespace __sender_queries {
+  namespace __sender_queries {
     namespace __impl {
       template <__one_of<__receiver_cpo::set_value_t, __receiver_cpo::set_error_t, __receiver_cpo::set_stopped_t> _CPO>
         struct get_completion_scheduler_t {
@@ -942,23 +942,21 @@ namespace std::execution {
     using __impl::get_completion_scheduler_t;
     using __impl::forwarding_sender_query_t;
 
-    template <__one_of<__receiver_cpo::set_value_t, __receiver_cpo::set_error_t, __receiver_cpo::set_stopped_t> _CPO>
-      inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
-
-    inline constexpr forwarding_sender_query_t forwarding_sender_query{};
-
     template <class _Tag>
       concept __sender_query =
         forwarding_sender_query(_Tag{});
   } // namespace __sender_queries
+  template <__one_of<__receiver_cpo::set_value_t, __receiver_cpo::set_error_t, __receiver_cpo::set_stopped_t> _CPO>
+  inline constexpr __sender_queries::get_completion_scheduler_t<_CPO> get_completion_scheduler{};
+  inline constexpr __sender_queries::forwarding_sender_query_t forwarding_sender_query{};
 
   template <class _Sender, class _CPO>
     concept __has_completion_scheduler =
-      __callable<get_completion_scheduler_t<_CPO>, _Sender>;
+      __callable<__sender_queries::get_completion_scheduler_t<_CPO>, _Sender>;
 
   template <class _Sender, class _CPO>
     using __completion_scheduler_for =
-      __call_result_t<get_completion_scheduler_t<_CPO>, _Sender>;
+      __call_result_t<__sender_queries::get_completion_scheduler_t<_CPO>, _Sender>;
 
   template <class _Fun, class _CPO, class _Sender, class... _As>
     concept __tag_invocable_with_completion_scheduler =
@@ -1509,11 +1507,11 @@ namespace std::execution {
             return execution::connect(((_Self&&) __self).base(), (_Receiver&&) __rcvr);
           }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
-            -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Base&, _As...> {
+            -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Base&, _As...> {
             return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
           }
 
@@ -2258,11 +2256,11 @@ namespace std::execution {
               };
             }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
               requires __callable<_Tag, const _Sender&, _As...>
             friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
               noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
-              -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+              -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
 
@@ -2415,11 +2413,11 @@ namespace std::execution {
               return __operation_t<_Self, _Receiver>{((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
             }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
               requires __callable<_Tag, const _Sender&, _As...>
             friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
               noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
-              -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+              -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
 
@@ -2518,7 +2516,7 @@ namespace std::execution {
 
           template <class _CPO>
           friend __scheduler
-          tag_invoke(get_completion_scheduler_t<_CPO>, const __schedule_task& __self) noexcept {
+          tag_invoke(__sender_queries::get_completion_scheduler_t<_CPO>, const __schedule_task& __self) noexcept {
             return __scheduler{__self.__loop_};
           }
 
@@ -2830,15 +2828,15 @@ namespace std::execution {
           }
 
           template <__one_of<__receiver_cpo::set_value_t, __receiver_cpo::set_stopped_t> _Tag>
-          friend _Scheduler tag_invoke(get_completion_scheduler_t<_Tag>, const __sender& __self) noexcept {
+          friend _Scheduler tag_invoke(__sender_queries::get_completion_scheduler_t<_Tag>, const __sender& __self) noexcept {
             return __self.__sched_;
           }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
-            -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+            -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 
@@ -3022,11 +3020,11 @@ namespace std::execution {
                     (_Receiver&&) __rcvr};
           }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
-            -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+            -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 

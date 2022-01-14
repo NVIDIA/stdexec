@@ -72,9 +72,16 @@ namespace example {
           return s.make_operation_((Receiver &&) r);
         }
 
-        template <class CPO>
         friend static_thread_pool::scheduler
-        tag_invoke(std::execution::get_completion_scheduler_t<CPO>, sender s) noexcept {
+        tag_invoke(decltype(std::execution::get_completion_scheduler<set_value_t>), sender s) noexcept {
+          return static_thread_pool::scheduler{s.pool_};
+        }
+        friend static_thread_pool::scheduler
+        tag_invoke(decltype(std::execution::get_completion_scheduler<set_error_t>), sender s) noexcept {
+          return static_thread_pool::scheduler{s.pool_};
+        }
+        friend static_thread_pool::scheduler
+        tag_invoke(decltype(std::execution::get_completion_scheduler<set_stopped_t>), sender s) noexcept {
           return static_thread_pool::scheduler{s.pool_};
         }
 

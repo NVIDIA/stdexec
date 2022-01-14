@@ -76,7 +76,8 @@ struct impulse_scheduler {
       return {self.all_commands_, (R &&) r};
     }
 
-    friend impulse_scheduler tag_invoke(ex::get_completion_scheduler_t<set_value_t>, my_sender) {
+    friend impulse_scheduler tag_invoke(
+        decltype(ex::get_completion_scheduler<set_value_t>), my_sender) {
       return {};
     }
   };
@@ -127,7 +128,8 @@ struct inline_scheduler {
       return {(R &&) r};
     }
 
-    friend inline_scheduler tag_invoke(ex::get_completion_scheduler_t<set_value_t>, my_sender) {
+    friend inline_scheduler tag_invoke(
+        decltype(ex::get_completion_scheduler<set_value_t>), my_sender) {
       return {};
     }
   };
@@ -161,7 +163,8 @@ struct error_scheduler {
       return {(R &&) r, (E &&) self.err_};
     }
 
-    friend error_scheduler tag_invoke(ex::get_completion_scheduler_t<set_value_t>, my_sender) {
+    friend error_scheduler tag_invoke(
+        decltype(ex::get_completion_scheduler<set_value_t>), my_sender) {
       return {};
     }
   };
@@ -192,8 +195,7 @@ struct stopped_scheduler {
       return {(R &&) r};
     }
 
-    template <typename CPO>
-    friend stopped_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
+    friend stopped_scheduler tag_invoke(decltype(ex::get_completion_scheduler<set_value_t>), my_sender) {
       return {};
     }
   };
