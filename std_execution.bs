@@ -1039,15 +1039,6 @@ This proposal also draws heavily from our experience with [Thrust](https://githu
 
 # Revision history # {#revisions}
 
-## R5 ## {#r5}
-
-The changes since R4 are as follows:
-
-<b>Fixes:</b>
-  * Properly expose the tag types in the header `<execution>` synopsis.
-
-<b>Enhancements:</b>
-
 ## R4 ## {#r4}
 
 The changes since R3 are as follows:
@@ -1067,6 +1058,7 @@ The changes since R3 are as follows:
     `std::system_error` on failure.
   * Fix how ADL isolation from class template arguments is specified so it
     doesn't constrain implmentations.
+  * Properly expose the tag types in the header `<execution>` synopsis.
 
 <b>Enhancements:</b>
 
