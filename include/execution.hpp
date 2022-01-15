@@ -48,8 +48,6 @@
 _PRAGMA_PUSH()
 _PRAGMA_IGNORE("-Wundefined-inline")
 _PRAGMA_IGNORE("-Wundefined-internal")
-// inline namespace reopened as a non-inline namespace:
-_PRAGMA_IGNORE("-Winline-namespace-reopened-noninline")
 
 namespace std::execution {
   enum class forward_progress_guarantee {
@@ -60,34 +58,40 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
-  inline namespace __receiver_cpo {
-    inline constexpr struct set_value_t {
+  namespace __receiver_cpo {
+    struct set_value_t {
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
       void operator()(_Receiver&& __rcvr, _As&&... __as) const
         noexcept(nothrow_tag_invocable<set_value_t, _Receiver, _As...>) {
         (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
       }
-    } set_value{};
+    };
 
-    inline constexpr struct set_error_t {
+    struct set_error_t {
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
       void operator()(_Receiver&& __rcvr, _Error&& __err) const
         noexcept(nothrow_tag_invocable<set_error_t, _Receiver, _Error>) {
         (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
       }
-    } set_error {};
+    };
 
-    inline constexpr struct set_stopped_t {
+    struct set_stopped_t {
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
       void operator()(_Receiver&& __rcvr) const
         noexcept(nothrow_tag_invocable<set_stopped_t, _Receiver>) {
         (void) tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
       }
-    } set_stopped{};
+    };
   }
+  using __receiver_cpo::set_value_t;
+  using __receiver_cpo::set_error_t;
+  using __receiver_cpo::set_stopped_t;
+  inline constexpr set_value_t set_value{};
+  inline constexpr set_error_t set_error{};
+  inline constexpr set_stopped_t set_stopped{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -165,7 +169,7 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // env_of
-  inline namespace __env {
+  namespace __env {
     namespace __impl {
       struct __empty_env {};
       struct no_env {
@@ -214,7 +218,7 @@ namespace std::execution {
     using __impl::no_env;
 
     // For getting an evaluation environment from a receiver
-    inline constexpr struct get_env_t {
+    struct get_env_t {
       template <class _EnvProvider>
           requires tag_invocable<get_env_t, const _EnvProvider&>
         constexpr auto operator()(const _EnvProvider& __with_env) const
@@ -226,13 +230,18 @@ namespace std::execution {
       constexpr __empty_env operator()(const auto&) const noexcept {
         return {};
       }
-    } get_env {};
+    };
 
     // For making an evaluation environment from a key/value pair, and optionally
     // another environment.
     template <__class _Tag>
       inline constexpr __impl::__make_env_t<_Tag> make_env {};
   } // namespace __env
+  using __env::get_env_t;
+  inline constexpr __env::get_env_t get_env{};
+  using __env::no_env;
+  using __env::make_env;
+  using __env::__empty_env;
 
   template <class _EnvProvider>
     using env_of_t = decay_t<decltype(get_env(__declval<_EnvProvider>()))>;
@@ -254,7 +263,7 @@ namespace std::execution {
   }
   using __sender_base::sender_base;
 
-  inline namespace __sender_traits {
+  namespace __sender_traits {
     namespace __impl {
       struct get_sender_traits_t;
 
@@ -315,12 +324,13 @@ namespace std::execution {
       using __is_valid_sender_traits = _Traits;
 
     using __impl::get_sender_traits_t;
-    inline constexpr get_sender_traits_t get_sender_traits {};
   } // namespace __sender_traits
+  using __sender_traits::get_sender_traits_t;
+  inline constexpr get_sender_traits_t get_sender_traits {};
 
   template <class _Sender, class _Env>
     using __sender_traits_t =
-      __is_valid_sender_traits<
+      __sender_traits::__is_valid_sender_traits<
         __call_result_t<
           get_sender_traits_t,
           _Sender,
@@ -338,7 +348,7 @@ namespace std::execution {
     concept typed_sender =
       sender<_Sender> &&
       __valid<__sender_traits_t, _Sender, _Env> &&
-      __has_sender_types<__sender_traits_t<_Sender, _Env>>;
+      __sender_traits::__has_sender_types<__sender_traits_t<_Sender, _Env>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
@@ -492,7 +502,7 @@ namespace std::execution {
         requires true;
 
     template<class, class _Env, class, class, class, bool>
-    auto __make() -> __empty_sender_traits;
+    auto __make() -> __sender_traits::__empty_sender_traits;
   } // namespace __completion_signatures
 
   /////////////////////////////////////////////////////////////////////////////
@@ -574,8 +584,8 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
-  inline namespace __schedule {
-    inline constexpr struct schedule_t {
+  namespace __schedule {
+    struct schedule_t {
       template <class _Scheduler>
         requires tag_invocable<schedule_t, _Scheduler> &&
           sender<tag_invoke_result_t<schedule_t, _Scheduler>>
@@ -583,11 +593,13 @@ namespace std::execution {
         noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
         return tag_invoke(schedule_t{}, (_Scheduler&&) __sched);
       }
-    } schedule {};
+    };
   }
+  using __schedule::schedule_t;
+  inline constexpr schedule_t schedule{};
 
   // [execution.schedulers.queries], scheduler queries
-  inline namespace __scheduler_queries {
+  namespace __scheduler_queries {
     namespace __impl {
       template <class _T>
         using __cref_t = const remove_reference_t<_T>&;
@@ -619,17 +631,19 @@ namespace std::execution {
     } // namespace __impl
 
     using __impl::forwarding_scheduler_query_t;
-    inline constexpr forwarding_scheduler_query_t forwarding_scheduler_query{};
-
     using __impl::get_forward_progress_guarantee_t;
-    inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 
     template <class _Tag>
       concept __scheduler_query =
         forwarding_scheduler_query(_Tag{});
   } // namespace __scheduler_queries
+  using __scheduler_queries::forwarding_scheduler_query_t;
+  inline constexpr forwarding_scheduler_query_t forwarding_scheduler_query{};
 
-  inline namespace __sender_queries {
+  using __scheduler_queries::get_forward_progress_guarantee_t;
+  inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
+
+  namespace __sender_queries {
     namespace __impl {
       template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
         struct get_completion_scheduler_t;
@@ -643,7 +657,7 @@ namespace std::execution {
     concept scheduler =
       copy_constructible<remove_cvref_t<_Scheduler>> &&
       equality_comparable<remove_cvref_t<_Scheduler>> &&
-      requires(_Scheduler&& __sched, const get_completion_scheduler_t<set_value_t> __tag) {
+      requires(_Scheduler&& __sched, const __sender_queries::get_completion_scheduler_t<set_value_t> __tag) {
         { schedule((_Scheduler&&) __sched) } -> sender;
         { tag_invoke(__tag, schedule((_Scheduler&&) __sched)) } -> same_as<remove_cvref_t<_Scheduler>>;
       };
@@ -654,7 +668,7 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.general.queries], general queries
-  inline namespace __general_queries {
+  namespace __general_queries {
     namespace __impl {
       // TODO: implement allocator concept
       template <class _T0>
@@ -717,11 +731,15 @@ namespace std::execution {
     using __impl::get_scheduler_t;
     using __impl::get_delegatee_scheduler_t;
     using __impl::get_stop_token_t;
-    inline constexpr get_scheduler_t get_scheduler{};
-    inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
-    inline constexpr get_allocator_t get_allocator{};
-    inline constexpr get_stop_token_t get_stop_token{};
   } // namespace __general_queries
+  using __general_queries::get_allocator_t;
+  using __general_queries::get_scheduler_t;
+  using __general_queries::get_delegatee_scheduler_t;
+  using __general_queries::get_stop_token_t;
+  inline constexpr get_scheduler_t get_scheduler{};
+  inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
+  inline constexpr get_allocator_t get_allocator{};
+  inline constexpr get_stop_token_t get_stop_token{};
 
   template <class _T>
     using stop_token_of_t =
@@ -729,15 +747,17 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
-  inline namespace __start {
-    inline constexpr struct start_t {
+  namespace __start {
+    struct start_t {
       template <class _O>
         requires tag_invocable<start_t, _O&>
       void operator()(_O& o) const noexcept(nothrow_tag_invocable<start_t, _O&>) {
         (void) tag_invoke(start_t{}, o);
       }
-    } start {};
+    };
   }
+  using __start::start_t;
+  inline constexpr start_t start{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
@@ -749,14 +769,15 @@ namespace std::execution {
         {start(o)} noexcept;
       };
 
-  inline namespace __as_awaitable {
+  namespace __as_awaitable {
     struct as_awaitable_t;
-    extern const as_awaitable_t as_awaitable;
   }
+  using __as_awaitable::as_awaitable_t;
+  extern const as_awaitable_t as_awaitable;
 
   /////////////////////////////////////////////////////////////////////////////
   // __connect_awaitable_
-  inline namespace __connect_awaitable_ {
+  namespace __connect_awaitable_ {
     namespace __impl {
       struct __promise_base {
         __coro::suspend_always initial_suspend() noexcept {
@@ -873,7 +894,7 @@ namespace std::execution {
         using __operation_t = __operation<__x<remove_cvref_t<_Receiver>>>;
     } // namespace __impl
 
-    inline constexpr struct __connect_awaitable_t {
+    struct __connect_awaitable_t {
      private:
       template <class _Receiver, class... _Args>
         using __nothrow_ = bool_constant<nothrow_receiver_of<_Receiver, _Args...>>;
@@ -919,8 +940,10 @@ namespace std::execution {
       __impl::__operation_t<_Receiver> operator()(_Awaitable&& __await, _Receiver&& __rcvr) const {
         return __co_impl((_Awaitable&&) __await, (_Receiver&&) __rcvr);
       }
-    } __connect_awaitable{};
+    };
   } // namespace __connect_awaitable_
+  using __connect_awaitable_::__connect_awaitable_t;
+  inline constexpr __connect_awaitable_t __connect_awaitable{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
@@ -1135,7 +1158,7 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.queries], sender queries
-  inline namespace __sender_queries {
+  namespace __sender_queries {
     namespace __impl {
       template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
         struct get_completion_scheduler_t {
@@ -1169,15 +1192,17 @@ namespace std::execution {
     using __impl::get_completion_scheduler_t;
     using __impl::forwarding_sender_query_t;
 
-    template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
-      inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
-
-    inline constexpr forwarding_sender_query_t forwarding_sender_query{};
-
     template <class _Tag>
       concept __sender_query =
         forwarding_sender_query(_Tag{});
   } // namespace __sender_queries
+  using __sender_queries::get_completion_scheduler_t;
+  using __sender_queries::forwarding_sender_query_t;
+
+  template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
+    inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
+
+  inline constexpr forwarding_sender_query_t forwarding_sender_query{};
 
   template <class _Sender, class _CPO>
     concept __has_completion_scheduler =
@@ -1194,7 +1219,7 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // execution::as_awaitable [execution.coro_utils.as_awaitable]
-  inline namespace __as_awaitable {
+  namespace __as_awaitable {
     namespace __impl {
       struct __void {};
       template <class _Value>
@@ -1324,7 +1349,7 @@ namespace std::execution {
           };
     } // namespace __impl
 
-    inline constexpr struct as_awaitable_t {
+    struct as_awaitable_t {
       template <class _T, class _Promise>
       static constexpr bool __is_noexcept() noexcept {
         if constexpr (__impl::__custom_tag_invoke_awaiter<_T, _Promise>) {
@@ -1352,10 +1377,12 @@ namespace std::execution {
           return (_T&&) __t;
         }
       }
-    } as_awaitable{};
+    };
   } // namespace __as_awaitable
+  using __as_awaitable::as_awaitable_t;
+  inline constexpr as_awaitable_t as_awaitable;
 
-  inline namespace __with_awaitable_senders {
+  namespace __with_awaitable_senders {
     namespace __impl {
       struct __with_awaitable_senders_base {
         template <class _OtherPromise>
@@ -1403,10 +1430,11 @@ namespace std::execution {
       }
     };
   }
+  using __with_awaitable_senders::with_awaitable_senders;
 
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC: __submit
-  inline namespace __submit_ {
+  namespace __submit_ {
     namespace __impl {
       template <class _SenderId, class _ReceiverId>
         struct __operation {
@@ -1438,18 +1466,20 @@ namespace std::execution {
         };
     } // namespace __impl
 
-    inline constexpr struct __submit_t {
+    struct __submit_t {
       template <receiver _Receiver, sender_to<_Receiver> _Sender>
       void operator()(_Sender&& __sndr, _Receiver&& __rcvr) const noexcept(false) {
         start((new __impl::__operation<__x<_Sender>, __x<decay_t<_Receiver>>>{
             (_Sender&&) __sndr, (_Receiver&&) __rcvr})->__op_state_);
       }
-    } __submit {};
+    };
   } // namespace __submit_
+  using __submit_::__submit_t;
+  inline constexpr __submit_t __submit{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumer.start_detached]
-  inline namespace __start_detached {
+  namespace __start_detached {
     namespace __impl {
       struct __detached_receiver {
         friend void tag_invoke(set_value_t, __detached_receiver&&, auto&&...) noexcept {}
@@ -1461,7 +1491,7 @@ namespace std::execution {
       };
     } // namespace __impl
 
-    inline constexpr struct start_detached_t {
+    struct start_detached_t {
       template <sender _Sender>
         requires tag_invocable<start_detached_t, _Sender>
       void operator()(_Sender&& __sndr) const
@@ -1474,12 +1504,14 @@ namespace std::execution {
       void operator()(_Sender&& __sndr) const noexcept(false) {
         __submit((_Sender&&) __sndr, __impl::__detached_receiver{});
       }
-    } start_detached {};
+    };
   } // namespace __start_detached
+  using __start_detached::start_detached_t;
+  inline constexpr start_detached_t start_detached{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
-  inline namespace __just {
+  namespace __just {
     namespace __impl {
       template <class _CPO, class... _Ts>
         struct __sender {
@@ -1557,10 +1589,13 @@ namespace std::execution {
       }
     } just_stopped {};
   }
+  using __just::just;
+  using __just::just_error;
+  using __just::just_stopped;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
-  inline namespace __execute_ {
+  namespace __execute_ {
     namespace __impl {
       template <class _Fun>
         struct __as_receiver {
@@ -1576,7 +1611,7 @@ namespace std::execution {
         };
     }
 
-    inline constexpr struct execute_t {
+    struct execute_t {
       template <scheduler _Scheduler, class _Fun>
         requires __callable<_Fun&> && move_constructible<_Fun>
       void operator()(_Scheduler&& __sched, _Fun __fun) const
@@ -1592,8 +1627,10 @@ namespace std::execution {
         noexcept(nothrow_tag_invocable<execute_t, _Scheduler, _Fun>) {
         (void) tag_invoke(execute_t{}, (_Scheduler&&) __sched, (_Fun&&) __fun);
       }
-    } execute {};
+    };
   }
+  using __execute_::execute_t;
+  inline constexpr execute_t execute{};
 
   // NOT TO SPEC:
   namespace __closure {
@@ -1736,11 +1773,11 @@ namespace std::execution {
             return execution::connect(((_Self&&) __self).base(), (_Receiver&&) __rcvr);
           }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
-            -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Base&, _As...> {
+            -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Base&, _As...> {
             return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
           }
 
@@ -1965,7 +2002,7 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
-  inline namespace __then {
+  namespace __then {
     namespace __impl {
       template <class _ReceiverId, class _Fun>
         class __receiver
@@ -2052,7 +2089,7 @@ namespace std::execution {
         };
     }
 
-    inline constexpr struct then_t {
+    struct then_t {
       template <class _Sender, class _Fun>
         using __sender = __impl::__sender<__x<remove_cvref_t<_Sender>>, _Fun>;
 
@@ -2081,14 +2118,16 @@ namespace std::execution {
       __binder_back<then_t, _Fun> operator()(_Fun __fun) const {
         return {{}, {}, {(_Fun&&) __fun}};
       }
-    } then {};
+    };
   }
+  using __then::then_t;
+  inline constexpr then_t then{};
 
   //////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.let_value]
   // [execution.senders.adaptors.let_error]
   // [execution.senders.adaptors.let_stopped]
-  inline namespace __let {
+  namespace __let {
     namespace __impl {
       using __nullable_variant_t = __munique<__bind_front<__q<variant>, monostate>>;
 
@@ -2464,11 +2503,11 @@ namespace std::execution {
               };
             }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
               requires __callable<_Tag, const _Sender&, _As...>
             friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
               noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
-              -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+              -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
 
@@ -2514,23 +2553,29 @@ namespace std::execution {
         };
     } // namespace __impl
 
-    inline constexpr struct let_value_t
+    struct let_value_t
       : __let::__impl::__let_xxx_t<let_value_t, set_value_t, __defer<__tfx_sender_values>>
-    {} let_value {};
+    {};
 
-    inline constexpr struct let_error_t
+    struct let_error_t
       : __let::__impl::__let_xxx_t<let_error_t, set_error_t, __defer<__tfx_sender_errors>>
-    {} let_error {};
+    {};
 
-    inline constexpr struct let_stopped_t
+    struct let_stopped_t
       : __let::__impl::__let_xxx_t<let_stopped_t, set_stopped_t, __defer<__tfx_sender_stopped>>
-    {} let_stopped {};
+    {};
   } // namespace __let
+  using __let::let_value_t;
+  inline constexpr let_value_t let_value{};
+  using __let::let_error_t;
+  inline constexpr let_error_t let_error{};
+  using __let::let_stopped_t;
+  inline constexpr let_stopped_t let_stopped{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.stopped_as_optional]
   // [execution.senders.adaptors.stopped_as_error]
-  inline namespace __stopped_as_xxx {
+  namespace __stopped_as_xxx {
     namespace __impl {
       template <class _Ty, class _Sender, class _Env>
         concept __constructible_from =
@@ -2621,11 +2666,11 @@ namespace std::execution {
               return __operation_t<_Self, _Receiver>{((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
             }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
               requires __callable<_Tag, const _Sender&, _As...>
             friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
               noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
-              -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+              -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
 
@@ -2637,7 +2682,7 @@ namespace std::execution {
         };
     } // namespace __impl
 
-    inline constexpr struct __stopped_as_optional_t {
+    struct __stopped_as_optional_t {
       template <sender _Sender>
         auto operator()(_Sender&& __sndr) const
           -> __impl::__sender<__x<decay_t<_Sender>>> {
@@ -2646,9 +2691,9 @@ namespace std::execution {
       __binder_back<__stopped_as_optional_t> operator()() const noexcept {
         return {};
       }
-    } stopped_as_optional {};
+    };
 
-    inline constexpr struct __stopped_as_error_t {
+    struct __stopped_as_error_t {
       template <sender _Sender, __movable_value _Error>
         auto operator()(_Sender&& __sndr, _Error __err) const {
           return (_Sender&&) __sndr
@@ -2661,12 +2706,16 @@ namespace std::execution {
           -> __binder_back<__stopped_as_error_t, _Error> {
           return {{}, {}, {(_Error&&) __err}};
         }
-    } stopped_as_error {};
+    };
   } // namespace __stopped_as_xxx
+  using __stopped_as_xxx::__stopped_as_optional_t;
+  inline constexpr __stopped_as_optional_t stopped_as_optional{};
+  using __stopped_as_xxx::__stopped_as_error_t;
+  inline constexpr __stopped_as_error_t stopped_as_error{};
 
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
-  inline namespace __loop {
+  namespace __loop {
     class run_loop;
 
     namespace __impl {
@@ -2831,7 +2880,7 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.schedule_from]
-  inline namespace __schedule_from {
+  namespace __schedule_from {
     namespace __impl {
       // Compute a data structure to store the source sender's completion.
       // The primary template assumes a non-typed sender, which uses type
@@ -3040,11 +3089,11 @@ namespace std::execution {
             return __self.__sched_;
           }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
-            -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+            -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 
@@ -3054,7 +3103,7 @@ namespace std::execution {
         };
     } // namespace __impl
 
-    inline constexpr struct schedule_from_t {
+    struct schedule_from_t {
       // NOT TO SPEC: permit non-typed senders:
       template <scheduler _Scheduler, sender _Sender>
         requires tag_invocable<schedule_from_t, _Scheduler, _Sender>
@@ -3070,13 +3119,15 @@ namespace std::execution {
         -> __impl::__sender<__x<decay_t<_Scheduler>>, __x<decay_t<_Sender>>> {
         return {(_Scheduler&&) __sched, (_Sender&&) __sndr};
       }
-    } schedule_from {};
+    };
   } // namespace __schedule_from
+  using __schedule_from::schedule_from_t;
+  inline constexpr schedule_from_t schedule_from{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.transfer]
-  inline namespace __transfer {
-    inline constexpr struct transfer_t {
+  namespace __transfer {
+    struct transfer_t {
       template <sender _Sender, scheduler _Scheduler>
         requires __tag_invocable_with_completion_scheduler<transfer_t, set_value_t, _Sender, _Scheduler>
       tag_invoke_result_t<transfer_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Scheduler>
@@ -3103,12 +3154,14 @@ namespace std::execution {
       __binder_back<transfer_t, decay_t<_Scheduler>> operator()(_Scheduler&& __sched) const {
         return {{}, {}, {(_Scheduler&&) __sched}};
       }
-    } transfer {};
+    } ;
   } // namespace __transfer
+  using __transfer::transfer_t;
+  inline constexpr transfer_t transfer{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
-  inline namespace __on {
+  namespace __on {
     namespace __impl {
       template <class _SchedulerId, class _SenderId, class _ReceiverId>
         struct __operation;
@@ -3228,11 +3281,11 @@ namespace std::execution {
                     (_Receiver&&) __rcvr};
           }
 
-          template <__sender_query _Tag, class... _As>
+          template <__sender_queries::__sender_query _Tag, class... _As>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
-            -> __call_result_if_t<__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+            -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 
@@ -3244,7 +3297,7 @@ namespace std::execution {
         };
     } // namespace __impl
 
-    inline constexpr struct on_t {
+    struct on_t {
       template <scheduler _Scheduler, sender _Sender>
         requires tag_invocable<on_t, _Scheduler, _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
@@ -3259,13 +3312,15 @@ namespace std::execution {
                             __x<decay_t<_Sender>>> {
         return {(_Scheduler&&) __sched, (_Sender&&) __sndr};
       }
-    } on {};
+    };
   } // namespace __on
+  using __on::on_t;
+  inline constexpr on_t on{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.transfer_just]
-  inline namespace __transfer_just {
-    inline constexpr struct transfer_just_t {
+  namespace __transfer_just {
+    struct transfer_just_t {
       template <scheduler _Scheduler, __movable_value... _Values>
         requires tag_invocable<transfer_just_t, _Scheduler, _Values...> &&
           sender<tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...>>
@@ -3281,12 +3336,14 @@ namespace std::execution {
         -> decltype(transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched)) {
         return transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched);
       }
-    } transfer_just {};
+    };
   } // namespace __transfer_just
+  using __transfer_just::transfer_just_t;
+  inline constexpr transfer_just_t transfer_just{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.into_variant]
-  inline namespace __into_variant {
+  namespace __into_variant {
     namespace __impl {
       template <class _Sender, class _Env>
           requires typed_sender<_Sender, _Env>
@@ -3368,7 +3425,7 @@ namespace std::execution {
         };
     } // namespace __impl
 
-    inline constexpr struct __into_variant_t {
+    struct __into_variant_t {
       template <sender _Sender>
         auto operator()(_Sender&& __sndr) const
           -> __impl::__sender<__x<remove_cvref_t<_Sender>>> {
@@ -3377,13 +3434,15 @@ namespace std::execution {
       auto operator()() const noexcept {
         return __binder_back<__into_variant_t>{};
       }
-    } into_variant {};
+    };
   } // namespace __into_variant
+  using __into_variant::__into_variant_t;
+  inline constexpr __into_variant_t into_variant{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.when_all]
   // [execution.senders.adaptors.when_all_with_variant]
-  inline namespace __when_all {
+  namespace __when_all {
     namespace __impl {
       enum __state_t { __started, __error, __stopped };
 
@@ -3696,7 +3755,7 @@ namespace std::execution {
           decltype(into_variant(__declval<_Sender>()));
     } // namespce __impl
 
-    inline constexpr struct when_all_t {
+    struct when_all_t {
       template <sender... _Senders>
         requires tag_invocable<when_all_t, _Senders...> &&
           sender<tag_invoke_result_t<when_all_t, _Senders...>>
@@ -3712,9 +3771,9 @@ namespace std::execution {
         return __impl::__sender<__x<decay_t<_Senders>>...>{
             (_Senders&&) __sndrs...};
       }
-    } when_all {};
+    };
 
-    inline constexpr struct when_all_with_variant_t {
+    struct when_all_with_variant_t {
       template <sender... _Senders>
         requires tag_invocable<when_all_with_variant_t, _Senders...> &&
           sender<tag_invoke_result_t<when_all_with_variant_t, _Senders...>>
@@ -3732,9 +3791,9 @@ namespace std::execution {
         return __impl::__sender<__impl::__into_variant_result_t<_Senders>...>{
             into_variant((_Senders&&) __sndrs)...};
       }
-    } when_all_with_variant {};
+    };
 
-    inline constexpr struct transfer_when_all_t {
+    struct transfer_when_all_t {
       template <scheduler _Sched, sender... _Senders>
         requires tag_invocable<transfer_when_all_t, _Sched, _Senders...> &&
           sender<tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...>>
@@ -3748,11 +3807,11 @@ namespace std::execution {
         requires ((!tag_invocable<transfer_when_all_t, _Sched, _Senders...>) ||
           (!sender<tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...>>))
       auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
-        return transfer(when_all((_Senders&&) __sndrs...), (_Sched&&) __sched);
+        return transfer(when_all_t{}((_Senders&&) __sndrs...), (_Sched&&) __sched);
       }
-    } transfer_when_all {};
+    };
 
-    inline constexpr struct transfer_when_all_with_variant_t {
+    struct transfer_when_all_with_variant_t {
       template <scheduler _Sched, sender... _Senders>
         requires tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...> &&
           sender<tag_invoke_result_t<transfer_when_all_with_variant_t, _Sched, _Senders...>>
@@ -3766,10 +3825,18 @@ namespace std::execution {
         requires (!tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>) &&
           (__callable<__into_variant_t, _Senders> &&...)
       auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
-        return transfer_when_all((_Sched&&) __sched, into_variant((_Senders&&) __sndrs)...);
+        return transfer_when_all_t{}((_Sched&&) __sched, into_variant((_Senders&&) __sndrs)...);
       }
-    } transfer_when_all_with_variant {};
+    };
   } // namespace __when_all
+  using __when_all::when_all_t;
+  inline constexpr when_all_t when_all{};
+  using __when_all::when_all_with_variant_t;
+  inline constexpr when_all_with_variant_t when_all_with_variant{};
+  using __when_all::transfer_when_all_t;
+  inline constexpr transfer_when_all_t transfer_when_all{};
+  using __when_all::transfer_when_all_with_variant_t;
+  inline constexpr transfer_when_all_with_variant_t transfer_when_all_with_variant{};
 
   namespace __read {
     template <class _Tag, class _ReceiverId>
@@ -3795,7 +3862,7 @@ namespace std::execution {
         }
 
         friend auto tag_invoke(get_sender_traits_t, __sender, auto)
-          -> __empty_sender_traits;
+          -> __sender_traits::__empty_sender_traits;
         template <__none_of<no_env> _Env>
           requires __callable<_Tag, _Env>
         friend auto tag_invoke(get_sender_traits_t, __sender, _Env)
@@ -3834,7 +3901,7 @@ namespace std::this_thread {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumers.sync_wait]
   // [execution.senders.consumers.sync_wait_with_variant]
-  inline namespace __sync_wait {
+  namespace __sync_wait {
     namespace __impl {
       template <class _Sender>
         using __into_variant_result_t =
@@ -3909,7 +3976,7 @@ namespace std::this_thread {
 
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
-    inline constexpr struct sync_wait_t {
+    struct sync_wait_t {
       // TODO: constrain on return type
       template <execution::sender _Sender> // NOT TO SPEC
         requires
@@ -3971,11 +4038,11 @@ namespace std::this_thread {
 
         return std::move(std::get<1>(__state.__data_));
       }
-    } sync_wait {};
+    };
 
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
-    inline constexpr struct sync_wait_with_variant_t {
+    struct sync_wait_with_variant_t {
       template <execution::sender _Sender> // NOT TO SPEC
         requires
           execution::__tag_invocable_with_completion_scheduler<
@@ -4014,8 +4081,12 @@ namespace std::this_thread {
       operator()(_Sender&& __sndr) const {
         return sync_wait(execution::into_variant((_Sender&&) __sndr));
       }
-    } sync_wait_with_variant {};
+    };
   } // namespace __sync_wait
+  using __sync_wait::sync_wait_t;
+  inline constexpr sync_wait_t sync_wait{};
+  using __sync_wait::sync_wait_with_variant_t;
+  inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 } // namespace std::this_thread
 
 _PRAGMA_POP()
