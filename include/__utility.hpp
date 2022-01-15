@@ -366,6 +366,21 @@ namespace std {
           __minvoke<_Continuation, __if<is_same<_Args, _Old>, _New, _Args>...>;
     };
 
+  template <class _Old, class _Continuation = __q<__types>>
+    struct __remove {
+      template <class... _Args>
+        using __f =
+          __minvoke<
+            __concat<_Continuation>,
+            __if<is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
+    };
+
+  template <class _Return>
+    struct __qf {
+      template <class... _Args>
+        using __f = _Return(_Args...);
+    };
+
   template <class _T>
     _T&& __declval() noexcept requires true;
 
