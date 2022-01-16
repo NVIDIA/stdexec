@@ -1058,6 +1058,7 @@ The changes since R3 are as follows:
     `std::system_error` on failure.
   * Fix how ADL isolation from class template arguments is specified so it
     doesn't constrain implmentations.
+  * Properly expose the tag types in the header `<execution>` synopsis.
 
 <b>Enhancements:</b>
 
@@ -3498,10 +3499,14 @@ namespace std::execution {
     struct get_allocator_t;
     struct get_stop_token_t;
   }
-  inline constexpr <i>general-queries</i>::get_scheduler_t get_scheduler{};
-  inline constexpr <i>general-queries</i>::get_delegatee_scheduler_t get_delegatee_scheduler{};
-  inline constexpr <i>general-queries</i>::get_allocator_t get_allocator{};
-  inline constexpr <i>general-queries</i>::get_stop_token_t get_stop_token{};
+  using <i>general-queries</i>::get_scheduler_t;
+  using <i>general-queries</i>::get_delegatee_scheduler_t;
+  using <i>general-queries</i>::get_allocator_t;
+  using <i>general-queries</i>::get_stop_token_t;
+  inline constexpr get_scheduler_t get_scheduler{};
+  inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
+  inline constexpr get_allocator_t get_allocator{};
+  inline constexpr get_stop_token_t get_stop_token{};
 
   template &lt;class T>
     using stop_token_of_t =
@@ -3518,8 +3523,8 @@ namespace std::execution {
   using <i>exec-envs</i>::<i>empty-env</i>;
   using <i>exec-envs</i>::get_env_t;
   using <i>exec-envs</i>::forwarding_env_query_t;
-  inline constexpr <i>exec-envs</i>::get_env_t get_env {};
-  inline constexpr <i>exec-envs</i>::forwarding_env_query_t forwarding_env_query{};
+  inline constexpr get_env_t get_env {};
+  inline constexpr forwarding_env_query_t forwarding_env_query{};
   template &lt;class T>
     concept <i>forwarding-env-query</i> = // exposition only
       forwarding_env_query(T{});
@@ -3537,15 +3542,18 @@ namespace std::execution {
     struct forwarding_scheduler_query_t;
     struct get_forward_progress_guarantee_t;
   }
-  inline constexpr <i>schedulers-queries</i>::forwarding_scheduler_query_t forwarding_scheduler_query{};
-  inline constexpr <i>schedulers-queries</i>::get_forward_progress_guarantee_t get_forward_progress_guarantee{};
+  using <i>schedulers-queries</i>::forwarding_scheduler_query_t;
+  using <i>schedulers-queries</i>::get_forward_progress_guarantee_t;
+  inline constexpr forwarding_scheduler_query_t forwarding_scheduler_query{};
+  inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 }
 
 namespace std::this_thread {
   namespace <i>this-thread-queries</i> { // exposition only
     struct execute_may_block_caller_t;
   }
-  inline constexpr <i>this-thread-queries</i>::execute_may_block_caller_t execute_may_block_caller{};
+  using <i>this-thread-queries</i>::execute_may_block_caller_t;
+  inline constexpr execute_may_block_caller_t execute_may_block_caller{};
 }
 
 namespace std::execution {
@@ -3561,15 +3569,19 @@ namespace std::execution {
     struct set_error_t;
     struct set_stopped_t;
   }
-  inline constexpr <i>receivers</i>::set_value_t set_value{};
-  inline constexpr <i>receivers</i>::set_error_t set_error{};
-  inline constexpr <i>receivers</i>::set_stopped_t set_stopped{};
+  using <i>receivers</i>::set_value_t;
+  using <i>receivers</i>::set_error_t;
+  using <i>receivers</i>::set_stopped_t;
+  inline constexpr set_value_t set_value{};
+  inline constexpr set_error_t set_error{};
+  inline constexpr set_stopped_t set_stopped{};
 
   // [exec.recv_queries], receiver queries
   namespace <i>receivers-queries</i> { // exposition only
     struct forwarding_receiver_query_t;
   }
-  inline constexpr <i>receivers-queries</i>::forwarding_receiver_query_t forwarding_receiver_query{};
+  using <i>receivers-queries</i>::forwarding_receiver_query_t;
+  inline constexpr forwarding_receiver_query_t forwarding_receiver_query{};
   template &lt;class T>
     concept <i>forwarding-receiver-query</i> = // exposition only
       forwarding_receiver_query(T{});
@@ -3581,7 +3593,8 @@ namespace std::execution {
   namespace <i>op-state</i> { // exposition only
     struct start_t;
   }
-  inline constexpr <i>op-state</i>::start_t start{};
+  using <i>op-state</i>::start_t;
+  inline constexpr start_t start{};
 
   // [exec.snd], senders
   template&lt;class S>
@@ -3614,7 +3627,8 @@ namespace std::execution {
     struct get_sender_traits_t;
   }
   using <i>sender-traits</i>::sender_base;
-  inline constexpr <i>sender-traits</i>::get_sender_traits_t {};
+  using <i>sender-traits</i>::get_sender_traits_t;
+  inline constexpr get_sender_traits_t get_sender_traits{};
 
   template &lt;class S, class E = no_env>
     using sender_traits_t = <i>see below</i>;
@@ -3644,7 +3658,8 @@ namespace std::execution {
   namespace <i>senders-connect</i> { // exposition only
     struct connect_t;
   }
-  inline constexpr <i>senders-connect</i>::connect_t connect{};
+  using <i>senders-connect</i>::connect_t;
+  inline constexpr connect_t connect{};
 
   template &lt;class S, class R>
     using connect_result_t = decltype(connect(declval&lt;S>(), declval&lt;R>()));
@@ -3660,10 +3675,11 @@ namespace std::execution {
     template &lt;class CPO>
     struct get_completion_scheduler_t;
   }
-  inline constexpr <i>senders-queries</i>::forwarding_sender_query_t forwarding_sender_query{};
-
+  using <i>senders-queries</i>::forwarding_sender_query_t;
+  using <i>senders-queries</i>::get_completion_scheduler_t;
+  inline constexpr forwarding_sender_query_t forwarding_sender_query{};
   template &lt;class CPO>
-  inline constexpr <i>senders-queries</i>::get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
+  inline constexpr get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
 
   // [exec.factories], sender factories
   namespace <i>senders-factories</i> { // exposition only
@@ -3679,8 +3695,10 @@ namespace std::execution {
   using <i>senders-factories</i>::just;
   using <i>senders-factories</i>::just_error;
   using <i>senders-factories</i>::just_stopped;
-  inline constexpr <i>senders-factories</i>::schedule_t schedule{};
-  inline constexpr <i>senders-factories</i>::transfer_just_t transfer_just{};
+  using <i>senders-factories</i>::schedule_t;
+  using <i>senders-factories</i>::transfer_just_t;
+  inline constexpr schedule_t schedule{};
+  inline constexpr transfer_just_t transfer_just{};
   inline constexpr <i>unspecified</i> read{};
 
   template &lt;scheduler S>
@@ -3713,25 +3731,44 @@ namespace std::execution {
     struct stopped_as_error_t;
     struct ensure_started_t;
   }
-  inline constexpr <i>sender-adaptors</i>::on_t on{};
-  inline constexpr <i>sender-adaptors</i>::transfer_t transfer{};
-  inline constexpr <i>sender-adaptors</i>::schedule_from_t schedule_from{};
+  using <i>sender-adaptors</i>::on_t;
+  using <i>sender-adaptors</i>::transfer_t;
+  using <i>sender-adaptors</i>::schedule_from_t;
+  using <i>sender-adaptors</i>::then_t;
+  using <i>sender-adaptors</i>::upon_error_t;
+  using <i>sender-adaptors</i>::upon_stopped_t;
+  using <i>sender-adaptors</i>::let_value_t;
+  using <i>sender-adaptors</i>::let_error_t;
+  using <i>sender-adaptors</i>::let_stopped_t;
+  using <i>sender-adaptors</i>::bulk_t;
+  using <i>sender-adaptors</i>::split_t;
+  using <i>sender-adaptors</i>::when_all_t;
+  using <i>sender-adaptors</i>::when_all_with_variant_t;
+  using <i>sender-adaptors</i>::transfer_when_all_t;
+  using <i>sender-adaptors</i>::transfer_when_all_with_variant_t;
+  using <i>sender-adaptors</i>::stopped_as_optional_t;
+  using <i>sender-adaptors</i>::stopped_as_error_t;
+  using <i>sender-adaptors</i>::ensure_started_t;
 
-  inline constexpr <i>sender-adaptors</i>::then_t then{};
-  inline constexpr <i>sender-adaptors</i>::upon_error_t upon_error{};
-  inline constexpr <i>sender-adaptors</i>::upon_stopped_t upon_stopped{};
+  inline constexpr on_t on{};
+  inline constexpr transfer_t transfer{};
+  inline constexpr schedule_from_t schedule_from{};
 
-  inline constexpr <i>sender-adaptors</i>::let_value_t let_value{};
-  inline constexpr <i>sender-adaptors</i>::let_error_t let_error{};
-  inline constexpr <i>sender-adaptors</i>::let_stopped_t let_stopped{};
+  inline constexpr then_t then{};
+  inline constexpr upon_error_t upon_error{};
+  inline constexpr upon_stopped_t upon_stopped{};
 
-  inline constexpr <i>sender-adaptors</i>::bulk_t bulk{};
+  inline constexpr let_value_t let_value{};
+  inline constexpr let_error_t let_error{};
+  inline constexpr let_stopped_t let_stopped{};
 
-  inline constexpr <i>sender-adaptors</i>::split_t split{};
-  inline constexpr <i>sender-adaptors</i>::when_all_t when_all{};
-  inline constexpr <i>sender-adaptors</i>::when_all_with_variant_t when_all_with_variant{};
-  inline constexpr <i>sender-adaptors</i>::transfer_when_all_t transfer_when_all{};
-  inline constexpr <i>sender-adaptors</i>::transfer_when_all_with_variant_t
+  inline constexpr bulk_t bulk{};
+
+  inline constexpr split_t split{};
+  inline constexpr when_all_t when_all{};
+  inline constexpr when_all_with_variant_t when_all_with_variant{};
+  inline constexpr transfer_when_all_t transfer_when_all{};
+  inline constexpr transfer_when_all_with_variant_t
     transfer_when_all_with_variant{};
 
   namespace <i>sender-adaptor-into-variant</i> { // exposition only
@@ -3743,17 +3780,18 @@ namespace std::execution {
   }
   using <i>sender-adaptor-into-variant</i>::into_variant;
 
-  inline constexpr <i>sender-adaptors</i>::stopped_as_optional_t stopped_as_optional;
+  inline constexpr stopped_as_optional_t stopped_as_optional;
 
-  inline constexpr <i>sender-adaptors</i>::stopped_as_error_t stopped_as_error;
+  inline constexpr stopped_as_error_t stopped_as_error;
 
-  inline constexpr <i>sender-adaptors</i>::ensure_started_t ensure_started{};
+  inline constexpr ensure_started_t ensure_started{};
 
   // [exec.consumers], sender consumers
   namespace <i>sender-consumers</i> { // exposition only
     struct start_detached_t;
   }
-  inline constexpr <i>sender-consumers</i>::start_detached_t start_detached{};
+  using <i>sender-consumers</i>::start_detached_t;
+  inline constexpr start_detached_t start_detached{};
 
   // [exec.utils], sender and receiver utilities
   // [exec.utils.rcvr_adptr]
@@ -3786,8 +3824,10 @@ namespace std::this_thread {
     struct sync_wait_t;
     struct sync_wait_with_variant_t;
   }
-  inline constexpr <i>this-thread</i>::sync_wait_t sync_wait{};
-  inline constexpr <i>this-thread</i>::sync_wait_with_variant_t sync_wait_with_variant{};
+  using <i>this-thread</i>::sync_wait_t;
+  using <i>this-thread</i>::sync_wait_with_variant_t;
+  inline constexpr sync_wait_t sync_wait{};
+  inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 }
 
 namespace std::execution {
@@ -3795,13 +3835,15 @@ namespace std::execution {
   namespace <i>execute</i> { // exposition only
     struct execute_t;
   }
-  inline constexpr <i>execute</i>::execute_t execute{};
+  using <i>execute</i>::execute_t;
+  inline constexpr execute_t execute{};
 
   // [exec.as_awaitable]
   namespace <i>coro-utils</i> { // exposition only
     struct as_awaitable_t;
   }
-  inline constexpr <i>coro-utils</i>::as_awaitable_t as_awaitable;
+  using <i>coro-utils</i>::as_awaitable_t;
+  inline constexpr as_awaitable_t as_awaitable;
 
   // [exec.with_awaitable_senders]
   template &lt;<i>class-type</i> Promise>
