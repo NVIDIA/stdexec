@@ -30,9 +30,12 @@ struct op_state {
   }
 };
 
-struct my_sender : ex::completion_signatures< //
-                       ex::set_value_t(),     //
-                       ex::set_error_t(std::exception_ptr)> {
+struct my_sender  {
+  using completion_signatures =
+    ex::completion_signatures< //
+      ex::set_value_t(),     //
+      ex::set_error_t(std::exception_ptr)>;
+
   int value_{0};
 
   template <ex::receiver_of R>
@@ -41,9 +44,12 @@ struct my_sender : ex::completion_signatures< //
   }
 };
 
-struct my_sender_unconstrained : ex::completion_signatures< //
-                                     ex::set_value_t(),     //
-                                     ex::set_error_t(std::exception_ptr)> {
+struct my_sender_unconstrained {
+  using completion_signatures =
+    ex::completion_signatures< //
+      ex::set_value_t(),     //
+      ex::set_error_t(std::exception_ptr)>;
+
   int value_{0};
 
   template <typename R> // accept any type here
@@ -53,7 +59,7 @@ struct my_sender_unconstrained : ex::completion_signatures< //
 };
 
 TEST_CASE("can call connect on an appropriate types", "[cpo][cpo_connect]") {
-  auto op = ex::connect(my_sender{{}, 10}, expect_value_receiver{10});
+  auto op = ex::connect(my_sender{10}, expect_value_receiver{10});
   ex::start(op);
   // the receiver will check the received value
 }
@@ -82,7 +88,7 @@ TEST_CASE("connect can be defined in the receiver", "[cpo][cpo_connect]") {
   static_assert(ex::sender<my_sender>);
   static_assert(ex::receiver<strange_receiver>);
   bool called{false};
-  auto op = ex::connect(my_sender{{}, 10}, strange_receiver{&called});
+  auto op = ex::connect(my_sender{10}, strange_receiver{&called});
   ex::start(op);
   REQUIRE(called);
 }

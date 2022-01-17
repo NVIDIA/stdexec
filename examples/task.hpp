@@ -308,7 +308,7 @@ private:
     return _task_awaitable<>{std::exchange(self.coro_, {})};
   }
 
-  // Specify basic_task's sender traits
+  // Specify basic_task's completion signatures
   //   This is only necessary when basic_task is not generally awaitable
   //   owing to constraints imposed by its Context parameter.
   template <class... Ts>
@@ -318,7 +318,7 @@ private:
         std::execution::set_error_t(std::exception_ptr),
         std::execution::set_stopped_t()>;
 
-  friend auto tag_invoke(std::execution::get_sender_traits_t, const basic_task&, auto)
+  friend auto tag_invoke(std::execution::get_completion_signatures_t, const basic_task&, auto)
     -> std::conditional_t<std::is_void_v<T>, _task_traits_t<>, _task_traits_t<T>>;
 
   explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept

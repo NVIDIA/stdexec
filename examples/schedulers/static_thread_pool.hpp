@@ -51,12 +51,13 @@ namespace example {
       template <typename ReceiverId>
         friend class operation;
 
-      using traits = std::execution::completion_signatures<
+      class sender {
+       public:
+        using completion_signatures = std::execution::completion_signatures<
           std::execution::set_value_t(),
           std::execution::set_error_t(std::exception_ptr),
           std::execution::set_stopped_t()>;
-
-      class sender : public traits {
+       private:
         template <typename Receiver>
         operation<std::__x<std::decay_t<Receiver>>>
         make_operation_(Receiver&& r) const {

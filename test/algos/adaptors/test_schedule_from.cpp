@@ -32,9 +32,9 @@ TEST_CASE("schedule_from returns a sender", "[adaptors][schedule_from]") {
   static_assert(ex::sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("schedule_from returns a typed_sender", "[adaptors][schedule_from]") {
+TEST_CASE("schedule_from with environment returns a sender", "[adaptors][schedule_from]") {
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(13));
-  static_assert(ex::typed_sender<decltype(snd), empty_env>);
+  static_assert(ex::sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("schedule_from simple example", "[adaptors][schedule_from]") {

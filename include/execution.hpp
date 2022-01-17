@@ -119,7 +119,6 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
-  // NOT TO SPEC
   namespace __completion_signatures {
     template <same_as<set_value_t> _Tag, class _Ty = __q<__types>, class... _Args>
       __types<__minvoke<_Ty, _Args...>> __test(_Tag(*)(_Args...));
@@ -257,98 +256,100 @@ namespace std::execution {
       };
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.traits]
-  namespace __sender_base {
-    struct sender_base {};
-  }
-  using __sender_base::sender_base;
+  // [execution.sndtraits]
+  namespace __completion_signatures {
+    struct get_completion_signatures_t;
 
-  namespace __sender_traits {
-    namespace __impl {
-      struct get_sender_traits_t;
+    template <template <template <class...> class, template <class...> class> class>
+      struct __test_has_values;
 
-      template <template <template <class...> class, template <class...> class> class>
-        struct __test_has_values;
+    template <template <template <class...> class> class>
+      struct __test_has_errors;
 
-      template <template <template <class...> class> class>
-        struct __test_has_errors;
-
-      template <class _T>
-        concept __has_sender_types = requires {
-          typename __test_has_values<_T::template value_types>;
-          typename __test_has_errors<_T::template error_types>;
-          typename bool_constant<_T::sends_stopped>;
-        };
-
-      struct __empty_sender_traits {};
-
-      template <class _Sender>
-        struct __typed_sender {
-          template <template <class...> class _Tuple, template <class...> class _Variant>
-            using value_types = typename _Sender::template value_types<_Tuple, _Variant>;
-          template <template <class...> class _Variant>
-            using error_types = typename _Sender::template error_types<_Variant>;
-          static constexpr bool sends_stopped = _Sender::sends_stopped;
-        };
-
-      struct __no_sender_traits {};
-
-      struct get_sender_traits_t {
-        template <class _Sender, class _Env = no_env>
-        constexpr auto operator()(_Sender&& __sndr, const _Env& = {}) const noexcept {
-          static_assert(sizeof(_Sender), "Incomplete type used with get_sender_traits");
-          static_assert(sizeof(_Env), "Incomplete type used with get_sender_traits");
-          if constexpr (tag_invocable<get_sender_traits_t, _Sender, _Env>) {
-            return tag_invoke_result_t<get_sender_traits_t, _Sender, _Env>();
-          } else if constexpr (__has_sender_types<remove_cvref_t<_Sender>>) {
-            return __typed_sender<remove_cvref_t<_Sender>>{};
-          } else if constexpr (derived_from<remove_cvref_t<_Sender>, sender_base>) {
-            return __empty_sender_traits{};
-          } else if constexpr (__awaitable<_Sender>) {
-            using _Result = __await_result_t<_Sender>;
-            if constexpr (is_void_v<_Result>) {
-              return completion_signatures<set_value_t(), set_error_t(exception_ptr)>{};
-            } else {
-              return completion_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
-            }
-          } else {
-            return __no_sender_traits{};
-          }
-        }
+    template <class _T>
+      concept __has_sender_types = requires {
+        typename __test_has_values<_T::template value_types>;
+        typename __test_has_errors<_T::template error_types>;
+        typename bool_constant<_T::sends_stopped>;
       };
-    } // namespace __impl
-    using __impl::__has_sender_types;
-    using __impl::__empty_sender_traits;
 
-    template <__none_of<__impl::__no_sender_traits> _Traits>
-      using __is_valid_sender_traits = _Traits;
+    struct __empty_completion_signatures {};
 
-    using __impl::get_sender_traits_t;
-  } // namespace __sender_traits
-  using __sender_traits::get_sender_traits_t;
-  inline constexpr get_sender_traits_t get_sender_traits {};
+    inline constexpr bool __the_completion_signals_of_this_sender_types_depend_on_its_execution_environment = false;
+
+    struct __dependent_completion_signatures {
+      template <template <class...> class, template <class...> class _Variant>
+          requires __the_completion_signals_of_this_sender_types_depend_on_its_execution_environment
+        using value_types = _Variant<>;
+
+      template <template <class...> class _Variant>
+          requires __the_completion_signals_of_this_sender_types_depend_on_its_execution_environment
+        using error_types = _Variant<>;
+
+      static constexpr bool sends_stopped = true;
+    };
+
+    struct __no_completion_signatures {};
+
+    struct get_completion_signatures_t {
+      template <class _Sender, class _Env = no_env>
+      constexpr auto operator()(_Sender&& __sndr, const _Env& = {}) const noexcept {
+        static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
+        static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
+        if constexpr (tag_invocable<get_completion_signatures_t, _Sender, _Env>) {
+          return tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>();
+        } else if constexpr (requires { typename remove_cvref_t<_Sender>::completion_signatures; }) {
+          return typename remove_cvref_t<_Sender>::completion_signatures{};
+        } else if constexpr (__awaitable<_Sender>) {
+          using _Result = __await_result_t<_Sender>;
+          if constexpr (is_void_v<_Result>) {
+            return completion_signatures<set_value_t(), set_error_t(exception_ptr)>{};
+          } else {
+            return completion_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
+          }
+        } else {
+          return __no_completion_signatures{};
+        }
+      }
+    };
+  } // namespace __completion_signatures
+
+  using __completion_signatures::__has_sender_types;
+
+  template <class _Env>
+    using dependent_completion_signatures =
+      __if<
+        is_same<_Env, no_env>,
+        __completion_signatures::__dependent_completion_signatures,
+        __completion_signatures::__empty_completion_signatures>;
+
+  template <__none_of<__completion_signatures::__no_completion_signatures> _Traits>
+    using __is_valid_completion_signatures = _Traits;
+
+  using __completion_signatures::get_completion_signatures_t;
+  inline constexpr get_completion_signatures_t get_completion_signatures {};
 
   template <class _Sender, class _Env>
-    using __sender_traits_t =
-      __sender_traits::__is_valid_sender_traits<
+    using __completion_signatures_of_t =
+      __is_valid_completion_signatures<
         __call_result_t<
-          get_sender_traits_t,
+          get_completion_signatures_t,
           _Sender,
           _Env>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   // NOT TO SPEC (YET)
-  template <class _Sender>
-    concept sender =
-      __valid<__sender_traits_t, _Sender, no_env> &&
-      move_constructible<remove_cvref_t<_Sender>>;
+  template <class _Sender, class _Env>
+    concept __sender =
+      __valid<__completion_signatures_of_t, _Sender, _Env> &&
+      __has_sender_types<__completion_signatures_of_t<_Sender, _Env>>;
 
   template <class _Sender, class _Env = no_env>
-    concept typed_sender =
-      sender<_Sender> &&
-      __valid<__sender_traits_t, _Sender, _Env> &&
-      __sender_traits::__has_sender_types<__sender_traits_t<_Sender, _Env>>;
+    concept sender =
+      __sender<_Sender, _Env> &&
+      __sender<_Sender, no_env> &&
+      move_constructible<remove_cvref_t<_Sender>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
@@ -358,22 +359,22 @@ namespace std::execution {
       typename _Outer<_Inners...>;
     };
 
-  // __checked_sender_traits is for catching logic bugs in a typed sender's
-  // metadata. If typed_sender<S> and typed_sender<S, Ctx> are both true,
-  // then they had better report the same metadata. This sender traits wrapper
+  // __checked_completion_signatures is for catching logic bugs in a typed
+  // sender's metadata. If sender<S> and sender<S, Ctx> are both true, then they
+  // had better report the same metadata. This completion signatures wrapper
   // enforces that at compile time.
   template <class _Sender, class _Env>
-      requires __valid<__sender_traits_t, _Sender, _Env>
-    struct __checked_sender_traits
-      : __sender_traits_t<_Sender, _Env>
+      requires __valid<__completion_signatures_of_t, _Sender, _Env>
+    struct __checked_completion_signatures
+      : __completion_signatures_of_t<_Sender, _Env>
     {};
 
-  template <typed_sender _Sender, class _Env>
-      requires typed_sender<_Sender, _Env>
-    struct __checked_sender_traits<_Sender, _Env> {
+  template <sender _Sender, class _Env>
+      requires sender<_Sender, _Env>
+    struct __checked_completion_signatures<_Sender, _Env> {
      private:
-      using _WithEnv = __sender_traits_t<_Sender, _Env>;
-      using _WithoutEnv = __sender_traits_t<_Sender, no_env>;
+      using _WithEnv = __completion_signatures_of_t<_Sender, _Env>;
+      using _WithoutEnv = __completion_signatures_of_t<_Sender, no_env>;
 
       static_assert(_WithEnv::sends_stopped == _WithoutEnv::sends_stopped);
 
@@ -401,19 +402,19 @@ namespace std::execution {
         using error_types = __t<__error_types<_Variant>>;
 
       static constexpr bool sends_stopped =
-        __sender_traits_t<_Sender, _Env>::sends_stopped;
+        __completion_signatures_of_t<_Sender, _Env>::sends_stopped;
     };
 
 #if defined(NDEBUG)
   template <class _Sender, class _Env = no_env>
-    using sender_traits_t =
-      __sender_traits_t<_Sender, _Env>;
+    using completion_signatures_of_t =
+      __completion_signatures_of_t<_Sender, _Env>;
 #else
-  // If we are compiling debug, add extra static checks that a typed_sender
+  // If we are compiling debug, add extra static checks that a sender
   // doesn't change its metadata when used with a particular environment.
   template <class _Sender, class _Env = no_env>
-    using sender_traits_t =
-      __checked_sender_traits<_Sender, _Env>;
+    using completion_signatures_of_t =
+      __checked_completion_signatures<_Sender, _Env>;
 #endif
 
   struct __not_a_variant {
@@ -435,24 +436,24 @@ namespace std::execution {
             class _Env = no_env,
             template <class...> class _Tuple = __decayed_tuple,
             template <class...> class _Variant = __variant>
-      requires typed_sender<_Sender, _Env>
+      requires sender<_Sender, _Env>
     using value_types_of_t =
-      typename sender_traits_t<_Sender, _Env>::template
+      typename completion_signatures_of_t<_Sender, _Env>::template
         value_types<_Tuple, _Variant>;
 
   template <class _Sender,
             class _Env = no_env,
             template <class...> class _Variant = __variant>
-      requires typed_sender<_Sender, _Env>
+      requires sender<_Sender, _Env>
     using error_types_of_t =
-      typename sender_traits_t<_Sender, _Env>::template
+      typename completion_signatures_of_t<_Sender, _Env>::template
         error_types<_Variant>;
 
   template <class _Sender,
             class _Env = no_env,
             class _Tuple = __q<__decayed_tuple>,
             class _Variant = __q<__variant>>
-      requires typed_sender<_Sender, _Env>
+      requires sender<_Sender, _Env>
     using __value_types_of_t =
       value_types_of_t<
         _Sender, _Env, _Tuple::template __f, _Variant::template __f>;
@@ -460,14 +461,14 @@ namespace std::execution {
   template <class _Sender,
             class _Env = no_env,
             class _Variant = __q<__variant>>
-      requires typed_sender<_Sender, _Env>
+      requires sender<_Sender, _Env>
     using __error_types_of_t =
       error_types_of_t<_Sender, _Env, _Variant::template __f>;
 
   template <class _Sender, class _Env = no_env>
-      requires typed_sender<_Sender, _Env>
+      requires sender<_Sender, _Env>
     using __sends_stopped =
-      __bool<sender_traits_t<_Sender, _Env>::sends_stopped>;
+      __bool<completion_signatures_of_t<_Sender, _Env>::sends_stopped>;
 
   template <class _Sender, class _Env = no_env>
     using __single_sender_value_t =
@@ -475,7 +476,7 @@ namespace std::execution {
 
   template <class _Sender, class _Env = no_env>
     concept __single_typed_sender =
-      typed_sender<_Sender, _Env> &&
+      sender<_Sender, _Env> &&
       __valid<__single_sender_value_t, _Sender, _Env>;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -496,13 +497,13 @@ namespace std::execution {
         __if<_SendsStopped, __types<set_stopped_t()>, __types<>>>;
 
     template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, bool _SendsStopped>
-    auto __make() ->
+    auto __make(int) ->
         __compl_sigs_t<
           _Sender, _Env, _Sigs, _SetValue, _SetError, __bool<_SendsStopped>>
         requires true;
 
-    template<class, class _Env, class, class, class, bool>
-    auto __make() -> __sender_traits::__empty_sender_traits;
+    template<class, __one_of<no_env> _Env, class, class, class, bool>
+    auto __make(long) -> dependent_completion_signatures<_Env>;
   } // namespace __completion_signatures
 
   /////////////////////////////////////////////////////////////////////////////
@@ -528,8 +529,8 @@ namespace std::execution {
   //    class AddlSigs = completion_signatures<>,
   //    template <class...> class SetValue = __default_set_value,
   //    template <class> class SetError = __default_set_error,
-  //    bool SendsStopped = sender_traits_t<Sndr, Env>::sends_stopped>
-  //      requires typed_sender<Sndr, Env>
+  //    bool SendsStopped = completion_signatures_of_t<Sndr, Env>::sends_stopped>
+  //      requires sender<Sndr, Env>
   //  using make_completion_signatures =
   //    completion_signatures< ... >;
   //  ```
@@ -573,10 +574,10 @@ namespace std::execution {
     template <class...> class _SetValue = __completion_signatures::__set_value_sig,
     template <class> class _SetError = __completion_signatures::__set_error_sig,
     bool _SendsStopped = __v<__sends_stopped<_Sender, _Env>>>
-      requires typed_sender<_Sender, _Env>
+      requires sender<_Sender, _Env>
   using make_completion_signatures =
     decltype(__completion_signatures::
-      __make<_Sender, _Env, _Sigs, __q<_SetValue>, __q1<_SetError>, _SendsStopped>());
+      __make<_Sender, _Env, _Sigs, __q<_SetValue>, __q1<_SetError>, _SendsStopped>(0));
 
   // Needed fairly often
   using __with_exception_ptr =
@@ -1107,6 +1108,7 @@ namespace std::execution {
   // [execution.senders]
   template <class _Sender, class _Receiver>
     concept sender_to =
+      sender<_Sender, env_of_t<_Receiver>> &&
       receiver<_Receiver> &&
       requires (_Sender&& __sndr, _Receiver&& __rcvr) {
         connect((_Sender&&) __sndr, (_Receiver&&) __rcvr);
@@ -1560,11 +1562,11 @@ namespace std::execution {
 
         template <class... _Ts>
         completion_signatures<set_value_t(_Ts...), set_error_t(exception_ptr)>
-        tag_invoke(get_sender_traits_t, const __sender<set_value_t, _Ts...>&, auto) noexcept;
+        tag_invoke(get_completion_signatures_t, const __sender<set_value_t, _Ts...>&, auto) noexcept;
 
         template <class _Tag, class... _Ts>
         completion_signatures<_Tag(_Ts...)>
-        tag_invoke(get_sender_traits_t, const __sender<_Tag, _Ts...>&, auto) noexcept;
+        tag_invoke(get_completion_signatures_t, const __sender<_Tag, _Ts...>&, auto) noexcept;
     }
 
     inline constexpr struct __just_t {
@@ -2077,7 +2079,7 @@ namespace std::execution {
             using __result = __set_value<invoke_result_t<_Fun, _Args...>>;
 
           template <class _Env>
-          friend auto tag_invoke(get_sender_traits_t, const __sender&, _Env) ->
+          friend auto tag_invoke(get_completion_signatures_t, const __sender&, _Env) ->
             make_completion_signatures<
               _Sender, _Env, __with_exception_ptr, __result>;
 
@@ -2153,12 +2155,12 @@ namespace std::execution {
         struct __which_tuple : __which_tuple_base {};
 
       template <class _Sender, class _Env>
-          requires typed_sender<_Sender, _Env>
+          requires sender<_Sender, _Env>
         struct __which_tuple<_Sender, _Env, set_value_t>
           : value_types_of_t<_Sender, _Env, __as_tuple, __which_tuple_> {};
 
       template <class _Sender, class _Env>
-          requires typed_sender<_Sender, _Env>
+          requires sender<_Sender, _Env>
         struct __which_tuple<_Sender, _Env, set_error_t>
           : __error_types_of_t<
               _Sender,
@@ -2197,7 +2199,7 @@ namespace std::execution {
 
       // Storage for let_value:
       template <class _Sender, class _Receiver, class _Fun>
-          requires typed_sender<_Sender, env_of_t<_Receiver>>
+          requires sender<_Sender, env_of_t<_Receiver>>
         struct __storage<_Sender, _Receiver, _Fun, set_value_t> {
           template <class... _As>
             using __op_state_for_t =
@@ -2217,7 +2219,7 @@ namespace std::execution {
 
       // Storage for let_error:
       template <class _Sender, class _Receiver, class _Fun>
-          requires typed_sender<_Sender, env_of_t<_Receiver>>
+          requires sender<_Sender, env_of_t<_Receiver>>
         struct __storage<_Sender, _Receiver, _Fun, set_error_t> {
           template <class _Error>
             using __op_state_for_t =
@@ -2250,7 +2252,7 @@ namespace std::execution {
 
       template <class _Env>
         struct __typed_senders {
-          template <typed_sender<_Env>...>
+          template <sender<_Env>...>
             struct __f;
         };
 
@@ -2278,12 +2280,12 @@ namespace std::execution {
       // sender, and if all the possible return types of the function are also
       // typed senders.
       template <class _Sender, class _Env, class _Fun, class _Let>
-        struct __traits {};
+        struct __completion_sigs : dependent_completion_signatures<_Env> {};
 
       template <class _Sender, class _Env, class _Fun>
-          requires typed_sender<_Sender, _Env> &&
+          requires sender<_Sender, _Env> &&
             __valid<__value_senders_of, _Sender, _Env, _Fun, __typed_senders<_Env>>
-        struct __traits<_Sender, _Env, _Fun, set_value_t>
+        struct __completion_sigs<_Sender, _Env, _Fun, set_value_t>
         {
           template <class _Continuation>
             using __result_senders_t =
@@ -2316,9 +2318,9 @@ namespace std::execution {
         };
 
       template <class _Sender, class _Env, class _Fun>
-          requires typed_sender<_Sender, _Env> &&
+          requires sender<_Sender, _Env> &&
             __valid<__error_senders_of, _Sender, _Env, _Fun, __typed_senders<_Env>>
-        struct __traits<_Sender, _Env, _Fun, set_error_t>
+        struct __completion_sigs<_Sender, _Env, _Fun, set_error_t>
         {
           template <class _Continuation>
             using __result_senders_t =
@@ -2352,9 +2354,9 @@ namespace std::execution {
         };
 
       template <class _Sender, class _Env, class _Fun>
-          requires typed_sender<_Sender, _Env> &&
+          requires sender<_Sender, _Env> &&
             __valid<__stopped_senders_of, _Sender, _Env, _Fun, __typed_senders<_Env>>
-        struct __traits<_Sender, _Env, _Fun, set_stopped_t>
+        struct __completion_sigs<_Sender, _Env, _Fun, set_stopped_t>
         {
           template <class _Continuation>
             using __result_senders_t =
@@ -2512,8 +2514,8 @@ namespace std::execution {
             }
 
           template <__decays_to<__sender> _Self, class _Env>
-            friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
-              -> __traits<__member_t<_Self, _Sender>, _Env, _Fun, _Let>;
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+              -> __completion_sigs<__member_t<_Self, _Sender>, _Env, _Fun, _Let>;
 
           _Sender __sndr_;
           _Fun __fun_;
@@ -2625,12 +2627,12 @@ namespace std::execution {
           _Receiver __rcvr_;
         };
 
-      template <class, class>
-        struct __traits {};
+      template <class, class _Env>
+        struct __completion_sigs : dependent_completion_signatures<_Env> {};
 
       template <class _Sender, class _Env>
           requires __single_typed_sender<_Sender, _Env>
-        struct __traits<_Sender, _Env> {
+        struct __completion_sigs<_Sender, _Env> {
           template <template <class...> class _Tuple, template <class...> class _Variant>
             using value_types =
               _Variant<_Tuple<optional<__single_sender_value_t<_Sender, _Env>>>>;
@@ -2655,8 +2657,8 @@ namespace std::execution {
             using __receiver_t =
               __receiver<__x<__member_t<_Self, _Sender>>, __x<decay_t<_Receiver>>>;
           template <class _Self, class _Env>
-            using __traits_t =
-              __traits<__member_t<_Self, _Sender>, _Env>;
+            using __completion_sigs_t =
+              __completion_sigs<__member_t<_Self, _Sender>, _Env>;
 
           template <__decays_to<__sender> _Self, receiver _Receiver>
               requires __single_typed_sender<__member_t<_Self, _Sender>, env_of_t<_Receiver>> &&
@@ -2675,8 +2677,8 @@ namespace std::execution {
             }
 
           template <__decays_to<__sender> _Self, class _Env>
-            friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
-              -> __traits_t<_Self, _Env>;
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+              -> __completion_sigs_t<_Self, _Env>;
 
           _Sender __sndr_;
         };
@@ -2760,8 +2762,12 @@ namespace std::execution {
         friend class __impl::__operation;
      public:
       class __scheduler {
-        struct __schedule_task
-          : completion_signatures<set_value_t(), set_error_t(exception_ptr), set_stopped_t()> {
+        struct __schedule_task {
+          using completion_signatures =
+            completion_signatures<
+              set_value_t(),
+              set_error_t(exception_ptr),
+              set_stopped_t()>;
          private:
           friend __scheduler;
 
@@ -2918,7 +2924,7 @@ namespace std::execution {
       // information can be stored in situ within a variant in the operation
       // state
       template <class _Sender, class _Env>
-          requires typed_sender<_Sender, _Env>
+          requires sender<_Sender, _Env>
         struct __completion_storage<_Sender, _Env> {
           // Compute a variant type that is capable of storing the results of the
           // input sender when it completes. The variant has type:
@@ -3098,8 +3104,8 @@ namespace std::execution {
           }
 
           template <__decays_to<__sender> _Self, class _Env>
-            friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
-              -> sender_traits_t<__member_t<_Self, _Sender>, _Env>;
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+              -> completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>;
         };
     } // namespace __impl
 
@@ -3290,8 +3296,8 @@ namespace std::execution {
           }
 
           template <__decays_to<__sender> _Self, class _Env>
-          friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
-            -> sender_traits_t<
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+            -> completion_signatures_of_t<
                 __member_t<_Self, _Sender>,
                 make_env_t<get_scheduler_t, _Scheduler, _Env>>;
         };
@@ -3346,7 +3352,7 @@ namespace std::execution {
   namespace __into_variant {
     namespace __impl {
       template <class _Sender, class _Env>
-          requires typed_sender<_Sender, _Env>
+          requires sender<_Sender, _Env>
         using __into_variant_result_t =
           value_types_of_t<_Sender, _Env>;
 
@@ -3376,12 +3382,12 @@ namespace std::execution {
           using receiver_adaptor<__receiver, _Receiver>::receiver_adaptor;
         };
 
-      template <class, class>
-        struct __traits {};
+      template <class, class _Env>
+        struct __completion_sigs : dependent_completion_signatures<_Env> {};
 
       template <class _Sender, class _Env>
-          requires typed_sender<_Sender, _Env>
-        struct __traits<_Sender, _Env> {
+          requires sender<_Sender, _Env>
+        struct __completion_sigs<_Sender, _Env> {
           using __variant_t = __into_variant_result_t<_Sender, _Env>;
 
           template <template <class...> class _Tuple, template <class...> class _Variant>
@@ -3417,8 +3423,8 @@ namespace std::execution {
           }
 
           template <class _Env>
-            friend auto tag_invoke(get_sender_traits_t, const __sender&, _Env)
-              -> __traits<_Sender, _Env>;
+            friend auto tag_invoke(get_completion_signatures_t, const __sender&, _Env)
+              -> __completion_sigs<_Sender, _Env>;
 
          public:
           using sender_adaptor<__sender, _Sender>::sender_adaptor;
@@ -3479,8 +3485,8 @@ namespace std::execution {
             {}
 
          private:
-          template <class>
-            struct __traits {};
+          template <class _CvrefEnv>
+            struct __completion_sigs : dependent_completion_signatures<decay_t<_CvrefEnv>> {};
           template <class _CvrefReceiverId>
             struct __operation;
 
@@ -3488,7 +3494,7 @@ namespace std::execution {
             struct __receiver : receiver_adaptor<__receiver<_CvrefReceiverId, _Index>> {
               using _WhenAll = __member_t<_CvrefReceiverId, __sender>;
               using _Receiver = __t<decay_t<_CvrefReceiverId>>;
-              using _Traits = __traits<__env_t<env_of_t<_Receiver>>>;
+              using _Traits = __completion_sigs<env_of_t<_Receiver>>;
 
               _Receiver&& base() && noexcept {
                 return (_Receiver&&) __op_state_->__recvr_;
@@ -3562,7 +3568,7 @@ namespace std::execution {
                   __types>...>;
 
           template <class _CvrefEnv>
-            struct __traits_base {
+            struct __completion_sigs_base {
               static constexpr bool __has_values = false;
               template <class, class _Variant>
                 using __value_types = __minvoke<_Variant>;
@@ -3570,9 +3576,9 @@ namespace std::execution {
           template <class _CvrefEnv>
               requires (__is_typed_sender<
                   __member_t<_CvrefEnv, __t<_SenderIds>>,
-                  decay_t<_CvrefEnv>,
+                  __env_t<decay_t<_CvrefEnv>>,
                   __q<__single_t>> &&...)
-            struct __traits_base<_CvrefEnv> {
+            struct __completion_sigs_base<_CvrefEnv> {
               static constexpr bool __has_values = true;
               template <class _Tuple, class _Variant>
                 using __value_types =
@@ -3582,7 +3588,7 @@ namespace std::execution {
                       _Tuple,
                       value_types_of_t<
                         __member_t<_CvrefEnv, __t<_SenderIds>>,
-                        decay_t<_CvrefEnv>,
+                        __env_t<decay_t<_CvrefEnv>>,
                         __types,
                         __single_t>...>>;
             };
@@ -3590,11 +3596,11 @@ namespace std::execution {
           template <class _CvrefEnv>
               requires (__is_typed_sender<
                   __member_t<_CvrefEnv, __t<_SenderIds>>,
-                  decay_t<_CvrefEnv>,
+                  __env_t<decay_t<_CvrefEnv>>,
                   __q<__single_or_void_t>> &&...)
-            struct __traits<_CvrefEnv> : __traits_base<_CvrefEnv> {
+            struct __completion_sigs<_CvrefEnv> : __completion_sigs_base<_CvrefEnv> {
               template <template <class...> class _Tuple, template <class...> class _Variant>
-                using value_types = typename __traits::template
+                using value_types = typename __completion_sigs::template
                   __value_types<__concat<__q<_Tuple>>, __q<_Variant>>;
 
               template <template <class...> class _Variant>
@@ -3608,7 +3614,7 @@ namespace std::execution {
             struct __operation {
               using _WhenAll = __member_t<_CvrefReceiverId, __sender>;
               using _Receiver = __t<decay_t<_CvrefReceiverId>>;
-              using _Env = __env_t<env_of_t<_Receiver>>;
+              using _Env = env_of_t<_Receiver>;
               using _CvrefEnv = __member_t<_CvrefReceiverId, _Env>;
 
               template <class _Sender, size_t _Index>
@@ -3647,7 +3653,7 @@ namespace std::execution {
                 // All child operations have completed and arrived at the barrier.
                 switch(__state_.load(memory_order_relaxed)) {
                 case __started:
-                  if constexpr (__traits<_CvrefEnv>::__has_values) {
+                  if constexpr (__completion_sigs<_CvrefEnv>::__has_values) {
                     // All child operations completed successfully:
                     std::apply(
                       [this](auto&... __opt_vals) -> void {
@@ -3709,7 +3715,7 @@ namespace std::execution {
 
               // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
               using __child_values_tuple_t =
-                typename __traits<_CvrefEnv>::template __value_types<
+                typename __completion_sigs<_CvrefEnv>::template __value_types<
                   __transform<__uncurry<__compose<__q1<optional>, __q<__decayed_tuple>>>>,
                   __uncurry<__q<tuple>>>;
 
@@ -3718,7 +3724,7 @@ namespace std::execution {
               atomic<size_t> __count_{sizeof...(_SenderIds)};
               // Could be non-atomic here and atomic_ref everywhere except __completion_fn
               atomic<__state_t> __state_{__started};
-              error_types_of_t<__sender, _Env, variant> __errors_{};
+              error_types_of_t<__sender, __env_t<_Env>, variant> __errors_{};
               [[no_unique_address]] __child_values_tuple_t __values_{};
               in_place_stop_source __stop_source_{};
               optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template
@@ -3730,11 +3736,10 @@ namespace std::execution {
 
           template <class _Self, class _Receiver>
             using __can_connect_to_t =
-              __value_types_of_t<
-                __traits<__member_t<_Self, __env_t<env_of_t<_Receiver>>>>,
-                _Receiver,
-                __bind_front_q<__receiver_of, _Receiver>,
-                __q<__single_or_void_t>>;
+              typename __completion_sigs<__member_t<_Self, env_of_t<_Receiver>>>
+                ::template value_types<
+                  __bind_front_q<__receiver_of, _Receiver>::template __f,
+                  __single_or_void_t>;
 
           template <__decays_to<__sender> _Self, receiver _Receiver>
               requires __is_true<__can_connect_to_t<_Self, _Receiver>>
@@ -3744,8 +3749,8 @@ namespace std::execution {
             }
 
           template <__decays_to<__sender> _Self, class _Env>
-            friend auto tag_invoke(get_sender_traits_t, _Self&&, _Env)
-              -> __traits<__member_t<_Self, __env_t<_Env>>>;
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+              -> __completion_sigs<__member_t<_Self, _Env>>;
 
           tuple<__t<_SenderIds>...> __sndrs_;
         };
@@ -3861,12 +3866,13 @@ namespace std::execution {
           return {(_Receiver&&) __rcvr};
         }
 
-        friend auto tag_invoke(get_sender_traits_t, __sender, auto)
-          -> __sender_traits::__empty_sender_traits;
-        template <__none_of<no_env> _Env>
-          requires __callable<_Tag, _Env>
-        friend auto tag_invoke(get_sender_traits_t, __sender, _Env)
-          -> completion_signatures<
+        template <class _Env>
+          friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) ->
+            dependent_completion_signatures<_Env>;
+        template <class _Env>
+            requires __callable<_Tag, _Env>
+          friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) ->
+            completion_signatures<
               set_value_t(__call_result_t<_Tag, _Env>),
               set_error_t(exception_ptr)>;
       };
@@ -3923,7 +3929,7 @@ namespace std::this_thread {
 
       // What should sync_wait(just_stopped()) return?
       template <class _Sender>
-          requires execution::typed_sender<_Sender, __env>
+          requires execution::sender<_Sender, __env>
         using __sync_wait_result_t =
           execution::value_types_of_t<
             _Sender,
@@ -4011,7 +4017,7 @@ namespace std::this_thread {
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_t, execution::set_value_t, _Sender>) &&
           (!tag_invocable<sync_wait_t, _Sender>) &&
-          execution::typed_sender<_Sender, __impl::__env> &&
+          execution::sender<_Sender, __impl::__env> &&
           execution::sender_to<_Sender, __impl::__receiver<__x<_Sender>>>
       auto operator()(_Sender&& __sndr) const
         -> optional<__impl::__sync_wait_result_t<_Sender>> {

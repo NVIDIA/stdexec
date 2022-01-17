@@ -62,10 +62,12 @@ struct impulse_scheduler {
     }
   };
 
-  struct my_sender : ex::completion_signatures<               //
-                         ex::set_value_t(),                   //
-                         ex::set_error_t(std::exception_ptr), //
-                         ex::set_stopped_t()> {
+  struct my_sender {
+    using completion_signatures =
+      ex::completion_signatures<             //
+        ex::set_value_t(),                   //
+        ex::set_error_t(std::exception_ptr), //
+        ex::set_stopped_t()>;
     cmd_vec_t* all_commands_;
 
     template <ex::receiver_of R>
@@ -97,7 +99,7 @@ struct impulse_scheduler {
   }
 
   friend my_sender tag_invoke(ex::schedule_t, const impulse_scheduler& self) {
-    return my_sender{{}, self.all_commands_.get()};
+    return my_sender{self.all_commands_.get()};
   }
 
   friend bool operator==(impulse_scheduler, impulse_scheduler) noexcept { return true; }
@@ -118,9 +120,11 @@ struct inline_scheduler {
     }
   };
 
-  struct my_sender : ex::completion_signatures< //
-                         ex::set_value_t(),     //
-                         ex::set_error_t(std::exception_ptr)> {
+  struct my_sender {
+    using completion_signatures =
+      ex::completion_signatures<             //
+        ex::set_value_t(),                   //
+        ex::set_error_t(std::exception_ptr)>;
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {(R &&) r};
@@ -150,9 +154,13 @@ struct error_scheduler {
     }
   };
 
-  struct my_sender : ex::completion_signatures< //
-                         ex::set_value_t(),     //
-                         ex::set_error_t(E)> {
+  struct my_sender {
+    using completion_signatures =
+      ex::completion_signatures<             //
+        ex::set_value_t(),                   //
+        ex::set_error_t(E),                  //
+        ex::set_stopped_t()>;
+
     E err_;
 
     template <typename R>
@@ -168,7 +176,7 @@ struct error_scheduler {
   E err_;
 
   friend my_sender tag_invoke(ex::schedule_t, error_scheduler self) {
-    return {{}, (E &&) self.err_};
+    return {(E &&) self.err_};
   }
 
   friend bool operator==(error_scheduler, error_scheduler) noexcept { return true; }
@@ -183,9 +191,12 @@ struct stopped_scheduler {
     friend void tag_invoke(ex::start_t, oper& self) noexcept { ex::set_stopped((R &&) self.recv_); }
   };
 
-  struct my_sender : ex::completion_signatures< //
-                         ex::set_value_t(),     //
-                         ex::set_stopped_t()> {
+  struct my_sender {
+    using completion_signatures =
+      ex::completion_signatures<  //
+        ex::set_value_t(),        //
+        ex::set_stopped_t()>;
+
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {(R &&) r};

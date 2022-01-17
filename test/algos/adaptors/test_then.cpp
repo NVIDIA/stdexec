@@ -27,9 +27,9 @@ TEST_CASE("then returns a sender", "[adaptors][then]") {
   static_assert(ex::sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("then returns a typed_sender", "[adaptors][then]") {
+TEST_CASE("then with environment returns a sender", "[adaptors][then]") {
   auto snd = ex::then(ex::just(), [] {});
-  static_assert(ex::typed_sender<decltype(snd), empty_env>);
+  static_assert(ex::sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("then simple example", "[adaptors][then]") {
