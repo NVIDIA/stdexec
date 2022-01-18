@@ -3002,7 +3002,15 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
 <ins>
 <blockquote>
 
-1. The name `std::tag_invoke` denotes a customization point object [customization.point.object]. Given subexpressions `T` and `A...` the expression `tag_invoke(T, A...)` is expression-equivalent [defns.expression-equivalent] to `tag_invoke(T, A...)` if it is a well-formed expression with overload resolution performed in a context that does not include the declaration of `std::tag_invoke`. Otherwise, `tag_invoke(T, A...)` is ill-formed.
+1. The name `std::tag_invoke` denotes a customization point object [customization.point.object]. Given subexpressions `T` and `A...`, the expression `std::tag_invoke(T, A...)` is expression-equivalent [defns.expression-equivalent] to `tag_invoke(T, A...)` if it is a well-formed expression with overload resolution performed in a context in which unqualified lookup for `tag_invoke` finds only the declaration
+
+    ```c++
+    void tag_invoke();
+    ```
+
+    Otherwise, `std::tag_invoke(T, A...)` is ill-formed.
+
+2. [Note: Diagnosable ill-formed cases above result in substitution failure when `std::tag_invoke(T, A...)` appears in the immediate context of a template instantiation. —end note]
 
 </blockquote>
 </ins>
