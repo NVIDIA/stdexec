@@ -4348,7 +4348,7 @@ enum class forward_progress_guarantee {
     struct <i>no-completion-signatures</i> {};
     </pre>
 
-#### `completion_signatures_of_t` <b>[exec.sndtraitst]</b> #### {#spec-exec.sndtraitst}
+#### `execution::completion_signatures_of_t` <b>[exec.sndtraitst]</b> #### {#spec-exec.sndtraitst}
 
 1. The alias template `completion_signatures_of_t` is used to query a sender type for facts associated with the signals it sends.
 
@@ -4360,9 +4360,17 @@ enum class forward_progress_guarantee {
 
     3. For an awaitable `a` such that `decltype((a))` is type `A`, <code><i>await-result-type</i>&lt;A></code> is an alias for <code>decltype(<i>e</i>)</code>, where <code><i>e</i></code> is `a`'s <i>await-resume</i> expression ([expr.await]) within the context of a coroutine whose promise type does not define a member `await_transform`. For a coroutine promise type `P`, <code><i>await-result-type</i>&lt;A, P></code> is an alias for <code>decltype(<i>e</i>)</code>, where <code><i>e</i></code> is `a`'s <i>await-resume</i> expression ([expr.await]) within the context of a coroutine whose promise type is `P`.
 
-3. For types `S` and `E`, the type `completion_signatures_of_t<S, E>` is an alias for `decltype(get_completion_signatures(declval<S>(), declval<E>()))` if that expression is well-formed and names a type other than <code><i>no-completion-signatures</i></code>. Otherwise, it is ill-formed.
+3. For types `S` and `E`, the type `completion_signatures_of_t<S, E>` is an
+    alias for `decltype(get_completion_signatures(declval<S>(), declval<E>()))`
+    if that expression is well-formed and names a type other than
+    <code><i>no-completion-signatures</i></code>. Otherwise, it is ill-formed.
 
-4. `get_completion_signatures` is a customization point object. Let `s` be an expression such that `decltype((s))` is `S`, and let `e` be an expression such that `decltype((e))` is `E`. Then `get_completion_signatures(s)` is expression-equivalent to `get_completion_signatures(s, no_env{})` and `get_completion_signatures(s, e)` is expression-equivalent to:
+4. `execution::get_completion_signatures` is a customization point object. Let
+    `s` be an expression such that `decltype((s))` is `S`, and let `e` be an
+    expression such that `decltype((e))` is `E`. Then
+    `get_completion_signatures(s)` is expression-equivalent to
+    `get_completion_signatures(s, no_env{})` and `get_completion_signatures(s,
+    e)` is expression-equivalent to:
 
     1. `tag_invoke_result_t<get_completion_signatures_t, S, E>{}` if that expression is well-formed,
 
@@ -4435,6 +4443,23 @@ enum class forward_progress_guarantee {
     sender. If `completion_signatures_of_t<S, env_of_t<R>>::sends_stopped` is well formed and
     `false`, and such sender `S` odr-uses `execution::set_stopped(r)`, the program
     is ill-formed with no diagnostic required.
+
+9. Let `S` be the type of a sender, let `E` be the type of an execution
+    environment other than `execution::no_env` such that `sender<S, E>` is
+    `true`. Let `Tuple`, `Variant1`, and `Variant2` be variadic alias templates
+    or class templates such that following types are well-formed:
+   
+      * `value_types_of_t<S, no_env, Tuple, Variant1>`
+      * `error_types_of_t<S, no_env, Variant2>`
+
+      then the following shall also be `true`:
+
+      * `value_types_of_t<S, E, Tuple, Variant1>` shall also be well-formed and shall
+          name the same type as `value_types_of_t<S, no_env, Tuple, Variant1>`,
+      * `error_types_of_t<S, E, Variant2>` shall also be well-formed and shall
+          name the same type as `error_types_of_t<S, no_env, Variant2>`, and
+      * `completion_signatures_of_t<S, E>::sends_stopped` shall have the same
+          value as `completion_signatures_of_t<S, no_env>::sends_stopped`.
 
 #### `dependent_completion_signatures` <b>[exec.depsndtraits]</b> #### {#spec-exec.depsndtraitst}
 
@@ -5789,8 +5814,8 @@ are all well-formed.
 1. `execution::ensure_started` is used to eagerly start the execution of a sender, while also providing a way to attach further work to execute once it has completed.
 
 2. Let <code><i>ensure-started-env</i></code> be the type of an execution
-   environment such that, given an instance `e`, the expression
-   `get_stop_token(e)` is well formed and has type `stop_token`.
+    environment such that, given an instance `e`, the expression
+    `get_stop_token(e)` is well formed and has type `stop_token`.
 
 2. The name `execution::ensure_started` denotes a customization point object.
     For some subexpression `s`, let `S` be `decltype((s))`. If
@@ -5904,11 +5929,11 @@ are all well-formed.
             <code><i>Signal</i>(r, args...)</code>.
 
         7. [*Note:* If sender `s2` is destroyed without being connected to a
-           receiver, or if it is connected but the operation state is destroyed
-           without having been started, then when `r`'s receiver contract
-           completes and it releases its shared ownership of `sh_state`,
-           `sh_state` will be destroyed and the results of the operation are
-           discarded. -- *end note*]
+            receiver, or if it is connected but the operation state is destroyed
+            without having been started, then when `r`'s receiver contract
+            completes and it releases its shared ownership of `sh_state`,
+            `sh_state` will be destroyed and the results of the operation are
+            discarded. -- *end note*]
         
     4. Given an expression `e`, let `E` be `decltype((e))`. If `sender<S,
         E>` is `false`, the type of `tag_invoke(get_sender_traits, s2, e)` shall
