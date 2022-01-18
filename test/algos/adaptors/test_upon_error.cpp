@@ -28,9 +28,9 @@ namespace ex = std::execution;
 //   static_assert(ex::sender<decltype(snd)>);
 //   (void)snd;
 // }
-// TEST_CASE("then returns a typed_sender", "[adaptors][upon_error]") {
+// TEST_CASE("then with environment returns a sender", "[adaptors][upon_error]") {
 //   auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) {});
-//   static_assert(ex::typed_sender<decltype(snd), empty_env>);
+//   static_assert(ex::sender<decltype(snd), empty_env>);
 //   (void)snd;
 // }
 // TEST_CASE("then simple example", "[adaptors][upon_error]") {

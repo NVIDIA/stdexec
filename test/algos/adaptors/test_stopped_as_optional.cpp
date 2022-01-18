@@ -27,9 +27,9 @@ TEST_CASE("stopped_as_optional returns a sender", "[adaptors][stopped_as_optiona
   static_assert(ex::sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("stopped_as_optional returns a typed_sender", "[adaptors][stopped_as_optional]") {
+TEST_CASE("stopped_as_optional with environment returns a sender", "[adaptors][stopped_as_optional]") {
   auto snd = ex::stopped_as_optional(ex::just(11));
-  static_assert(ex::typed_sender<decltype(snd), empty_env>);
+  static_assert(ex::sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("stopped_as_optional simple example", "[adaptors][stopped_as_optional]") {

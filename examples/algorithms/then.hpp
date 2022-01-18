@@ -58,12 +58,12 @@ struct _then_sender {
         (S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
   }
 
-  // Compute the sender_traits
+  // Compute the completion_signatures
   template <class...Args>
     using _set_value = stdex::set_value_t(std::invoke_result_t<F, Args...>);
 
   template<class Env>
-  friend auto tag_invoke(stdex::get_sender_traits_t, _then_sender&&, Env)
+  friend auto tag_invoke(stdex::get_completion_signatures_t, _then_sender&&, Env)
     -> stdex::make_completion_signatures<S, Env,
         stdex::completion_signatures<stdex::set_error_t(std::exception_ptr)>,
         _set_value>;

@@ -28,9 +28,9 @@ namespace ex = std::execution;
 //   static_assert(ex::sender<decltype(snd)>);
 //   (void)snd;
 // }
-// TEST_CASE("ensure_started returns a typed_sender", "[adaptors][ensure_started]") {
+// TEST_CASE("ensure_started with environment returns a sender", "[adaptors][ensure_started]") {
 //   auto snd = ex::ensure_started(ex::just(19), 8, [](int idx, int val) {});
-//   static_assert(ex::typed_sender<decltype(snd), empty_env>);
+//   static_assert(ex::sender<decltype(snd), empty_env>);
 //   (void)snd;
 // }
 // TEST_CASE("ensure_started simple example", "[adaptors][ensure_started]") {

@@ -22,10 +22,11 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
-struct fail_some
- : std::execution::completion_signatures<
+struct fail_some {
+  using completion_signatures =
+    std::execution::completion_signatures<
       std::execution::set_value_t(int),
-      std::execution::set_error_t(std::exception_ptr)> {
+      std::execution::set_error_t(std::exception_ptr)>;
   template <class R>
   struct op {
     R r_;

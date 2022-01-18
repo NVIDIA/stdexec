@@ -32,9 +32,9 @@ TEST_CASE("on returns a sender", "[adaptors][on]") {
   static_assert(ex::sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE("on returns a typed_sender", "[adaptors][on]") {
+TEST_CASE("on with environment returns a sender", "[adaptors][on]") {
   auto snd = ex::on(inline_scheduler{}, ex::just(13));
-  static_assert(ex::typed_sender<decltype(snd), empty_env>);
+  static_assert(ex::sender<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("on simple example", "[adaptors][on]") {

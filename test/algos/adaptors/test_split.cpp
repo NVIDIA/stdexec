@@ -28,9 +28,9 @@ namespace ex = std::execution;
 //   static_assert(ex::sender<decltype(snd)>);
 //   (void)snd;
 // }
-// TEST_CASE("split returns a typed_sender", "[adaptors][split]") {
+// TEST_CASE("split with environment returns a sender", "[adaptors][split]") {
 //   auto snd = ex::split(ex::just(19));
-//   static_assert(ex::typed_sender<decltype(snd), empty_env>);
+//   static_assert(ex::sender<decltype(snd), empty_env>);
 //   (void)snd;
 // }
 // TEST_CASE("split simple example", "[adaptors][split]") {
