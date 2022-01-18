@@ -2995,19 +2995,19 @@ At the end of this subclause, insert the following declarations into the synopsi
 <blockquote>
 <pre highlight=c++>
 // Expositon-only:
-template &lt;class Tag, class... Args>
+template &lt;class Fn, class... Args>
   concept <i>callable</i> =
     requires (Fn&& fn, Args&&... args) {
-      std::forward<Fn>(fn)(std::forward<Args>()...);
-    };
-template &lt;class Tag, class... Args>
-  concept <i>nothrow-callable</i> =
-    <i>callable</i>&lt;Tag, Args...> &amp;&amp;
-    requires (Fn&& fn, Args&&... args) {
-      { std::forward<Fn>(fn)(std::forward<Args>()...) } noexcept;
+      std::forward&lt;Fn>(fn)(std::forward&lt;Args>(args)...);
     };
 template &lt;class Fn, class... Args>
-  using <i>call-result-t</i> = decltype(declval<Fn>(), declval<Args>()...);
+  concept <i>nothrow-callable</i> =
+    <i>callable</i>&lt;Fn, Args...> &amp;&amp;
+    requires (Fn&& fn, Args&&... args) {
+      { std::forward&lt;Fn>(fn)(std::forward&lt;Args>(args)...) } noexcept;
+    };
+template &lt;class Fn, class... Args>
+  using <i>call-result-t</i> = decltype(declval&lt;Fn>()(declval&lt;Args>()...));
 
 // [func.tag_invoke], tag_invoke
 namespace <i>tag-invoke</i> { <i>// exposition only</i>
@@ -3016,19 +3016,19 @@ namespace <i>tag-invoke</i> { <i>// exposition only</i>
   template &lt;class Tag, class... Args>
     concept tag_invocable =
       requires (Tag&& tag, Args&&... args) {
-        tag_invoke(std::forward<Tag>(tag), std::forward<Args>()...);
+        tag_invoke(std::forward&lt;Tag>(tag), std::forward&lt;Args>(args)...);
       };
 
   template &lt;class Tag, class... Args>
     concept nothrow_tag_invocable =
       tag_invocable&lt;Tag, Args...> &&
       requires (Tag&& tag, Args&&... args) {
-        { tag_invoke(std::forward<Tag>(tag), std::forward<Args>()...) } noexcept;
+        { tag_invoke(std::forward&lt;Tag>(tag), std::forward&lt;Args>(args)...) } noexcept;
       };
 
   template &lt;class Tag, class... Args>
     using tag_invoke_result_t =
-      decltype(tag_invoke(declval<Tag>(), declval<Args>()...));
+      decltype(tag_invoke(declval&lt;Tag>(), declval&lt;Args>()...));
 
   template &lt;class Tag, class... Args>
     struct tag_invoke_result {};
@@ -3060,19 +3060,15 @@ Insert this section as a new subclause, between Searchers <b>[func.search]</b> a
 <ins>
 <blockquote>
 
-1. The name `std::tag_invoke` denotes a customization point object. Its type is an unspecified class type equivalent to:
+1. The name `std::tag_invoke` denotes a customization point object [customization.point.object]. Given subexpressions `T` and `A...`, the expression `std::tag_invoke(T, A...)` is expression-equivalent [defns.expression-equivalent] to `tag_invoke(T, A...)` if it is a well-formed expression with overload resolution performed in a context in which unqualified lookup for `tag_invoke` finds only the declaration
 
-    <pre highlight="c++">
-    struct <i>tag-invoke</i>::<i>tag</i> {
-      template &lt;class Tag, class... Args>
-          requires tag_invocable&lt;Tag, Args...>
-        constexpr auto operator()(Tag tag, Args&&... args) const
-          noexcept(nothrow_tag_invocable&lt;Tag, Args...>)
-          -> tag_invoke_result_t&lt;Tag, Args...> {
-          return tag_invoke(auto(tag), (Args&&) args...);
-        }
-    };
-    </pre>
+    ```c++
+    void tag_invoke();
+    ```
+
+    Otherwise, `std::tag_invoke(T, A...)` is ill-formed.
+
+2. [Note: Diagnosable ill-formed cases above result in substitution failure when `std::tag_invoke(T, A...)` appears in the immediate context of a template instantiation. —end note]
 
 </blockquote>
 </ins>
