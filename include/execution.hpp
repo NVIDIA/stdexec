@@ -319,7 +319,7 @@ namespace std::execution {
   template <class _Env>
     using dependent_completion_signatures =
       __if<
-        is_same<_Env, no_env>,
+        __bool<__decays_to<_Env, no_env>>,
         __completion_signatures::__dependent_completion_signatures,
         __completion_signatures::__empty_completion_signatures>;
 
