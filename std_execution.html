@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-01-15">2022-01-15</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-01-17">2022-01-17</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -7832,7 +7832,12 @@ no diagnostic required.</p>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code> is used to eagerly start the execution of a sender, while also providing a way to attach further work to execute once it has completed.</p>
     <li data-md>
-     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
+     <p>Let <code class="highlight"><i><c- n>ensure</c-><c- o>-</c-><c- n>started</c-><c- o>-</c-><c- n>env</c-></i></code> be the type of an execution
+   environment such that, given an instance <code class="highlight"><c- n>e</c-></code>, the expression <code class="highlight"><c- n>get_stop_token</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> is well formed and has type <code class="highlight"><c- n>stop_token</c-></code>.</p>
+    <li data-md>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code> denotes a customization point object.
+For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>typed_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <i><c- n>ensure</c-><c- o>-</c-><c- n>started</c-><c- o>-</c-><c- n>env</c-></i><c- o>></c-></code> is <code class="highlight">false</code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is ill-formed. Otherwise, the
+expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>,</c-> <c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- o>></c-><c- p>(</c-><c- n>s</c-><c- p>),</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid.</p>
@@ -7847,38 +7852,119 @@ no diagnostic required.</p>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
        </ul>
       <li data-md>
-       <p>Otherwise:</p>
+       <p>Otherwise, constructs a sender <code class="highlight"><c- n>s2</c-></code>, which:</p>
        <ol>
         <li data-md>
-         <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>.</p>
+         <p>Creates an object <code class="highlight"><c- n>sh_state</c-></code> that contains a <code class="highlight"><c- n>stop_source</c-></code>, an
+initially null pointer to an operation state awaitaing completion,
+and that also reserves space for storing:</p>
+         <ul>
+          <li data-md>
+           <p>the operation state that results from connecting <code class="highlight"><c- n>s</c-></code> with <code class="highlight"><c- n>r</c-></code> described below, and</p>
+          <li data-md>
+           <p>the sets of values and errors with which <code class="highlight"><c- n>s</c-></code> may complete, with
+the addition of <code class="highlight"><c- n>exception_ptr</c-></code>.</p>
+         </ul>
+         <p><code class="highlight"><c- n>s2</c-></code> shares ownership of <code class="highlight"><c- n>sh_state</c-></code> with <code class="highlight"><c- n>r</c-></code> described below.</p>
         <li data-md>
-         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in operation state <code class="highlight"><c- n>op_state</c-></code>, and then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code>.</p>
-        <li data-md>
-         <p>Constructs a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it results in an operation state <code class="highlight"><c- n>op_state2</c-></code>. Once both <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code> and one of the receiver completion-signals has been called on <code class="highlight"><c- n>r</c-></code>:</p>
+         <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code> such that:</p>
          <ol>
           <li data-md>
-           <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>ts</c-><c- p>...)</c-></code>.</p>
+           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is called, decay-copies
+the expressions <code class="highlight"><c- n>args</c-><c- p>...</c-></code> into <code class="highlight"><c- n>sh_state</c-></code>. It then checks <code class="highlight"><c- n>sh_state</c-></code> to see if there is an operation state awaiting
+completion; if so, it notifies the operation state that the
+results are ready. If any exceptions are thrown, the exception
+is caught and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>current_exception</c-><c- p>())</c-></code> is
+called instead.</p>
           <li data-md>
-           <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>.</p>
+           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is called, decay-copies <code class="highlight"><c- n>e</c-></code> into <code class="highlight"><c- n>sh_state</c-></code>. If there is an operation state awaiting completion,
+it then notifies the operation states that the results are ready.</p>
           <li data-md>
-           <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
+           <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is called, it then notifies any
+awaiting operation state that the results are ready.</p>
+          <li data-md>
+           <p><code class="highlight"><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is an expression <code class="highlight"><i><c- n>e</c-></i></code> of type <code class="highlight"><i><c- n>ensure</c-><c- o>-</c-><c- n>started</c-><c- o>-</c-><c- n>env</c-></i></code> such that <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><i><c- n>e</c-></i><c- p>)</c-></code> is well-formed
+and returns the results of calling <code class="highlight"><c- n>get_token</c-><c- p>()</c-></code> on <code class="highlight"><c- n>sh_state</c-></code>'s
+stop source.</p>
+          <li data-md>
+           <p><code class="highlight"><c- n>r</c-></code> shares ownership of <code class="highlight"><c- n>sh_state</c-></code> with <code class="highlight"><c- n>s2</c-></code>. After <code class="highlight"><c- n>r</c-></code>'s
+receiver contract has been completed, it releases its ownership
+of <code class="highlight"><c- n>sh_state</c-></code>.</p>
          </ol>
-         <p>The lifetime of <code class="highlight"><c- n>op_state</c-></code> lasts until all three of the following have occured:</p>
-         <ol>
+        <li data-md>
+         <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state2</c-></code>. <code class="highlight"><c- n>op_state2</c-></code> is saved in <code class="highlight"><c- n>sh_state</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code>.</p>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>s2</c-></code> is connected with a receiver <code class="highlight"><c- n>out_r</c-></code> of type <code class="highlight"><c- n>OutR</c-></code>, it
+returns an operation state object <code class="highlight"><c- n>op_state</c-></code> that contains:</p>
+         <ul>
           <li data-md>
-           <p>the lifetime of <code class="highlight"><c- n>op_state2</c-></code> has ended,</p>
+           <p>An object <code class="highlight"><c- n>out_r</c->'</code> of type <code class="highlight"><c- n>OutR</c-></code> decay-copied from <code class="highlight"><c- n>out_r</c-></code>,</p>
           <li data-md>
-           <p>the lifetime of <code class="highlight"><c- n>s2</c-></code> has ended, and</p>
+           <p>A reference to <code class="highlight"><c- n>sh_state</c-></code>,</p>
           <li data-md>
-           <p>a receiver completion-signal has been called on <code class="highlight"><c- n>r</c-></code>.</p>
-         </ol>
+           <p>A stop callback of type <code class="highlight"><c- n>optional</c-><c- o>&lt;</c-><c- n>stop_token_of_t</c-><c- o>&lt;</c-><c- n>env_of_t</c-><c- o>&lt;</c-><c- n>OutR</c-><c- o>>>::</c-><c- n>callback_type</c-><c- o>&lt;</c-><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i><c- o>>></c-></code>,
+where <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i></code> is an implementation
+defined class type equivalent to the following:</p>
+<pre class="highlight"><c- k>struct</c-> <i><c- nc>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i> <c- p>{</c->
+  <c- n>stop_source</c-><c- o>&amp;</c-> <c- n>stop_src_</c-><c- p>;</c->
+  <c- b>void</c-> <c- nf>operator</c-><c- p>()()</c-> <c- k>noexcept</c-> <c- p>{</c->
+    <c- n>stop_src_</c-><c- p>.</c-><c- n>request_stop</c-><c- p>();</c->
+  <c- p>}</c->
+<c- p>};</c->
+</pre>
+         </ul>
+         <p><code class="highlight"><c- n>s2</c-></code> transfers its ownership of <code class="highlight"><c- n>sh_state</c-></code> to <code class="highlight"><c- n>op_state</c-></code>.</p>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code> is called:</p>
+         <ul>
+          <li data-md>
+           <p>If <code class="highlight"><c- n>r</c-></code>'s receiver contract has already been satisfied, then let <code class="highlight"><i><c- n>Signal</c-></i></code> be whichever receiver completion-signal
+was used to complete <code class="highlight"><c- n>r</c-></code>'s receiver contract ([exec.recv]). Calls <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>out_r</c->'<c- p>,</c-> <c- n>args2</c-><c- p>...)</c-></code>, where <code class="highlight"><c- n>args2</c-><c- p>...</c-></code> is a
+pack of xvalues referencing the subobjects of <code class="highlight"><c- n>sh_state</c-></code> that have
+been saved by the original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> and returns.</p>
+          <li data-md>
+           <p>Otherwise, it emplace constructs the stop callback optional with
+the arguments <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>get_env</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code> and <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i><c- p>{</c-><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i><c- p>}</c-></code>, where <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i></code> refers to the stop source of <code class="highlight"><c- n>sh_state</c-></code>.</p>
+          <li data-md>
+           <p>Then, it checks to see if <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i><c- p>.</c-><c- n>stop_requested</c-><c- p>()</c-></code> is <code class="highlight">true</code>. If so, it
+calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>out_r</c->'<c- p>)</c-></code>.</p>
+          <li data-md>
+           <p>Otherwise, it sets <code class="highlight"><c- n>sh_state</c-></code> operation state pointer to the
+address of <code class="highlight"><c- n>op_state</c-></code>, registering itself as awaiting the result
+of the completion of <code class="highlight"><c- n>r</c-></code>.</p>
+         </ul>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>r</c-></code> completes it will notify <code class="highlight"><c- n>op_state</c-></code> that the result are
+ready. Let <code class="highlight"><i><c- n>Signal</c-></i></code> be whichever receiver
+completion-signal was used to complete <code class="highlight"><c- n>r</c-></code>'s receiver contract
+([exec.recv]). <code class="highlight"><c- n>op_state</c-></code>'s stop callback optional is reset. Then <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>out_r</c->'<c- p>),</c-> <c- n>args2</c-><c- p>...)</c-></code> is called,
+where <code class="highlight"><c- n>args2</c-><c- p>...</c-></code> is a pack of xvalues referencing the subobjects of <code class="highlight"><c- n>sh_state</c-></code> that have been saved by the original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code>.</p>
+        <li data-md>
+         <p>[<em>Note:</em> If sender <code class="highlight"><c- n>s2</c-></code> is destroyed without being connected to a
+   receiver, or if it is connected but the operation state is destroyed
+   without having been started, then when <code class="highlight"><c- n>r</c-></code>'s receiver contract
+   completes and it releases its shared ownership of <code class="highlight"><c- n>sh_state</c-></code>, <code class="highlight"><c- n>sh_state</c-></code> will be destroyed and the results of the operation are
+   discarded. -- <em>end note</em>]</p>
        </ol>
+      <li data-md>
+       <p>Given an expression <code class="highlight"><c- n>e</c-></code>, let <code class="highlight"><c- n>E</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>e</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>typed_sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">false</code>, the type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_sender_traits</c-><c- p>,</c-> <c- n>s2</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> shall
+be equivalent to <code class="highlight"><i><c- n>empty</c-><c- o>-</c-><c- n>sender</c-><c- o>-</c-><c- n>traits</c-></i></code>. Otherwise, let <code class="highlight"><c- n>Vs</c-><c- p>...</c-></code> be the set of unique types in the <code class="highlight"><i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i></code> named by <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>set</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>signature</c-></i><c- p>,</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>></c-></code>, and let <code class="highlight"><c- n>Es</c-><c- p>...</c-></code> be the set of types in the <code class="highlight"><i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i></code> named by <code class="highlight"><c- n>error_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>error</c-><c- o>-</c-><c- n>types</c-></i><c- o>></c-></code>, where <code class="highlight"><i><c- n>set</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>signature</c-></i></code> is the alias template:</p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
+  <c- k>using</c-> <i><c- n>set</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>signature</c-></i> <c- o>=</c-> <c- n>set_value_t</c-><c- p>(</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>>&amp;&amp;</c-><c- p>...);</c->
+</pre>
+       <p>and <code class="highlight"><i><c- n>error</c-><c- o>-</c-><c- n>types</c-></i></code> is the alias template:</p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Es</c-><c- o>></c->
+  <c- k>using</c-> <i><c- n>error</c-><c- o>-</c-><c- n>types</c-></i> <c- o>=</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Es</c-><c- o>>&amp;&amp;</c-><c- p>...</c-><c- o>></c-><c- p>;</c->
+</pre>
+       <p>Let <code class="highlight"><c- n>Bs</c-><c- p>...</c-></code> be the set of unique types in <code class="highlight"><c- p>[</c-><c- n>Es</c-><c- p>...,</c-> <c- n>exception_ptr</c-><c- o>&amp;&amp;</c-><c- p>]</c-></code>. If <code class="highlight"><c- n>sender_traits_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>>::</c-><c- n>sends_stopped</c-></code> is <code class="highlight">true</code>, then the type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_sender_traits</c-><c- p>,</c-> <c- n>s2</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is a class type equivalent to:</p>
+<pre class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>Vs</c-><c- p>...,</c-> <c- n>set_error_t</c-><c- p>(</c-><c- n>Bs</c-><c- p>)...,</c-> <c- n>set_stopped_t</c-><c- p>()</c-><c- o>></c->
+</pre>
+       <p>Otherwise:</p>
+<pre class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>Vs</c-><c- p>...,</c-> <c- n>set_error_t</c-><c- p>(</c-><c- n>Bs</c-><c- p>)...</c-><c- o>></c->
+</pre>
      </ol>
-     <p>If the function selected above does not eagerly start the sender <code class="highlight"><c- n>s</c-></code> and return a sender which propagates the signals sent by <code class="highlight"><c- n>s</c-></code> once started, the program is ill-formed with no diagnostic required.</p>
+     <p>If the function selected above does not return a sender that sends xvalue references to values sent by <code class="highlight"><c- n>s</c-></code>, propagating the other channels, the program is ill-formed with no diagnostic required.</p>
    </ol>
-   <p class="note" role="note"><span>Note:</span> The wording for <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-></code> is incomplete as it does not currently describe the required
-semantics for sending a stop-request to the eagerly-launched operation if the sender is destroyed and detaches
-from the operation before the operation completes.</p>
    <h4 class="heading settled" data-level="10.8.6" id="spec-execution.senders.consumers"><span class="secno">10.8.6. </span><span class="content">Sender consumers <b>[exec.consumers]</b></span><a class="self-link" href="#spec-execution.senders.consumers"></a></h4>
    <h5 class="heading settled" data-level="10.8.6.1" id="spec-execution.senders.consumers.start_detached"><span class="secno">10.8.6.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code> <b>[exec.start_detached]</b></span><a class="self-link" href="#spec-execution.senders.consumers.start_detached"></a></h5>
    <ol>
