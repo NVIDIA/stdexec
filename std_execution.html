@@ -2640,7 +2640,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
     <li data-md>
      <p>First we need to get a scheduler from somewhere, such as a thread pool. A scheduler is a lightweight handle to an execution resource.</p>
     <li data-md>
-     <p>To start a chain of work on a scheduler, we call <a href="#design-sender-factory-schedule">§ 4.20.1 execution::schedule</a>, which returns a sender that completes on the scheduler.  sender describes asynchronous work and sends a signal (value, error, or stopped) to some recipient(s) when that work completes.</p>
+     <p>To start a chain of work on a scheduler, we call <a href="#design-sender-factory-schedule">§ 4.20.1 execution::schedule</a>, which returns a sender that completes on the scheduler. A sender describes asynchronous work and sends a signal (value, error, or stopped) to some recipient(s) when that work completes.</p>
     <li data-md>
      <p>We use sender algorithms to produce senders and compose asynchronous work. <a href="#design-sender-adaptor-then">§ 4.21.2 execution::then</a> is a sender adaptor that takes an input sender and a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code>, and calls the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> on the signal sent by the input sender. The sender returned by <code class="highlight"><c- n>then</c-></code> sends the result of that invocation. In this case, the input sender came from <code class="highlight"><c- n>schedule</c-></code>, so its <code class="highlight"><c- b>void</c-></code>, meaning it won’t send us a value, so our <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>invocable</c-></code> takes no parameters. But we return an <code class="highlight"><c- b>int</c-></code>, which will be sent to the next recipient.</p>
     <li data-md>
@@ -2886,8 +2886,10 @@ of a cancellable <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></cod
     <c- k>static</c-> <c- b>void</c-> <c- n>on_complete</c-><c- p>(</c-><c- n>operation_base</c-><c- o>*</c-> <c- n>op</c-><c- p>,</c-> <c- n>DWORD</c-> <c- n>bytesTransferred</c-><c- p>,</c-> <c- b>int</c-> <c- n>errorCode</c-><c- p>)</c-> <c- n>noexcept</c-> <c- p>{</c->
         <c- n>recv_op</c-><c- o>&amp;</c-> <c- n>self</c-> <c- o>=</c-> <c- o>*</c-><c- n>static_cast</c-><c- o>&lt;</c-><c- n>recv_op</c-><c- o>*></c-><c- p>(</c-><c- n>op</c-><c- p>);</c->
 
-        <c- k>if</c-> <c- p>(</c-><c- n>ready</c-><c- p>.</c-><c- n>load</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>memory_order_acquire</c-><c- p>)</c-> <c- o>||</c-> <c- n>ready</c-><c- p>.</c-><c- n>exchange</c-><c- p>(</c->true<c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>memory_order_acq_rel</c-><c- p>))</c-> <c- p>{</c->
-            <c- c1>// Unsubscribe any stop-callback so we know that CancelIoEx() is not accessing 'op' any more</c->
+        <c- k>if</c-> <c- p>(</c-><c- n>ready</c-><c- p>.</c-><c- n>load</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>memory_order_acquire</c-><c- p>)</c-> <c- o>||</c->
+            <c- n>ready</c-><c- p>.</c-><c- n>exchange</c-><c- p>(</c->true<c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>memory_order_acq_rel</c-><c- p>))</c-> <c- p>{</c->
+            <c- c1>// Unsubscribe any stop-callback so we know that CancelIoEx() is not accessing 'op'</c->
+            <c- c1>// any more</c->
             <c- n>stopCallback</c-><c- p>.</c-><c- n>reset</c-><c- p>();</c->
 
             <c- k>if</c-> <c- p>(</c-><c- n>errorCode</c-> <c- o>==</c-> <c- mi>0</c-><c- p>)</c-> <c- p>{</c->
@@ -2902,7 +2904,8 @@ of a cancellable <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></cod
     <c- n>Receiver</c-> <c- n>receiver</c-><c- p>;</c->
     <c- n>SOCKET</c-> <c- n>sock</c-><c- p>;</c->
     <c- n>WSABUF</c-> <c- n>buffer</c-><c- p>;</c->
-    <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>typename</c-> <c- n>stop_callback_type_t</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>>::</c-><c- n>template</c-> <c- n>callback_type</c-><c- o>&lt;</c-><c- n>cancel_cb</c-><c- o>>></c-> <c- n>stopCallback</c-><c- p>;</c->
+    <c- n>std</c-><c- o>::</c-><c- n>optional</c-><c- o>&lt;</c-><c- n>typename</c-> <c- n>stop_callback_type_t</c-><c- o>&lt;</c-><c- n>Receiver</c-><c- o>></c->
+        <c- o>::</c-><c- n>template</c-> <c- n>callback_type</c-><c- o>&lt;</c-><c- n>cancel_cb</c-><c- o>>></c-> <c- n>stopCallback</c-><c- p>;</c->
     <c- n>std</c-><c- o>::</c-><c- n>atomic</c-><c- o>&lt;</c-><c- b>bool</c-><c- o>></c-> <c- n>ready</c-><c- p>{</c->false<c- p>};</c->
 <c- p>};</c->
 
@@ -3255,7 +3258,7 @@ thread. It is implemented in terms of a lower-level execution context called <co
    <p>The <code class="highlight"><c- n>single_thread_context</c-></code> owns an event loop and a thread to drive it. In the destructor, it tells the event
 loop to finish up what it’s doing and then joins the thread, blocking for the event loop to drain.</p>
    <p>The interesting bits are in the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code> context implementation. It
-is slightly too long to include here, so we only provide <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478">a reference to
+is slightly too long to include here, so we only provide <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/8bc0955c008652937948af784b7b6ccedecec23c/include/execution.hpp#L2720-L2887">a reference to
 it</a>,
 but there is one noteworthy detail about its implementation: It uses space in
 its operation states to build an intrusive linked list of work items. In
@@ -3454,13 +3457,13 @@ erasure facilities can be built on top of this proposal, as discussed in <a href
      <p>Some additional utilities are added:</p>
      <ul>
       <li data-md>
-       <p>**<code class="highlight"><c- n>run_loop</c-></code>**: An execution context that provides a multi-producer,
+       <p><b><code class="highlight"><c- n>run_loop</c-></code></b>: An execution context that provides a multi-producer,
 single-consumer, first-in-first-out work queue.</p>
       <li data-md>
-       <p>**<code class="highlight"><c- n>receiver_adaptor</c-></code>**: A utility for algorithm authors for defining one
+       <p><b><code class="highlight"><c- n>receiver_adaptor</c-></code></b>: A utility for algorithm authors for defining one
 receiver type in terms of another.</p>
       <li data-md>
-       <p>**<code class="highlight"><c- n>completion_signatures</c-></code>** and **<code class="highlight"><c- n>make_completion_signatures</c-></code>**:
+       <p><b><code class="highlight"><c- n>completion_signatures</c-></code></b> and <b><code class="highlight"><c- n>make_completion_signatures</c-></code></b>:
 Utilities for describing the ways in which a sender can complete in a
 declarative syntax.</p>
      </ul>
@@ -3481,7 +3484,7 @@ declarative syntax.</p>
    <p>Additionally, few of these possibilities accommodate cancellation signals when the user requests upstream work to stop and clean up.</p>
    <h3 class="heading settled" data-level="1.11" id="intro-field-experience"><span class="secno">1.11. </span><span class="content">Field experience</span><a class="self-link" href="#intro-field-experience"></a></h3>
    <h4 class="heading settled" data-level="1.11.1" id="intro-field-experience-libunifex"><span class="secno">1.11.1. </span><span class="content">libunifex</span><a class="self-link" href="#intro-field-experience-libunifex"></a></h4>
-   <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>. Libunifex implements all of the concepts and customization points defined in this paper, many of this paper’s algorithms (some under different names), and much more besides.</p>
+   <p>This proposal draws heavily from our field experience with <a href="https://github.com/facebookexperimental/libunifex">libunifex</a>. Libunifex implements all of the concepts and customization points defined in this paper (with slight variations -- the design of P2300 has evolved due to LEWG feedback), many of this paper’s algorithms (some under different names), and much more besides.</p>
    <p>Libunifex has several concrete schedulers in addition to the <code class="highlight"><c- n>run_loop</c-></code> suggested here (where it is called <code class="highlight"><c- n>manual_event_loop</c-></code>). It has schedulers that dispatch efficiently to epoll and io_uring on Linux and the Windows Thread Pool on Windows.</p>
    <p>In addition to the proposed interfaces and the additional schedulers, it has several important extensions to the facilities described in this paper, which demonstrate directions in which these abstractions may be evolved over time, including:</p>
    <ul>
@@ -3750,10 +3753,10 @@ determine the error/value types.</p>
 with <code class="highlight"><c- n>tag_invoke</c-></code>. <code class="highlight"><c- n>get_completion_signatures</c-></code> takes a sender and an optional
 environment. A sender can customize this to specify its value/error types.</p>
     <li data-md>
-     <p>Support for untyped senders is dropped. The <code class="highlight"><c- n>typed_sender</c-></code> trait has been
+     <p>Support for untyped senders is dropped. The <code class="highlight"><c- n>typed_sender</c-></code> concept has been
 renamed to <code class="highlight"><c- n>sender</c-></code> and now takes an optional environment.</p>
     <li data-md>
-     <p>The environment argument to the <code class="highlight"><c- n>sender</c-></code> concept and the <code class="highlight"><c- n>get_completion_signatures</c-></code> CPO defaults to <code class="highlight"><c- n>no_env</c-></code>. All context queries fail (are ill-formed) when
+     <p>The environment argument to the <code class="highlight"><c- n>sender</c-></code> concept and the <code class="highlight"><c- n>get_completion_signatures</c-></code> CPO defaults to <code class="highlight"><c- n>no_env</c-></code>. All environment queries fail (are ill-formed) when
 passed an instance of <code class="highlight"><c- n>no_env</c-></code>.</p>
     <li data-md>
      <p>A type <code class="highlight"><c- n>S</c-></code> is required to satisfy <code class="highlight"><c- n>sender</c-><c- o>&lt;</c-><i><c- n>S</c-></i><c- o>></c-></code> to be
@@ -3761,8 +3764,8 @@ considered a sender. If it doesn’t know what types it will complete with
 independent of an environment, it returns an instance of the placeholder
 traits <code class="highlight"><c- n>dependent_completion_signatures</c-></code>.</p>
     <li data-md>
-     <p>If a sender satisfies both <code class="highlight"><c- n>sender</c-><c- o>&lt;</c-><i><c- n>S</c-></i><c- o>></c-></code> and <code class="highlight"><c- n>sender</c-><c- o>&lt;</c-><i><c- n>S</c-></i><c- p>,</c-> <i><c- n>Env</c-></i><c- o>></c-></code>, then the associated sender
-types for the two cannot be different in any way. It is possible for an
+     <p>If a sender satisfies both <code class="highlight"><c- n>sender</c-><c- o>&lt;</c-><i><c- n>S</c-></i><c- o>></c-></code> and <code class="highlight"><c- n>sender</c-><c- o>&lt;</c-><i><c- n>S</c-></i><c- p>,</c-> <i><c- n>Env</c-></i><c- o>></c-></code>, then the completion signatures
+for the two cannot be different in any way. It is possible for an
 implementation to enforce this statically, but not required.</p>
     <li data-md>
      <p>All of the algorithms and examples have been updated to work with
@@ -3773,7 +3776,8 @@ dependently-typed senders.</p>
    <p><b>Fixes:</b></p>
    <ul>
     <li data-md>
-     <p>Fix specification of the <code class="highlight"><c- n>on</c-></code> algorithm to clarify lifetimes of intermediate operation states and properly scope the <code class="highlight"><c- n>get_scheduler</c-></code> query.</p>
+     <p>Fix specification of the <code class="highlight"><c- n>on</c-></code> algorithm to clarify lifetimes of
+intermediate operation states and properly scope the <code class="highlight"><c- n>get_scheduler</c-></code> query.</p>
     <li data-md>
      <p>Fix a memory safety bug in the implementation of <code class="highlight"><i><c- n>connect</c-><c- o>-</c-><c- n>awaitable</c-></i></code>.</p>
     <li data-md>
@@ -6311,7 +6315,7 @@ sender to use its result. --<i>end note</i>]</p>
       <li data-md>
        <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_delegatee_scheduler</c-></code>: used to obtain a <i>delegatee
 scheduler</i> on which an algorithm or scheduler may delegate work for the
-purpose of ensuring forward progress. --<i>end note</i>]</p>
+purpose of ensuring forward progress.</p>
       <li data-md>
        <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_allocator</c-></code>: used to obtain a <i>suggested allocator</i> to be used when a sender needs to allocate memory. [<i>Note:</i> the
 presence of this query on a receiver does not bind a sender to use its
