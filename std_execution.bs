@@ -5227,9 +5227,7 @@ are all well-formed.
             
             2. Otherwise, let `op_state2` be the result of `execution::connect(s, r)`. `execution::connect(s2, out_r)` returns an operation state `op_state` that stores `op_state2`. `execution::start(op_state)` is expression-equivalent to `execution::start(op_state2)`.
 
-        3. Let `E` be the type of `get_env(out_r)`. If `sender<S, E>` is `true`, then space is reserved in `op_state2` for `args'...` and `op_state3` rather than requiring a dynamic allocation.
-
-        4. Given some expression `e`, let `E` be `decltype((e))`. If `sender<S, E>` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`. Otherwise, let `Xs...` be the set of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E, <i>type-list</i>></code>, and let `V` be <code>value_types_of_t&lt;S, E, <i>result-type</i>, <i>type-list</i>></code>, where <code><i>result-type</i></code> is the alias template:
+        3. Given some expression `e`, let `E` be `decltype((e))`. If `sender<S, E>` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`. Otherwise, let `Xs...` be the set of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E, <i>type-list</i>></code>, and let `V` be <code>value_types_of_t&lt;S, E, <i>result-type</i>, <i>type-list</i>></code>, where <code><i>result-type</i></code> is the alias template:
 
             <pre highlight="c++">
             template &lt;class... Ts>
@@ -5296,9 +5294,7 @@ are all well-formed.
             
             2. Otherwise, let `op_state2` be the result of `execution::connect(s, r)`. `execution::connect(s2, out_r)` returns an operation state `op_state` that stores `op_state2`. `execution::start(op_state)` is expression-equivalent to `execution::start(op_state2)`.
 
-        3. Let `E` be the type of `get_env(out_r)`. If `sender<S, E>` is `true`, then space is reserved in `op_state2` for `e'` and `op_state3` rather than requiring a dynamic allocation.
-
-        4. Given some expression `e`, let `E` be `decltype((e))`. If `sender<S, E>` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`. Otherwise, let `As...` be the set of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S, E, <i>set-value-signature</i>, <i>type-list</i>></code>, and let `W` be <code>error_types_of_t&lt;S, E, <i>result-type-list</i>></code>, where <code><i>set-value-signature</i></code> is the alias template:
+        3. Given some expression `e`, let `E` be `decltype((e))`. If `sender<S, E>` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`. Otherwise, let `As...` be the set of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S, E, <i>set-value-signature</i>, <i>type-list</i>></code>, and let `W` be <code>error_types_of_t&lt;S, E, <i>result-type-list</i>></code>, where <code><i>set-value-signature</i></code> is the alias template:
         
             <pre highlight="c++">
             template &lt;class... Ts>
@@ -5368,9 +5364,7 @@ are all well-formed.
             
             2. Otherwise, let `op_state2` be the result of `execution::connect(s, r)`. `execution::connect(s2, out_r)` returns an operation state `op_state` that stores `op_state2`. `execution::start(op_state)` is expression-equivalent to `execution::start(op_state2)`.
 
-        3. Let `E` be the type of `get_env(out_r)`. If `sender<S, E>` is `true`, then space is reserved in `op_state2` for `op_state3` rather than requiring a dynamic allocation.
-
-        4. Given some expression `e`, let `E` be `decltype((e))`, and let `S3` be `invoke_result_t<F>`. If either `sender<S, E>` or `sender<S3, E>` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`. Otherwise, let `As...` be the set of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S, E, <i>set-value-signature</i>, <i>type-list</i>></code>, and let `Ws...` be the types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E, <i>type-list</i>></code>, where <code><i>set-value-signature</i></code> is the alias template:
+        3. Given some expression `e`, let `E` be `decltype((e))`, and let `S3` be `invoke_result_t<F>`. If either `sender<S, E>` or `sender<S3, E>` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`. Otherwise, let `As...` be the set of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S, E, <i>set-value-signature</i>, <i>type-list</i>></code>, and let `Ws...` be the types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E, <i>type-list</i>></code>, where <code><i>set-value-signature</i></code> is the alias template:
         
             <pre highlight="c++">
             template &lt;class... Ts>
