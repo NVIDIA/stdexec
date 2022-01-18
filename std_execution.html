@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-01-17">2022-01-17</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-01-18">2022-01-18</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -5131,19 +5131,19 @@ themselves are templated classes.</p>
    <ins>
     <blockquote>
 <pre class="highlight"><c- c1>// Expositon-only:</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Fn</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
   <c- k>concept</c-> <i><c- nc>callable</c-></i> <c- o>=</c->
     <c- k>requires</c-> <c- p>(</c-><c- n>Fn</c-><c- o>&amp;&amp;</c-> <c- n>fn</c-><c- p>,</c-> <c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
-      <c- n>std</c-><c- o>::</c-><c- n>forward</c-><fn><c- p>(</c-><c- n>fn</c-><c- p>)(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><args><c- p>()...);</c->
-    <c- p>};</c->
-<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
-  <c- k>concept</c-> <i><c- nc>nothrow</c-><c- o>-</c-><c- n>callable</c-></i> <c- o>=</c->
-    <i><c- n>callable</c-></i><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-> <c- o>&amp;&amp;</c->
-    <c- k>requires</c-> <c- p>(</c-><c- n>Fn</c-><c- o>&amp;&amp;</c-> <c- n>fn</c-><c- p>,</c-> <c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
-      <c- p>{</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><fn><c- p>(</c-><c- n>fn</c-><c- p>)(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><args><c- p>()...)</c-> <c- p>}</c-> <c- k>noexcept</c-><c- p>;</c->
+      <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Fn</c-><c- o>></c-><c- p>(</c-><c- n>fn</c-><c- p>)(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Args</c-><c- o>></c-><c- p>(</c-><c- n>args</c-><c- p>)...);</c->
     <c- p>};</c->
 <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Fn</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
-  <c- k>using</c-> <i><c- n>call</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>t</c-></i> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>declval</c-><fn><c- p>(),</c-> <c- n>declval</c-><args><c- p>()...);</c->
+  <c- k>concept</c-> <i><c- nc>nothrow</c-><c- o>-</c-><c- n>callable</c-></i> <c- o>=</c->
+    <i><c- n>callable</c-></i><c- o>&lt;</c-><c- n>Fn</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-> <c- o>&amp;&amp;</c->
+    <c- k>requires</c-> <c- p>(</c-><c- n>Fn</c-><c- o>&amp;&amp;</c-> <c- n>fn</c-><c- p>,</c-> <c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
+      <c- p>{</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Fn</c-><c- o>></c-><c- p>(</c-><c- n>fn</c-><c- p>)(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Args</c-><c- o>></c-><c- p>(</c-><c- n>args</c-><c- p>)...)</c-> <c- p>}</c-> <c- k>noexcept</c-><c- p>;</c->
+    <c- p>};</c->
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Fn</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
+  <c- k>using</c-> <i><c- n>call</c-><c- o>-</c-><c- n>result</c-><c- o>-</c-><c- n>t</c-></i> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>Fn</c-><c- o>></c-><c- p>()(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>Args</c-><c- o>></c-><c- p>()...));</c->
 
 <c- c1>// [func.tag_invoke], tag_invoke</c->
 <c- k>namespace</c-> <i><c- n>tag</c-><c- o>-</c-><c- n>invoke</c-></i> <c- p>{</c-> <i><c- c1>// exposition only</c-></i>
@@ -5152,19 +5152,19 @@ themselves are templated classes.</p>
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>tag_invocable</c-> <c- o>=</c->
       <c- k>requires</c-> <c- p>(</c-><c- n>Tag</c-><c- o>&amp;&amp;</c-> <c- n>tag</c-><c- p>,</c-> <c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
-        <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><tag><c- p>(</c-><c- n>tag</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><args><c- p>()...);</c->
+        <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Tag</c-><c- o>></c-><c- p>(</c-><c- n>tag</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Args</c-><c- o>></c-><c- p>(</c-><c- n>args</c-><c- p>)...);</c->
       <c- p>};</c->
 
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>nothrow_tag_invocable</c-> <c- o>=</c->
       <c- n>tag_invocable</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-> <c- o>&amp;&amp;</c->
       <c- k>requires</c-> <c- p>(</c-><c- n>Tag</c-><c- o>&amp;&amp;</c-> <c- n>tag</c-><c- p>,</c-> <c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- p>{</c->
-        <c- p>{</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><tag><c- p>(</c-><c- n>tag</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><args><c- p>()...)</c-> <c- p>}</c-> <c- k>noexcept</c-><c- p>;</c->
+        <c- p>{</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Tag</c-><c- o>></c-><c- p>(</c-><c- n>tag</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Args</c-><c- o>></c-><c- p>(</c-><c- n>args</c-><c- p>)...)</c-> <c- p>}</c-> <c- k>noexcept</c-><c- p>;</c->
       <c- p>};</c->
 
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
     <c- k>using</c-> <c- n>tag_invoke_result_t</c-> <c- o>=</c->
-      <c- k>decltype</c-><c- p>(</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>declval</c-><tag><c- p>(),</c-> <c- n>declval</c-><args><c- p>()...));</c->
+      <c- k>decltype</c-><c- p>(</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>declval</c-><c- o>&lt;</c-><c- n>Tag</c-><c- o>></c-><c- p>(),</c-> <c- n>declval</c-><c- o>&lt;</c-><c- n>Args</c-><c- o>></c-><c- p>()...));</c->
 
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
     <c- k>struct</c-> <c- nc>tag_invoke_result</c-> <c- p>{};</c->
@@ -5185,7 +5185,7 @@ themselves are templated classes.</p>
 
 <c- k>template</c-><c- o>&lt;</c-><c- k>auto</c-><c- o>&amp;</c-> <c- n>Tag</c-><c- o>></c->
   <c- k>using</c-> <c- n>tag_t</c-> <c- o>=</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><c- n>Tag</c-><c- p>)</c-><c- o>></c-><c- p>;</c->
-</args></tag></args></tag></args></tag></args></fn></args></fn></args></fn></pre>
+</pre>
     </blockquote>
    </ins>
    <h4 class="heading settled" data-level="8.1.2" id="spec-func.tag_invoke"><span class="secno">8.1.2. </span><span class="content"><code class="highlight"><c- n>tag_invoke</c-></code> <b>[func.tag_invoke]</b></span><a class="self-link" href="#spec-func.tag_invoke"></a></h4>
@@ -5194,17 +5194,12 @@ themselves are templated classes.</p>
     <blockquote>
      <ol>
       <li data-md>
-       <p>The name <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-></code> denotes a customization point object. Its type is an unspecified class type equivalent to:</p>
-<pre class="highlight"><c- k>struct</c-> <i><c- nc>tag</c-><c- o>-</c-><c- n>invoke</c-></i><c- o>::</c-><i><c- n>tag</c-></i> <c- p>{</c->
-  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
-      <c- k>requires</c-> <c- n>tag_invocable</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c->
-    <c- k>constexpr</c-> <c- k>auto</c-> <c- k>operator</c-><c- p>()(</c-><c- n>Tag</c-> <c- n>tag</c-><c- p>,</c-> <c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>args</c-><c- p>)</c-> <c- k>const</c->
-      <c- k>noexcept</c-><c- p>(</c-><c- n>nothrow_tag_invocable</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-><c- p>)</c->
-      <c- o>-></c-> <c- n>tag_invoke_result_t</c-><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-> <c- p>{</c->
-      <c- k>return</c-> <c- nf>tag_invoke</c-><c- p>(</c-><c- k>auto</c-><c- p>(</c-><c- n>tag</c-><c- p>),</c-> <c- p>(</c-><c- n>Args</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>args</c-><c- p>...);</c->
-    <c- p>}</c->
-<c- p>};</c->
+       <p>The name <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-></code> denotes a customization point object [customization.point.object]. Given subexpressions <code class="highlight"><c- n>T</c-></code> and <code class="highlight"><c- n>A</c-><c- p>...</c-></code>, the expression <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>T</c-><c- p>,</c-> <c- n>A</c-><c- p>...)</c-></code> is expression-equivalent [defns.expression-equivalent] to <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>T</c-><c- p>,</c-> <c- n>A</c-><c- p>...)</c-></code> if it is a well-formed expression with overload resolution performed in a context in which unqualified lookup for <code class="highlight"><c- n>tag_invoke</c-></code> finds only the declaration</p>
+<pre class="language-c++ highlight"><c- b>void</c-> <c- nf>tag_invoke</c-><c- p>();</c->
 </pre>
+       <p>Otherwise, <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>T</c-><c- p>,</c-> <c- n>A</c-><c- p>...)</c-></code> is ill-formed.</p>
+      <li data-md>
+       <p>[Note: Diagnosable ill-formed cases above result in substitution failure when <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>tag_invoke</c-><c- p>(</c-><c- n>T</c-><c- p>,</c-> <c- n>A</c-><c- p>...)</c-></code> appears in the immediate context of a template instantiation. —end note]</p>
      </ol>
     </blockquote>
    </ins>
