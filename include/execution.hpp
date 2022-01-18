@@ -364,13 +364,15 @@ namespace std::execution {
   // had better report the same metadata. This completion signatures wrapper
   // enforces that at compile time.
   template <class _Sender, class _Env>
-      requires __valid<__completion_signatures_of_t, _Sender, _Env>
+      requires sender<_Sender, _Env>
     struct __checked_completion_signatures
       : __completion_signatures_of_t<_Sender, _Env>
     {};
 
-  template <sender _Sender, class _Env>
-      requires sender<_Sender, _Env>
+  template <class _Sender, class _Env>
+      requires sender<_Sender, _Env> && (!derived_from<
+        __completion_signatures_of_t<_Sender, no_env>,
+        dependent_completion_signatures<no_env>>)
     struct __checked_completion_signatures<_Sender, _Env> {
      private:
       using _WithEnv = __completion_signatures_of_t<_Sender, _Env>;
