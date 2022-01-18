@@ -5710,8 +5710,15 @@ are all well-formed.
 
 1. `execution::ensure_started` is used to eagerly start the execution of a sender, while also providing a way to attach further work to execute once it has completed.
 
-2. The name `execution::ensure_started` denotes a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::typed_sender`, `execution::ensure_started` is ill-formed. Otherwise, the expression
-    `execution::ensure_started(s)` is expression-equivalent to:
+2. Let <code><i>ensure-started-env</i></code> be the type of an execution
+   environment such that, given an instance `e`, the expression
+   `get_stop_token(e)` is well formed and has type `stop_token`.
+
+2. The name `execution::ensure_started` denotes a customization point object.
+    For some subexpression `s`, let `S` be `decltype((s))`. If
+    <code>execution::typed_sender&lt;S, <i>ensure-started-env</i>></code> is
+    `false`, `execution::ensure_started(s)` is ill-formed. Otherwise, the
+    expression `execution::ensure_started(s)` is expression-equivalent to:
 
     1. `tag_invoke(execution::ensure_started, get_completion_scheduler<set_value_t>(s), s)`, if that expression is valid.
 
@@ -5721,33 +5728,145 @@ are all well-formed.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
-    3. Otherwise:
+    3. Otherwise, constructs a sender `s2`, which:
 
-        1. Constructs a receiver `r`.
+        1. Creates an object `sh_state` that contains a `stop_source`, an
+            initially null pointer to an operation state awaitaing completion,
+            and that also reserves space for storing:
+        
+            * the operation state that results from connecting `s` with `r` described below, and
+            * the sets of values and errors with which `s` may complete, with
+                the addition of `exception_ptr`.
 
-        2. Calls `execution::connect(s, r)`, resulting in operation state `op_state`, and then calls `execution::start(op_state)`.
+            `s2` shares ownership of `sh_state` with `r` described below.
 
-        3. Constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it results in an operation state `op_state2`. Once both `execution::start(op_state2)` and one of the receiver completion-signals has been called on `r`:
+        2. Constructs a receiver `r` such that:
 
-            1. `execution::set_value(r, ts...)` is expression-equivalent to `execution::set_value(out_r, ts...)`.
+            1. When `execution::set_value(r, args...)` is called, decay-copies
+                the expressions `args...` into `sh_state`. It then checks
+                `sh_state` to see if there is an operation state awaiting
+                completion; if so, it notifies the operation state that the
+                results are ready. If any exceptions are thrown, the exception
+                is caught and `execution::set_error(r, current_exception())` is
+                called instead.
 
-            2. `execution::set_error(r, e)` is expression-equivalent to `execution::set_error(out_r, e)`.
+            2. When `execution::set_error(r, e)` is called, decay-copies `e`
+                into `sh_state`. If there is an operation state awaiting completion,
+                it then notifies the operation states that the results are ready.
 
-            3. `execution::set_stopped(r)` is expression-equivalent to `execution::set_stopped(out_r)`.
+            3. When `execution::set_stopped(r)` is called, it then notifies any
+                awaiting operation state that the results are ready.
 
-            The lifetime of `op_state` lasts until all three of the following have occured:
+            4. `get_env(r)` is an expression <code><i>e</i></code> of type
+                <code><i>ensure-started-env</i></code> such that
+                <code>execution::get_stop_token(<i>e</i>)</code> is well-formed
+                and returns the results of calling `get_token()` on `sh_state`'s
+                stop source.
 
-                1. the lifetime of `op_state2` has ended,
+            5. `r` shares ownership of `sh_state` with `s2`. After `r`'s
+                receiver contract has been completed, it releases its ownership
+                of `sh_state`.
 
-                2. the lifetime of `s2` has ended, and
+        3. Calls `execution::connect(s, r)`, resulting in an operation state
+            `op_state2`. `op_state2` is saved in `sh_state`. It then calls
+            `execution::start(op_state2)`.
 
-                3. a receiver completion-signal has been called on `r`.
+        4. When `s2` is connected with a receiver `out_r` of type `OutR`, it
+            returns an operation state object `op_state` that contains:
+        
+              * An object `out_r'` of type `OutR` decay-copied from `out_r`,
+              * A reference to `sh_state`,
+              * A stop callback of type
+                <code>optional&lt;stop_token_of_t&lt;env_of_t&lt;OutR>>::callback_type&lt;<i>stop-callback-fn</i>>></code>,
+                where <code><i>stop-callback-fn</i></code> is an implementation
+                defined class type equivalent to the following:
 
-    If the function selected above does not eagerly start the sender `s` and return a sender which propagates the signals sent by `s` once started, the program is ill-formed with no diagnostic required.
+                <pre highlight="c++">
+                struct <i>stop-callback-fn</i> {
+                  stop_source& stop_src_;
+                  void operator()() noexcept {
+                    stop_src_.request_stop();
+                  }
+                };
+                </pre>
 
-Note: The wording for `execution::ensure_started` is incomplete as it does not currently describe the required
-semantics for sending a stop-request to the eagerly-launched operation if the sender is destroyed and detaches
-from the operation before the operation completes.
+              `s2` transfers its ownership of `sh_state` to `op_state`.
+        
+        5. When `execution::start(op_state)` is called:
+            
+            * If `r`'s receiver contract has already been satisfied, then let
+                <code><i>Signal</i></code> be whichever receiver completion-signal
+                was used to complete `r`'s receiver contract ([exec.recv]). Calls
+                <code><i>Signal</i>(out_r', args2...)</code>, where `args2...` is a
+                pack of xvalues referencing the subobjects of `sh_state` that have
+                been saved by the original call to <code><i>Signal</i>(r,
+                args...)</code> and returns.
+
+            * Otherwise, it emplace constructs the stop callback optional with
+                the arguments `execution::get_stop_token(get_env(out_r'))` and
+                <code><i>stop-callback-fn</i>{<i>stop-src</i>}</code>, where
+                <code><i>stop-src</i></code> refers to the stop source of
+                `sh_state`.
+            
+            * Then, it checks to see if
+                <code><i>stop-src</i>.stop_requested()</code> is `true`. If so, it
+                calls `execution::set_stopped(out_r')`.
+
+            * Otherwise, it sets `sh_state` operation state pointer to the
+                address of `op_state`, registering itself as awaiting the result
+                of the completion of `r`.
+
+        6. When `r` completes it will notify `op_state` that the result are
+            ready. Let <code><i>Signal</i></code> be whichever receiver
+            completion-signal was used to complete `r`'s receiver contract
+            ([exec.recv]). `op_state`'s stop callback optional is reset. Then
+            <code><i>Signal</i>(std::move(out_r'), args2...)</code> is called,
+            where `args2...` is a pack of xvalues referencing the subobjects of
+            `sh_state` that have been saved by the original call to
+            <code><i>Signal</i>(r, args...)</code>.
+
+        7. [*Note:* If sender `s2` is destroyed without being connected to a
+           receiver, or if it is connected but the operation state is destroyed
+           without having been started, then when `r`'s receiver contract
+           completes and it releases its shared ownership of `sh_state`,
+           `sh_state` will be destroyed and the results of the operation are
+           discarded. -- *end note*]
+        
+    4. Given an expression `e`, let `E` be `decltype((e))`. If `typed_sender<S,
+        E>` is `false`, the type of `tag_invoke(get_sender_traits, s2, e)` shall
+        be equivalent to <code><i>empty-sender-traits</i></code>. Otherwise, let
+        `Vs...` be the set of unique types in the <code><i>type-list</i></code>
+        named by <code>value_types_of_t&lt;S, E, <i>set-value-signature</i>,
+        <i>type-list</i>></code>, and let `Es...` be the set of types in the
+        <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E,
+        <i>error-types</i>></code>, where
+        <code><i>set-value-signature</i></code> is the alias template:
+
+            <pre highlight="c++">
+            template &lt;class... Ts>
+              using <i>set-value-signature</i> = set_value_t(decay_t&lt;Ts>&amp;&amp;...);
+            </pre>
+
+            and <code><i>error-types</i></code> is the alias template:
+
+            <pre highlight="c++">
+            template &lt;class... Es>
+              using <i>error-types</i> = <i>type-list</i>&lt;decay_t&lt;Es>&amp;&amp;...>;
+            </pre>
+
+            Let `Bs...` be the set of unique types in `[Es..., exception_ptr&&]`. If `sender_traits_t<S, E>::sends_stopped` is `true`, then the type of `tag_invoke(get_sender_traits, s2, e)` is a class type equivalent to:
+
+            <pre highlight="c++">
+            completion_signatures&lt;Vs..., set_error_t(Bs)..., set_stopped_t()>
+            </pre>
+
+            Otherwise:
+
+            <pre highlight="c++">
+            completion_signatures&lt;Vs..., set_error_t(Bs)...>
+            </pre>
+
+    If the function selected above does not return a sender that sends xvalue references to values sent by `s`, propagating the other channels, the program is ill-formed with no diagnostic required.
 
 ### Sender consumers <b>[exec.consumers]</b> ### {#spec-execution.senders.consumers}
 
