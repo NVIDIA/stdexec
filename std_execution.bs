@@ -148,7 +148,7 @@ auto [i] = this_thread::sync_wait(add_42).value();                            //
 This example demonstrates the basics of schedulers, senders, and receivers:
 
 1. First we need to get a scheduler from somewhere, such as a thread pool. A scheduler is a lightweight handle to an execution resource.
-2. To start a chain of work on a scheduler, we call [[#design-sender-factory-schedule]], which returns a sender that completes on the scheduler.  sender describes asynchronous work and sends a signal (value, error, or stopped) to some recipient(s) when that work completes.
+2. To start a chain of work on a scheduler, we call [[#design-sender-factory-schedule]], which returns a sender that completes on the scheduler. A sender describes asynchronous work and sends a signal (value, error, or stopped) to some recipient(s) when that work completes.
 3. We use sender algorithms to produce senders and compose asynchronous work. [[#design-sender-adaptor-then]] is a sender adaptor that takes an input sender and a `std::invocable`, and calls the `std::invocable` on the signal sent by the input sender. The sender returned by `then` sends the result of that invocation. In this case, the input sender came from `schedule`, so its `void`, meaning it won't send us a value, so our `std::invocable` takes no parameters. But we return an `int`, which will be sent to the next recipient.
 4. Now, we add another operation to the chain, again using [[#design-sender-adaptor-then]]. This time, we get sent a value - the `int` from the previous step. We add `42` to it, and then return the result.
 5. Finally, we're ready to submit the entire asynchronous pipeline and wait for its completion. Everything up until this point has been completely asynchronous; the work may not have even started yet. To ensure the work has started and then block pending its completion, we use [[#design-sender-consumer-sync_wait]], which will either return a `std::optional<std::tuple<...>>` with the value sent by the last sender, or an empty `std::optional` if the last sender sent a stopped signal, or it throws an exception if the last sender sent an error.
@@ -370,8 +370,10 @@ struct recv_op : operation_base {
     static void on_complete(operation_base* op, DWORD bytesTransferred, int errorCode) noexcept {
         recv_op& self = *static_cast<recv_op*>(op);
 
-        if (ready.load(std::memory_order_acquire) || ready.exchange(true, std::memory_order_acq_rel)) {
-            // Unsubscribe any stop-callback so we know that CancelIoEx() is not accessing 'op' any more
+        if (ready.load(std::memory_order_acquire) ||
+            ready.exchange(true, std::memory_order_acq_rel)) {
+            // Unsubscribe any stop-callback so we know that CancelIoEx() is not accessing 'op'
+            // any more
             stopCallback.reset();
 
             if (errorCode == 0) {
@@ -386,7 +388,8 @@ struct recv_op : operation_base {
     Receiver receiver;
     SOCKET sock;
     WSABUF buffer;
-    std::optional<typename stop_callback_type_t<Receiver>::template callback_type<cancel_cb>> stopCallback;
+    std::optional<typename stop_callback_type_t<Receiver>
+        ::template callback_type<cancel_cb>> stopCallback;
     std::atomic<bool> ready{false};
 };
 
@@ -773,7 +776,7 @@ loop to finish up what it's doing and then joins the thread, blocking for the ev
 
 The interesting bits are in the `execution::run_loop` context implementation. It
 is slightly too long to include here, so we only provide [a reference to
-it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/6e48b5b504cbe5cc34cc460b0d13a74af5d5e9f4/include/execution.hpp#L1309-L1478),
+it](https://github.com/brycelelbach/wg21_p2300_std_execution/blob/8bc0955c008652937948af784b7b6ccedecec23c/include/execution.hpp#L2720-L2887),
 but there is one noteworthy detail about its implementation: It uses space in
 its operation states to build an intrusive linked list of work items. In
 structured concurrency patterns, the operation states of nested operations
@@ -954,11 +957,11 @@ essential when writing user code using standard execution concepts; we have also
     [[#design-dispatch]].
 9. A specific thread pool implementation is omitted, as per LEWG direction.
 10. Some additional utilities are added:
-    * **`run_loop`**: An execution context that provides a multi-producer,
+    * <b>`run_loop`</b>: An execution context that provides a multi-producer,
         single-consumer, first-in-first-out work queue.
-    * **`receiver_adaptor`**: A utility for algorithm authors for defining one
+    * <b>`receiver_adaptor`</b>: A utility for algorithm authors for defining one
         receiver type in terms of another.
-    * **`completion_signatures`** and **`make_completion_signatures`**:
+    * <b>`completion_signatures`</b> and <b>`make_completion_signatures`</b>:
         Utilities for describing the ways in which a sender can complete in a
         declarative syntax.
 
@@ -994,7 +997,7 @@ Additionally, few of these possibilities accommodate cancellation signals when t
 
 ### libunifex ### {#intro-field-experience-libunifex}
 
-This proposal draws heavily from our field experience with [libunifex](https://github.com/facebookexperimental/libunifex). Libunifex implements all of the concepts and customization points defined in this paper, many of this paper's algorithms (some under different names), and much more besides.
+This proposal draws heavily from our field experience with [libunifex](https://github.com/facebookexperimental/libunifex). Libunifex implements all of the concepts and customization points defined in this paper (with slight variations -- the design of P2300 has evolved due to LEWG feedback), many of this paper's algorithms (some under different names), and much more besides.
 
 Libunifex has several concrete schedulers in addition to the `run_loop` suggested here (where it is called `manual_event_loop`). It has schedulers that dispatch efficiently to epoll and io_uring on Linux and the Windows Thread Pool on Windows.
 
@@ -1281,18 +1284,18 @@ R4:
     alias implemented in terms of a new `get_completion_signatures` CPO that dispatches
     with `tag_invoke`. `get_completion_signatures` takes a sender and an optional
     environment. A sender can customize this to specify its value/error types.
-* Support for untyped senders is dropped. The `typed_sender` trait has been
+* Support for untyped senders is dropped. The `typed_sender` concept has been
     renamed to `sender` and now takes an optional environment.
 * The environment argument to the `sender` concept and the `get_completion_signatures`
-    CPO defaults to `no_env`. All context queries fail (are ill-formed) when
+    CPO defaults to `no_env`. All environment queries fail (are ill-formed) when
     passed an instance of `no_env`.
 * A type `S` is required to satisfy <code>sender&lt;<i>S</i>></code> to be
     considered a sender. If it doesn't know what types it will complete with
     independent of an environment, it returns an instance of the placeholder
     traits `dependent_completion_signatures`.
 * If a sender satisfies both <code>sender&lt;<i>S</i>></code> and
-    <code>sender&lt;<i>S</i>, <i>Env</i>></code>, then the associated sender
-    types for the two cannot be different in any way. It is possible for an
+    <code>sender&lt;<i>S</i>, <i>Env</i>></code>, then the completion signatures
+    for the two cannot be different in any way. It is possible for an
     implementation to enforce this statically, but not required.
 * All of the algorithms and examples have been updated to work with
     dependently-typed senders.
@@ -1303,7 +1306,8 @@ The changes since R2 are as follows:
 
 <b>Fixes:</b>
 
-    * Fix specification of the `on` algorithm to clarify lifetimes of intermediate operation states and properly scope the `get_scheduler` query.
+    * Fix specification of the `on` algorithm to clarify lifetimes of
+        intermediate operation states and properly scope the `get_scheduler` query.
     * Fix a memory safety bug in the implementation of <code><i>connect-awaitable</i></code>.
     * Fix recursive definition of the `scheduler` concept.
 
@@ -4170,7 +4174,7 @@ enum class forward_progress_guarantee {
 
     * `execution::get_delegatee_scheduler`: used to obtain a <i>delegatee
         scheduler</i> on which an algorithm or scheduler may delegate work for the
-        purpose of ensuring forward progress. --<i>end note</i>]
+        purpose of ensuring forward progress.
 
     * `execution::get_allocator`: used to obtain a <i>suggested allocator</i>
         to be used when a sender needs to allocate memory. [<i>Note:</i> the
