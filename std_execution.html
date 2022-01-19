@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R4<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-01-18">2022-01-18</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-01-19">2022-01-19</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -6346,7 +6346,7 @@ completion-signal function of <code class="highlight"><c- n>r</c-></code>. --<i>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> denotes a customization point object. The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>R</c-><c- p>,</c-> <c- n>Vs</c-><c- p>...)</c-></code> for some subexpressions <code class="highlight"><c- n>R</c-></code> and <code class="highlight"><c- n>Vs</c-><c- p>...</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>,</c-> <c- n>R</c-><c- p>,</c-> <c- n>Vs</c-><c- p>...)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not send the value(s) <code class="highlight"><c- n>Vs</c-><c- p>...</c-></code> to the receiver <code class="highlight"><c- n>R</c-></code>’s value channel, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>,</c-> <c- n>R</c-><c- p>,</c-> <c- n>Vs</c-><c- p>...)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not send the value(s) <code class="highlight"><c- n>Vs</c-><c- p>...</c-></code> to the receiver <code class="highlight"><c- n>R</c-></code>’s value channel, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>R</c-><c- p>,</c-> <c- n>Vs</c-><c- p>...)</c-></code> is undefined.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>R</c-><c- p>,</c-> <c- n>Vs</c-><c- p>...)</c-></code> is ill-formed.</p>
      </ol>
@@ -6359,7 +6359,7 @@ completion-signal function of <code class="highlight"><c- n>r</c-></code>. --<i>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> denotes a customization point object. The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>R</c-><c- p>,</c-> <c- n>E</c-><c- p>)</c-></code> for some subexpressions <code class="highlight"><c- n>R</c-></code> and <code class="highlight"><c- n>E</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>,</c-> <c- n>R</c-><c- p>,</c-> <c- n>E</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not send the error <code class="highlight"><c- n>E</c-></code> to the receiver <code class="highlight"><c- n>R</c-></code>’s error channel, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>,</c-> <c- n>R</c-><c- p>,</c-> <c- n>E</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not send the error <code class="highlight"><c- n>E</c-></code> to the receiver <code class="highlight"><c- n>R</c-></code>’s error channel, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>R</c-><c- p>,</c-> <c- n>E</c-><c- p>)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not potentially
@@ -6377,7 +6377,7 @@ throwing.</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-></code> denotes a customization point object. The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>R</c-><c- p>)</c-></code> for some subexpression <code class="highlight"><c- n>R</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>,</c-> <c- n>R</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not signal the receiver <code class="highlight"><c- n>R</c-></code>’s stopped channel, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>,</c-> <c- n>R</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not signal the receiver <code class="highlight"><c- n>R</c-></code>’s stopped channel, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>R</c-><c- p>)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not potentially
@@ -6434,7 +6434,7 @@ are not potentially-throwing and are core constant expressions if <code class="h
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> denotes a customization point object. The expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>O</c-><c- p>)</c-></code> for some lvalue subexpression <code class="highlight"><c- n>O</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>,</c-> <c- n>O</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not start the work represented by the operation state <code class="highlight"><c- n>O</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>,</c-> <c- n>O</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not start the work represented by the operation state <code class="highlight"><c- n>O</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>O</c-><c- p>)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The <code class="highlight"><c- n>tag_invoke</c-></code> expression above is not potentially
@@ -6567,18 +6567,15 @@ expression such that <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c-
      <p>Let <code class="highlight"><c- n>r</c-></code> be an rvalue receiver of type <code class="highlight"><c- n>R</c-></code>, and let <code class="highlight"><c- n>S</c-></code> be the type of a
 sender. If <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> is well
 formed, it shall name the type <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args</c-><i><sub><c- n>0</c-></sub></i><c- p>...</c-><c- o>></c-><c- p>,</c-> <c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args</c-><i><sub><c- n>1</c-></sub></i><c- p>...</c-><c- o>></c-><c- p>,</c-> <c- p>...,</c-> <c- n>Tuple</c-><c- o>&lt;</c-><c- n>Args</c-><i><sub><c- n>N</c-></sub></i><c- p>...</c-><c- o>>>></c-></code>, where the type packs <code class="highlight"><c- n>Args</c-><i><sub><c- n>0</c-></sub></i></code> through <code class="highlight"><c- n>Args</c-><i><sub><c- n>N</c-></sub></i></code> are the packs of types the sender <code class="highlight"><c- n>S</c-></code> passes as arguments to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-></code> (besides the receiver object).
-If such sender <code class="highlight"><c- n>S</c-></code> odr-uses ([basic.def.odr]) <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code>, where <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>args</c-><c- p>)...</c-></code> is not one of the type packs <code class="highlight"><c- n>Args</c-><i><sub><c- n>0</c-></sub></i><c- p>...</c-></code> through <code class="highlight"><c- n>Args</c-><i><sub><c- n>N</c-></sub></i><c- p>...</c-></code> (ignoring differences in
-rvalue-reference qualification), the program is ill-formed with no
-diagnostic required.</p>
+Such a sender <code class="highlight"><c- n>S</c-></code> shall not odr-use ([basic.def.odr]) <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code>, where <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>args</c-><c- p>)...</c-></code> is not one of the type packs <code class="highlight"><c- n>Args</c-><i><sub><c- n>0</c-></sub></i><c- p>...</c-></code> through <code class="highlight"><c- n>Args</c-><i><sub><c- n>N</c-></sub></i><c- p>...</c-></code> (ignoring differences in
+rvalue-reference qualification).</p>
     <li data-md>
      <p>Let <code class="highlight"><c- n>r</c-></code> be an rvalue receiver of type <code class="highlight"><c- n>R</c-></code>, and let <code class="highlight"><c- n>S</c-></code> be the type of a
 sender. If <code class="highlight"><c- n>error_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-></code> is well formed, it
-shall name the type <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>E</c-><i><sub><c- n>0</c-></sub></i><c- p>,</c-> <c- n>E</c-><i><sub><c- n>1</c-></sub></i><c- p>,</c-> <c- p>...,</c-> <c- n>E</c-><i><sub><c- n>N</c-></sub></i><c- o>></c-></code>, where the types <code class="highlight"><c- n>E</c-><i><sub><c- n>0</c-></sub></i></code> through <code class="highlight"><c- n>E</c-><i><sub><c- n>N</c-></sub></i></code> are the types the sender <code class="highlight"><c- n>S</c-></code> passes as arguments to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> (besides the receiver object). If such sender <code class="highlight"><c- n>S</c-></code> odr-uses <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>, where <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> is not one of the types <code class="highlight"><c- n>E</c-><i><sub><c- n>0</c-></sub></i></code> through <code class="highlight"><c- n>E</c-><i><sub><c- n>N</c-></sub></i></code> (ignoring differences in rvalue-reference qualification), the program is
-ill-formed with no diagnostic required.</p>
+shall name the type <code class="highlight"><c- n>Variant</c-><c- o>&lt;</c-><c- n>E</c-><i><sub><c- n>0</c-></sub></i><c- p>,</c-> <c- n>E</c-><i><sub><c- n>1</c-></sub></i><c- p>,</c-> <c- p>...,</c-> <c- n>E</c-><i><sub><c- n>N</c-></sub></i><c- o>></c-></code>, where the types <code class="highlight"><c- n>E</c-><i><sub><c- n>0</c-></sub></i></code> through <code class="highlight"><c- n>E</c-><i><sub><c- n>N</c-></sub></i></code> are the types the sender <code class="highlight"><c- n>S</c-></code> passes as arguments to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-></code> (besides the receiver object). Such a sender <code class="highlight"><c- n>S</c-></code> shall not odr-use <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>, where <code class="highlight"><c- k>decltype</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> is not one of the types <code class="highlight"><c- n>E</c-><i><sub><c- n>0</c-></sub></i></code> through <code class="highlight"><c- n>E</c-><i><sub><c- n>N</c-></sub></i></code> (ignoring differences in rvalue-reference qualification).</p>
     <li data-md>
      <p>Let <code class="highlight"><c- n>r</c-></code> be an rvalue receiver of type <code class="highlight"><c- n>R</c-></code>, and let <code class="highlight"><c- n>S</c-></code> be the type of a
-sender. If <code class="highlight"><c- n>completion_signatures_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>>::</c-><c- n>sends_stopped</c-></code> is well formed and <code class="highlight">false</code>, and such sender <code class="highlight"><c- n>S</c-></code> odr-uses <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code>, the program
-is ill-formed with no diagnostic required.</p>
+sender. If <code class="highlight"><c- n>completion_signatures_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>>::</c-><c- n>sends_stopped</c-></code> is well formed and <code class="highlight">false</code>, such a sender <code class="highlight"><c- n>S</c-></code> shall not odr-use <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code>.</p>
     <li data-md>
      <p>Let <code class="highlight"><c- n>S</c-></code> be the type of a sender, let <code class="highlight"><c- n>E</c-></code> be the type of an execution
 environment other than <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>no_env</c-></code> such that <code class="highlight"><c- n>sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code>. Let <code class="highlight"><c- n>Tuple</c-></code>, <code class="highlight"><c- n>Variant1</c-></code>, and <code class="highlight"><c- n>Variant2</c-></code> be variadic alias templates
@@ -6637,7 +6634,7 @@ execution environment.</p>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>s</c-></code> and <code class="highlight"><c- n>r</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code> and <code class="highlight"><c- n>R</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>r</c-><c- p>))</c-></code>, and let <code class="highlight"><c- n>S</c->'</code> and <code class="highlight"><c- n>R</c->'</code> be the decayed types of <code class="highlight"><c- n>S</c-></code> and <code class="highlight"><c- n>R</c-></code>, respectively. If <code class="highlight"><c- n>R</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>receiver</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, if that expression is valid and <code class="highlight"><c- n>S</c-></code> satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return an operation state for which <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> starts work described by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, if that expression is valid and <code class="highlight"><c- n>S</c-></code> satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return an operation state for which <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> starts work described by <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>operation_state</c-></code>.</p>
@@ -6733,7 +6730,7 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
@@ -6802,7 +6799,8 @@ satisfy <code class="highlight"><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>,</c-> <c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender whose <code class="highlight"><c- n>set_value</c-></code> completion scheduler is equivalent to <code class="highlight"><c- n>s</c-></code> and sends
-values equivalent to <code class="highlight"><c- k>auto</c-><c- p>(</c-><c- n>vs</c-><c- p>)...</c-></code> to a receiver connected to it, the program is ill-formed with no diagnostic required.</p>
+values equivalent to <code class="highlight"><c- k>auto</c-><c- p>(</c-><c- n>vs</c-><c- p>)...</c-></code> to a receiver connected to it, the
+behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>no_env</c-><c- p>,</c-> <c- k>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>(</c-><c- n>vs</c-><c- p>))...</c-><c- o>></c-></code>, where <code class="highlight"><c- n>R</c-></code> is the type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above.</p>
@@ -7017,7 +7015,7 @@ are all well-formed.</p>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid. If the function selected above does not return a sender which starts <code class="highlight"><c- n>s</c-></code> on an execution agent of the associated execution context of <code class="highlight"><c- n>sch</c-></code> when
-started, the program is ill-formed with no diagnostic required.</p>
+started, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
@@ -7072,7 +7070,7 @@ started, the program is ill-formed with no diagnostic required.</p>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
      </ol>
-     <p>If the function selected above does not return a sender which is a result of a call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s2</c-><c- p>)</c-></code>, where <code class="highlight"><c- n>s2</c-></code> is a sender which sends equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+     <p>If the function selected above does not return a sender which is a result of a call to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s2</c-><c- p>)</c-></code>, where <code class="highlight"><c- n>s2</c-></code> is a sender which sends equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code> is undefined.</p>
     <li data-md>
      <p>Senders returned from <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> shall not propagate the sender queries <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code> to an input sender. They will implement <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>CPO</c-><c- o>></c-></code>, where <code class="highlight"><c- n>CPO</c-></code> is one of <code class="highlight"><c- n>set_value_t</c-></code> and <code class="highlight"><c- n>set_stopped_t</c-></code>; this query returns a scheduler equivalent to the <code class="highlight"><c- n>sch</c-></code> argument from those queries. The <code class="highlight"><c- n>get_completion_scheduler</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- o>></c-></code> is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.</p>
    </ol>
@@ -7085,7 +7083,7 @@ started, the program is ill-formed with no diagnostic required.</p>
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender which completes on an execution agent belonging to the associated
-execution context of <code class="highlight"><c- n>sch</c-></code> and sends signals equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the program is ill-formed with no diagnostic required.</p>
+execution context of <code class="highlight"><c- n>sch</c-></code> and sends signals equivalent to those sent by <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
@@ -7191,8 +7189,7 @@ the unique set of types in the <code class="highlight"><i><c- n>type</c-><c- o>-
          </ol>
        </ol>
      </ol>
-     <p>If the function selected above does not return a sender that invokes <code class="highlight"><c- n>f</c-></code> with the result of the <code class="highlight"><c- n>set_value</c-></code> signal of <code class="highlight"><c- n>s</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
+     <p>If the function selected above does not return a sender that invokes <code class="highlight"><c- n>f</c-></code> with the result of the <code class="highlight"><c- n>set_value</c-></code> signal of <code class="highlight"><c- n>s</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.5.7" id="spec-execution.senders.adaptor.upon_error"><span class="secno">10.8.5.7. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-></code> <b>[exec.upon_error]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.upon_error"></a></h5>
    <ol>
@@ -7263,8 +7260,7 @@ types in <code class="highlight"><c- p>[</c-><i><c- n>unary</c-><c- o>-</c-><c- 
          </ol>
        </ol>
      </ol>
-     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> with the result of the <code class="highlight"><c- n>set_error</c-></code> signal of <code class="highlight"><c- n>s</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
+     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> with the result of the <code class="highlight"><c- n>set_error</c-></code> signal of <code class="highlight"><c- n>s</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.5.8" id="spec-execution.senders.adaptor.upon_stopped"><span class="secno">10.8.5.8. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_stopped</c-></code> <b>[exec.upon_stopped]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.upon_stopped"></a></h5>
    <ol>
@@ -7322,8 +7318,7 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
 </pre>
        </ol>
      </ol>
-     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>s</c-></code> completes by calling <code class="highlight"><c- n>set_stopped</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
+     <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>s</c-></code> completes by calling <code class="highlight"><c- n>set_stopped</c-></code>, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_stopped</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.5.9" id="spec-execution.senders.adapt.let_value"><span class="secno">10.8.5.9. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-></code> <b>[exec.let_value]</b></span><a class="self-link" href="#spec-execution.senders.adapt.let_value"></a></h5>
    <ol>
@@ -7392,8 +7387,7 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
          </ol>
        </ol>
      </ol>
-     <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> does not return a sender that invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_value</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
+     <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> does not return a sender that invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_value</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.5.10" id="spec-execution.senders.adapt.let_error"><span class="secno">10.8.5.10. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-></code> <b>[exec.let_error]</b></span><a class="self-link" href="#spec-execution.senders.adapt.let_error"></a></h5>
    <ol>
@@ -7464,8 +7458,7 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
          </ol>
        </ol>
      </ol>
-     <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> does not return a sender that invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_error</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
+     <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> does not return a sender that invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_error</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.5.11" id="spec-execution.senders.adapt.let_stopped"><span class="secno">10.8.5.11. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_stopped</c-></code> <b>[exec.let_stopped]</b></span><a class="self-link" href="#spec-execution.senders.adapt.let_stopped"></a></h5>
    <ol>
@@ -7527,8 +7520,7 @@ otherwise, let <code class="highlight"><c- n>B</c-></code> be <code class="highl
          </ol>
        </ol>
      </ol>
-     <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_stopped</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> does not return a sender that invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_stopped</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the program is
-    ill-formed with no diagnostic required.</p>
+     <p>If <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_stopped</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> does not return a sender that invokes <code class="highlight"><c- n>f</c-></code> when <code class="highlight"><c- n>set_stopped</c-></code> is called, and making its completion dependent on the completion of a sender returned by <code class="highlight"><c- n>f</c-></code>, and propagates the other completion-signals sent by <code class="highlight"><c- n>s</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_stopped</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.5.12" id="spec-execution.senders.adapt.bulk"><span class="secno">10.8.5.12. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> <b>[exec.bulk]</b></span><a class="self-link" href="#spec-execution.senders.adapt.bulk"></a></h5>
    <ol>
@@ -7582,7 +7574,7 @@ of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_completion
        </ol>
      </ol>
      <p>If the function selected above does not return a sender which invokes <code class="highlight"><c- n>f</c-><c- p>(</c-><c- n>i</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> for each <code class="highlight"><c- n>i</c-></code> of type <code class="highlight"><c- n>Shape</c-></code> from <code class="highlight"><c- mi>0</c-></code> to <code class="highlight"><c- n>shape</c-></code> when the input sender sends values <code class="highlight"><c- n>args</c-><c- p>...</c-></code>, or does not propagate the values of the signals sent by the input sender to
-    a connected receiver, the program is ill-formed with no diagnostic required.</p>
+    a connected receiver, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>shape</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.5.13" id="spec-execution.senders.adapt.split"><span class="secno">10.8.5.13. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> <b>[exec.split]</b></span><a class="self-link" href="#spec-execution.senders.adapt.split"></a></h5>
    <ol>
@@ -7708,7 +7700,8 @@ be equivalent to <code class="highlight"><c- n>dependent_completion_signatures</
 <pre class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>Vs</c-><c- p>...,</c-> <c- n>set_error_t</c-><c- p>(</c-><c- n>Bs</c-><c- p>)...</c-><c- o>></c->
 </pre>
      </ol>
-     <p>If the function selected above does not return a sender which sends references to values sent by <code class="highlight"><c- n>s</c-></code>, propagating the other channels, the program is ill-formed with no diagnostic required.</p>
+     <p>If the function selected above does not return a sender which sends references to values sent by <code class="highlight"><c- n>s</c-></code>, propagating the other channels, the
+behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.5.14" id="spec-execution.senders.adaptor.when_all"><span class="secno">10.8.5.14. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> <b>[exec.when_all]</b></span><a class="self-link" href="#spec-execution.senders.adaptor.when_all"></a></h5>
    <ol>
@@ -7725,7 +7718,8 @@ be equivalent to <code class="highlight"><c- n>dependent_completion_signatures</
      <p>Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
-       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>,</c-> <c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no diagnostic required.</p>
+       <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>,</c-> <c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the behavior
+of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
@@ -7811,8 +7805,7 @@ be equivalent to <code class="highlight"><c- n>dependent_completion_signatures</
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression
 is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a
 sender that, when connected with a receiver of type <code class="highlight"><c- n>R</c-></code>, sends the types <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-><c- p>...</c-></code> when they
-all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with no
-diagnostic required.</p>
+all complete with <code class="highlight"><c- n>set_value</c-></code>, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c-><c- n>s</c-><i><sub><c- n>i</c-></sub></i><c- p>...)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
@@ -7834,8 +7827,8 @@ senders, which may have one or more sets of sent values. [<i>Note:</i> this can 
      <ol>
       <li data-md>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not return a sender that sends a concatenation of values sent by <code class="highlight"><c- n>s</c-><c- p>...</c-></code> when
-they all complete with <code class="highlight"><c- n>set_value</c-></code>, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of <code class="highlight"><c- n>sch</c-></code>, the program is ill-formed with no diagnostic
-required.</p>
+they all complete with <code class="highlight"><c- n>set_value</c-></code>, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of <code class="highlight"><c- n>sch</c-></code>, the behavior
+of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
@@ -7853,8 +7846,8 @@ to:</p>
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code>, if that
 expression is valid. If the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not
 return a sender that, when connected with a receiver of type <code class="highlight"><c- n>R</c-></code>, sends
-the types <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the program is ill-formed with
-no diagnostic required.</p>
+the types <code class="highlight"><i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>env_of_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-><c- p>...</c-></code> when they all complete with <code class="highlight"><c- n>set_value</c-></code>, the behavior
+of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_when_all_with_variant</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>...)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above satisfies <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>.</p>
@@ -8068,7 +8061,8 @@ be equivalent to <code class="highlight"><c- n>dependent_completion_signatures</
 <pre class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>Vs</c-><c- p>...,</c-> <c- n>set_error_t</c-><c- p>(</c-><c- n>Bs</c-><c- p>)...</c-><c- o>></c->
 </pre>
      </ol>
-     <p>If the function selected above does not return a sender that sends xvalue references to values sent by <code class="highlight"><c- n>s</c-></code>, propagating the other channels, the program is ill-formed with no diagnostic required.</p>
+     <p>If the function selected above does not return a sender that sends xvalue references to values sent by <code class="highlight"><c- n>s</c-></code>, propagating the other channels, the behavior of
+calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>ensure_started</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h4 class="heading settled" data-level="10.8.6" id="spec-execution.senders.consumers"><span class="secno">10.8.6. </span><span class="content">Sender consumers <b>[exec.consumers]</b></span><a class="self-link" href="#spec-execution.senders.consumers"></a></h4>
    <h5 class="heading settled" data-level="10.8.6.1" id="spec-execution.senders.consumers.start_detached"><span class="secno">10.8.6.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-></code> <b>[exec.start_detached]</b></span><a class="self-link" href="#spec-execution.senders.consumers.start_detached"></a></h5>
@@ -8107,7 +8101,8 @@ be equivalent to <code class="highlight"><c- n>dependent_completion_signatures</
          <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in an operation state <code class="highlight"><c- n>op_state</c-></code>, then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state</c-><c- p>)</c-></code>. The lifetime of <code class="highlight"><c- n>op_state</c-></code> lasts until one of the receiver completion-signals of <code class="highlight"><c- n>r</c-></code> is called.</p>
        </ol>
      </ol>
-     <p>If the function selected above does not eagerly start the sender <code class="highlight"><c- n>s</c-></code> after connecting it with a receiver which ignores the <code class="highlight"><c- n>set_value</c-></code> and <code class="highlight"><c- n>set_stopped</c-></code> signals and calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> on the <code class="highlight"><c- n>set_error</c-></code> signal, the program is ill-formed with no diagnostic required.</p>
+     <p>If the function selected above does not eagerly start the sender <code class="highlight"><c- n>s</c-></code> after connecting it with a receiver which ignores the <code class="highlight"><c- n>set_value</c-></code> and <code class="highlight"><c- n>set_stopped</c-></code> signals and calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> on the <code class="highlight"><c- n>set_error</c-></code> signal, the behavior
+of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start_detached</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is undefined.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.6.2" id="spec-execution.senders.consumers.sync_wait"><span class="secno">10.8.6.2. </span><span class="content"><code class="highlight"><c- n>this_thread</c-><c- o>::</c-><c- n>sync_wait</c-></code> <b>[exec.sync_wait]</b></span><a class="self-link" href="#spec-execution.senders.consumers.sync_wait"></a></h5>
    <ol>
@@ -8200,7 +8195,7 @@ object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let 
        <p><code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>execute</c-><c- p>,</c-> <c- n>sch</c-><c- p>,</c-> <c- n>f</c-><c- p>)</c-></code>, if that expression is valid. If
 the function selected by <code class="highlight"><c- n>tag_invoke</c-></code> does not invoke the function <code class="highlight"><c- n>f</c-></code> (or an object decay-copied from <code class="highlight"><c- n>f</c-></code>) on an execution agent belonging to
 the associated execution context of <code class="highlight"><c- n>sch</c-></code>, or if it does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> if an error occurs after control is returned to the
-caller, the program is ill-formed with no diagnostic required.</p>
+caller, the behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>execute</c-></code> is undefined.</p>
        <ul>
         <li data-md>
          <p><i>Mandates:</i> The type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above is <code class="highlight"><c- b>void</c-></code>.</p>
