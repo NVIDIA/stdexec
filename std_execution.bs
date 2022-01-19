@@ -4204,7 +4204,8 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::set_value` denotes a customization point object. The expression `execution::set_value(R, Vs...)` for some subexpressions `R` and `Vs...` is expression-equivalent to:
 
-    1. `tag_invoke(execution::set_value, R, Vs...)`, if that expression is valid. If the function selected by `tag_invoke` does not send the value(s) `Vs...` to the receiver `R`’s value channel, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::set_value, R, Vs...)`, if that expression is valid. If the function selected by `tag_invoke` does not send the value(s) `Vs...` to the receiver `R`’s value channel, the behavior of calling
+`execution::set_value(R, Vs...)` is undefined.
 
     2. Otherwise, `execution::set_value(R, Vs...)` is ill-formed.
 
@@ -4214,7 +4215,8 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::set_error` denotes a customization point object. The expression `execution::set_error(R, E)` for some subexpressions `R` and `E` is expression-equivalent to:
 
-    1. `tag_invoke(execution::set_error, R, E)`, if that expression is valid. If the function selected by `tag_invoke` does not send the error `E` to the receiver `R`’s error channel, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::set_error, R, E)`, if that expression is valid. If the function selected by `tag_invoke` does not send the error `E` to the receiver `R`’s error channel, the behavior of calling `execution::set_error(R, E)`
+is undefined.
 
         * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
             throwing.
@@ -4227,7 +4229,7 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::set_stopped` denotes a customization point object. The expression `execution::set_stopped(R)` for some subexpression `R` is expression-equivalent to:
 
-    1. `tag_invoke(execution::set_stopped, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s stopped channel, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::set_stopped, R)`, if that expression is valid. If the function selected by `tag_invoke` does not signal the receiver `R`’s stopped channel, the behavior of calling `execution::set_stopped(R)` is undefined.
 
         * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
             throwing.
@@ -4277,7 +4279,7 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::start` denotes a customization point object. The expression `execution::start(O)` for some lvalue subexpression `O` is expression-equivalent to:
 
-    1. `tag_invoke(execution::start, O)`, if that expression is valid. If the function selected by `tag_invoke` does not start the work represented by the operation state `O`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::start, O)`, if that expression is valid. If the function selected by `tag_invoke` does not start the work represented by the operation state `O`, the behavior of calling `execution::start(O)` is undefined.
 
         * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
             throwing.
@@ -4420,12 +4422,11 @@ enum class forward_progress_guarantee {
     <code>Args<i><sub>0</sub></i></code> through
     <code>Args<i><sub>N</sub></i></code> are the packs of types the sender `S`
     passes as arguments to `execution::set_value` (besides the receiver object).
-    If such sender `S` odr-uses ([basic.def.odr]) `execution::set_value(r,
+    Such a sender `S` shall not odr-use ([basic.def.odr]) `execution::set_value(r,
     args...)`, where `decltype(args)...` is not one of the type packs
     <code>Args<i><sub>0</sub></i>...</code> through
     <code>Args<i><sub>N</sub></i>...</code> (ignoring differences in
-    rvalue-reference qualification), the program is ill-formed with no
-    diagnostic required.
+    rvalue-reference qualification).
 
 7. Let `r` be an rvalue receiver of type `R`, and let `S` be the type of a
     sender. If `error_types_of_t<S, env_of_t<R>, Variant>` is well formed, it
@@ -4433,16 +4434,14 @@ enum class forward_progress_guarantee {
     E<i><sub>1</sub></i>, ..., E<i><sub>N</sub></i>></code>, where the types
     <code>E<i><sub>0</sub></i></code> through <code>E<i><sub>N</sub></i></code>
     are the types the sender `S` passes as arguments to `execution::set_error`
-    (besides the receiver object). If such sender `S` odr-uses
+    (besides the receiver object). Such a sender `S` shall not odr-use
     `execution::set_error(r, e)`, where `decltype(e)` is not one of the types
     <code>E<i><sub>0</sub></i></code> through <code>E<i><sub>N</sub></i></code>
-    (ignoring differences in rvalue-reference qualification), the program is
-    ill-formed with no diagnostic required.
+    (ignoring differences in rvalue-reference qualification).
 
 8. Let `r` be an rvalue receiver of type `R`, and let `S` be the type of a
     sender. If `completion_signatures_of_t<S, env_of_t<R>>::sends_stopped` is well formed and
-    `false`, and such sender `S` odr-uses `execution::set_stopped(r)`, the program
-    is ill-formed with no diagnostic required.
+    `false`, such a sender `S` shall not odr-use `execution::set_stopped(r)`.
 
 9. Let `S` be the type of a sender, let `E` be the type of an execution
     environment other than `execution::no_env` such that `sender<S, E>` is
@@ -4498,7 +4497,7 @@ template &lt;class E>
 
 2. The name `execution::connect` denotes a customization point object. For some subexpressions `s` and `r`, let `S` be `decltype((s))` and `R` be `decltype((r))`, and let `S'` and `R'` be the decayed types of `S` and `R`, respectively. If `R` does not satisfy `execution::receiver`, `execution::connect(s, r)` is ill-formed. Otherwise, the expression `execution::connect(s, r)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::connect, s, r)`, if that expression is valid and `S` satisfies `execution::sender`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::connect, s, r)`, if that expression is valid and `S` satisfies `execution::sender`. If the function selected by `tag_invoke` does not return an operation state for which `execution::start` starts work described by `s`, the behavior of calling `execution::connect(s, r)` is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `operation_state`.
 
@@ -4588,7 +4587,8 @@ template &lt;class E>
 
 2. The name `execution::schedule` denotes a customization point object. For some subexpression `s`, the expression `execution::schedule(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::schedule, s)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s`, the program is ill-formed with no diagnostic required.
+    1. `tag_invoke(execution::schedule, s)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s`, the behavior of calling
+`execution::schedule(s)` is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -4655,7 +4655,8 @@ template &lt;class E>
     satisfy <code><i>movable-value</i></code>, `execution::transfer_just(s, vs...)` is ill-formed. Otherwise, `execution::transfer_just(s, vs...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::transfer_just, s, vs...)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s` and sends
-        values equivalent to `auto(vs)...` to a receiver connected to it, the program is ill-formed with no diagnostic required.
+        values equivalent to `auto(vs)...` to a receiver connected to it, the
+behavior of calling `execution::transfer_just(s, vs...)` is undefined.
 
         * <i>Mandates:</i>  `execution::sender_of<R, no_env, decltype(auto(vs))...>`, where `R` is the type of the `tag_invoke` expression above.
 
@@ -4881,7 +4882,7 @@ are all well-formed.
     `execution::on` is ill-formed. Otherwise, the expression `execution::on(sch, s)` is expression-equivalent to:
 
     1. `tag_invoke(execution::on, sch, s)`, if that expression is valid. If the function selected above does not return a sender which starts `s` on an execution agent of the associated execution context of `sch` when
-        started, the program is ill-formed with no diagnostic required.
+        started, the behavior of calling `execution::on(sch, s)` is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -4929,7 +4930,8 @@ are all well-formed.
 
     3. Otherwise, `schedule_from(sch, s)`.
 
-    If the function selected above does not return a sender which is a result of a call to `execution::schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+    If the function selected above does not return a sender which is a result of a call to `execution::schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the behavior of calling
+`execution::transfer(s, sch)` is undefined.
 
 3. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_stopped_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
 
@@ -4942,7 +4944,7 @@ are all well-formed.
     `execution::sender`, `execution::schedule_from` is ill-formed. Otherwise, the expression `execution::schedule_from(sch, s)` is expression-equivalent to:
 
     1. `tag_invoke(execution::schedule_from, sch, s)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender which completes on an execution agent belonging to the associated
-        execution context of `sch` and sends signals equivalent to those sent by `s`, the program is ill-formed with no diagnostic required.
+        execution context of `sch` and sends signals equivalent to those sent by `s`, the behavior of calling `execution::schedule_from(sch, s)` is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -5064,8 +5066,7 @@ are all well-formed.
 
                 where <code><i>unary-set-value-signature</i>&lt;T></code> is an alias for `set_value_t()` if `T` is `void`; otherwise, `set_value_t(T)`.
 
-    If the function selected above does not return a sender that invokes `f` with the result of the `set_value` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
+    If the function selected above does not return a sender that invokes `f` with the result of the `set_value` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the behavior of calling `execution::then(s, f)` is undefined.
 
 #### `execution::upon_error` <b>[exec.upon_error]</b> #### {#spec-execution.senders.adaptor.upon_error}
 
@@ -5149,8 +5150,7 @@ are all well-formed.
                 completion_signatures&lt;Cs..., set_error_t(exception_ptr)>
                 </pre>
 
-    If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
+    If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the behavior of calling `execution::upon_error(s, f)` is undefined.
 
 #### `execution::upon_stopped` <b>[exec.upon_stopped]</b> #### {#spec-execution.senders.adaptor.upon_stopped}
 
@@ -5217,8 +5217,7 @@ are all well-formed.
                 completion_signatures&lt;As..., set_error_t(Es)...>
                 </pre>
 
-    If the function selected above does not return a sender which invokes `f` when `s` completes by calling `set_stopped`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
+    If the function selected above does not return a sender which invokes `f` when `s` completes by calling `set_stopped`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the behavior of calling `execution::upon_stopped(s, f)` is undefined.
 
 #### `execution::let_value` <b>[exec.let_value]</b> #### {#spec-execution.senders.adapt.let_value}
 
@@ -5284,8 +5283,7 @@ are all well-formed.
                 completion_signatures &ltUs..., set_error_t(Ws)...>
                 </pre>
 
-    If `execution::let_value(s, f)` does not return a sender that invokes `f` when `set_value` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
+    If `execution::let_value(s, f)` does not return a sender that invokes `f` when `set_value` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the behavior of calling `execution::let_value(s, f)` is undefined.
 
 #### `execution::let_error` <b>[exec.let_error]</b> #### {#spec-execution.senders.adapt.let_error}
 
@@ -5354,8 +5352,7 @@ are all well-formed.
                 completion_signatures &ltUs..., set_error_t(Ws)...>
                 </pre>
 
-    If `execution::let_error(s, f)` does not return a sender that invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
+    If `execution::let_error(s, f)` does not return a sender that invokes `f` when `set_error` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the behavior of calling `execution::let_error(s, f)` is undefined.
 
 #### `execution::let_stopped` <b>[exec.let_stopped]</b> #### {#spec-execution.senders.adapt.let_stopped}
 
@@ -5412,8 +5409,7 @@ are all well-formed.
                 completion_signatures &ltUs..., set_error_t(Ws)...>
                 </pre>
 
-    If `execution::let_stopped(s, f)` does not return a sender that invokes `f` when `set_stopped` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the program is
-        ill-formed with no diagnostic required.
+    If `execution::let_stopped(s, f)` does not return a sender that invokes `f` when `set_stopped` is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the behavior of calling `execution::let_stopped(s, f)` is undefined.
 
 #### `execution::bulk` <b>[exec.bulk]</b> #### {#spec-execution.senders.adapt.bulk}
 
@@ -5461,7 +5457,7 @@ are all well-formed.
         3. `Tr::sends_stopped` is a core constant expression of type `bool` and value `completion_signatures_of_t<S, E>::sends_stopped`.
 
     If the function selected above does not return a sender which invokes `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when the input sender sends values `args...`, or does not propagate the values of the signals sent by the input sender to
-        a connected receiver, the program is ill-formed with no diagnostic required.
+        a connected receiver, the behavior of calling `execution::bulk(s, shape, f)` is undefined.
 
 #### `execution::split` <b>[exec.split]</b> #### {#spec-execution.senders.adapt.split}
 
@@ -5608,7 +5604,8 @@ are all well-formed.
             completion_signatures&lt;Vs..., set_error_t(Bs)...>
             </pre>
 
-    If the function selected above does not return a sender which sends references to values sent by `s`, propagating the other channels, the program is ill-formed with no diagnostic required.
+    If the function selected above does not return a sender which sends references to values sent by `s`, propagating the other channels, the 
+behavior of calling `execution::split(s)` is undefined.
 
 #### `execution::when_all` <b>[exec.when_all]</b> #### {#spec-execution.senders.adaptor.when_all}
 
@@ -5622,7 +5619,8 @@ are all well-formed.
 
     Otherwise, the expression <code>execution::when_all(s<i><sub>i</sub></i>...)</code> is expression-equivalent to:
 
-    1. <code>tag_invoke(execution::when_all, s<i><sub>i</sub></i>...)</code>, if that expression is valid. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by <code>s<i><sub>i</sub></i>...</code> when they all complete with `set_value`, the program is ill-formed with no diagnostic required.
+    1. <code>tag_invoke(execution::when_all, s<i><sub>i</sub></i>...)</code>, if that expression is valid. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by <code>s<i><sub>i</sub></i>...</code> when they all complete with `set_value`, the behavior
+of calling <code>execution::when_all(s<i><sub>i</sub></i>...)</code> is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -5694,8 +5692,8 @@ are all well-formed.
         is valid. If the function selected by `tag_invoke` does not return a
         sender that, when connected with a receiver of type `R`, sends the types
         <code><i>into-variant-type</i>&lt;S, env_of_t&lt;R>>...</code> when they
-        all complete with `set_value`, the program is ill-formed with no
-        diagnostic required.
+        all complete with `set_value`, the behavior of calling
+        <code>execution::when_all(s<i><sub>i</sub></i>...)</code> is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -5714,8 +5712,8 @@ are all well-formed.
     `execution::transfer_when_all` is ill-formed. Otherwise, the expression `execution::transfer_when_all(sch, s...)` is expression-equivalent to:
 
     1. `tag_invoke(execution::transfer_when_all, sch, s...)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by `s...` when
-        they all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the program is ill-formed with no diagnostic
-        required.
+        they all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the behavior
+of calling `execution::transfer_when_all(sch, s...)` is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -5734,8 +5732,9 @@ are all well-formed.
         expression is valid. If the function selected by `tag_invoke` does not
         return a sender that, when connected with a receiver of type `R`, sends
         the types <code><i>into-variant-type</i>&lt;S, env_of_t&lt;R>>...</code>
-        when they all complete with `set_value`, the program is ill-formed with
-        no diagnostic required.
+        when they all complete with `set_value`, the behavior
+        of calling `execution::transfer_when_all_with_variant(sch, s...)`
+        is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -5969,7 +5968,8 @@ are all well-formed.
             completion_signatures&lt;Vs..., set_error_t(Bs)...>
             </pre>
 
-    If the function selected above does not return a sender that sends xvalue references to values sent by `s`, propagating the other channels, the program is ill-formed with no diagnostic required.
+    If the function selected above does not return a sender that sends xvalue references to values sent by `s`, propagating the other channels, the behavior of
+calling `execution::ensure_started(s)` is undefined.
 
 ### Sender consumers <b>[exec.consumers]</b> ### {#spec-execution.senders.consumers}
 
@@ -6000,7 +6000,8 @@ are all well-formed.
 
         2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`. The lifetime of `op_state` lasts until one of the receiver completion-signals of `r` is called.
 
-    If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_stopped` signals and calls `std::terminate` on the `set_error` signal, the program is ill-formed with no diagnostic required.
+    If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_stopped` signals and calls `std::terminate` on the `set_error` signal, the behavior
+of calling `execution::start_detached(s)` is undefined.
 
 #### `this_thread::sync_wait` <b>[exec.sync_wait]</b> #### {#spec-execution.senders.consumers.sync_wait}
 
@@ -6091,7 +6092,8 @@ are all well-formed.
         (or an object decay-copied from `f`) on an execution agent belonging to
         the associated execution context of `sch`, or if it does not call
         `std::terminate` if an error occurs after control is returned to the
-        caller, the program is ill-formed with no diagnostic required.
+        caller, the behavior of calling `execution::execute`
+        is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above is `void`.
 
