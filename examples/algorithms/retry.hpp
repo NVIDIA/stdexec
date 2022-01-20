@@ -94,7 +94,7 @@ struct _retry_sender {
   S s_;
   explicit _retry_sender(S s) : s_((S&&) s) {}
 
-  template<stdex::receiver R>
+  template<class R>
     requires stdex::sender_to<S&, R>
   friend _op<S, R> tag_invoke(stdex::connect_t, _retry_sender&& self, R r) {
     return {(S&&) self.s_, (R&&) r};
@@ -106,7 +106,7 @@ struct _retry_sender {
   template <class Env>
   friend auto tag_invoke(stdex::get_completion_signatures_t, const _retry_sender&, Env)
     -> stdex::make_completion_signatures<
-        const S&, Env,
+        S&, Env,
         stdex::completion_signatures<stdex::set_error_t(std::exception_ptr)>,
         _value, _void>;
 };

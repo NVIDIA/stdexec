@@ -70,7 +70,7 @@ struct impulse_scheduler {
         ex::set_stopped_t()>;
     cmd_vec_t* all_commands_;
 
-    template <ex::receiver_of R>
+    template <class R>
     friend oper<std::decay_t<R>>
     tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {self.all_commands_, (R &&) r};

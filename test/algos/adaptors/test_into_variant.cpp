@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
@@ -57,7 +58,7 @@ TEST_CASE("TODO: into_variant with senders that sends multiple values at once",
 
 TEST_CASE("into_variant with senders that have multiple alternatives", "[adaptors][into_variant]") {
   ex::sender auto in_snd =
-      ex::just(13) //
+      fallible_just{13} //
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
   check_val_types<type_array<type_array<int>, type_array<std::string>>>(in_snd);
 
@@ -66,21 +67,16 @@ TEST_CASE("into_variant with senders that have multiple alternatives", "[adaptor
       std::move(snd), std::variant<std::tuple<int>, std::tuple<std::string>>{std::make_tuple(13)});
 }
 
-TEST_CASE("TODO: into_variant can be used with just_error", "[adaptors][into_variant]") {
+TEST_CASE("into_variant can be used with just_error", "[adaptors][into_variant]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::into_variant();
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_error_receiver{});
-  // ex::start(op);
-  // invalid check:
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
+  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  ex::start(op);
 }
-TEST_CASE("TODO: into_variant can be used with just_stopped", "[adaptors][into_variant]") {
+TEST_CASE("into_variant can be used with just_stopped", "[adaptors][into_variant]") {
   ex::sender auto snd = ex::just_stopped() | ex::into_variant();
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
-  // ex::start(op);
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_stopped_receiver>);
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+  ex::start(op);
 }
 
 TEST_CASE("into_variant forwards errors", "[adaptors][into_variant]") {
@@ -110,7 +106,7 @@ TEST_CASE("TODO: into_variant has the values_type corresponding to the given val
       ex::just(3, 0.1415) | ex::into_variant());
 
   check_val_types<type_array<type_array<std::variant<std::tuple<int>, std::tuple<std::string>>>>>(
-      ex::just(13)                                                                     //
+      fallible_just{13}                                                                     //
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); }) //
       // sender here can send either `int` or `std::string`
       | ex::into_variant());
@@ -123,7 +119,7 @@ TEST_CASE("into_variant keeps error_types from input sender", "[adaptors][into_v
       ex::transfer_just(sched1) | ex::into_variant());
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched2) | ex::into_variant());
-  check_err_types<type_array<int, std::exception_ptr>>( //
+  check_err_types<type_array<std::exception_ptr, int>>( //
       ex::just_error(-1) | ex::into_variant());
 }
 TEST_CASE("into_variant keeps sends_stopped from input sender", "[adaptors][into_variant]") {
@@ -132,7 +128,7 @@ TEST_CASE("into_variant keeps sends_stopped from input sender", "[adaptors][into
 
   check_sends_stopped<false>( //
       ex::transfer_just(sched1) | ex::into_variant());
-  check_sends_stopped<false>( //
+  check_sends_stopped<true>( //
       ex::transfer_just(sched2) | ex::into_variant());
   check_sends_stopped<true>( //
       ex::just_stopped() | ex::into_variant());

@@ -132,23 +132,17 @@ TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_v
   ex::start(op);
 }
 
-TEST_CASE("TODO: let_value can be used with just_error", "[adaptors][let_value]") {
+TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::let_value([]() { return ex::just(17); });
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_error_receiver{});
-  // ex::start(op);
-  // invalid check
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
+  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  ex::start(op);
 }
-TEST_CASE("TODO: let_value can be used with just_stopped", "[adaptors][let_value]") {
+TEST_CASE("let_value can be used with just_stopped", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_stopped() | //
                         ex::let_value([]() { return ex::just(17); });
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
-  // ex::start(op);
-  // invalid check:
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_stopped_receiver>);
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+  ex::start(op);
 }
 
 TEST_CASE("let_value function is not called on error", "[adaptors][let_value]") {
@@ -261,7 +255,7 @@ TEST_CASE(
   check_val_types<type_array<type_array<std::string>>>(
       ex::just() | ex::let_value([] { return ex::just(std::string{"hello"}); }));
 }
-TEST_CASE("TODO: let_value keeps error_types from input sender", "[adaptors][let_value]") {
+TEST_CASE("let_value keeps error_types from input sender", "[adaptors][let_value]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
@@ -270,11 +264,7 @@ TEST_CASE("TODO: let_value keeps error_types from input sender", "[adaptors][let
       ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
-  // check_err_types<type_array<int, std::exception_ptr>>( //
-  //     ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
-  // TODO: then should also forward the error types sent by the input sender
-  // incorrect check:
-  check_err_types<type_array<std::exception_ptr>>( //
+  check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
 }
 TEST_CASE("TODO: let_value keeps sends_stopped from input sender", "[adaptors][let_value]") {
@@ -284,13 +274,9 @@ TEST_CASE("TODO: let_value keeps sends_stopped from input sender", "[adaptors][l
 
   check_sends_stopped<false>( //
       ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
-  check_sends_stopped<false>( //
+  check_sends_stopped<true>( //
       ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
-  // check_sends_stopped<true>( //
-  //     ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
-  // TODO: transfer should forward its "sends_stopped" info
-  // incorrect check:
-  check_sends_stopped<false>( //
+  check_sends_stopped<true>( //
       ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
 }
 

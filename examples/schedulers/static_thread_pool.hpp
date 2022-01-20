@@ -53,10 +53,11 @@ namespace example {
 
       class sender {
        public:
-        using completion_signatures = std::execution::completion_signatures<
-          std::execution::set_value_t(),
-          std::execution::set_error_t(std::exception_ptr),
-          std::execution::set_stopped_t()>;
+        using completion_signatures =
+          std::execution::completion_signatures<
+            std::execution::set_value_t(),
+            std::execution::set_error_t(std::exception_ptr),
+            std::execution::set_stopped_t()>;
        private:
         template <typename Receiver>
         operation<std::__x<std::decay_t<Receiver>>>
@@ -64,7 +65,7 @@ namespace example {
           return operation<std::__x<std::decay_t<Receiver>>>{pool_, (Receiver &&) r};
         }
 
-        template <std::execution::receiver_of Receiver>
+        template <class Receiver>
         friend operation<std::__x<std::decay_t<Receiver>>>
         tag_invoke(std::execution::connect_t, sender s, Receiver&& r) {
           return s.make_operation_((Receiver &&) r);
