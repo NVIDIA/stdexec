@@ -2035,17 +2035,6 @@ namespace std::execution {
         [[no_unique_address]] _Sender __sndr_;
         [[no_unique_address]] _Fun __fun_;
 
-        template <receiver _Receiver>
-          requires __invocable_with_values_from<_Fun, _Sender, env_of_t<_Receiver>> &&
-            sender_to<_Sender, __receiver<_Receiver>>
-        auto connect(_Receiver&& __rcvr) const&
-          noexcept(__has_nothrow_connect<_Sender, __receiver<_Receiver>>)
-          -> connect_result_t<_Sender, __receiver<_Receiver>> {
-          return execution::connect(
-              this->base(),
-              __receiver<_Receiver>{(_Receiver&&) __rcvr, __fun_});
-        }
-
         template <class... _Args>
             requires invocable<_Fun, _Args...>
           using __set_value =
@@ -3118,7 +3107,9 @@ struct __sender {
     : evt_(&evt) {}
 
   template <__decays_to<__sender> _Self, receiver _Receiver>
-    requires receiver_of<_Receiver> && __scheduler_provider<env_of_t<_Receiver>>
+    requires environment_provider<_Receiver> && 
+    receiver_of<_Receiver, completion_signatures_of_t<_Self, env_of_t<_Receiver>>> && 
+    __scheduler_provider<env_of_t<_Receiver>>
   friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
       -> operation<remove_cvref_t<_Receiver>> {
     return operation<remove_cvref_t<_Receiver>>{*__self.evt_, (_Receiver&&)__rcvr};
@@ -3211,11 +3202,11 @@ class __receiver
   : private receiver_adaptor<__receiver<_Receiver>, _Receiver> {
   friend receiver_adaptor<__receiver<_Receiver>, _Receiver>;
 
-  auto get_env(const __receiver& __self)
+  auto get_env() const&
     -> make_env_t<get_stop_token_t, never_stop_token, env_of_t<_Receiver>> {
     return make_env<get_stop_token_t>(
       never_stop_token{},
-      execution::get_env(__self.base()));
+      execution::get_env(this->base()));
   }
 
   public:
@@ -3455,10 +3446,12 @@ namespace __scope {
 
     template <class _Sender2 = _Sender, class... _As>
       requires constructible_from<__impl::__future_result_t<_Sender2>, _As...>
-    void set_value(_As&&... __as) {
+    void set_value(_As&&... __as) noexcept try {
       auto& state = *reinterpret_cast<__future_state<_Sender>*>(op_);
       state.__data_.template emplace<1>((_As&&) __as...);
       dispatch_result();
+    } catch(...) {
+      std::terminate();
     }
     [[noreturn]] void set_error(std::exception_ptr) noexcept {
       std::terminate();

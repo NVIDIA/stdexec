@@ -126,14 +126,14 @@ namespace std {
     template <class>
       friend class in_place_stop_callback;
 
-    uint8_t __lock_() noexcept;
+    uint8_t __lock_() const noexcept;
     void __unlock_(uint8_t) const noexcept;
 
     bool __try_lock_unless_stop_requested_(bool) const noexcept;
 
     bool __try_add_callback_(__detail::__in_place_stop_callback_base*) const noexcept;
 
-    void __remove_callback_(__detail::__in_place_stop_callback_base*) noexcept;
+    void __remove_callback_(__detail::__in_place_stop_callback_base*) const noexcept;
 
     static constexpr uint8_t __stop_requested_flag_ = 1;
     static constexpr uint8_t __locked_flag_ = 2;
@@ -269,7 +269,7 @@ namespace std {
     return false;
   }
 
-  inline uint8_t in_place_stop_source::__lock_() noexcept {
+  inline uint8_t in_place_stop_source::__lock_() const noexcept {
     __detail::__spin_wait __spin;
     auto __old_state = __state_.load(memory_order_relaxed);
     do {
@@ -277,7 +277,7 @@ namespace std {
         __spin.__wait();
         __old_state = __state_.load(memory_order_relaxed);
       }
-    } while (!__state_.compare_exchange_weak(
+    } while (!const_cast<atomic<uint8_t>&>(__state_).compare_exchange_weak(
         __old_state,
         __old_state | __locked_flag_,
         memory_order_acquire,
@@ -337,7 +337,7 @@ namespace std {
   }
 
   inline void in_place_stop_source::__remove_callback_(
-      __detail::__in_place_stop_callback_base* __callbk) noexcept {
+      __detail::__in_place_stop_callback_base* __callbk) const noexcept {
   auto __old_state = __lock_();
 
     if (__callbk->__prev_ptr_ != nullptr) {
