@@ -100,15 +100,17 @@ struct _retry_sender {
     return {(S&&) self.s_, (R&&) r};
   }
 
-  template <class> using _void = void;
-  template <class... Ts> using _value = stdex::set_value_t(Ts...);
+  template <class> using _error =
+    stdex::completion_signatures<>;
+  template <class... Ts> using _value =
+    stdex::completion_signatures<stdex::set_value_t(Ts...)>;
 
   template <class Env>
   friend auto tag_invoke(stdex::get_completion_signatures_t, const _retry_sender&, Env)
     -> stdex::make_completion_signatures<
         S&, Env,
         stdex::completion_signatures<stdex::set_error_t(std::exception_ptr)>,
-        _value, _void>;
+        _value, _error>;
 };
 
 template<stdex::sender S>

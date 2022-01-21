@@ -532,27 +532,25 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   namespace __completion_signatures {
     template <class... _Args>
-      using __set_value_sig = set_value_t(_Args...);
+      using __set_value_sig = completion_signatures<set_value_t(_Args...)>;
 
     template <class _Err>
-      using __set_error_sig = set_error_t(_Err);
+      using __set_error_sig = completion_signatures<set_error_t(_Err)>;
 
     template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, class _SendsStopped>
     using __compl_sigs_t =
       __minvoke<
-        __concat<__remove<void, __munique<__q<completion_signatures>>>>,
+        __concat<__munique<__q<completion_signatures>>>,
         _Sigs,
-        __value_types_of_t<_Sender, _Env, _SetValue, __q<__types>>,
-        __error_types_of_t<_Sender, _Env, __transform<_SetError, __q<__types>>>,
-        __if<_SendsStopped, __types<set_stopped_t()>, __types<>>>;
+        __value_types_of_t<_Sender, _Env, _SetValue, __concat<>>,
+        __error_types_of_t<_Sender, _Env, __transform<_SetError, __concat<>>>,
+        __if<__sends_stopped<_Sender, _Env>, _SendsStopped, __types<>>>;
 
-    template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, bool _SendsStopped>
+    template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, class _SetStopped>
     auto __make(int) ->
-        __compl_sigs_t<
-          _Sender, _Env, _Sigs, _SetValue, _SetError, __bool<_SendsStopped>>
-        requires true;
+      __compl_sigs_t<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
 
-    template<class, __one_of<no_env> _Env, class, class, class, bool>
+    template<class, __one_of<no_env> _Env, class, class, class, class>
     auto __make(long) -> dependent_completion_signatures<_Env>;
   } // namespace __completion_signatures
 
@@ -568,10 +566,10 @@ namespace std::execution {
   //
   //  ```c++
   //  template <class... Args>
-  //    using __default_set_value = set_value_t(Args...);
+  //    using __default_set_value = completion_signatures<set_value_t(Args...)>;
   //
   //  template <class Err>
-  //    using __default_set_error = set_error_t(Err);
+  //    using __default_set_error = completion_signatures<set_error_t(Err)>;
   //
   //  template <
   //    sender Sndr,
@@ -579,33 +577,38 @@ namespace std::execution {
   //    class AddlSigs = completion_signatures<>,
   //    template <class...> class SetValue = __default_set_value,
   //    template <class> class SetError = __default_set_error,
-  //    bool SendsStopped = completion_signatures_of_t<Sndr, Env>::sends_stopped>
+  //    class SetStopped = completion_signatures<set_stopped_t()>>
   //      requires sender<Sndr, Env>
   //  using make_completion_signatures =
   //    completion_signatures< ... >;
   //  ```
   //
   //  * `SetValue` : an alias template that accepts a set of value types and
-  //    returns a function type of the form `set_value_t(Types...)`, or `void`
-  //    to mean "no signature".
+  //    returns an instance of `completion_signatures`.
   //  * `SetError` : an alias template that accepts an error types and returns a
-  //    function type of the form `set_error_t(T)` or `void` to mean "no
-  //    signature".
-  //  * `SendsStopped` : a bool that controls whether the signature
-  //    `set_stopped_t()` will be added to the list of completion signatures or
-  //    not.
+  //    an instance of `completion_signatures`.
+  //  * `SetStopped` : an instantiation of `completion_signatures` with a list
+  //    of completion signatures `Sigs...` to the added to the list if the
+  //    sender can complete with a stopped signal.
   //  * `AddlSigs` : an instantiation of `completion_signatures` with a list of
-  //    completion signatures `Sigs...` to the added to the list.
+  //    completion signatures `Sigs...` to the added to the list
+  //    unconditionally.
   //
   //  `make_completion_signatures` does the following:
-  //  * Let `Vs...` be a pack of the non-`void` types in the `__typelist` named
-  //    by `value_types_of_t<Sndr, Env, SetValue, __typelist>`.
-  //  * Let `Es...` be a pack of the non-`void` types in the `__typelist` named
-  //    by `error_types_of_t<Sndr, Env, __errorlist>`, where `__errorlist` is an
-  //    alias template such that `__errorlist<Ts...>` names
-  //    `__typelist<SetError<Ts>...>`.
-  //  * Let `Ss...` be an empty pack if `SendsStopped` is `false`; otherwise, a
-  //    pack containing the single type `set_stopped_t()`.
+  //  * Let `VCs...` be a pack of the `completion_signatures` types in the
+  //    `__typelist` named by `value_types_of_t<Sndr, Env, SetValue,
+  //    __typelist>`, and let `Vs...` be the concatenation of the packs that are
+  //    template arguments to each `completion_signature` in `VCs...`.
+  //  * Let `ECs...` be a pack of the `completion_signatures` types in the
+  //    `__typelist` named by `error_types_of_t<Sndr, Env, __errorlist>`, where
+  //    `__errorlist` is an alias template such that `__errorlist<Ts...>` names
+  //    `__typelist<SetError<Ts>...>`, and let `Es...` by the concatenation of
+  //    the packs that are the template arguments to each `completion_signature`
+  //    in `ECs...`.
+  //  * Let `Ss...` be an empty pack if `completion_signatures_of_t<Sndr,
+  //    Env>::sends_done` is `false`; otherwise, a pack containing the template
+  //    arguments of the `completion_signatures` instantiation named by
+  //    `SetStopped`.
   //  * Let `MoreSigs...` be a pack of the template arguments of the
   //    `completion_signatures` instantiation named by `AddlSigs`.
   //
@@ -623,11 +626,11 @@ namespace std::execution {
     class _Sigs = completion_signatures<>,
     template <class...> class _SetValue = __completion_signatures::__set_value_sig,
     template <class> class _SetError = __completion_signatures::__set_error_sig,
-    bool _SendsStopped = __v<__sends_stopped<_Sender, _Env>>>
+    class _SetStopped = completion_signatures<set_stopped_t()>>
       requires sender<_Sender, _Env>
   using make_completion_signatures =
     decltype(__completion_signatures::
-      __make<_Sender, _Env, _Sigs, __q<_SetValue>, __q1<_SetError>, _SendsStopped>(0));
+      __make<_Sender, _Env, _Sigs, __q<_SetValue>, __q1<_SetError>, _SetStopped>(0));
 
   // Needed fairly often
   using __with_exception_ptr =
@@ -2105,9 +2108,10 @@ namespace std::execution {
         template <class... _Args>
             requires invocable<_Fun, _Args...>
           using __set_value =
-            __minvoke1<
-              __remove<void, __qf<set_value_t>>,
-              invoke_result_t<_Fun, _Args...>>;
+            completion_signatures<
+              __minvoke1<
+                __remove<void, __qf<set_value_t>>,
+                invoke_result_t<_Fun, _Args...>>>;
 
         template <class _Env>
           using __completion_signatures =
@@ -2829,10 +2833,12 @@ namespace std::execution {
 
         template <class... _Tys>
             requires (sizeof...(_Tys) == 1)
-          using __set_value_t = set_value_t(optional<_Tys>...);
+          using __set_value_t =
+            completion_signatures<set_value_t(optional<_Tys>...)>;
 
         template <class _Ty>
-          using __set_error_t = set_error_t(_Ty);
+          using __set_error_t =
+            completion_signatures<set_error_t(_Ty)>;
 
         template <__decays_to<__sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
@@ -2842,7 +2848,7 @@ namespace std::execution {
               completion_signatures<set_error_t(exception_ptr)>,
               __set_value_t,
               __set_error_t,
-              false>;
+              completion_signatures<>>;
 
         _Sender __sndr_;
       };
@@ -3266,6 +3272,9 @@ namespace std::execution {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 
+          template <class...>
+            using __value_t = completion_signatures<>;
+
           template <__decays_to<__sender> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
               make_completion_signatures<
@@ -3275,7 +3284,7 @@ namespace std::execution {
                   schedule_result_t<_Scheduler>,
                   _Env,
                   completion_signatures<set_error_t(exception_ptr)>,
-                  void_t>>;
+                  __value_t>>;
         };
     } // namespace __impl
 
@@ -3464,6 +3473,9 @@ namespace std::execution {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 
+          template <class...>
+            using __value_t = completion_signatures<>;
+
           template <__decays_to<__sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
             make_completion_signatures<
@@ -3473,7 +3485,7 @@ namespace std::execution {
                 __member_t<_Self, _Sender>,
                 make_env_t<get_scheduler_t, _Scheduler, _Env>,
                 completion_signatures<set_error_t(exception_ptr)>>,
-              void_t>;
+              __value_t>;
         };
     } // namespace __impl
 
@@ -3563,6 +3575,9 @@ namespace std::execution {
         template <class _Receiver>
           using __receiver_t = __receiver<_SenderId, __x<remove_cvref_t<_Receiver>>>;
 
+        template <class...>
+          using __value_t = completion_signatures<>;
+
         template <class _Env>
           using __completion_signatures =
             make_completion_signatures<
@@ -3571,7 +3586,7 @@ namespace std::execution {
               completion_signatures<
                 set_value_t(__into_variant_result_t<_Sender, _Env>),
                 set_error_t(exception_ptr)>,
-              void_t>;
+              __value_t>;
 
         _Sender __sndr_;
 

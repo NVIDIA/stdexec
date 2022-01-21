@@ -32,9 +32,7 @@ struct op_state {
 
 struct my_sender  {
   using completion_signatures =
-    ex::completion_signatures< //
-      ex::set_value_t(),     //
-      ex::set_error_t(std::exception_ptr)>;
+    ex::completion_signatures<ex::set_value_t(int)>;
 
   int value_{0};
 
@@ -46,13 +44,11 @@ struct my_sender  {
 
 struct my_sender_unconstrained {
   using completion_signatures =
-    ex::completion_signatures< //
-      ex::set_value_t(),     //
-      ex::set_error_t(std::exception_ptr)>;
+    ex::completion_signatures<ex::set_value_t(int)>;
 
   int value_{0};
 
-  template <typename R> // accept any type here
+  template <class R> // accept any type here
   friend op_state<R> tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) {
     return {s.value_, (R &&) r};
   }
