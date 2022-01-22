@@ -124,7 +124,8 @@ TEST_CASE("then has the values_type corresponding to the given values", "[adapto
   check_val_types<type_array<type_array<std::string>>>(
       ex::just() | ex::then([] { return std::string{"hello"}; }));
 }
-TEST_CASE("TODO: then keeps error_types from input sender", "[adaptors][then]") {
+
+TEST_CASE("then keeps error_types from input sender", "[adaptors][then]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
@@ -133,14 +134,10 @@ TEST_CASE("TODO: then keeps error_types from input sender", "[adaptors][then]") 
       ex::transfer_just(sched1) | ex::then([] {}));
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched2) | ex::then([] {}));
-  // check_err_types<type_array<int, std::exception_ptr>>( //
-  //     ex::transfer_just(sched3) | ex::then([] {}));
-  // TODO: then should also forward the error types sent by the input sender
-  // incorrect check:
-  check_err_types<type_array<std::exception_ptr>>( //
+  check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched3) | ex::then([] {}));
 }
-TEST_CASE("TODO: then keeps sends_stopped from input sender", "[adaptors][then]") {
+TEST_CASE("then keeps sends_stopped from input sender", "[adaptors][then]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   stopped_scheduler sched3{};
@@ -149,11 +146,7 @@ TEST_CASE("TODO: then keeps sends_stopped from input sender", "[adaptors][then]"
       ex::transfer_just(sched1) | ex::then([] {}));
   check_sends_stopped<false>( //
       ex::transfer_just(sched2) | ex::then([] {}));
-  // check_sends_stopped<true>( //
-  //     ex::transfer_just(sched3) | ex::then([] {}));
-  // TODO: transfer should forward its "sends_stopped" info
-  // incorrect check:
-  check_sends_stopped<false>( //
+  check_sends_stopped<true>( //
       ex::transfer_just(sched3) | ex::then([] {}));
 }
 

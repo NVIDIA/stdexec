@@ -44,8 +44,8 @@ TEST_CASE("stopped_as_optional can we waited on", "[adaptors][stopped_as_optiona
   wait_for_value(std::move(snd), std::optional<int>{11});
 }
 
-TEST_CASE(
-    "stopped_as_optional shall not work with multi-value senders", "[adaptors][stopped_as_optional]") {
+TEST_CASE("stopped_as_optional shall not work with multi-value senders",
+    "[adaptors][stopped_as_optional]") {
   auto snd = ex::just(3, 0.1415) | ex::stopped_as_optional();
   // static_assert(!ex::sender<decltype(snd)>); // TODO
   static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
@@ -75,14 +75,15 @@ TEST_CASE("stopped_as_optional doesn't forward cancellation", "[adaptors][stoppe
   wait_for_value(std::move(snd), std::optional<int>{});
 }
 
-TEST_CASE("stopped_as_optional adds std::optional to values_type", "[adaptors][stopped_as_optional]") {
+TEST_CASE(
+    "stopped_as_optional adds std::optional to values_type", "[adaptors][stopped_as_optional]") {
   check_val_types<type_array<type_array<std::optional<int>>>>(
       ex::just(23) | ex::stopped_as_optional());
   check_val_types<type_array<type_array<std::optional<double>>>>(
       ex::just(3.1415) | ex::stopped_as_optional());
 }
 TEST_CASE(
-    "TODO: stopped_as_optional keeps error_types from input sender", "[adaptors][stopped_as_optional]") {
+    "stopped_as_optional keeps error_types from input sender", "[adaptors][stopped_as_optional]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{-1};
@@ -91,15 +92,11 @@ TEST_CASE(
       ex::transfer_just(sched1, 11) | ex::stopped_as_optional());
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched2, 13) | ex::stopped_as_optional());
-
-  // TODO: error types should be forwarded (transfer_just bug)
-  // check_err_types<type_array<int, std::exception_ptr>>( //
-  //     ex::transfer_just(sched3, 13) | ex::stopped_as_optional());
-  // Invalid check:
-  check_err_types<type_array<std::exception_ptr>>( //
+  check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched3, 13) | ex::stopped_as_optional());
 }
-TEST_CASE("stopped_as_optional overrides sends_stopped to false", "[adaptors][stopped_as_optional]") {
+TEST_CASE(
+    "stopped_as_optional overrides sends_stopped to false", "[adaptors][stopped_as_optional]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   stopped_scheduler sched3{};

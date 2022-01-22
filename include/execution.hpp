@@ -3078,6 +3078,31 @@ namespace std::execution {
           }
         };
 
+      template <class, class, class, class>
+        struct __completion_sigs {};
+
+      template <class _Sender, class _Env, class _SchedSender, class _OurRecvEnv>
+          requires sender<_Sender, _Env> && sender<_SchedSender, _OurRecvEnv>
+        struct __completion_sigs<_Sender, _Env, _SchedSender, _OurRecvEnv> {
+
+          // Use the value types from the input sender
+          template <template <class...> class _Tuple, template <class...> class _Variant>
+            using value_types = value_types_of_t<_Sender, _Env, _Tuple, _Variant>;
+
+          // Take the error types from the input sender, and from the scheduler's sender.
+          // Ensure exception_ptr is there too.
+          template <template <class...> class _Variant>
+            using error_types =
+              __minvoke<
+                __concat<__munique<__q<_Variant>>>,
+                error_types_of_t<_Sender, _Env, __types>,
+                error_types_of_t<_SchedSender, _OurRecvEnv, __types>,
+                __types<exception_ptr>>;
+
+          // If the input sender or scheduler's sender can send stopped, we also send stopped
+          static constexpr bool sends_stopped = __v<__sends_stopped<_Sender, _Env>> || __v<__sends_stopped<_SchedSender, _OurRecvEnv>>;
+        };
+
       template <class _SchedulerId, class _SenderId>
         struct __sender {
           using _Scheduler = __t<_SchedulerId>;
@@ -3106,8 +3131,10 @@ namespace std::execution {
           }
 
           template <__decays_to<__sender> _Self, class _Env>
-            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-              -> completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>;
+            friend auto tag_invoke(get_completion_signatures_t, _Self&& self, _Env)
+              -> __completion_sigs<_Sender, _Env,
+                          decltype(schedule(self.__sched_)),  // scheduler's sender type
+                          _Env>;                              // we use the same environment for our receivers
         };
     } // namespace __impl
 

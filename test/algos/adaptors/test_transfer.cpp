@@ -168,29 +168,23 @@ TEST_CASE(
   check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::transfer(ex::just(3, 0.14, std::string{"pi"}), sched));
 }
-TEST_CASE("TODO: transfer keeps error_types from scheduler's sender", "[adaptors][transfer]") {
+TEST_CASE("transfer keeps error_types from scheduler's sender", "[adaptors][transfer]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
   check_err_types<type_array<std::exception_ptr>>(ex::transfer(ex::just(1), sched1));
   check_err_types<type_array<std::exception_ptr>>(ex::transfer(ex::just(2), sched2));
-  // check_err_types<type_array<int, std::exception_ptr>>(ex::transfer(ex::just(3), sched3));
-  // TODO: transfer should also forward the error types sent by the scheduler's sender
-  // incorrect check:
-  check_err_types<type_array<std::exception_ptr>>(ex::transfer(ex::just(3), sched3));
+  check_err_types<type_array<std::exception_ptr, int>>(ex::transfer(ex::just(3), sched3));
 }
-TEST_CASE("TODO: transfer keeps sends_stopped from scheduler's sender", "[adaptors][transfer]") {
+TEST_CASE("transfer keeps sends_stopped from scheduler's sender", "[adaptors][transfer]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   stopped_scheduler sched3{};
 
   check_sends_stopped<false>(ex::transfer(ex::just(1), sched1));
   check_sends_stopped<false>(ex::transfer(ex::just(2), sched2));
-  // check_sends_stopped<true>(ex::transfer(ex::just(3), sched3));
-  // TODO: transfer should forward its "sends_stopped" info
-  // incorrect check:
-  check_sends_stopped<false>(ex::transfer(ex::just(3), sched3));
+  check_sends_stopped<true>(ex::transfer(ex::just(3), sched3));
 }
 
 struct val_type1 {
