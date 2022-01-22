@@ -34,20 +34,20 @@ struct empty_env {};
 //! Check that the value_types of a sender matches the expected type
 template <typename ExpectedValType, typename Env = empty_env, typename S>
 inline void check_val_types(S snd) {
-  using t = typename ex::completion_signatures_of_t<S, Env>::template value_types<type_array, type_array>;
+  using t = typename ex::value_types_of_t<S, Env, type_array, type_array>;
   static_assert(std::is_same<t, ExpectedValType>::value);
 }
 
 //! Check that the error_types of a sender matches the expected type
 template <typename ExpectedValType, typename Env = empty_env, typename S>
 inline void check_err_types(S snd) {
-  using t = typename ex::completion_signatures_of_t<S, Env>::template error_types<type_array>;
+  using t = ex::error_types_of_t<S, Env, type_array>;
   static_assert(std::is_same<t, ExpectedValType>::value);
 }
 
 //! Check that the sends_stopped of a sender matches the expected value
 template <bool Expected, typename Env = empty_env, typename S>
 inline void check_sends_stopped(S snd) {
-  constexpr bool val = ex::completion_signatures_of_t<S, Env>::sends_stopped;
+  constexpr bool val = ex::sends_stopped<S, Env>;
   static_assert(val == Expected);
 }

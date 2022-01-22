@@ -125,17 +125,14 @@ TEST_CASE("when_all completes when children complete", "[adaptors][when_all]") {
   CHECK(called);
 }
 
-TEST_CASE("TODO: when_all can be used with just_*", "[adaptors][when_all]") {
+TEST_CASE("when_all can be used with just_*", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all(       //
       ex::just(2),                          //
       ex::just_error(std::exception_ptr{}), //
       ex::just_stopped()                       //
   );
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_error_receiver{});
-  // ex::start(op);
-  // invalid check
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
+  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  ex::start(op);
 }
 
 TEST_CASE(
