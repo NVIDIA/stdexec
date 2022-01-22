@@ -359,6 +359,11 @@ namespace std::execution {
       typename _Outer<_Inners...>;
     };
 
+#if defined(NDEBUG)
+  template <class _Sender, class _Env = no_env>
+    using completion_signatures_of_t =
+      __completion_signatures_of_t<_Sender, _Env>;
+#else
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender<S, Ctx> are both true, then they
   // had better report the same metadata. This completion signatures wrapper
@@ -407,11 +412,6 @@ namespace std::execution {
         __completion_signatures_of_t<_Sender, _Env>::sends_stopped;
     };
 
-#if defined(NDEBUG)
-  template <class _Sender, class _Env = no_env>
-    using completion_signatures_of_t =
-      __completion_signatures_of_t<_Sender, _Env>;
-#else
   // If we are compiling debug, add extra static checks that a sender
   // doesn't change its metadata when used with a particular environment.
   template <class _Sender, class _Env = no_env>
