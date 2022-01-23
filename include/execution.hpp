@@ -1516,7 +1516,7 @@ namespace std::execution {
 
     inline constexpr struct __just_error_t {
       template <__movable_value _Error>
-      __sender<set_error_t, _Error> operator()(_Error&& __err) const
+      __sender<set_error_t, decay_t<_Error>> operator()(_Error&& __err) const
         noexcept(is_nothrow_constructible_v<decay_t<_Error>, _Error>) {
         return {{(_Error&&) __err}};
       }
