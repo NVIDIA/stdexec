@@ -2423,7 +2423,9 @@ namespace std::execution {
           // with set_error.
           template <__decays_to<exception_ptr> _Error>
             friend void tag_invoke(set_error_t, __receiver&&, _Error&& __err) noexcept
-              requires same_as<_Let, set_error_t> && (!__valid<__which_tuple_t, _Error>);
+              requires same_as<_Let, set_error_t> && (!__valid<__which_tuple_t, _Error>) {
+            terminate();  // implementation error
+          }
 
           template <__one_of<_Let> _Tag, class... _As>
               requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
