@@ -3280,6 +3280,7 @@ namespace std::execution {
 
       // NOT TO SPEC: permit non-typed senders:
       template <scheduler _Scheduler, sender _Sender>
+        requires (!tag_invocable<schedule_from_t, _Scheduler, _Sender>)
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
         -> __sender<__x<decay_t<_Scheduler>>, __x<decay_t<_Sender>>> {
         return {(_Scheduler&&) __sched, (_Sender&&) __sndr};
