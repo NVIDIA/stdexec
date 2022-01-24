@@ -49,8 +49,8 @@ TEST_CASE("into_variant returning void can we waited on", "[adaptors][into_varia
   wait_for_value(std::move(snd), std::variant<std::tuple<int>>{11});
 }
 
-TEST_CASE("TODO: into_variant with senders that sends multiple values at once",
-    "[adaptors][into_variant]") {
+TEST_CASE(
+    "into_variant with senders that sends multiple values at once", "[adaptors][into_variant]") {
   ex::sender auto snd = ex::just(3, 0.1415) | ex::into_variant();
   wait_for_value(std::move(snd), std::variant<std::tuple<int, double>>{std::make_tuple(3, 0.1415)});
 }
@@ -66,21 +66,16 @@ TEST_CASE("into_variant with senders that have multiple alternatives", "[adaptor
       std::move(snd), std::variant<std::tuple<int>, std::tuple<std::string>>{std::make_tuple(13)});
 }
 
-TEST_CASE("TODO: into_variant can be used with just_error", "[adaptors][into_variant]") {
+TEST_CASE("into_variant can be used with just_error", "[adaptors][into_variant]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::into_variant();
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_error_receiver{});
-  // ex::start(op);
-  // invalid check:
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
+  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  ex::start(op);
 }
-TEST_CASE("TODO: into_variant can be used with just_stopped", "[adaptors][into_variant]") {
+TEST_CASE("into_variant can be used with just_stopped", "[adaptors][into_variant]") {
   ex::sender auto snd = ex::just_stopped() | ex::into_variant();
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
-  // ex::start(op);
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_stopped_receiver>);
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+  ex::start(op);
 }
 
 TEST_CASE("into_variant forwards errors", "[adaptors][into_variant]") {

@@ -1546,8 +1546,9 @@ namespace std::execution {
             }
           };
 
-          template <receiver_of<_Ts...> _Receiver>
-            requires (copy_constructible<_Ts> &&...)
+          template <receiver _Receiver>
+            requires (copy_constructible<_Ts> &&...) &&
+              (!is_same_v<_CPO, set_value_t> || receiver_of<_Receiver, _Ts...>)
           friend auto tag_invoke(connect_t, const __sender& __sndr, _Receiver&& __rcvr)
             noexcept((is_nothrow_copy_constructible_v<_Ts> &&...))
             -> __operation<__x<remove_cvref_t<_Receiver>>> {

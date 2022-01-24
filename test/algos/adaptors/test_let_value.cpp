@@ -132,23 +132,17 @@ TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_v
   ex::start(op);
 }
 
-TEST_CASE("TODO: let_value can be used with just_error", "[adaptors][let_value]") {
+TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::let_value([]() { return ex::just(17); });
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_error_receiver{});
-  // ex::start(op);
-  // invalid check
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
+  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  ex::start(op);
 }
-TEST_CASE("TODO: let_value can be used with just_stopped", "[adaptors][let_value]") {
+TEST_CASE("let_value can be used with just_stopped", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_stopped() | //
                         ex::let_value([]() { return ex::just(17); });
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
-  // ex::start(op);
-  // invalid check:
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_stopped_receiver>);
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+  ex::start(op);
 }
 
 TEST_CASE("let_value function is not called on error", "[adaptors][let_value]") {

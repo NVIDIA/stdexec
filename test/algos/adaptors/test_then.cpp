@@ -77,14 +77,11 @@ TEST_CASE("then can throw, and set_error will be called", "[adaptors][then]") {
   ex::start(op);
 }
 
-TEST_CASE("TODO: then can be used with just_error", "[adaptors][then]") {
+TEST_CASE("then can be used with just_error", "[adaptors][then]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::then([]() -> int { return 17; });
-  // TODO: this should work
-  // auto op = ex::connect(std::move(snd), expect_error_receiver{});
-  // ex::start(op);
-  // invalid check:
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
+  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  ex::start(op);
 }
 TEST_CASE("then can be used with just_stopped", "[adaptors][then]") {
   ex::sender auto snd = ex::just_stopped() | //
