@@ -2542,21 +2542,21 @@ namespace std::execution {
             using __sender = __impl::__sender<__x<remove_cvref_t<_Sender>>, _Fun, _LetTag, _Which>;
 
           template <sender _Sender, __movable_value _Fun>
-            requires __tag_invocable_with_completion_scheduler<_LetTag, _SetTag, _Sender, _Fun>
+            requires __tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>
           sender auto operator()(_Sender&& __sndr, _Fun __fun) const
-            noexcept(nothrow_tag_invocable<_LetTag, __completion_scheduler_for<_Sender, _SetTag>, _Sender, _Fun>) {
-            auto __sched = get_completion_scheduler<_SetTag>(__sndr);
+            noexcept(nothrow_tag_invocable<_LetTag, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Fun>) {
+            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
             return tag_invoke(_LetTag{}, std::move(__sched), (_Sender&&) __sndr, (_Fun&&) __fun);
           }
           template <sender _Sender, __movable_value _Fun>
-            requires (!__tag_invocable_with_completion_scheduler<_LetTag, _SetTag, _Sender, _Fun>) &&
+            requires (!__tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>) &&
               tag_invocable<_LetTag, _Sender, _Fun>
           sender auto operator()(_Sender&& __sndr, _Fun __fun) const
             noexcept(nothrow_tag_invocable<_LetTag, _Sender, _Fun>) {
             return tag_invoke(_LetTag{}, (_Sender&&) __sndr, (_Fun&&) __fun);
           }
           template <sender _Sender, __movable_value _Fun>
-            requires (!__tag_invocable_with_completion_scheduler<_LetTag, _SetTag, _Sender, _Fun>) &&
+            requires (!__tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>) &&
               (!tag_invocable<_LetTag, _Sender, _Fun>) &&
               sender<__sender<_Sender, _Fun>>
           __sender<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
