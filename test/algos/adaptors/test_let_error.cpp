@@ -254,7 +254,22 @@ TEST_CASE("let_error adds to values_type the value types of the returned sender"
       ex::just(1) //
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"hello"}); }));
 }
-TEST_CASE("TODO: let_error overrides error_types from input sender (and adds std::exception_ptr)",
+
+struct err_to_string {
+  using my_res_t = decltype(ex::just_error(std::string{}));
+
+  my_res_t operator()(std::exception_ptr) const { return ex::just_error(std::string{"err"}); }
+  my_res_t operator()(int) const { return ex::just_error(std::string{"other int error"}); }
+};
+
+struct err_to_void_value {
+  using my_res_t = decltype(ex::just());
+
+  my_res_t operator()(std::exception_ptr) const { return ex::just(); }
+  my_res_t operator()(int) const { return ex::just(); }
+};
+
+TEST_CASE("let_error overrides error_types from input sender (and adds std::exception_ptr)",
     "[adaptors][let_error]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
@@ -267,10 +282,9 @@ TEST_CASE("TODO: let_error overrides error_types from input sender (and adds std
   check_err_types<type_array<std::exception_ptr, std::string>>( //
       ex::transfer_just(sched2)                                 //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
-  // TODO: check why we can't pipe let_error onto transfer_just(error_scheduler<int>{})
-  // check_err_types<type_array<std::exception_ptr, std::string>>( //
-  //     ex::transfer_just(sched3)                                 //
-  //     | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
+  check_err_types<type_array<std::exception_ptr, std::string>>( //
+      ex::transfer_just(sched3)                                 //
+      | ex::let_error(err_to_string{}));
 
   // Returning ex::just
   check_err_types<type_array<std::exception_ptr>>( //
@@ -279,11 +293,9 @@ TEST_CASE("TODO: let_error overrides error_types from input sender (and adds std
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched2)                    //
       | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-  // TODO: check why we can't pipe let_error onto transfer_just(error_scheduler<int>{})
-  // check_err_types<type_array<std::exception_ptr>>( //
-  //     ex::transfer_just(sched3)                    //
-  //     | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-  (void)sched3;
+  check_err_types<type_array<std::exception_ptr>>( //
+      ex::transfer_just(sched3)                    //
+      | ex::let_error(err_to_void_value{}));
 }
 
 TEST_CASE("let_error keeps sends_stopped from input sender", "[adaptors][let_error]") {
