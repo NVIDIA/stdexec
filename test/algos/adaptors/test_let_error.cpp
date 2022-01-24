@@ -62,10 +62,12 @@ TEST_CASE(
   std::this_thread::sync_wait(std::move(snd));
 }
 
-TEST_CASE(
-    "TODO: let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
-  ex::sender auto snd = ex::just()                                                      //
-                        | ex::then([] { throw std::logic_error{"error description"}; }) //
+TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
+  ex::sender auto snd = ex::just() //
+                        | ex::then([] {
+                            throw std::logic_error{"error description"};
+                            return std::string{"ok"};
+                          }) //
                         | ex::let_error([](std::exception_ptr eptr) {
                             try {
                               std::rethrow_exception(eptr);
@@ -73,8 +75,8 @@ TEST_CASE(
                               return ex::just(std::string{e.what()});
                             }
                           });
-  // TODO: check why this doesn't work
-  // wait_for_value(std::move(snd), std::string{"error description"});
+  static_assert(ex::__single_typed_sender<decltype(snd)>);
+  wait_for_value(std::move(snd), std::string{"error description"});
   (void)snd;
 }
 
