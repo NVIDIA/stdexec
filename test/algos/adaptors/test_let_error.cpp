@@ -75,7 +75,6 @@ TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors
                               return ex::just(std::string{e.what()});
                             }
                           });
-  static_assert(ex::__single_typed_sender<decltype(snd)>);
   wait_for_value(std::move(snd), std::string{"error description"});
   (void)snd;
 }

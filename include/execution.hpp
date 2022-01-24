@@ -481,6 +481,15 @@ namespace std::execution {
       sender<_Sender, _Env> &&
       __valid<__single_sender_value_t, _Sender, _Env>;
 
+  template <class _Sender, class _Env = no_env>
+    using __single_value_variant_sender_t =
+      value_types_of_t<_Sender, _Env, __types, __single_t>;
+
+  template <class _Sender, class _Env = no_env>
+    concept __single_value_variant_sender =
+      sender<_Sender, _Env> &&
+      __valid<__single_value_variant_sender_t, _Sender, _Env>;
+
   /////////////////////////////////////////////////////////////////////////////
   namespace __completion_signatures {
     template <class... _Args>
@@ -4014,7 +4023,7 @@ namespace std::this_thread {
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
       // TODO: constrain on return type
-      template <execution::sender _Sender> // NOT TO SPEC
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           execution::__tag_invocable_with_completion_scheduler<
             sync_wait_t, execution::set_value_t, _Sender>
@@ -4032,7 +4041,7 @@ namespace std::this_thread {
         return tag_invoke(sync_wait_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
       // TODO: constrain on return type
-      template <execution::sender _Sender> // NOT TO SPEC
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_t, execution::set_value_t, _Sender>) &&
@@ -4042,7 +4051,7 @@ namespace std::this_thread {
         nothrow_tag_invocable<sync_wait_t, _Sender>) {
         return tag_invoke(sync_wait_t{}, (_Sender&&) __sndr);
       }
-      template <execution::sender _Sender>
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender>
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_t, execution::set_value_t, _Sender>) &&
@@ -4079,7 +4088,7 @@ namespace std::this_thread {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
-      template <execution::sender _Sender> // NOT TO SPEC
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           execution::__tag_invocable_with_completion_scheduler<
             sync_wait_with_variant_t, execution::set_value_t, _Sender>
@@ -4097,7 +4106,7 @@ namespace std::this_thread {
         return tag_invoke(
           sync_wait_with_variant_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
-      template <execution::sender _Sender> // NOT TO SPEC
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_with_variant_t, execution::set_value_t, _Sender>) &&
@@ -4107,7 +4116,7 @@ namespace std::this_thread {
         nothrow_tag_invocable<sync_wait_with_variant_t, _Sender>) {
         return tag_invoke(sync_wait_with_variant_t{}, (_Sender&&) __sndr);
       }
-      template <execution::sender _Sender>
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender>
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_with_variant_t, execution::set_value_t, _Sender>) &&
