@@ -6771,20 +6771,20 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
 
   <c- k>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
     <c- k>requires</c-> <c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>Ts</c-><c- p>...</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- p>(</c-><c- n>copy_constructible</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-> <c- o>&amp;&amp;</c-><c- p>...)</c->
-  <c- k>friend</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>decay_t</c-><r><c- o>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>connect_t</c-><c- p>,</c-> <c- k>const</c-> <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&amp;</c-> <c- n>j</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>friend</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>connect_t</c-><c- p>,</c-> <c- k>const</c-> <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&amp;</c-> <c- n>j</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
     <c- k>return</c-> <c- p>{</c-> <c- n>j</c-><c- p>.</c-><c- n>vs_</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
   <c- p>}</c->
 
   <c- k>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
     <c- k>requires</c-> <c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>Ts</c-><c- p>...</c-><c- o>></c->
-  <c- k>friend</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>decay_t</c-><r><c- o>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>connect_t</c-><c- p>,</c-> <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&amp;&amp;</c-> <c- n>j</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>friend</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>connect_t</c-><c- p>,</c-> <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&amp;&amp;</c-> <c- n>j</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
     <c- k>return</c-> <c- p>{</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>j</c-><c- p>.</c-><c- n>vs_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
   <c- p>}</c->
 <c- p>};</c->
 
 <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
   <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-><c- o>></c-> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>ts</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>);</c->
-</r></r></pre>
+</pre>
     <li data-md>
      <p><i>Effects</i>: Initializes <code class="highlight"><c- n>vs_</c-></code> with <code class="highlight"><i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>(</c-><c- n>ts</c-><c- p>)...)</c-></code>.</p>
     <li data-md>
@@ -7012,7 +7012,7 @@ are all well-formed.</p>
    <h5 class="heading settled" data-level="10.8.5.3" id="spec-execution.senders.adapt.on"><span class="secno">10.8.5.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> <b>[exec.on]</b></span><a class="self-link" href="#spec-execution.senders.adapt.on"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> is used to adapt a sender in a sender that will start the input sender on an execution agent belonging to a specific execution context.</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> is used to adapt a sender into a sender that will start the input sender on an execution agent belonging to a specific execution context.</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
@@ -7080,7 +7080,7 @@ started, the behavior of calling <code class="highlight"><c- n>execution</c-><c-
    <h5 class="heading settled" data-level="10.8.5.5" id="spec-execution.senders.adaptors.schedule_from"><span class="secno">10.8.5.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> <b>[exec.schedule_from]</b></span><a class="self-link" href="#spec-execution.senders.adaptors.schedule_from"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> is used to schedule work dependent on the completion of a sender onto a scheduler’s associated execution context. [<i>Note</i>: <code class="highlight"><c- n>schedule_from</c-></code> is not meant to be used in user code; they are used in the implementation of <code class="highlight"><c- n>transfer</c-></code>. -<i>end note</i>]</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> is used to schedule work dependent on the completion of a sender onto a scheduler’s associated execution context. [<i>Note</i>: <code class="highlight"><c- n>schedule_from</c-></code> is not meant to be used in user code; it is used in the implementation of <code class="highlight"><c- n>transfer</c-></code>. -<i>end note</i>]</p>
     <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule_from</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
