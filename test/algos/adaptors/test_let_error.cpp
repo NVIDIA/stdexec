@@ -56,16 +56,15 @@ TEST_CASE("let_error can be piped", "[adaptors][let_error]") {
   (void)snd;
 }
 
-TEST_CASE("TODO: let_error returning void can we waited on (error annihilation)",
-    "[adaptors][let_error]") {
+TEST_CASE(
+    "let_error returning void can we waited on (error annihilation)", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just_error(std::exception_ptr{}) |
                         ex::let_error([](std::exception_ptr) { return ex::just(); });
-  // TODO: check why this doesn't work
-  // std::this_thread::sync_wait(std::move(snd));
-  (void)snd;
+  std::this_thread::sync_wait(std::move(snd));
 }
 
-TEST_CASE("TODO: let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
+TEST_CASE(
+    "TODO: let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just()                                                      //
                         | ex::then([] { throw std::logic_error{"error description"}; }) //
                         | ex::let_error([](std::exception_ptr eptr) {
@@ -167,7 +166,8 @@ TEST_CASE("TODO: let_error of just_error with custom type", "[adaptors][let_erro
   // wait_for_value(std::move(snd), 13);
 }
 
-TEST_CASE("TODO: let_error exposes a parameter that is destructed when the main operation is destructed ",
+TEST_CASE(
+    "TODO: let_error exposes a parameter that is destructed when the main operation is destructed ",
     "[adaptors][let_error]") {
 
   // TODO: make this work after just_error() | let_error() works
@@ -226,25 +226,25 @@ TEST_CASE("TODO: let_error works when changing threads", "[adaptors][let_error]"
 TEST_CASE("let_error has the values_type from the input sender if returning error",
     "[adaptors][let_error]") {
   check_val_types<type_array<type_array<int>>>(
-      fallible_just{7}
+      fallible_just{7} //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
   check_val_types<type_array<type_array<double>>>(
-      fallible_just{3.14}
+      fallible_just{3.14} //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
   check_val_types<type_array<type_array<std::string>>>(
-      fallible_just{std::string{"hello"}}
+      fallible_just{std::string{"hello"}} //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
 }
 TEST_CASE("let_error adds to values_type the value types of the returned sender",
     "[adaptors][let_error]") {
   check_val_types<type_array<type_array<int>>>(
-      fallible_just{1}
+      fallible_just{1} //
       | ex::let_error([](std::exception_ptr) { return ex::just(11); }));
   check_val_types<type_array<type_array<int>, type_array<double>>>(
-      fallible_just{1}
+      fallible_just{1} //
       | ex::let_error([](std::exception_ptr) { return ex::just(3.14); }));
   check_val_types<type_array<type_array<int>, type_array<std::string>>>(
-      fallible_just{1}
+      fallible_just{1} //
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"hello"}); }));
 }
 TEST_CASE("let_error overrides error_types from input sender (and adds std::exception_ptr)",
@@ -262,7 +262,9 @@ TEST_CASE("let_error overrides error_types from input sender (and adds std::exce
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
   check_err_types<type_array<std::exception_ptr, std::string>>( //
       ex::transfer_just(sched3)                                 //
-      | ex::let_error([](std::__one_of<int, std::exception_ptr> auto) { return ex::just_error(std::string{"err"}); }));
+      | ex::let_error([](std::__one_of<int, std::exception_ptr> auto) {
+          return ex::just_error(std::string{"err"});
+        }));
 
   // Returning ex::just
   check_err_types<type_array<std::exception_ptr>>( //
