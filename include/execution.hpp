@@ -1734,6 +1734,12 @@ namespace std::execution {
           ((_Receiver&&) __rcvr).set_stopped();
         };
 
+    template <class _Receiver>
+      concept __has_get_env =
+        requires(_Receiver&& __rcvr) {
+          ((_Receiver&&) __rcvr).get_env();
+        };
+
     template <__class _Derived, class _Base>
       struct __receiver_adaptor {
         class __t : __adaptor_base<_Base> {
@@ -1741,6 +1747,7 @@ namespace std::execution {
           using set_value = void;
           using set_error = void;
           using set_stopped = void;
+          using get_env = void;
 
           static constexpr bool __has_base = !derived_from<_Base, __no::__nope>;
 
@@ -1809,9 +1816,15 @@ namespace std::execution {
 
           // Pass through the get_env receiver query
           template <class _D = _Derived>
-          friend auto tag_invoke(get_env_t, const _Derived& __self)
-            -> env_of_t<__base_t<const _D&>> {
-            return get_env(__get_base(__self));
+            requires __has_get_env<_D>
+          friend auto tag_invoke(get_env_t, const _Derived& __self) {
+            return __self.get_env();
+          }
+
+          template <class _D = _Derived>
+            requires requires {typename _D::get_env;}
+          friend auto tag_invoke(get_env_t, const _Derived& __self) {
+            return execution::get_env(__get_base(__self));
           }
 
          public:
