@@ -4624,13 +4624,13 @@ template &lt;class E>
 
       template&lt;receiver R>
         requires receiver_of&lt;R, Ts...> && (copy_constructible&ltTs> &&...)
-      friend operation_state&lt;decay_t<R>> tag_invoke(connect_t, const <i>just-sender</i>& j, R && r) {
+      friend operation_state&lt;decay_t&lt;R>> tag_invoke(connect_t, const <i>just-sender</i>& j, R && r) {
         return { j.vs_, std::forward&lt;R>(r) };
       }
 
       template&lt;receiver R>
         requires receiver_of&lt;R, Ts...>
-      friend operation_state&lt;decay_t<R>> tag_invoke(connect_t, <i>just-sender</i>&& j, R && r) {
+      friend operation_state&lt;decay_t&lt;R>> tag_invoke(connect_t, <i>just-sender</i>&& j, R && r) {
         return { std::move(j.vs_), std::forward&lt;R>(r) };
       }
     };
@@ -4876,7 +4876,7 @@ are all well-formed.
 
 #### `execution::on` <b>[exec.on]</b> #### {#spec-execution.senders.adapt.on}
 
-1. `execution::on` is used to adapt a sender in a sender that will start the input sender on an execution agent belonging to a specific execution context.
+1. `execution::on` is used to adapt a sender into a sender that will start the input sender on an execution agent belonging to a specific execution context.
 
 2. The name `execution::on` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy `execution::sender`,
     `execution::on` is ill-formed. Otherwise, the expression `execution::on(sch, s)` is expression-equivalent to:
@@ -4937,7 +4937,7 @@ are all well-formed.
 
 #### `execution::schedule_from` <b>[exec.schedule_from]</b> #### {#spec-execution.senders.adaptors.schedule_from}
 
-1. `execution::schedule_from` is used to schedule work dependent on the completion of a sender onto a scheduler's associated execution context. [<i>Note</i>: `schedule_from` is not meant to be used in user code; they are used in the implementation of
+1. `execution::schedule_from` is used to schedule work dependent on the completion of a sender onto a scheduler's associated execution context. [<i>Note</i>: `schedule_from` is not meant to be used in user code; it is used in the implementation of
     `transfer`. -<i>end note</i>]
 
 3. The name `execution::schedule_from` denotes a customization point object. For some subexpressions `sch` and `s`, let `Sch` be `decltype((sch))` and `S` be `decltype((s))`. If `Sch` does not satisfy `execution::scheduler`, or `S` does not satisfy
