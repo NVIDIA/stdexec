@@ -3510,7 +3510,7 @@ explicit in_place_stop_callback(in_place_stop_token st, C&& cb)
     <td>allow the specialization of the provided sender algorithms</td>
     <td>
         <ul>
-            <li>sender factories (`just`, `just_error`, `just_stopped`, ...)</li>
+            <li>sender factories (`schedule`, `transfer_just`, `read`, ...)</li>
             <li>sender adaptors (`transfer`, `then`, `let_value`, ...)</li>
             <li>sender consumers (`start_detached`, `sync_wait`)</li>
         </ul>
