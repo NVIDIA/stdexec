@@ -1,2 +1,4 @@
 build/
+cmake-build-*/
 .gitattributes
+.idea
