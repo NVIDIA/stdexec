@@ -117,12 +117,10 @@ namespace std::execution {
         constexpr auto operator()(const _EnvProvider& __with_env) const
           noexcept(nothrow_tag_invocable<get_env_t, const _EnvProvider&>)
           -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
+          using _Env = tag_invoke_result_t<get_env_t, const _EnvProvider&>;
+          static_assert(!same_as<_Env, no_env>);
           return tag_invoke(*this, __with_env);
         }
-
-      // constexpr __empty_env operator()(const auto&) const noexcept {
-      //   return {};
-      // }
     };
 
     // For making an evaluation environment from a key/value pair, and optionally
@@ -137,7 +135,7 @@ namespace std::execution {
   using __env::__empty_env;
 
   template <class _EnvProvider>
-    using env_of_t = decay_t<decltype(get_env(__declval<_EnvProvider>()))>;
+    using env_of_t = decay_t<__call_result_t<get_env_t, _EnvProvider>>;
 
   template <__class _Tag, class _Value, class _BaseEnv = __empty_env>
     using make_env_t =
@@ -197,7 +195,17 @@ namespace std::execution {
       __types<__minvoke<_Ty>> __test(_Tag(*)());
     template <class, class = void>
       __types<> __test(...);
+
+    struct __none_such {};
+    struct __dependent {};
   } // namespace __completion_signatures
+
+  template <class _Env>
+    using dependent_completion_signatures =
+      __if_c<
+        same_as<_Env, no_env>,
+        __completion_signatures::__dependent,
+        __completion_signatures::__none_such>;
 
   template <class _Sig>
     concept __completion_signature =
@@ -228,23 +236,45 @@ namespace std::execution {
             __signal_args_t<_Sigs, set_error_t, __q1<__id>>...>;
     };
 
-  template <>
-    struct completion_signatures<> {};
+  template <class...>
+    struct __concat_completion_signatures {
+      using type = dependent_completion_signatures<no_env>;
+    };
+
+  template <__is_instance_of<completion_signatures>... _Completions>
+    struct __concat_completion_signatures<_Completions...> {
+      using type =
+        __minvoke<
+          __concat<__munique<__q<completion_signatures>>>,
+          _Completions...>;
+    };
+
+  template <class... _Completions>
+    using __concat_completion_signatures_t =
+      __t<__concat_completion_signatures<_Completions...>>;
+
+  template <class _Traits, class _Env>
+    concept __valid_completion_signatures =
+      __is_instance_of<_Traits, completion_signatures> ||
+      (
+        same_as<_Traits, dependent_completion_signatures<no_env>> &&
+        same_as<_Env, no_env>
+      );
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
   template <class _Sig>
-    struct __missing_completion_signal;
+    struct _MISSING_COMPLETION_SIGNAL_;
   template <class _Tag, class... _Args>
-    struct __missing_completion_signal<_Tag(_Args...)> {
+    struct _MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)> {
       template <class _Receiver>
-        struct __with_receiver : false_type {};
+        struct _WITH_RECEIVER_ : false_type {};
     };
 
   namespace __receiver_concepts {
     struct __found_completion_signature {
       template <class>
-        using __with_receiver = true_type;
+        using _WITH_RECEIVER_ = true_type;
     };
 
     template <class _Receiver, class _Tag, class... _Args>
@@ -252,7 +282,7 @@ namespace std::execution {
         __if<
           __bool<nothrow_tag_invocable<_Tag, _Receiver, _Args...>>,
           __found_completion_signature,
-          __missing_completion_signal<_Tag(_Args...)>>;
+          _MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>>;
 
     template <class _Receiver, class _Tag, class... _Args>
       auto __has_completion(_Tag(*)(_Args...)) ->
@@ -264,7 +294,7 @@ namespace std::execution {
 
     template <class _Completion, class _Receiver>
       concept __is_valid_completion =
-        _Completion::template __with_receiver<_Receiver>::value;
+        _Completion::template _WITH_RECEIVER_<_Receiver>::value;
   } // namespace __receiver_concepts
 
   /////////////////////////////////////////////////////////////////////////////
@@ -287,8 +317,6 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
   namespace __get_completion_signatures {
-    struct __no_completion_signatures {};
-
     struct get_completion_signatures_t {
       template <class _Sender, class _Env = no_env>
       constexpr auto operator()(_Sender&& __sndr, const _Env& = {}) const noexcept {
@@ -297,12 +325,12 @@ namespace std::execution {
         if constexpr (tag_invocable<get_completion_signatures_t, _Sender, _Env>) {
           using _Completions =
             tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
-          static_assert(__is_instance_of<_Completions, completion_signatures>);
+          static_assert(__valid_completion_signatures<_Completions, _Env>);
           return _Completions{};
         } else if constexpr (requires { typename remove_cvref_t<_Sender>::completion_signatures; }) {
           using _Completions =
             typename remove_cvref_t<_Sender>::completion_signatures;
-          static_assert(__is_instance_of<_Completions, completion_signatures>);
+          static_assert(__valid_completion_signatures<_Completions, _Env>);
           return _Completions{};
         } else if constexpr (__awaitable<_Sender>) {
           using _Result = __await_result_t<_Sender>;
@@ -312,38 +340,24 @@ namespace std::execution {
             return completion_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
           }
         } else {
-          return __no_completion_signatures{};
+          return __completion_signatures::__none_such{};
         }
       }
     };
   } // namespace __get_completion_signatures
 
-  template <__is_instance_of<completion_signatures> _Traits>
-    using __is_completion_signatures = _Traits;
-
   using __get_completion_signatures::get_completion_signatures_t;
   inline constexpr get_completion_signatures_t get_completion_signatures {};
-
-  template <class _Sender, class _Env>
-    using __completion_signatures_of_t =
-      __is_completion_signatures<
-        __call_result_t<
-          get_completion_signatures_t,
-          _Sender,
-          _Env>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   // NOT TO SPEC (YET)
-  template <class _Completions, class _Env = __empty_env>
-    concept __is_typed_completions =
-      __is_instance_of<_Completions, completion_signatures> &&
-      bool(__none_of<_Completions, completion_signatures<>> + same_as<_Env, no_env>);
-
   template <class _Sender, class _Env>
     concept __sender =
-      __valid<__completion_signatures_of_t, _Sender, _Env> &&
-      __is_typed_completions<__completion_signatures_of_t<_Sender, _Env>, _Env>;
+      requires (_Sender&& __sndr, _Env&& __env) {
+        { get_completion_signatures((_Sender&&) __sndr, (_Env&&) __env) } ->
+          __valid_completion_signatures<_Env>;
+      };
 
   template <class _Sender, class _Env = no_env>
     concept sender =
@@ -353,11 +367,12 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
-  template <template <template <class...> class...> class _Outer,
-            template <class...> class... _Inners>
-    concept __valid_t = requires {
-      typename _Outer<_Inners...>;
-    };
+  template <class _Sender, class _Env>
+    using __completion_signatures_of_t =
+      __call_result_t<
+        get_completion_signatures_t,
+        _Sender,
+        _Env>;
 
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender<S, Ctx> are both true, then they
@@ -368,7 +383,11 @@ namespace std::execution {
      private:
       using _WithEnv = __completion_signatures_of_t<_Sender, _Env>;
       using _WithoutEnv = __completion_signatures_of_t<_Sender, no_env>;
-      static_assert(__one_of<_WithoutEnv, _WithEnv, completion_signatures<>>);
+      static_assert(
+        __one_of<
+          _WithoutEnv,
+          _WithEnv,
+          dependent_completion_signatures<no_env>>);
      public:
       using type = _WithEnv;
     };
@@ -380,7 +399,9 @@ namespace std::execution {
 
   template <class _Receiver, class _Sender>
     concept __receiver_from =
-      receiver_of<_Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
+      receiver_of<
+        _Receiver,
+        completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
 
   struct __not_a_variant {
     __not_a_variant() = delete;
@@ -388,8 +409,8 @@ namespace std::execution {
   template <class... _Ts>
     using __variant =
       __minvoke<
-        __if<
-          __bool<sizeof...(_Ts) != 0>,
+        __if_c<
+          sizeof...(_Ts) != 0,
           __transform<__q1<decay_t>, __munique<__q<variant>>>,
           __constant<__not_a_variant>>,
         _Ts...>;
@@ -414,6 +435,12 @@ namespace std::execution {
       typename completion_signatures_of_t<_Sender, _Env>::template
         __error_types<_Variant>;
 
+  template <class _Sender, class _Env = no_env>
+      requires sender<_Sender, _Env>
+    inline constexpr bool sends_stopped =
+      (completion_signatures_of_t<_Sender, _Env>
+        ::template __count_of<set_stopped_t>::value != 0);
+
   template <class _Sender,
             class _Env = no_env,
             class _Tuple = __q<__decayed_tuple>,
@@ -431,12 +458,6 @@ namespace std::execution {
       error_types_of_t<_Sender, _Env, _Variant::template __f>;
 
   template <class _Sender, class _Env = no_env>
-      requires sender<_Sender, _Env>
-    inline constexpr bool sends_stopped =
-      (completion_signatures_of_t<_Sender, _Env>
-        ::template __count_of<set_stopped_t>::value != 0);
-
-  template <class _Sender, class _Env = no_env>
     using __single_sender_value_t =
       __value_types_of_t<_Sender, _Env, __single_or<void>, __q<__single_t>>;
 
@@ -448,29 +469,28 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   namespace __completion_signatures {
     template <class... _Args>
-      using __set_value_sig = completion_signatures<set_value_t(_Args...)>;
+      using __default_set_value = completion_signatures<set_value_t(_Args...)>;
 
     template <class _Err>
-      using __set_error_sig = completion_signatures<set_error_t(_Err)>;
+      using __default_set_error = completion_signatures<set_error_t(_Err)>;
 
     template <__is_instance_of<completion_signatures>... _Sigs>
-      using __ensure_concat = __minvoke<__concat<>, _Sigs...>;
+      using __ensure_concat = __minvoke<__concat<__q<completion_signatures>>, _Sigs...>;
 
-    template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, class _SendsStopped>
+    template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, class _SetStopped>
       using __compl_sigs_t =
-        __minvoke<
-          __concat<__munique<__q<completion_signatures>>>,
-          __ensure_concat<_Sigs>,
+        __concat_completion_signatures_t<
+          _Sigs,
           __value_types_of_t<_Sender, _Env, _SetValue, __q<__ensure_concat>>,
           __error_types_of_t<_Sender, _Env, __transform<_SetError, __q<__ensure_concat>>>,
-          __if_c<sends_stopped<_Sender, _Env>, __ensure_concat<_SendsStopped>, __types<>>>;
+          __if_c<sends_stopped<_Sender, _Env>, _SetStopped, completion_signatures<>>>;
 
     template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, class _SetStopped>
       auto __make(int) ->
         __compl_sigs_t<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
 
-    template<class, same_as<no_env> _Env, class, class, class, class>
-      auto __make(long) -> completion_signatures<>;
+    template<class, class _Env, class, class, class, class>
+      auto __make(long) -> dependent_completion_signatures<_Env>;
   } // namespace __completion_signatures
 
   /////////////////////////////////////////////////////////////////////////////
@@ -542,8 +562,8 @@ namespace std::execution {
     class _Sender,
     class _Env = no_env,
     class _Sigs = completion_signatures<>,
-    template <class...> class _SetValue = __completion_signatures::__set_value_sig,
-    template <class> class _SetError = __completion_signatures::__set_error_sig,
+    template <class...> class _SetValue = __completion_signatures::__default_set_value,
+    template <class> class _SetError = __completion_signatures::__default_set_error,
     class _SetStopped = completion_signatures<set_stopped_t()>>
       requires sender<_Sender, _Env>
   using make_completion_signatures =
@@ -2321,17 +2341,12 @@ namespace std::execution {
 
       template <class _Env, class _Fun, class _Set, class... _Args>
           requires invocable<_Fun, _Args...> &&
-            sender<invoke_result_t<_Fun, _Args...>, _Env> &&
-            __is_typed_completions<
-              completion_signatures_of_t<invoke_result_t<_Fun, _Args...>, _Env>>
+            sender<invoke_result_t<_Fun, _Args...>, _Env>
         struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
-          using __completions =
-            completion_signatures_of_t<invoke_result_t<_Fun, _Args...>, _Env>;
           using type =
-            __minvoke2<
-              __push_back<__q<completion_signatures>>,
-              __completions,
-              set_error_t(exception_ptr)>;
+            __concat_completion_signatures_t<
+              completion_signatures_of_t<invoke_result_t<_Fun, _Args...>, _Env>,
+              completion_signatures<set_error_t(exception_ptr)>>;
         };
 
       template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
@@ -2438,7 +2453,7 @@ namespace std::execution {
               __mapply<
                 __transform<
                   __tfx_signal<_Env>,
-                  __concat<__munique<__q<completion_signatures>>>>,
+                  __q<__concat_completion_signatures_t>>,
                 completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>>;
 
           template <__decays_to<__sender> _Self, class _Receiver>
@@ -2463,7 +2478,7 @@ namespace std::execution {
 
           template <__decays_to<__sender> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-              -> completion_signatures<>;
+              -> dependent_completion_signatures<_Env>;
           template <__decays_to<__sender> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
               -> __completions<__member_t<_Self, _Sender>, _Env> requires true;
@@ -3397,15 +3412,14 @@ namespace std::execution {
 
       template <class _Env, class... _Senders>
         struct __traits {
-          using type = completion_signatures<>;
+          using type = dependent_completion_signatures<_Env>;
         };
 
       template <class _Env, class... _Senders>
           requires ((__count_of<set_value_t, _Senders, _Env>::value <= 1) &&...)
         struct __traits<_Env, _Senders...> {
           using __non_values =
-            __minvoke<
-              __concat<__munique<__q<completion_signatures>>>,
+            __concat_completion_signatures_t<
               completion_signatures<
                 set_error_t(exception_ptr),
                 set_stopped_t()>,
@@ -3776,7 +3790,7 @@ namespace std::execution {
 
         template <class _Env>
           friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) ->
-            completion_signatures<>;
+            dependent_completion_signatures<_Env>;
         template <class _Env>
             requires __callable<_Tag, _Env>
           friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) ->
