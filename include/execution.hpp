@@ -205,8 +205,6 @@ namespace std::execution {
 
   template <__completion_signature... _Sigs>
     struct completion_signatures {
-      using type = completion_signatures;
-
       template <class _Sig, class _Tag, class _Ty = __q<__types>>
         using __signal_args_t =
           decltype(__completion_signatures::__test<_Tag, _Ty>((_Sig*) nullptr));
@@ -1087,7 +1085,6 @@ namespace std::execution {
   // [execution.senders]
   template <class _Sender, class _Receiver>
     concept sender_to =
-      environment_provider<_Receiver> &&
       sender<_Sender, env_of_t<_Receiver>> &&
       __receiver_from<_Receiver, _Sender> &&
       requires (_Sender&& __sndr, _Receiver&& __rcvr) {
@@ -2354,13 +2351,6 @@ namespace std::execution {
           template <class... _As>
             using __op_state_for_t =
               connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
-
-          // For the purposes of the receiver concept, this receiver must be able
-          // to accept exception_ptr, even if the input sender can never __complete
-          // with set_error.
-          template <__decays_to<exception_ptr> _Error>
-            friend void tag_invoke(set_error_t, __receiver&&, _Error&& __err) noexcept
-              requires same_as<_Let, set_error_t> && (!__valid<__which_tuple_t, _Error>);
 
           template <__one_of<_Let> _Tag, class... _As>
               requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
