@@ -63,7 +63,10 @@ class receiver_t
 
   void set_value(std::span<cudaGraphNode_t> predecessors) && noexcept try
   {
-    std::byte *storage_ptr = cuda::get_storage(this->base());
+    graph_env auto env = std::execution::get_env(this->base());
+
+    std::byte *storage_ptr = cuda::get_storage(env);
+
     auto consumer = this->base().get_consumer();
     using consumer_t = std::decay_t<decltype(consumer)>;
 
@@ -77,7 +80,7 @@ class receiver_t
     kernel_node_params.kernelParams = kernel_args;
     kernel_node_params.extra = nullptr;
 
-    cudaGraph_t graph = this->base().graph().get();
+    cudaGraph_t graph = env.graph().get();
 
     std::array<cudaGraphNode_t, 1> node{};
     check(cudaGraphAddKernelNode(node.data(),
@@ -110,15 +113,10 @@ public:
     , function_(function)
   {}
 
-  [[nodiscard]] graph_info_t graph() noexcept
-  {
-    return this->base().graph();
-  }
-
   [[nodiscard]] consumer_t get_consumer() const noexcept
   {
-    return {cuda::get_storage(this->base())};
-    }
+    return {cuda::get_storage(std::execution::get_env(this->base()))};
+  }
 
   static constexpr bool is_cuda_graph_api = true;
 };

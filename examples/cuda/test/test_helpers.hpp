@@ -18,6 +18,7 @@
 #include <algorithm>
 
 #include <schedulers/detail/graph/consumer.hpp>
+#include <schedulers/detail/graph/environment.hpp>
 #include <schedulers/detail/graph/graph_instance.hpp>
 #include <schedulers/detail/storage.hpp>
 
@@ -157,22 +158,19 @@ public:
       self.state_.set_error_was_called_++;
     }
 
-    [[nodiscard]] example::cuda::graph::detail::graph_info_t
-    graph() const noexcept
-    {
-      return {state_.graph_};
-    }
-
     [[nodiscard]] example::cuda::graph::detail::sink_consumer_t
     get_consumer() const noexcept
     {
       return {};
     }
 
-    friend std::byte *tag_invoke(example::cuda::get_storage_t,
-                                 const receiver_t &self) noexcept
+    friend auto tag_invoke(std::execution::get_env_t, const receiver_t &self)
+      -> example::cuda::graph::detail::env_t<std::execution::no_env>
     {
-      return nullptr;
+      return example::cuda::graph::detail::env_t<std::execution::no_env>{
+        {},
+        nullptr,
+        self.state_.graph_};
     }
 
     static constexpr bool is_cuda_graph_api = true;

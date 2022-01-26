@@ -7,7 +7,10 @@ if(CUDAToolkit_FOUND)
     file(GLOB_RECURSE SCHED_SOURCES schedulers/*.hpp)
     add_library(CUDASchedulers INTERFACE ${SCHED_SOURCES})
     target_link_libraries(CUDASchedulers INTERFACE P2300 CUDA::cudart)
-    target_compile_options(CUDASchedulers INTERFACE -x cuda --cuda-gpu-arch=sm_80 -Wno-unknown-cuda-version)
+    target_compile_options(CUDASchedulers INTERFACE -x cuda -Wno-unknown-cuda-version)
+    foreach(arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
+        target_compile_options(CUDASchedulers INTERFACE --cuda-gpu-arch=sm_${arch})
+    endforeach()
 
     add_executable(test.CUDA test/test_main.cpp test/graph/test_then.cpp)
 

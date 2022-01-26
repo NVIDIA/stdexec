@@ -17,6 +17,7 @@
 
 #include <schedulers/detail/graph/concepts.hpp>
 #include <schedulers/detail/graph/consumer.hpp>
+#include <schedulers/detail/graph/environment.hpp>
 #include <schedulers/detail/graph/graph_instance.hpp>
 #include <schedulers/detail/graph/sender_base.hpp>
 #include <schedulers/detail/helpers.hpp>
@@ -33,8 +34,12 @@ namespace example::cuda::graph::detail::pipeline_end
 
 template <class OutTuple, class Receiver>
 struct receiver_t
+    : std::execution::receiver_adaptor<receiver_t<OutTuple, Receiver>, Receiver>
 {
-  Receiver receiver_;
+  using super_t =
+    std::execution::receiver_adaptor<receiver_t<OutTuple, Receiver>, Receiver>;
+  friend super_t;
+
   cuda::storage_description_t storage_requirement_;
 
   graph_t graph_;
@@ -43,48 +48,39 @@ struct receiver_t
   receiver_t(cudaStream_t stream,
              Receiver &&receiver,
              cuda::storage_description_t storage_requirement)
-      : receiver_(std::move(receiver))
+      : super_t(std::move(receiver))
       , storage_requirement_(storage_requirement)
       , graph_(stream)
   {}
 
-  template <class... As>
-  friend void tag_invoke(std::execution::set_value_t,
-                         receiver_t &&self,
-                         As &&...as) noexcept
-  {}
-
-  friend void tag_invoke(std::execution::set_value_t,
-                         receiver_t &&self,
-                         std::span<cudaGraphNode_t>) noexcept
+  void set_value(std::span<cudaGraphNode_t>) &&noexcept try
   {
-    self.graph_.instantiate().launch();
+    graph_.instantiate().launch();
 
-    cudaStreamSynchronize(self.graph_.stream_);
+    cudaStreamSynchronize(graph_.stream_);
 
-    OutTuple &res = *reinterpret_cast<OutTuple *>(self.get_storage());
+    OutTuple &res = *reinterpret_cast<OutTuple *>(get_storage());
 
     cuda::apply(
       [&](auto &&...args) {
-        std::execution::set_value(std::move(self.receiver_),
+        std::execution::set_value(std::move(this->base()),
                                   std::forward<decltype(args)>(args)...);
       },
       res);
+  } catch(...) {
+    std::execution::set_error(std::move(this->base()),
+                              std::current_exception());
   }
 
-  friend void tag_invoke(std::execution::set_error_t,
-                         receiver_t &&r,
-                         std::exception_ptr ex_ptr) noexcept
+  void set_error(std::exception_ptr ex_ptr) && noexcept
   {
-    std::execution::set_error(std::move(r.receiver_), ex_ptr);
+    std::execution::set_error(std::move(this->base()), ex_ptr);
   }
 
-  friend void tag_invoke(std::execution::set_stopped_t, receiver_t &&r) noexcept
+  void set_stopped() noexcept
   {
-    std::execution::set_stopped(std::move(r.receiver_));
+    std::execution::set_stopped(std::move(this->base()));
   }
-
-  [[nodiscard]] graph_info_t graph() noexcept { return {graph_.graph()}; }
 
   [[nodiscard]] consumer_t get_consumer() const noexcept
   {
@@ -98,31 +94,20 @@ struct receiver_t
       return storage;
     }
 
+    auto env = std::execution::get_env(this->base());
     storage_ = cuda::pipeline_storage_t(storage_requirement_,
-                                        cuda::get_storage(receiver_));
+                                        cuda::get_storage(env));
 
     return storage_.get();
   }
 
-  friend std::byte *tag_invoke(cuda::get_storage_t,
-                               const receiver_t &self) noexcept
-  {
-    return self.get_storage();
-  }
-
-  template <
-    std::__none_of<std::execution::set_value_t, cuda::get_storage_t> Tag,
-    class... As>
-  requires std::invocable<Tag, const Receiver &, As...> friend decltype(auto)
-  tag_invoke(Tag tag, const receiver_t &self, As &&...as) noexcept
-  {
-    return ((Tag &&) tag)(std::as_const(self.receiver_), (As &&) as...);
-  }
-
   friend auto tag_invoke(std::execution::get_env_t, const receiver_t &self)
-    -> std::execution::env_of_t<Receiver>
+    -> detail::env_t<std::execution::env_of_t<Receiver>>
   {
-    return std::execution::get_env(self.receiver_);
+    return detail::env_t<std::execution::env_of_t<Receiver>>{
+      std::execution::get_env(self.base()),
+      self.get_storage(),
+      self.graph_.graph()};
   }
 
   static constexpr bool is_cuda_graph_api = true;
@@ -152,12 +137,11 @@ struct sender_t
                                         storage_requirement});
   }
 
-  template <std::__decays_to<sender_t> Self, class _Env>
+  template <std::__decays_to<sender_t> Self, class Env>
   friend auto tag_invoke(std::execution::get_completion_signatures_t,
                          Self &&,
-                         _Env)
-    -> std::execution::completion_signatures_of_t<std::__member_t<Self, S>,
-                                                  _Env>;
+                         Env)
+    -> std::execution::completion_signatures_of_t<std::__member_t<Self, S>, Env>;
 
   static constexpr bool is_cuda_graph_api = true;
 };
