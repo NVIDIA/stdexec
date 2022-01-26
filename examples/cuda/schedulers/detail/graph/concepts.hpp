@@ -18,6 +18,7 @@
 #include <execution.hpp>
 
 #include <schedulers/detail/storage.hpp>
+#include <schedulers/detail/graph/graph_instance.hpp>
 
 namespace example::cuda::graph
 {
@@ -34,7 +35,14 @@ concept graph_sender = std::execution::sender<S> &&graph_api<S>;
 template <class R>
 concept graph_receiver = graph_api<R> &&requires(R &&r)
 {
-  { cuda::get_storage(r) } -> std::convertible_to<std::byte *>;
+  r.get_consumer();
+};
+
+template <class E>
+concept graph_env = requires(E &e)
+{
+  { e.graph() } -> std::convertible_to<detail::graph_info_t>;
+  { cuda::get_storage(e) } -> std::convertible_to<std::byte *>;
 };
 
 template <graph_sender S>
