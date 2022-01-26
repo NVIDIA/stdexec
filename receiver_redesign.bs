@@ -448,18 +448,18 @@ today, will always have a `set_error_t(exception_ptr)` completion signature. The
 possibilities I see are:
 
 * Permit implementations to omit the exceptional completion signature when it
-  knows allocations can't fail with an exception (see above),
+    knows allocations can't fail with an exception (see above),
 
 * Replace the exceptional completion signature with
-  `set_error_t(std::error_code)`, and call the receiver with
-  `std::make_error_code(std::errc::not_enough_memory)` on allocation failure.
+    `set_error_t(std::error_code)`, and call the receiver with
+    `std::make_error_code(std::errc::not_enough_memory)` on allocation failure.
 
 * Replace the exceptional completion signature with
-  `set_error_t(std::bad_alloc)`; that is, pass an instance of the
-  `std::bad_alloc` exception type through the error channel by value. (From what
-  the author can infer, freestanding implementations are required to provide the
-  `std::bad_alloc` type even when actually throwing exceptions is not
-  supported.)
+    `set_error_t(std::bad_alloc)`; that is, pass an instance of the
+    `std::bad_alloc` exception type through the error channel by value. (From
+    what the author can infer, freestanding implementations are required to
+    provide the `std::bad_alloc` type even when actually throwing exceptions is
+    not supported.)
 
 ## Implementation experience ## {#implementation-experience}
 

@@ -4210,8 +4210,10 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::set_value` denotes a customization point object. The expression `execution::set_value(R, Vs...)` for some subexpressions `R` and `Vs...` is expression-equivalent to:
 
-    1. `tag_invoke(execution::set_value, R, Vs...)`, if that expression is valid. If the function selected by `tag_invoke` does not send the value(s) `Vs...` to the receiver `R`’s value channel, the behavior of calling
-        `execution::set_value(R, Vs...)` is undefined.
+    1. `tag_invoke(execution::set_value, R, Vs...)`, if that expression is
+        valid. If the function selected by `tag_invoke` does not send the
+        value(s) `Vs...` to the receiver `R`’s value channel, the behavior of
+        calling `execution::set_value(R, Vs...)` is undefined.
 
     2. Otherwise, `execution::set_value(R, Vs...)` is ill-formed.
 
@@ -4221,8 +4223,10 @@ enum class forward_progress_guarantee {
 
 2. The name `execution::set_error` denotes a customization point object. The expression `execution::set_error(R, E)` for some subexpressions `R` and `E` is expression-equivalent to:
 
-    1. `tag_invoke(execution::set_error, R, E)`, if that expression is valid. If the function selected by `tag_invoke` does not send the error `E` to the receiver `R`’s error channel, the behavior of calling `execution::set_error(R, E)`
-        is undefined.
+    1. `tag_invoke(execution::set_error, R, E)`, if that expression is valid. If
+        the function selected by `tag_invoke` does not send the error `E` to the
+        receiver `R`’s error channel, the behavior of calling
+        `execution::set_error(R, E)` is undefined.
 
         * <i>Mandates:</i> The `tag_invoke` expression above is not potentially
             throwing.
@@ -4595,8 +4599,7 @@ template &lt;class E>
 
 2. The name `execution::schedule` denotes a customization point object. For some subexpression `s`, the expression `execution::schedule(s)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::schedule, s)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s`, the behavior of calling
-        `execution::schedule(s)` is undefined.
+    1. `tag_invoke(execution::schedule, s)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s`, the behavior of calling `execution::schedule(s)` is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -4676,7 +4679,9 @@ Similarly, only the sender returned by `execution::just` can call `set_error` on
 2. The name `execution::transfer_just` denotes a customization point object. For some subexpressions `s` and `vs...`, let `S` be `decltype((s))` and `Vs...` be `decltype((vs))`. If `S` does not satisfy `execution::scheduler`, or any type `V` in `Vs` does not
     satisfy <code><i>movable-value</i></code>, `execution::transfer_just(s, vs...)` is ill-formed. Otherwise, `execution::transfer_just(s, vs...)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::transfer_just, s, vs...)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender whose `set_value` completion scheduler is equivalent to `s` and sends
+    1. `tag_invoke(execution::transfer_just, s, vs...)`, if that expression is
+        valid. If the function selected by `tag_invoke` does not return a sender
+        whose `set_value` completion scheduler is equivalent to `s` and sends
         values equivalent to `auto(vs)...` to a receiver connected to it, the
         behavior of calling `execution::transfer_just(s, vs...)` is undefined.
 
@@ -4878,7 +4883,9 @@ are all well-formed.
 
     3. Otherwise, `schedule_from(sch, s)`.
 
-    If the function selected above does not return a sender which is a result of a call to `execution::schedule_from(sch, s2)`, where `s2` is a sender which sends equivalent to those sent by `s`, the behavior of calling
+    If the function selected above does not return a sender which is a result of
+    a call to `execution::schedule_from(sch, s2)`, where `s2` is a sender which
+    sends equivalent to those sent by `s`, the behavior of calling
     `execution::transfer(s, sch)` is undefined.
 
 3. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_stopped_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
@@ -5441,7 +5448,8 @@ are all well-formed.
             completion_signatures&lt;Vs..., set_error_t(Bs)...>
             </pre>
 
-    If the function selected above does not return a sender which sends references to values sent by `s`, propagating the other channels, the 
+    If the function selected above does not return a sender which sends
+    references to values sent by `s`, propagating the other channels, the
     behavior of calling `execution::split(s)` is undefined.
 
 #### `execution::when_all` <b>[exec.when_all]</b> #### {#spec-execution.senders.adaptor.when_all}
@@ -5456,12 +5464,18 @@ are all well-formed.
 
     Otherwise, the expression <code>execution::when_all(s<i><sub>i</sub></i>...)</code> is expression-equivalent to:
 
-    1. <code>tag_invoke(execution::when_all, s<i><sub>i</sub></i>...)</code>, if that expression is valid. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by <code>s<i><sub>i</sub></i>...</code> when they all complete with `set_value`, the behavior
-        of calling <code>execution::when_all(s<i><sub>i</sub></i>...)</code> is undefined.
+    1. <code>tag_invoke(execution::when_all, s<i><sub>i</sub></i>...)</code>, if
+        that expression is valid. If the function selected by `tag_invoke` does
+        not return a sender that sends a concatenation of values sent by
+        <code>s<i><sub>i</sub></i>...</code> when they all complete with
+        `set_value`, the behavior of calling
+        <code>execution::when_all(s<i><sub>i</sub></i>...)</code> is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
-    2. Otherwise, constructs a sender `w` of type `W`. When `w` is connected with some receiver `out_r` of type `OutR`, it returns an operation state `op_state` specified as below:
+    2. Otherwise, constructs a sender `w` of type `W`. When `w` is connected
+        with some receiver `out_r` of type `OutR`, it returns an operation state
+        `op_state` specified as below:
 
         1. For each sender <code>s<i><sub>i</sub></i></code>, constructs a receiver <code>r<i><sub>i</sub></i></code> such that:
 
@@ -5540,17 +5554,26 @@ are all well-formed.
 
 #### `execution::transfer_when_all` <b>[exec.transfer_when_all]</b> #### {#spec-execution.senders.adaptor.transfer_when_all}
 
-1. `execution::transfer_when_all` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input senders that only send a single set of values each, while also making sure
-    that they complete on the specified scheduler. `execution::transfer_when_all_with_variant` is used to join multiple sender chains and create a sender whose execution is dependent on all of the input
-    senders, which may have one or more sets of sent values. [<i>Note:</i> this can allow for better customization of the adaptors. --<i>end note</i>]
+1. `execution::transfer_when_all` is used to join multiple sender chains and
+    create a sender whose execution is dependent on all of the input senders
+    that only send a single set of values each, while also making sure that they
+    complete on the specified scheduler.
+    `execution::transfer_when_all_with_variant` is used to join multiple sender
+    chains and create a sender whose execution is dependent on all of the input
+    senders, which may have one or more sets of sent values. [<i>Note:</i> this
+    can allow for better customization of the adaptors. --<i>end note</i>]
 
 2. The name `execution::transfer_when_all` denotes a customization point object. For some subexpressions `sch` and `s...`, let `Sch` be `decltype(sch)` and `S` be `decltype((s))`. If `Sch` does not satisfy `scheduler`, or any type
     <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::sender`,
     `execution::transfer_when_all` is ill-formed. Otherwise, the expression `execution::transfer_when_all(sch, s...)` is expression-equivalent to:
 
-    1. `tag_invoke(execution::transfer_when_all, sch, s...)`, if that expression is valid. If the function selected by `tag_invoke` does not return a sender that sends a concatenation of values sent by `s...` when
-        they all complete with `set_value`, or does not send its completion signals, other than ones resulting from a scheduling error, on an execution agent belonging to the associated execution context of `sch`, the behavior
-        of calling `execution::transfer_when_all(sch, s...)` is undefined.
+    1. `tag_invoke(execution::transfer_when_all, sch, s...)`, if that expression
+        is valid. If the function selected by `tag_invoke` does not return a
+        sender that sends a concatenation of values sent by `s...` when they all
+        complete with `set_value`, or does not send its completion signals,
+        other than ones resulting from a scheduling error, on an execution agent
+        belonging to the associated execution context of `sch`, the behavior of
+        calling `execution::transfer_when_all(sch, s...)` is undefined.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
@@ -5805,8 +5828,9 @@ are all well-formed.
             completion_signatures&lt;Vs..., set_error_t(Bs)...>
             </pre>
 
-    If the function selected above does not return a sender that sends xvalue references to values sent by `s`, propagating the other channels, the behavior of
-    calling `execution::ensure_started(s)` is undefined.
+    If the function selected above does not return a sender that sends xvalue
+    references to values sent by `s`, propagating the other channels, the
+    behavior of calling `execution::ensure_started(s)` is undefined.
 
 ### Sender consumers <b>[exec.consumers]</b> ### {#spec-execution.senders.consumers}
 
@@ -5835,10 +5859,15 @@ are all well-formed.
 
             3. When `set_stopped(r)` is called, it does nothing.
 
-        2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state`, then calls `execution::start(op_state)`. The lifetime of `op_state` lasts until one of the receiver completion-signals of `r` is called.
+        2. Calls `execution::connect(s, r)`, resulting in an operation state
+            `op_state`, then calls `execution::start(op_state)`. The lifetime of
+            `op_state` lasts until one of the receiver completion-signals of `r`
+            is called.
 
-    If the function selected above does not eagerly start the sender `s` after connecting it with a receiver which ignores the `set_value` and `set_stopped` signals and calls `std::terminate` on the `set_error` signal, the behavior
-    of calling `execution::start_detached(s)` is undefined.
+    If the function selected above does not eagerly start the sender `s` after
+    connecting it with a receiver which ignores the `set_value` and
+    `set_stopped` signals and calls `std::terminate` on the `set_error` signal,
+    the behavior of calling `execution::start_detached(s)` is undefined.
 
 #### `this_thread::sync_wait` <b>[exec.sync_wait]</b> #### {#spec-execution.senders.consumers.sync_wait}
 
