@@ -1,0 +1,493 @@
+<pre class='metadata'>
+Title: Removing exception_ptr from the Receiver Concepts
+H1: <code>Removing exception_ptr from the Receiver Concepts</code>
+Shortname: DXXXX
+Revision: 1
+Status: D
+Group: WG21
+Audience: LEWG
+Editor: Eric Niebler, eric.niebler@gmail.com
+URL: https://wg21.link/P2300
+!Source: <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/main/receiver_redesign.bs">GitHub</a>
+Issue Tracking: GitHub https://github.com/brycelelbach/wg21_p2300_std_execution/issues
+Metadata Order: Editor, This Version, Source, Issue Tracking, Project, Audience
+Markup Shorthands: markdown yes
+Toggle Diffs: no
+No Abstract: yes
+Default Biblio Display: direct
+</pre>
+
+<style>
+pre {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+table, th, tr, td {
+  border: 2px solid black !important;
+}
+@media (prefers-color-scheme: dark) {
+  table, th, tr, td {
+    border: 2px solid white !important;
+  }
+}
+.ins, ins, ins *, span.ins, span.ins * {
+  background-color: rgb(200, 250, 200);
+  color: rgb(0, 136, 0);
+  text-decoration: none;
+}
+.del, del, del *, span.del, span.del * {
+  background-color: rgb(250, 200, 200);
+  color: rgb(255, 0, 0);
+  text-decoration: line-through;
+  text-decoration-color: rgb(255, 0, 0);
+}
+math, span.math {
+  font-family: serif;
+  font-style: italic;
+}
+ul {
+  list-style-type: "— ";
+}
+blockquote {
+  counter-reset: paragraph;
+}
+div.numbered, div.newnumbered {
+  margin-left: 2em;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+div.numbered:before, div.newnumbered:before {
+  position: absolute;
+  margin-left: -2em;
+  display-style: block;
+}
+div.numbered:before {
+  content: counter(paragraph);
+  counter-increment: paragraph;
+}
+div.newnumbered:before {
+  content: "�";
+}
+div.numbered ul, div.newnumbered ul {
+  counter-reset: list_item;
+}
+div.numbered li, div.newnumbered li {
+  margin-left: 3em;
+}
+div.numbered li:before, div.newnumbered li:before {
+  position: absolute;
+  margin-left: -4.8em;
+  display-style: block;
+}
+div.numbered li:before {
+  content: "(" counter(paragraph) "." counter(list_item) ")";
+  counter-increment: list_item;
+}
+div.newnumbered li:before {
+  content: "(�." counter(list_item) ")";
+  counter-increment: list_item;
+}
+</style>
+
+# Introduction # {#intro}
+
+This paper proposed a refactorization of the receiver concepts of [[P2300R4]] to address concerns raised during its design review.
+
+## Motivation ## {#motivation}
+
+In [[P2300R4]], the receiver concepts are currently expressed as follows:
+
+```c++
+    template <class T, class E = exception_ptr>
+    concept receiver =
+      move_constructible<remove_cvref_t<T>> &&
+      constructible_from<remove_cvref_t<T>, T> &&
+      requires(remove_cvref_t<T>&& t, E&& e) {
+        { execution::set_stopped(std::move(t)) } noexcept;
+        { execution::set_error(std::move(t), (E&&) e) } noexcept;
+      };
+
+    template<class T, class... An>
+    concept receiver_of =
+      receiver<T> &&
+      requires(remove_cvref_t<T>&& t, An&&... an) {
+        execution::set_value(std::move(t), (An&&) an...);
+      };
+```
+
+During the design review of P2300, LEWG raised the following concerns about the
+form of these concepts:
+
+1. Since `set_value` is permitted to be potentially throwing, and since the
+    receiver type is not known when a sender is asked to compute its completion
+    signatures, most senders will need to pessimistically report that they can
+    complete exceptionally, when that may in fact not be true. This may cause the
+    instantiation of expensive error handling code that is effectively dead.
+
+2. No receiver `R` can satisfy the `receiver<R>` or `receiver_of<R, As...>`
+    concepts without providing an error channel for `exception_ptr`. This has the
+    following problems:
+
+    * `exception_ptr` is a relatively heavy-weight error type, not unlike a
+        `shared_ptr`. Requiring the presence of this channel is likely to cause
+        needless code generation.
+
+    * It makes it questionable whether any of P2300 can be reasonably expected
+        to work in freestanding environments, which often lack exception
+        handling support.
+
+Although the design of P2300 is sound, LEWG nevertheless wanted an investigation
+into these issues and a recommendation to be made.
+
+This paper makes a recommendation to change the receiver concepts to address
+these concerns.
+
+## Design Summary ## {#design-summary}
+
+This paper proposes to make the following changes, summarized here without
+commentary. Commentary is provided below.
+
+* Remove the default implementation of the `get_env` receiver query.
+
+* The `receiver_of` concept takes a receiver and an instance of the
+    `completion_signatures<>` class template.
+
+* A receiver's customization of `set_value` is required to be `noexcept`.
+
+* The `sender_to<Sndr, Rcvr>` concept requires `Rcvr` to accept all of `Sndr`'s
+    completions.
+
+* `connect(sndr, rcvr)` also requires `rcvr` to accept all of `sndr`'s completions.
+
+* `get_completion_signatures` is required to return an instantiation of the
+    `completion_signatures` class template; the `value_types_of_t` and
+    `error_types_of_t` template aliases remain.
+
+* The `make_completion_signatures` design is slightly tweaked to be more general.
+
+## Design Rationale ## {#design-rationale}
+
+The author believes these are all reasonable adjustments to the design of P2300,
+but one may wonder why they were not considered before now.
+
+The fourth revision of P2300 brought with it some notable changes, the two most
+significant of which are:
+
+1. Support for dependently-typed senders, where a sender's completions can
+    depend on information that isn't known independently of the execution
+    environment within which the sender will be initiated. For instance,
+    a `get_scheduler()` sender which queries the receiver for the current
+    scheduler and then sends it through the value channel, cannot possibly
+    know the type of the scheduler it will send until it has been connected
+    to a receiver.
+
+2. Dropping of support for "untyped" senders, which do not declare their
+    completion signatures. Untyped senders were supported because of the lack
+    of dependently-typed senders, which ceased to be an issue with R4. At the
+    direction of LEWG, "untyped" senders were dropped, greatly simplifying
+    the design.
+
+Taken together, these two changes open up a huge piece of the design space. The
+implication is that <b>a sender is <i>always</i> able to provide its completion
+signatures.</b> This is new, and as of R4, P2300 is not taking advantage of this
+extra type information.
+
+The author realized that the extra type information can be leveraged to
+accommodate LEWGs requests regarding the receiver interface, while at the same
+time simplifying the design by permitting the library to take on more of the
+type checking burden, thus freeing sender authors from needed to do so.
+
+The `sender_to` concept, which checks whether a sender and a receiver can be
+connected, now has perfect information: it can ask the receiver for the execution
+environment; it can ask the sender how it will complete when initiated in that
+environment; and it can ask the receiver if it is capable of receiving all of
+the sender's possible completions. This was not possible before R4.
+
+Below we look at each of the changes suggested in the summary and explain its
+rationale in light of the extra information now available to the type system.
+
+## Design blow-by-blow ## {#design-rationale}
+
+### Remove the default implementation of the `get_env` receiver query. ### {#no-get-env-default}
+
+The presence of a customization of `get_env` becomes the distinguishing feature
+of receivers. A "receiver" no longer needs to provide any completion channels at
+all to be considered a receiver, only `get_env`.
+
+### The `receiver_of` concept takes a receiver and an instance of the `completion_signatures<>` class template.  ### {#receiver-of-completion-signatures}
+
+The `receiver_of` concept, rather than accepting a receiver and some value
+types, is changed to take a receiver and an instance of the
+`completion_signatures<>` class template. A sender uses
+`completion_signatures<>` to describe the signals with which it completes. The
+`receiver_of` concept ensures that a particular receiver is capable of receiving
+those signals.
+
+Notably, if a sender only sends a value (i.e., can never send an error or a
+stopped signal), then a receiver need only provide a value channel to be
+compatible with it.
+
+### A receiver's customization of `set_value` is required to be `noexcept`.  ### {#noexcept-set-value}
+
+This makes it possible for many senders to become "no-fail"; that is, they
+cannot complete with an error. `just(1)`, for instance, will only ever
+successfully send an integer through the value channel. An adaptor such as
+`then(sndr, fun)` can check whether `fun` can ever exit exceptionally when
+called with all the sets of values that `sndr` may complete with. If so, the
+`then` sender must add `set_error_t(exception_ptr)` to its list of completions.
+Otherwise, it need not.
+
+### The `sender_to<Sndr, Rcvr>` concept requires `Rcvr` to accept all of `Sndr`'s completions. ### {#sender-to-requirements}
+
+The `sender_to` concept, which checks whether a sender and a receiver can be
+connected, now enforces that the sender's completion signatures can in fact be
+handled by the receiver. Previously, it only checked that `connect(sndr, rcvr)`
+was well-formed, relying on sender authors to properly constrain their `connect`
+customizations.
+
+### `connect(sndr, rcvr)` also requires `rcvr` to accept all of `sndr`'s completions. ### {#connect-requirements}
+
+For good measure, the `connect` customization point also checks whether a
+receiver can receive all of the sender's possible completions before trying to
+dispatch via `tag_invoke` to a `connect` customization. This often entirely
+frees sender authors from having to constrain their `connect` customizations at
+all. It is enough to customize `get_completion_signatures`, and the type
+checking is done automatically.
+
+Strictly speaking, with this change, the change to `sender_to` is unnecessary.
+The change to `sender_to` results in better diagnostics, in the author's
+experience.
+
+### `get_completion_signatures` is required to return an instantiation of the `completion_signatures` class template. ### {#get-completion-signatures}
+
+`get_completion_signatures` was added in R4 in response to feedback that
+authoring sender traits was too difficult/arcane. Rather than defining a struct
+with `template template` aliases, a user can simply declare a sender's
+completions as:
+
+```c++
+execution::completion_signatures<
+  execution::set_value_t(int),
+  execution::set_error_t(std::exception_ptr),
+  execution::set_stopped_t()>
+```
+
+In R4, `completion_signatures` generated the `template template` aliases for
+you. The proposed change is to take it further and *require*
+`get_completion_signatures` to return an instance of the `completion_signatures`
+class template. With this change, the last vestige of the old sender traits
+design with its unloved `temlate template` alias interface is swept away.
+`completion_signatures` entirely replaces sender traits, further simplifying the
+design.
+
+The `sender` concept enforces the new requirement.
+
+### The `value_types_of_t` and `error_types_of_t` template aliases remain. ### {#sender-traits-aliases}
+
+It can still be helpful sometimes to *consume* the old `template template`, say,
+for generating a variant of the tuples of all the sets of a sender's value
+types. For that reason, the alias templates `value_types_of_t` and
+`error_types_of_t` retain the same interface and semantic as before. For
+instance, generating the variant of tuples of value types, you would use the
+following:
+
+  ```c++
+  execution::value_types_of_t<
+    Sndr,
+    Env,
+    std::tuple,
+    std::variant>;
+  ```
+
+Additionally, these two alias joined by a `sends_stopped<Sndr, Env>` Boolean
+variable template to complete the set.
+
+### The `make_completion_signatures` design is slightly tweaked to be more general. ### {#make-completion-signatures}
+
+In the proposed design, `completion_signatures` plays a much larger role.
+Accordingly, the job of specifying the completion signatures of custom sender
+adaptors also becomes more important, necessitating better tools. The
+`make_completion_signatures`, new to R4, narrowly misses being that better tool.
+
+In R4, `make_completion_signatures` has the following interface:
+
+    <pre highlight="c++">
+    template &lt;
+      execution::sender Sndr,
+      class Env = execution::no_env,
+      class OtherSigs = execution::completion_signatures&lt;>,
+      template &lt;class...> class SetValue = <i>default-set-value</i>,
+      template &lt;class> class SetError = <i>default-set-error</i>,
+      bool SendsStopped = execution::completion_signatures_of_t&lt;Sndr, Env>::sends_stopped>
+        requires sender&lt;Sndr, Env>
+    using make_completion_signatures =
+      execution::completion_signatures&lt;/* see below */>;
+    </pre>
+
+In the R4 design, `SetValue` and `SetError` are alias templates, instantiations
+of which are required to name function types whose return types are
+`excecution::set_value_t` and `execution::set_error_t`, respectively. This is
+overly-restrictive. The problems with it are:
+
+1. It is not possible to map one kind of completion into a different kind. For
+    instance, the `upon_error(sndr, fun)` maps error completions into value
+    completions.
+
+2. It is not possible to map a single completion signature into multiple
+    different completions. For instance, the `let_value(sndr, fun)` sender
+    adaptor needs to map a set of `sndr`'s value types into the set of
+    completions of whatever sender that is returned from `fun(values...)`, which
+    is likely more than one.
+
+In addition, the final Boolean `SendsStopped` parameter merely controls whether
+or not the completion `execution::set_stopped_t()` should be added to the
+resulting list of completion signatures. This doesn't help a sender adaptor
+such as `let_stopped(sndr, fun)`, which needs to transform a stopped signal
+into the set of completions of the sender that `fun()` returns.
+
+This design proposes to change the three final template arguments as follows:
+
+* <u><b>`template <class...> class SetValue`:</b></u> Instantiations of this alias
+    template must name an instantiation of the `completion_signatures` class
+    template.
+
+* <u><b>`template <class> class SetError`:</b></u> Instantiations of this alias
+    template must name an instantiation of the `completion_signatures` class
+    template.
+
+* <u><b>`class SetStopped`:</b></u> Must name an instantiation of the
+    `completion_signatures` class template. If the sender `Sndr` can complete
+    with `set_stopped`, then these signatures are included in the resulting list
+    of completions. Otherwise, this template parameter is ignored.
+
+The semantics of `make_completion_signatures` is likewise simplified: The three
+template arguments, `SetValue`, `SetError`, and `SetStopped`, are used to map
+each of a sender's completions into a list of completions which are all
+concatenated together, along with any additional signatures specified by the
+`OtherSigs` list, and made unique.
+
+## Considerations ## {#considerations}
+
+### Implications of `noexcept` `set_value` ### {#nothrow-set-value}
+
+The role of `execution::set_value` is to execute a continuation on the success
+of the predecessor. A continuation is arbitrary code, and surely arbitrary code
+can exit exceptionally, so how can we require `execution::set_value` to be
+`noexcept`?
+
+The answer has two parts:
+
+1. `execution::set_value` always has the option of accepting arguments by
+    forwarding reference and executing any potentially throwing operations
+    within a `try`/`catch` block, routing any exceptions to
+    `set_error(std::exception_ptr)`.
+
+2. A sender knows what types it will send and with what value category. The
+    `sender_to` concept checks that none of the `set_value` expression(s) it
+    will execute are potentially throwing. This doesn't necessitate that all
+    receivers accept all arguments by forwarding reference, however. For
+    instance, if a sender knows it will pass an rvalue `std::string` to the
+    receiver's `set_value`, and if the sender is connected to a receiver whose
+    `set_value` takes a `std::string` by value, that will type-check. The
+    `sender_to` concept will essentially be enforcing this constraint:
+
+        <pre highlight="c++">
+        requires (Receiver rcvr) {
+          { execution::set_value(std::move(rcvr), std::string()) } noexcept;
+        }
+        </pre>
+
+        Since `std::string`'s move constructor is `noexcept`, this constraint
+        is satisfied regardless of whether `rcvr`'s `set_value` customization
+        accepts the string by value or by reference.
+
+### Diagnostics ### {#diagnostics}
+
+On the whole, the authors of P2300 feel that this design change is the right one
+to make to meet LEWG's requirements. It comes with one drawback, however: The
+satisfaction checking of the `receiver_of` concept, which must now check against
+a set of signatures specified in a type-list, now requires metaprogramming in
+addition to `requires` clauses. As a result, diagnostics can suffer.
+
+During the implementation experience, the author was able to surface a
+relatively suscinct and accurate error for, say, the lack of a particular
+completion channel on a receiver, by employing several tricks. While regrettable
+that such tricks are required, we do not feel that the issue of mediocre
+diagnostics is dire enough to offset the many advantages of the design presented
+here.
+
+In addition, the author has discovered a way that an implementation may choose
+to extend the `connect` customization point in a way that permits users to
+bypass the constraint checking entirely, thus generating a deep instantiation
+backtrace that often greatly assists the debugging of custom
+sender/receiver-based algorithms. This mechanism can be enshrined in the standard
+as "recommended practice."
+
+## Open questions ## {#open-questions}
+
+### Weasel wording for `-fno-exceptions` ### {#fno-exceptions}
+
+We may need to add some weasel wording to the effect that:
+
+> ... if an implementation is able to deduce that all of its operations are not
+> potentially throwing, a conforming implementation of the algorithms in
+> &lt;section> may omit set_error_t(exception_ptr) from any sender's list of
+> completion signatures.
+
+If an implementation doesn't support exceptions, e.g., if the user is compiling
+with `-fno-exceptions`, it can safely assume that an expression `expr` is not
+going to exit exceptionally regardless of the value of `noexcept(expr)`. An
+implementation shouldn't be required to report that it can complete with an
+exception in that case.
+
+### Error channel of allocating algorithms ### {#allocations}
+
+An interesting question is what to do on freestanding implementations for those
+algorithms that necessarily must allocate. Those algorithms, as P2300 stands
+today, will always have a `set_error_t(exception_ptr)` completion signature. The
+possibilities I see are:
+
+* Permit implementations to omit the exceptional completion signature when it
+  knows allocations can't fail with an exception (see above),
+
+* Replace the exceptional completion signature with
+  `set_error_t(std::error_code)`, and call the receiver with
+  `std::make_error_code(std::errc::not_enough_memory)` on allocation failure.
+
+* Replace the exceptional completion signature with
+  `set_error_t(std::bad_alloc)`; that is, pass an instance of the
+  `std::bad_alloc` exception type through the error channel by value. (From what
+  the author can infer, freestanding implementations are required to provide the
+  `std::bad_alloc` type even when actually throwing exceptions is not
+  supported.)
+
+## Implementation experience ## {#implementation-experience}
+
+The design described above has been implemented in a branch of the reference
+implementation which can be found in the following GitHub pull request:
+https://github.com/brycelelbach/wg21_p2300_std_execution/pull/410.
+
+The change, while somewhat disruptive to the reference implementation itself,
+had the benefits described above; namely:
+
+* Stricter type-checking "for free". Sender authors need only report the
+    completion signatures, and the concepts and customization points of the
+    library do all the heavy lifting to make sure the capabilities of receivers
+    match the requirements of the senders.
+
+* More "no-fail" senders. Many fewer of the senders need an error channel at
+    all, and the ones that do generally need it only conditionally, when working
+    with potentially-thrwoing callables or types whose special operations can
+    throw. Only those few senders that must dynamically allocate state necessarily
+    need a `set_error_t(exception_ptr)` channel, and we may even choose to change
+    those to use something like `set_error_t(bad_alloc)` instead.
+
+* No required `set_error_t(exception_ptr)` or `set_stopped_t()` channels at all.
+
+In addition, in the author's opinion, the reference implementation got
+significantly *simpler* for the change, and the pull request removes more lines
+than it adds, while adding functionality at the same time.
+
+## Proposed wording ## {#proposed-wording}
+
+TODO
