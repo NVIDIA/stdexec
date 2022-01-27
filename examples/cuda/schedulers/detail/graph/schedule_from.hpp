@@ -38,13 +38,13 @@ struct receiver_t
 
   template <class... Ts>
   friend void
-  tag_invoke(std::execution::set_value_t, receiver_t &&self, Ts &&...ts) noexcept
+  tag_invoke(std::execution::set_value_t, receiver_t &&self, Ts&&... ts) noexcept
   {
     auto consumer = self.receiver_.get_consumer();
     consumer(
       thread_id_t{},
       block_id_t{},
-      cuda::tuple<Ts...>{std::forward<Ts>(ts)...});
+      std::forward<Ts>(ts)...);
 
     std::execution::set_value(
       std::move(self.receiver_),

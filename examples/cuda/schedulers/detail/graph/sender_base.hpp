@@ -56,7 +56,24 @@ struct sender_base_t
       return s.storage_requirements();
     }
 
-    return cuda::storage_requirements(s.sender_);
+    auto predecessor_requirements = cuda::storage_requirements(s.sender_);
+    using value_t = value_of_t<Derived>;
+    using self_requirement_t = cuda::static_storage_from<value_t>;
+    cuda::storage_description_t self_requirement{};
+
+    if (!std::is_same_v<value_t, cuda::variant<cuda::tuple<>>>)
+    {
+      self_requirement.alignment = self_requirement_t::alignment;
+      self_requirement.size = self_requirement_t::size;
+    }
+
+    const std::size_t alignment = std::max(self_requirement.alignment,
+                                           predecessor_requirements.alignment);
+
+    const std::size_t size = std::max(self_requirement.size,
+                                      predecessor_requirements.size);
+
+    return cuda::storage_description_t{alignment, size};
   }
 
   static constexpr bool is_cuda_graph_api = true;

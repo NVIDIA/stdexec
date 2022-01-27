@@ -12,7 +12,12 @@ if(CUDAToolkit_FOUND)
         target_compile_options(CUDASchedulers INTERFACE --cuda-gpu-arch=sm_${arch})
     endforeach()
 
-    add_executable(test.CUDA test/test_main.cpp test/graph/test_then.cpp)
+    file(GLOB_RECURSE TEST_SOURCES
+            RELATIVE "${CMAKE_CURRENT_LIST_DIR}"
+            CONFIGURE_DEPENDS
+            *.cpp)
+
+    add_executable(test.CUDA ${TEST_SOURCES})
 
     target_include_directories(test.CUDA PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} test)
     target_link_libraries(test.CUDA CUDASchedulers P2300 CONAN_PKG::catch2)

@@ -55,9 +55,9 @@ struct graph_instance_t
     }
   }
 
-  void launch() const noexcept
+  void launch() const
   {
-    cudaGraphLaunch(instance_, stream_);
+    check(cudaGraphLaunch(instance_, stream_));
   }
 
   static constexpr bool is_cuda_graph_api = true;
@@ -113,7 +113,7 @@ struct graph_t
     }
   }
 
-  [[nodiscard]] graph_instance_t instantiate() const noexcept
+  [[nodiscard]] graph_instance_t instantiate() const
   {
     return graph_instance_t{graph_, stream_};
   }

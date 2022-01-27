@@ -93,13 +93,15 @@ public:
 
   __host__ __device__ variant() = default;
 
-  __host__ __device__ variant(T val)
-      : storage_(val)
+  template <class... U>
+  __host__ __device__ variant(U&&... val) noexcept
+      : storage_(std::forward<U>(val)...)
   {}
 
-  __host__ __device__ variant &operator=(T val)
+  template <class... U>
+  __host__ __device__ variant &operator=(U&&... val) noexcept
   {
-    storage_ = val;
+    storage_ = T{std::forward<U>(val)...};
     return *this;
   }
 

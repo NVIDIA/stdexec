@@ -36,15 +36,17 @@ __global__ __launch_bounds__(1) void then_kernel(F f,
                                                  ArgsTuple *args)
 {
   detail::invoke(
-    [=] __device__(auto... args) {
+    [=] __device__(auto&&... args) {
       if constexpr (std::is_void_v<std::invoke_result_t<F, decltype(args)...>>)
       {
-        f(args...);
+        f(std::forward<decltype(args)>(args)...);
         consumer(thread_id_t{}, block_id_t{});
       }
       else
       {
-        consumer(thread_id_t{}, block_id_t{}, f(args...));
+        consumer(thread_id_t{},
+                 block_id_t{},
+                 f(std::forward<decltype(args)>(args)...));
       }
     },
     *args);
@@ -136,8 +138,9 @@ struct sender_t : sender_base_t<sender_t<S, F>, S>
   {
     return std::execution::connect(
       std::move(this->sender_),
-      receiver_t<arguments_t, Receiver, F>{std::forward<Receiver>(receiver),
-                                           function_});
+      receiver_t<arguments_t, Receiver, std::decay_t<F>>{std::forward<Receiver>(
+                                                           receiver),
+                                                         function_});
   }
 
   template <class Result>
@@ -159,21 +162,5 @@ struct sender_t : sender_base_t<sender_t<S, F>, S>
     : super_t{std::forward<S>(sender)}
     , function_{function}
   {}
-
-  auto storage_requirements() const noexcept
-  {
-    auto predecessor_requirements = cuda::storage_requirements(this->sender_);
-    using self_requirement_t = cuda::static_storage_from<value_t>;
-    cuda::storage_description_t self_requirement{self_requirement_t::alignment,
-                                                 self_requirement_t::size};
-
-    const std::size_t alignment = std::max(self_requirement.alignment,
-                                           predecessor_requirements.alignment);
-
-    const std::size_t size = std::max(self_requirement.size,
-                                      predecessor_requirements.size);
-
-    return cuda::storage_description_t{alignment, size};
-  }
 };
 } // namespace example::cuda::graph::detail::then

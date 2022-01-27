@@ -210,12 +210,17 @@ public:
 
 class tracer_t
 {
+public:
   struct state_t
   {
     std::size_t n_copy_constructors{};
     std::size_t n_copy_assignments{};
+    std::size_t n_move_constructors{};
+    std::size_t n_move_assignments{};
+    std::size_t n_destroyed{};
   };
 
+private:
   struct state_storage_t
   {
     state_t *state_{};
@@ -225,13 +230,13 @@ class tracer_t
     void operator=(const state_storage_t&) = delete;
     void operator=(state_storage_t&&) = delete;
 
-    state_storage_t()
+    __host__ state_storage_t()
     {
       cudaMallocManaged(&state_, sizeof(state_t));
       new (state_) state_t{};
     }
 
-    ~state_storage_t()
+    __host__ ~state_storage_t()
     {
       cudaFree(state_);
     }
@@ -242,33 +247,76 @@ class tracer_t
 public:
   struct accessor_t
   {
-    state_t *state_;
+    state_t *state_{};
+    std::size_t value_{};
+    std::size_t generation_{};
 
-    explicit accessor_t(state_t *state)
+    __host__ __device__ accessor_t() = default;
+
+    __host__ explicit accessor_t(state_t *state, std::size_t value = 0)
         : state_(state)
+        , value_(value)
     {}
 
-    __host__ __device__ accessor_t(const accessor_t& other)
+    __device__ __host__ ~accessor_t() noexcept
+    {
+      if(state_)
+      {
+        state_->n_destroyed++;
+      }
+    }
+
+    __host__ __device__ accessor_t(accessor_t&& other) noexcept
       : state_(other.state_)
+      , value_(other.value_)
+      , generation_(other.generation_ + 1)
+    {
+      state_->n_move_constructors++;
+    }
+
+    __host__ __device__ accessor_t(const accessor_t& other) noexcept
+      : state_(other.state_)
+      , value_(other.value_)
+      , generation_(other.generation_ + 1)
     {
       state_->n_copy_constructors++;
     }
 
-    __host__ __device__ accessor_t& operator=(const accessor_t& other)
+    __host__ __device__ accessor_t& operator=(const accessor_t& other) noexcept
     {
       if (this != &other)
       {
         state_ = other.state_;
+        value_ = other.value_;
+        generation_ = other.generation_ + 1;
       }
 
       state_->n_copy_assignments++;
       return *this;
     }
+
+    __host__ __device__ accessor_t& operator=(accessor_t&& other) noexcept
+    {
+      if (this != &other)
+      {
+        state_ = other.state_;
+        value_ = other.value_;
+        generation_ = other.generation_ + 1;
+      }
+
+      state_->n_move_assignments++;
+      return *this;
+    }
   };
 
-  [[nodiscard]] accessor_t get() const
+  [[nodiscard]] state_t state() const
   {
-    return accessor_t{state_storage_.state_};
+    return *state_storage_.state_;
+  }
+
+  [[nodiscard]] accessor_t get(std::size_t value = 0) const
+  {
+    return accessor_t{state_storage_.state_, value};
   }
 
   [[nodiscard]] std::size_t get_n_copy_constructions() const
@@ -279,5 +327,15 @@ public:
   [[nodiscard]] std::size_t get_n_copy_assignments() const
   {
     return state_storage_.state_->n_copy_assignments;
+  }
+
+  [[nodiscard]] std::size_t get_n_move_constructions() const
+  {
+    return state_storage_.state_->n_move_constructors;
+  }
+
+  [[nodiscard]] std::size_t get_n_move_assignments() const
+  {
+    return state_storage_.state_->n_move_assignments;
   }
 };
