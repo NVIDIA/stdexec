@@ -21,6 +21,7 @@
 #include <schedulers/detail/graph/consumer.hpp>
 #include <schedulers/detail/graph/pipeline_end.hpp>
 #include <schedulers/detail/graph/schedule_from.hpp>
+#include <schedulers/detail/graph/bulk.hpp>
 #include <schedulers/detail/graph/then.hpp>
 #include <schedulers/detail/helpers.hpp>
 #include <schedulers/detail/storage.hpp>
@@ -118,6 +119,18 @@ public:
                                                  F f) noexcept
   {
     return detail::then::sender_t<S, F>{std::forward<S>(self), f};
+  }
+
+  template <class S, std::integral Shape, class F>
+  friend detail::bulk::sender_t<S, Shape, F> tag_invoke(std::execution::bulk_t,
+                                                        const scheduler_t &,
+                                                        S &&self,
+                                                        Shape &&shape,
+                                                        F f) noexcept
+  {
+    return detail::bulk::sender_t{std::forward<S>(self),
+                                  std::forward<Shape>(shape),
+                                  f};
   }
 
   template <class S>

@@ -95,12 +95,17 @@ public:
     flags_ = nullptr;
   }
 
-  bool all_set_once()
+  bool is_set_n_times(int n)
   {
     int flags[N];
     cudaMemcpy(flags, flags_, sizeof(int) * N, cudaMemcpyDeviceToHost);
 
-    return std::count(std::begin(flags), std::end(flags), 1) == N;
+    return std::count(std::begin(flags), std::end(flags), n) == N;
+  }
+
+  bool all_set_once()
+  {
+    return is_set_n_times(1);
   }
 
   bool all_unset() { return !all_set_once(); }
