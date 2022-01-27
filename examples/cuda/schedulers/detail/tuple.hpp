@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <concepts>
+#include <concepts.hpp>
 #include <type_traits>
 #include <utility>
 
@@ -33,6 +33,31 @@ template <std::size_t I, class Head, class... Tail>
 struct tuple_impl_t<I, Head, Tail...> : tuple_impl_t<I + 1, Tail...>
 {
   Head value;
+
+  __host__ __device__ tuple_impl_t() = default;
+
+  template <class H, class... T>
+    requires std::is_nothrow_move_constructible_v<Head>
+  __host__ __device__ tuple_impl_t(H &&head, T&&...tail) noexcept
+      : tuple_impl_t<I + 1, Tail...>(std::forward<T>(tail)...)
+      , value(std::forward<H>(head))
+  {}
+
+  __host__ __device__ void operator=(const tuple_impl_t<I, Head, Tail...> & tpl) noexcept
+    requires std::is_nothrow_copy_assignable_v<Head>
+  {
+    value = tpl.value;
+
+    tuple_impl_t<I + 1, Tail...>::operator=(tpl);
+  }
+
+  __host__ __device__ void operator=(tuple_impl_t<I, Head, Tail...>&& tpl) noexcept
+    requires std::is_nothrow_move_assignable_v<Head>
+  {
+    value = std::move(tpl.value);
+
+    tuple_impl_t<I + 1, Tail...>::operator=(std::move(tpl));
+  }
 };
 
 template <std::size_t I, class Head, class... Tail>
@@ -46,19 +71,12 @@ __host__ __device__ const Head &get(const tuple_impl_t<I, Head, Tail...> &t)
   return t.template tuple_impl_t<I, Head, Tail...>::value;
 }
 
-template <std::size_t Offset, class... Ts>
-struct sub_tuple;
-
-template <class... Ts>
-struct tuple;
-
 struct tuple_base
 {};
 
 template <class... Ts>
-struct tuple
-    : tuple_base
-    , tuple_impl_t<0, Ts...>
+struct tuple : tuple_base
+             , tuple_impl_t<0, Ts...>
 {
   template <class Fn>
   using result_t_ = std::invoke_result_t<Fn, Ts...>;
@@ -72,16 +90,22 @@ struct tuple
 
   __host__ __device__ tuple() = default;
 
-  __host__ __device__ tuple(Ts... ts) requires(sizeof...(Ts) > 0)
+  template <class... Us>
+  __host__ __device__ tuple(Us&&... us)
+    requires(sizeof...(Ts) == sizeof...(Us))
+    : tuple_impl_t<0, Ts...>(std::forward<Us>(us)...)
   {
-    init<0>(ts...);
   }
 
-  template <std::size_t Offset, class... STs>
-  __host__ __device__ tuple &operator=(sub_tuple<Offset, STs...> st)
+  __host__ __device__ tuple &operator=(const tuple& tpl) noexcept
   {
-    copy_tuple_helper<Offset>(st, std::make_index_sequence<sizeof...(STs)>{});
+    tuple_impl_t<0, Ts...>::operator=(tpl);
+    return *this;
+  }
 
+  __host__ __device__ tuple &operator=(tuple&& tpl) noexcept
+  {
+    tuple_impl_t<0, Ts...>::operator=(std::move(tpl));
     return *this;
   }
 
@@ -89,50 +113,10 @@ struct tuple
   {
     return sizeof...(Ts);
   }
-
-protected:
-  template <std::size_t I>
-  __host__ __device__ void init()
-  {}
-
-  template <std::size_t I, class Head, class... Tail>
-  __host__ __device__ void init(Head h, Tail... t)
-  {
-    get<I>(*this) = h;
-    init<I + 1>(t...);
-  }
-
-  template <std::size_t Offset, class SubTupleT, std::size_t... Is>
-  __host__ __device__ void copy_tuple_helper(const SubTupleT &src,
-                                             std::index_sequence<Is...>)
-  {
-    ((cuda::get<Offset + Is>(*this) = cuda::get<Is>(src)), ...);
-  }
 };
 
 template <class T>
 concept tuple_specialization = std::derived_from<std::decay_t<T>, tuple_base>;
-
-template <std::size_t Offset, class... Ts>
-struct sub_tuple : tuple<Ts...>
-{
-  using tuple<Ts...>::tuple;
-
-  __host__ __device__ explicit sub_tuple(tuple<Ts...> src)
-  {
-    tuple_init_helper(src, std::make_index_sequence<sizeof...(Ts)>{});
-  }
-
-  constexpr static std::size_t offset = Offset;
-
-private:
-  template <std::size_t... Is>
-  __host__ __device__ void tuple_init_helper(const cuda::tuple<Ts...> &src,
-                                             std::index_sequence<Is...>)
-  {
-    ((cuda::get<Is>(*this) = cuda::get<Is>(src)), ...);
-  }
-};
 
 namespace detail
 {

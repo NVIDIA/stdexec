@@ -39,14 +39,15 @@ struct consumer_t
 {
   std::byte *storage_;
 
-  template <class SrcT, class DstT = std::decay_t<SrcT>>
+  template <class... Ts>
   __host__ __device__ void operator()(thread_id_t tid,
                                       block_id_t bid,
-                                      SrcT &&result) const
+                                      Ts&&... ts) const
   {
     if (tid.is_first() && bid.is_first())
     {
-      *reinterpret_cast<DstT *>(storage_) = result;
+      using storage_t = cuda::variant<cuda::tuple<Ts...>>;
+      new (storage_) storage_t{std::forward<Ts>(ts)...};
     }
   }
 

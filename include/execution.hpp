@@ -359,7 +359,7 @@ namespace std::execution {
       typename _Outer<_Inners...>;
     };
 
-#if defined(NDEBUG)
+#if defined(NDEBUG) || 1
   template <class _Sender, class _Env = no_env>
     using completion_signatures_of_t =
       __completion_signatures_of_t<_Sender, _Env>;

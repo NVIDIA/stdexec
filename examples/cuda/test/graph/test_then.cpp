@@ -204,18 +204,87 @@ TEST_CASE("graph then respects dependencies", "[graph][adaptors][then]")
   REQUIRE_FALSE(tracer.set_stopped_was_called());
 }
 
-TEST_CASE("graph then copy", "[graph][adaptors][then]")
+TEST_CASE("graph then consumer moves values", "[graph][adaptors][then]")
 {
   graph::scheduler_t scheduler{};
 
   tracer_t tracer{};
-  tracer_t::accessor_t accessor = tracer.get();
+  tracer_t::accessor_t accessor{tracer.get()};
+  REQUIRE(tracer.get_n_move_constructions() == 0);
+  REQUIRE(tracer.get_n_move_assignments() == 0);
+  REQUIRE(tracer.get_n_copy_constructions() == 0);
+  REQUIRE(tracer.get_n_copy_assignments() == 0);
 
-  std::this_thread::sync_wait(
-    ex::schedule(scheduler) |
-    ex::then([accessor] __device__ { return accessor; }) |
-    ex::then([] __device__(tracer_t::accessor_t) {}));
+  auto values = ex::just(std::move(accessor));
+  REQUIRE(tracer.get_n_move_constructions() == 1); // +1 move
+  REQUIRE(tracer.get_n_move_assignments() == 0);
+  REQUIRE(tracer.get_n_copy_constructions() == 0);
+  REQUIRE(tracer.get_n_copy_assignments() == 0);
 
-  REQUIRE(tracer.get_n_copy_assignments() == 1);
-  // REQUIRE(tracer.get_n_copy_constructions() == 0);
+  auto snd = values |
+             ex::transfer(scheduler) |
+             ex::then([] __device__ (const tracer_t::accessor_t&) {});
+  REQUIRE(tracer.get_n_move_constructions() == 1);
+  REQUIRE(tracer.get_n_move_assignments() == 0);
+  REQUIRE(tracer.get_n_copy_constructions() == 0);
+  REQUIRE(tracer.get_n_copy_assignments() == 0);
+
+  std::this_thread::sync_wait(std::move(snd));
+  REQUIRE(tracer.get_n_move_constructions() == 3); // +2 move constructions
+  REQUIRE(tracer.get_n_move_assignments() == 0);
+  REQUIRE(tracer.get_n_copy_assignments() == 0);
+  REQUIRE(tracer.get_n_copy_constructions() == 0);
+}
+
+TEST_CASE("graph then can live without storage", "[graph][adaptors][then]")
+{
+  graph::scheduler_t scheduler{};
+
+  auto snd = ex::schedule(scheduler) |
+             ex::then([=] __device__ { }) |
+             ex::then([=] __device__ { });
+
+  auto requirements = example::cuda::storage_requirements(snd);
+
+  REQUIRE(requirements.alignment == 1);
+  REQUIRE(requirements.size == 0);
+}
+
+TEST_CASE("graph then exposes its storage requirements", "[graph][adaptors][then]")
+{
+  graph::scheduler_t scheduler{};
+
+  SECTION("based on argument types")
+  {
+    auto snd = ex::schedule(scheduler) |
+               ex::then([=] __device__ { return int{42}; }) |
+               ex::then([=] __device__ (int) { });
+    auto requirements = example::cuda::storage_requirements(snd);
+
+    REQUIRE(requirements.alignment == std::alignment_of_v<int>);
+    REQUIRE(requirements.size == sizeof(int));
+  }
+
+  SECTION("based on result type")
+  {
+    auto snd = ex::schedule(scheduler) |
+               ex::then([=] __device__ { return int{42}; });
+    auto requirements = example::cuda::storage_requirements(snd);
+
+    REQUIRE(requirements.alignment == std::alignment_of_v<int>);
+    REQUIRE(requirements.size == sizeof(int));
+  }
+}
+
+TEST_CASE("graph then doesn't reduce storage", "[graph][adaptors][then]")
+{
+  graph::scheduler_t scheduler{};
+
+  auto snd = ex::schedule(scheduler) |
+             ex::then([=] __device__ { return double{4.2}; }) |
+             ex::then([=] __device__ (int) { });
+  auto requirements = example::cuda::storage_requirements(snd);
+
+  REQUIRE(requirements.alignment == std::alignment_of_v<double>);
+  REQUIRE(requirements.size == sizeof(double));
 }

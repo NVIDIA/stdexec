@@ -32,12 +32,12 @@
 namespace example::cuda::graph::detail::pipeline_end
 {
 
-template <class OutTuple, class Receiver>
+template <class ValueT, class Receiver>
 struct receiver_t
-    : std::execution::receiver_adaptor<receiver_t<OutTuple, Receiver>, Receiver>
+    : std::execution::receiver_adaptor<receiver_t<ValueT, Receiver>, Receiver>
 {
   using super_t =
-    std::execution::receiver_adaptor<receiver_t<OutTuple, Receiver>, Receiver>;
+    std::execution::receiver_adaptor<receiver_t<ValueT, Receiver>, Receiver>;
   friend super_t;
 
   cuda::storage_description_t storage_requirement_;
@@ -57,16 +57,15 @@ struct receiver_t
   {
     graph_.instantiate().launch();
 
-    cudaStreamSynchronize(graph_.stream_);
+    check(cudaStreamSynchronize(graph_.stream_));
 
-    OutTuple &res = *reinterpret_cast<OutTuple *>(get_storage());
+    ValueT &res = *reinterpret_cast<ValueT*>(get_storage());
 
-    cuda::apply(
-      [&](auto &&...args) {
+    cuda::graph::detail::invoke(
+      [&](auto&&... args) {
         std::execution::set_value(std::move(this->base()),
                                   std::forward<decltype(args)>(args)...);
-      },
-      res);
+      }, res);
   } catch(...) {
     std::execution::set_error(std::move(this->base()),
                               std::current_exception());
@@ -126,15 +125,11 @@ struct sender_t
   {
     auto storage_requirement = cuda::storage_requirements(self.sender_);
 
-    using env_t = std::execution::env_of_t<Receiver>;
-    using value_tuple =
-      std::execution::value_types_of_t<Self, env_t, cuda::tuple, std::__single_t>;
-
     return std::execution::connect(
       std::move(self.sender_),
-      receiver_t<value_tuple, Receiver>{self.stream_,
-                                        std::forward<Receiver>(receiver),
-                                        storage_requirement});
+      receiver_t<value_of_t<S>, Receiver>{self.stream_,
+                                          std::forward<Receiver>(receiver),
+                                          storage_requirement});
   }
 
   template <std::__decays_to<sender_t> Self, class Env>
@@ -142,8 +137,6 @@ struct sender_t
                          Self &&,
                          Env)
     -> std::execution::completion_signatures_of_t<std::__member_t<Self, S>, Env>;
-
-  static constexpr bool is_cuda_graph_api = true;
 };
 
 } // namespace example::cuda::graph::detail::pipeline_end
