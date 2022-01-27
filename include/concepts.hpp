@@ -40,6 +40,9 @@ namespace std {
     concept same_as = __same_as_v<_A, _B> && __same_as_v<_B, _A>;
   #endif
 
+  template <class T>
+    concept integral = std::is_integral_v<T>;
+
   template<class _A, class _B>
     concept derived_from =
       is_base_of_v<_B, _A> &&
