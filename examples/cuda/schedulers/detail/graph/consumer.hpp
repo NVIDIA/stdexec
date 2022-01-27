@@ -31,9 +31,13 @@ struct id_t
 };
 
 struct thread_id_t : id_t
-{};
+{
+  explicit __host__ __device__ thread_id_t(unsigned int id = 0) : id_t{id} {}
+};
 struct block_id_t : id_t
-{};
+{
+  explicit __host__ __device__ block_id_t(unsigned int id = 0) : id_t{id} {}
+};
 
 struct consumer_t
 {
@@ -46,7 +50,7 @@ struct consumer_t
   {
     if (tid.is_first() && bid.is_first())
     {
-      using storage_t = cuda::variant<cuda::tuple<Ts...>>;
+      using storage_t = cuda::variant<cuda::tuple<std::decay_t<Ts>...>>;
       new (storage_) storage_t{std::forward<Ts>(ts)...};
     }
   }

@@ -27,40 +27,44 @@
 #include <execution.hpp>
 #include <span>
 
-namespace example::cuda::graph::detail::then
+namespace example::cuda::graph::detail::bulk
 {
 
-template <class F, class ConsumerT, class ArgsTuple>
-__global__ __launch_bounds__(1) void then_kernel(F f,
-                                                 ConsumerT consumer,
-                                                 ArgsTuple *args)
+template <class Shape,
+          class F,
+          class ConsumerT,
+          class ArgsTuple,
+          unsigned int BlockThreads>
+__global__ __launch_bounds__(BlockThreads) void bulk_kernel(Shape shape,
+                                                            F f,
+                                                            ConsumerT consumer,
+                                                            ArgsTuple *args)
 {
   detail::invoke(
-    [=] __device__(auto&&... args) {
-      if constexpr (std::is_void_v<std::invoke_result_t<F, decltype(args)...>>)
+    [=] __device__(auto... args) {
+      const unsigned int i = blockIdx.x * BlockThreads + threadIdx.x;
+
+      if (i < static_cast<unsigned int>(shape))
       {
-        f(std::forward<decltype(args)>(args)...);
-        consumer(thread_id_t{}, block_id_t{});
+        f(static_cast<Shape>(i), args...);
       }
-      else
-      {
-        consumer(thread_id_t{},
-                 block_id_t{},
-                 f(std::forward<decltype(args)>(args)...));
-      }
+
+      consumer(thread_id_t{threadIdx.x}, block_id_t{blockIdx.x}, args...);
     },
     *args);
 }
 
-template <class InTuple, class Receiver, class F>
+template <class InTuple, class Receiver, class Shape, class F>
 class receiver_t
-    : std::execution::receiver_adaptor<receiver_t<InTuple, Receiver, F>,
+    : std::execution::receiver_adaptor<receiver_t<InTuple, Receiver, Shape, F>,
                                        Receiver>
 {
   using super_t =
-    std::execution::receiver_adaptor<receiver_t<InTuple, Receiver, F>, Receiver>;
+    std::execution::receiver_adaptor<receiver_t<InTuple, Receiver, Shape, F>,
+                                     Receiver>;
   friend super_t;
 
+  Shape shape_;
   F function_;
 
   void set_value(std::span<cudaGraphNode_t> predecessors) && noexcept try
@@ -72,12 +76,17 @@ class receiver_t
     auto consumer = this->base().get_consumer();
     using consumer_t = std::decay_t<decltype(consumer)>;
 
-    void *kernel_args[3] = {&function_, &consumer, &storage_ptr};
+    void *kernel_args[4] = {&shape_, &function_, &consumer, &storage_ptr};
+
+    constexpr unsigned int block_size = 256;
+    const unsigned int grid_size =
+      (static_cast<unsigned int>(shape_) + block_size - 1) / block_size;
 
     cudaKernelNodeParams kernel_node_params{};
-    kernel_node_params.func = (void *)then_kernel<F, consumer_t, InTuple>;
-    kernel_node_params.gridDim = dim3(1, 1, 1);
-    kernel_node_params.blockDim = dim3(1, 1, 1);
+    kernel_node_params.func =
+      (void *)bulk_kernel<Shape, F, consumer_t, InTuple, block_size>;
+    kernel_node_params.gridDim = dim3(grid_size, 1, 1);
+    kernel_node_params.blockDim = dim3(block_size, 1, 1);
     kernel_node_params.sharedMemBytes = 0;
     kernel_node_params.kernelParams = kernel_args;
     kernel_node_params.extra = nullptr;
@@ -109,8 +118,9 @@ class receiver_t
   }
 
 public:
-  explicit receiver_t(Receiver receiver, F function)
+  explicit receiver_t(Receiver receiver, Shape shape, F function)
     : super_t(std::move(receiver))
+    , shape_(shape)
     , function_(function)
   {}
 
@@ -122,14 +132,12 @@ public:
   static constexpr bool is_cuda_graph_api = true;
 };
 
-template <graph_sender S, class F>
-struct sender_t : sender_base_t<sender_t<S, F>, S>
+template <graph_sender S, std::integral Shape, class F>
+struct sender_t : sender_base_t<sender_t<S, Shape, F>, S>
 {
-  using arguments_t = value_of_t<S>;
-  using value_t = cuda::apply_t<F, arguments_t>;
-  using super_t = sender_base_t<sender_t<S, F>, S>;
-  friend super_t;
+  using value_t = value_of_t<S>;
 
+  Shape shape_;
   F function_;
 
   template <graph_receiver Receiver>
@@ -137,29 +145,23 @@ struct sender_t : sender_base_t<sender_t<S, F>, S>
   {
     return std::execution::connect(
       std::move(this->sender_),
-      receiver_t<arguments_t, Receiver, std::decay_t<F>>{std::forward<Receiver>(
-                                                           receiver),
-                                                         function_});
+      receiver_t<value_t, Receiver, Shape, std::decay_t<F>>{std::forward<Receiver>(
+                                                       receiver),
+                                                     shape_,
+                                                     function_});
   }
 
-  template <class Result>
-  using set_value_ = std::__minvoke1<
-    std::__uncurry<std::__qf<std::execution::set_value_t>>,
-    std::__if<std::is_void<Result>, std::__types<>, std::__types<Result>>>;
-  template <class... Args>
-  requires std::invocable<F, Args...> using result =
-    set_value_<std::invoke_result_t<F, Args...>>;
-
-  template <class EnvT>
+  template <std::__decays_to<sender_t> Self, class _Env>
   friend auto tag_invoke(std::execution::get_completion_signatures_t,
-                         const sender_t &,
-                         EnvT)
-    -> std::execution::make_completion_signatures<
-      S, EnvT, std::execution::__with_exception_ptr, result>;
+                         Self &&,
+                         _Env)
+    -> std::execution::completion_signatures_of_t<std::__member_t<Self, S>,
+                                                  _Env>;
 
-  explicit sender_t(S sender, F function)
-    : super_t{std::forward<S>(sender)}
+  explicit sender_t(S sender, Shape shape, F function)
+    : sender_base_t<sender_t<S, Shape, F>, S>{std::forward<S>(sender)}
+    , shape_{shape}
     , function_{function}
   {}
 };
-} // namespace example::cuda::graph::detail::then
+} // namespace example::cuda::graph::detail::bulk
