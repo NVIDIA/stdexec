@@ -16,6 +16,7 @@
 #pragma once
 
 #include <algorithm>
+#include <new>
 
 #include <schedulers/detail/graph/consumer.hpp>
 #include <schedulers/detail/graph/environment.hpp>
@@ -205,4 +206,78 @@ public:
 
   [[nodiscard]] std::size_t num_nodes() const { return state_.num_nodes_; }
   [[nodiscard]] std::size_t num_edges() const { return state_.num_edges_; }
+};
+
+class tracer_t
+{
+  struct state_t
+  {
+    std::size_t n_copy_constructors{};
+    std::size_t n_copy_assignments{};
+  };
+
+  struct state_storage_t
+  {
+    state_t *state_{};
+
+    state_storage_t(const state_storage_t&) = delete;
+    state_storage_t(state_storage_t&&) = delete;
+    void operator=(const state_storage_t&) = delete;
+    void operator=(state_storage_t&&) = delete;
+
+    state_storage_t()
+    {
+      cudaMallocManaged(&state_, sizeof(state_t));
+      new (state_) state_t{};
+    }
+
+    ~state_storage_t()
+    {
+      cudaFree(state_);
+    }
+  };
+
+  state_storage_t state_storage_{};
+
+public:
+  struct accessor_t
+  {
+    state_t *state_;
+
+    explicit accessor_t(state_t *state)
+        : state_(state)
+    {}
+
+    __host__ __device__ accessor_t(const accessor_t& other)
+      : state_(other.state_)
+    {
+      state_->n_copy_constructors++;
+    }
+
+    __host__ __device__ accessor_t& operator=(const accessor_t& other)
+    {
+      if (this != &other)
+      {
+        state_ = other.state_;
+      }
+
+      state_->n_copy_assignments++;
+      return *this;
+    }
+  };
+
+  [[nodiscard]] accessor_t get() const
+  {
+    return accessor_t{state_storage_.state_};
+  }
+
+  [[nodiscard]] std::size_t get_n_copy_constructions() const
+  {
+    return state_storage_.state_->n_copy_constructors;
+  }
+
+  [[nodiscard]] std::size_t get_n_copy_assignments() const
+  {
+    return state_storage_.state_->n_copy_assignments;
+  }
 };
