@@ -4596,7 +4596,7 @@ template &lt;class E>
 
     2. Otherwise, `execution::schedule(s)` is ill-formed.
 
-#### `execution::just*` <b>[exec.just]</b> #### {#spec-execution.senders.just}
+#### `execution::just` `execution::just_error`, `execution::just_stopped` <b>[exec.just]</b> #### {#spec-execution.senders.just}
 
 1. `execution::just` is used to create a sender that propagates a set of values to a connected receiver.
 `execution::just_error` is used to create a sender that propagates an error to a connected receiver.
