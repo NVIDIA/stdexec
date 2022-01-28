@@ -2508,11 +2508,9 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
          <ol class="toc">
           <li><a href="#spec-execution.senders.factories.general"><span class="secno">10.8.4.1</span> <span class="content">General <b>[exec.factories.general]</b></span></a>
           <li><a href="#spec-execution.senders.schedule"><span class="secno">10.8.4.2</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-></code> <b>[exec.schedule]</b></span></a>
-          <li><a href="#spec-execution.senders.just"><span class="secno">10.8.4.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> <b>[exec.just]</b></span></a>
+          <li><a href="#spec-execution.senders.just"><span class="secno">10.8.4.3</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> <b>[exec.just]</b></span></a>
           <li><a href="#spec-execution.senders.transfer_just"><span class="secno">10.8.4.4</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code> <b>[exec.transfer_just]</b></span></a>
-          <li><a href="#spec-execution.senders.just_error"><span class="secno">10.8.4.5</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code> <b>[exec.just_error]</b></span></a>
-          <li><a href="#spec-execution.senders.just_stopped"><span class="secno">10.8.4.6</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> <b>[exec.just_stopped]</b></span></a>
-          <li><a href="#spec-execution.senders.read"><span class="secno">10.8.4.7</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>read</c-></code> <b>[exec.read]</b></span></a>
+          <li><a href="#spec-execution.senders.read"><span class="secno">10.8.4.5</span> <span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>read</c-></code> <b>[exec.read]</b></span></a>
          </ol>
         <li>
          <a href="#spec-execution.senders.adapt"><span class="secno">10.8.5</span> <span class="content">Sender adaptors <b>[exec.adapt]</b></span></a>
@@ -6742,13 +6740,16 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is ill-formed.</p>
      </ol>
    </ol>
-   <h5 class="heading settled" data-level="10.8.4.3" id="spec-execution.senders.just"><span class="secno">10.8.4.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> <b>[exec.just]</b></span><a class="self-link" href="#spec-execution.senders.just"></a></h5>
+   <h5 class="heading settled" data-level="10.8.4.3" id="spec-execution.senders.just"><span class="secno">10.8.4.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> <b>[exec.just]</b></span><a class="self-link" href="#spec-execution.senders.just"></a></h5>
    <ol>
     <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> is used to create a sender that propagates a set of values to a connected receiver.</p>
-<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> is used to create a sender that propagates a set of values to a connected receiver. <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code> is used to create a sender that propagates an error to a connected receiver. <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> is used to create a sender that propagates a stopped signal to a connected receiver.</p>
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
 <c- k>struct</c-> <i><c- nc>just</c-><c- o>-</c-><c- n>sender</c-></i> <c- c1>// exposition only</c->
-  <c- o>:</c-> <c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>(</c-><c- n>Ts</c-><c- p>...),</c-> <c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c->
+  <c- o>:</c-> <c- n>completion_signatures</c-><c- o>&lt;</c->
+      <c- n>CPO</c-><c- p>(</c-><c- n>Ts</c-><c- p>...),</c->
+      <c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>)</c->  <c- c1>// only for just()</c->
+    <c- o>></c->
 <c- p>{</c->
   <c- n>tuple</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-> <c- n>vs_</c-><c- p>;</c->
 
@@ -6760,10 +6761,11 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
     <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
       <c- k>try</c-> <c- p>{</c->
         <c- n>apply</c-><c- p>([</c-><c- o>&amp;</c-><c- n>s</c-><c- p>](</c-><c- n>Ts</c-> <c- o>&amp;</c-><c- p>...</c-> <c- n>values_</c-><c- p>)</c-> <c- p>{</c->
-          <c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>values_</c-><c- p>)...);</c->
+          <c- n>tag_invoke</c-><c- p>(</c-><c- n>CPO</c-><c- p>{},</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>values_</c-><c- p>)...);</c->
         <c- p>},</c-> <c- n>s</c-><c- p>.</c-><c- n>vs_</c-><c- p>);</c->
       <c- p>}</c->
       <c- k>catch</c-> <c- p>(...)</c-> <c- p>{</c->
+        <c- c1>// not present for just_error() and just_stopped()</c->
         <c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>current_exception</c-><c- p>());</c->
       <c- p>}</c->
     <c- p>}</c->
@@ -6783,7 +6785,12 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
 <c- p>};</c->
 
 <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
-  <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-><c- o>></c-> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>ts</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>);</c->
+  <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-><c- o>></c-> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>ts</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>);</c->
+
+<c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i> <c- n>T</c-><c- o>></c->
+  <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-> <c- n>just_error</c-><c- p>(</c-><c- n>T</c-> <c- o>&amp;&amp;</c-> <c- n>t</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>);</c->
+
+<i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>set_stopped_t</c-><c- o>></c-> <c- n>just_stopped</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
 </pre>
     <li data-md>
      <p><i>Effects</i>: Initializes <code class="highlight"><c- n>vs_</c-></code> with <code class="highlight"><i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>(</c-><c- n>ts</c-><c- p>)...)</c-></code>.</p>
@@ -6792,6 +6799,8 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
 <pre class="highlight"><c- p>(</c-><c- n>is_nothrow_constructible_v</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>,</c-> <c- n>Ts</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- p>...)</c->
 </pre>
    </ol>
+   <p>The completion signature for the sender returned by <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> includes <code class="highlight"><c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>)</c-></code>; this signature is not present for senders returned by <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code>.
+Similarly, only the sender returned by <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> can call <code class="highlight"><c- n>set_error</c-></code> on the receiver, while the senders returned by <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> cannot call <code class="highlight"><c- n>set_error</c-></code>.</p>
    <h5 class="heading settled" data-level="10.8.4.4" id="spec-execution.senders.transfer_just"><span class="secno">10.8.4.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code> <b>[exec.transfer_just]</b></span><a class="self-link" href="#spec-execution.senders.transfer_just"></a></h5>
    <ol>
     <li data-md>
@@ -6812,77 +6821,7 @@ behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c-
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>vs</c-><c- p>...),</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
      </ol>
    </ol>
-   <h5 class="heading settled" data-level="10.8.4.5" id="spec-execution.senders.just_error"><span class="secno">10.8.4.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code> <b>[exec.just_error]</b></span><a class="self-link" href="#spec-execution.senders.just_error"></a></h5>
-   <ol>
-    <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code> is used to create a sender that propagates an error to a connected receiver.</p>
-<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c->
-<c- k>struct</c-> <i><c- nc>just</c-><c- o>-</c-><c- n>error</c-><c- o>-</c-><c- n>sender</c-></i> <c- c1>// exposition only</c->
-  <c- o>:</c-> <c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-><c- o>></c->
-<c- p>{</c->
-  <c- n>T</c-> <c- n>err_</c-><c- p>;</c->
-
-  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>R</c-><c- o>></c->
-  <c- k>struct</c-> <c- nc>operation_state</c-> <c- p>{</c->
-    <c- n>T</c-> <c- n>err_</c-><c- p>;</c->
-    <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
-
-    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
-      <c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>err_</c-><c- p>));</c->
-    <c- p>}</c->
-  <c- p>};</c->
-
-  <c- k>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
-    <c- k>requires</c-> <c- n>receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>T</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- n>copy_constructible</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c->
-  <c- k>friend</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>connect_t</c-><c- p>,</c-> <c- k>const</c-> <i><c- n>just</c-><c- o>-</c-><c- n>error</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&amp;</c-> <c- n>j</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
-    <c- k>return</c-> <c- p>{</c-> <c- n>j</c-><c- p>.</c-><c- n>err_</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
-  <c- p>}</c->
-
-  <c- k>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
-    <c- k>requires</c-> <c- n>receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>T</c-><c- o>></c->
-  <c- k>friend</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>connect_t</c-><c- p>,</c-> <i><c- n>just</c-><c- o>-</c-><c- n>error</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&amp;&amp;</c-> <c- n>j</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
-    <c- k>return</c-> <c- p>{</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>j</c-><c- p>.</c-><c- n>err_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
-  <c- p>}</c->
-<c- p>};</c->
-
-<c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i> <c- n>T</c-><c- o>></c->
-  <i><c- n>just</c-><c- o>-</c-><c- n>error</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-> <c- n>just_error</c-><c- p>(</c-><c- n>T</c-> <c- o>&amp;&amp;</c-> <c- n>t</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>);</c->
-</pre>
-    <li data-md>
-     <p><i>Effects</i>: Returns a <code class="highlight"><i><c- n>just</c-><c- o>-</c-><c- n>error</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-></code> with <code class="highlight"><c- n>err_</c-></code> direct initialized with <code class="highlight"><c- k>static_cast</c-><c- o>&lt;</c-><c- n>T</c-><c- o>&amp;&amp;></c-><c- p>(</c-><c- n>t</c-><c- p>)</c-></code>.</p>
-    <li data-md>
-     <p><i>Remarks</i>: The expression in the <code class="highlight"><c- k>noexcept</c-><c- o>-</c-><c- n>specifier</c-></code> is equivalent to</p>
-<pre class="highlight"><c- n>is_nothrow_constructible_v</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>></c-><c- p>,</c-> <c- n>T</c-><c- o>></c->
-</pre>
-   </ol>
-   <h5 class="heading settled" data-level="10.8.4.6" id="spec-execution.senders.just_stopped"><span class="secno">10.8.4.6. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> <b>[exec.just_stopped]</b></span><a class="self-link" href="#spec-execution.senders.just_stopped"></a></h5>
-   <ol>
-    <li data-md>
-     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> is used to create a sender that propagates a stopped signal to a connected receiver.</p>
-<pre class="highlight"><c- k>struct</c-> <i><c- nc>just</c-><c- o>-</c-><c- n>stopped</c-><c- o>-</c-><c- n>sender</c-></i> <c- c1>// exposition only</c->
-  <c- o>:</c-> <c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_stopped_t</c-><c- p>()</c-><c- o>></c->
-<c- p>{</c->
-  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>R</c-><c- o>></c->
-  <c- k>struct</c-> <c- nc>operation_state</c-> <c- p>{</c->
-    <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
-
-    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
-      <c- n>set_stopped</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>));</c->
-    <c- p>}</c->
-  <c- p>};</c->
-
-  <c- k>template</c-><c- o>&lt;</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
-  <c- k>friend</c-> <c- n>operation_state</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>R</c-><c- o>>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>connect_t</c-><c- p>,</c-> <c- k>const</c-> <i><c- n>just</c-><c- o>-</c-><c- n>stopped</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&amp;</c-> <c- n>j</c-><c- p>,</c-> <c- n>R</c-> <c- o>&amp;&amp;</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
-    <c- k>return</c-> <c- p>{</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
-  <c- p>}</c->
-<c- p>};</c->
-
-<i><c- n>just</c-><c- o>-</c-><c- n>stopped</c-><c- o>-</c-><c- n>sender</c-></i> <c- n>just_stopped</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
-</pre>
-    <li data-md>
-     <p><i>Effects</i>: Equivalent to <code class="highlight"><i><c- n>just</c-><c- o>-</c-><c- n>stopped</c-><c- o>-</c-><c- n>sender</c-></i><c- p>{}</c-></code>.</p>
-   </ol>
-   <h5 class="heading settled" data-level="10.8.4.7" id="spec-execution.senders.read"><span class="secno">10.8.4.7. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>read</c-></code> <b>[exec.read]</b></span><a class="self-link" href="#spec-execution.senders.read"></a></h5>
+   <h5 class="heading settled" data-level="10.8.4.5" id="spec-execution.senders.read"><span class="secno">10.8.4.5. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>read</c-></code> <b>[exec.read]</b></span><a class="self-link" href="#spec-execution.senders.read"></a></h5>
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>read</c-></code> is used to create a sender that retrieves a value from the receiver’s associated environment and sends it back to the receiver through the value channel.</p>
