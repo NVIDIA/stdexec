@@ -85,10 +85,15 @@ enable_testing()
 
 set(test_sourceFiles
     test/test_main.cpp
+    test/cpos/test_cpo_bulk.cpp
+    test/cpos/test_cpo_ensure_started.cpp
     test/cpos/test_cpo_receiver.cpp
     test/cpos/test_cpo_start.cpp
     test/cpos/test_cpo_connect.cpp
     test/cpos/test_cpo_schedule.cpp
+    test/cpos/test_cpo_split.cpp
+    test/cpos/test_cpo_upon_error.cpp
+    test/cpos/test_cpo_upon_stopped.cpp
     test/concepts/test_concept_scheduler.cpp
     test/concepts/test_concepts_receiver.cpp
     test/concepts/test_concept_operation_state.cpp
