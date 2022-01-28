@@ -4596,14 +4596,19 @@ template &lt;class E>
 
     2. Otherwise, `execution::schedule(s)` is ill-formed.
 
-#### `execution::just` <b>[exec.just]</b> #### {#spec-execution.senders.just}
+#### `execution::just` `execution::just_error`, `execution::just_stopped` <b>[exec.just]</b> #### {#spec-execution.senders.just}
 
 1. `execution::just` is used to create a sender that propagates a set of values to a connected receiver.
+`execution::just_error` is used to create a sender that propagates an error to a connected receiver.
+`execution::just_stopped` is used to create a sender that propagates a stopped signal to a connected receiver.
 
     <pre highlight=c++>
-    template&lt;class... Ts>
+    template&lt;class CPO, class... Ts>
     struct <i>just-sender</i> // exposition only
-      : completion_signatures&lt;set_value_t(Ts...), set_error_t(exception_ptr)>
+      : completion_signatures&lt;
+          CPO(Ts...),
+          set_error_t(exception_ptr)  // only for just()
+        >
     {
       tuple&lt;Ts...> vs_;
 
@@ -4615,10 +4620,11 @@ template &lt;class E>
         friend void tag_invoke(start_t, operation_state& s) noexcept {
           try {
             apply([&s](Ts &... values_) {
-              set_value(std::move(s.r_), std::move(values_)...);
+              tag_invoke(CPO{}, std::move(s.r_), std::move(values_)...);
             }, s.vs_);
           }
           catch (...) {
+            // not present for just_error() and just_stopped()
             set_error(std::move(s.r_), current_exception());
           }
         }
@@ -4638,7 +4644,12 @@ template &lt;class E>
     };
 
     template&lt;<i>movable-value</i>... Ts>
-      <i>just-sender</i>&lt;decay_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
+      <i>just-sender</i>&lt;set_value_t, decay_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
+
+    template&lt;<i>movable-value</i> T>
+      <i>just-sender</i>&lt;set_error_t, decay_t&lt;T>> just_error(T && t) noexcept(<i>see-below</i>);
+
+    <i>just-sender</i>&lt;set_stopped_t> just_stopped() noexcept;
     </pre>
 
 1. <i>Effects</i>: Initializes `vs_` with <code><i>decayed-tuple</i>&lt;Ts...>(std::forward&lt;Ts>(ts)...)</code>.
@@ -4648,6 +4659,9 @@ template &lt;class E>
     <pre highlight=c++>
     (is_nothrow_constructible_v&lt;decay_t&lt;Ts>, Ts> && ...)
     </pre>
+
+The completion signature for the sender returned by `execution::just` includes `set_error_t(exception_ptr)`; this signature is not present for senders returned by `execution::just_error` and `execution::just_stopped`.
+Similarly, only the sender returned by `execution::just` can call `set_error` on the receiver, while the senders returned by `execution::just_error` and `execution::just_stopped` cannot call `set_error`.
 
 #### `execution::transfer_just` <b>[exec.transfer_just]</b> #### {#spec-execution.senders.transfer_just}
 
@@ -4663,80 +4677,6 @@ behavior of calling `execution::transfer_just(s, vs...)` is undefined.
         * <i>Mandates:</i>  `execution::sender_of<R, no_env, decltype(auto(vs))...>`, where `R` is the type of the `tag_invoke` expression above.
 
     2. Otherwise, `execution::transfer(execution::just(vs...), s)`.
-
-#### `execution::just_error` <b>[exec.just_error]</b> #### {#spec-execution.senders.just_error}
-
-1. `execution::just_error` is used to create a sender that propagates an error to a connected receiver.
-
-    <pre highlight=c++>
-    template&lt;class T>
-    struct <i>just-error-sender</i> // exposition only
-      : completion_signatures&lt;set_error_t(T)>
-    {
-      T err_;
-
-      template&lt;class R>
-      struct operation_state {
-        T err_;
-        R r_;
-
-        friend void tag_invoke(start_t, operation_state& s) noexcept {
-          set_error(std::move(s.r_), std::move(err_));
-        }
-      };
-
-      template&lt;receiver R>
-        requires receiver&lt;R, T> && copy_constructible&lt;T>
-      friend operation_state&lt;decay_t&lt;R>> tag_invoke(connect_t, const <i>just-error-sender</i>& j, R && r) {
-        return { j.err_, std::forward&lt;R>(r) };
-      }
-
-      template&lt;receiver R>
-        requires receiver&lt;R, T>
-      friend operation_state&lt;decay_t&lt;R>> tag_invoke(connect_t, <i>just-error-sender</i>&& j, R && r) {
-        return { std::move(j.err_), std::forward&lt;R>(r) };
-      }
-    };
-
-    template&lt;<i>movable-value</i> T>
-      <i>just-error-sender</i>&lt;decay_t&lt;T>> just_error(T && t) noexcept(<i>see-below</i>);
-    </pre>
-
-1. <i>Effects</i>: Returns a <code><i>just-error-sender</i>&lt;decay_t&lt;T>></code> with `err_` direct initialized with `static_cast<T&&>(t)`.
-
-2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
-
-    <pre highlight=c++>
-    is_nothrow_constructible_v&lt;decay_t&lt;T>, T>
-    </pre>
-
-#### `execution::just_stopped` <b>[exec.just_stopped]</b> #### {#spec-execution.senders.just_stopped}
-
-1. `execution::just_stopped` is used to create a sender that propagates a stopped signal to a connected receiver.
-
-    <pre highlight=c++>
-    struct <i>just-stopped-sender</i> // exposition only
-      : completion_signatures&lt;set_stopped_t()>
-    {
-      template&lt;class R>
-      struct operation_state {
-        R r_;
-
-        friend void tag_invoke(start_t, operation_state& s) noexcept {
-          set_stopped(std::move(s.r_));
-        }
-      };
-
-      template&lt;receiver R>
-      friend operation_state&lt;decay_t&lt;R>> tag_invoke(connect_t, const <i>just-stopped-sender</i>& j, R && r) {
-        return { std::forward&lt;R>(r) };
-      }
-    };
-
-    <i>just-stopped-sender</i> just_stopped() noexcept;
-    </pre>
-
-1. <i>Effects</i>: Equivalent to <code><i>just-stopped-sender</i>{}</code>.
 
 #### `execution::read` <b>[exec.read]</b> #### {#spec-execution.senders.read}
 
