@@ -113,6 +113,11 @@ struct graph_t
     }
   }
 
+  void sync() const
+  {
+    check(cudaStreamSynchronize(stream_));
+  }
+
   [[nodiscard]] graph_instance_t instantiate() const
   {
     return graph_instance_t{graph_, stream_};

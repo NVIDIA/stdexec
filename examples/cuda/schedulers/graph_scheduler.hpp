@@ -21,6 +21,7 @@
 #include <schedulers/detail/graph/consumer.hpp>
 #include <schedulers/detail/graph/pipeline_end.hpp>
 #include <schedulers/detail/graph/schedule_from.hpp>
+#include <schedulers/detail/graph/ensure_started.hpp>
 #include <schedulers/detail/graph/bulk.hpp>
 #include <schedulers/detail/graph/then.hpp>
 #include <schedulers/detail/helpers.hpp>
@@ -151,6 +152,16 @@ public:
     return std::execution::schedule_from(
       std::forward<Scheduler>(sched),
       detail::pipeline_end::sender_t<S>{std::forward<S>(sndr), self.stream()});
+  }
+
+  template <graph_sender S>
+  friend detail::ensure_started::sender_t<S>
+  tag_invoke(std::execution::ensure_started_t,
+             const scheduler_t &sched,
+             S &&sndr) noexcept
+  {
+    return detail::ensure_started::sender_t<S>{sched.stream(),
+                                               std::forward<S>(sndr)};
   }
 
   template <graph_sender S>
