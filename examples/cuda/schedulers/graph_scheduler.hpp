@@ -19,6 +19,7 @@
 #include <span>
 
 #include <schedulers/detail/graph/consumer.hpp>
+// #include <schedulers/detail/graph/let.hpp>
 #include <schedulers/detail/graph/pipeline_end.hpp>
 #include <schedulers/detail/graph/schedule_from.hpp>
 #include <schedulers/detail/graph/ensure_started.hpp>
@@ -162,6 +163,27 @@ public:
   {
     return detail::ensure_started::sender_t<S>{sched.stream(),
                                                std::forward<S>(sndr)};
+  }
+
+  template <std::__one_of<std::execution::let_value_t,
+                          std::execution::let_error_t,
+                          std::execution::let_stopped_t> Tag,
+            graph_sender S,
+            class F>
+  friend auto tag_invoke(Tag tag,
+                         const scheduler_t &sched,
+                         S &&sndr,
+                         F fun) noexcept
+  {
+    return tag(
+      detail::pipeline_end::sender_t<S>{std::forward<S>(sndr), sched.stream()},
+      [&](auto &&...args) -> detail::pipeline_end::sender_t<
+                            std::invoke_result_t<F, decltype(args)...>> {
+        auto s = fun(args...);
+        return detail::pipeline_end::sender_t<std::decay_t<decltype(s)>>{
+          std::move(s),
+          sched.stream()};
+      });
   }
 
   template <graph_sender S>

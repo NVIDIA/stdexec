@@ -32,12 +32,13 @@
 namespace example::cuda::graph::detail::pipeline_end
 {
 
-template <class ValueT, class Receiver>
+template <class S, class Receiver>
 struct receiver_t
-    : std::execution::receiver_adaptor<receiver_t<ValueT, Receiver>, Receiver>
+    : std::execution::receiver_adaptor<receiver_t<S, Receiver>, Receiver>
 {
   using super_t =
-    std::execution::receiver_adaptor<receiver_t<ValueT, Receiver>, Receiver>;
+    std::execution::receiver_adaptor<receiver_t<S, Receiver>, Receiver>;
+
   friend super_t;
 
   cuda::storage_description_t storage_requirement_;
@@ -53,19 +54,30 @@ struct receiver_t
       , graph_(stream)
   {}
 
-  void set_value(std::span<cudaGraphNode_t>) &&noexcept try
+  template <class... Ts>
+  void set_value(Ts&&... ts) &&noexcept
+  try
   {
-    graph_.instantiate().launch();
+    if constexpr(graph_sender<std::decay_t<S>>)
+    {
+      graph_.instantiate().launch();
 
-    check(cudaStreamSynchronize(graph_.stream_));
+      check(cudaStreamSynchronize(graph_.stream_));
 
-    ValueT &res = *reinterpret_cast<ValueT*>(get_storage());
+      using value_t = value_of_t<S>;
+      value_t &res = *reinterpret_cast<value_t*>(get_storage());
 
-    cuda::graph::detail::invoke(
-      [&](auto&&... args) {
-        std::execution::set_value(std::move(this->base()),
-                                  std::forward<decltype(args)>(args)...);
-      }, res);
+      cuda::graph::detail::invoke(
+        [&](auto&&... args) {
+          std::execution::set_value(std::move(this->base()),
+                                    std::forward<decltype(args)>(args)...);
+        }, res);
+    }
+    else
+    {
+      std::execution::set_value(std::move(this->base()),
+                                std::forward<Ts>(ts)...);
+    }
   } catch(...) {
     std::execution::set_error(std::move(this->base()),
                               std::current_exception());
@@ -112,7 +124,7 @@ struct receiver_t
   static constexpr bool is_cuda_graph_api = true;
 };
 
-template <graph_sender S>
+template <class S>
 struct sender_t
 {
   S sender_;
@@ -127,9 +139,9 @@ struct sender_t
 
     return std::execution::connect(
       std::move(self.sender_),
-      receiver_t<value_of_t<S>, Receiver>{self.stream_,
-                                          std::forward<Receiver>(receiver),
-                                          storage_requirement});
+      receiver_t<S, Receiver>{self.stream_,
+                              std::forward<Receiver>(receiver),
+                              storage_requirement});
   }
 
   template <std::__decays_to<sender_t> Self, class Env>
