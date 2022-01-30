@@ -1375,20 +1375,20 @@ The following conventions are used throughout the design section:
 
 ## Queries and algorithms ## {#design-queries-and-algorithms}
 
-A <dfn>query</dfn> is a `std::invocable` that takes some set of objects (usually one) as parameters and returns facts about those objects without modifying them. Queries are usually customization point objects, but in some cases may be functions.
+A <dfn export=true>query</dfn> is a `std::invocable` that takes some set of objects (usually one) as parameters and returns facts about those objects without modifying them. Queries are usually customization point objects, but in some cases may be functions.
 
-An <dfn>algorithm</dfn> is a `std::invocable` that takes some set of objects as parameters and causes those objects to do something. Algorithms are usually customization point objects, but in some cases may be functions.
+An <dfn export=true>algorithm</dfn> is a `std::invocable` that takes some set of objects as parameters and causes those objects to do something. Algorithms are usually customization point objects, but in some cases may be functions.
 
 # Design - user side # {#design-user}
 
 ## Execution contexts describe the place of execution ## {#design-contexts}
 
-An <dfn>execution context</dfn> is a resource that represents the *place* where execution will happen. This could be a concrete resource - like a specific thread pool object, or a GPU - or a more abstract one, like the current thread of execution. Execution contexts
+An <dfn export=true>execution context</dfn> is a resource that represents the *place* where execution will happen. This could be a concrete resource - like a specific thread pool object, or a GPU - or a more abstract one, like the current thread of execution. Execution contexts
 don't need to have a representation in code; they are simply a term describing certain properties of execution of a function.
 
 ## Schedulers represent execution contexts ## {#design-schedulers}
 
-A <dfn>scheduler</dfn> is a lightweight handle that represents a strategy for scheduling work onto an *execution context*. Since execution contexts don't necessarily manifest in C++ code, it's not possible to program
+A <dfn export=true>scheduler</dfn> is a lightweight handle that represents a strategy for scheduling work onto an *execution context*. Since execution contexts don't necessarily manifest in C++ code, it's not possible to program
 directly against their API. A scheduler is a solution to that problem: the scheduler concept is defined by a single sender algorithm, `schedule`, which returns a sender that will complete on an execution context determined
 by the scheduler. Logic that you want to run on that context can be placed in the receiver's completion-signalling method.
 
@@ -1412,8 +1412,8 @@ to add other capabilities. For example:
 
 ## Senders describe work ## {#design-senders}
 
-A <dfn>sender</dfn> is an object that describes work. Senders are similar to futures in existing asynchrony designs, but unlike futures, the work that is being done to arrive at the values they will *send* is also directly described by the sender object itself. A
-sender is said to <dfn>send</dfn> some values if a receiver connected (see [[#design-connect]]) to that sender will eventually *receive* said values.
+A <dfn export=true>sender</dfn> is an object that describes work. Senders are similar to futures in existing asynchrony designs, but unlike futures, the work that is being done to arrive at the values they will *send* is also directly described by the sender object itself. A
+sender is said to <dfn export=true>send</dfn> some values if a receiver connected (see [[#design-connect]]) to that sender will eventually *receive* said values.
 
 The primary defining sender algorithm is [[#design-connect]]; this function, however, is not a user-facing API; it is used to facilitate communication between senders and various sender algorithms, but end user code is not expected to invoke
 it directly.
@@ -1441,7 +1441,7 @@ A successful asynchronous framework must provide an intuitive story for composit
 
 The true power and utility of senders is in their composability.
 With senders, users can describe generic execution pipelines and graphs, and then run them on and across a variety of different schedulers.
-Senders are composed using <dfn>sender algorithms</dfn>:
+Senders are composed using <dfn export=true>sender algorithms</dfn>:
 
 * [=sender factories=], algorithms that take no senders and return a sender.
 * [=sender adaptors=], algorithms that take (and potentially `execution::connect`) senders and return a sender.
@@ -1464,7 +1464,7 @@ of the work described by a sender, but we have found those sender algorithms to 
 None of these implementation strategies are acceptable for many classes of parallel runtimes, such as task frameworks (like <a href="https://github.com/STEllAR-GROUP/hpx">HPX</a>) or accelerator runtimes (like CUDA or SYCL).
 
 Therefore, in addition to the `on` sender algorithm from [[P1897R3]], we are proposing a way for senders to advertise what scheduler (and by extension what execution context) they will complete on.
-Any given sender <b>may</b> have <dfn>completion schedulers</dfn> for some or all of the signals (value, error, or stopped) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
+Any given sender <b>may</b> have <dfn export=true>completion schedulers</dfn> for some or all of the signals (value, error, or stopped) it completes with (for more detail on the completion signals, see [[#design-receivers]]).
 When further work is attached to that sender by invoking sender algorithms, that work will also complete on an appropriate completion scheduler.
 
 ### `execution::get_completion_scheduler` ### {#design-sender-query-get_completion_scheduler}
@@ -1537,11 +1537,11 @@ this resource. In such a sender, calling `execution::connect` consumes the sende
 the call the input sender is no longer valid. Such a sender will also typically be move-only so that
 it can maintain unique ownership of that resource.
 
-A <dfn>single-shot sender</dfn> can only be connected to a receiver at most once. Its implementation of
+A <dfn export=true>single-shot sender</dfn> can only be connected to a receiver at most once. Its implementation of
 `execution::connect` only has overloads for an rvalue-qualified sender. Callers must pass the sender
 as an rvalue to the call to `execution::connect`, indicating that the call consumes the sender.
 
-A <dfn>multi-shot sender</dfn> can be connected to multiple receivers and can be launched multiple
+A <dfn export=true>multi-shot sender</dfn> can be connected to multiple receivers and can be launched multiple
 times. Multi-shot senders customise `execution::connect` to accept an lvalue reference to the
 sender. Callers can indicate that they want the sender to remain valid after the call to `execution::connect`
 by passing an lvalue reference to the sender to call these overloads. Multi-shot senders should also define
@@ -1942,7 +1942,7 @@ guarantees.
 
 ## Most sender adaptors are pipeable ## {#design-pipeable}
 
-To facilitate an intuitive syntax for composition, most sender adaptors are <dfn>pipeable</dfn>; they can be composed (<dfn>piped</dfn>) together with `operator|`.
+To facilitate an intuitive syntax for composition, most sender adaptors are <dfn export=true>pipeable</dfn>; they can be composed (<dfn export=true>piped</dfn>) together with `operator|`.
 This mechanism is similar to the `operator|` composition that C++ range adaptors support and draws inspiration from piping in *nix shells.
 Pipeable sender adaptors take a sender as their first parameter and have no other sender parameters.
 
@@ -2180,7 +2180,7 @@ obtain an object of implementation-defined type to be provided as the first argu
 
 ## User-facing sender factories ## {#design-sender-factories}
 
-A <dfn>sender factory</dfn> is an [=algorithm=] that takes no senders as parameters and returns a sender.
+A <dfn export=true>sender factory</dfn> is an [=algorithm=] that takes no senders as parameters and returns a sender.
 
 ### `execution::schedule` ### {#design-sender-factory-schedule}
 
@@ -2317,9 +2317,9 @@ This code uses the fact that `sync_wait` associates a scheduler with the receive
 
 ## User-facing sender adaptors ## {#design-sender-adaptors}
 
-A <dfn>sender adaptor</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
+A <dfn export=true>sender adaptor</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
 
-Sender adaptors are <i>lazy</i>, that is, they are never allowed to submit any work for execution prior to the returned sender being <dfn lt="start">started</dfn> later on, and are also guaranteed to not start any input senders passed into them. Sender consumers
+Sender adaptors are <i>lazy</i>, that is, they are never allowed to submit any work for execution prior to the returned sender being <dfn lt="start" export=true>started</dfn> later on, and are also guaranteed to not start any input senders passed into them. Sender consumers
 such as [[#design-sender-adaptor-ensure_started]], [[#design-sender-consumer-start_detached]], and [[#design-sender-consumer-sync_wait]] start senders.
 
 For more implementer-centric description of starting senders, see [[#design-laziness]].
@@ -2562,7 +2562,7 @@ the operation so that resource release can be sequenced after the completion.
 
 ## User-facing sender consumers ## {#design-sender-consumers}
 
-A <dfn>sender consumer</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and does not return a sender.
+A <dfn export=true>sender consumer</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and does not return a sender.
 
 ### `execution::start_detached` ### {#design-sender-consumer-start_detached}
 
@@ -2621,7 +2621,7 @@ execution::start_detached(work);
 
 ## Receivers serve as glue between senders ## {#design-receivers}
 
-A <dfn>receiver</dfn> is a callback that supports more than one channel. In fact, it supports three of them:
+A <dfn export=true>receiver</dfn> is a callback that supports more than one channel. In fact, it supports three of them:
 
 * `set_value`, which is the moral equivalent of an `operator()` or a function call, which signals successful completion of the operation its execution depends on;
 * `set_error`, which signals that an error has happened during scheduling of the current work, executing the current work, or at some earlier point in the sender chain; and
@@ -2629,7 +2629,7 @@ A <dfn>receiver</dfn> is a callback that supports more than one channel. In fact
     longer needed.
 
 Exactly one of these channels must be successfully (i.e. without an exception being thrown) invoked on a receiver before it is destroyed; if a call to `set_value` failed with an exception, either `set_error` or `set_stopped` must be invoked on the same receiver. These
-requirements are know as the <dfn>receiver contract</dfn>.
+requirements are know as the <dfn export=true>receiver contract</dfn>.
 
 While the receiver interface may look novel, it is in fact very similar to the interface of `std::promise`, which provides the first two signals as `set_value` and `set_error`, and it's possible to emulate the third channel with lifetime management of the promise.
 
@@ -2639,7 +2639,7 @@ Receivers are what is passed as the second argument to [[#design-connect]].
 
 ## Operation states represent work ## {#design-states}
 
-An <dfn>operation state</dfn> is an object that represents work. Unlike senders, it is not a chaining mechanism; instead, it is a concrete object that packages the work described by a full sender chain, ready to be executed. An operation state is neither movable nor
+An <dfn export=true>operation state</dfn> is an object that represents work. Unlike senders, it is not a chaining mechanism; instead, it is a concrete object that packages the work described by a full sender chain, ready to be executed. An operation state is neither movable nor
 copyable, and its interface consists of a single algorithm: `start`, which serves as the submission point of the work represented by a given operation state.
 
 Operation states are not a part of the user-facing API of this proposal; they are necessary for implementing sender consumers like `execution::ensure_started` and `this_thread::sync_wait`, and the knowledge of them is necessary to implement senders, so the only users who will
@@ -2740,7 +2740,7 @@ For sender algorithms which accept concepts other than `sender` as their first a
 Contrary to early revisions of this paper, we propose to make all sender adaptors perform strictly lazy submission, unless specified otherwise (the one notable exception in this paper is [[#design-sender-adaptor-ensure_started]], whose sole purpose is to start an
 input sender).
 
- <dfn>Strictly lazy submission</dfn> means that there is a guarantee that no work is submitted to an execution context before a receiver is connected to a sender, and `execution::start` is called on the resulting operation state.
+ <dfn export=true>Strictly lazy submission</dfn> means that there is a guarantee that no work is submitted to an execution context before a receiver is connected to a sender, and `execution::start` is called on the resulting operation state.
 
 ## Lazy senders provide optimization opportunities ## {#design-fusion}
 
