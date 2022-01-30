@@ -5165,7 +5165,7 @@ are all well-formed.
 
 1. `execution::let_value` is used to insert continuations creating more work dependent on the results of their input senders into a sender chain.
     `execution::let_error` is used to insert continuations creating more work dependent on the error of its input senders into a sender chain.
-    `execution::let_stopped` is used to insert continuations creating more work dependent on the error its input senders into a sender chain.
+    `execution::let_stopped` is used to insert continuations creating more work dependent on the stopped signal of its input senders into a sender chain.
 
 2. The names `execution::let_value`, `execution::let_error`, and `execution::let_stopped` denote a customization point object.
     Let the expression <code><i>let-cpo</i></code> be one of `execution::let_value`, `execution::let_error`, or `execution::let_stopped`.
@@ -5188,7 +5188,7 @@ are all well-formed.
         1. For `execution::let_value`, let `set-cpo` be `execution::set_value`.
             For `execution::let_error`, let `set-cpo` be `execution::set_error`.
             For `execution::let_stopped`, let `set-cpo` be `execution::set_stopped`.
-            Let <code><i>signal</i></code> be one of `execution::let_value`, `execution::let_error`, or `execution::let_stopped`.
+            Let <code><i>signal</i></code> be one of `execution::set_value`, `execution::set_error`, or `execution::set_stopped`.
     
         2. Let `r` be an rvalue of a receiver type `R` such that:
     
@@ -5221,11 +5221,11 @@ are all well-formed.
                 using <i>set-value-signature</i> = set_value_t(Ts...);
               </pre>
 
-            2. For `execution::let_value`, let `S3s...` bet the unique set of types in <code>value_types_of_t&lt;S, E, <i>result-type</i>, <i>type-list</i>></code>.
+            2. For `execution::let_value`, let `S3s...` be the unique set of types in <code>value_types_of_t&lt;S, E, <i>result-type</i>, <i>type-list</i>></code>.
 
-            3. For `execution::let_error`, let `S3s...` bet the unique set of types in <code>error_types_of_t&lt;S, E, <i>result-type</i>></code>.
+            3. For `execution::let_error`, let `S3s...` be the unique set of types in <code>error_types_of_t&lt;S, E, <i>result-type</i>></code>.
 
-            4. For `execution::let_stopped`, let `S3s...` bet the set of one type denoted by<code>[<i>result-type</i>&lt;>]</code>.
+            4. For `execution::let_stopped`, let `S3s...` be the set of one type denoted by<code>[<i>result-type</i>&lt;>]</code>.
 
             5. If `(sender<S3s, E> &&...)` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`.
                 Otherwise:
@@ -5246,7 +5246,7 @@ are all well-formed.
 
 
 
-    If <code><i>let-cpo</i>(s, f)</code> does not return a sender that invokes `f` when <code><i>set-cpo</i></code> is called, and making its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the behavior of calling <code><i>let-cpo</i>(s, f)</code> is undefined.
+    If <code><i>let-cpo</i>(s, f)</code> does not return a sender that invokes `f` when <code><i>set-cpo</i></code> is called, and makes its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the behavior of calling <code><i>let-cpo</i>(s, f)</code> is undefined.
 
 #### `execution::bulk` <b>[exec.bulk]</b> #### {#spec-execution.senders.adapt.bulk}
 
