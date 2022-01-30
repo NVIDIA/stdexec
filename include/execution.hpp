@@ -561,10 +561,14 @@ namespace std::execution {
   template<
     class _Sender,
     class _Env = no_env,
-    class _Sigs = completion_signatures<>,
-    template <class...> class _SetValue = __completion_signatures::__default_set_value,
-    template <class> class _SetError = __completion_signatures::__default_set_error,
-    class _SetStopped = completion_signatures<set_stopped_t()>>
+    __valid_completion_signatures<_Env> _Sigs =
+      completion_signatures<>,
+    template <class...> class _SetValue =
+      __completion_signatures::__default_set_value,
+    template <class> class _SetError =
+      __completion_signatures::__default_set_error,
+    __valid_completion_signatures<_Env> _SetStopped =
+      completion_signatures<set_stopped_t()>>
       requires sender<_Sender, _Env>
   using make_completion_signatures =
     decltype(__completion_signatures::
@@ -877,10 +881,10 @@ namespace std::execution {
         _Receiver& __rcvr_;
       };
 
-    template <environment_provider _Receiver>
+    template <receiver _Receiver>
       using __promise_t = __promise<__x<remove_cvref_t<_Receiver>>>;
 
-    template <environment_provider _Receiver>
+    template <receiver _Receiver>
       using __operation_t = __operation<__x<remove_cvref_t<_Receiver>>>;
 
     struct __connect_awaitable_t {
@@ -915,7 +919,7 @@ namespace std::execution {
         };
       }
 
-      template <environment_provider _Receiver, class _Awaitable>
+      template <receiver _Receiver, class _Awaitable>
         using __completions_t =
           completion_signatures<
             __minvoke1< // set_value_t() or set_value_t(T)
@@ -947,14 +951,12 @@ namespace std::execution {
       using __debug_env_t =
         make_env_t<__is_debug_env_t, int, _Env>;
 
-    struct __debug_receiver_base {};
-
     template <class _Sig>
       struct __completion;
 
     template <class _Tag, class... _Args>
       struct __completion<_Tag(_Args...)> {
-        friend void tag_invoke(_Tag, __debug_receiver_base&&, _Args&&...) noexcept;
+        friend void tag_invoke(_Tag, __completion&&, _Args&&...) noexcept;
       };
 
     template <class _Env, class _Sigs>
@@ -962,9 +964,7 @@ namespace std::execution {
 
     template <class _Env, class... _Sigs>
       struct __debug_receiver<_Env, completion_signatures<_Sigs...>>
-        : __debug_receiver_base, __completion<_Sigs>... {
-        friend void tag_invoke(set_error_t, __debug_receiver&&, exception_ptr) noexcept;
-        friend void tag_invoke(set_stopped_t, __debug_receiver&&) noexcept;
+        : __completion<_Sigs>... {
         friend __debug_env_t<_Env> tag_invoke(get_env_t, __debug_receiver) noexcept;
       };
 
@@ -980,7 +980,7 @@ namespace std::execution {
 
     template <class _Sender, class _Receiver>
       concept __connectable_sender_with =
-        sender<_Sender> &&
+        sender<_Sender, env_of_t<_Receiver>> &&
         __receiver_from<_Receiver, _Sender> &&
         tag_invocable<connect_t, _Sender, _Receiver>;
 
@@ -1179,7 +1179,7 @@ namespace std::execution {
       struct __void {};
       template <class _Value>
         using __value_or_void_t =
-          conditional_t<is_void_v<_Value>, __void, _Value>;
+          __if<is_same<_Value, void>, __void, _Value>;
       template <class _Value>
         using __expected_t =
           variant<monostate, __value_or_void_t<_Value>, exception_ptr>;
@@ -1187,8 +1187,7 @@ namespace std::execution {
       template <class _Value>
         struct __receiver_base {
           template <class... _Us>
-            requires constructible_from<_Value, _Us...> ||
-              (is_void_v<_Value> && sizeof...(_Us) == 0)
+            requires constructible_from<__value_or_void_t<_Value>, _Us...>
           friend void tag_invoke(set_value_t, __receiver_base&& __self, _Us&&... __us)
               noexcept try {
             __self.__result_->template emplace<1>((_Us&&) __us...);
@@ -1423,7 +1422,7 @@ namespace std::execution {
     } // namespace __impl
 
     struct __submit_t {
-      template <class _Receiver, sender_to<_Receiver> _Sender>
+      template <receiver _Receiver, sender_to<_Receiver> _Sender>
       void operator()(_Sender&& __sndr, _Receiver&& __rcvr) const noexcept(false) {
         start((new __impl::__operation<__x<_Sender>, __x<decay_t<_Receiver>>>{
             (_Sender&&) __sndr, (_Receiver&&) __rcvr})->__op_state_);
@@ -1699,7 +1698,7 @@ namespace std::execution {
         class __t : __adaptor_base<_Base> {
           using connect = void;
 
-          template <__decays_to<_Derived> _Self, class _Receiver>
+          template <__decays_to<_Derived> _Self, receiver _Receiver>
             requires __has_connect<_Self, _Receiver>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
             noexcept(noexcept(((_Self&&) __self).connect((_Receiver&&) __rcvr)))
@@ -1707,7 +1706,7 @@ namespace std::execution {
             return ((_Self&&) __self).connect((_Receiver&&) __rcvr);
           }
 
-          template <__decays_to<_Derived> _Self, class _Receiver>
+          template <__decays_to<_Derived> _Self, receiver _Receiver>
             requires requires {typename decay_t<_Self>::connect;} &&
               sender_to<__member_t<_Self, _Base>, _Receiver>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
@@ -1753,8 +1752,8 @@ namespace std::execution {
 
     template <class _Receiver>
       concept __has_get_env =
-        requires(_Receiver&& __rcvr) {
-          ((_Receiver&&) __rcvr).get_env();
+        requires(const _Receiver& __rcvr) {
+          __rcvr.get_env();
         };
 
     template <__class _Derived, class _Base>
@@ -1942,7 +1941,7 @@ namespace std::execution {
     using sender_adaptor =
       typename __tag_invoke_adaptors::__sender_adaptor<_Derived, _Base>::__t;
 
-  template <__class _Derived, class _Base = __tag_invoke_adaptors::__not_a_receiver>
+  template <__class _Derived, receiver _Base = __tag_invoke_adaptors::__not_a_receiver>
     using receiver_adaptor =
       typename __tag_invoke_adaptors::__receiver_adaptor<_Derived, _Base>::__t;
 
@@ -2603,7 +2602,7 @@ namespace std::execution {
           using __receiver_t =
             __receiver<__x<__member_t<_Self, _Sender>>, __x<decay_t<_Receiver>>>;
 
-        template <__decays_to<__sender> _Self, class _Receiver>
+        template <__decays_to<__sender> _Self, receiver _Receiver>
             requires __single_typed_sender<__member_t<_Self, _Sender>, env_of_t<_Receiver>> &&
               sender_to<__member_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
@@ -3206,7 +3205,7 @@ namespace std::execution {
           _Scheduler __scheduler_;
           _Sender __sndr_;
 
-          template <__decays_to<__sender> _Self, class _Receiver>
+          template <__decays_to<__sender> _Self, receiver _Receiver>
             requires constructible_from<_Sender, __member_t<_Self, _Sender>> &&
               sender_to<schedule_result_t<_Scheduler>,
                         __receiver_t<__x<decay_t<_Receiver>>>> &&
@@ -3585,8 +3584,7 @@ namespace std::execution {
                         std::apply(
                           [this](auto&... __all_vals) -> void {
                             try {
-                              using __tag_invoke::tag_invoke;
-                              tag_invoke(execution::set_value_t{}, 
+                              execution::set_value(
                                   (_Receiver&&) __recvr_, std::move(__all_vals)...);
                             } catch(...) {
                               execution::set_error(
@@ -3664,7 +3662,7 @@ namespace std::execution {
                   callback_type<__on_stop_requested>> __on_stop_{};
             };
 
-          template <__decays_to<__sender> _Self, class _Receiver>
+          template <__decays_to<__sender> _Self, receiver _Receiver>
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
               -> __operation<__member_t<_Self, __x<decay_t<_Receiver>>>> {
               return {(_Self&&) __self, (_Receiver&&) __rcvr};
@@ -3779,9 +3777,15 @@ namespace std::execution {
 
     template <class _Tag>
       struct __sender {
+        template <class _Env>
+            requires __callable<_Tag, _Env>
+          using __completions_t =
+            completion_signatures<
+              set_value_t(__call_result_t<_Tag, _Env>),
+              set_error_t(exception_ptr)>;
+
         template <class _Receiver>
-          requires __callable<_Tag, env_of_t<_Receiver>> &&
-            tag_invocable<set_value_t, _Receiver, __call_result_t<_Tag, env_of_t<_Receiver>>>
+          requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
         friend auto tag_invoke(connect_t, __sender, _Receiver&& __rcvr)
           noexcept(is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
           -> __operation<_Tag, __x<decay_t<_Receiver>>> {
@@ -3791,12 +3795,9 @@ namespace std::execution {
         template <class _Env>
           friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) ->
             dependent_completion_signatures<_Env>;
-        template <class _Env>
-            requires __callable<_Tag, _Env>
+        template <__typename _Env>
           friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) ->
-            completion_signatures<
-              set_value_t(__call_result_t<_Tag, _Env>),
-              set_error_t(exception_ptr)>;
+            __completions_t<_Env>;
       };
 
     struct __read_t {

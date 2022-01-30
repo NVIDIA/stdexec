@@ -1,13 +1,13 @@
 <pre class='metadata'>
 Title: Removing exception_ptr from the Receiver Concepts
 H1: <code>Removing exception_ptr from the Receiver Concepts</code>
-Shortname: DXXXX
-Revision: 1
+Shortname: D2532
+Revision: 0
 Status: D
 Group: WG21
 Audience: LEWG
 Editor: Eric Niebler, eric.niebler@gmail.com
-URL: https://wg21.link/P2300
+URL: https://wg21.link/P2532
 !Source: <a href="https://github.com/brycelelbach/wg21_p2300_std_execution/blob/main/receiver_redesign.bs">GitHub</a>
 Issue Tracking: GitHub https://github.com/brycelelbach/wg21_p2300_std_execution/issues
 Metadata Order: Editor, This Version, Source, Issue Tracking, Project, Audience
@@ -91,7 +91,12 @@ div.newnumbered li:before {
 
 # Introduction # {#intro}
 
-This paper proposed a refactorization of the receiver concepts of [[P2300R4]] to address concerns raised during its design review.
+This paper proposes a refactorization of the receiver concepts of [[P2300R4]] to
+address concerns raised by LEWG during its design review related to the
+requirement of an error channel that accepts `exception_ptr`. The change to
+`receiver_of` proposed herein enables a corresponding change to the `sender_to`
+concept that strengthens type checking and removes some need to constrain
+customizations of the `connect` customization point.
 
 ## Motivation ## {#motivation}
 
@@ -161,7 +166,7 @@ commentary. Commentary is provided below.
 
 * `get_completion_signatures` is required to return an instantiation of the
     `completion_signatures` class template; the `value_types_of_t` and
-    `error_types_of_t` template aliases remain.
+    `error_types_of_t` template aliases remain unchanged.
 
 * The `make_completion_signatures` design is slightly tweaked to be more general.
 
@@ -189,13 +194,13 @@ significant of which are:
 
 Taken together, these two changes open up a huge piece of the design space. The
 implication is that <b>a sender is <i>always</i> able to provide its completion
-signatures.</b> This is new, and as of R4, P2300 is not taking advantage of this
-extra type information.
+signatures.</b> This is new, and P2300R4 is not taking advantage of this extra
+type information.
 
 The author realized that the extra type information can be leveraged to
 accommodate LEWGs requests regarding the receiver interface, while at the same
-time simplifying the design by permitting the library to take on more of the
-type checking burden, thus freeing sender authors from needed to do so.
+time simplifying uses of `std::execution` by permitting the library to take on
+more of the type checking burden.
 
 The `sender_to` concept, which checks whether a sender and a receiver can be
 connected, now has perfect information: it can ask the receiver for the execution
