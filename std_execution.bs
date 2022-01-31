@@ -5188,7 +5188,7 @@ are all well-formed.
         1. For `execution::let_value`, let `set-cpo` be `execution::set_value`.
             For `execution::let_error`, let `set-cpo` be `execution::set_error`.
             For `execution::let_stopped`, let `set-cpo` be `execution::set_stopped`.
-            Let <code><i>signal</i></code> be one of `execution::let_value`, `execution::let_error`, or `execution::let_stopped`.
+            Let <code><i>signal</i></code> be one of `execution::set_value`, `execution::set_error`, or `execution::set_stopped`.
     
         2. Let `r` be an rvalue of a receiver type `R` such that:
     
