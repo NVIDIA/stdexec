@@ -5242,7 +5242,7 @@ are all well-formed.
 
                 6. Let `sigs...` be the unique set of types `[base_val_sigs..., base_err_sigs..., base_stopped_sigs..., out_sigs..., set_error_t(exception_ptr)]`.
 
-                7. The type of `get_completion_signatures(s2, e)` is equivalent to: `completion_signatures<sigs>`.
+                7. The type of `get_completion_signatures(s2, e)` is equivalent to: `completion_signatures<sigs...>`.
 
 
 
