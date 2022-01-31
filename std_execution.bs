@@ -5232,9 +5232,9 @@ are all well-formed.
 
                 1. We denote by the expression <code><i>completion-sigs</i>&lt;Snd, Env></code> the set of signature types in the <code><i>type-list</i></code> equivalent to the template arguments of the `completion_signatures` class returned by `execution::get_completion_signatures(declval<Snd>(), declval<Env>)`.
 
-                2. Let `base_sigs...` be the subset of types from <code><i>completion-sigs&lt;S, no_env></code> that do not contain any signature of the form <code><i>set-cpo</i>(...)</code>.
+                2. Let `base_sigs...` be the subset of types from <code><i>completion-sigs&lt;S, E></code> that do not contain any signature of the form <code><i>set-cpo</i>(...)</code>.
 
-                3. Let `sigs...` be the unique set of types <code>[base_sigs..., <i>completion-sigs</i>&lt;S3, e>..., set_error_t(exception_ptr)]</code>.
+                3. Let `sigs...` be the unique set of types <code>[base_sigs..., <i>completion-sigs</i>&lt;S3<sub>0</sub>, E>, <i>completion-sigs</i>&lt;S3<sub>1</sub>, E>, ..., <i>completion-sigs</i>&lt;S3<sub><i>n</i>-1</sub>, E>, set_error_t(exception_ptr)]</code>, for each type <code>S3<i><sub>i</sub></i></code> in `S3s...`, where <code><i>n</i></code> is `sizeof...(S3s)`.
 
                 4. The type of `get_completion_signatures(s2, e)` is equivalent to: `completion_signatures<sigs...>`.
 
