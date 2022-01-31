@@ -5234,7 +5234,7 @@ are all well-formed.
 
                 2. For `execution::let_error`, let `base_err_sigs...` be an empty set of types; otherwise let `base_errs...` be the set of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E, <i>type-list</i>></code> and `base_err_sigs...` be `set_error_t(base_errrs)...`.
 
-                3. For `execution::let_stopped` or if the expression <code>completion_signatures_of_t&lt;S, E>::sends_stopped</code> is `false`, let `base_stopped_sigs...` be an empty set of types; otherwise let `base_stopped_sigs...` be the set of one type `[set_stopped_t()]`.
+                3. If <code><i>let-cpo</i></code> is `execution::let_stopped` or if the expression <code>completion_signatures_of_t&lt;S, E>::sends_stopped</code> is `false`, let `base_stopped_sigs...` be an empty set of types; otherwise let `base_stopped_sigs...` be the set of one type `[set_stopped_t()]`.
 
                 4. For each type <code>S3<i><sub>i</sub></i></code> in `S3s...`, let <code>Vs<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>set-value-signature</i>, <i>type-list</i>></code>, let <code>Es<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>type-list</i>></code>, let <code>Ds<i><sub>i</sub></i>...</code> be the list of values <code>completion_signatures_of_t&lt;S3s, E>::sends_stopped...</code>, and let <code>S3_sigs<i><sub>i</sub></i></code> be the list of types <code>[Vs<i><sub>i</sub></i>..., Es<i><sub>i</sub></i>..., Ds<i><sub>i</sub></i>...]</code>.
 
