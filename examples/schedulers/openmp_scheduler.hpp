@@ -21,7 +21,7 @@
 
 namespace example {
 
-  namespace detail::inline_scheduler::bulk {
+  namespace detail::openmp_scheduler::bulk {
     template <class R, class ShapeT, class F>
     struct receiver_t
       : std::execution::receiver_adaptor<receiver_t<R, ShapeT, F>, R>
@@ -36,6 +36,7 @@ namespace example {
 
       template <class... Ts>
       void set_value(Ts &&...values) && noexcept try {
+        #pragma omp parallel for
         for (ShapeT i = {}; i < shape_; i++) {
           function_(i, std::forward<Ts>(values)...);
         }
@@ -99,7 +100,7 @@ namespace example {
 
   // A simple scheduler that executes its continuation inline, on the
   // thread of the caller of start().
-  struct inline_scheduler {
+  struct openmp_scheduler {
     template <class R_>
       struct __op {
         using R = std::__t<R_>;
@@ -117,41 +118,41 @@ namespace example {
           std::execution::set_value_t(),
           std::execution::set_error_t(std::exception_ptr)>;
 
-      template <class R>
+      template <std::execution::receiver_of R>
         friend auto tag_invoke(std::execution::connect_t, __sender, R&& rec)
           noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
           -> __op<std::__x<std::remove_cvref_t<R>>> {
           return {(R&&) rec};
         }
 
-      friend inline_scheduler
+      friend openmp_scheduler
       tag_invoke(std::execution::get_completion_scheduler_t<std::execution::set_value_t>, __sender) noexcept {
         return {};
       }
     };
 
-    friend __sender tag_invoke(std::execution::schedule_t, inline_scheduler) noexcept {
+    friend __sender tag_invoke(std::execution::schedule_t, openmp_scheduler) noexcept {
       return {};
     }
 
     template <class S, std::integral Shape, class F>
     friend auto
     tag_invoke(std::execution::bulk_t,
-               const inline_scheduler &,
+               const openmp_scheduler &,
                S &&self,
                Shape shape,
                F f)
       noexcept {
-      return detail::inline_scheduler::bulk::sender_t<S, Shape, F>{
+      return detail::openmp_scheduler::bulk::sender_t<S, Shape, F>{
           std::forward<S>(self), std::forward<Shape>(shape), f};
     }
 
     friend std::execution::forward_progress_guarantee tag_invoke(
         std::execution::get_forward_progress_guarantee_t,
-        const inline_scheduler&) noexcept {
+        const openmp_scheduler&) noexcept {
       return std::execution::forward_progress_guarantee::weakly_parallel;
     }
 
-    bool operator==(const inline_scheduler&) const noexcept = default;
+    bool operator==(const openmp_scheduler&) const noexcept = default;
   };
 }

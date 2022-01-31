@@ -41,11 +41,19 @@ struct sender_base_t
     return ((Self&&) self).connect((Receiver&&) rcvr);
   }
 
-  template <std::__none_of<std::execution::connect_t> Tag, class... Ts>
-  requires std::__callable<Tag, const Base&, Ts...> friend constexpr decltype(auto)
-  tag_invoke(Tag tag, const Derived &s, Ts &&...ts) noexcept
+  template <std::execution::__sender_queries::__sender_query _Tag, class... _As>
+    requires std::__callable<_Tag, const Base&, _As...>
+  friend auto tag_invoke(_Tag __tag, const Derived& __self, _As&&... __as)
+    noexcept(std::__nothrow_callable<_Tag, const Base&, _As...>)
+    -> std::__call_result_if_t<std::execution::__sender_queries::__sender_query<_Tag>, _Tag, const Base&, _As...> {
+    return ((_Tag&&) __tag)(__self.sender_, (_As&&) __as...);
+  }
+
+  template <class _CPO>
+  friend auto tag_invoke(std::execution::get_completion_scheduler_t<_CPO>,
+                         const sender_base_t &self) noexcept
   {
-    return tag(s.sender_, std::forward<Ts>(ts)...);
+    return std::execution::get_completion_scheduler<_CPO>(self.sender_);
   }
 
   friend constexpr auto tag_invoke(cuda::storage_requirements_t,
