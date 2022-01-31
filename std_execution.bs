@@ -5230,7 +5230,7 @@ are all well-formed.
             5. If `(sender<S3s, E> &&...)` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`.
                 Otherwise:
 
-                1. We denote by the expression <code><i>completion-sigs</i>&lt;Snd, Env></code> the set set of signature types in the <code><i>type-list</i></code> equivalent to the template arguments of the `completion_signatures` class returned by `execution::get_completion_signatures(declval<Snd>(), declval<Env>)`.
+                1. We denote by the expression <code><i>completion-sigs</i>&lt;Snd, Env></code> the set of signature types in the <code><i>type-list</i></code> equivalent to the template arguments of the `completion_signatures` class returned by `execution::get_completion_signatures(declval<Snd>(), declval<Env>)`.
 
                 2. Let `base_sigs...` be the subset of types from <code><i>completion-sigs&lt;S, no_env></code> that do not contain any signature of the form <code><i>set-cpo</i>(...)</code>.
 
