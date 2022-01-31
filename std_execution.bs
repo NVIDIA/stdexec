@@ -5230,19 +5230,13 @@ are all well-formed.
             5. If `(sender<S3s, E> &&...)` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`.
                 Otherwise:
 
-                1. For `execution::let_value`, let `base_val_sigs...` be an empty set of types; otherwise let `base_val_sigs...` be <code>value_types_of_t&lt;S, E, <i>set-value-signature</i>, <i>type-list</i>></code>.
+                1. We denote by the expression <code><i>completion-sigs</i>&lt;Snd, Env></code> the set set of signature types in the <code><i>type-list</i></code> equivalent to the template arguments of the `completion_signatures` class returned by `execution::get_completion_signatures(declval<Snd>(), declval<Env>)`.
 
-                2. For `execution::let_error`, let `base_err_sigs...` be an empty set of types; otherwise let `base_errs...` be the set of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E, <i>type-list</i>></code> and `base_err_sigs...` be `set_error_t(base_errrs)...`.
+                2. Let `base_sigs...` be the subset of types from <code><i>completion-sigs&lt;S, no_env></code> that do not contain any signature of the form <code><i>set-cpo</i>(...)</code>.
 
-                3. If <code><i>let-cpo</i></code> is `execution::let_stopped` or if the expression <code>completion_signatures_of_t&lt;S, E>::sends_stopped</code> is `false`, let `base_stopped_sigs...` be an empty set of types; otherwise let `base_stopped_sigs...` be the set of one type `[set_stopped_t()]`.
+                3. Let `sigs...` be the unique set of types <code>[base_sigs..., <i>completion-sigs</i>&lt;S3, e>..., set_error_t(exception_ptr)]</code>.
 
-                4. For each type <code>S3<i><sub>i</sub></i></code> in `S3s...`, let <code>Vs<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>set-value-signature</i>, <i>type-list</i>></code>, let <code>Es<i><sub>i</sub></i>...</code> be the list of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S3<i><sub>i</sub></i>, E, <i>type-list</i>></code>, let <code>Ds<i><sub>i</sub></i>...</code> be the list of values <code>completion_signatures_of_t&lt;S3s, E>::sends_stopped...</code>, and let <code>S3_sigs<i><sub>i</sub></i></code> be the list of types <code>[Vs<i><sub>i</sub></i>..., Es<i><sub>i</sub></i>..., Ds<i><sub>i</sub></i>...]</code>.
-
-                5. Let `out_sigs...` be the set of types in <code>[S3_sigs<i><sub>0</sub></i>..., S3_sigs<i><sub>1</sub></i>..., ... S3_sigs<i><sub>n-1</sub></i>...]</code>, where <code><i>n</i></code> is `sizeof...(S3s)`.
-
-                6. Let `sigs...` be the unique set of types `[base_val_sigs..., base_err_sigs..., base_stopped_sigs..., out_sigs..., set_error_t(exception_ptr)]`.
-
-                7. The type of `get_completion_signatures(s2, e)` is equivalent to: `completion_signatures<sigs...>`.
+                4. The type of `get_completion_signatures(s2, e)` is equivalent to: `completion_signatures<sigs...>`.
 
 
 
