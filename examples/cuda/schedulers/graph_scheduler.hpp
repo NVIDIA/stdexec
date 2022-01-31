@@ -19,7 +19,7 @@
 #include <span>
 
 #include <schedulers/detail/graph/consumer.hpp>
-// #include <schedulers/detail/graph/let.hpp>
+#include <schedulers/detail/graph/repeat_n.hpp>
 #include <schedulers/detail/graph/pipeline_end.hpp>
 #include <schedulers/detail/graph/schedule_from.hpp>
 #include <schedulers/detail/graph/ensure_started.hpp>

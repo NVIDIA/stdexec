@@ -144,6 +144,14 @@ struct sender_t
                               storage_requirement});
   }
 
+  template <std::execution::__sender_queries::__sender_query _Tag, class... _As>
+  requires std::__callable<_Tag, const S&, _As...>
+  friend auto tag_invoke(_Tag __tag, const S& __self, _As&&... __as)
+  noexcept(std::__nothrow_callable<_Tag, const S&, _As...>)
+  -> std::__call_result_if_t<std::execution::__sender_queries::__sender_query<_Tag>, _Tag, const S&, _As...> {
+    return ((_Tag&&) __tag)(__self.sender_, (_As&&) __as...);
+  }
+
   template <std::__decays_to<sender_t> Self, class Env>
   friend auto tag_invoke(std::execution::get_completion_signatures_t,
                          Self &&,
