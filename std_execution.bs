@@ -5232,7 +5232,7 @@ are all well-formed.
 
                 1. For `execution::let_value`, let `base_val_sigs...` be an empty set of types; otherwise let `base_val_sigs...` be <code>value_types_of_t&lt;S, E, <i>set-value-signature</i>, <i>type-list</i>></code>.
 
-                2. For `execution::let_error`, let `base_err_sigs...` be an empty set of types; otherwise let `base_errs...` be <code>error_types_of_t&lt;S, E, <i>type-list</i>></code> and `base_err_sigs...` be `set_error_t(base_errrs)...`.
+                2. For `execution::let_error`, let `base_err_sigs...` be an empty set of types; otherwise let `base_errs...` be the set of types in the <code><i>type-list</i></code> named by <code>error_types_of_t&lt;S, E, <i>type-list</i>></code> and `base_err_sigs...` be `set_error_t(base_errrs)...`.
 
                 3. For `execution::let_stopped` or if the expression <code>completion_signatures_of_t&lt;S, E>::sends_stopped</code> is `false`, let `base_stopped_sigs...` be an empty set of types; otherwise let `base_stopped_sigs...` be the set of one type `[set_stopped_t()]`.
 
