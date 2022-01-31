@@ -2343,8 +2343,9 @@ namespace std::execution {
             sender<invoke_result_t<_Fun, _Args...>, _Env>
         struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
           using type =
-            __concat_completion_signatures_t<
-              completion_signatures_of_t<invoke_result_t<_Fun, _Args...>, _Env>,
+            make_completion_signatures<
+              invoke_result_t<_Fun, _Args...>,
+              _Env,
               completion_signatures<set_error_t(exception_ptr)>>;
         };
 
