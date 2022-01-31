@@ -5221,11 +5221,11 @@ are all well-formed.
                 using <i>set-value-signature</i> = set_value_t(Ts...);
               </pre>
 
-            2. For `execution::let_value`, let `S3s...` be the unique set of types in <code>value_types_of_t&lt;S, E, <i>result-type</i>, <i>type-list</i>></code>.
+            2. For `execution::let_value`, let `S3s...` be the unique set of types in the <code><i>type-list</i></code> named by <code>value_types_of_t&lt;S, E, <i>result-type</i>, <i>type-list</i>></code>.
 
-            3. For `execution::let_error`, let `S3s...` be the unique set of types in <code>error_types_of_t&lt;S, E, <i>result-type</i>></code>.
+            3. For `execution::let_error`, let `S3s...` be the unique set of types in the <code><i>type-list</i></code> named by<code>error_types_of_t&lt;S, E, <i>result-type</i>></code>.
 
-            4. For `execution::let_stopped`, let `S3s...` be the set of one type denoted by<code>[<i>result-type</i>&lt;>]</code>.
+            4. For `execution::let_stopped`, let `S3s...` be the set of one type named by <code><i>result-type</i>&lt;></code>.
 
             5. If `(sender<S3s, E> &&...)` is `false`, the type of `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent to `dependent_completion_signatures<E>`.
                 Otherwise:
