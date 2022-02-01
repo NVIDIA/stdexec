@@ -78,7 +78,7 @@ TEST_CASE("stopped_as_error keeps values_type from input sender", "[adaptors][st
   check_val_types<type_array<type_array<double>>>(
       ex::transfer_just(sched, 3.1415) | ex::stopped_as_error(-1));
 }
-TEST_CASE("TODO: stopped_as_error keeps error_types from input sender", "[adaptors][stopped_as_error]") {
+TEST_CASE("stopped_as_error keeps error_types from input sender", "[adaptors][stopped_as_error]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{-1};
@@ -88,32 +88,24 @@ TEST_CASE("TODO: stopped_as_error keeps error_types from input sender", "[adapto
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched2, 13) | ex::stopped_as_error(std::exception_ptr{}));
 
-  // TODO: error types should be forwarded (transfer_just bug)
-  // check_err_types<type_array<int, std::exception_ptr>>( //
-  //     ex::transfer_just(sched3, 13) | ex::stopped_as_error(std::exception_ptr{}));
-  // Invalid check:
-  check_err_types<type_array<std::exception_ptr>>( //
+  check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(std::exception_ptr{}));
 }
 
-TEST_CASE("TODO: stopped_as_error can add more types to error_types", "[adaptors][stopped_as_error]") {
+TEST_CASE("stopped_as_error can add more types to error_types", "[adaptors][stopped_as_error]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{-1};
 
-  check_err_types<type_array<std::exception_ptr, int>>( //
+  check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched1, 11) | ex::stopped_as_error(-1));
   check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched2, 13) | ex::stopped_as_error(-1));
 
-  // TODO: error types should be forwarded (transfer_just bug)
-  // check_err_types<type_array<int, std::exception_ptr>>( //
-  //     ex::transfer_just(sched3, 13) | ex::stopped_as_error(-1));
-  // Invalid check:
   check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(-1));
 
-  check_err_types<type_array<std::exception_ptr, int, std::string>>( //
+  check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched1, 11)                                  //
       | ex::stopped_as_error(-1)                                        //
       | ex::stopped_as_error(std::string{"err"}));

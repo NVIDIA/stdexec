@@ -151,29 +151,23 @@ TEST_CASE("on has the values_type corresponding to the given values", "[adaptors
   check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::on(sched, ex::just(3, 0.14, std::string{"pi"})));
 }
-TEST_CASE("TODO: on keeps error_types from scheduler's sender", "[adaptors][on]") {
+TEST_CASE("on keeps error_types from scheduler's sender", "[adaptors][on]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
   check_err_types<type_array<std::exception_ptr>>(ex::on(sched1, ex::just(1)));
   check_err_types<type_array<std::exception_ptr>>(ex::on(sched2, ex::just(2)));
-  // check_err_types<type_array<int, std::exception_ptr>>(ex::on(sched3, 3));
-  // TODO: on should also forward the error types sent by the scheduler's sender
-  // incorrect check:
-  check_err_types<type_array<std::exception_ptr>>(ex::on(sched3, ex::just(3)));
+  check_err_types<type_array<std::exception_ptr, int>>(ex::on(sched3, ex::just(3)));
 }
-TEST_CASE("TODO: on keeps sends_stopped from scheduler's sender", "[adaptors][on]") {
+TEST_CASE("on keeps sends_stopped from scheduler's sender", "[adaptors][on]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   stopped_scheduler sched3{};
 
   check_sends_stopped<false>(ex::on(sched1, ex::just(1)));
-  check_sends_stopped<false>(ex::on(sched2, ex::just(2)));
-  // check_sends_stopped<true>(ex::on(sched3, ex::just(3)));
-  // TODO: on should forward its "sends_stopped" info
-  // incorrect check:
-  check_sends_stopped<false>(ex::on(sched3, ex::just(3)));
+  check_sends_stopped<true>(ex::on(sched2, ex::just(2)));
+  check_sends_stopped<true>(ex::on(sched3, ex::just(3)));
 }
 
 // Return a different sender when we invoke this custom defined on implementation

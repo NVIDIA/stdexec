@@ -32,13 +32,11 @@ struct op_state {
 
 struct my_sender  {
   using completion_signatures =
-    ex::completion_signatures< //
-      ex::set_value_t(),     //
-      ex::set_error_t(std::exception_ptr)>;
+    ex::completion_signatures<ex::set_value_t(int)>;
 
   int value_{0};
 
-  template <ex::receiver_of R>
+  template <class R>
   friend op_state<R> tag_invoke(ex::connect_t, my_sender&& s, R&& r) {
     return {s.value_, (R &&) r};
   }
@@ -46,13 +44,11 @@ struct my_sender  {
 
 struct my_sender_unconstrained {
   using completion_signatures =
-    ex::completion_signatures< //
-      ex::set_value_t(),     //
-      ex::set_error_t(std::exception_ptr)>;
+    ex::completion_signatures<ex::set_value_t(int)>;
 
   int value_{0};
 
-  template <typename R> // accept any type here
+  template <class R> // accept any type here
   friend op_state<R> tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) {
     return {s.value_, (R &&) r};
   }
@@ -79,14 +75,16 @@ struct strange_receiver {
     return {19, std::move(self)};
   }
 
-  friend inline void tag_invoke(ex::set_value_t, strange_receiver, int val) { REQUIRE(val == 19); }
+  friend inline void tag_invoke(ex::set_value_t, strange_receiver, int val) noexcept { REQUIRE(val == 19); }
   friend void tag_invoke(ex::set_stopped_t, strange_receiver) noexcept {}
   friend void tag_invoke(ex::set_error_t, strange_receiver, std::exception_ptr) noexcept {}
+  friend empty_env tag_invoke(ex::get_env_t, const strange_receiver&) noexcept {
+    return {};
+  }
 };
 
 TEST_CASE("connect can be defined in the receiver", "[cpo][cpo_connect]") {
-  static_assert(ex::sender<my_sender>);
-  static_assert(ex::receiver<strange_receiver>);
+  static_assert(ex::sender_to<my_sender, strange_receiver>);
   bool called{false};
   auto op = ex::connect(my_sender{10}, strange_receiver{&called});
   ex::start(op);

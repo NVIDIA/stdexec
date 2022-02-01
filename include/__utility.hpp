@@ -287,6 +287,8 @@ namespace std {
     };
   template <class _Pred, class _True, class _False>
     using __if = __minvoke2<__if_<__v<_Pred>>, _True, _False>;
+  template <bool _Pred, class _True, class _False>
+    using __if_c = __minvoke2<__if_<_Pred>, _True, _False>;
 
   template <class _Fn>
     struct __curry {
@@ -305,6 +307,13 @@ namespace std {
     template <class... _Ts>
       using __f = integral_constant<size_t, sizeof...(_Ts)>;
   };
+
+  template <class _Fn>
+    struct __count_if {
+      template <class... _Ts>
+        using __f =
+          integral_constant<size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
+    };
 
   template <class _T>
     struct __contains {
@@ -405,9 +414,12 @@ namespace std {
   template <class... _As>
       requires (sizeof...(_As) == 1)
     using __single_t = __t<__front<_As...>>;
-  template <class... _As>
-      requires (sizeof...(_As) <= 1)
-    using __single_or_void_t = __t<__front<_As..., void>>;
+  template <class _Ty>
+    struct __single_or {
+      template <class... _As>
+          requires (sizeof...(_As) <= 1)
+        using __f = __t<__front<_As..., _Ty>>;
+    };
 
   template <class _Fun, class... _As>
     concept __callable =

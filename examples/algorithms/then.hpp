@@ -29,9 +29,15 @@ class _then_receiver
   friend stdex::receiver_adaptor<_then_receiver, R>;
   F f_;
 
+  template <class... As>
+  using _completions =
+    stdex::completion_signatures<
+      stdex::set_value_t(std::invoke_result_t<F, As...>),
+      stdex::set_error_t(std::exception_ptr)>;
+
   // Customize set_value by invoking the callable and passing the result to the inner receiver
   template<class... As>
-    requires stdex::receiver_of<R, std::invoke_result_t<F, As...>>
+    requires stdex::receiver_of<R, _completions<As...>>
   void set_value(As&&... as) && noexcept try {
     stdex::set_value(std::move(*this).base(), std::invoke((F&&) f_, (As&&) as...));
   } catch(...) {
@@ -50,7 +56,7 @@ struct _then_sender {
   F f_;
 
   // Connect:
-  template<stdex::receiver R>
+  template<class R>
     requires stdex::sender_to<S, _then_receiver<R, F>>
   friend auto tag_invoke(stdex::connect_t, _then_sender&& self, R r)
     -> stdex::connect_result_t<S, _then_receiver<R, F>> {
@@ -60,7 +66,9 @@ struct _then_sender {
 
   // Compute the completion_signatures
   template <class...Args>
-    using _set_value = stdex::set_value_t(std::invoke_result_t<F, Args...>);
+    using _set_value =
+      stdex::completion_signatures<
+        stdex::set_value_t(std::invoke_result_t<F, Args...>)>;
 
   template<class Env>
   friend auto tag_invoke(stdex::get_completion_signatures_t, _then_sender&&, Env)

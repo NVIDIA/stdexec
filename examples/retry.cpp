@@ -42,7 +42,7 @@ struct fail_some {
     }
   };
 
-  template <std::execution::receiver_of<int> R>
+  template <class R>
   friend op<R> tag_invoke(std::execution::connect_t, fail_some, R r) {
     return {std::move(r)};
   }

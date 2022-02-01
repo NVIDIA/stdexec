@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <examples/schedulers/static_thread_pool.hpp>
@@ -86,7 +87,7 @@ TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_
 
 TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wait]") {
   ex::sender auto snd =
-      ex::just(13) //
+      fallible_just{13} //
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
   check_val_types<type_array<type_array<int>, type_array<std::string>>>(snd);
   static_assert(!std::invocable<decltype(sync_wait), decltype(snd)>);
