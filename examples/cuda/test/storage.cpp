@@ -66,7 +66,7 @@ void invoke(ActionT action, std::variant<Ts...> &storage)
 template <class ActionT, class... Ts>
 void invoke(ActionT action, cuda::variant<Ts...> &storage)
 {
-  cuda::graph::detail::invoke(action, storage);
+  cuda::invoke(action, storage);
 }
 
 TEST_CASE("cuda storage type is move constructible", "[cuda][utility]")

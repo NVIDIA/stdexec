@@ -158,7 +158,7 @@ struct operation_state_t
         {
           value_t &res = *reinterpret_cast<value_t*>(self.sh_state_->storage_.get());
 
-          cuda::graph::detail::invoke(
+          cuda::invoke(
             [&](auto &&...args) {
               consumer(thread_id_t{},
                        block_id_t{},

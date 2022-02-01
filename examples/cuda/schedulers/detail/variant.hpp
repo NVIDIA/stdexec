@@ -182,4 +182,19 @@ __host__ __device__ void apply(F &&f, T &&v)
 template <class Fn, class Variant>
 using apply_t = typename Variant::template result_t<Fn>;
 
+template <class F, class... Ts>
+__host__ __device__ void invoke(F f, cuda::variant<Ts...> &storage)
+{
+  if constexpr (cuda::variant<Ts...>::empty)
+  {
+    f();
+  }
+  else
+  {
+    cuda::apply(
+      [f](auto &&tpl) { cuda::apply(f, std::forward<decltype(tpl)>(tpl)); },
+      storage);
+  }
+}
+
 } // namespace example::cuda

@@ -20,7 +20,7 @@
 #include <schedulers/detail/tuple.hpp>
 #include <schedulers/detail/variant.hpp>
 
-namespace example::cuda::graph::detail
+namespace example::cuda::distributed::detail
 {
 
 struct id_t
