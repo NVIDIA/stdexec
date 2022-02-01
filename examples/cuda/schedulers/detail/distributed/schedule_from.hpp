@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include <schedulers/detail/graph/concepts.hpp>
-#include <schedulers/detail/graph/consumer.hpp>
-#include <schedulers/detail/graph/graph_instance.hpp>
-#include <schedulers/detail/graph/sender_base.hpp>
+#include <schedulers/detail/distributed/concepts.hpp>
+#include <schedulers/detail/distributed/environment.hpp>
+#include <schedulers/detail/distributed/sender_base.hpp>
+#include <schedulers/detail/distributed/consumer.hpp>
 #include <schedulers/detail/helpers.hpp>
 #include <schedulers/detail/storage.hpp>
 #include <schedulers/detail/tuple.hpp>
@@ -28,7 +28,7 @@
 #include <type_traits>
 #include <span>
 
-namespace example::cuda::graph::detail::schedule_from
+namespace example::cuda::distributed::detail::schedule_from
 {
 
 template <class R>
@@ -40,23 +40,8 @@ struct receiver_t
   friend void
   tag_invoke(std::execution::set_value_t, receiver_t &&self, Ts&&... ts) noexcept
   {
-    if constexpr (graph_receiver<R>)
-    {
-      auto consumer = self.receiver_.get_consumer();
-      consumer(
-        thread_id_t{},
-        block_id_t{},
-        std::forward<Ts>(ts)...);
-
-      std::execution::set_value(
-        std::move(self.receiver_),
-        std::span<cudaGraphNode_t>{});
-    }
-    else
-    {
-      std::execution::set_value(std::move(self.receiver_),
-                                std::forward<Ts>(ts)...);
-    }
+    std::execution::set_value(std::move(self.receiver_),
+                              std::forward<Ts>(ts)...);
   }
 
   friend void tag_invoke(
@@ -72,8 +57,6 @@ struct receiver_t
     std::execution::set_stopped(std::move(r.receiver_));
   }
 
-  graph_info_t graph() noexcept { return receiver_.graph(); }
-
   template <std::__none_of<std::execution::set_value_t> Tag, class... Ts>
   requires std::invocable<Tag, const R &, Ts...> friend decltype(auto)
   tag_invoke(Tag tag, const receiver_t &self, Ts &&...ts) noexcept
@@ -81,7 +64,7 @@ struct receiver_t
     return ((Tag &&) tag)(std::as_const(self.receiver_), (Ts &&) ts...);
   }
 
-  static constexpr bool is_cuda_graph_api = true;
+  static constexpr bool is_cuda_distributed_api = true;
 };
 
 template <class Scheduler, class S>
@@ -123,12 +106,12 @@ struct sender_t
   template <std::__decays_to<sender_t> Self, class _Env>
   friend auto
   tag_invoke(std::execution::get_completion_signatures_t, Self &&, _Env)
-    -> std::execution::completion_signatures_of_t<std::__member_t<Self, S>, _Env>;
+  -> std::execution::completion_signatures_of_t<std::__member_t<Self, S>, _Env>;
 
   using value_t = std::execution::
-    value_types_of_t<S, std::execution::no_env, cuda::tuple, cuda::variant>;
+  value_types_of_t<S, std::execution::no_env, cuda::tuple, cuda::variant>;
 
-  static constexpr bool is_cuda_graph_api = true;
+  static constexpr bool is_cuda_distributed_api = true;
 };
 
-} // namespace graph::schedule_from
+} // namespace distributed::schedule_from

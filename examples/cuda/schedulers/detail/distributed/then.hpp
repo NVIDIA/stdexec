@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include <schedulers/detail/graph/concepts.hpp>
-#include <schedulers/detail/graph/consumer.hpp>
-#include <schedulers/detail/graph/graph_instance.hpp>
-#include <schedulers/detail/graph/sender_base.hpp>
+#include <schedulers/detail/distributed/concepts.hpp>
+#include <schedulers/detail/distributed/environment.hpp>
+#include <schedulers/detail/distributed/sender_base.hpp>
+#include <schedulers/detail/distributed/consumer.hpp>
 #include <schedulers/detail/helpers.hpp>
 #include <schedulers/detail/storage.hpp>
 #include <schedulers/detail/tuple.hpp>
@@ -27,29 +27,21 @@
 #include <execution.hpp>
 #include <span>
 
-namespace example::cuda::graph::detail::then
+namespace example::cuda::distributed::detail::then
 {
 
-template <class F, class ConsumerT, class ArgsTuple>
-__global__ __launch_bounds__(1) void then_kernel(F f,
-                                                 ConsumerT consumer,
-                                                 ArgsTuple *args)
+template <class F, class ConsumerT>
+__global__ __launch_bounds__(1) void then_kernel(F f, ConsumerT consumer)
 {
-  cuda::invoke(
-    [=] __device__(auto&&... args) {
-      if constexpr (std::is_void_v<std::invoke_result_t<F, decltype(args)...>>)
-      {
-        f(std::forward<decltype(args)>(args)...);
-        consumer(thread_id_t{}, block_id_t{});
-      }
-      else
-      {
-        consumer(thread_id_t{},
-                 block_id_t{},
-                 f(std::forward<decltype(args)>(args)...));
-      }
-    },
-    *args);
+  if constexpr (std::is_void_v<std::invoke_result_t<F>>)
+  {
+    f();
+    consumer(thread_id_t{}, block_id_t{});
+  }
+  else
+  {
+    consumer(thread_id_t{}, block_id_t{}, f());
+  }
 }
 
 template <class InTuple, class Receiver, class F>
@@ -63,36 +55,17 @@ class receiver_t
 
   F function_;
 
-  void set_value(std::span<cudaGraphNode_t> predecessors) && noexcept try
+  void set_value() && noexcept try
   {
-    graph_env auto env = std::execution::get_env(this->base());
+    distributed_env auto env = std::execution::get_env(this->base());
 
-    std::byte *storage_ptr = cuda::get_storage(env);
+    // if (env.context().is_main_device_holder())
+    {
+      auto consumer = consumer_t{cuda::get_storage(env)};
+      then_kernel<<<1, 1, 0, env.stream()>>>(function_, consumer);
+    }
 
-    auto consumer = this->base().get_consumer();
-    using consumer_t = std::decay_t<decltype(consumer)>;
-
-    void *kernel_args[3] = {&function_, &consumer, &storage_ptr};
-
-    cudaKernelNodeParams kernel_node_params{};
-    kernel_node_params.func = (void *)then_kernel<F, consumer_t, InTuple>;
-    kernel_node_params.gridDim = dim3(1, 1, 1);
-    kernel_node_params.blockDim = dim3(1, 1, 1);
-    kernel_node_params.sharedMemBytes = 0;
-    kernel_node_params.kernelParams = kernel_args;
-    kernel_node_params.extra = nullptr;
-
-    cudaGraph_t graph = env.graph().get();
-
-    std::array<cudaGraphNode_t, 1> node{};
-    check(cudaGraphAddKernelNode(node.data(),
-                                 graph,
-                                 predecessors.data(),
-                                 predecessors.size(),
-                                 &kernel_node_params));
-
-    std::execution::set_value(std::move(this->base()),
-                              std::span<cudaGraphNode_t>{node});
+    std::execution::set_value(std::move(this->base()));
   } catch(...) {
     std::execution::set_error(std::move(this->base()),
                               std::current_exception());
@@ -114,15 +87,10 @@ public:
     , function_(function)
   {}
 
-  [[nodiscard]] consumer_t get_consumer() const noexcept
-  {
-    return {cuda::get_storage(std::execution::get_env(this->base()))};
-  }
-
-  static constexpr bool is_cuda_graph_api = true;
+  static constexpr bool is_cuda_distributed_api = true;
 };
 
-template <graph_sender S, class F>
+template <distributed_sender S, class F>
 struct sender_t : sender_base_t<sender_t<S, F>, S>
 {
   using arguments_t = value_of_t<S>;
@@ -132,7 +100,7 @@ struct sender_t : sender_base_t<sender_t<S, F>, S>
 
   F function_;
 
-  template <graph_receiver Receiver>
+  template <distributed_receiver Receiver>
   auto connect(Receiver &&receiver) && noexcept
   {
     return std::execution::connect(
@@ -162,4 +130,4 @@ struct sender_t : sender_base_t<sender_t<S, F>, S>
     , function_{function}
   {}
 };
-} // namespace example::cuda::graph::detail::then
+} // namespace example::cuda::distributed::detail::then

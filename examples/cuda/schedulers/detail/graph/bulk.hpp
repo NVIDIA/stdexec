@@ -40,7 +40,7 @@ __global__ __launch_bounds__(BlockThreads) void bulk_kernel(Shape shape,
                                                             ConsumerT consumer,
                                                             ArgsTuple *args)
 {
-  detail::invoke(
+  cuda::invoke(
     [=] __device__(auto... args) {
       const unsigned int i = blockIdx.x * BlockThreads + threadIdx.x;
 
