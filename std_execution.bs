@@ -3890,20 +3890,25 @@ namespace std::execution {
     struct completion_signatures {};
 
   template &lt;class... Args> <i>// exposition only</i>
-    using <i>default-set-value</i> = set_value_t(Args...);
+    using <i>default-set-value</i> =
+      completion_signatures&lt;set_value_t(Args...)>;
 
   template &lt;class Err> <i>// exposition only</i>
-    using <i>default-set-error</i> = set_error_t(Err);
+    using <i>default-set-error</i> =
+      completion_signatures&lt;set_error_t(Err)>;
+
+  template &lt;class Sigs, class E> // exposition only
+    concept <i>valid-completion-signatures</i> = <i>see below</i>;
 
   // [exec.utils.mkcmplsigs]
   template <
     sender Sndr,
     class Env = no_env,
-    class AddlSigs = completion_signatures<>,
+    <i>valid-completion-signatures&lt;Env></i> AddlSigs = completion_signatures<>,
     template &lt;class...> class SetValue = <i>/* see below */</i>,
     template &lt;class> class SetError = <i>/* see below */</i>,
-    bool SendsStopped = completion_signatures_of_t&lt;Sndr, Env>::sends_stopped>
-      requires sender&lt;Sndr, Env>
+    <i>valid-completion-signatures&lt;Env></i> SetStopped = completion_signatures&lt;set_stopped_t()>>
+      requires sender<Sndr, Env>
   using make_completion_signatures = completion_signatures<<i>/* see below */</i>>;
 
   // [exec.ctx], execution contexts
@@ -4176,7 +4181,7 @@ enum class forward_progress_guarantee {
       concept receiver =
         move_constructible&lt;remove_cvref_t&lt;T>> &&
         constructible_from&lt;remove_cvref_t&lt;T>, T> &&
-        requires(const remove_cvref_t&lt;T>&& t) {
+        requires(const remove_cvref_t&lt;T>& t) {
           execution::get_env(t);
         };
 
@@ -5115,15 +5120,15 @@ are all well-formed.
             <pre highlight="c++">
             make_completion_signatures&lt;
               copy_cvref_t&lt;S2, S>, E, <i>set-error-signature</i>,
-                <i>default-set-value</i>, <i>set-error-completions</i>>;
+                <i>default-set-value</i>, <i>set-error-completion</i>>;
             </pre>
 
-            where <code><i>set-error-completions</i></code> is the template alias:
+            where <code><i>set-error-completion</i></code> is the template alias:
 
             <pre highlight="c++">
-            template &lt;class... Es>
-              <i>set-error-completions</i> =
-                completion_signatures&lt;<i>compl-sig-t</i>&lt;set_value_t, invoke_result_t&lt;F, Es>>...>
+            template &lt;class E>
+              <i>set-error-completion</i> =
+                completion_signatures&lt;<i>compl-sig-t</i>&lt;set_value_t, invoke_result_t&lt;F, E>>>
             </pre>
 
             and <code><i>set-error-signature</i></code> is an alias for
@@ -5201,7 +5206,7 @@ are all well-formed.
             <code><i>set-error-signature</i></code> names the type
             `completion_signatures<set_error_t(exception_ptr)>` if
             `is_nothrow_invocable_v<F>` is `true`, or `completion_signatures<>`
-            otherwise;
+            otherwise.
             </pre>
 
     If the function selected above does not return a sender which invokes `f` when `s` completes by calling `set_stopped`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the behavior of calling `execution::upon_stopped(s, f)` is undefined.
@@ -5253,39 +5258,42 @@ are all well-formed.
             2. Otherwise, let `op_state2` be the result of `execution::connect(s, r)`. `execution::connect(s2, out_r)` returns an operation state `op_state` that stores `op_state2`. `execution::start(op_state)` is expression-equivalent to `execution::start(op_state2)`.
 
         4. Given subexpressions `s2` and `e`, where `s2` is a sender returned
-           from <code><i>let-cpo</i>(s, f)</code> or a copy of such, let `S2` be
-           `decltype((s2))`, let `E` be `decltype((e))`, and let `S'` be
-           `copy_cvref_t<S2, S>`. Then the type of
-           `tag_invoke(get_completion_signatures, s2, e)` is specified as
-           follows:
+            from <code><i>let-cpo</i>(s, f)</code> or a copy of such, let `S2` be
+            `decltype((s2))`, let `E` be `decltype((e))`, and let `S'` be
+            `copy_cvref_t<S2, S>`. Then the type of
+            `tag_invoke(get_completion_signatures, s2, e)` is specified as
+            follows:
 
             1. If `sender<S', E>` is `false`, the type of
-            `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent
-            to `dependent_completion_signatures<E>`.
+                `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent
+                to `dependent_completion_signatures<E>`.
 
             2. Otherwise, let `Sigs...` be the set of template arguments of the
-            `completion_signatures` specialization named by `completion_signatures_of_t<S', E>`,
-            let `Sigs2...` be the set of function types in `Sigs...` whose return type
-            is <code><i>set-cpo</i></code>, and let `Rest...` be the set of function types
-            in `Sigs...` but not `Sigs2...`.
+                `completion_signatures` specialization named by `completion_signatures_of_t<S', E>`,
+                let `Sigs2...` be the set of function types in `Sigs...` whose return type
+                is <code><i>set-cpo</i></code>, and let `Rest...` be the set of function types
+                in `Sigs...` but not `Sigs2...`.
             
             3. For each <code>Sig2<i><sub>i</sub></i></code> in `Sigs2...`, let
-            <code>Vs<i><sub>i</sub></i>...</code> be the set of function
-            arguments in <code>Sig2<i><sub>i</sub></i></code> and let
-            <code>S3<i><sub>i</sub></i></code> be <code>invoke_result_t&lt;F,
-            decay_t&lt;Vs<i><sub>i</sub></i>>&amp;...></code>. If
-            <code>S3<i><sub>i</sub></i></code> is ill-formed, or if
-            <code>sender&lt;S3<i><sub>i</sub></i>, E></code> is not satisfied,
-            then the type of `tag_invoke(get_completion_signatures, s2, e)`
-            shall be equivalent to `dependent_completion_signatures<E>`.
+                <code>Vs<i><sub>i</sub></i>...</code> be the set of function
+                arguments in <code>Sig2<i><sub>i</sub></i></code> and let
+                <code>S3<i><sub>i</sub></i></code> be <code>invoke_result_t&lt;F,
+                decay_t&lt;Vs<i><sub>i</sub></i>>&amp;...></code>. If
+                <code>S3<i><sub>i</sub></i></code> is ill-formed, or if
+                <code>sender&lt;S3<i><sub>i</sub></i>, E></code> is not satisfied,
+                then the type of `tag_invoke(get_completion_signatures, s2, e)`
+                shall be equivalent to `dependent_completion_signatures<E>`.
 
-            4. Otherwise, let <code>Sigs3<i><sub>i</sub></i>...</code> be
-            the set of template arguments of the `completion_signatures` specialization named by <code>completion_signatures_of_t&lt;S3<i><sub>i</sub></i>, E></code>.
-            Then the type of `tag_invoke(get_completion_signatures, s2, e)`
-            shall be equivalent to <code>completion_signatures&lt;Sigs3<i><sub>0</sub></i>...,
-            Sigs3<i><sub>1</sub></i>..., ... Sigs3<i><sub>n-1</sub></i>..., Rest...,
-            set_error_t(exception_ptr)></code>, where <code><i>n</i></code> is
-            `sizeof...(Sigs2)`.
+            4. Otherwise, let <code>Sigs3<i><sub>i</sub></i>...</code> be the
+                set of template arguments of the `completion_signatures`
+                specialization named by
+                <code>completion_signatures_of_t&lt;S3<i><sub>i</sub></i>,
+                E></code>. Then the type of `tag_invoke(get_completion_signatures,
+                s2, e)` shall be equivalent to
+                <code>completion_signatures&lt;Sigs3<i><sub>0</sub></i>...,
+                Sigs3<i><sub>1</sub></i>..., ... Sigs3<i><sub>n-1</sub></i>...,
+                Rest..., set_error_t(exception_ptr)></code>, where
+                <code><i>n</i></code> is `sizeof...(Sigs2)`.
 
     If <code><i>let-cpo</i>(s, f)</code> does not return a sender that invokes `f` when <code><i>set-cpo</i></code> is called, and makes its completion dependent on the completion of a sender returned by `f`, and propagates the other completion-signals sent by `s`, the behavior of calling <code><i>let-cpo</i>(s, f)</code> is undefined.
 
@@ -5346,7 +5354,7 @@ are all well-formed.
 
 2. Let <code><i>split-env</i></code> be the type of an execution environment such that, given an instance `e`, the expression `get_stop_token(e)` is well formed and has type `stop_token`.
 
-2. The name `execution::split` denotes a customization point object. For some
+3. The name `execution::split` denotes a customization point object. For some
     subexpression `s`, let `S` be `decltype((s))`. If
     <code>execution::sender&lt;S, <i>split-env</i>></code> is `false`,
     `execution::split` is ill-formed. Otherwise, the expression
@@ -5477,9 +5485,9 @@ are all well-formed.
             and <code><i>error-signatures</i></code> is the alias template:
 
             <pre highlight="c++">
-            template &lt;class... Es>
+            template &lt;class E>
               using <i>error-signatures</i> =
-                completion_signatures&lt;set_error_t(decay_t&lt;Es>&amp;)...>;
+                completion_signatures&lt;set_error_t(decay_t&lt;E>&amp;)>;
             </pre>
 
     4. If the function selected above does not return a sender which sends
@@ -5587,7 +5595,7 @@ are all well-formed.
                 Sigs2<i><sub>1</sub></i>..., ... Sigs2<i><sub>n-1</sub></i>...,
                 set_error_t(exception_ptr), set_stopped_t()]</code>, where
                 <code><i>n</i></code> is `sizeof...(Ss)`. If any
-                <code>C<i><sub>i</sub></i></code> is `0`, the the type of
+                <code>C<i><sub>i</sub></i></code> is `0`, then the type of
                 `tag_invoke(get_completion_signatures, s2, e)` shall be
                 `completion_signatures<Ws...>`.
 
@@ -5857,7 +5865,7 @@ are all well-formed.
             discarded. -- *end note*]
 
     4. Given subexpressions `s2` and `e` where `s2` is a sender returned
-        from `bulk` or a copy of such, let `S2` be `decltype((s2))` and let
+        from `ensure_started` or a copy of such, let `S2` be `decltype((s2))` and let
         `E` be `decltype((e))`. The type of
         `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent
         to:
@@ -5882,9 +5890,9 @@ are all well-formed.
             and <code><i>error-types</i></code> is the alias template:
 
             <pre highlight="c++">
-            template &lt;class... Es>
+            template &lt;class E>
               using <i>error-types</i> =
-                completion_signatures&lt;set_error_t(decay_t&lt;Es>&amp;&amp;)...>;
+                completion_signatures&lt;set_error_t(decay_t&lt;E>&amp;&amp;)>;
             </pre>
 
     If the function selected above does not return a sender that sends xvalue
@@ -5911,7 +5919,7 @@ are all well-formed.
     3. Otherwise:
 
         1. Let `R` be the type of a receiver, let `r` be an rvalue of type `R`, and let `cr` be a
-            lvalue reference to `const R` such that
+            lvalue reference to `const R` such that:
 
             1. The expression `set_value(r)` is not potentially throwing and has no effect,
 
@@ -6095,24 +6103,22 @@ are all well-formed.
       }
 
       // [exec.utils.rcvr_adptr.nonmembers] Non-member functions
-      template &lt;class D = Derived, class... As>
+      template &lt;class... As>
         friend void tag_invoke(set_value_t, Derived&amp;&amp; self, As&amp;&amp;... as) noexcept;
 
-      template &lt;class E, class D = Derived>
+      template &lt;class E>
         friend void tag_invoke(set_error_t, Derived&amp;&amp; self, E&amp;&amp; e) noexcept;
 
-      template &lt;class D = Derived>
-        friend void tag_invoke(set_stopped_t, Derived&amp;&amp; self) noexcept;
+      friend void tag_invoke(set_stopped_t, Derived&amp;&amp; self) noexcept;
 
-      template &lt;class D = Derived>
-        friend decltype(auto) tag_invoke(get_env_t, const Derived&amp; self)
-           noexcept(<i>see below</i>);
+      friend decltype(auto) tag_invoke(get_env_t, const Derived&amp; self)
+          noexcept(<i>see below</i>);
 
-      template &lt;<i>forwarding-receiver-query</i> Tag, class D = Derived, class... As>
-          requires <i>callable</i>&lt;Tag, <i>BASE-TYPE</i>(const D&amp;), As...>
+      template &lt;<i>forwarding-receiver-query</i> Tag, class... As>
+          requires <i>callable</i>&lt;Tag, <i>BASE-TYPE</i>(const Derived&amp;), As...>
         friend auto tag_invoke(Tag tag, const Derived&amp; self, As&amp;&amp;... as)
-          noexcept(<i>nothrow-callable</i>&lt;Tag, <i>BASE-TYPE</i>(const D&amp;), As...>)
-          -> <i>call-result-t</i>&lt;Tag, <i>BASE-TYPE</i>(const D&), As...> {
+          noexcept(<i>nothrow-callable</i>&lt;Tag, <i>BASE-TYPE</i>(const Derived&amp;), As...>)
+          -> <i>call-result-t</i>&lt;Tag, <i>BASE-TYPE</i>(const Derived&), As...> {
           return std::move(tag)(<i>GET-BASE</i>(self), std::forward&lt;As>(as)...);
         }
 
@@ -6144,73 +6150,73 @@ are all well-formed.
 #### Non-member functions <b>[exec.utils.rcvr_adptr.nonmembers]</b> #### {#spec-execution.snd_rec_utils.receiver_adaptor.nonmembers}
 
     <pre>
-    template &lt;class D = Derived, class... As>
+    template &lt;class... As>
       friend void tag_invoke(set_value_t, Derived&amp;&amp; self, As&amp;&amp;... as) noexcept;
     </pre>
 
-    1. <i>Effects:</i> Equivalent to:
+    1. Let `SET-VALUE` be the expression `std::move(self).set_value(std::forward<As>(as)...)`.
 
-        - `static_cast<D&&>(self).set_value(std::forward<As>(as)...)` if that expression is well formed,
+    2. <i>Constraints:</i> Either `SET-VALUE` is a valid expression or `typename Derived::set_value` denotes a type and <code><i>callable</i>&lt;set_value_t, <i>BASE-TYPE</i>(Derived), As...></code> is `true`.
 
-            * <i>Mandates:</i> The member function call expression above is not potentially throwing.
-
-        - Otherwise, <code>execution::set_value(<i>GET-BASE</i>(std::move(self)), std::forward&lt;As>(as)...)</code>
-            if the <i>Constraints</i> below are met,
-
-            * <i>Constraints:</i> <code>requires {typename D::set_value;} && <i>callable</i>&lt;set_value_t, <i>BASE-TYPE</i>(D), As...></code> is `true`.
-
-        - Otherwise, this function does not participate in overload resolution.
-
-    <pre>
-    template &lt;class E, class D = Derived>
-      friend void tag_invoke(set_error_t, Derived&amp;&amp; self, E&amp;&amp; e) noexcept;
-    </pre>
-
-    2. <i>Effects:</i> Equivalent to:
-
-        - `static_cast<D&&>(self).set_error(std::forward<E>(e))` if that expression is well-formed,
-
-            * <i>Mandates:</i> The member function call expression above is not potentially throwing.
-
-        - Otherwise, <code>execution::set_error(<i>GET-BASE</i>(std::move(self)), std::forward&lt;E>(e))</code>.
-            if the <i>Constraints</i> below are met,
-
-            * <i>Constraits:</i> <code>requires {typename D::set_error;} && <i>callable</i>&lt;set_error_t, <i>BASE-TYPE</i>(D), E></code> is `true`.
-
-        - Otherwise, this function does not participate in overload resolution.
-
-    <pre>
-    template &lt;class D = Derived>
-      friend void tag_invoke(set_stopped_t, Derived&amp;&amp; self) noexcept;
-    </pre>
-
-    3. <i>Effects:</i> Equivalent to:
-
-        - `static_cast<D&&>(self).set_stopped()` if that expression is well-formed,
-
-            * <i>Mandates:</i> The member function call expression above is not potentially throwing.
-
-        - Otherwise, <code>execution::set_stopped(<i>GET-BASE</i>(std::move(self)))</code>
-            if the <i>Constraints</i> below are met,
-
-            * <i>Constraints:</i> <code>requires {typename D::set_stopped;}</code> is `true`.
-
-        - Otherwise, this function does not participate in overload resolution.
-
-    <pre>
-    template &lt;class D = Derived>
-      friend decltype(auto) tag_invoke(get_env_t, const Derived&amp; self)
-        noexcept(<i>see below</i>);
-    </pre>
+    3. <i>Mandates:</i> `SET-VALUE`, if that expression is valid, is not potentially throwing.
 
     4. <i>Effects:</i> Equivalent to:
 
-        - `return (static_cast<const D&>(self).get_env());` if that expression is well-formed, in which
-            case the expression in the `noexcept` clause is `noexcept(self.get_env())`,
+        * If `SET-VALUE` is a valid expression, `SET-VALUE`;
 
-        - Otherwise, <code>return (execution::get_env(<i>GET-BASE</i>(self)));</code>,
-            in which case the expression in the `noexcept` clause is
-            `noexcept(execution::get_env(<i>GET-BASE</i>(self)))`.
+        * Otherwise, <code>execution::set_value(<i>GET-BASE</i>(std::move(self)), std::forward&lt;As>(as)...)</code>.
+
+    <pre>
+    template &lt;class E>
+      friend void tag_invoke(set_error_t, Derived&amp;&amp; self, E&amp;&amp; e) noexcept;
+    </pre>
+
+    1. Let `SET-ERROR` be the expression `std::move(self).set_error(std::forward<E>(e))`.
+
+    2. <i>Constraints:</i> Either `SET-ERROR` is a valid expression or `typename Derived::set_error` denotes a type and <code><i>callable</i>&lt;set_error_t, <i>BASE-TYPE</i>(Derived), E></code> is `true`.
+
+    3. <i>Mandates:</i> `SET-ERROR`, if that expression is valid, is not potentially throwing.
+
+    4. <i>Effects:</i> Equivalent to:
+
+        * If `SET-ERROR` is a valid expression, `SET-ERROR`;
+
+        * Otherwise, <code>execution::set_error(<i>GET-BASE</i>(std::move(self)), std::forward&lt;E>(e))</code>.
+
+    <pre>
+    friend void tag_invoke(set_stopped_t, Derived&amp;&amp; self) noexcept;
+    </pre>
+
+    1. Let `SET-STOPPED` be the expression `std::move(self).set_stopped()`.
+
+    2. <i>Constraints:</i> Either `SET-STOPPED` is a valid expression or `typename Derived::set_stopped` denotes a type and <code><i>callable</i>&lt;set_stopped_t, <i>BASE-TYPE</i>(Derived)></code> is `true`.
+
+    3. <i>Mandates:</i> `SET-STOPPED`, if that expression is valid, is not potentially throwing.
+
+    4. <i>Effects:</i> Equivalent to:
+
+        * If `SET-STOPPED` is a valid expression, `SET-STOPPED`;
+
+        * Otherwise, <code>execution::set_stopped(<i>GET-BASE</i>(std::move(self)))</code>.
+
+    <pre>
+    friend decltype(auto) tag_invoke(get_env_t, const Derived&amp; self)
+      noexcept(<i>see below</i>);
+    </pre>
+
+    1. <i>Constraints:</i> Either `self.get_env()` is a valid expression or `typename Derived::get_env` denotes a type and <code><i>callable</i>&lt;get_env_t, <i>BASE-TYPE</i>(const Derived&amp;)></code> is `true`.
+
+    2. <i>Effects:</i> Equivalent to:
+
+        * If `self.get_env()` is a valid expression, `self.get_env()`;
+
+        * Otherwise, <code>execution::get_env(<i>GET-BASE</i>(self))</code>.
+
+    3. <i>Remarks:</i> The expression in the `noexcept` clause is:
+
+        * If `self.get_env()` is a valid expression, `noexcept(self.get_env())`;
+
+        * Otherwise, <code>noexcept(execution::get_env(<i>GET-BASE</i>(self)))</code>.
 
 ### `execution::completion_signatures` <b>[exec.utils.cmplsigs]</b> ### {#spec-execution.snd_rec_utils.completion_sigs}
 
@@ -6383,9 +6389,9 @@ are all well-formed.
         <code><i>valid-completion-signatures</i>&lt;SetError&lt;Err>, E></code>
         is satisfied.
 
-    Let:
+    Then:
 
-        * `Vs...` be a pack of the types in the <code><i>type-list</i></code> named
+        * Let `Vs...` be a pack of the types in the <code><i>type-list</i></code> named
             by <code>value_types_of_t&lt;Sndr, Env, SetValue, <i>type-list</i>></code>.
 
         *  Let `Es...` be a pack of the types in the
