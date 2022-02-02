@@ -1,9 +1,9 @@
 <pre class='metadata'>
 Title: Removing exception_ptr from the Receiver Concepts
 H1: <code>Removing exception_ptr from the Receiver Concepts</code>
-Shortname: D2532
+Shortname: P2532
 Revision: 0
-Status: D
+Status: P
 Group: WG21
 Audience: LEWG
 Editor: Eric Niebler, eric.niebler@gmail.com
