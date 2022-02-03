@@ -5310,34 +5310,11 @@ are all well-formed.
 
         * <i>Mandates:</i> The type of the `tag_invoke` expression above satisfies `execution::sender`.
 
-    3. Otherwise, constructs a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
-
-        1. Constructs a receiver `r`:
-
-            1. When `execution::set_value(r, args...)` is called, calls `f(i, args...)` for each `i` of type `Shape` from `0` to `shape`, then calls `execution::set_value(out_r, args...)`. If any of these throws an exception, it catches it and calls
-                `execution::set_error(out_r, current_exception())`.
-
-            2. When `execution::set_error(r, e)` is called, calls `execution::set_error(out_r, e)`.
-
-            3. When `execution::set_stopped(r)` is called, calls `execution::set_stopped(out_r, e)`.
-
-        2. Calls `execution::connect(s, r)`, which results in an operation state `op_state2`.
-
-        3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
-
-        4. Given subexpressions `s2` and `e` where `s2` is a sender returned
-            from `bulk` or a copy of such, let `S2` be `decltype((s2))` and let
-            `E` be `decltype((e))`. The type of
-            `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent
-            to:
-
-            <pre highlight="c++">
-            make_completion_signatures&lt;
-              copy_cvref_t&lt;S2, S>, E, completion_signatures&lt;set_error_t(exception_ptr)>>
-            </pre>
+    3. Otherwise, `execution::bulk(s, shape, f)` is ill-formed.
 
     4. If the function selected above does not return a sender which invokes
-        `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when
+        `f(i, args...)` for each `i` of type `Shape` from `0` to `shape`,
+        with no ordering or concurrency requirements, when
         the input sender sends values `args...`, or does not propagate the
         values of the signals sent by the input sender to a connected receiver,
         the behavior of calling `execution::bulk(s, shape, f)` is undefined.
