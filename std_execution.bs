@@ -4913,7 +4913,7 @@ are all well-formed.
         6. The lifetime of `op_state2`, once constructed, lasts until either `op_state3` is constructed or `op_state1` is destroyed, whichever comes first. The lifetime of `op_state3`, once constructed, lasts until `op_state1` is destroyed.
 
     3. Given subexpressions `s1` and `e`, where `s1` is a sender returned from `on` or a copy of such, let `S1` be `decltype((s1))`.
-        Let `E'` be <code>decltype((<i>replace-scheduler</i>(e, sch)))</code.
+        Let `E'` be <code>decltype((<i>replace-scheduler</i>(e, sch)))</code>.
         Then the type of `tag_invoke(get_completion_signatures, s1, e)` shall be:
 
         <pre highlight="c++">
