@@ -144,14 +144,14 @@ struct deleter_t
 
 template <class T, class SchedulerT>
 __host__ std::unique_ptr<T, deleter_t> allocate_on(SchedulerT &&scheduler,
-                                                     std::size_t elements = 1)
+                                                   std::size_t elements = 1)
 {
   const bool gpu = is_gpu_scheduler(scheduler);
 
   T *ptr{};
   if (gpu)
   {
-    cudaMallocManaged(&ptr, elements * sizeof(T));
+    cudaMalloc(&ptr, elements * sizeof(T));
   }
   else
   {
@@ -196,7 +196,7 @@ struct fields_accessor
 
   [[nodiscard]] __host__ __device__ float *get(field_id id) const
   {
-    return base_ptr + static_cast<int>(id) * (n_own_cells() + 2 * N) + N;
+    return base_ptr + static_cast<int>(id) * static_cast<std::size_t>(n_own_cells() + 2 * N) + N;
   }
 };
 
@@ -222,7 +222,7 @@ struct grid_t
       , end_{end}
       , n_own_cells_{end - begin}
       , fields_(allocate_on<float>(std::forward<SchedulerT>(scheduler),
-                                   (n_own_cells_ + N * 2) *
+                                   static_cast<std::size_t>(n_own_cells_ + N * 2) *
                                      static_cast<int>(field_id::fields_count)))
   {}
 
@@ -425,33 +425,49 @@ update_e(float *time,
 }
 
 template <int N>
-struct result_dumper_t
+class result_dumper_t
 {
-  bool write_results{};
-  int rank{};
-  int &report_step;
-  fields_accessor<N> accessor;
+  bool write_results_{};
+  int rank_{};
+  int &report_step_;
+  fields_accessor<N> accessor_;
 
-  bool with_halo{};
+  bool fetch_results_from_gpu_{};
+  bool with_halo_{};
 
   void write_vtk(const std::string &filename) const
   {
-    if (!write_results)
-      return;
-
-    if (rank == 0)
+    if (!write_results_)
     {
-      printf("\twriting report #%d", report_step);
+      return;
+    }
+
+    std::unique_ptr<float[]> h_ez;
+    float *ez = accessor_.get(field_id::ez);
+
+    if (fetch_results_from_gpu_)
+    {
+      h_ez = std::make_unique<float[]>(accessor_.n_own_cells() + 2 * N);
+      cudaMemcpy(h_ez.get(),
+                 accessor_.get(field_id::ez),
+                 sizeof(float) * (accessor_.n_own_cells() + 2 * N),
+                 cudaMemcpyDefault);
+      ez = h_ez.get();
+    }
+
+    if (rank_ == 0)
+    {
+      printf("\twriting report #%d", report_step_);
       fflush(stdout);
     }
 
     FILE *f = fopen(filename.c_str(), "w");
 
-    const int nx = accessor.n;
-    const float dx = accessor.dx;
-    const float dy = accessor.dy;
+    const int nx = accessor_.n;
+    const float dx = accessor_.dx;
+    const float dy = accessor_.dy;
 
-    const int own_cells = accessor.n_own_cells() + (with_halo ? 2 * N : 0);
+    const int own_cells = accessor_.n_own_cells() + (with_halo_ ? 2 * N : 0);
 
     fprintf(f, "# vtk DataFile Version 3.0\n");
     fprintf(f, "vtk output\n");
@@ -459,10 +475,10 @@ struct result_dumper_t
     fprintf(f, "DATASET UNSTRUCTURED_GRID\n");
     fprintf(f, "POINTS %d double\n", own_cells * 4);
 
-    const float y_offset = with_halo ? dy : 0.0f;
+    const float y_offset = with_halo_ ? dy : 0.0f;
     for (int own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
     {
-      const int cell_id = own_cell_id + accessor.begin;
+      const int cell_id = own_cell_id + accessor_.begin;
       const int i = cell_id % nx;
       const int j = cell_id / nx;
 
@@ -496,26 +512,44 @@ struct result_dumper_t
     fprintf(f, "SCALARS Ez double 1\n");
     fprintf(f, "LOOKUP_TABLE default\n");
 
-    const float *e = accessor.get(field_id::ez);
     for (int own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
     {
-      fprintf(f, "%lf\n", e[own_cell_id - (with_halo ? N : 0)]);
+      fprintf(f, "%lf\n", ez[own_cell_id - (with_halo_ ? N : 0)]);
     }
 
     fclose(f);
 
-    if (rank == 0)
+    if (rank_ == 0)
     {
       printf(".\n");
       fflush(stdout);
     }
   }
 
+public:
+  result_dumper_t(bool write_results,
+                  int rank,
+                  int &report_step,
+                  fields_accessor<N> accessor)
+    : write_results_(write_results)
+    , rank_(rank)
+    , report_step_(report_step)
+    , accessor_(accessor)
+  {
+    cudaPointerAttributes attributes{};
+    check(cudaPointerGetAttributes(&attributes, accessor.get(field_id::ez)));
+
+    const bool is_cpu_pointer = attributes.type == cudaMemoryTypeHost ||
+                                attributes.type == cudaMemoryTypeUnregistered;
+
+    fetch_results_from_gpu_ = is_cpu_pointer == false;
+  }
+
   void operator()() const
   {
     const std::string filename = std::string("output_") +
-                                 std::to_string(rank) + "_" +
-                                 std::to_string(report_step++) + ".vtk";
+                                 std::to_string(rank_) + "_" +
+                                 std::to_string(report_step_++) + ".vtk";
 
     write_vtk(filename);
   }
@@ -527,6 +561,7 @@ __host__ __device__ result_dumper_t<N> dump_results(bool write_results,
                                                     int &report_step,
                                                     fields_accessor<N> accessor)
 {
+
   return {write_results, rank, report_step, accessor};
 }
 
@@ -689,21 +724,46 @@ void report_performance(
   }
 }
 
+template <class SchedulerT>
+  requires requires(SchedulerT &&scheduler) { scheduler.bulk_range(42); }
+auto bulk_range(int n, SchedulerT &&scheduler)
+{
+  return scheduler.bulk_range(n);
+}
+
+template <class SchedulerT>
+auto bulk_range(int n, SchedulerT &&)
+{
+  return std::make_pair(0, n);
+}
+
+template <class SchedulerT>
+requires requires(SchedulerT &&scheduler) { scheduler.node_id(); }
+auto node_id_from(SchedulerT &&scheduler)
+{
+  return scheduler.node_id();
+}
+
+template <class SchedulerT>
+auto node_id_from(SchedulerT &&)
+{
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
-  const bool write_results = true;
+  const bool write_results = false;
 
   // graph::scheduler_t gpu_scheduler;
   distributed::scheduler_t gpu_scheduler(&argc, &argv);
   example::openmp_scheduler cpu_scheduler{};
 
-  const int node_id = gpu_scheduler.node_id();
-
   int n_inner_iterations = 100;
   int n_outer_iterations = 10;
 
-  constexpr int N = 512;
-  auto [grid_begin, grid_end] = gpu_scheduler.bulk_range(N * N);
+  constexpr int N = 22 * 1024;
+  const auto [grid_begin, grid_end] = bulk_range(N * N, gpu_scheduler);
+  const auto node_id = node_id_from(gpu_scheduler);
 
   time_storage_t time{gpu_scheduler};
   grid_t<N> grid{grid_begin, grid_end, gpu_scheduler};
