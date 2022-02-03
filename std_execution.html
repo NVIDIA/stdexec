@@ -7046,7 +7046,7 @@ started, the behavior of calling <code class="highlight"><c- n>execution</c-><c-
          <p><code class="highlight"><c- n>op_state2</c-></code> is wrapped by a new operation state, <code class="highlight"><c- n>op_state1</c-></code>, that is returned to the caller.</p>
         <li data-md>
          <p><code class="highlight"><c- n>r2</c-></code> is a receiver that wraps a reference to <code class="highlight"><c- n>out_r</c-></code> and forwards all
-   receiver completion-signals to it. In addition, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>r2</c-><c- p>)</c-></code> returns <code class="highlight"><i><c- n>replace</c-><c- o>-</c-><c- n>scheduler</c-></i><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code>.</p>
+receiver completion-signals to it. In addition, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>r2</c-><c- p>)</c-></code> returns <code class="highlight"><i><c- n>replace</c-><c- o>-</c-><c- n>scheduler</c-></i><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code>.</p>
         <li data-md>
          <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state1</c-></code>, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> on <code class="highlight"><c- n>op_state2</c-></code>.</p>
         <li data-md>
