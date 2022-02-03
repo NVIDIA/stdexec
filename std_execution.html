@@ -7014,6 +7014,8 @@ are all well-formed.</p>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> is used to adapt a sender into a sender that will start the input sender on an execution agent belonging to a specific execution context.</p>
     <li data-md>
+     <p>Let <code class="highlight"><i><c- n>replace</c-><c- o>-</c-><c- n>scheduler</c-></i><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code> be an expression denoting an object <code class="highlight"><c- n>e</c->'</code> such that <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> returns a copy of <code class="highlight"><c- n>sch</c-></code>, and <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>tag</c-><c- p>,</c-> <c- n>e</c->'<c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>tag</c-><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> for all arguments <code class="highlight"><c- n>args</c-><c- p>...</c-></code> and for all <code class="highlight"><c- n>tag</c-></code> whose type satisfies <code class="highlight"><i><c- n>forwarding</c-><c- o>-</c-><c- n>env</c-><c- o>-</c-><c- n>query</c-></i></code> and is not <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler_t</c-></code>.</p>
+    <li data-md>
      <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>sch</c-></code> and <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>Sch</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>sch</c-><c- p>))</c-></code> and <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Sch</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>scheduler</c-></code>, or <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> is ill-formed. Otherwise, the expression <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-><c- p>(</c-><c- n>sch</c-><c- p>,</c-> <c- n>s</c-><c- p>)</c-></code> is expression-equivalent to:</p>
      <ol>
       <li data-md>
@@ -7035,20 +7037,35 @@ started, the behavior of calling <code class="highlight"><c- n>execution</c-><c-
            <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>out_r</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code>.</p>
           <li data-md>
            <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
+          <li data-md>
+           <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>out_r</c-><c- p>)</c-></code>.</p>
          </ol>
         <li data-md>
          <p>Calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>schedule</c-><c- p>(</c-><c- n>sch</c-><c- p>)</c-></code>, which results in <code class="highlight"><c- n>s2</c-></code>. It then calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c-><c- n>s2</c-><c- p>,</c-> <c- n>r</c-><c- p>)</c-></code>, resulting in <code class="highlight"><c- n>op_state2</c-></code>.</p>
         <li data-md>
          <p><code class="highlight"><c- n>op_state2</c-></code> is wrapped by a new operation state, <code class="highlight"><c- n>op_state1</c-></code>, that is returned to the caller.</p>
+        <li data-md>
+         <p><code class="highlight"><c- n>r2</c-></code> is a receiver that wraps a reference to <code class="highlight"><c- n>out_r</c-></code> and forwards all
+   receiver completion-signals to it. In addition, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>r2</c-><c- p>)</c-></code> returns <code class="highlight"><i><c- n>replace</c-><c- o>-</c-><c- n>scheduler</c-></i><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>sch</c-><c- p>)</c-></code>.</p>
+        <li data-md>
+         <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state1</c-></code>, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> on <code class="highlight"><c- n>op_state2</c-></code>.</p>
+        <li data-md>
+         <p>The lifetime of <code class="highlight"><c- n>op_state2</c-></code>, once constructed, lasts until either <code class="highlight"><c- n>op_state3</c-></code> is constructed or <code class="highlight"><c- n>op_state1</c-></code> is destroyed, whichever comes first. The lifetime of <code class="highlight"><c- n>op_state3</c-></code>, once constructed, lasts until <code class="highlight"><c- n>op_state1</c-></code> is destroyed.</p>
        </ol>
       <li data-md>
-       <p><code class="highlight"><c- n>r2</c-></code> is a receiver that wraps a reference to <code class="highlight"><c- n>out_r</c-></code> and forwards all
-   receiver completion-signals to it. In addition, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_env</c-><c- p>(</c-><c- n>r2</c-><c- p>)</c-></code> returns an object <code class="highlight"><c- n>e</c-></code> such that <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler</c-><c- p>(</c-><c- n>e</c-><c- p>)</c-></code> returns a copy of <code class="highlight"><c- n>sch</c-></code>, and <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>tag</c-><c- p>,</c-> <c- n>e</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><c- n>tag</c-><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> for all arguments <code class="highlight"><c- n>args</c-><c- p>...</c-></code> and for all <code class="highlight"><c- n>tag</c-></code> whose type
-   satisfies <code class="highlight"><i><c- n>forwarding</c-><c- o>-</c-><c- n>env</c-><c- o>-</c-><c- n>query</c-></i></code> and is not <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_scheduler_t</c-></code>.</p>
-      <li data-md>
-       <p>When <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> is called on <code class="highlight"><c- n>op_state1</c-></code>, it calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-></code> on <code class="highlight"><c- n>op_state2</c-></code>.</p>
-      <li data-md>
-       <p>The lifetime of <code class="highlight"><c- n>op_state2</c-></code>, once constructed, lasts until either <code class="highlight"><c- n>op_state3</c-></code> is constructed or <code class="highlight"><c- n>op_state1</c-></code> is destroyed, whichever comes first. The lifetime of <code class="highlight"><c- n>op_state3</c-></code>, once constructed, lasts until <code class="highlight"><c- n>op_state1</c-></code> is destroyed.</p>
+       <p>Given subexpressions <code class="highlight"><c- n>s1</c-></code> and <code class="highlight"><c- n>e</c-></code>, where <code class="highlight"><c- n>s1</c-></code> is a sender returned from <code class="highlight"><c- n>on</c-></code> or a copy of such, let <code class="highlight"><c- n>S1</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s1</c-><c- p>))</c-></code>.
+Let <code class="highlight"><c- n>E</c->'</code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><i><c- n>replace</c-><c- o>-</c-><c- n>scheduler</c-></i><c- p>(</c-><c- n>e</c-><c- p>,</c-> <c- n>sch</c-><c- p>)))</c-></code>.
+Then the type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_completion_signatures</c-><c- p>,</c-> <c- n>s1</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> shall be:</p>
+<pre class="highlight"><c- n>make_completion_signatures</c-><c- o>&lt;</c->
+  <c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>S1</c-><c- p>,</c-> <c- n>S</c-><c- o>></c-><c- p>,</c->
+  <c- n>E</c->'<c- p>,</c->
+  <c- n>make_completion_signatures</c-><c- o>&lt;</c->
+    <c- n>schedule_result_t</c-><c- o>&lt;</c-><c- n>Sch</c-><c- o>></c-><c- p>,</c->
+    <c- n>E</c-><c- p>,</c->
+    <c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-><c- p>,</c->
+    <i><c- n>no</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>completions</c-></i><c- o>>></c-><c- p>;</c->
+</pre>
+       <p>where <code class="highlight"><i><c- n>no</c-><c- o>-</c-><c- n>value</c-><c- o>-</c-><c- n>completions</c-></i><c- o>&lt;</c-><c- n>As</c-><c- p>...</c-><c- o>></c-></code> names the type <code class="highlight"><c- n>completion_signatures</c-><c- o>&lt;></c-></code> for any set of types <code class="highlight"><c- n>As</c-><c- p>...</c-></code>.</p>
      </ol>
    </ol>
    <h5 class="heading settled" data-level="10.8.5.4" id="spec-execution.senders.adapt.transfer"><span class="secno">10.8.5.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> <b>[exec.transfer]</b></span><a class="self-link" href="#spec-execution.senders.adapt.transfer"></a></h5>
