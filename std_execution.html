@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R5<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-02-01">2022-02-01</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-02-02">2022-02-02</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -2975,15 +2975,8 @@ of a cancellable <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></cod
   <c- n>friend</c-> <c- n>exec</c-><c- o>::</c-><c- n>receiver_adaptor</c-><c- o>&lt;</c-><c- n>_then_receiver</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-><c- p>;</c->
   <c- n>F</c-> <c- n>f_</c-><c- p>;</c->
 
-  <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
-  <c- n>using</c-> <c- n>_completions</c-> <c- o>=</c->
-    <c- n>exex</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c->
-      <c- n>exec</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>F</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>></c-><c- p>),</c->
-      <c- n>exec</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-><c- p>;</c->
-
   <c- c1>// Customize set_value by invoking the callable and passing the result to the inner receiver</c->
   <c- n>template</c-><c- o>&lt;</c-><c- n>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
-    <c- n>requires</c-> <c- n>exec</c-><c- o>::</c-><c- n>receiver_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>_completions</c-><c- o>&lt;</c-><c- n>As</c-><c- p>...</c-><c- o>>></c->
   <c- b>void</c-> <c- n>set_value</c-><c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>as</c-><c- p>)</c-> <c- o>&amp;&amp;</c-> <c- n>noexcept</c-> <c- n>try</c-> <c- p>{</c->
     <c- n>exec</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- o>*</c-><c- n>this</c-><c- p>).</c-><c- n>base</c-><c- p>(),</c-> <c- n>std</c-><c- o>::</c-><c- n>invoke</c-><c- p>((</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>f_</c-><c- p>,</c-> <c- p>(</c-><c- n>As</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>as</c-><c- p>...));</c->
   <c- p>}</c-> <c- n>catch</c-><c- p>(...)</c-> <c- p>{</c->
@@ -3001,24 +2994,24 @@ of a cancellable <code class="highlight"><c- n>async_recv</c-><c- p>()</c-></cod
   <c- n>S</c-> <c- n>s_</c-><c- p>;</c->
   <c- n>F</c-> <c- n>f_</c-><c- p>;</c->
 
+  <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-> <c- n>Args</c-><c- o>></c->
+    <c- n>using</c-> <c- n>_set_value_t</c-> <c- o>=</c-> <c- n>exec</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c->
+      <c- n>exec</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>F</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-><c- p>)</c-><c- o>></c-><c- p>;</c->
+
+  <c- c1>// Compute the completion signatures</c->
+  <c- n>template</c-><c- o>&lt;</c-><c- n>class</c-> <c- n>Env</c-><c- o>></c->
+  <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>exec</c-><c- o>::</c-><c- n>get_completion_signatures_t</c-><c- p>,</c-> <c- n>_then_sender</c-><c- o>&amp;&amp;</c-><c- p>,</c-> <c- n>Env</c-><c- p>)</c->
+    <c- o>-></c-> <c- n>exec</c-><c- o>::</c-><c- n>make_completion_signatures</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>Env</c-><c- p>,</c->
+        <c- n>exec</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>exec</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-><c- p>,</c->
+        <c- n>_set_value_t</c-><c- o>></c-><c- p>;</c->
+
   <c- c1>// Connect:</c->
-  <c- n>template</c-><c- o>&lt;</c-><c- n>class</c-> <c- n>R</c-><c- o>></c->
-    <c- n>requires</c-> <c- n>exec</c-><c- o>::</c-><c- n>sender_to</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>_then_receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>F</c-><c- o>>></c->
+  <c- n>template</c-><c- o>&lt;</c-><c- n>exec</c-><c- o>::</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
   <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>exec</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>_then_sender</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c->
     <c- o>-></c-> <c- n>exec</c-><c- o>::</c-><c- n>connect_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>_then_receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>F</c-><c- o>>></c-> <c- p>{</c->
       <c- k>return</c-> <c- n>exec</c-><c- o>::</c-><c- n>connect</c-><c- p>(</c->
         <c- p>(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>s_</c-><c- p>,</c-> <c- n>_then_receiver</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>F</c-><c- o>></c-><c- p>{(</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>,</c-> <c- p>(</c-><c- n>F</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>f_</c-><c- p>});</c->
   <c- p>}</c->
-
-  <c- c1>// Compute the completion signatures</c->
-  <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-><c- n>Args</c-><c- o>></c->
-    <c- n>using</c-> <c- n>_set_value</c-> <c- o>=</c-> <c- n>exec</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>invoke_result_t</c-><c- o>&lt;</c-><c- n>F</c-><c- p>,</c-> <c- n>Args</c-><c- p>...</c-><c- o>></c-><c- p>);</c->
-
-  <c- n>template</c-><c- o>&lt;</c-><c- n>class</c-> <c- n>Env</c-><c- o>></c->
-  <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>exec</c-><c- o>::</c-><c- n>get_completion_signatures_t</c-><c- p>,</c-> <c- n>_then_sender</c-><c- o>&amp;&amp;</c-><c- p>,</c-> <c- n>Env</c-><c- p>)</c->
-    <c- o>-></c-> <c- n>exec</c-><c- o>::</c-><c- n>make_completion_signatures</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>Env</c-><c- p>,</c->
-        <c- n>exec</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>exec</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-><c- p>,</c->
-        <c- n>_set_value</c-><c- o>></c-><c- p>;</c->
 <c- p>};</c->
 
 <c- n>template</c-><c- o>&lt;</c-><c- n>exec</c-><c- o>::</c-><c- n>sender</c-> <c- n>S</c-><c- p>,</c-> <c- n>class</c-> <c- n>F</c-><c- o>></c->
@@ -3119,22 +3112,23 @@ shown above with <code class="highlight"><c- n>_then_receiver</c-><c- o>::</c-><
   <c- n>S</c-> <c- n>s_</c-><c- p>;</c->
   <c- n>explicit</c-> <c- nf>_retry_sender</c-><c- p>(</c-><c- n>S</c-> <c- n>s</c-><c- p>)</c-> <c- o>:</c-> <c- n>s_</c-><c- p>((</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>s</c-><c- p>)</c-> <c- p>{}</c->
 
-  <c- n>template</c-><c- o>&lt;</c-><c- n>class</c-> <c- n>R</c-><c- o>></c->
-    <c- n>requires</c-> <c- n>exec</c-><c- o>::</c-><c- n>sender_to</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>R</c-><c- o>></c->
-  <c- n>friend</c-> <c- n>_op</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>exec</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>_retry_sender</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
-    <c- k>return</c-> <c- p>{(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>s_</c-><c- p>,</c-> <c- p>(</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>};</c->
-  <c- p>}</c->
-
-  <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- o>></c-> <c- n>using</c-> <c- n>_void</c-> <c- o>=</c-> <c- b>void</c-><c- p>;</c->
-  <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c-> <c- n>using</c-> <c- n>_value</c-> <c- o>=</c-> <c- n>exec</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(</c-><c- n>Ts</c-><c- p>...);</c->
+  <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
+    <c- n>using</c-> <c- n>_value_t</c-> <c- o>=</c->
+      <c- n>exec</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>exec</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(</c-><c- n>Ts</c-><c- p>...)</c-><c- o>></c-><c- p>;</c->
+  <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-><c- o>></c->
+    <c- n>using</c-> <c- n>_error_t</c-> <c- o>=</c-> <c- n>exec</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;></c-><c- p>;</c->
 
   <c- c1>// Declare the signatures with which this sender can complete</c->
   <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-> <c- n>Env</c-><c- o>></c->
   <c- n>friend</c-> <c- k>auto</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>exec</c-><c- o>::</c-><c- n>get_completion_signatures_t</c-><c- p>,</c-> <c- k>const</c-> <c- n>_retry_sender</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>Env</c-><c- p>)</c->
-    <c- o>-></c-> <c- n>exec</c-><c- o>::</c-><c- n>make_completion_signatures</c-><c- o>&lt;</c->
-        <c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>Env</c-><c- p>,</c->
+    <c- o>-></c-> <c- n>exec</c-><c- o>::</c-><c- n>make_completion_signatures</c-><c- o>&lt;</c-><c- n>S</c-><c- o>&amp;</c-><c- p>,</c-> <c- n>Env</c-><c- p>,</c->
         <c- n>exec</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>exec</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-><c- p>,</c->
-        <c- n>_value</c-><c- p>,</c-> <c- n>_void</c-><c- o>></c-><c- p>;</c->
+        <c- n>_value_t</c-><c- p>,</c-> <c- n>_error_t</c-><c- o>></c-><c- p>;</c->
+
+  <c- n>template</c-><c- o>&lt;</c-><c- n>exec</c-><c- o>::</c-><c- n>receiver</c-> <c- n>R</c-><c- o>></c->
+  <c- n>friend</c-> <c- n>_op</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>R</c-><c- o>></c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>exec</c-><c- o>::</c-><c- n>connect_t</c-><c- p>,</c-> <c- n>_retry_sender</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>,</c-> <c- n>R</c-> <c- n>r</c-><c- p>)</c-> <c- p>{</c->
+    <c- k>return</c-> <c- p>{(</c-><c- n>S</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>self</c-><c- p>.</c-><c- n>s_</c-><c- p>,</c-> <c- p>(</c-><c- n>R</c-><c- o>&amp;&amp;</c-><c- p>)</c-> <c- n>r</c-><c- p>};</c->
+  <c- p>}</c->
 <c- p>};</c->
 
 <c- n>template</c-><c- o>&lt;</c-><c- n>exec</c-><c- o>::</c-><c- n>sender</c-> <c- n>S</c-><c- o>></c->
@@ -7673,8 +7667,9 @@ function types in <code class="highlight"><c- n>Sigs</c-><i><sub><c- n>i</c-></s
 return types are <i>not</i> <code class="highlight"><c- n>set_value_t</c-></code>, and let <code class="highlight"><c- n>Ws</c-><c- p>...</c-></code> be
 the unique set of types in <code class="highlight"><c- p>[</c-><c- n>Sigs2</c-><i><sub><c- n>0</c-></sub></i><c- p>...,</c-> <c- n>Sigs2</c-><i><sub><c- n>1</c-></sub></i><c- p>...,</c-> <c- p>...</c-> <c- n>Sigs2</c-><i><sub><c- n>n</c-><c- mf>-1</c-></sub></i><c- mf>.</c-><c- p>..,</c-> <c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>),</c-> <c- n>set_stopped_t</c-><c- p>()]</c-></code>, where <code class="highlight"><i><c- n>n</c-></i></code> is <code class="highlight"><c- k>sizeof</c-><c- p>...(</c-><c- n>Ss</c-><c- p>)</c-></code>. If any <code class="highlight"><c- n>C</c-><i><sub><c- n>i</c-></sub></i></code> is <code class="highlight"><c- mi>0</c-></code>, then the type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_completion_signatures</c-><c- p>,</c-> <c- n>s2</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> shall be <code class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>Ws</c-><c- p>...</c-><c- o>></c-></code>.</p>
           <li data-md>
-           <p>Otherwise, let <code class="highlight"><c- n>V</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> be the function
-argument types of the single type in <code class="highlight"><c- n>Sigs</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> for which the return type is <code class="highlight"><c- n>set_value_t</c-></code>. Then the type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_completion_signatures</c-><c- p>,</c-> <c- n>s2</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> shall be <code class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>Ws</c-><c- p>...,</c-> <c- n>set_value_t</c-><c- p>(</c-><c- n>V</c-><i><sub><c- n>0</c-></sub></i><c- p>...,</c-> <c- n>V</c-><i><sub><c- n>1</c-></sub></i><c- p>...,</c-> <c- p>...</c-> <c- n>V</c-><i><sub><c- n>n</c-><c- mf>-1</c-></sub></i><c- mf>.</c-><c- p>..)</c-><c- o>></c-></code>.</p>
+           <p>Otherwise, let <code class="highlight"><c- n>V</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> be the
+function argument types of the single type in <code class="highlight"><c- n>Sigs</c-><i><sub><c- n>i</c-></sub></i><c- p>...</c-></code> for which the return
+type is <code class="highlight"><c- n>set_value_t</c-></code>. Then the type of <code class="highlight"><c- n>tag_invoke</c-><c- p>(</c-><c- n>get_completion_signatures</c-><c- p>,</c-> <c- n>s2</c-><c- p>,</c-> <c- n>e</c-><c- p>)</c-></code> shall be <code class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>Ws</c-><c- p>...,</c-> <c- n>set_value_t</c-><c- p>(</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>V</c-><i><sub><c- n>0</c-></sub></i><c- o>>&amp;&amp;</c-><c- p>...,</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- n>V</c-><i><sub><c- n>1</c-></sub></i><c- o>>&amp;&amp;</c-><c- p>...,</c-> <c- p>...</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- n>V</c-><i><sub><c- n>n</c-><c- mi>-1</c-></sub></i><c- o>>&amp;&amp;</c-><c- p>...)</c-><c- o>></c-></code>.</p>
          </ol>
        </ol>
      </ol>
