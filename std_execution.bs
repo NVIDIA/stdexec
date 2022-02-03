@@ -5346,15 +5346,29 @@ are all well-formed.
         3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
 
         4. Given subexpressions `s2` and `e` where `s2` is a sender returned
-            from `bulk` or a copy of such, let `S2` be `decltype((s2))` and let
-            `E` be `decltype((e))`. The type of
-            `tag_invoke(get_completion_signatures, s2, e)` shall be equivalent
-            to:
+            from `bulk` or a copy of such, let `S2` be `decltype((s2))`, let
+            `E` be `decltype((e))`, let `S'` be `copy_cvref_t<S2, S>` and let
+            <code><i>nothrow-callable</i></code> be the alias template:
 
-            <pre highlight="c++">
-            make_completion_signatures&lt;
-              copy_cvref_t&lt;S2, S>, E, completion_signatures&lt;set_error_t(exception_ptr)>>
-            </pre>
+              <pre highlight="c++">
+              template &lt;class... As>
+                using <i>nothrow-callable</i> =
+                  bool_constant&lt;is_nothrow_invocable_v&lt;decay_t&lt;F>&, As...>>;
+              </pre>
+
+            1. If any of the types in the <code><i>type-list</i></code> named by
+                <code>value_types_of_t&lt;S', E, <i>nothrow-callable</i>,
+                <i>type-list</i>></code> are `false_type`, then the type of
+                `tag_invoke(get_completion_signatures, s2, e)` shall be
+                equivalent to:
+
+                <pre highlight="c++">
+                make_completion_signatures&lt;
+                  S', E, completion_signatures&lt;set_error_t(exception_ptr)>>
+                </pre>
+
+            2. Otherwise, the type of `tag_invoke(get_completion_signatures, s2,
+                e)` shall be equivalent to `completion_signatures_of_t<S', E>`.
 
     4. If the function selected above does not return a sender which invokes
         `f(i, args...)` for each `i` of type `Shape` from `0` to `shape` when
