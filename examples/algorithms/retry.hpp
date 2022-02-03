@@ -94,12 +94,6 @@ struct _retry_sender {
   S s_;
   explicit _retry_sender(S s) : s_((S&&) s) {}
 
-  template<class R>
-    requires stdex::sender_to<S&, R>
-  friend _op<S, R> tag_invoke(stdex::connect_t, _retry_sender&& self, R r) {
-    return {(S&&) self.s_, (R&&) r};
-  }
-
   template <class> using _error =
     stdex::completion_signatures<>;
   template <class... Ts> using _value =
@@ -111,6 +105,11 @@ struct _retry_sender {
         S&, Env,
         stdex::completion_signatures<stdex::set_error_t(std::exception_ptr)>,
         _value, _error>;
+
+  template<stdex::receiver R>
+  friend _op<S, R> tag_invoke(stdex::connect_t, _retry_sender&& self, R r) {
+    return {(S&&) self.s_, (R&&) r};
+  }
 };
 
 template<stdex::sender S>

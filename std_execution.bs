@@ -481,15 +481,8 @@ class _then_receiver
   friend exec::receiver_adaptor<_then_receiver, R>;
   F f_;
 
-  template <class... As>
-  using _completions =
-    exex::completion_signatures<
-      exec::set_value_t(std::invoke_result_t<F, As...>),
-      exec::set_error_t(std::exception_ptr)>;
-
   // Customize set_value by invoking the callable and passing the result to the inner receiver
   template<class... As>
-    requires exec::receiver_of<R, _completions<As...>>
   void set_value(As&&... as) && noexcept try {
     exec::set_value(std::move(*this).base(), std::invoke((F&&) f_, (As&&) as...));
   } catch(...) {
@@ -507,24 +500,24 @@ struct _then_sender {
   S s_;
   F f_;
 
+  template <class... Args>
+    using _set_value_t = exec::completion_signatures<
+      exec::set_value_t(std::invoke_result_t<F, Args...>)>;
+
+  // Compute the completion signatures
+  template<class Env>
+  friend auto tag_invoke(exec::get_completion_signatures_t, _then_sender&&, Env)
+    -> exec::make_completion_signatures<S, Env,
+        exec::completion_signatures<exec::set_error_t(std::exception_ptr)>,
+        _set_value_t>;
+
   // Connect:
-  template<class R>
-    requires exec::sender_to<S, _then_receiver<R, F>>
+  template<exec::receiver R>
   friend auto tag_invoke(exec::connect_t, _then_sender&& self, R r)
     -> exec::connect_result_t<S, _then_receiver<R, F>> {
       return exec::connect(
         (S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
   }
-
-  // Compute the completion signatures
-  template <class...Args>
-    using _set_value = exec::set_value_t(std::invoke_result_t<F, Args...>);
-
-  template<class Env>
-  friend auto tag_invoke(exec::get_completion_signatures_t, _then_sender&&, Env)
-    -> exec::make_completion_signatures<S, Env,
-        exec::completion_signatures<exec::set_error_t(std::exception_ptr)>,
-        _set_value>;
 };
 
 template<exec::sender S, class F>
@@ -625,22 +618,23 @@ struct _retry_sender {
   S s_;
   explicit _retry_sender(S s) : s_((S&&) s) {}
 
-  template<class R>
-    requires exec::sender_to<S&, R>
-  friend _op<S, R> tag_invoke(exec::connect_t, _retry_sender&& self, R r) {
-    return {(S&&) self.s_, (R&&) r};
-  }
-
-  template <class> using _void = void;
-  template <class... Ts> using _value = exec::set_value_t(Ts...);
+  template <class... Ts>
+    using _value_t =
+      exec::completion_signatures<exec::set_value_t(Ts...)>;
+  template <class>
+    using _error_t = exec::completion_signatures<>;
 
   // Declare the signatures with which this sender can complete
   template <class Env>
   friend auto tag_invoke(exec::get_completion_signatures_t, const _retry_sender&, Env)
-    -> exec::make_completion_signatures<
-        S&, Env,
+    -> exec::make_completion_signatures<S&, Env,
         exec::completion_signatures<exec::set_error_t(std::exception_ptr)>,
-        _value, _void>;
+        _value_t, _error_t>;
+
+  template<exec::receiver R>
+  friend _op<S, R> tag_invoke(exec::connect_t, _retry_sender&& self, R r) {
+    return {(S&&) self.s_, (R&&) r};
+  }
 };
 
 template<exec::sender S>
@@ -5599,12 +5593,15 @@ are all well-formed.
                 `tag_invoke(get_completion_signatures, s2, e)` shall be
                 `completion_signatures<Ws...>`.
 
-            4. Otherwise, let <code>V<i><sub>i</sub></i>...</code> be the function
-                argument types of the single type in <code>Sigs<i><sub>i</sub></i>...</code>
-                for which the return type is `set_value_t`. Then the type of
+            4. Otherwise, let <code>V<i><sub>i</sub></i>...</code> be the
+                function argument types of the single type in
+                <code>Sigs<i><sub>i</sub></i>...</code> for which the return
+                type is `set_value_t`. Then the type of
                 `tag_invoke(get_completion_signatures, s2, e)` shall be
-                <code>completion_signatures&lt;Ws..., set_value_t(V<i><sub>0</sub></i>...,
-                V<i><sub>1</sub></i>..., ... V<i><sub>n-1</sub></i>...)></code>.
+                <code>completion_signatures&lt;Ws...,
+                set_value_t(decay_t&lt;V<i><sub>0</sub></i>>&amp;&amp;...,
+                decay_t&lt;V<i><sub>1</sub></i>>&amp;&amp;..., ...
+                decay_t&lt;V<i><sub>n-1</sub></i>>&amp;&amp;...)></code>.
 
 3. The name `execution::when_all_with_variant` denotes a customization point object. For some subexpressions `s...`, let `S` be `decltype((s))`. If any type <code>S<i><sub>i</sub></i></code> in `S...` does not satisfy `execution::sender`,
     `execution::when_all_with_variant` is ill-formed. Otherwise, the expression `execution::when_all_with_variant(s...)` is expression-equivalent to:

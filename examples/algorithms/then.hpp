@@ -55,26 +55,31 @@ struct _then_sender {
   S s_;
   F f_;
 
+  // Compute the completion signatures
+  template <class... Args>
+    using _set_value_t =
+      stdex::completion_signatures<
+        stdex::set_value_t(std::invoke_result_t<F, Args...>)>;
+
+  template <class Env>
+    using _completions_t =
+      stdex::make_completion_signatures<S, Env,
+        stdex::completion_signatures<stdex::set_error_t(std::exception_ptr)>,
+        _set_value_t>;
+
+  template<class Env>
+  friend auto tag_invoke(stdex::get_completion_signatures_t, _then_sender&&, Env)
+    -> _completions_t<Env>;
+
   // Connect:
   template<class R>
-    requires stdex::sender_to<S, _then_receiver<R, F>>
+    //requires stdex::receiver_of<R, _completions_t<stdex::env_of_t<R>>>
+    //requires stdex::receiver_of<R, stdex::completion_signatures_of_t<S, stdex::env_of_t<R>>>
   friend auto tag_invoke(stdex::connect_t, _then_sender&& self, R r)
     -> stdex::connect_result_t<S, _then_receiver<R, F>> {
       return stdex::connect(
         (S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
   }
-
-  // Compute the completion_signatures
-  template <class...Args>
-    using _set_value =
-      stdex::completion_signatures<
-        stdex::set_value_t(std::invoke_result_t<F, Args...>)>;
-
-  template<class Env>
-  friend auto tag_invoke(stdex::get_completion_signatures_t, _then_sender&&, Env)
-    -> stdex::make_completion_signatures<S, Env,
-        stdex::completion_signatures<stdex::set_error_t(std::exception_ptr)>,
-        _set_value>;
 };
 
 template<stdex::sender S, class F>
