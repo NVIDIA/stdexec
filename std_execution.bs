@@ -4083,8 +4083,8 @@ namespace std::execution {
         copy_constructible&lt;remove_cvref_t&lt;S>> &&
         equality_comparable&lt;remove_cvref_t&lt;S>> &&
         requires(S&& s, const get_completion_scheduler_t&lt;set_value_t> tag) {
-          { execution::schedule((S&&) s) } -> sender;
-          { tag_invoke(tag, execution::schedule((S&&) s)) } -> same_as&lt;remove_cvref_t&lt;S>>;
+          { execution::schedule(std::forward<S>(s)) } -> sender;
+          { tag_invoke(tag, execution::schedule(std::forward<S>(s))) } -> same_as&lt;remove_cvref_t&lt;S>>;
         };
     </pre>
 
@@ -4577,13 +4577,13 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
 
         where <code><i>connect-awaitable-promise</i></code> is the promise type of <code><i>connect-awaitable</i></code>, and where <code><i>connect-awaitable</i></code> suspends at the <i>initial suspends point</i> ([dcl.fct.def.coroutine]), and:
 
-          1. <i>set-value-expr</i> first evaluates `co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r)` if <code><i>await-result-type</i>&lt;S, <i>connect-awaitable-promise</i>></code> is <code><i>cv</i> void</code>; otherwise, it evaluates `auto&& res = co_await (S&&) s`, then suspends the coroutine and evaluates `execution::set_value((R&&) r, (decltype(res)) res)`.
+          1. <i>set-value-expr</i> first evaluates `co_await std::move(s)`, then suspends the coroutine and evaluates `execution::set_value(std::move(r))` if <code><i>await-result-type</i>&lt;S, <i>connect-awaitable-promise</i>></code> is <code><i>cv</i> void</code>; otherwise, it evaluates `auto&& res = co_await std::move(s)`, then suspends the coroutine and evaluates `execution::set_value(std::move(r), std::forward<decltype(res)>(res))`.
 
             If the call to `execution::set_value` exits with an exception, the coroutine is resumed and the exception is immediately propagated in the context of the coroutine.
 
             [<i>Note</i>: If the call to `execution::set_value` exits normally, then the <code><i>connect-awaitable</i></code> coroutine is never resumed. --<i>end note</i>]
 
-          2. <i>set-error-expr</i> first suspends the coroutine and then executes `execution::set_error((R&&) r, std::move(ep))`.
+          2. <i>set-error-expr</i> first suspends the coroutine and then executes `execution::set_error(std::move(r), std::move(ep))`.
 
             [<i>Note</i>: The <code><i>connect-awaitable</i></code> coroutine is never resumed after the call to `execution::set_error`. --<i>end note</i>]
 
@@ -4591,7 +4591,7 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
 
           4. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`. Then `tag_invoke(tag, p, as...)` is expression-equivalent to `tag(b, as...)` for any set of arguments `as...` and for any `tag` whose type satisfies <code><i>forwarding-receiver-query</i></code>.
 
-          5. The expression `p.unhandled_stopped()` is expression-equivalent to `(execution::set_stopped((R&&) r), noop_coroutine())`.
+          5. The expression `p.unhandled_stopped()` is expression-equivalent to `(execution::set_stopped(std::move(r), noop_coroutine())`.
 
           6. For some expression `e`, the expression `p.await_transform(e)` is expression-equivalent to `tag_invoke(as_awaitable, e, p)` if that expression is well-formed; otherwise, it is expression-equivalent to `e`.
 
@@ -6712,7 +6712,7 @@ are all well-formed.
 
         2. <b><code><i>sender-awaitable</i>::<i>sender-awaitable</i>(S&& s, P& p)</code></b>
 
-            - <i>Effects:</i> initializes `state_` with <code>connect((S&&) s, <i>awaitable-receiver</i>{&result_, coroutine_handle&lt;P>::from_promise(p)})</code>.
+            - <i>Effects:</i> initializes `state_` with <code>connect(std::forward<S>(s), <i>awaitable-receiver</i>{&result_, coroutine_handle&lt;P>::from_promise(p)})</code>.
 
         3. <b><code>value_t <i>sender-awaitable</i>::await_resume()</code></b>
 
