@@ -4050,7 +4050,7 @@ namespace std::execution {
 
     1. `tag_invoke(execution::get_env, r)` if that expression is well-formed.
 
-        * <i>Mandates:</i> The decayed type of the above expression is not `no_env`.
+        * <i>Mandates:</i> The above expression is not potentially throwing, and its decayed type is not `no_env`.
 
     2. Otherwise, `get_env(r)` is ill-formed.
 
