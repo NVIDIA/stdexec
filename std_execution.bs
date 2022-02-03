@@ -7,7 +7,9 @@ Status: D
 Group: WG21
 Audience: SG1, LEWG
 Editor: Michał Dominiak, griwes@griwes.info
+Editor: Georgy Evtushenko, evtushenko.georgy@gmail.com
 Editor: Lewis Baker, lewissbaker@gmail.com
+Editor: Lucian Radu Teodorescu, lucteo@lucteo.ro
 Editor: Lee Howes, xrikcus@gmail.com
 Editor: Kirk Shoop, kirk.shoop@gmail.com
 Editor: Michael Garland, mgarland@nvidia.com
