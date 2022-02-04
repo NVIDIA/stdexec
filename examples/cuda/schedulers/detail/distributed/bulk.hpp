@@ -30,11 +30,11 @@
 namespace example::cuda::distributed::detail::bulk
 {
 
-template <unsigned int BlockThreads, class F>
+template <unsigned int BlockThreads, class Shape, class F>
 __global__ __launch_bounds__(BlockThreads) 
-void bulk_kernel(unsigned int begin, unsigned int end, F f)
+void bulk_kernel(Shape begin, Shape end, F f)
 {
-  const auto i = begin + blockIdx.x * BlockThreads + threadIdx.x;
+  const Shape i = begin + static_cast<Shape>(blockIdx.x * BlockThreads + threadIdx.x);
 
   if (i < end)
   {
@@ -60,11 +60,10 @@ class receiver_t
 
     const auto rank = ctx.rank();
     const auto size = ctx.size();
-    auto [begin, end] = even_share(static_cast<unsigned int>(shape_), rank, size);
+    auto [begin, end] = even_share(shape_, rank, size);
 
-    constexpr unsigned int block_size = 256;
-    const unsigned int grid_size =
-      (end - begin + block_size - 1) / block_size;
+    constexpr Shape block_size = 256;
+    const Shape grid_size = (end - begin + block_size - 1) / block_size;
 
     bulk_kernel<block_size><<<grid_size, block_size, 0, ctx.stream()>>>(
         begin, end, function_);

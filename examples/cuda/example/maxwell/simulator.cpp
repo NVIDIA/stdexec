@@ -173,7 +173,7 @@ enum class field_id : int
   fields_count
 };
 
-template <int N>
+template <std::size_t N>
 struct fields_accessor
 {
   constexpr static float width = 160;
@@ -182,41 +182,41 @@ struct fields_accessor
   constexpr static float dx = width / N;
   constexpr static float dy = height / N;
 
-  constexpr static int n = N;
-  constexpr static int cells = N * N;
+  constexpr static std::size_t n = N;
+  constexpr static std::size_t cells = N * N;
 
-  int begin{};
-  int end{};
+  std::size_t begin{};
+  std::size_t end{};
   float *base_ptr;
 
-  [[nodiscard]] __host__ __device__ int n_own_cells() const
+  [[nodiscard]] __host__ __device__ std::size_t n_own_cells() const
   {
     return end - begin;
   }
 
   [[nodiscard]] __host__ __device__ float *get(field_id id) const
   {
-    return base_ptr + static_cast<int>(id) * static_cast<std::size_t>(n_own_cells() + 2 * N) + N;
+    return base_ptr + static_cast<int>(id) * (n_own_cells() + 2 * N) + N;
   }
 };
 
-template <int N>
+template <std::size_t N>
 struct grid_t
 {
-  constexpr static int n = N;
-  constexpr static int cells = N * N;
+  constexpr static std::size_t n = N;
+  constexpr static std::size_t cells = N * N;
 
-  int begin_{};
-  int end_{};
-  int n_own_cells_{};
+  std::size_t begin_{};
+  std::size_t end_{};
+  std::size_t n_own_cells_{};
   std::unique_ptr<float, deleter_t> fields_{};
 
   grid_t(grid_t &&) = delete;
   grid_t(const grid_t &) = delete;
 
   template <class SchedulerT>
-  explicit grid_t(int begin,
-                  int end,
+  explicit grid_t(std::size_t begin,
+                  std::size_t end,
                   SchedulerT &&scheduler)
       : begin_{begin}
       , end_{end}
@@ -250,16 +250,16 @@ __host__ __device__ float calculate_dt(float dx, float dy)
   return cfl * std::min(dx, dy) / C0;
 }
 
-template <int N>
+template <std::size_t N>
 struct grid_initializer_t
 {
   float dt;
   fields_accessor<N> accessor;
 
-  __host__ __device__ void operator()(int cell_id) const
+  __host__ __device__ void operator()(std::size_t cell_id) const
   {
-    const int row = cell_id / N;
-    const int column = cell_id % N;
+    const std::size_t row = cell_id / N;
+    const std::size_t column = cell_id % N;
     cell_id -= accessor.begin;
 
     float er = 1.0f;
@@ -301,26 +301,26 @@ struct grid_initializer_t
   }
 };
 
-template <int N>
+template <std::size_t N>
 __host__ __device__ grid_initializer_t<N>
 grid_initializer(float dt, fields_accessor<N> accessor)
 {
   return {dt, accessor};
 }
 
-template <int N>
-__host__ __device__ int right_nid(int cell_id, int col)
+template <std::size_t N>
+__host__ __device__ std::size_t right_nid(std::size_t cell_id, std::size_t col)
 {
   return col == N - 1 ? cell_id - (N - 1) : cell_id + 1;
 }
 
-template <int N>
-__host__ __device__ int left_nid(int cell_id, int col)
+template <std::size_t N>
+__host__ __device__ std::size_t left_nid(std::size_t cell_id, std::size_t col)
 {
   return col == 0 ? cell_id + N - 1 : cell_id - 1;
 }
 
-template <int N>
+template <std::size_t N>
 struct h_field_calculator_t
 {
   fields_accessor<N> accessor;
@@ -328,9 +328,9 @@ struct h_field_calculator_t
   // read: ez, mh, hx, hy
   // write: hx, hy
   // total: 6
-  __host__ __device__ void operator()(int cell_id) const
+  __host__ __device__ void operator()(std::size_t cell_id) const
   {
-    const int column = cell_id % N;
+    const std::size_t column = cell_id % N;
     cell_id -= accessor.begin;
 
     const float *ez = accessor.get(field_id::ez);
@@ -349,20 +349,20 @@ struct h_field_calculator_t
   }
 };
 
-template <int N>
+template <std::size_t N>
 __host__ __device__ h_field_calculator_t<N>
 update_h(fields_accessor<N> accessor)
 {
   return {accessor};
 }
 
-template <int N>
+template <std::size_t N>
 struct e_field_calculator_t
 {
   float dt;
   float *time;
   fields_accessor<N> accessor;
-  int source_position;
+  std::size_t source_position;
 
   [[nodiscard]] __host__ __device__ float gaussian_pulse(float t,
                                                          float t_0,
@@ -384,9 +384,9 @@ struct e_field_calculator_t
   // total: 6
   //
   // read: 7; write: 2; 9 memory accesses
-  __host__ __device__ void operator()(int cell_id) const
+  __host__ __device__ void operator()(std::size_t cell_id) const
   {
-    const int column = cell_id % N;
+    const std::size_t column = cell_id % N;
     const bool source_owner = cell_id == source_position;
     cell_id -= accessor.begin;
 
@@ -398,7 +398,7 @@ struct e_field_calculator_t
 
     const float chz =
       (hy[cell_id] - hy[left_nid<N>(cell_id, column)]) / accessor.dx -
-      (hx[cell_id] - hx[cell_id - N]) / accessor.dy;
+      (hx[cell_id] - (hx - N)[cell_id]) / accessor.dy;
 
     float cell_dz = dz[cell_id] + C0 * dt * chz;
 
@@ -414,22 +414,22 @@ struct e_field_calculator_t
   }
 };
 
-template <int N>
+template <std::size_t N>
 __host__ __device__ e_field_calculator_t<N>
 update_e(float *time,
          float dt,
          fields_accessor<N> accessor,
-         int source_position = N / 2 + (N * (N / 2)))
+         std::size_t source_position = N / 2 + (N * (N / 2)))
 {
   return {dt, time, accessor, source_position};
 }
 
-template <int N>
+template <std::size_t N>
 class result_dumper_t
 {
   bool write_results_{};
-  int rank_{};
-  int &report_step_;
+  std::size_t rank_{};
+  std::size_t &report_step_;
   fields_accessor<N> accessor_;
 
   bool fetch_results_from_gpu_{};
@@ -457,30 +457,30 @@ class result_dumper_t
 
     if (rank_ == 0)
     {
-      printf("\twriting report #%d", report_step_);
+      printf("\twriting report #%d", (int)report_step_);
       fflush(stdout);
     }
 
     FILE *f = fopen(filename.c_str(), "w");
 
-    const int nx = accessor_.n;
+    const std::size_t nx = accessor_.n;
     const float dx = accessor_.dx;
     const float dy = accessor_.dy;
 
-    const int own_cells = accessor_.n_own_cells() + (with_halo_ ? 2 * N : 0);
+    const std::size_t own_cells = accessor_.n_own_cells() + (with_halo_ ? 2 * N : 0);
 
     fprintf(f, "# vtk DataFile Version 3.0\n");
     fprintf(f, "vtk output\n");
     fprintf(f, "ASCII\n");
     fprintf(f, "DATASET UNSTRUCTURED_GRID\n");
-    fprintf(f, "POINTS %d double\n", own_cells * 4);
+    fprintf(f, "POINTS %d double\n", (int)(own_cells * 4));
 
     const float y_offset = with_halo_ ? dy : 0.0f;
-    for (int own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
+    for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
     {
-      const int cell_id = own_cell_id + accessor_.begin;
-      const int i = cell_id % nx;
-      const int j = cell_id / nx;
+      const std::size_t cell_id = own_cell_id + accessor_.begin;
+      const std::size_t i = cell_id % nx;
+      const std::size_t j = cell_id / nx;
 
       fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 0), dy * static_cast<float>(j + 0) - y_offset);
       fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 1), dy * static_cast<float>(j + 0) - y_offset);
@@ -488,31 +488,31 @@ class result_dumper_t
       fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 0), dy * static_cast<float>(j + 1) - y_offset);
     }
 
-    fprintf(f, "CELLS %d %d\n", own_cells, own_cells * 5);
+    fprintf(f, "CELLS %d %d\n", (int)own_cells, (int)own_cells * 5);
 
-    for (int own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
+    for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
     {
-      const int point_offset = own_cell_id * 4;
+      const std::size_t point_offset = own_cell_id * 4;
       fprintf(f,
               "4 %d %d %d %d\n",
-              point_offset + 0,
-              point_offset + 1,
-              point_offset + 2,
-              point_offset + 3);
+              (int)(point_offset + 0),
+              (int)(point_offset + 1),
+              (int)(point_offset + 2),
+              (int)(point_offset + 3));
     }
 
-    fprintf(f, "CELL_TYPES %d\n", own_cells);
+    fprintf(f, "CELL_TYPES %d\n", (int)own_cells);
 
-    for (int own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
+    for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
     {
       fprintf(f, "9\n");
     }
 
-    fprintf(f, "CELL_DATA %d\n", own_cells);
+    fprintf(f, "CELL_DATA %d\n", (int)own_cells);
     fprintf(f, "SCALARS Ez double 1\n");
     fprintf(f, "LOOKUP_TABLE default\n");
 
-    for (int own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
+    for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++)
     {
       fprintf(f, "%lf\n", ez[own_cell_id - (with_halo_ ? N : 0)]);
     }
@@ -529,7 +529,7 @@ class result_dumper_t
 public:
   result_dumper_t(bool write_results,
                   int rank,
-                  int &report_step,
+                  std::size_t &report_step,
                   fields_accessor<N> accessor)
     : write_results_(write_results)
     , rank_(rank)
@@ -555,10 +555,10 @@ public:
   }
 };
 
-template <int N>
+template <std::size_t N>
 __host__ __device__ result_dumper_t<N> dump_results(bool write_results,
                                                     int rank,
-                                                    int &report_step,
+                                                    std::size_t &report_step,
                                                     fields_accessor<N> accessor)
 {
 
@@ -633,7 +633,7 @@ struct halo_exchange_t
       [&](auto... pointers) {
         return ex::bulk(std::forward<_Sender>(sndr),
                         border_size,
-                        [=] __host__ __device__(int i) {
+                        [=] __host__ __device__(std::size_t i) {
                           ((pointers[i - border_size] = pointers[field_size - border_size + i]), ...);
                           ((pointers[field_size + i] = pointers[i]), ...);
                         });
@@ -661,15 +661,15 @@ auto maxwell_eqs(float dt,
                  float *time,
                  bool write_results,
                  int node_id,
-                 int &report_step,
-                 int n_inner_iterations,
-                 int n_outer_iterations,
+                 std::size_t &report_step,
+                 std::size_t n_inner_iterations,
+                 std::size_t n_outer_iterations,
                  GridAccessorT &&accessor,
                  ComputeSchedulerT &&computer,
                  WriterSchedulerT &&writer)
 {
-  const int border_size = accessor.n;
-  const int own_cells = accessor.n_own_cells();
+  const std::size_t border_size = accessor.n;
+  const std::size_t own_cells = accessor.n_own_cells();
 
   auto write = dump_results(write_results, node_id, report_step, accessor);
 
@@ -700,8 +700,8 @@ auto maxwell_eqs(float dt,
 
 template <class SenderT>
 void report_performance(
-  int cells,
-  int iterations,
+  std::size_t cells,
+  std::size_t iterations,
   int node_id,
   SenderT &&snd)
 {
@@ -726,13 +726,13 @@ void report_performance(
 
 template <class SchedulerT>
   requires requires(SchedulerT &&scheduler) { scheduler.bulk_range(42); }
-auto bulk_range(int n, SchedulerT &&scheduler)
+auto bulk_range(std::size_t n, SchedulerT &&scheduler)
 {
   return scheduler.bulk_range(n);
 }
 
 template <class SchedulerT>
-auto bulk_range(int n, SchedulerT &&)
+auto bulk_range(std::size_t n, SchedulerT &&)
 {
   return std::make_pair(0, n);
 }
@@ -758,10 +758,10 @@ int main(int argc, char *argv[])
   distributed::scheduler_t gpu_scheduler(&argc, &argv);
   example::openmp_scheduler cpu_scheduler{};
 
-  int n_inner_iterations = 100;
-  int n_outer_iterations = 10;
+  std::size_t n_inner_iterations = 100;
+  std::size_t n_outer_iterations = 10;
 
-  constexpr int N = 22 * 1024;
+  constexpr std::size_t N = 22 * 1024;
   const auto [grid_begin, grid_end] = bulk_range(N * N, gpu_scheduler);
   const auto node_id = node_id_from(gpu_scheduler);
 
@@ -784,7 +784,7 @@ int main(int argc, char *argv[])
                   accessor.get(field_id::ez),
                   accessor.get(field_id::dz)));
 
-  int report_step = 0;
+  std::size_t report_step = 0;
   auto snd = maxwell_eqs(dt,
                          time.get(),
                          write_results,
