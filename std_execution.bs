@@ -6522,14 +6522,10 @@ are all well-formed.
     * The type <code><i>run-loop-opstate</i>&lt;R></code> overrides <code><i>run-loop-opstate-base</i>::execute()</code> such that <code><i>o</i>.execute()</code> is equivalent to the following:
 
         <pre highlight="c++">
-        try {
-          if (execution::get_stop_token(<i>REC</i>(<i>o</i>)).stop_requested()) {
-            execution::set_stopped(std::move(<i>REC</i>(<i>o</i>)));
-          } else {
-            execution::set_value(std::move(<i>REC</i>(<i>o</i>)));
-          }
-        } catch(...) {
-          execution::set_error(std::move(<i>REC</i>(<i>o</i>)), current_exception());
+        if (execution::get_stop_token(<i>REC</i>(<i>o</i>)).stop_requested()) {
+          execution::set_stopped(std::move(<i>REC</i>(<i>o</i>)));
+        } else {
+          execution::set_value(std::move(<i>REC</i>(<i>o</i>)));
         }
         </pre>
 
