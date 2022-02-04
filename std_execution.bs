@@ -4755,37 +4755,47 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
       struct <i>read-sender</i> { // exposition only
         template&lt;class R>
           struct <i>operation-state</i> { // exposition only
-            R r_;
+            R r_; // exposition only
 
-            friend void tag_invoke(start_t, <i>operation-state</i>& s) noexcept try {
-              auto value = Tag{}(get_env(s.r_));
-              set_value(std::move(s.r_), std::move(value));
-            } catch(...) {
-              set_error(std::move(s.r_), current_exception());
+            friend void tag_invoke(start_t, <i>operation-state</i>& s) noexcept {
+              <i>TRY-SET-VALUE</i>(std::move(s.r_), auto(Tag{}(get_env(s.r_))));
             }
           };
 
-        template &lt;class Env>
-            requires <i>callable</i>&lt;Tag, Env>
-          using <i>completions</i> = // exposition only
-            completion_signatures&lt;
-              set_value_t(<i>call-result-t</i>&lt;Tag, Env>), set_error_t(exception_ptr)>;
-
-        template&lt;class R>
-          requires receiver_of&lt;R, <i>completions</i>&lt;env_of_t&lt;R>>>
+        template&lt;receiver R>
         friend <i>operation-state</i>&lt;decay_t&lt;R>> tag_invoke(connect_t, <i>read-sender</i>, R && r) {
           return { std::forward&lt;R>(r) };
         }
 
         template&lt;class Env>
           friend auto tag_invoke(get_completion_signatures_t, <i>read-sender</i>, Env)
-            -> dependent_completion_signatures&lt;Env>;
+            -> dependent_completion_signatures&lt;Env>; <i>// not defined</i>
 
         template&lt;class Env>
+            requires <i>callable</i>&lt;Tag, Env>
           friend auto tag_invoke(get_completion_signatures_t, <i>read-sender</i>, Env)
-            -> <i>completions</i>&lt;Env> requires true;
+            -> completion_signatures&lt;
+              set_value_t(<i>call-result-t</i>&lt;Tag, Env>), set_error_t(exception_ptr)>; <i>// not defined</i>
+
+        template&lt;class Env>
+            requires <i>nothrow-callable</i>&lt;Tag, Env>
+          friend auto tag_invoke(get_completion_signatures_t, <i>read-sender</i>, Env)
+            -> completion_signatures&lt;set_value_t(<i>call-result-t</i>&lt;Tag, Env>)>; <i>// not defined</i>
       };
     </pre>
+
+    where <code><i>TRY-SET-VALUE</i>(r, e)</code>, for two subexpressions `r` and `e`,
+    is equivalent to:
+
+        <pre highlight="c++">
+        try {
+          execution::set_value(r, e);
+        } catch(...) {
+          execution::set_error(r, current_exception());
+        }
+        </pre>
+
+        if `e` is potentially throwing; or `execution::set_value(r, e)` otherwise.
 
 ### Sender adaptors <b>[exec.adapt]</b> ### {#spec-execution.senders.adapt}
 
