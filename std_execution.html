@@ -8569,14 +8569,10 @@ of all the <code class="highlight"><c- n>completion_signatures</c-></code> insta
        <p>The object to which <code class="highlight"><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)</c-></code> refers remains valid for the lifetime of the object to which <code class="highlight"><i><c- n>o</c-></i></code> refers.</p>
       <li data-md>
        <p>The type <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-></i><c- o>&lt;</c-><c- n>R</c-><c- o>></c-></code> overrides <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>opstate</c-><c- o>-</c-><c- n>base</c-></i><c- o>::</c-><c- n>execute</c-><c- p>()</c-></code> such that <code class="highlight"><i><c- n>o</c-></i><c- p>.</c-><c- n>execute</c-><c- p>()</c-></code> is equivalent to the following:</p>
-<pre class="highlight"><c- k>try</c-> <c- p>{</c->
-  <c- k>if</c-> <c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)).</c-><c- n>stop_requested</c-><c- p>())</c-> <c- p>{</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)));</c->
-  <c- p>}</c-> <c- k>else</c-> <c- p>{</c->
-    <c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)));</c->
-  <c- p>}</c->
-<c- p>}</c-> <c- k>catch</c-><c- p>(...)</c-> <c- p>{</c->
-  <c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)),</c-> <c- n>current_exception</c-><c- p>());</c->
+<pre class="highlight"><c- k>if</c-> <c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)).</c-><c- n>stop_requested</c-><c- p>())</c-> <c- p>{</c->
+  <c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)));</c->
+<c- p>}</c-> <c- k>else</c-> <c- p>{</c->
+  <c- n>execution</c-><c- o>::</c-><c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><i><c- n>REC</c-></i><c- p>(</c-><i><c- n>o</c-></i><c- p>)));</c->
 <c- p>}</c->
 </pre>
       <li data-md>
