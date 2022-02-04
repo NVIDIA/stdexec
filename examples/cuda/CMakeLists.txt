@@ -46,7 +46,7 @@ if(CUDAToolkit_FOUND)
         get_filename_component(PARENT_DIR ../ ABSOLUTE)
         target_include_directories(${example_name} PRIVATE ${PARENT_DIR})
 
-        if (CMAKE_BUILD_TYPE STREQUAL "Release")
+        if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
             target_compile_options(${example_name} PRIVATE -O3)
         endif()
     endforeach()
