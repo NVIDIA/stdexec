@@ -4591,7 +4591,7 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
 
           4. Let `p` be an lvalue reference to the promise of the <code><i>connect-awaitable</i></code> coroutine, let `b` be a `const` lvalue reference to the receiver `r`. Then `tag_invoke(tag, p, as...)` is expression-equivalent to `tag(b, as...)` for any set of arguments `as...` and for any `tag` whose type satisfies <code><i>forwarding-receiver-query</i></code>.
 
-          5. The expression `p.unhandled_stopped()` is expression-equivalent to `(execution::set_stopped(std::move(r), noop_coroutine())`.
+          5. The expression `p.unhandled_stopped()` is expression-equivalent to `(execution::set_stopped(std::move(r)), noop_coroutine())`.
 
           6. For some expression `e`, the expression `p.await_transform(e)` is expression-equivalent to `tag_invoke(as_awaitable, e, p)` if that expression is well-formed; otherwise, it is expression-equivalent to `e`.
 
