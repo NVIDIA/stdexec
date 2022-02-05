@@ -170,7 +170,8 @@ TEST_CASE("let_value function is not called when cancelled", "[adaptors][let_val
   CHECK_FALSE(called);
 }
 
-TEST_CASE("TODO: let_value exposes a parameter that is destructed when the main operation is destructed",
+TEST_CASE(
+    "TODO: let_value exposes a parameter that is destructed when the main operation is destructed",
     "[adaptors][let_value]") {
 
   // Type that sets into a received boolean when the dtor is called
@@ -267,7 +268,7 @@ TEST_CASE("let_value keeps error_types from input sender", "[adaptors][let_value
   check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
 }
-TEST_CASE("TODO: let_value keeps sends_stopped from input sender", "[adaptors][let_value]") {
+TEST_CASE("let_value keeps sends_stopped from input sender", "[adaptors][let_value]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   stopped_scheduler sched3{};

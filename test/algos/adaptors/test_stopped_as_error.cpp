@@ -53,12 +53,10 @@ TEST_CASE("TODO: stopped_as_error can work with `just`", "[adaptors][stopped_as_
   // ex::start(op);
 }
 
-TEST_CASE("TODO: stopped_as_error can we waited on", "[adaptors][stopped_as_error]") {
+TEST_CASE("stopped_as_error can we waited on", "[adaptors][stopped_as_error]") {
   inline_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 11) | ex::stopped_as_error(std::exception_ptr{});
-  // TODO: fix this
-  // wait_for_value(std::move(snd), 11);
-  (void)snd;
+  wait_for_value(std::move(snd), 11);
 }
 
 TEST_CASE("TODO: stopped_as_error using int error type", "[adaptors][stopped_as_error]") {
@@ -106,8 +104,8 @@ TEST_CASE("stopped_as_error can add more types to error_types", "[adaptors][stop
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(-1));
 
   check_err_types<type_array<std::exception_ptr>>( //
-      ex::transfer_just(sched1, 11)                                  //
-      | ex::stopped_as_error(-1)                                        //
+      ex::transfer_just(sched1, 11)                //
+      | ex::stopped_as_error(-1)                   //
       | ex::stopped_as_error(std::string{"err"}));
 }
 
