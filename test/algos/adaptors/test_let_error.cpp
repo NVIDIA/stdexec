@@ -159,46 +159,54 @@ struct my_type {
   }
 };
 
-TEST_CASE("TODO: let_error of just_error with custom type", "[adaptors][let_error]") {
-  // TODO: check why this doesn't work
-  // bool param_destructed{false};
-  // ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
-  //                       | ex::let_error([&](my_type obj) { return ex::just(13); });
-  // wait_for_value(std::move(snd), 13);
+TEST_CASE("let_error of just_error with custom type", "[adaptors][let_error]") {
+  bool param_destructed{false};
+  ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
+                        | ex::let_error([&](const my_type& obj) { return ex::just(13); });
+
+  {
+    auto op = ex::connect(std::move(snd), expect_value_receiver<int>{13});
+    CHECK_FALSE(param_destructed);
+    ex::start(op);
+    CHECK_FALSE(param_destructed);
+  }
+  // the parameter is destructed once the operation_state object is destructed
+  CHECK(param_destructed);
 }
 
-TEST_CASE(
-    "TODO: let_error exposes a parameter that is destructed when the main operation is destructed ",
+TEST_CASE("let_error exposes a parameter that is destructed when the main operation is destructed ",
     "[adaptors][let_error]") {
+  bool param_destructed{false};
+  bool fun_called{false};
+  impulse_scheduler sched;
 
-  // TODO: make this work after just_error() | let_error() works
+  ex::sender auto s1 = ex::just_error(my_type(&param_destructed));
+  ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
+                        | ex::let_error([&](const my_type& obj) {
+                            CHECK_FALSE(param_destructed);
+                            fun_called = true;
+                            return ex::transfer_just(sched, 13);
+                          });
+  int res{0};
+  {
+    auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>{&res});
+    ex::start(op);
+    // The function is called immediately after starting the operation
+    CHECK(fun_called);
+    // As the returned sender didn't complete yet, the parameter must still be alive
+    CHECK_FALSE(param_destructed);
+    CHECK(res == 0);
 
-  // bool param_destructed{false};
-  // bool fun_called{false};
-  // impulse_scheduler sched;
-  //
-  // ex::sender auto s1 = ex::just_error(my_type(&param_destructed));
-  // ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
-  //                       | ex::let_error([&](my_type obj) {
-  //                           CHECK_FALSE(param_destructed);
-  //                           fun_called = true;
-  //                           return ex::transfer_just(sched, 13);
-  //                         });
-  // int res{0};
-  // auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>{&res});
-  // ex::start(op);
-  // // The function is called immediately after starting the operation
-  // CHECK(fun_called);
-  // // As the returned sender didn't complete yet, the parameter must still be alive
-  // CHECK_FALSE(param_destructed);
-  // CHECK(res == 0);
-  //
-  // // Now, tell the scheduler to execute the final operation
-  // sched.start_next();
-  //
-  // // At this point everything can be destructed
-  // CHECK(param_destructed);
-  // CHECK(res == 13);
+    // Now, tell the scheduler to execute the final operation
+    sched.start_next();
+
+    // As the main operation is still valid, the parameter is not yet destructed
+    CHECK_FALSE(param_destructed);
+  }
+
+  // At this point everything can be destructed
+  CHECK(param_destructed);
+  CHECK(res == 13);
 }
 
 TEST_CASE("TODO: let_error works when changing threads", "[adaptors][let_error]") {
