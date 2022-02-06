@@ -284,23 +284,33 @@ TEST_CASE("when_all has the sends_stopped == true", "[adaptors][when_all]") {
   );
 }
 
-using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
+struct my_string_sender_t {
+  std::string str_;
+
+  using completion_signatures = typename decltype(ex::just(std::string{}))::completion_signatures;
+
+  template <class Recv>
+  friend auto tag_invoke(ex::connect_t, my_string_sender_t&& self, Recv&& recv) {
+    return ex::connect(ex::just(std::move(self.str_)), std::forward<Recv>(recv));
+  }
+  template <class Recv>
+  friend auto tag_invoke(ex::connect_t, const my_string_sender_t& self, Recv&& recv) {
+    return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
+  }
+};
 
 auto tag_invoke(ex::when_all_t, my_string_sender_t, my_string_sender_t) {
   // Return a different sender when we invoke this custom defined on implementation
   return ex::just(std::string{"first program"});
 }
 
-TEST_CASE("TODO: when_all can be customized", "[adaptors][when_all]") {
+TEST_CASE("when_all can be customized", "[adaptors][when_all]") {
   // The customization will return a different value
-  auto snd = ex::when_all(                                          //
-      ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //
-      ex::transfer_just(inline_scheduler{}, std::string{" world!"}) //
+  auto snd = ex::when_all(                       //
+      my_string_sender_t{std::string{"hello,"}}, //
+      my_string_sender_t{std::string{" world!"}} //
   );
-  // TODO: check why function cannot be customized
-  // wait_for_value(std::move(snd), std::string{"first program"});
-  // Invalid check:
-  wait_for_value(std::move(snd), std::string{"hello,"}, std::string{" world!"});
+  wait_for_value(std::move(snd), std::string{"first program"});
 }
 
 auto tag_invoke(ex::when_all_with_variant_t, my_string_sender_t, my_string_sender_t) {
@@ -308,16 +318,11 @@ auto tag_invoke(ex::when_all_with_variant_t, my_string_sender_t, my_string_sende
   return ex::just(std::string{"first program"});
 }
 
-// TODO: check when_all_with_variant
-TEST_CASE("TODO: when_all_with_variant can be customized", "[adaptors][when_all]") {
-  // // The customization will return a different value
-  // auto snd = ex::when_all_with_variant(                             //
-  //     ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //
-  //     ex::transfer_just(inline_scheduler{}, std::string{" world!"}) //
-  // );
-  // // TODO: check why function cannot be customized
-  // // wait_for_value(std::move(snd), std::string{"first program"});
-  // // Invalid check:
-  // wait_for_value(std::move(snd), std::variant<std::string>{std::string{"hello,"}},
-  // std::variant<std::string>{std::string{" world!"}});
+TEST_CASE("when_all_with_variant can be customized", "[adaptors][when_all]") {
+  // The customization will return a different value
+  auto snd = ex::when_all_with_variant(          //
+      my_string_sender_t{std::string{"hello,"}}, //
+      my_string_sender_t{std::string{" world!"}} //
+  );
+  wait_for_value(std::move(snd), std::string{"first program"});
 }

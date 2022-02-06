@@ -3704,7 +3704,8 @@ namespace std::execution {
       }
 
       template <sender... _Senders>
-          requires (sizeof...(_Senders) > 0)
+          requires (!tag_invocable<when_all_t, _Senders...>) &&
+            (sizeof...(_Senders) > 0)
       auto operator()(_Senders&&... __sndrs) const
         -> __impl::__sender<__x<decay_t<_Senders>>...> {
         return __impl::__sender<__x<decay_t<_Senders>>...>{
