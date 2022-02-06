@@ -54,13 +54,14 @@ TEST_CASE("let_stopped can be piped", "[adaptors][let_stopped]") {
   (void)snd;
 }
 
-TEST_CASE(
-    "let_stopped returning void can we waited on (cancel annihilation)", "[adaptors][let_stopped]") {
+TEST_CASE("let_stopped returning void can we waited on (cancel annihilation)",
+    "[adaptors][let_stopped]") {
   ex::sender auto snd = ex::just_stopped() | ex::let_stopped([] { return ex::just(); });
   std::this_thread::sync_wait(std::move(snd));
 }
 
-TEST_CASE("let_stopped can be used to produce values (cancel to value)", "[adaptors][let_stopped]") {
+TEST_CASE(
+    "let_stopped can be used to produce values (cancel to value)", "[adaptors][let_stopped]") {
   ex::sender auto snd = ex::just_stopped() //
                         | ex::let_stopped([] { return ex::just(std::string{"cancelled"}); });
   wait_for_value(std::move(snd), std::string{"cancelled"});
@@ -76,13 +77,11 @@ TEST_CASE("let_stopped can throw, calling set_error", "[adaptors][let_stopped]")
   ex::start(op);
 }
 
-TEST_CASE("TODO: let_stopped can be used with just_error", "[adaptors][let_stopped]") {
+TEST_CASE("let_stopped can be used with just_error", "[adaptors][let_stopped]") {
   ex::sender auto snd = ex::just_error(1) //
                         | ex::let_stopped([] { return ex::just(17); });
-  // TODO: check why this doesn't work
-  // auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
-  // ex::start(op);
-  (void)snd;
+  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  ex::start(op);
 }
 
 TEST_CASE("let_stopped function is not called on regular flow", "[adaptors][let_stopped]") {
@@ -114,19 +113,19 @@ TEST_CASE("let_stopped has the values_type from the input sender if returning er
     "[adaptors][let_stopped]") {
   check_val_types<type_array<type_array<int>>>(ex::just(7) //
                                                | ex::let_stopped([] { return ex::just_error(0); }));
-  check_val_types<type_array<type_array<double>>>(ex::just(3.14) //
-                                                  | ex::let_stopped([] { return ex::just_error(0); }));
+  check_val_types<type_array<type_array<double>>>(
+      ex::just(3.14) //
+      | ex::let_stopped([] { return ex::just_error(0); }));
   check_val_types<type_array<type_array<std::string>>>(
       ex::just(std::string{"hello"}) //
       | ex::let_stopped([] { return ex::just_error(0); }));
 }
-TEST_CASE(
-    "let_stopped adds to values_type the value types of the returned sender", "[adaptors][let_stopped]") {
+TEST_CASE("let_stopped adds to values_type the value types of the returned sender",
+    "[adaptors][let_stopped]") {
   check_val_types<type_array<type_array<int>>>(ex::just(1) //
                                                | ex::let_stopped([] { return ex::just(11); }));
-  check_val_types<type_array<type_array<int>>>(
-      ex::just(1) //
-      | ex::let_stopped([] { return ex::just(3.14); }));
+  check_val_types<type_array<type_array<int>>>(ex::just(1) //
+                                               | ex::let_stopped([] { return ex::just(3.14); }));
   check_val_types<type_array<type_array<int>>>(
       ex::just(1) //
       | ex::let_stopped([] { return ex::just(std::string{"hello"}); }));
@@ -134,25 +133,40 @@ TEST_CASE(
 TEST_CASE("let_stopped has the error_type from the input sender if returning value",
     "[adaptors][let_stopped]") {
   check_err_types<type_array<int>>( //
-      ex::just_error(7)                                 //
+      ex::just_error(7)             //
       | ex::let_stopped([] { return ex::just(0); }));
   check_err_types<type_array<double>>( //
-      ex::just_error(3.14)                                 //
+      ex::just_error(3.14)             //
       | ex::let_stopped([] { return ex::just(0); }));
   check_err_types<type_array<std::string>>( //
-      ex::just_error(std::string{"hello"})                      //
+      ex::just_error(std::string{"hello"})  //
       | ex::let_stopped([] { return ex::just(0); }));
 }
 TEST_CASE("let_stopped adds to error_type of the input sender", "[adaptors][let_stopped]") {
-  check_err_types<type_array<std::string>>( //
-      ex::just_error(std::string{})                                  //
+  impulse_scheduler sched;
+  ex::sender auto in_snd = ex::transfer_just(sched, 11);
+  check_err_types<type_array<std::exception_ptr, int>>( //
+      in_snd                                //
       | ex::let_stopped([] { return ex::just_error(0); }));
-  check_err_types<type_array<std::string>>( //
-      ex::just_error(std::string{})                                     //
+  check_err_types<type_array<std::exception_ptr, double>>( //
+      in_snd                                //
       | ex::let_stopped([] { return ex::just_error(3.14); }));
-  check_err_types<type_array<std::string>>( //
-      ex::just_error(std::string{})                             //
+  check_err_types<type_array<std::exception_ptr, std::string>>( //
+      in_snd                                //
       | ex::let_stopped([] { return ex::just_error(std::string{"err"}); }));
+}
+TEST_CASE("let_stopped can be used instead of stopped_as_error", "[adaptors][let_stopped]") {
+  impulse_scheduler sched;
+  ex::sender auto in_snd = ex::transfer_just(sched, 11);
+  check_val_types<type_array<type_array<int>>>(in_snd);
+  check_err_types<type_array<std::exception_ptr>>(in_snd);
+  check_sends_stopped<true>(in_snd);
+
+  ex::sender auto snd = std::move(in_snd) | ex::let_stopped([] { return ex::just_error(-1); });
+
+  check_val_types<type_array<type_array<int>>>(snd);
+  check_err_types<type_array<std::exception_ptr, int>>(snd);
+  check_sends_stopped<false>(snd);
 }
 
 TEST_CASE("let_stopped overrides sends_stopped from input sender", "[adaptors][let_stopped]") {
@@ -161,24 +175,24 @@ TEST_CASE("let_stopped overrides sends_stopped from input sender", "[adaptors][l
   error_scheduler<int> sched3{43};
 
   // Returning ex::just
-  check_sends_stopped<false>(      //
+  check_sends_stopped<false>(   //
       ex::transfer_just(sched1) //
       | ex::let_stopped([] { return ex::just(); }));
-  check_sends_stopped<false>(      //
+  check_sends_stopped<false>(   //
       ex::transfer_just(sched2) //
       | ex::let_stopped([] { return ex::just(); }));
-  check_sends_stopped<false>(      //
+  check_sends_stopped<false>(   //
       ex::transfer_just(sched3) //
       | ex::let_stopped([] { return ex::just(); }));
 
   // Returning ex::just_stopped
-  check_sends_stopped<false>(       //
+  check_sends_stopped<false>(   //
       ex::transfer_just(sched1) //
       | ex::let_stopped([] { return ex::just_stopped(); }));
-  check_sends_stopped<true>(       //
+  check_sends_stopped<true>(    //
       ex::transfer_just(sched2) //
       | ex::let_stopped([] { return ex::just_stopped(); }));
-  check_sends_stopped<true>(       //
+  check_sends_stopped<true>(    //
       ex::transfer_just(sched3) //
       | ex::let_stopped([] { return ex::just_stopped(); }));
 }

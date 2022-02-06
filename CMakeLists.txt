@@ -62,7 +62,7 @@ target_compile_options(P2300 INTERFACE
                        /W4>)
 # template backtrace limit
 target_compile_options(P2300 INTERFACE
-                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
                        -ftemplate-backtrace-limit=0>
                        )
 # Proper use of libc++

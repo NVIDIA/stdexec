@@ -466,6 +466,15 @@ namespace std::execution {
       sender<_Sender, _Env> &&
       __valid<__single_sender_value_t, _Sender, _Env>;
 
+  template <class _Sender, class _Env = no_env>
+    using __single_value_variant_sender_t =
+      value_types_of_t<_Sender, _Env, __types, __single_t>;
+
+  template <class _Sender, class _Env = no_env>
+    concept __single_value_variant_sender =
+      sender<_Sender, _Env> &&
+      __valid<__single_value_variant_sender_t, _Sender, _Env>;
+
   /////////////////////////////////////////////////////////////////////////////
   namespace __completion_signatures {
     template <class... _Args>
@@ -1516,7 +1525,7 @@ namespace std::execution {
 
     inline constexpr struct __just_error_t {
       template <__movable_value _Error>
-      __sender<set_error_t, _Error> operator()(_Error&& __err) const
+      __sender<set_error_t, decay_t<_Error>> operator()(_Error&& __err) const
         noexcept(is_nothrow_constructible_v<decay_t<_Error>, _Error>) {
         return {{(_Error&&) __err}};
       }
@@ -2255,7 +2264,9 @@ namespace std::execution {
           __ operator()(auto&&...) const;
           template <class... _As>
               requires invocable<_Fun, _As...>
-            invoke_result_t<_Fun, _As...> operator()(_As&&...) const;
+            invoke_result_t<_Fun, _As...> operator()(_As&&...) const {
+                terminate(); // this is never called; but we need a body
+            }
         };
 
       template <class _Fun, class _Tuple>
@@ -2494,21 +2505,21 @@ namespace std::execution {
             using __sender = __impl::__sender<__x<remove_cvref_t<_Sender>>, _Fun, _LetTag>;
 
           template <sender _Sender, __movable_value _Fun>
-            requires __tag_invocable_with_completion_scheduler<_LetTag, _SetTag, _Sender, _Fun>
+            requires __tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>
           sender auto operator()(_Sender&& __sndr, _Fun __fun) const
-            noexcept(nothrow_tag_invocable<_LetTag, __completion_scheduler_for<_Sender, _SetTag>, _Sender, _Fun>) {
-            auto __sched = get_completion_scheduler<_SetTag>(__sndr);
+            noexcept(nothrow_tag_invocable<_LetTag, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Fun>) {
+            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
             return tag_invoke(_LetTag{}, std::move(__sched), (_Sender&&) __sndr, (_Fun&&) __fun);
           }
           template <sender _Sender, __movable_value _Fun>
-            requires (!__tag_invocable_with_completion_scheduler<_LetTag, _SetTag, _Sender, _Fun>) &&
+            requires (!__tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>) &&
               tag_invocable<_LetTag, _Sender, _Fun>
           sender auto operator()(_Sender&& __sndr, _Fun __fun) const
             noexcept(nothrow_tag_invocable<_LetTag, _Sender, _Fun>) {
             return tag_invoke(_LetTag{}, (_Sender&&) __sndr, (_Fun&&) __fun);
           }
           template <sender _Sender, __movable_value _Fun>
-            requires (!__tag_invocable_with_completion_scheduler<_LetTag, _SetTag, _Sender, _Fun>) &&
+            requires (!__tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>) &&
               (!tag_invocable<_LetTag, _Sender, _Fun>) &&
               sender<__sender<_Sender, _Fun>>
           __sender<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
@@ -3684,7 +3695,8 @@ namespace std::execution {
     struct when_all_t {
       template <sender... _Senders>
         requires tag_invocable<when_all_t, _Senders...> &&
-          sender<tag_invoke_result_t<when_all_t, _Senders...>>
+          sender<tag_invoke_result_t<when_all_t, _Senders...>> &&
+          (sizeof...(_Senders) > 0)
       auto operator()(_Senders&&... __sndrs) const
         noexcept(nothrow_tag_invocable<when_all_t, _Senders...>)
         -> tag_invoke_result_t<when_all_t, _Senders...> {
@@ -3692,6 +3704,8 @@ namespace std::execution {
       }
 
       template <sender... _Senders>
+          requires (!tag_invocable<when_all_t, _Senders...>) &&
+            (sizeof...(_Senders) > 0)
       auto operator()(_Senders&&... __sndrs) const
         -> __impl::__sender<__x<decay_t<_Senders>>...> {
         return __impl::__sender<__x<decay_t<_Senders>>...>{
@@ -3712,10 +3726,8 @@ namespace std::execution {
       template <sender... _Senders>
         requires (!tag_invocable<when_all_with_variant_t, _Senders...>) &&
           (__callable<__into_variant_t, _Senders> &&...)
-      auto operator()(_Senders&&... __sndrs) const
-        -> __impl::__sender<__impl::__into_variant_result_t<_Senders>...> {
-        return __impl::__sender<__impl::__into_variant_result_t<_Senders>...>{
-            into_variant((_Senders&&) __sndrs)...};
+      auto operator()(_Senders&&... __sndrs) const {
+          return when_all_t{}(into_variant((_Senders&&) __sndrs)...);
       }
     };
 
@@ -3910,7 +3922,7 @@ namespace std::this_thread {
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
       // TODO: constrain on return type
-      template <execution::sender _Sender> // NOT TO SPEC
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           execution::__tag_invocable_with_completion_scheduler<
             sync_wait_t, execution::set_value_t, _Sender>
@@ -3928,7 +3940,7 @@ namespace std::this_thread {
         return tag_invoke(sync_wait_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
       // TODO: constrain on return type
-      template <execution::sender _Sender> // NOT TO SPEC
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_t, execution::set_value_t, _Sender>) &&
@@ -3938,7 +3950,7 @@ namespace std::this_thread {
         nothrow_tag_invocable<sync_wait_t, _Sender>) {
         return tag_invoke(sync_wait_t{}, (_Sender&&) __sndr);
       }
-      template <execution::sender _Sender>
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender>
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_t, execution::set_value_t, _Sender>) &&
@@ -3975,7 +3987,7 @@ namespace std::this_thread {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
-      template <execution::sender _Sender> // NOT TO SPEC
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           execution::__tag_invocable_with_completion_scheduler<
             sync_wait_with_variant_t, execution::set_value_t, _Sender>
@@ -3993,7 +4005,7 @@ namespace std::this_thread {
         return tag_invoke(
           sync_wait_with_variant_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
-      template <execution::sender _Sender> // NOT TO SPEC
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_with_variant_t, execution::set_value_t, _Sender>) &&
@@ -4003,7 +4015,7 @@ namespace std::this_thread {
         nothrow_tag_invocable<sync_wait_with_variant_t, _Sender>) {
         return tag_invoke(sync_wait_with_variant_t{}, (_Sender&&) __sndr);
       }
-      template <execution::sender _Sender>
+      template <execution::__single_value_variant_sender<__impl::__env> _Sender>
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_with_variant_t, execution::set_value_t, _Sender>) &&
