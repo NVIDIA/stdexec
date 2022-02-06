@@ -317,12 +317,9 @@ auto tag_invoke(ex::let_error_t, inline_scheduler sched, my_string_sender_t, Fun
   return ex::just(std::string{"what error?"});
 }
 
-TEST_CASE("TODO: let_error can be customized", "[adaptors][let_error]") {
+TEST_CASE("let_error can be customized", "[adaptors][let_error]") {
   // The customization will return a different value
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
-  // wait_for_value(std::move(snd), std::string{"what error?"});
-  // TODO: check why this doesn't work
-  // invalid check:
-  wait_for_value(std::move(snd), std::string{"hello"});
+  wait_for_value(std::move(snd), std::string{"what error?"});
 }
