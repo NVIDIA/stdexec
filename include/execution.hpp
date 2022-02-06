@@ -3695,7 +3695,8 @@ namespace std::execution {
     struct when_all_t {
       template <sender... _Senders>
         requires tag_invocable<when_all_t, _Senders...> &&
-          sender<tag_invoke_result_t<when_all_t, _Senders...>>
+          sender<tag_invoke_result_t<when_all_t, _Senders...>> &&
+          (sizeof...(_Senders) > 0)
       auto operator()(_Senders&&... __sndrs) const
         noexcept(nothrow_tag_invocable<when_all_t, _Senders...>)
         -> tag_invoke_result_t<when_all_t, _Senders...> {
@@ -3703,6 +3704,7 @@ namespace std::execution {
       }
 
       template <sender... _Senders>
+          requires (sizeof...(_Senders) > 0)
       auto operator()(_Senders&&... __sndrs) const
         -> __impl::__sender<__x<decay_t<_Senders>>...> {
         return __impl::__sender<__x<decay_t<_Senders>>...>{

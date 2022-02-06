@@ -68,10 +68,10 @@ TEST_CASE("when_all with just one sender", "[adaptors][when_all]") {
   wait_for_value(std::move(snd), 2);
 }
 
-TEST_CASE("TODO: when_all with no senders sender -- should fail", "[adaptors][when_all]") {
-  auto snd = ex::when_all();
-  static_assert(ex::sender<decltype(snd), empty_env>);
-  // TODO: calling `ex::when_all()` should be ill-formed
+TEST_CASE("when_all with no senders sender -- should fail", "[adaptors][when_all]") {
+  // Should not compile:
+  // auto snd = ex::when_all();
+  static_assert(!std::invocable<ex::when_all_t>);
 }
 
 TEST_CASE("when_all when one sender sends void", "[adaptors][when_all]") {
@@ -129,7 +129,7 @@ TEST_CASE("when_all can be used with just_*", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all(       //
       ex::just(2),                          //
       ex::just_error(std::exception_ptr{}), //
-      ex::just_stopped()                       //
+      ex::just_stopped()                    //
   );
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
@@ -196,7 +196,7 @@ TEST_CASE("when_all cancels remaining children if cancel is detected", "[adaptor
   bool cancelled{false};
   ex::sender auto snd = ex::when_all(                                //
       ex::on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
-      ex::on(sched, ex::transfer_just(stopped_sched, 5)),               //
+      ex::on(sched, ex::transfer_just(stopped_sched, 5)),            //
       ex::on(sched, ex::just())                                      //
           | ex::then([&] { called3 = true; })                        //
           | ex::let_stopped([&] {
@@ -264,7 +264,7 @@ TEST_CASE("when_all has the error_types based on the children", "[adaptors][when
       ex::when_all(                                //
           ex::just(13),                            //
           ex::just_error(std::exception_ptr{}),    //
-          ex::just_stopped()                          //
+          ex::just_stopped()                       //
           )                                        //
   );
 }
@@ -275,11 +275,11 @@ TEST_CASE("when_all has the sends_stopped == true", "[adaptors][when_all]") {
   check_sends_stopped<true>(ex::when_all(ex::just_stopped()));
 
   check_sends_stopped<true>(ex::when_all(ex::just(3), ex::just(0.14)));
-  check_sends_stopped<true>(     //
+  check_sends_stopped<true>(  //
       ex::when_all(           //
           ex::just(3),        //
           ex::just_error(-1), //
-          ex::just_stopped()     //
+          ex::just_stopped()  //
           )                   //
   );
 }
