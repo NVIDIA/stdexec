@@ -82,22 +82,22 @@ TEST_CASE("when_all when one sender sends void", "[adaptors][when_all]") {
   wait_for_value(std::move(snd), 2);
 }
 
-TEST_CASE("TODO: when_all_with_variant basic example", "[adaptors][when_all]") {
-  // TODO: when_all_with_variant doesn't work
-  // ex::sender auto snd = ex::when_all_with_variant( //
-  //     ex::just(2),                                 //
-  //     ex::just(3.14)                               //
-  // );
-  // wait_for_value(std::move(snd), std::variant<int, double>{2}, std::variant<int, double>{3.14});
+TEST_CASE("when_all_with_variant basic example", "[adaptors][when_all]") {
+  ex::sender auto snd = ex::when_all_with_variant( //
+      ex::just(2),                                 //
+      ex::just(3.14)                               //
+  );
+  wait_for_value(
+      std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
 }
 
-TEST_CASE("TODO: when_all_with_variant with same type", "[adaptors][when_all]") {
-  // TODO: when_all_with_variant doesn't work
-  // ex::sender auto snd = ex::when_all_with_variant( //
-  //     ex::just(2),                                 //
-  //     ex::just(3)                               //
-  // );
-  // wait_for_value(std::move(snd), std::variant<int>{2}, std::variant<int>{3});
+TEST_CASE("when_all_with_variant with same type", "[adaptors][when_all]") {
+  ex::sender auto snd = ex::when_all_with_variant( //
+      ex::just(2),                                 //
+      ex::just(3)                                  //
+  );
+  wait_for_value(
+      std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<int>>{3});
 }
 
 TEST_CASE("when_all completes when children complete", "[adaptors][when_all]") {
@@ -319,6 +319,24 @@ auto tag_invoke(ex::when_all_with_variant_t, my_string_sender_t, my_string_sende
 }
 
 TEST_CASE("when_all_with_variant can be customized", "[adaptors][when_all]") {
+  // The customization will return a different value
+  auto snd = ex::when_all_with_variant(          //
+      my_string_sender_t{std::string{"hello,"}}, //
+      my_string_sender_t{std::string{" world!"}} //
+  );
+  wait_for_value(std::move(snd), std::string{"first program"});
+}
+
+using my_string_variant_sender_t = decltype(ex::into_variant(my_string_sender_t{std::string{}}));
+
+auto tag_invoke(ex::when_all_t, my_string_variant_sender_t, my_string_variant_sender_t) {
+  // Return a different sender when we invoke this custom defined on implementation
+  return ex::just(std::string{"first program"});
+}
+
+TEST_CASE(
+    "when_all_with_variant take into account when_all cusomizations", "[adaptors][when_all]") {
+  // when_all_with_variant must be using the `when_all` implementation that allows cusomizations
   // The customization will return a different value
   auto snd = ex::when_all_with_variant(          //
       my_string_sender_t{std::string{"hello,"}}, //

@@ -3726,10 +3726,8 @@ namespace std::execution {
       template <sender... _Senders>
         requires (!tag_invocable<when_all_with_variant_t, _Senders...>) &&
           (__callable<__into_variant_t, _Senders> &&...)
-      auto operator()(_Senders&&... __sndrs) const
-        -> __impl::__sender<__impl::__into_variant_result_t<_Senders>...> {
-        return __impl::__sender<__impl::__into_variant_result_t<_Senders>...>{
-            into_variant((_Senders&&) __sndrs)...};
+      auto operator()(_Senders&&... __sndrs) const {
+          return when_all_t{}(into_variant((_Senders&&) __sndrs)...);
       }
     };
 
