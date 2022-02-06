@@ -2264,7 +2264,9 @@ namespace std::execution {
           __ operator()(auto&&...) const;
           template <class... _As>
               requires invocable<_Fun, _As...>
-            invoke_result_t<_Fun, _As...> operator()(_As&&...) const;
+            invoke_result_t<_Fun, _As...> operator()(_As&&...) const {
+                terminate(); // this is never called; but we need a body
+            }
         };
 
       template <class _Fun, class _Tuple>
