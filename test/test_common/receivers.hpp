@@ -140,7 +140,8 @@ class expect_value_receiver {
   friend void tag_invoke(ex::set_stopped_t, expect_value_receiver&& self) noexcept {
     FAIL_CHECK("set_stopped called on expect_value_receiver");
   }
-  friend void tag_invoke(ex::set_error_t, expect_value_receiver&&, std::exception_ptr) noexcept {
+  template <typename E>
+  friend void tag_invoke(ex::set_error_t, expect_value_receiver&&, E) noexcept {
     FAIL_CHECK("set_error called on expect_value_receiver");
   }
   friend empty_env tag_invoke(ex::get_env_t, const expect_value_receiver&) noexcept {
@@ -283,11 +284,13 @@ struct expect_error_receiver_ex {
 
 struct logging_receiver {
   int* state_;
-  friend void tag_invoke(ex::set_value_t, logging_receiver&& self) noexcept {
+  template<typename... Args>
+  friend void tag_invoke(ex::set_value_t, logging_receiver&& self, Args...) noexcept {
     *self.state_ = 0;
   }
   friend void tag_invoke(ex::set_stopped_t, logging_receiver&& self) noexcept { *self.state_ = 1; }
-  friend void tag_invoke(ex::set_error_t, logging_receiver&& self, std::exception_ptr) noexcept {
+  template <typename E>
+  friend void tag_invoke(ex::set_error_t, logging_receiver&& self, E) noexcept {
     *self.state_ = 2;
   }
   friend empty_env tag_invoke(ex::get_env_t, const logging_receiver&) noexcept {

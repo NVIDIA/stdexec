@@ -143,15 +143,30 @@ TEST_CASE("let_stopped has the error_type from the input sender if returning val
       | ex::let_stopped([] { return ex::just(0); }));
 }
 TEST_CASE("let_stopped adds to error_type of the input sender", "[adaptors][let_stopped]") {
-  check_err_types<type_array<std::string>>( //
-      ex::just_error(std::string{})         //
+  impulse_scheduler sched;
+  ex::sender auto in_snd = ex::transfer_just(sched, 11);
+  check_err_types<type_array<std::exception_ptr, int>>( //
+      in_snd                                //
       | ex::let_stopped([] { return ex::just_error(0); }));
-  check_err_types<type_array<std::string>>( //
-      ex::just_error(std::string{})         //
+  check_err_types<type_array<std::exception_ptr, double>>( //
+      in_snd                                //
       | ex::let_stopped([] { return ex::just_error(3.14); }));
-  check_err_types<type_array<std::string>>( //
-      ex::just_error(std::string{})         //
+  check_err_types<type_array<std::exception_ptr, std::string>>( //
+      in_snd                                //
       | ex::let_stopped([] { return ex::just_error(std::string{"err"}); }));
+}
+TEST_CASE("let_stopped can be used instead of stopped_as_error", "[adaptors][let_stopped]") {
+  impulse_scheduler sched;
+  ex::sender auto in_snd = ex::transfer_just(sched, 11);
+  check_val_types<type_array<type_array<int>>>(in_snd);
+  check_err_types<type_array<std::exception_ptr>>(in_snd);
+  check_sends_stopped<true>(in_snd);
+
+  ex::sender auto snd = std::move(in_snd) | ex::let_stopped([] { return ex::just_error(-1); });
+
+  check_val_types<type_array<type_array<int>>>(snd);
+  check_err_types<type_array<std::exception_ptr, int>>(snd);
+  check_sends_stopped<false>(snd);
 }
 
 TEST_CASE("let_stopped overrides sends_stopped from input sender", "[adaptors][let_stopped]") {
