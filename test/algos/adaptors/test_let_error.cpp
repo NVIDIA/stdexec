@@ -209,27 +209,37 @@ TEST_CASE("let_error exposes a parameter that is destructed when the main operat
   CHECK(res == 13);
 }
 
-TEST_CASE("TODO: let_error works when changing threads", "[adaptors][let_error]") {
-  // TODO: this test produces a strange "undefined reference" linker error on CI
-  // example::static_thread_pool pool{2};
-  // bool called{false};
-  // {
-  //   // lunch some work on the thread pool
-  //   ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just_error(7))            //
-  //                         | ex::let_error([](int x) { return fallible_just{x * 2 - 1); }}
-  //                         | ex::then([&](int x) {
-  //                             CHECK(x == 13);
-  //                             called = true;
-  //                           });
-  //   ex::start_detached(std::move(snd));
-  // }
-  // // wait for the work to be executed, with timeout
-  // // perform a poor-man's sync
-  // // NOTE: it's a shame that the `join` method in static_thread_pool is not public
-  // for (int i = 0; i < 1000 && !called; i++)
-  //   std::this_thread::sleep_for(1ms);
-  // // the work should be executed
-  // REQUIRE(called);
+struct int_err_transform {
+  using my_res_t = decltype(fallible_just{0});
+
+  my_res_t operator()(std::exception_ptr ep) const {
+    std::rethrow_exception(ep);
+    return {};
+  }
+  my_res_t operator()(int x) const { return fallible_just{x * 2 - 1}; }
+};
+
+TEST_CASE("let_error works when changing threads", "[adaptors][let_error]") {
+  example::static_thread_pool pool{2};
+  bool called{false};
+  {
+    // lunch some work on the thread pool
+    ex::sender auto snd = ex::on(pool.get_scheduler(),
+                              ex::just_error(7))               //
+                          | ex::let_error(int_err_transform{}) //
+                          | ex::then([&](int x) {
+                              CHECK(x == 13);
+                              called = true;
+                            });
+    ex::start_detached(std::move(snd));
+  }
+  // wait for the work to be executed, with timeout
+  // perform a poor-man's sync
+  // NOTE: it's a shame that the `join` method in static_thread_pool is not public
+  for (int i = 0; i < 1000 && !called; i++)
+    std::this_thread::sleep_for(1ms);
+  // the work should be executed
+  REQUIRE(called);
 }
 
 TEST_CASE("let_error has the values_type from the input sender if returning error",
