@@ -57,7 +57,7 @@ TEST_CASE("let_error can be piped", "[adaptors][let_error]") {
 }
 
 TEST_CASE(
-    "let_error returning void can we waited on (error annihilation)", "[adaptors][let_error]") {
+    "let_error returning void can be waited on (error annihilation)", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just_error(std::exception_ptr{}) |
                         ex::let_error([](std::exception_ptr) { return ex::just(); });
   std::this_thread::sync_wait(std::move(snd));
