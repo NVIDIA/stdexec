@@ -20,6 +20,7 @@
 #include <schedulers/openmp_scheduler.hpp>
 
 #include <chrono>
+#include <fstream>
 #include <charconv>
 
 namespace distributed = example::cuda::distributed;
@@ -425,6 +426,15 @@ update_e(float *time,
   return {dt, time, accessor, source_position};
 }
 
+bool is_cpu_pointer(const void *ptr)
+{
+  cudaPointerAttributes attributes{};
+  check(cudaPointerGetAttributes(&attributes, ptr));
+
+  return attributes.type == cudaMemoryTypeHost ||
+         attributes.type == cudaMemoryTypeUnregistered;
+}
+
 template <std::size_t N>
 class result_dumper_t
 {
@@ -537,13 +547,7 @@ public:
     , report_step_(report_step)
     , accessor_(accessor)
   {
-    cudaPointerAttributes attributes{};
-    check(cudaPointerGetAttributes(&attributes, accessor.get(field_id::ez)));
-
-    const bool is_cpu_pointer = attributes.type == cudaMemoryTypeHost ||
-                                attributes.type == cudaMemoryTypeUnregistered;
-
-    fetch_results_from_gpu_ = is_cpu_pointer == false;
+    fetch_results_from_gpu_ = !is_cpu_pointer(accessor.get(field_id::ez));
   }
 
   void operator()() const
@@ -557,10 +561,10 @@ public:
 };
 
 template <std::size_t N>
-__host__ __device__ result_dumper_t<N> dump_results(bool write_results,
-                                                    int rank,
-                                                    std::size_t &report_step,
-                                                    fields_accessor<N> accessor)
+__host__ __device__ result_dumper_t<N> dump_vtk(bool write_results,
+                                                int rank,
+                                                std::size_t &report_step,
+                                                fields_accessor<N> accessor)
 {
 
   return {write_results, rank, report_step, accessor};
@@ -672,7 +676,7 @@ auto maxwell_eqs(float dt,
   const std::size_t border_size = accessor.n;
   const std::size_t own_cells = accessor.n_own_cells();
 
-  auto write = dump_results(write_results, node_id, report_step, accessor);
+  auto write = dump_vtk(write_results, node_id, report_step, accessor);
 
   return repeat_n(                                                      //
            n_outer_iterations,                                          //
@@ -697,6 +701,131 @@ auto maxwell_eqs(float dt,
              printf("simulation complete");
            }
          });
+}
+
+std::string bin_name(int node_id)
+{
+  return "out_" + std::to_string(node_id) + ".bin";
+}
+
+void copy_to_host(void *to, const void *from, std::size_t bytes)
+{
+  if (is_cpu_pointer(from))
+  {
+    memcpy(to, from, bytes);
+  }
+  else
+  {
+    cudaMemcpy(to, from, bytes, cudaMemcpyDeviceToHost);
+  }
+}
+
+template <std::size_t N>
+void validate_results(int node_id, int n_nodes, fields_accessor<N> accessor)
+{
+  std::ifstream meta("meta.txt");
+
+  std::size_t meta_cells{};
+  meta >> meta_cells;
+
+  if (meta_cells != accessor.cells && node_id == 0)
+  {
+    std::cerr << "Grid sizes should match. Validation is impossible."
+              << std::endl;
+  }
+  else
+  {
+    int meta_n_nodes {};
+    meta >> meta_n_nodes;
+
+    const std::size_t buffer_size = 1024 * 1024;
+    std::unique_ptr<char[]> ref_buffer(new char[buffer_size]);
+    std::unique_ptr<char[]> loc_buffer(new char[buffer_size]);
+
+    bool correct_result = true;
+
+    const char *local_ez =
+      reinterpret_cast<const char *>(accessor.get(field_id::ez));
+
+    for (int nid = 0; nid < meta_n_nodes; nid++)
+    {
+      std::ifstream bin(bin_name(nid), std::ios::binary);
+      std::size_t nid_begin{};
+      std::size_t nid_end{};
+
+      bin.read(reinterpret_cast<char *>(&nid_begin), sizeof(std::size_t));
+      bin.read(reinterpret_cast<char *>(&nid_end), sizeof(std::size_t));
+
+      const bool in_range = accessor.begin < nid_end &&
+                            accessor.end > nid_begin;
+
+      if (in_range)
+      {
+        const std::size_t overlap_begin = std::max(nid_begin, accessor.begin);
+        const std::size_t overlap_end = std::min(nid_end, accessor.end);
+
+        std::size_t local_overlap_begin = (overlap_begin - accessor.begin) * sizeof(float);
+        const std::size_t local_overlap_end = (overlap_end - accessor.begin) * sizeof(float);
+        const std::size_t reference_overlap_begin = (overlap_begin - nid_begin) * sizeof(float);
+
+        bin.seekg(reference_overlap_begin, std::ios_base::cur);
+
+        while (local_overlap_begin < local_overlap_end)
+        {
+          const std::size_t bytes_left = local_overlap_end - local_overlap_begin;
+          const std::size_t bytes = std::min(bytes_left, buffer_size);
+
+          bin.read(ref_buffer.get(), bytes);
+          copy_to_host(loc_buffer.get(), local_ez + local_overlap_begin, bytes);
+
+          if (memcmp(loc_buffer.get(), ref_buffer.get(), bytes) != 0)
+          {
+            correct_result = false;
+            break;
+          }
+
+          local_overlap_begin += bytes;
+        }
+      }
+    }
+
+    if (!correct_result)
+    {
+      std::cerr << "Invalid result on " << node_id << std::endl;
+    }
+  }
+}
+
+template <std::size_t N>
+void store_results(int node_id, int n_nodes, fields_accessor<N> accessor)
+{
+  if (node_id == 0)
+  {
+    std::ofstream meta("meta.txt");
+
+    meta << accessor.cells << std::endl;
+    meta << n_nodes << std::endl;
+  }
+
+  std::ofstream bin(bin_name(node_id), std::ios::binary);
+  bin.write(reinterpret_cast<const char *>(&accessor.begin),
+            sizeof(std::size_t));
+  bin.write(reinterpret_cast<const char *>(&accessor.end),
+            sizeof(std::size_t));
+
+  float *ez = accessor.get(field_id::ez);
+  std::size_t n_bytes = accessor.n_own_cells() * sizeof(float);
+
+  if(is_cpu_pointer(ez))
+  {
+    bin.write(reinterpret_cast<const char *>(ez), n_bytes);
+  }
+  else
+  {
+    std::unique_ptr<char[]> h_ez = std::make_unique<char[]>(n_bytes);
+    cudaMemcpy(h_ez.get(), ez, n_bytes, cudaMemcpyDeviceToHost);
+    bin.write(h_ez.get(), n_bytes);
+  }
 }
 
 template <class SenderT>
@@ -749,6 +878,19 @@ template <class SchedulerT>
 auto node_id_from(SchedulerT &&)
 {
   return 0;
+}
+
+template <class SchedulerT>
+requires requires(SchedulerT &&scheduler) { scheduler.n_nodes(); }
+auto n_nodes_from(SchedulerT &&scheduler)
+{
+  return scheduler.n_nodes();
+}
+
+template <class SchedulerT>
+auto n_nodes_from(SchedulerT &&)
+{
+  return 1;
 }
 
 bool contains(std::string_view str, char c)
@@ -815,12 +957,16 @@ int main(int argc, char *argv[])
   if (value(params, "help") || value(params, "h"))
   {
     std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
+              << "\t" << "--write-vtk\n"
               << "\t" << "--write-results\n"
               << "\t" << "--inner-iterations\n"
+              << "\t" << "--validate\n"
               << std::endl;
     return 0;
   }
 
+  const bool validate = value(params, "validate");
+  const bool write_vtk = value(params, "write-vtk");
   const bool write_results = value(params, "write-results");
   const std::size_t n_inner_iterations = value(params, "inner-iterations", 100);
   const std::size_t n_outer_iterations = value(params, "outer-iterations", 10);
@@ -832,6 +978,7 @@ int main(int argc, char *argv[])
   constexpr std::size_t N = 512;
   const auto [grid_begin, grid_end] = bulk_range(N * N, gpu_scheduler);
   const auto node_id = node_id_from(gpu_scheduler);
+  const auto n_nodes = n_nodes_from(gpu_scheduler);
 
   time_storage_t time{gpu_scheduler};
   grid_t<N> grid{grid_begin, grid_end, gpu_scheduler};
@@ -855,7 +1002,7 @@ int main(int argc, char *argv[])
   std::size_t report_step = 0;
   auto snd = maxwell_eqs(dt,
                          time.get(),
-                         write_results,
+                         write_vtk,
                          node_id,
                          report_step,
                          n_inner_iterations,
@@ -868,4 +1015,13 @@ int main(int argc, char *argv[])
                      n_inner_iterations * n_outer_iterations,
                      node_id,
                      std::move(snd));
+
+  if (validate)
+  {
+    validate_results(node_id, n_nodes, accessor);
+  }
+  if (write_results)
+  {
+    store_results(node_id, n_nodes, accessor);
+  }
 }

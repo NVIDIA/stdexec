@@ -82,8 +82,8 @@ class receiver_t
   template <std::size_t... I>
   void shortcut(cudaStream_t stream, std::index_sequence<I...>)
   {
-    ((cudaMemcpyAsync(std::get<I>(prev_send_), std::get<I>(next_recv_), elements_ * sizeof(value_t<I>), cudaMemcpyDefault, stream)),...);
-    ((cudaMemcpyAsync(std::get<I>(next_send_), std::get<I>(prev_recv_), elements_ * sizeof(value_t<I>), cudaMemcpyDefault, stream)),...);
+    ((cudaMemcpyAsync(std::get<I>(prev_recv_), std::get<I>(next_send_), elements_ * sizeof(value_t<I>), cudaMemcpyDefault, stream)),...);
+    ((cudaMemcpyAsync(std::get<I>(next_recv_), std::get<I>(prev_send_), elements_ * sizeof(value_t<I>), cudaMemcpyDefault, stream)),...);
   }
 
   void set_value() &&noexcept
