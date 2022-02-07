@@ -20,6 +20,7 @@
 #include <schedulers/openmp_scheduler.hpp>
 
 #include <chrono>
+#include <charconv>
 
 namespace distributed = example::cuda::distributed;
 namespace graph = example::cuda::graph;
@@ -750,18 +751,85 @@ auto node_id_from(SchedulerT &&)
   return 0;
 }
 
+bool contains(std::string_view str, char c)
+{
+  return str.find(c) != std::string_view::npos;
+}
+
+std::pair<std::string_view, std::string_view> split(std::string_view str,
+                                                    char by = '=')
+{
+  auto it = str.find(by);
+  return std::make_pair(str.substr(0, it),
+                        str.substr(it + 1, str.size() - it - 1));
+}
+
+[[nodiscard]] std::map<std::string_view, std::size_t>
+parse_cmd(int argc, char *argv[])
+{
+  std::map<std::string_view, std::size_t> params;
+  const std::vector<std::string_view> args(argv + 1, argv + argc);
+
+  for(auto arg: args)
+  {
+    if(arg.starts_with("--"))
+    {
+      arg = arg.substr(2, arg.size() - 2);
+    }
+
+    if(arg.starts_with("-"))
+    {
+      arg = arg.substr(1, arg.size() - 1);
+    }
+
+    if(contains(arg, '='))
+    {
+      auto [name, value] = split(arg);
+      std::from_chars(value.begin(), value.end(), params[name]);
+    }
+    else
+    {
+      params[arg] = 1;
+    }
+  }
+
+  return params;
+}
+
+[[nodiscard]] std::size_t
+value(const std::map<std::string_view, std::size_t> &params,
+      std::string_view name,
+      std::size_t default_value = 0)
+{
+  if(params.count(name))
+  {
+    return params.at(name);
+  }
+  return default_value;
+}
+
 int main(int argc, char *argv[])
 {
-  const bool write_results = false;
+  auto params = parse_cmd(argc, argv);
+
+  if (value(params, "help") || value(params, "h"))
+  {
+    std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
+              << "\t" << "--write-results\n"
+              << "\t" << "--inner-iterations\n"
+              << std::endl;
+    return 0;
+  }
+
+  const bool write_results = value(params, "write-results");
+  const std::size_t n_inner_iterations = value(params, "inner-iterations", 100);
+  const std::size_t n_outer_iterations = value(params, "outer-iterations", 10);
 
   // graph::scheduler_t gpu_scheduler;
   distributed::scheduler_t gpu_scheduler(&argc, &argv);
   example::openmp_scheduler cpu_scheduler{};
 
-  std::size_t n_inner_iterations = 100;
-  std::size_t n_outer_iterations = 10;
-
-  constexpr std::size_t N = 22 * 1024;
+  constexpr std::size_t N = 512;
   const auto [grid_begin, grid_end] = bulk_range(N * N, gpu_scheduler);
   const auto node_id = node_id_from(gpu_scheduler);
 
