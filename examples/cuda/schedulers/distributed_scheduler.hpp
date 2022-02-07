@@ -259,6 +259,11 @@ public:
     return context_.rank_;
   }
 
+  [[nodiscard]] int n_nodes() const
+  {
+    return context_.size_;
+  }
+
   template <class T>
   [[nodiscard]] std::pair<T, T> bulk_range(T n) const
   {
