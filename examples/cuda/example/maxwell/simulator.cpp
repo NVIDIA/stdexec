@@ -386,6 +386,7 @@ struct e_field_calculator_t
   {
     const std::size_t N = accessor.n;
     const std::size_t column = cell_id % N;
+    bool source_owner = cell_id == source_position;
     cell_id -= accessor.begin;
 
     float er = accessor.get(field_id::er)[cell_id];
@@ -396,7 +397,7 @@ struct e_field_calculator_t
     cell_dz += C0 * dt *((hy[cell_id] - hy[left_nid(cell_id, column, N)]) / accessor.dx +
 			 ((hx - N)[cell_id] - hx[cell_id]) / accessor.dy);
 
-    if (cell_id == source_position)
+    if (source_owner)
     {
       cell_dz += calculate_source(*time, 5E+7);
       *time += dt;
