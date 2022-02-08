@@ -30,7 +30,7 @@ concept graph_api = requires(S &&s)
 };
 
 template <class S>
-concept graph_sender = std::execution::sender<S> && graph_api<S>;
+concept graph_sender = std::execution::sender<S> && graph_api<std::decay_t<S>>;
 
 template <class R>
 concept graph_receiver = graph_api<R> &&requires(R &&r)
