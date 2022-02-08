@@ -21,6 +21,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <iomanip>
 #include <charconv>
 
 namespace distributed = example::cuda::distributed;
@@ -80,8 +81,8 @@ struct repeat_n_sender_t
 
 struct repeat_n_t
 {
-  template <graph::graph_sender _Sender, class _Counter>
-  auto operator()(_Counter n, _Sender &&__sndr) const noexcept
+  template <graph::graph_sender _Sender>
+  auto operator()(std::size_t n, _Sender &&__sndr) const noexcept
   {
     return graph::repeat_n(n, std::forward<_Sender>(__sndr));
   }
@@ -655,9 +656,6 @@ struct halo_exchange_t
 inline constexpr detail::halo_exchange_t halo_exchange{};
 
 
-template <class GridAccessorT,
-          std::execution::scheduler ComputeSchedulerT,
-          std::execution::scheduler WriterSchedulerT>
 auto maxwell_eqs(float dt,
                  float *time,
                  bool write_results,
@@ -665,9 +663,9 @@ auto maxwell_eqs(float dt,
                  std::size_t &report_step,
                  std::size_t n_inner_iterations,
                  std::size_t n_outer_iterations,
-                 GridAccessorT &&accessor,
-                 ComputeSchedulerT &&computer,
-                 WriterSchedulerT &&writer)
+                 fields_accessor accessor,
+                 std::execution::scheduler auto &&computer,
+                 std::execution::scheduler auto &&writer)
 {
   const std::size_t border_size = accessor.n;
   const std::size_t own_cells = accessor.n_own_cells();
@@ -691,12 +689,7 @@ auto maxwell_eqs(float dt,
                              accessor.get(field_id::dz))                //
              ) |                                                        //
              ex::transfer(writer) |                                     //
-             ex::then(std::move(write))) |                              //
-         ex::then([node_id] {
-           if (node_id == 0) {
-             printf("simulation complete");
-           }
-         });
+             ex::then(std::move(write)));
 }
 
 std::string bin_name(int node_id)
@@ -822,11 +815,20 @@ void store_results(int node_id, int n_nodes, fields_accessor accessor)
   }
 }
 
+void report_header()
+{
+  std::cout << std::fixed << std::showpoint
+            << std::setw(18) << "scheduler" << ", "
+            << std::setw(11) << "elapsed [s]" << ", "
+            << std::setw(11) << "BW [GB/s]" << "\n";
+}
+
 template <class SenderT>
 void report_performance(
   std::size_t cells,
   std::size_t iterations,
   int node_id,
+  std::string_view scheduler_name,
   SenderT &&snd)
 {
   auto begin = std::chrono::high_resolution_clock::now();
@@ -844,7 +846,10 @@ void report_performance(
 
   if (node_id == 0)
   {
-    printf(" in %gs (%g GB/s)\n", elapsed, gbytes_per_second);
+    std::cout << std::setw(18) << scheduler_name << ", "
+              << std::setw(11) << std::setprecision(3) << elapsed << ", "
+              << std::setw(11) << std::setprecision(3) << gbytes_per_second
+              << std::endl;
   }
 }
 
@@ -858,7 +863,7 @@ auto bulk_range(std::size_t n, SchedulerT &&scheduler)
 template <class SchedulerT>
 auto bulk_range(std::size_t n, SchedulerT &&)
 {
-  return std::make_pair(0, n);
+  return std::make_pair(std::size_t{}, n);
 }
 
 template <class SchedulerT>
@@ -944,45 +949,22 @@ value(const std::map<std::string_view, std::size_t> &params,
   return default_value;
 }
 
-int main(int argc, char *argv[])
+void run(float dt,
+         bool write_vtk,
+         int node_id,
+         std::size_t n_inner_iterations,
+         std::size_t n_outer_iterations,
+         grid_t &grid,
+         std::string_view scheduler_name,
+         std::execution::scheduler auto &&computer)
 {
-  auto params = parse_cmd(argc, argv);
+  example::inline_scheduler writer{};
 
-  if (value(params, "help") || value(params, "h"))
-  {
-    std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
-              << "\t--write-vtk\n"
-              << "\t--write-results\n"
-              << "\t--inner-iterations\n"
-              << "\t--validate\n"
-              << "\t--N\n"
-              << std::endl;
-    return 0;
-  }
-
-  const bool validate = value(params, "validate");
-  const bool write_vtk = value(params, "write-vtk");
-  const bool write_results = value(params, "write-results");
-  const std::size_t n_inner_iterations = value(params, "inner-iterations", 100);
-  const std::size_t n_outer_iterations = value(params, "outer-iterations", 10);
-  const std::size_t N = value(params, "N", 512);
-
-  // graph::scheduler_t gpu_scheduler;
-  distributed::scheduler_t gpu_scheduler(&argc, &argv);
-  example::openmp_scheduler cpu_scheduler{};
-
-  const auto [grid_begin, grid_end] = bulk_range(N * N, gpu_scheduler);
-  const auto node_id = node_id_from(gpu_scheduler);
-  const auto n_nodes = n_nodes_from(gpu_scheduler);
-
-  time_storage_t time{gpu_scheduler};
-  grid_t grid{N, grid_begin, grid_end, gpu_scheduler};
-
-  auto accessor = grid.accessor();
-  auto dt = calculate_dt(accessor.dx, accessor.dy);
+  time_storage_t time{computer};
+  fields_accessor accessor = grid.accessor();
 
   std::this_thread::sync_wait(
-    ex::schedule(gpu_scheduler) |
+    ex::schedule(computer) |
     ex::bulk(grid.cells, grid_initializer(dt, accessor)) |
     halo_exchange(accessor.n,
                   accessor.n_own_cells(),
@@ -1003,20 +985,93 @@ int main(int argc, char *argv[])
                          n_inner_iterations,
                          n_outer_iterations,
                          accessor,
-                         gpu_scheduler,
-                         cpu_scheduler);
+                         computer,
+                         writer);
 
   report_performance(grid.cells,
                      n_inner_iterations * n_outer_iterations,
                      node_id,
+                     scheduler_name,
                      std::move(snd));
 
-  if (validate)
+}
+
+int main(int argc, char *argv[])
+{
+  auto params = parse_cmd(argc, argv);
+
+  if (value(params, "help") || value(params, "h"))
   {
-    validate_results(node_id, n_nodes, accessor);
+    std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
+              << "\t--write-vtk\n"
+              << "\t--write-results\n"
+              << "\t--inner-iterations\n"
+              << "\t--validate\n"
+              << "\t--run-cpu\n"
+              << "\t--run-omp\n"
+              << "\t--run-gpu\n"
+              << "\t--run-distributed\n"
+              << "\t--N\n"
+              << std::endl;
+    return 0;
   }
-  if (write_results)
+
+  const bool validate = value(params, "validate");
+  const bool write_vtk = value(params, "write-vtk");
+  const bool write_results = value(params, "write-results");
+  const std::size_t n_inner_iterations = value(params, "inner-iterations", 100);
+  const std::size_t n_outer_iterations = value(params, "outer-iterations", 10);
+  const std::size_t N = value(params, "N", 512);
+  std::size_t run_distributed_default = 1;
+
+  auto run_on = [&](std::string_view scheduler_name,
+                    std::execution::scheduler auto &&scheduler) {
+    const auto [grid_begin, grid_end] = bulk_range(N * N, scheduler);
+    const auto node_id = node_id_from(scheduler);
+    const auto n_nodes = n_nodes_from(scheduler);
+
+    grid_t grid{N, grid_begin, grid_end, scheduler};
+
+    auto accessor = grid.accessor();
+    auto dt = calculate_dt(accessor.dx, accessor.dy);
+
+    run(dt,
+        write_vtk,
+        node_id,
+        n_inner_iterations,
+        n_outer_iterations,
+        grid,
+        scheduler_name,
+        std::forward<decltype(scheduler)>(scheduler));
+
+    if (validate)
+    {
+      validate_results(node_id, n_nodes, accessor);
+    }
+    if (write_results)
+    {
+      store_results(node_id, n_nodes, accessor);
+    }
+
+    run_distributed_default = 0;
+  };
+
+  report_header();
+
+  if (value(params, "run-cpu"))
   {
-    store_results(node_id, n_nodes, accessor);
+    run_on("CPU (inline)", example::inline_scheduler{});
+  }
+  if (value(params, "run-omp"))
+  {
+    run_on("CPU (openmp)", example::openmp_scheduler{});
+  }
+  if (value(params, "run-gpu"))
+  {
+    run_on("GPU (cuda graph)", graph::scheduler_t{});
+  }
+  if (value(params, "run-distributed", run_distributed_default))
+  {
+    run_on("GPU (distributed)", distributed::scheduler_t{&argc, &argv});
   }
 }
