@@ -130,7 +130,7 @@ struct inline_scheduler {
       return {(R &&) r};
     }
 
-    friend inline_scheduler tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, my_sender) {
+    friend inline_scheduler tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, my_sender) noexcept {
       return {};
     }
   };

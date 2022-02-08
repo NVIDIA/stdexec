@@ -24,6 +24,7 @@
 #include <mutex>
 #include <optional>
 #include <tuple>
+#include <vector>
 #include <type_traits>
 #include <variant>
 
@@ -2171,7 +2172,257 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.split]
   namespace __split {
+
+    struct __operation_base {
+      virtual void __notify() noexcept = 0;
+      virtual ~__operation_base() = default;
+    };
+
+    template <class _Value, class _Error>
+      class __receiver {
+        __operation_base &__op_state_;
+        in_place_stop_source &__stop_source_;
+        variant<_Value, _Error, set_stopped_t> &__data_;
+
+      public:
+        template <class... _As>
+        friend void tag_invoke(set_value_t, __receiver&& __self, _As&&... __as) noexcept {
+          try {
+            __self.__data_.template emplace<0>(tuple<decay_t<_As>...>{(_As &&) __as...});
+          } catch (...) {
+            __self.__data_.template emplace<1>(current_exception());
+          }
+          __self.__op_state_.__notify();
+        }
+
+        template <class _T>
+        friend void tag_invoke(set_error_t, __receiver&& __self, _T&& __error) noexcept {
+          __self.__data_.template emplace<1>(__error);
+          __self.__op_state_.__notify();
+        }
+
+        friend void tag_invoke(set_stopped_t tag, __receiver&& __self) noexcept {
+          ((__receiver&&)__self).__data_.template emplace<2>(tag);
+          __self.__op_state_.__notify();
+        }
+
+        friend auto tag_invoke(get_env_t, const __receiver& __self) {
+          return make_env<get_stop_token_t>(__self.__stop_source_.get_token());
+        }
+
+        __receiver(__operation_base &__op_state,
+                   in_place_stop_source &__stop_source,
+                   variant<_Value, _Error, set_stopped_t> &__data) noexcept
+          : __op_state_(__op_state)
+          , __stop_source_(__stop_source)
+          , __data_(__data) {
+        }
+      };
+
+    enum class __state_t { __created, __started, __completed };
+
+    template <class _Sender>
+      struct __sh_state : __operation_base {
+        using __nullable_variant_t = __bind_front<__munique<__q<variant>>, tuple<>>;
+        using __error = __error_types_of_t<_Sender,
+                                           __empty_env,
+                                           __bind_front<__q<__variant>,
+                                                        exception_ptr>>;
+        using __value = __value_types_of_t<_Sender,
+                                           __empty_env,
+                                           __q<__decayed_tuple>,
+                                           __nullable_variant_t>;
+        using __receiver = __receiver<__value, __error>;
+
+        in_place_stop_source __stop_source_{};
+        vector<__operation_base*> __operation_states_;
+        connect_result_t<_Sender, __receiver> __op_state2_;
+        variant<__value, __error, set_stopped_t> __data_;
+
+        mutex __mutex_;
+        __state_t __state_{__state_t::__created};
+
+        explicit __sh_state(_Sender& __sndr)
+          : __op_state2_(
+                  connect((_Sender&&) __sndr,
+                          __receiver{*this, __stop_source_, __data_}))
+        {}
+
+        void __notify() noexcept override {
+          {
+            lock_guard __lock{__mutex_};
+            __state_ = __state_t::__completed;
+          }
+
+          for(auto __op_state: __operation_states_) {
+            __op_state->__notify();
+          }
+        }
+      };
+
+    template <class _SenderId, class _ReceiverId>
+      class __operation : public __operation_base {
+        using _Sender = __t<_SenderId>;
+        using _Receiver = __t<_ReceiverId>;
+
+        struct __on_stop_requested {
+          in_place_stop_source& __stop_source_;
+          void operator()() noexcept {
+            __stop_source_.request_stop();
+          }
+        };
+        using __on_stop = optional<typename stop_token_of_t<
+            env_of_t<_Receiver> &>::template callback_type<__on_stop_requested>>;
+
+        _Receiver __recvr_;
+        __on_stop __on_stop_{};
+        shared_ptr<__sh_state<_Sender>> __shared_state_;
+
+        template <class... _As>
+          requires tag_invocable<set_value_t, _Receiver, decay_t<_As>&...>
+        void __apply_values(tuple<_As...>& __tupl) noexcept {
+          try {
+            std::apply([&](auto&... __args) -> void {
+              execution::set_value((_Receiver&&) __recvr_, __args...);
+            }, __tupl);
+          } catch(...) {
+            execution::set_error((_Receiver&&) __recvr_, current_exception());
+          }
+        }
+
+        template <class... _As>
+          requires (!tag_invocable<set_value_t, _Receiver, decay_t<_As>&...>)
+        void __apply_values(tuple<_As...>&) noexcept {
+          assert(!"_Should never get here");
+        }
+
+        void __propagate_signal() noexcept {
+          auto &__data = __shared_state_->__data_;
+
+          if (__data.index() == 0) {
+            visit([&](auto& __tupl) -> void {
+              __apply_values(__tupl);
+            }, std::get<0>(__data));
+          }
+          if (__data.index() == 1) {
+            visit([&](auto& __err) -> void {
+              execution::set_error((_Receiver&&) __recvr_, __err);
+            }, std::get<1>(__data));
+          }
+          else if (__data.index() == 2) {
+            execution::set_stopped((_Receiver&&) __recvr_);
+          }
+        }
+
+      public:
+        __operation(_Receiver&& __rcvr,
+                    shared_ptr<__sh_state<_Sender>> __shared_state)
+          : __recvr_((_Receiver&&)__rcvr)
+          , __shared_state_(move(__shared_state)) {
+        }
+
+        void __notify() noexcept override {
+          __on_stop_.reset();
+          __propagate_signal();
+        }
+
+        friend void tag_invoke(start_t, __operation& __self) noexcept try {
+          __sh_state<_Sender> *__shared_state = __self.__shared_state_.get();
+          unique_lock __lock{__shared_state->__mutex_};
+          __state_t __state = __shared_state->__state_;
+
+          if (__state == __state_t::__completed) {
+            __lock.unlock();
+            __self.__propagate_signal();
+          }
+          else {
+            __self.__on_stop_.emplace(
+                get_stop_token(get_env(__self.__recvr_)),
+                __on_stop_requested{__shared_state->__stop_source_});
+
+            if (__shared_state->__stop_source_.stop_requested()) {
+              __lock.unlock();
+              execution::set_stopped((_Receiver&&) __self.__recvr_);
+            }
+            else {
+              __shared_state->__operation_states_.push_back(&__self);
+
+              if (__state != __state_t::__started) {
+                __shared_state->__state_ = __state_t::__started;
+                __lock.unlock();
+
+                execution::start(__shared_state->__op_state2_);
+              }
+            }
+          }
+        } catch (...) {
+          execution::set_error((_Receiver&&) __self.__recvr_, current_exception());
+        }
+      };
+
+    template <class _SenderId>
+      class __sender {
+        using _Sender = __t<_SenderId>;
+        using __sh_state = __sh_state<_Sender>;
+        template <class _Receiver>
+          using __operation = __operation<_SenderId, __x<remove_cvref_t<_Receiver>>>;
+
+        _Sender __sndr_;
+        shared_ptr<__sh_state> __shared_state_;
+
+      public:
+        template <__decays_to<__sender> _Self, receiver _Receiver>
+          friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __recvr)
+            noexcept(__has_nothrow_connect<__member_t<_Self, _Sender>, _Receiver>)
+            -> __operation<_Receiver> {
+            return __operation<_Receiver>{(_Receiver &&) __recvr,
+                                          __self.__shared_state_};
+          }
+
+        template <__sender_queries::__sender_query _Tag, class... _As>
+            requires __callable<_Tag, const _Sender&, _As...>
+          friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
+            noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
+            -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+          }
+
+        template <__one_of<set_value_t, set_error_t> _Tag>
+            requires tag_invocable<get_completion_scheduler_t<_Tag>, const _Sender&>
+          friend auto tag_invoke(get_completion_scheduler_t<_Tag>, const __sender& __self) noexcept
+            -> tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Sender&> {
+            return get_completion_scheduler<_Tag>(std::as_const(__self.__sndr_));
+          }
+
+        template <class... _Tys>
+        using __set_value_t = completion_signatures<set_value_t(decay_t<_Tys>&...)>;
+
+        template <class _Ty>
+        using __set_error_t = completion_signatures<set_error_t(decay_t<_Ty>&)>;
+
+        template <__decays_to<__sender> _Self, class _Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
+            make_completion_signatures<
+              __member_t<_Self, _Sender>,
+              _Env,
+              completion_signatures<set_error_t(exception_ptr&)>,
+              __set_value_t,
+              __set_error_t,
+              __if_c<
+                  sends_stopped<_Sender, _Env>,
+                  completion_signatures<set_stopped_t()>,
+                  completion_signatures<>>>;
+
+        explicit __sender(_Sender __sndr)
+            : __sndr_((_Sender&&) __sndr)
+            , __shared_state_{new __sh_state{__sndr_}}
+        {}
+      };
+
     struct split_t {
+      template <class _Sender>
+        using __sender = __sender<__x<remove_cvref_t<_Sender>>>;
+
       template <sender _Sender>
         requires __tag_invocable_with_completion_scheduler<split_t, set_value_t, _Sender>
       sender auto operator()(_Sender&& __sndr) const
@@ -2185,6 +2436,12 @@ namespace std::execution {
       sender auto operator()(_Sender&& __sndr) const
         noexcept(nothrow_tag_invocable<split_t, _Sender>) {
         return tag_invoke(split_t{}, (_Sender&&) __sndr);
+      }
+      template <sender _Sender>
+        requires (!__tag_invocable_with_completion_scheduler<split_t, set_value_t, _Sender>) &&
+          (!tag_invocable<split_t, _Sender>)
+      sender auto operator()(_Sender&& __sndr) const {
+        return __sender<_Sender>{(_Sender&&) __sndr};
       }
       __binder_back<split_t> operator()() const {
         return {{}, {}, {}};
