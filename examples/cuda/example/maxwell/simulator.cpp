@@ -330,24 +330,22 @@ struct h_field_calculator_t
   // read: ez, mh, hx, hy
   // write: hx, hy
   // total: 6
-  __host__ __device__ void operator()(std::size_t cell_id) const
+  __host__ __device__ void operator()(std::size_t cell_id) const __attribute__((always_inline))
   {
-    const std::size_t column = cell_id % accessor.n;
+    const std::size_t N = accessor.n;
+    const std::size_t column = cell_id % N;
     cell_id -= accessor.begin;
 
     const float *ez = accessor.get(field_id::ez);
-    float *hx = accessor.get(field_id::hx);
-    float *hy = accessor.get(field_id::hy);
-
     const float cell_ez = ez[cell_id];
-    const float neighbour_ex = ez[cell_id + accessor.n];
-    const float cex = (neighbour_ex - cell_ez) / accessor.dy;
-    const float neighbour_ez = ez[right_nid(cell_id, column, accessor.n)];
-    const float cey = -(neighbour_ez - cell_ez) / accessor.dx;
+    const float neighbour_ex = ez[cell_id + N];
+    const float neighbour_ez = ez[right_nid(cell_id, column, N)];
     const float mh = accessor.get(field_id::mh)[cell_id];
 
-    hx[cell_id] -= mh * cex;
-    hy[cell_id] -= mh * cey;
+    const float cex = (neighbour_ex - cell_ez) / accessor.dy;
+    const float cey = (cell_ez - neighbour_ez) / accessor.dx;
+    accessor.get(field_id::hx)[cell_id] -= mh * cex;
+    accessor.get(field_id::hy)[cell_id] -= mh * cey;
   }
 };
 
@@ -384,23 +382,20 @@ struct e_field_calculator_t
   // total: 6
   //
   // read: 7; write: 2; 9 memory accesses
-  __host__ __device__ void operator()(std::size_t cell_id) const
+  __host__ __device__ void operator()(std::size_t cell_id) const __attribute__((always_inline))
   {
-    const std::size_t column = cell_id % accessor.n;
-    const bool source_owner = cell_id == source_position;
+    const std::size_t N = accessor.n;
+    const std::size_t column = cell_id % N;
+    bool source_owner = cell_id == source_position;
     cell_id -= accessor.begin;
 
-    float *dz = accessor.get(field_id::dz);
-    float *ez = accessor.get(field_id::ez);
-    float *er = accessor.get(field_id::er);
+    float er = accessor.get(field_id::er)[cell_id];
+    float cell_dz = accessor.get(field_id::dz)[cell_id];
     float *hx = accessor.get(field_id::hx);
     float *hy = accessor.get(field_id::hy);
 
-    const float chz =
-      (hy[cell_id] - hy[left_nid(cell_id, column, accessor.n)]) / accessor.dx -
-      (hx[cell_id] - (hx - accessor.n)[cell_id]) / accessor.dy;
-
-    float cell_dz = dz[cell_id] + C0 * dt * chz;
+    cell_dz += C0 * dt *((hy[cell_id] - hy[left_nid(cell_id, column, N)]) / accessor.dx +
+			 ((hx - N)[cell_id] - hx[cell_id]) / accessor.dy);
 
     if (source_owner)
     {
@@ -409,8 +404,8 @@ struct e_field_calculator_t
     }
 
     // read 2 values, write 1 value
-    ez[cell_id] = cell_dz / er[cell_id];
-    dz[cell_id] = cell_dz;
+    accessor.get(field_id::ez)[cell_id] = cell_dz / er;
+    accessor.get(field_id::dz)[cell_id] = cell_dz;
   }
 };
 
@@ -838,8 +833,8 @@ void report_performance(
 
   // Assume perfect locality
   const std::size_t memory_accesses_per_cell = 6 * 2; // 8 + 9;
-  const std::size_t memory_accesses = cells * memory_accesses_per_cell;
-  const std::size_t bytes_accessed  = iterations * memory_accesses * sizeof(float);
+  const std::size_t memory_accesses = iterations * cells * memory_accesses_per_cell;
+  const std::size_t bytes_accessed  = memory_accesses * sizeof(float);
 
   const double bytes_per_second = static_cast<double>(bytes_accessed) / elapsed;
   const double gbytes_per_second = bytes_per_second / 1024 / 1024 / 1024;
@@ -863,7 +858,7 @@ auto bulk_range(std::size_t n, SchedulerT &&scheduler)
 template <class SchedulerT>
 auto bulk_range(std::size_t n, SchedulerT &&)
 {
-  return std::make_pair(std::size_t{}, n);
+  return std::make_pair(std::size_t{0}, n);
 }
 
 template <class SchedulerT>
