@@ -3924,7 +3924,7 @@ namespace std::execution {
               atomic<size_t> __count_{sizeof...(_SenderIds)};
               // Could be non-atomic here and atomic_ref everywhere except __completion_fn
               atomic<__state_t> __state_{__started};
-              error_types_of_t<__sender, __env_t<_Env>, variant> __errors_{};
+              error_types_of_t<__sender, __env_t<_Env>, __variant> __errors_{};
               [[no_unique_address]] __child_values_tuple_t __values_{};
               in_place_stop_source __stop_source_{};
               optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template
