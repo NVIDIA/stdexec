@@ -3130,7 +3130,7 @@ namespace std::execution {
         //   >
         template <class... _Ts>
           using __bind_tuples =
-            __mbind_front_q<variant, tuple<set_stopped_t>, _Ts...>;
+            __mbind_front_q<__variant, tuple<set_stopped_t>, _Ts...>;
 
         using __bound_values_t =
           __value_types_of_t<
