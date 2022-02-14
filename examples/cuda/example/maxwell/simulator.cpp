@@ -19,9 +19,11 @@
 #include <schedulers/inline_scheduler.hpp>
 #include <schedulers/openmp_scheduler.hpp>
 
+#include <map>
 #include <chrono>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <charconv>
 
 namespace distributed = example::cuda::distributed;

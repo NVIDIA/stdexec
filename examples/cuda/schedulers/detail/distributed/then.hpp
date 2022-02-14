@@ -110,20 +110,18 @@ struct sender_t : sender_base_t<sender_t<S, F>, S>
                                                          function_});
   }
 
-  template <class Result>
-  using set_value_ = std::__minvoke1<
-    std::__uncurry<std::__qf<std::execution::set_value_t>>,
-    std::__if<std::is_void<Result>, std::__types<>, std::__types<Result>>>;
-  template <class... Args>
-  requires std::invocable<F, Args...> using result =
-    set_value_<std::invoke_result_t<F, Args...>>;
+  template <class... _Args>
+  requires std::invocable<F, _Args...> using set_value_ =
+    std::execution::completion_signatures<std::__minvoke1<
+      std::__remove<void, std::__qf<std::execution::set_value_t>>,
+      std::invoke_result_t<F, _Args...>>>;
 
   template <class EnvT>
   friend auto tag_invoke(std::execution::get_completion_signatures_t,
                          const sender_t &,
                          EnvT)
     -> std::execution::make_completion_signatures<
-      S, EnvT, std::execution::__with_exception_ptr, result>;
+      S, EnvT, std::execution::__with_exception_ptr, set_value_>;
 
   explicit sender_t(S sender, F function)
     : super_t{std::forward<S>(sender)}

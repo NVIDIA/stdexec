@@ -118,7 +118,7 @@ namespace example {
           std::execution::set_value_t(),
           std::execution::set_error_t(std::exception_ptr)>;
 
-      template <std::execution::receiver_of R>
+      template <std::execution::receiver R>
         friend auto tag_invoke(std::execution::connect_t, __sender, R&& rec)
           noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
           -> __op<std::__x<std::remove_cvref_t<R>>> {
