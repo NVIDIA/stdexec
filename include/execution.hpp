@@ -24,7 +24,6 @@
 #include <mutex>
 #include <optional>
 #include <tuple>
-#include <vector>
 #include <type_traits>
 #include <variant>
 
@@ -33,6 +32,8 @@
 #include <concepts.hpp>
 #include <coroutine.hpp>
 #include <stop_token.hpp>
+
+#include "../examples/detail/intrusive_queue.hpp"
 
 #if defined(__clang__)
 #define _STRINGIZE(__arg) #__arg
@@ -2174,6 +2175,8 @@ namespace std::execution {
   namespace __split {
 
     struct __operation_base {
+      __operation_base * __next_;
+
       virtual void __notify() noexcept = 0;
       virtual ~__operation_base() = default;
     };
@@ -2241,7 +2244,7 @@ namespace std::execution {
         using __receiver = __receiver<__variant_t>;
 
         in_place_stop_source __stop_source_{};
-        vector<__operation_base*> __operation_states_;
+        example::intrusive_queue<&__operation_base::__next_> __operation_states_;
         connect_result_t<_Sender, __receiver> __op_state2_;
         __variant_t __data_;
 
@@ -2260,8 +2263,8 @@ namespace std::execution {
             __state_ = __state_t::__completed;
           }
 
-          for(auto __op_state: __operation_states_) {
-            __op_state->__notify();
+          while(!__operation_states_.empty()) {
+            __operation_states_.pop_front()->__notify();
           }
         }
       };
