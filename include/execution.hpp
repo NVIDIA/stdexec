@@ -2178,31 +2178,23 @@ namespace std::execution {
       virtual ~__operation_base() = default;
     };
 
-    template <class _Value, class _Error>
+    template <class _Variant>
       class __receiver {
         __operation_base &__op_state_;
         in_place_stop_source &__stop_source_;
-        variant<_Value, _Error, set_stopped_t> &__data_;
+        _Variant &__data_;
 
       public:
-        template <class... _As>
-        friend void tag_invoke(set_value_t, __receiver&& __self, _As&&... __as) noexcept {
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+        friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
           try {
-            __self.__data_.template emplace<0>(tuple<decay_t<_As>...>{(_As &&) __as...});
+            using __tuple_t = __decayed_tuple<_Tag, _As...>;
+            __self.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
           } catch (...) {
-            __self.__data_.template emplace<1>(current_exception());
+            using __tuple_t = __decayed_tuple<set_error_t, exception_ptr>;
+            __self.__data_.template emplace<__tuple_t>(set_error, current_exception());
           }
-          __self.__op_state_.__notify();
-        }
 
-        template <class _T>
-        friend void tag_invoke(set_error_t, __receiver&& __self, _T&& __error) noexcept {
-          __self.__data_.template emplace<1>(__error);
-          __self.__op_state_.__notify();
-        }
-
-        friend void tag_invoke(set_stopped_t tag, __receiver&& __self) noexcept {
-          ((__receiver&&)__self).__data_.template emplace<2>(tag);
           __self.__op_state_.__notify();
         }
 
@@ -2212,7 +2204,7 @@ namespace std::execution {
 
         __receiver(__operation_base &__op_state,
                    in_place_stop_source &__stop_source,
-                   variant<_Value, _Error, set_stopped_t> &__data) noexcept
+                   _Variant &__data) noexcept
           : __op_state_(__op_state)
           , __stop_source_(__stop_source)
           , __data_(__data) {
@@ -2223,30 +2215,44 @@ namespace std::execution {
 
     template <class _Sender>
       struct __sh_state : __operation_base {
-        using __nullable_variant_t = __bind_front<__munique<__q<variant>>, tuple<>>;
-        using __error = __error_types_of_t<_Sender,
-                                           __empty_env,
-                                           __bind_front<__q<__variant>,
-                                                        exception_ptr>>;
-        using __value = __value_types_of_t<_Sender,
-                                           __empty_env,
-                                           __q<__decayed_tuple>,
-                                           __nullable_variant_t>;
-        using __receiver = __receiver<__value, __error>;
+        template <class... _Ts>
+          using __bind_tuples =
+            __bind_front_q<
+              __variant,
+              tuple<set_stopped_t>,
+              tuple<set_error_t, exception_ptr>,
+              _Ts...>;
+
+        using __bound_values_t =
+          __value_types_of_t<
+            _Sender,
+            __empty_env,
+            __bind_front_q<__decayed_tuple, set_value_t>,
+            __q<__bind_tuples>>;
+
+        using __variant_t =
+          __error_types_of_t<
+            _Sender,
+            __empty_env,
+            __transform<
+              __bind_front_q<__decayed_tuple, set_error_t>,
+              __bound_values_t>>;
+
+        using __receiver = __receiver<__variant_t>;
 
         in_place_stop_source __stop_source_{};
         vector<__operation_base*> __operation_states_;
         connect_result_t<_Sender, __receiver> __op_state2_;
-        variant<__value, __error, set_stopped_t> __data_;
+        __variant_t __data_;
 
         mutex __mutex_;
         __state_t __state_{__state_t::__created};
 
         explicit __sh_state(_Sender& __sndr)
           : __op_state2_(
-                  connect((_Sender&&) __sndr,
-                          __receiver{*this, __stop_source_, __data_}))
-        {}
+              connect((_Sender&&) __sndr, __receiver{*this, __stop_source_, __data_}))
+        {
+        }
 
         void __notify() noexcept override {
           {
@@ -2278,40 +2284,14 @@ namespace std::execution {
         __on_stop __on_stop_{};
         shared_ptr<__sh_state<_Sender>> __shared_state_;
 
-        template <class... _As>
-          requires tag_invocable<set_value_t, _Receiver, decay_t<_As>&...>
-        void __apply_values(tuple<_As...>& __tupl) noexcept {
-          try {
-            std::apply([&](auto&... __args) -> void {
-              execution::set_value((_Receiver&&) __recvr_, __args...);
-            }, __tupl);
-          } catch(...) {
-            execution::set_error((_Receiver&&) __recvr_, current_exception());
-          }
-        }
-
-        template <class... _As>
-          requires (!tag_invocable<set_value_t, _Receiver, decay_t<_As>&...>)
-        void __apply_values(tuple<_As...>&) noexcept {
-          assert(!"_Should never get here");
-        }
-
         void __propagate_signal() noexcept {
           auto &__data = __shared_state_->__data_;
 
-          if (__data.index() == 0) {
-            visit([&](auto& __tupl) -> void {
-              __apply_values(__tupl);
-            }, std::get<0>(__data));
-          }
-          if (__data.index() == 1) {
-            visit([&](auto& __err) -> void {
-              execution::set_error((_Receiver&&) __recvr_, __err);
-            }, std::get<1>(__data));
-          }
-          else if (__data.index() == 2) {
-            execution::set_stopped((_Receiver&&) __recvr_);
-          }
+          std::visit([&](auto&& __tupl) -> void {
+            std::apply([&](auto __tag, auto&... __args) -> void {
+              __tag((_Receiver&&) __recvr_, __args...);
+            }, (decltype(__tupl)&&) __tupl);
+          }, __data);
         }
 
       public:
