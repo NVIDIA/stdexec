@@ -2287,10 +2287,10 @@ namespace std::execution {
         void __propagate_signal() noexcept {
           auto &__data = __shared_state_->__data_;
 
-          std::visit([&](auto&& __tupl) -> void {
-            std::apply([&](auto __tag, auto&... __args) -> void {
+          std::visit([&](auto& __tupl) noexcept -> void {
+            std::apply([&](auto __tag, auto&... __args) noexcept -> void {
               __tag((_Receiver&&) __recvr_, __args...);
-            }, (decltype(__tupl)&&) __tupl);
+            }, __tupl);
           }, __data);
         }
 
