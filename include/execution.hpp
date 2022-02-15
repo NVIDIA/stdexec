@@ -2409,7 +2409,7 @@ namespace std::execution {
 
         explicit __sender(_Sender __sndr)
             : __sndr_((_Sender&&) __sndr)
-            , __shared_state_{new __sh_state{__sndr_}}
+            , __shared_state_{make_shared<__sh_state>(__sndr_)}
         {}
       };
 
