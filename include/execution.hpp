@@ -2434,7 +2434,7 @@ namespace std::execution {
       template <sender _Sender>
         requires (!__tag_invocable_with_completion_scheduler<split_t, set_value_t, _Sender>) &&
           (!tag_invocable<split_t, _Sender>)
-      sender auto operator()(_Sender&& __sndr) const {
+      __sender<_Sender> operator()(_Sender&& __sndr) const {
         return __sender<_Sender>{(_Sender&&) __sndr};
       }
       __binder_back<split_t> operator()() const {
