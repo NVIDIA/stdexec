@@ -2404,11 +2404,7 @@ namespace std::execution {
               _Env,
               completion_signatures<set_error_t(exception_ptr&)>,
               __set_value_t,
-              __set_error_t,
-              __if_c<
-                  sends_stopped<_Sender, _Env>,
-                  completion_signatures<set_stopped_t()>,
-                  completion_signatures<>>>;
+              __set_error_t>;
 
         explicit __sender(_Sender __sndr)
             : __sndr_((_Sender&&) __sndr)
