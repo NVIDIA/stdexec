@@ -2380,18 +2380,15 @@ namespace std::execution {
           }
 
         template <__sender_queries::__sender_query _Tag, class... _As>
-            requires __callable<_Tag, const _Sender&, _As...>
+            requires __callable<_Tag, const _Sender&, _As...> &&
+              __none_of<_Tag,
+                        get_completion_scheduler_t<set_value_t>,
+                        get_completion_scheduler_t<set_error_t>,
+                        get_completion_scheduler_t<set_stopped_t>>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-          }
-
-        template <__one_of<set_value_t, set_error_t> _Tag>
-            requires tag_invocable<get_completion_scheduler_t<_Tag>, const _Sender&>
-          friend auto tag_invoke(get_completion_scheduler_t<_Tag>, const __sender& __self) noexcept
-            -> tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Sender&> {
-            return get_completion_scheduler<_Tag>(std::as_const(__self.__sndr_));
           }
 
         template <class... _Tys>
