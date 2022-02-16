@@ -2229,14 +2229,14 @@ namespace std::execution {
         using __bound_values_t =
           __value_types_of_t<
             _Sender,
-            __empty_env,
+            make_env_t<get_stop_token_t, in_place_stop_token>,
             __bind_front_q<__decayed_tuple, set_value_t>,
             __q<__bind_tuples>>;
 
         using __variant_t =
           __error_types_of_t<
             _Sender,
-            __empty_env,
+            make_env_t<get_stop_token_t, in_place_stop_token>,
             __transform<
               __bind_front_q<__decayed_tuple, set_error_t>,
               __bound_values_t>>;
