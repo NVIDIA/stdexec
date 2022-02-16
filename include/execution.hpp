@@ -1124,21 +1124,6 @@ namespace std::execution {
   // [execution.senders.queries], sender queries
   namespace __sender_queries {
     namespace __impl {
-      template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
-        struct get_completion_scheduler_t {
-          template <sender _Sender>
-            requires tag_invocable<get_completion_scheduler_t, const _Sender&> &&
-              scheduler<tag_invoke_result_t<get_completion_scheduler_t, const _Sender&>>
-          auto operator()(const _Sender& __sndr) const noexcept
-              -> tag_invoke_result_t<get_completion_scheduler_t, const _Sender&> {
-            // NOT TO SPEC:
-            static_assert(
-              nothrow_tag_invocable<get_completion_scheduler_t, const _Sender&>,
-              "get_completion_scheduler<_CPO> should be noexcept");
-            return tag_invoke(*this, __sndr);
-          }
-        };
-
       struct forwarding_sender_query_t {
         template <class _Tag>
         constexpr bool operator()(_Tag __tag) const noexcept {
@@ -1151,14 +1136,29 @@ namespace std::execution {
           }
         }
       };
+
+      template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
+        struct get_completion_scheduler_t {
+          friend constexpr bool tag_invoke(forwarding_sender_query_t, const get_completion_scheduler_t &) noexcept {
+            return true;
+          }
+
+          template <sender _Sender>
+            requires tag_invocable<get_completion_scheduler_t, const _Sender&> &&
+              scheduler<tag_invoke_result_t<get_completion_scheduler_t, const _Sender&>>
+          auto operator()(const _Sender& __sndr) const noexcept
+              -> tag_invoke_result_t<get_completion_scheduler_t, const _Sender&> {
+            // NOT TO SPEC:
+            static_assert(
+              nothrow_tag_invocable<get_completion_scheduler_t, const _Sender&>,
+              "get_completion_scheduler<_CPO> should be noexcept");
+            return tag_invoke(*this, __sndr);
+          }
+        };
     } // namespace __impl
 
     using __impl::get_completion_scheduler_t;
     using __impl::forwarding_sender_query_t;
-
-    template <class _Tag>
-      concept __sender_query =
-        forwarding_sender_query(_Tag{});
   } // namespace __sender_queries
   using __sender_queries::get_completion_scheduler_t;
   using __sender_queries::forwarding_sender_query_t;
@@ -1167,6 +1167,12 @@ namespace std::execution {
     inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
 
   inline constexpr forwarding_sender_query_t forwarding_sender_query{};
+
+  namespace __sender_queries {
+    template <class _Tag>
+      concept __sender_query =
+        forwarding_sender_query(_Tag{});
+  } // namespace __sender_queries
 
   template <class _Sender, class _CPO>
     concept __has_completion_scheduler =
