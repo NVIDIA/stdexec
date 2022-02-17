@@ -1977,25 +1977,21 @@ namespace std::execution {
         // Customize set_value by invoking the invocable and passing the result
         // to the base class
         template <class... _As>
-          requires invocable<_Fun, _As...> &&
-            tag_invocable<set_value_t, _Receiver, invoke_result_t<_Fun, _As...>>
         void set_value(_As&&... __as) && noexcept try {
-          execution::set_value(
+          static_assert(invocable<Fun, Args...>,
+                      "std::execution::then(Fun) is not invocable with the passed values");
+          using __result_t = invoke_result_t<Fun, Args...>;
+          if constexpr (is_void_v<__result_t>) {
+            static_assert(tag_invocable<set_value_t, Receiver>, "Cannot forward the result to the base receiver");
+                invoke((_Fun&&) __f_, (_As&&) __as...));
+            execution::set_value(((__receiver&&) *this).base());
+          } else {
+            static_assert(tag_invocable<set_value_t, Receiver, __result_t>, "Cannot forward the result to the base receiver");
+                invoke((_Fun&&) __f_, (_As&&) __as...));
+            execution::set_value(
               ((__receiver&&) *this).base(),
-              std::invoke((_Fun&&) __f_, (_As&&) __as...));
-        } catch(...) {
-          execution::set_error(
-              ((__receiver&&) *this).base(),
-              current_exception());
-        }
-        // Handle the case when the invocable returns void
-        template <class _R2 = _Receiver, class... _As>
-          requires invocable<_Fun, _As...> &&
-            same_as<void, invoke_result_t<_Fun, _As...>> &&
-            tag_invocable<set_value_t, _R2>
-        void set_value(_As&&... __as) && noexcept try {
-          invoke((_Fun&&) __f_, (_As&&) __as...);
-          execution::set_value(((__receiver&&) *this).base());
+              invoke((_Fun&&) __f_, (_As&&) __as...));
+          }
         } catch(...) {
           execution::set_error(
               ((__receiver&&) *this).base(),
