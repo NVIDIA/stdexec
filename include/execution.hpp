@@ -2291,7 +2291,7 @@ namespace std::execution {
           auto &__data = __shared_state_->__data_;
 
           std::visit([&](auto& __tupl) noexcept -> void {
-            std::apply([&](auto __tag, auto&... __args) noexcept -> void {
+            std::apply([&](auto __tag, const auto&... __args) noexcept -> void {
               __tag((_Receiver&&) __recvr_, __args...);
             }, __tupl);
           }, __data);
@@ -2376,17 +2376,17 @@ namespace std::execution {
           }
 
         template <class... _Tys>
-        using __set_value_t = completion_signatures<set_value_t(decay_t<_Tys>&...)>;
+        using __set_value_t = completion_signatures<set_value_t(const decay_t<_Tys>&...)>;
 
         template <class _Ty>
-        using __set_error_t = completion_signatures<set_error_t(decay_t<_Ty>&)>;
+        using __set_error_t = completion_signatures<set_error_t(const decay_t<_Ty>&)>;
 
         template <__decays_to<__sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
             make_completion_signatures<
               __member_t<_Self, _Sender>,
               _Env,
-              completion_signatures<set_error_t(exception_ptr&)>,
+              completion_signatures<set_error_t(const exception_ptr&)>,
               __set_value_t,
               __set_error_t>;
 

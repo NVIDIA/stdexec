@@ -70,9 +70,10 @@ TEST_CASE("split passes lvalue references", "[adaptors][split]") {
   auto split = ex::split(ex::just(42));
   using split_t = decltype(split);
   using value_t = ex::value_types_of_t<split_t, ex::__empty_env, std::tuple>;
-  static_assert(std::is_same_v<value_t, std::variant<std::tuple<int&>>>);
+  static_assert(std::is_same_v<value_t, std::variant<std::tuple<const int&>>>);
 
-  auto then = split | ex::then([] (int &val) {
+  auto then = split | ex::then([] (const int &cval) {
+    int &val = const_cast<int&>(cval);
     const int prev_val = val;
     val /= 2;
     return prev_val;
@@ -90,7 +91,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
     auto split = ex::split(ex::just_error(std::exception_ptr{}));
     using split_t = decltype(split);
     using error_t = ex::error_types_of_t<split_t, ex::__empty_env, std::variant>;
-    static_assert(std::is_same_v<error_t, std::variant<std::exception_ptr&>>);
+    static_assert(std::is_same_v<error_t, std::variant<const std::exception_ptr&>>);
 
     auto op = ex::connect(split, expect_error_receiver{});
     ex::start(op);
@@ -102,7 +103,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
     auto split = ex::split(ex::just_error(42));
     using split_t = decltype(split);
     using error_t = ex::error_types_of_t<split_t, ex::__empty_env, std::variant>;
-    static_assert(std::is_same_v<error_t, std::variant<std::exception_ptr&, int&>>);
+    static_assert(std::is_same_v<error_t, std::variant<const std::exception_ptr&, const int&>>);
 
     auto op = ex::connect(split, expect_error_receiver_t<int>{});
     ex::start(op);
@@ -181,11 +182,17 @@ TEST_CASE("split can nest", "[adaptors][split]") {
 
   auto [v1] = std::this_thread::sync_wait(
       split_1 | //
-      ex::then([](int &v) { return v = 1; })).value();
+      ex::then([](const int &cv) {
+        int &v = const_cast<int&>(cv);
+        return v = 1;
+      })).value();
 
   auto [v2] = std::this_thread::sync_wait(
       split_2 | //
-      ex::then([](int &v) { return v = 2; })).value();
+      ex::then([](const int &cv) {
+        int &v = const_cast<int&>(cv);
+        return v = 2;
+      })).value();
 
   auto [v3] = std::this_thread::sync_wait(split_1).value();
 
