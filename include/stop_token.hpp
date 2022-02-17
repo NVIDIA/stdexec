@@ -375,8 +375,8 @@ namespace std {
       is_nothrow_move_constructible_v<_Token> &&
       equality_comparable<_Token> &&
       requires (const _Token& __token) {
-        { __token.stop_requested() } noexcept -> __boolean_testable;
-        { __token.stop_possible() } noexcept -> __boolean_testable;
+        { __token.stop_requested() } noexcept -> __boolean_testable_;
+        { __token.stop_possible() } noexcept -> __boolean_testable_;
         typename __detail::__check_type_alias_exists<_Token::template callback_type>;
       };
 
@@ -397,7 +397,7 @@ namespace std {
     concept unstoppable_token =
       stoppable_token<_Token> &&
       requires {
-        { _Token::stop_possible() } -> __boolean_testable;
+        { _Token::stop_possible() } -> __boolean_testable_;
       } &&
       (!_Token::stop_possible());
 }

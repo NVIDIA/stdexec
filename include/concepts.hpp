@@ -103,7 +103,7 @@ namespace std {
 
   // Not exactly right, but close.
   template <class _T>
-    concept __boolean_testable =
+    concept __boolean_testable_ =
       convertible_to<_T, bool>;
 
   template <class _T>
