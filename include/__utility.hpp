@@ -76,76 +76,76 @@ namespace std {
     };
 
   template <template<class...> class _Fn, class... _Front>
-    struct __bind_front_q {
+    struct __mbind_front_q {
       template <class... _Args>
         using __f = _Fn<_Front..., _Args...>;
     };
 
   template <template<class...> class _Fn, class... _Front>
-    struct __bind_front_q1 {
+    struct __mbind_front_q1 {
       template <class _A>
         using __f = _Fn<_Front..., _A>;
     };
 
   template <template<class...> class _Fn, class... _Front>
-    struct __bind_front_q2 {
+    struct __mbind_front_q2 {
       template <class _A, class _B>
         using __f = _Fn<_Front..., _A, _B>;
     };
 
   template <template<class...> class _Fn, class... _Front>
-    struct __bind_front_q3 {
+    struct __mbind_front_q3 {
       template <class _A, class _B, class _C>
         using __f = _Fn<_Front..., _A, _B, _C>;
     };
 
   template <class _Fn, class... _Front>
-    using __bind_front = __bind_front_q<_Fn::template __f, _Front...>;
+    using __mbind_front = __mbind_front_q<_Fn::template __f, _Front...>;
 
   template <class _Fn, class... _Back>
-    using __bind_front1 = __bind_front_q1<_Fn::template __f, _Back...>;
+    using __mbind_front1 = __mbind_front_q1<_Fn::template __f, _Back...>;
 
   template <class _Fn, class... _Back>
-    using __bind_front2 = __bind_front_q2<_Fn::template __f, _Back...>;
+    using __mbind_front2 = __mbind_front_q2<_Fn::template __f, _Back...>;
 
   template <class _Fn, class... _Back>
-    using __bind_front3 = __bind_front_q3<_Fn::template __f, _Back...>;
+    using __mbind_front3 = __mbind_front_q3<_Fn::template __f, _Back...>;
 
   template <template<class...> class _Fn, class... _Back>
-    struct __bind_back_q {
+    struct __mbind_back_q {
       template <class... _Args>
         using __f = _Fn<_Args..., _Back...>;
     };
 
   template <template<class...> class _Fn, class... _Back>
-    struct __bind_back_q1 {
+    struct __mbind_back_q1 {
       template <class _A>
         using __f = _Fn<_A, _Back...>;
     };
 
   template <template<class...> class _Fn, class... _Back>
-    struct __bind_back_q2 {
+    struct __mbind_back_q2 {
       template <class _A, class _B>
         using __f = _Fn<_A, _B, _Back...>;
     };
 
   template <template<class...> class _Fn, class... _Back>
-    struct __bind_back_q3 {
+    struct __mbind_back_q3 {
       template <class _A, class _B, class _C>
         using __f = _Fn<_A, _B, _C, _Back...>;
     };
 
   template <class _Fn, class... _Back>
-    using __bind_back = __bind_back_q<_Fn::template __f, _Back...>;
+    using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
   template <class _Fn, class... _Back>
-    using __bind_back1 = __bind_back_q1<_Fn::template __f, _Back...>;
+    using __mbind_back1 = __mbind_back_q1<_Fn::template __f, _Back...>;
 
   template <class _Fn, class... _Back>
-    using __bind_back2 = __bind_back_q2<_Fn::template __f, _Back...>;
+    using __mbind_back2 = __mbind_back_q2<_Fn::template __f, _Back...>;
 
   template <class _Fn, class... _Back>
-    using __bind_back3 = __bind_back_q3<_Fn::template __f, _Back...>;
+    using __mbind_back3 = __mbind_back_q3<_Fn::template __f, _Back...>;
 
   template <template <class, class, class> class _Fn>
     struct __q3 {
@@ -246,6 +246,11 @@ namespace std {
     struct __concat {
       template <class...>
         struct __f_ {};
+      template <class... _As>
+          requires (sizeof...(_As) == 0) && __minvocable<_Continuation>
+        struct __f_<_As...> {
+          using type = __minvoke<_Continuation>;
+        };
       template <template <class...> class _A, class... _As>
           requires __minvocable<_Continuation, _As...>
         struct __f_<_A<_As...>> {
@@ -269,8 +274,6 @@ namespace std {
                 class... _Tail>
         struct __f_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
           : __f_<__types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
-      template <>
-        struct __f_<> : __f_<__types<>> {};
       template <class... _Args>
         using __f = __t<__f_<_Args...>>;
     };
@@ -303,13 +306,13 @@ namespace std {
     using __mapply =
       __minvoke<__uncurry<_Fn>, _List>;
 
-  struct __count {
+  struct __mcount {
     template <class... _Ts>
       using __f = integral_constant<size_t, sizeof...(_Ts)>;
   };
 
   template <class _Fn>
-    struct __count_if {
+    struct __mcount_if {
       template <class... _Ts>
         using __f =
           integral_constant<size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
@@ -325,7 +328,7 @@ namespace std {
     struct __push_back {
       template <class _List, class _Item>
         using __f =
-          __mapply<__bind_back<_Continuation, _Item>, _List>;
+          __mapply<__mbind_back<_Continuation, _Item>, _List>;
     };
 
   template <class _Continuation = __q<__types>>
@@ -336,7 +339,7 @@ namespace std {
             __if<
               __mapply<__contains<_Item>, _List>,
               _Continuation,
-              __bind_back<_Continuation, _Item>>,
+              __mbind_back<_Continuation, _Item>>,
             _List>;
     };
 
@@ -350,22 +353,22 @@ namespace std {
     };
 
   template <class...>
-    struct __compose {};
+    struct __mcompose {};
 
   template <class _First>
-    struct __compose<_First> : _First {};
+    struct __mcompose<_First> : _First {};
 
   template <class _Second, class _First>
-    struct __compose<_Second, _First> {
+    struct __mcompose<_Second, _First> {
       template <class... _Args>
         using __f = __minvoke1<_Second, __minvoke<_First, _Args...>>;
     };
 
   template <class _Last, class _Penultimate, class... _Rest>
-    struct __compose<_Last, _Penultimate, _Rest...> {
+    struct __mcompose<_Last, _Penultimate, _Rest...> {
       template <class... _Args>
         using __f =
-          __minvoke1<_Last, __minvoke<__compose<_Penultimate, _Rest...>, _Args...>>;
+          __minvoke1<_Last, __minvoke<__mcompose<_Penultimate, _Rest...>, _Args...>>;
     };
 
   template <class _Old, class _New, class _Continuation = __q<__types>>

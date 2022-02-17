@@ -221,7 +221,7 @@ namespace std::execution {
         using __count_of =
           integral_constant<
             size_t,
-            (__mapply<__count, __signal_args_t<_Sigs, _Tag>>::value + ...)>;
+            (__mapply<__mcount, __signal_args_t<_Sigs, _Tag>>::value + ...)>;
 
       template <template <class...> class _Tuple, template <class...> class _Variant>
         using __value_types =
@@ -1782,7 +1782,7 @@ namespace std::execution {
           using __get_base_t =
             __if<
               __bool<__has_base>,
-              __bind_back<__defer<__member_t>, _Base>,
+              __mbind_back<__defer<__member_t>, _Base>,
               __q1<__base_from_derived_t>>;
 
           template <class _D>
@@ -2223,7 +2223,7 @@ namespace std::execution {
   // [execution.senders.adaptors.let_stopped]
   namespace __let {
     namespace __impl {
-      using __nullable_variant_t = __munique<__bind_front<__q<variant>, monostate>>;
+      using __nullable_variant_t = __munique<__mbind_front<__q<variant>, monostate>>;
 
       template <class... _Ts>
         struct __as_tuple {
@@ -2457,7 +2457,7 @@ namespace std::execution {
             using __tfx_signal_t = __t<__tfx_signal<_Env, _Fun, _Set, _Sig>>;
 
           template <class _Env>
-            using __tfx_signal = __bind_front_q1<__tfx_signal_t, _Env>;
+            using __tfx_signal = __mbind_front_q1<__tfx_signal_t, _Env>;
 
           template <class _Self, class _Env>
             using __completions =
@@ -2873,13 +2873,13 @@ namespace std::execution {
         //   >
         template <class... _Ts>
           using __bind_tuples =
-            __bind_front_q<variant, tuple<set_stopped_t>, _Ts...>;
+            __mbind_front_q<variant, tuple<set_stopped_t>, _Ts...>;
 
         using __bound_values_t =
           __value_types_of_t<
             _Sender,
             _Env,
-            __bind_front_q<__decayed_tuple, set_value_t>,
+            __mbind_front_q<__decayed_tuple, set_value_t>,
             __q<__bind_tuples>>;
 
         using __variant_t =
@@ -2887,7 +2887,7 @@ namespace std::execution {
             _Sender,
             _Env,
             __transform<
-              __bind_front_q<__decayed_tuple, set_error_t>,
+              __mbind_front_q<__decayed_tuple, set_error_t>,
               __bound_values_t>>;
 
         template <class _Receiver>
@@ -3658,7 +3658,7 @@ namespace std::execution {
                     __value_types_of_t<
                       __t<_SenderIds>,
                       __env_t<_Env>,
-                      __compose<__q1<optional>, __q<__decayed_tuple>>,
+                      __mcompose<__q1<optional>, __q<__decayed_tuple>>,
                       __single_or<void>>...>,
                   __>;
 
