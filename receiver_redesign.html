@@ -1487,7 +1487,7 @@ Possible extra rowspan handling
 		}
 	}
 </style>
-<style type="text/css">
+<style>
     table, th, td {
       border: 1px solid black;
       border-collapse: collapse;
@@ -2153,7 +2153,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">P2532R0<br><code class="highlight"><c- n>Removing</c-> <c- n>exception_ptr</c-> <c- n>from</c-> <c- n>the</c-> <c- n>Receiver</c-> <c- n>Concepts</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-02-06">2022-02-06</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-02-17">2022-02-17</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Author:
@@ -2568,7 +2568,7 @@ than it adds, while adding functionality at the same time.</p>
    <p>The following changes are relative to <a data-link-type="biblio" href="https://wg21.link/p2300r4">[P2300R4]</a>.</p>
    <h3 class="heading settled" data-level="6.1" id="header-execution-synopsis"><span class="secno">6.1. </span><span class="content">Header <code class="highlight"><c- o>&lt;</c-><c- n>execution</c-><c- o>></c-></code> synopsis</span><a class="self-link" href="#header-execution-synopsis"></a></h3>
    <p>In [exec.syn], apply the following changes:</p>
-<pre class="highlight"><c- k>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-> <c- p>{</c->
+<pre class="highlight"><c- k>namespace</c-> <c- nn>std</c-><c- o>::</c-><c- nn>execution</c-> <c- p>{</c->
   <c- c1>// [exec.recv], receivers</c->
   <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><del><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>exception_ptr</c-></del><c- o>></c->
     <c- k>concept</c-> <c- nc>receiver</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
@@ -2934,7 +2934,7 @@ unqualified type of the second argument.</p>
     <c- n>tuple</c-><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-> <c- n>vs_</c-><c- p>;</c->
     <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
 
-    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
+    <c- k>friend</c-> <c- b>void</c-> <c- nf>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
       <del><c- k>try</c-> <c- p>{</c-></del>
         <c- n>apply</c-><c- p>([</c-><c- o>&amp;</c-><c- n>s</c-><c- p>](</c-><c- n>Ts</c-><c- o>&amp;</c-><c- p>...</c-> <c- n>values_</c-><c- p>)</c-> <c- p>{</c->
           <c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>values_</c-><c- p>)...);</c->
@@ -2983,7 +2983,7 @@ unqualified type of the second argument.</p>
     <c- n>T</c-> <c- n>err_</c-><c- p>;</c->
     <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
 
-    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
+    <c- k>friend</c-> <c- b>void</c-> <c- nf>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
       <c- n>set_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>err_</c-><c- p>));</c->
     <c- p>}</c->
   <c- p>};</c->
@@ -3021,7 +3021,7 @@ unqualified type of the second argument.</p>
   <c- k>struct</c-> <c- nc>operation_state</c-> <c- p>{</c->
     <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
 
-    <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
+    <c- k>friend</c-> <c- b>void</c-> <c- nf>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <c- n>operation_state</c-><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- p>{</c->
       <c- n>set_stopped</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>));</c->
     <c- p>}</c->
   <c- p>};</c->
@@ -3048,7 +3048,7 @@ unqualified type of the second argument.</p>
       <c- k>struct</c-> <i><c- nc>operation</c-><c- o>-</c-><c- n>state</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
         <c- n>R</c-> <c- n>r_</c-><c- p>;</c->
 
-        <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <i><c- n>operation</c-><c- o>-</c-><c- n>state</c-></i><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- k>try</c-> <c- p>{</c->
+        <c- k>friend</c-> <c- b>void</c-> <c- nf>tag_invoke</c-><c- p>(</c-><c- n>start_t</c-><c- p>,</c-> <i><c- n>operation</c-><c- o>-</c-><c- n>state</c-></i><c- o>&amp;</c-> <c- n>s</c-><c- p>)</c-> <c- k>noexcept</c-> <c- k>try</c-> <c- p>{</c->
           <c- k>auto</c-> <c- n>value</c-> <c- o>=</c-> <c- n>Tag</c-><c- p>{}(</c-><c- n>get_env</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>));</c->
           <c- n>set_value</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>r_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>value</c-><c- p>));</c->
         <c- p>}</c-> <c- k>catch</c-><c- p>(...)</c-> <c- p>{</c->
@@ -3351,7 +3351,7 @@ to <code class="highlight"><c- n>terminate</c-><c- p>()</c-></code>,</ins>
   <del><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>D</c-> <c- o>=</c-> <c- n>Derived</c-><c- o>></c-></del>
   <c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_stopped_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
   <ins>
-  <c- k>friend</c-> <c- nf>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>)</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>get_env_t</c-><c- p>,</c-> <c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>)</c->
+  <c- k>friend</c-> <c- k>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>)</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>get_env_t</c-><c- p>,</c-> <c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>)</c->
       <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c-></ins>
 
   <c- k>template</c-> <c- o>&lt;</c-><i><c- n>forwarding</c-><c- o>-</c-><c- n>receiver</c-><c- o>-</c-><c- n>query</c-></i> <c- n>Tag</c-><del><c- p>,</c-> <c- k>class</c-> <c- nc>D</c-> <c- o>=</c-> <c- n>Derived</c-></del><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
@@ -3426,7 +3426,7 @@ instantiated.]</p>
         <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>)),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>E</c-><c- o>></c-><c- p>(</c-><c- n>e</c-><c- p>))</c-></code>.</p>
       </ul>
     </ol>
-<pre class="highlight"><c- k>friend</c-> <c- b>void</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>set_stopped_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
+<pre class="highlight"><c- k>friend</c-> <c- b>void</c-> <c- nf>tag_invoke</c-><c- p>(</c-><c- n>set_stopped_t</c-><c- p>,</c-> <c- n>Derived</c-><c- o>&amp;&amp;</c-> <c- n>self</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
 </pre>
     <ol>
      <li data-md>
@@ -3444,7 +3444,7 @@ instantiated.]</p>
         <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><i><c- n>GET</c-><c- o>-</c-><c- n>BASE</c-></i><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>self</c-><c- p>)))</c-></code>.</p>
       </ul>
     </ol>
-<pre class="highlight"><c- k>friend</c-> <c- nf>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>)</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>get_env_t</c-><c- p>,</c-> <c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>)</c->
+<pre class="highlight"><c- k>friend</c-> <c- k>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>)</c-> <c- n>tag_invoke</c-><c- p>(</c-><c- n>get_env_t</c-><c- p>,</c-> <c- k>const</c-> <c- n>Derived</c-><c- o>&amp;</c-> <c- n>self</c-><c- p>)</c->
   <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
 </pre>
     <ol>
