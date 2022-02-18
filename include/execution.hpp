@@ -1722,7 +1722,7 @@ namespace std::execution {
               sender_to<__member_t<_Self, _Base>, _Receiver>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
             noexcept(__has_nothrow_connect<__member_t<_Self, _Base>, _Receiver>)
-            -> connect_result_t<__member_t<_Self, _Base>, _Receiver> {
+            -> invoke_result_t<connect_t, __member_t<_Self, _Base>, _Receiver> {
             return execution::connect(((_Self&&) __self).base(), (_Receiver&&) __rcvr);
           }
 
@@ -2173,6 +2173,38 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.split]
   namespace __split {
+    template <class _SharedState>
+      class __receiver {
+        _SharedState &__sh_state_;
+
+      public:
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+        friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
+          _SharedState &__state = __self.__sh_state_;
+
+          try {
+            using __tuple_t = __decayed_tuple<_Tag, _As...>;
+            __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
+          } catch (...) {
+            using __tuple_t = __decayed_tuple<set_error_t, exception_ptr>;
+            __state.__data_.template emplace<__tuple_t>(set_error, current_exception());
+          }
+
+          __state.__notify();
+        }
+
+        friend auto tag_invoke(get_env_t, const __receiver& __self)
+           -> make_env_t<get_stop_token_t, in_place_stop_token>
+        {
+          return make_env<get_stop_token_t>(__self.__sh_state_.__stop_source_.get_token());
+        }
+
+        explicit __receiver(_SharedState &__sh_state)
+          : __sh_state_(__sh_state) {
+        }
+      };
+
+    enum class __state_t { __created, __started, __completed };
 
     struct __operation_base {
       __operation_base * __next_;
@@ -2181,43 +2213,8 @@ namespace std::execution {
       virtual ~__operation_base() = default;
     };
 
-    template <class _Variant>
-      class __receiver {
-        __operation_base &__op_state_;
-        in_place_stop_source &__stop_source_;
-        _Variant &__data_;
-
-      public:
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
-        friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
-          try {
-            using __tuple_t = __decayed_tuple<_Tag, _As...>;
-            __self.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
-          } catch (...) {
-            using __tuple_t = __decayed_tuple<set_error_t, exception_ptr>;
-            __self.__data_.template emplace<__tuple_t>(set_error, current_exception());
-          }
-
-          __self.__op_state_.__notify();
-        }
-
-        friend auto tag_invoke(get_env_t, const __receiver& __self) {
-          return make_env<get_stop_token_t>(__self.__stop_source_.get_token());
-        }
-
-        __receiver(__operation_base &__op_state,
-                   in_place_stop_source &__stop_source,
-                   _Variant &__data) noexcept
-          : __op_state_(__op_state)
-          , __stop_source_(__stop_source)
-          , __data_(__data) {
-        }
-      };
-
-    enum class __state_t { __created, __started, __completed };
-
     template <class _Sender>
-      struct __sh_state : __operation_base {
+      struct __sh_state {
         template <class... _Ts>
           using __bind_tuples =
             __bind_front_q<
@@ -2241,7 +2238,7 @@ namespace std::execution {
               __bind_front_q<__decayed_tuple, set_error_t>,
               __bound_values_t>>;
 
-        using __receiver = __receiver<__variant_t>;
+        using __receiver = __receiver<__sh_state>;
 
         in_place_stop_source __stop_source_{};
         __detail::__intrusive_queue<&__operation_base::__next_> __operation_states_;
@@ -2252,12 +2249,10 @@ namespace std::execution {
         __state_t __state_{__state_t::__created};
 
         explicit __sh_state(_Sender& __sndr)
-          : __op_state2_(
-              connect((_Sender&&) __sndr, __receiver{*this, __stop_source_, __data_}))
-        {
-        }
+          : __op_state2_(connect((_Sender&&) __sndr, __receiver{*this}))
+        {}
 
-        void __notify() noexcept override {
+        void __notify() noexcept {
           {
             lock_guard __lock{__mutex_};
             __state_ = __state_t::__completed;
