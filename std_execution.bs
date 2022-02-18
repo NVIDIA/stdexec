@@ -5493,7 +5493,7 @@ are all well-formed.
             <pre highlight="c++">
             template &lt;class... Ts>
               using <i>value-signatures</i> =
-                completion_signatures&lt;set_value_t(decay_t&lt;Ts>&amp;...)>;
+                completion_signatures&lt;set_value_t(const decay_t&lt;Ts>&amp;...)>;
             </pre>
 
             and <code><i>error-signatures</i></code> is the alias template:
@@ -5501,7 +5501,7 @@ are all well-formed.
             <pre highlight="c++">
             template &lt;class E>
               using <i>error-signatures</i> =
-                completion_signatures&lt;set_error_t(decay_t&lt;E>&amp;)>;
+                completion_signatures&lt;set_error_t(const decay_t&lt;E>&amp;)>;
             </pre>
 
     4. If the function selected above does not return a sender which sends
