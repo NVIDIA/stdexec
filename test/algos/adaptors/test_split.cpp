@@ -145,6 +145,7 @@ TEST_CASE("split is thread-safe", "[adaptors][split]") {
 
   const unsigned n_threads = std::thread::hardware_concurrency();
   std::vector<std::thread> threads(n_threads);
+  std::vector<int> thread_results(n_threads, 0);
   const std::vector<std::chrono::microseconds> delays = [&] {
     std::vector<std::chrono::microseconds> thread_delay(n_threads);
     for (unsigned tid = 0; tid < n_threads; tid++) {
@@ -153,7 +154,7 @@ TEST_CASE("split is thread-safe", "[adaptors][split]") {
     return thread_delay;
   }();
   for (unsigned tid = 0; tid < n_threads; tid++) {
-    threads[tid] = std::thread([&split, &delays, tid] {
+    threads[tid] = std::thread([&split, &delays, &thread_results, tid] {
       example::inline_scheduler scheduler{};
 
       std::this_thread::sleep_for(delays[tid]);
@@ -161,11 +162,12 @@ TEST_CASE("split is thread-safe", "[adaptors][split]") {
           split |                   //
           ex::transfer(scheduler) | //
           ex::then([](int v) { return v; })).value();
-      REQUIRE( val == 42 );
+      thread_results[tid] = val;
     });
   }
-  for (auto& thread: threads) {
-    thread.join();
+  for (unsigned tid = 0; tid < n_threads; tid++) {
+    threads[tid].join();
+    REQUIRE( thread_results[tid] == 42 );
   }
 }
 TEST_CASE("split can be an rvalue", "[adaptors][split]") {
