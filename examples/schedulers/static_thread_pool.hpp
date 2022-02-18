@@ -17,7 +17,7 @@
 #pragma once
 
 #include <execution.hpp>
-#include "../detail/intrusive_queue.hpp"
+#include "detail/intrusive_queue.hpp"
 
 #include <atomic>
 #include <condition_variable>
@@ -123,7 +123,7 @@ namespace example {
      private:
       std::mutex mut_;
       std::condition_variable cv_;
-      intrusive_queue<&task_base::next> queue_;
+      ex::__detail::__intrusive_queue<&task_base::next> queue_;
       bool stopRequested_ = false;
     };
 
@@ -258,21 +258,21 @@ namespace example {
 
   inline task_base* static_thread_pool::thread_state::try_pop() {
     std::unique_lock lk{mut_, std::try_to_lock};
-    if (!lk || queue_.empty()) {
+    if (!lk || queue_.__empty()) {
       return nullptr;
     }
-    return queue_.pop_front();
+    return queue_.__pop_front();
   }
 
   inline task_base* static_thread_pool::thread_state::pop() {
     std::unique_lock lk{mut_};
-    while (queue_.empty()) {
+    while (queue_.__empty()) {
       if (stopRequested_) {
         return nullptr;
       }
       cv_.wait(lk);
     }
-    return queue_.pop_front();
+    return queue_.__pop_front();
   }
 
   inline bool static_thread_pool::thread_state::try_push(task_base* task) {
@@ -280,8 +280,8 @@ namespace example {
     if (!lk) {
       return false;
     }
-    const bool wasEmpty = queue_.empty();
-    queue_.push_back(task);
+    const bool wasEmpty = queue_.__empty();
+    queue_.__push_back(task);
     if (wasEmpty) {
       cv_.notify_one();
     }
@@ -290,8 +290,8 @@ namespace example {
 
   inline void static_thread_pool::thread_state::push(task_base* task) {
     std::lock_guard lk{mut_};
-    const bool wasEmpty = queue_.empty();
-    queue_.push_back(task);
+    const bool wasEmpty = queue_.__empty();
+    queue_.__push_back(task);
     if (wasEmpty) {
       cv_.notify_one();
     }

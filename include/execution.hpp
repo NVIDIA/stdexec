@@ -33,7 +33,7 @@
 #include <coroutine.hpp>
 #include <stop_token.hpp>
 
-#include "../examples/detail/intrusive_queue.hpp"
+#include "detail/intrusive_queue.hpp"
 
 #if defined(__clang__)
 #define _STRINGIZE(__arg) #__arg
@@ -2244,7 +2244,7 @@ namespace std::execution {
         using __receiver = __receiver<__variant_t>;
 
         in_place_stop_source __stop_source_{};
-        example::intrusive_queue<&__operation_base::__next_> __operation_states_;
+        __detail::__intrusive_queue<&__operation_base::__next_> __operation_states_;
         connect_result_t<_Sender, __receiver> __op_state2_;
         __variant_t __data_;
 
@@ -2263,8 +2263,8 @@ namespace std::execution {
             __state_ = __state_t::__completed;
           }
 
-          while(!__operation_states_.empty()) {
-            __operation_states_.pop_front()->__notify();
+          while(!__operation_states_.__empty()) {
+            __operation_states_.__pop_front()->__notify();
           }
         }
       };
@@ -2328,7 +2328,7 @@ namespace std::execution {
               execution::set_stopped((_Receiver&&) __self.__recvr_);
             }
             else {
-              __shared_state->__operation_states_.push_back(&__self);
+              __shared_state->__operation_states_.__push_back(&__self);
 
               if (__state != __state_t::__started) {
                 __shared_state->__state_ = __state_t::__started;
