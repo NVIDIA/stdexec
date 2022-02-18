@@ -24,8 +24,6 @@
 #include <atomic>
 #include <thread>
 
-#include "stop_token_base.hpp"
-
 #if __has_include(<stop_token>) && __cpp_lib_jthread >= 201911
 #include <stop_token>
 #endif

@@ -2184,7 +2184,7 @@ namespace std::execution {
     template <class _Variant>
       class __receiver {
         __operation_base &__op_state_;
-        stop_source &__stop_source_;
+        in_place_stop_source &__stop_source_;
         _Variant &__data_;
 
       public:
@@ -2206,7 +2206,7 @@ namespace std::execution {
         }
 
         __receiver(__operation_base &__op_state,
-                   stop_source &__stop_source,
+                   in_place_stop_source &__stop_source,
                    _Variant &__data) noexcept
           : __op_state_(__op_state)
           , __stop_source_(__stop_source)
@@ -2229,21 +2229,21 @@ namespace std::execution {
         using __bound_values_t =
           __value_types_of_t<
             _Sender,
-            make_env_t<get_stop_token_t, stop_token>,
+            make_env_t<get_stop_token_t, in_place_stop_token>,
             __bind_front_q<__decayed_tuple, set_value_t>,
             __q<__bind_tuples>>;
 
         using __variant_t =
           __error_types_of_t<
             _Sender,
-            make_env_t<get_stop_token_t, stop_token>,
+            make_env_t<get_stop_token_t, in_place_stop_token>,
             __transform<
               __bind_front_q<__decayed_tuple, set_error_t>,
               __bound_values_t>>;
 
         using __receiver = __receiver<__variant_t>;
 
-        stop_source __stop_source_{};
+        in_place_stop_source __stop_source_{};
         example::intrusive_queue<&__operation_base::__next_> __operation_states_;
         connect_result_t<_Sender, __receiver> __op_state2_;
         __variant_t __data_;
@@ -2275,7 +2275,7 @@ namespace std::execution {
         using _Receiver = __t<_ReceiverId>;
 
         struct __on_stop_requested {
-          stop_source& __stop_source_;
+          in_place_stop_source& __stop_source_;
           void operator()() noexcept {
             __stop_source_.request_stop();
           }
