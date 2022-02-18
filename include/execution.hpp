@@ -1722,7 +1722,7 @@ namespace std::execution {
               sender_to<__member_t<_Self, _Base>, _Receiver>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
             noexcept(__has_nothrow_connect<__member_t<_Self, _Base>, _Receiver>)
-            -> invoke_result_t<connect_t, __member_t<_Self, _Base>, _Receiver> {
+            -> connect_result_t<__member_t<_Self, _Base>, _Receiver> {
             return execution::connect(((_Self&&) __self).base(), (_Receiver&&) __rcvr);
           }
 
@@ -2213,8 +2213,10 @@ namespace std::execution {
       virtual ~__operation_base() = default;
     };
 
-    template <class _Sender>
+    template <class _SenderId>
       struct __sh_state {
+        using _Sender = __t<_SenderId>;
+
         template <class... _Ts>
           using __bind_tuples =
             __bind_front_q<
@@ -2280,7 +2282,7 @@ namespace std::execution {
 
         _Receiver __recvr_;
         __on_stop __on_stop_{};
-        shared_ptr<__sh_state<_Sender>> __shared_state_;
+        shared_ptr<__sh_state<_SenderId>> __shared_state_;
 
         void __propagate_signal() noexcept {
           auto &__data = __shared_state_->__data_;
@@ -2294,7 +2296,7 @@ namespace std::execution {
 
       public:
         __operation(_Receiver&& __rcvr,
-                    shared_ptr<__sh_state<_Sender>> __shared_state)
+                    shared_ptr<__sh_state<_SenderId>> __shared_state)
           : __recvr_((_Receiver&&)__rcvr)
           , __shared_state_(move(__shared_state)) {
         }
@@ -2305,7 +2307,7 @@ namespace std::execution {
         }
 
         friend void tag_invoke(start_t, __operation& __self) noexcept try {
-          __sh_state<_Sender> *__shared_state = __self.__shared_state_.get();
+          __sh_state<_SenderId> *__shared_state = __self.__shared_state_.get();
           unique_lock __lock{__shared_state->__mutex_};
           __state_t __state = __shared_state->__state_;
 
@@ -2341,7 +2343,7 @@ namespace std::execution {
     template <class _SenderId>
       class __sender {
         using _Sender = __t<_SenderId>;
-        using __sh_state = __sh_state<_Sender>;
+        using __sh_state = __sh_state<_SenderId>;
         template <class _Receiver>
           using __operation = __operation<_SenderId, __x<remove_cvref_t<_Receiver>>>;
 
