@@ -5504,6 +5504,8 @@ are all well-formed.
                 completion_signatures&lt;set_error_t(const decay_t&lt;E>&amp;)>;
             </pre>
 
+        9. Does not expose the sender queries get_completion_scheduler<CPO>.
+
     4. If the function selected above does not return a sender which sends
         references to values sent by `s`, propagating the other channels, the
         behavior of calling `execution::split(s)` is undefined.
