@@ -33,8 +33,6 @@
 #include <coroutine.hpp>
 #include <stop_token.hpp>
 
-#include "detail/intrusive_queue.hpp"
-
 #if defined(__clang__)
 #define _STRINGIZE(__arg) #__arg
 #define _PRAGMA_PUSH() _Pragma("GCC diagnostic push")
