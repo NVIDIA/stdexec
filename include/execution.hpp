@@ -2296,24 +2296,24 @@ namespace std::execution {
 
         void __notify() noexcept override {
           __on_stop_.reset();
-          auto &__data = __shared_state_->__data_;
 
           std::visit([&](auto& __tupl) noexcept -> void {
             std::apply([&](auto __tag, const auto&... __args) noexcept -> void {
               __tag((_Receiver&&) __recvr_, __args...);
             }, __tupl);
-          }, __data);
+          }, __shared_state_->__data_);
         }
 
         friend void tag_invoke(start_t, __operation& __self) noexcept try {
-          atomic<void*>& __head = __self.__shared_state_->__head_;
-          void* const __completion_state = static_cast<void*>(__self.__shared_state_.get());
+          __sh_state<_SenderId>* __shared_state = __self.__shared_state_.get();
+          atomic<void*>& __head = __shared_state->__head_;
+          void* const __completion_state = static_cast<void*>(__shared_state);
           void* __old = __head.load(memory_order_acquire);
 
           if (__old != __completion_state) {
             __self.__on_stop_.emplace(
                 get_stop_token(get_env(__self.__recvr_)),
-                __on_stop_requested{__self.__shared_state_->__stop_source_});
+                __on_stop_requested{__shared_state->__stop_source_});
           }
 
           do {
@@ -2328,7 +2328,7 @@ namespace std::execution {
               memory_order_acquire));
 
           if (__old == nullptr) {
-            start(__self.__shared_state_->__op_state2_);
+            start(__shared_state->__op_state2_);
           }
         } catch (...) {
           execution::set_error((_Receiver&&) __self.__recvr_, current_exception());
