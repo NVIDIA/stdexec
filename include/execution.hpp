@@ -2194,7 +2194,7 @@ namespace std::execution {
         }
 
         friend auto tag_invoke(get_env_t, const __receiver& __self)
-           -> make_env_t<get_stop_token_t, in_place_stop_token>
+          -> make_env_t<get_stop_token_t, in_place_stop_token>
         {
           return make_env<get_stop_token_t>(__self.__sh_state_.__stop_source_.get_token());
         }
@@ -2204,10 +2204,8 @@ namespace std::execution {
         }
       };
 
-    enum class __state_t { __created, __started, __completed };
-
     struct __operation_base {
-      __operation_base * __next_;
+      __operation_base * __next_{};
 
       virtual void __notify() noexcept = 0;
       virtual ~__operation_base() = default;
@@ -2243,25 +2241,30 @@ namespace std::execution {
         using __receiver = __receiver<__sh_state>;
 
         in_place_stop_source __stop_source_{};
-        __detail::__intrusive_queue<&__operation_base::__next_> __operation_states_;
         connect_result_t<_Sender, __receiver> __op_state2_;
         __variant_t __data_;
-
-        mutex __mutex_;
-        __state_t __state_{__state_t::__created};
+        atomic<void*> __head_;
 
         explicit __sh_state(_Sender& __sndr)
           : __op_state2_(connect((_Sender&&) __sndr, __receiver{*this}))
+          , __head_{nullptr}
         {}
 
         void __notify() noexcept {
+          void *__old = __head_.load(memory_order_acquire);
+
+          while (!__head_.compare_exchange_weak(__old, static_cast<void *>(this),
+                                                memory_order_release,
+                                                memory_order_acquire))
           {
-            lock_guard __lock{__mutex_};
-            __state_ = __state_t::__completed;
+            // TODO sleep?
           }
 
-          while(!__operation_states_.__empty()) {
-            __operation_states_.__pop_front()->__notify();
+          __operation_base *_op_state = static_cast<__operation_base*>(__old);
+
+          while(_op_state != nullptr) {
+            _op_state->__notify();
+            _op_state = _op_state->__next_;
           }
         }
       };
@@ -2284,16 +2287,6 @@ namespace std::execution {
         __on_stop __on_stop_{};
         shared_ptr<__sh_state<_SenderId>> __shared_state_;
 
-        void __propagate_signal() noexcept {
-          auto &__data = __shared_state_->__data_;
-
-          std::visit([&](auto& __tupl) noexcept -> void {
-            std::apply([&](auto __tag, const auto&... __args) noexcept -> void {
-              __tag((_Receiver&&) __recvr_, __args...);
-            }, __tupl);
-          }, __data);
-        }
-
       public:
         __operation(_Receiver&& __rcvr,
                     shared_ptr<__sh_state<_SenderId>> __shared_state)
@@ -2303,37 +2296,39 @@ namespace std::execution {
 
         void __notify() noexcept override {
           __on_stop_.reset();
-          __propagate_signal();
+          auto &__data = __shared_state_->__data_;
+
+          std::visit([&](auto& __tupl) noexcept -> void {
+            std::apply([&](auto __tag, const auto&... __args) noexcept -> void {
+              __tag((_Receiver&&) __recvr_, __args...);
+            }, __tupl);
+          }, __data);
         }
 
         friend void tag_invoke(start_t, __operation& __self) noexcept try {
-          __sh_state<_SenderId> *__shared_state = __self.__shared_state_.get();
-          unique_lock __lock{__shared_state->__mutex_};
-          __state_t __state = __shared_state->__state_;
+          atomic<void*>& __head = __self.__shared_state_->__head_;
+          void* const __completion_state = static_cast<void*>(__self.__shared_state_.get());
+          void* __old = __head.load(memory_order_acquire);
 
-          if (__state == __state_t::__completed) {
-            __lock.unlock();
-            __self.__propagate_signal();
-          }
-          else {
+          if (__old != __completion_state) {
             __self.__on_stop_.emplace(
                 get_stop_token(get_env(__self.__recvr_)),
-                __on_stop_requested{__shared_state->__stop_source_});
+                __on_stop_requested{__self.__shared_state_->__stop_source_});
+          }
 
-            if (__shared_state->__stop_source_.stop_requested()) {
-              __lock.unlock();
-              execution::set_stopped((_Receiver&&) __self.__recvr_);
+          do {
+            if (__old == __completion_state) {
+              __self.__notify();
+              return;
             }
-            else {
-              __shared_state->__operation_states_.__push_back(&__self);
+            __self.__next_ = static_cast<__operation_base*>(__old);
+          } while (!__head.compare_exchange_weak(
+              __old, static_cast<void *>(&__self),
+              memory_order_release,
+              memory_order_acquire));
 
-              if (__state != __state_t::__started) {
-                __shared_state->__state_ = __state_t::__started;
-                __lock.unlock();
-
-                execution::start(__shared_state->__op_state2_);
-              }
-            }
+          if (__old == nullptr) {
+            start(__self.__shared_state_->__op_state2_);
           }
         } catch (...) {
           execution::set_error((_Receiver&&) __self.__recvr_, current_exception());
