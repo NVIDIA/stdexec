@@ -2251,20 +2251,19 @@ namespace std::execution {
         {}
 
         void __notify() noexcept {
-          void *__old = __head_.load(memory_order_acquire);
+          void *__old = __head_.load(memory_order_relaxed);
 
           while (!__head_.compare_exchange_weak(__old, static_cast<void *>(this),
-                                                memory_order_release,
-                                                memory_order_acquire))
-          {
-            // TODO sleep?
-          }
+                                                memory_order_acq_rel,
+                                                memory_order_relaxed))
+          {}
 
           __operation_base *_op_state = static_cast<__operation_base*>(__old);
 
           while(_op_state != nullptr) {
+            __operation_base *__next = _op_state->__next_;
             _op_state->__notify();
-            _op_state = _op_state->__next_;
+            _op_state = __next;
           }
         }
       };
@@ -2290,14 +2289,15 @@ namespace std::execution {
       public:
         __operation(_Receiver&& __rcvr,
                     shared_ptr<__sh_state<_SenderId>> __shared_state)
-          : __recvr_((_Receiver&&)__rcvr)
+          : __operation_base()
+          , __recvr_((_Receiver&&)__rcvr)
           , __shared_state_(move(__shared_state)) {
         }
 
         void __notify() noexcept override {
           __on_stop_.reset();
 
-          std::visit([&](auto& __tupl) noexcept -> void {
+          std::visit([&](const auto& __tupl) noexcept -> void {
             std::apply([&](auto __tag, const auto&... __args) noexcept -> void {
               __tag((_Receiver&&) __recvr_, __args...);
             }, __tupl);
@@ -2324,7 +2324,7 @@ namespace std::execution {
             __self.__next_ = static_cast<__operation_base*>(__old);
           } while (!__head.compare_exchange_weak(
               __old, static_cast<void *>(&__self),
-              memory_order_release,
+              memory_order_acq_rel,
               memory_order_acquire));
 
           if (__old == nullptr) {
