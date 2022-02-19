@@ -2217,7 +2217,7 @@ namespace std::execution {
 
         template <class... _Ts>
           using __bind_tuples =
-            __bind_front_q<
+            __mbind_front_q<
               __variant,
               tuple<set_stopped_t>,
               tuple<set_error_t, exception_ptr>,
@@ -2227,7 +2227,7 @@ namespace std::execution {
           __value_types_of_t<
             _Sender,
             make_env_t<get_stop_token_t, in_place_stop_token>,
-            __bind_front_q<__decayed_tuple, set_value_t>,
+            __mbind_front_q<__decayed_tuple, set_value_t>,
             __q<__bind_tuples>>;
 
         using __variant_t =
@@ -2235,7 +2235,7 @@ namespace std::execution {
             _Sender,
             make_env_t<get_stop_token_t, in_place_stop_token>,
             __transform<
-              __bind_front_q<__decayed_tuple, set_error_t>,
+              __mbind_front_q<__decayed_tuple, set_error_t>,
               __bound_values_t>>;
 
         using __receiver = __receiver<__sh_state>;
