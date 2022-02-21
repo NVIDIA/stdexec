@@ -400,4 +400,4 @@ namespace std {
         { _Token::stop_possible() } -> __boolean_testable_;
       } &&
       (!_Token::stop_possible());
-}
+} // std
