@@ -2340,7 +2340,7 @@ namespace std::execution {
 
       public:
         template <__decays_to<__sender> _Self, receiver _Receiver>
-            requires receiver_of<_Receiver, completion_signatures_of_t<_Self>>
+            requires receiver_of<_Receiver, completion_signatures_of_t<_Self, __empty_env>>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __recvr)
             noexcept(is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
             -> __operation<_Receiver> {
