@@ -2197,7 +2197,7 @@ namespace std::execution {
           return make_env<get_stop_token_t>(__self.__sh_state_.__stop_source_.get_token());
         }
 
-        explicit __receiver(_SharedState &__sh_state)
+        explicit __receiver(_SharedState &__sh_state) noexcept
           : __sh_state_(__sh_state) {
         }
       };
@@ -2249,13 +2249,8 @@ namespace std::execution {
         {}
 
         void __notify() noexcept {
-          void *__old = __head_.load(memory_order_relaxed);
-
-          while (!__head_.compare_exchange_weak(__old, static_cast<void *>(this),
-                                                memory_order_acq_rel,
-                                                memory_order_relaxed))
-          {}
-
+          void* const __completion_state = static_cast<void*>(this);
+          void *__old = __head_.exchange(__completion_state, memory_order_acq_rel);
           __operation_base *_op_state = static_cast<__operation_base*>(__old);
 
           while(_op_state != nullptr) {
@@ -2302,7 +2297,7 @@ namespace std::execution {
           }, __shared_state_->__data_);
         }
 
-        friend void tag_invoke(start_t, __operation& __self) noexcept try {
+        friend void tag_invoke(start_t, __operation& __self) noexcept {
           __sh_state<_SenderId>* __shared_state = __self.__shared_state_.get();
           atomic<void*>& __head = __shared_state->__head_;
           void* const __completion_state = static_cast<void*>(__shared_state);
@@ -2322,14 +2317,12 @@ namespace std::execution {
             __self.__next_ = static_cast<__operation_base*>(__old);
           } while (!__head.compare_exchange_weak(
               __old, static_cast<void *>(&__self),
-              memory_order_acq_rel,
+              memory_order_release,
               memory_order_acquire));
 
           if (__old == nullptr) {
             start(__shared_state->__op_state2_);
           }
-        } catch (...) {
-          execution::set_error((_Receiver&&) __self.__recvr_, current_exception());
         }
       };
 
