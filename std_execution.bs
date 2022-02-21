@@ -5444,7 +5444,7 @@ are all well-formed.
                 <code><i>Signal</i></code> be whichever receiver completion-signal
                 was used to complete r's receiver contract ([exec.recv]). Calls
                 <code><i>Signal</i>(out_r', args2...)</code>, where `args2...` is a
-                pack of lvalues referencing the subobjects of `sh_state` that have
+                pack of const lvalues referencing the subobjects of `sh_state` that have
                 been saved by the original call to <code><i>Signal</i>(r,
                 args...)</code> and returns.
 
@@ -5468,7 +5468,7 @@ are all well-formed.
             completion-signal was used to complete `r`'s receiver contract
             ([exec.recv]). `op_state`'s stop callback optional is reset. Then
             <code><i>Signal</i>(std::move(out_r'), args2...)</code> is called,
-            where `args2...` is a pack of lvalues referencing the subobjects of
+            where `args2...` is a pack of const lvalues referencing the subobjects of
             `sh_state` that have been saved by the original call to
             <code><i>Signal</i>(r, args...)</code>.
 
