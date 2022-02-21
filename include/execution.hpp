@@ -2203,10 +2203,10 @@ namespace std::execution {
       };
 
     struct __operation_base {
-      __operation_base * __next_{};
+      using __notify_fn = void(__operation_base*) noexcept;
 
-      virtual void __notify() noexcept = 0;
-      virtual ~__operation_base() = default;
+      __operation_base * __next_{};
+      __notify_fn* __notify_{};
     };
 
     template <class _SenderId>
@@ -2255,7 +2255,7 @@ namespace std::execution {
 
           while(_op_state != nullptr) {
             __operation_base *__next = _op_state->__next_;
-            _op_state->__notify();
+            _op_state->__notify_(_op_state);
             _op_state = __next;
           }
         }
@@ -2282,19 +2282,20 @@ namespace std::execution {
       public:
         __operation(_Receiver&& __rcvr,
                     shared_ptr<__sh_state<_SenderId>> __shared_state)
-          : __operation_base()
+          : __operation_base{nullptr, __notify}
           , __recvr_((_Receiver&&)__rcvr)
           , __shared_state_(move(__shared_state)) {
         }
 
-        void __notify() noexcept override {
-          __on_stop_.reset();
+        static void __notify(__operation_base* __self) noexcept {
+          __operation *__op = static_cast<__operation*>(__self);
+          __op->__on_stop_.reset();
 
           std::visit([&](const auto& __tupl) noexcept -> void {
             std::apply([&](auto __tag, const auto&... __args) noexcept -> void {
-              __tag((_Receiver&&) __recvr_, __args...);
+              __tag((_Receiver&&) __op->__recvr_, __args...);
             }, __tupl);
-          }, __shared_state_->__data_);
+          }, __op->__shared_state_->__data_);
         }
 
         friend void tag_invoke(start_t, __operation& __self) noexcept {
@@ -2311,7 +2312,7 @@ namespace std::execution {
 
           do {
             if (__old == __completion_state) {
-              __self.__notify();
+              __self.__notify(&__self);
               return;
             }
             __self.__next_ = static_cast<__operation_base*>(__old);
