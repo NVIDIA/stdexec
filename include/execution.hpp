@@ -2282,6 +2282,7 @@ namespace std::execution {
       public:
         __operation(_Receiver&& __rcvr,
                     shared_ptr<__sh_state<_SenderId>> __shared_state)
+            noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           : __operation_base{nullptr, __notify}
           , __recvr_((_Receiver&&)__rcvr)
           , __shared_state_(move(__shared_state)) {
@@ -2365,8 +2366,8 @@ namespace std::execution {
         template <__decays_to<__sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
             make_completion_signatures<
-              __member_t<_Self, _Sender>,
-              _Env,
+              _Sender,
+              make_env_t<get_stop_token_t, in_place_stop_token>,
               completion_signatures<set_error_t(const exception_ptr&)>,
               __set_value_t,
               __set_error_t>;
