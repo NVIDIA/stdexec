@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R5<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-02-21">2022-02-21</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-02-22">2022-02-22</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -7207,8 +7207,8 @@ to:</p>
          <p>and <code class="highlight"><i><c- n>set</c-><c- o>-</c-><c- n>error</c-><c- o>-</c-><c- n>signature</c-></i></code> is an alias for <code class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-></code> if any of the types
 in the <code class="highlight"><i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i></code> named by <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>S2</c-><c- p>,</c-> <c- n>S</c-><c- o>></c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>potentially</c-><c- o>-</c-><c- n>throwing</c-></i><c- p>,</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>></c-></code> are <code class="highlight"><c- n>true_type</c-></code>; otherwise, <code class="highlight"><c- n>completion_signatures</c-><c- o>&lt;></c-></code>, where <code class="highlight"><i><c- n>potentially</c-><c- o>-</c-><c- n>throwing</c-></i></code> is the template alias:</p>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
-  <i><c- n>potentially</c-><c- o>-</c-><c- n>throwing</c-></i> <c- o>=</c->
-    <c- n>bool_constant</c-><c- o>&lt;</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>F</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>>></c-><c- p>;</c->
+  <c- k>using</c-> <i><c- n>potentially</c-><c- o>-</c-><c- n>throwing</c-></i> <c- o>=</c->
+    <c- n>bool_constant</c-><c- o>&lt;!</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>F</c-><c- p>,</c-> <c- n>As</c-><c- p>...</c-><c- o>>></c-><c- p>;</c->
 </pre>
        </ol>
      </ol>
@@ -7274,8 +7274,8 @@ to:</p>
          <p>and <code class="highlight"><i><c- n>set</c-><c- o>-</c-><c- n>error</c-><c- o>-</c-><c- n>signature</c-></i></code> is an alias for <code class="highlight"><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-></code> if any of the types
 in the <code class="highlight"><i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i></code> named by <code class="highlight"><c- n>error_types_of_t</c-><c- o>&lt;</c-><c- n>copy_cvref_t</c-><c- o>&lt;</c-><c- n>S2</c-><c- p>,</c-> <c- n>S</c-><c- o>></c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>potentially</c-><c- o>-</c-><c- n>throwing</c-></i><c- o>></c-></code> are <code class="highlight"><c- n>true_type</c-></code>; otherwise, <code class="highlight"><c- n>completion_signatures</c-><c- o>&lt;></c-></code>, where <code class="highlight"><i><c- n>potentially</c-><c- o>-</c-><c- n>throwing</c-></i></code> is the template alias:</p>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Es</c-><c- o>></c->
-  <i><c- n>potentially</c-><c- o>-</c-><c- n>throwing</c-></i> <c- o>=</c->
-    <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>&lt;</c-><c- n>bool_constant</c-><c- o>&lt;</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>F</c-><c- p>,</c-> <c- n>Es</c-><c- o>>></c-><c- p>...</c-><c- o>></c-><c- p>;</c->
+  <c- k>using</c-> <i><c- n>potentially</c-><c- o>-</c-><c- n>throwing</c-></i> <c- o>=</c->
+    <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>&lt;!</c-><c- n>bool_constant</c-><c- o>&lt;</c-><c- n>is_nothrow_invocable_v</c-><c- o>&lt;</c-><c- n>F</c-><c- p>,</c-> <c- n>Es</c-><c- o>>></c-><c- p>...</c-><c- o>></c-><c- p>;</c->
 </pre>
        </ol>
      </ol>
