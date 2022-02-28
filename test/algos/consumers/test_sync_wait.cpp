@@ -24,6 +24,7 @@
 
 #include <thread>
 #include <chrono>
+#include <system_error>
 
 namespace ex = std::execution;
 using std::optional;
@@ -71,12 +72,32 @@ TEST_CASE("sync_wait rethrows received exception", "[consumers][sync_wait]") {
   }
 }
 
-TEST_CASE("TODO: sync_wait handling non-exception errors", "[consumers][sync_wait]") {
-  // TODO: the specification isn't clear what to do with non-exception errors
-  error_scheduler<std::string> sched{std::string{"err"}};
-  ex::sender auto snd = ex::transfer_just(sched, 19);
-  static_assert(std::invocable<decltype(sync_wait), decltype(snd)>);
-  // sync_wait(std::move(snd)); // doesn't work
+TEST_CASE("sync_wait handling error_code errors", "[consumers][sync_wait]") {
+  try {
+    error_scheduler<std::error_code> sched{std::make_error_code(std::errc::argument_out_of_domain)};
+    ex::sender auto snd = ex::transfer_just(sched, 19);
+    static_assert(std::invocable<decltype(sync_wait), decltype(snd)>);
+    sync_wait(std::move(snd)); // doesn't work
+    FAIL("expecting exception to be thrown");
+  } catch (const std::system_error& e) {
+    CHECK(e.code() == std::errc::argument_out_of_domain);
+  } catch (...) {
+    FAIL("expecting std::system_error exception to be thrown");
+  }
+}
+
+TEST_CASE("sync_wait handling non-exception errors", "[consumers][sync_wait]") {
+  try {
+    error_scheduler<std::string> sched{std::string{"err"}};
+    ex::sender auto snd = ex::transfer_just(sched, 19);
+    static_assert(std::invocable<decltype(sync_wait), decltype(snd)>);
+    sync_wait(std::move(snd)); // doesn't work
+    FAIL("expecting exception to be thrown");
+  } catch (const std::string& e) {
+    CHECK(e == "err");
+  } catch (...) {
+    FAIL("expecting std::string exception to be thrown");
+  }
 }
 
 TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_wait]") {

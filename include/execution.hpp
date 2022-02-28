@@ -4109,8 +4109,15 @@ namespace std::this_thread {
           } catch(...) {
             execution::set_error((__receiver&&) __rcvr, current_exception());
           }
-          friend void tag_invoke(execution::set_error_t, __receiver&& __rcvr, exception_ptr __err) noexcept {
-            __rcvr.__state_->__data_.template emplace<2>((exception_ptr&&) __err);
+          template <typename _Error>
+          friend void tag_invoke(execution::set_error_t, __receiver&& __rcvr, _Error __err) noexcept {
+            exception_ptr eptr;
+            if constexpr (__decays_to<_Error, exception_ptr>)
+              __rcvr.__state_->__data_.template emplace<2>((_Error&&) __err);
+            else if constexpr (__decays_to<_Error, error_code>)
+              __rcvr.__state_->__data_.template emplace<2>(make_exception_ptr(system_error(__err)));
+            else
+              __rcvr.__state_->__data_.template emplace<2>(make_exception_ptr((_Error&&) __err));
             __rcvr.__loop_->finish();
           }
           friend void tag_invoke(execution::set_stopped_t __d, __receiver&& __rcvr) noexcept {
