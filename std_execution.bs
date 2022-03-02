@@ -3745,16 +3745,19 @@ namespace std::execution {
   namespace <i>senders-queries</i> { // exposition only
     struct forwarding_sender_query_t;
 
-    template &lt;class T>
-      concept <i>forwarding-sender-query</i> = // exposition only
-        forwarding_sender_query(T{});
-
     template &lt;class CPO>
     struct get_completion_scheduler_t;
   }
   using <i>senders-queries</i>::forwarding_sender_query_t;
   using <i>senders-queries</i>::get_completion_scheduler_t;
   inline constexpr forwarding_sender_query_t forwarding_sender_query{};
+
+  namespace <i>senders-queries</i> { // exposition only
+    template &lt;class T>
+      concept <i>forwarding-sender-query</i> = // exposition only
+        forwarding_sender_query(T{});
+  }
+
   template &lt;class CPO>
   inline constexpr get_completion_scheduler_t&lt;CPO> get_completion_scheduler{};
 
@@ -4641,6 +4644,8 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
 
 3. If, for some sender `s` and customization point object `CPO`, `execution::get_completion_scheduler<decltype(CPO)>(s)` is well-formed and results in a scheduler `sch`, and the sender `s` invokes `CPO(r, args...)`, for some receiver `r` which has been connected to
     `s`, with additional arguments `args...`, on an execution agent which does not belong to the associated execution context of `sch`, the behavior is undefined.
+
+4. The expression `execution::forwarding_sender_query(get_completion_scheduler<CPO>)` shall be a prvalue core constant expression of type `bool` with value `true`. It shall not be potentially-throwing. `CPO` shall be one of `set_value_t`, `set_error_t` or `set_stopped_t`.
 
 ### Sender factories <b>[exec.factories]</b> ### {#spec-execution.senders.factories}
 
