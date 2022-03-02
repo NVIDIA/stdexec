@@ -4645,7 +4645,7 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
 3. If, for some sender `s` and customization point object `CPO`, `execution::get_completion_scheduler<decltype(CPO)>(s)` is well-formed and results in a scheduler `sch`, and the sender `s` invokes `CPO(r, args...)`, for some receiver `r` which has been connected to
     `s`, with additional arguments `args...`, on an execution agent which does not belong to the associated execution context of `sch`, the behavior is undefined.
 
-4. The expression `execution::forwarding_sender_query(get_completion_scheduler<CPO>)` shall return `true` if CPO is one of `set_value_t`, `set_error_t` or `set_stopped_t`.
+4. The expression `execution::forwarding_sender_query(get_completion_scheduler<CPO>)` shall be a prvalue core constant expression of type `bool` with value `true`. It shall not be potentially-throwing. `CPO` shall be one of `set_value_t`, `set_error_t` or `set_stopped_t`.
 
 ### Sender factories <b>[exec.factories]</b> ### {#spec-execution.senders.factories}
 
