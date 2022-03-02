@@ -248,6 +248,4 @@ TEST_CASE("transfer can be customized with two schedulers", "[adaptors][transfer
   ex::start(op);
   // we are not using impulse_scheduler anymore, so the value should be available
   REQUIRE(res.val_ == 61);
-  sched_src.start_next();
-  REQUIRE(res.val_ == 61);
 }

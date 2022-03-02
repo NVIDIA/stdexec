@@ -5080,8 +5080,8 @@ are all well-formed.
 
             <pre highlight="c++">
             template &lt;class... As>
-              <i>potentially-throwing</i> =
-                bool_constant&lt;is_nothrow_invocable_v&lt;F, As...>>;
+              using <i>potentially-throwing</i> =
+                bool_constant&lt;!is_nothrow_invocable_v&lt;F, As...>>;
             </pre>
 
     If the function selected above does not return a sender that invokes `f` with the result of the `set_value` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the behavior of calling `execution::then(s, f)` is undefined.
@@ -5159,8 +5159,8 @@ are all well-formed.
 
             <pre highlight="c++">
             template &lt;class... Es>
-              <i>potentially-throwing</i> =
-                <i>type-list</i>&lt;bool_constant&lt;is_nothrow_invocable_v&lt;F, Es>>...>;
+              using <i>potentially-throwing</i> =
+                <i>type-list</i>&lt;!bool_constant&lt;is_nothrow_invocable_v&lt;F, Es>>...>;
             </pre>
 
     If the function selected above does not return a sender which invokes `f` with the result of the `set_error` signal of `s`, passing the return value as the value to any connected receivers, and propagates the other completion-signals sent by `s`, the behavior of calling `execution::upon_error(s, f)` is undefined.
