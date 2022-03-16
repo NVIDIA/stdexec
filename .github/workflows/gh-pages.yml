@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-publish:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
@@ -18,4 +18,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
-          commit_message: "Deploy Docs: ${{ github.event.head_commit.message }}"
+          commit_message: "Publish: ${{ github.event.head_commit.message }}"
