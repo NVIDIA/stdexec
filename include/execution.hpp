@@ -2951,8 +2951,6 @@ namespace std::execution {
     } // namespace __impl
 
     class run_loop {
-
-
       template<class... Ts>
       using __completion_signatures_ = completion_signatures<Ts...>;
 
