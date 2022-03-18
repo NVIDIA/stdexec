@@ -43,7 +43,11 @@ namespace std {
 
   // Some utilities for manipulating lists of types at compile time
   template <class...>
-    struct __types;
+  struct __types
+#if defined(__GNUC__) && !defined(__clang__)
+  {}  // BUGBUG: GCC does not like this "incomplete type"
+#endif
+  ;
 
   template <class _T>
     using __id = _T;
