@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__GNUC__) && !defined(__clang__)
+#else
+
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -182,3 +185,5 @@ TEST_CASE("TODO: sync_wait can be customized without scheduler", "[consumers][sy
   // invalid check:
   CHECK(std::get<0>(res.value()) == "hello");
 }
+
+#endif    

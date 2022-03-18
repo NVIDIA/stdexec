@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__GNUC__) && !defined(__clang__)
+#else
+
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -323,3 +326,5 @@ TEST_CASE("let_error can be customized", "[adaptors][let_error]") {
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
   wait_for_value(std::move(snd), std::string{"what error?"});
 }
+
+#endif

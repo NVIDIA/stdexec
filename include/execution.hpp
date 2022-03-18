@@ -1485,12 +1485,15 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
   namespace __just {
+
+    template <class _CPO, class... _Ts>
+    using __completion_signatures_ = completion_signatures<_CPO(_Ts...)>;
+
     template <class _CPO, class... _Ts>
       struct __sender {
         tuple<_Ts...> __vals_;
 
-        using completion_signatures = completion_signatures<_CPO(_Ts...)>;
-
+        using completion_signatures = __completion_signatures_<_CPO, _Ts...>;
         template <class _ReceiverId>
           struct __operation {
             using _Receiver = __t<_ReceiverId>;
@@ -2242,15 +2245,15 @@ namespace std::execution {
               __mbind_front_q<__decayed_tuple, set_error_t>,
               __bound_values_t>>;
 
-        using __receiver = __receiver<__sh_state>;
+        using __receiver_ = __receiver<__sh_state>;
 
         in_place_stop_source __stop_source_{};
-        connect_result_t<_Sender, __receiver> __op_state2_;
+        connect_result_t<_Sender, __receiver_> __op_state2_;
         __variant_t __data_;
         atomic<void*> __head_;
 
         explicit __sh_state(_Sender& __sndr)
-          : __op_state2_(connect((_Sender&&) __sndr, __receiver{*this}))
+          : __op_state2_(connect((_Sender&&) __sndr, __receiver_{*this}))
           , __head_{nullptr}
         {}
 
@@ -2337,12 +2340,12 @@ namespace std::execution {
     template <class _SenderId>
       class __sender {
         using _Sender = __t<_SenderId>;
-        using __sh_state = __sh_state<_SenderId>;
+        using __sh_state_ = __sh_state<_SenderId>;
         template <class _Receiver>
           using __operation = __operation<_SenderId, __x<remove_cvref_t<_Receiver>>>;
 
         _Sender __sndr_;
-        shared_ptr<__sh_state> __shared_state_;
+        shared_ptr<__sh_state_> __shared_state_;
 
       public:
         template <__decays_to<__sender> _Self, receiver _Receiver>
@@ -2380,7 +2383,7 @@ namespace std::execution {
 
         explicit __sender(_Sender __sndr)
             : __sndr_((_Sender&&) __sndr)
-            , __shared_state_{make_shared<__sh_state>(__sndr_)}
+            , __shared_state_{make_shared<__sh_state_>(__sndr_)}
         {}
       };
 
@@ -2948,16 +2951,20 @@ namespace std::execution {
     } // namespace __impl
 
     class run_loop {
+      template<class... Ts>
+      using __completion_signatures_ = completion_signatures<Ts...>;
+
       template <class>
         friend class __impl::__operation;
      public:
       class __scheduler {
         struct __schedule_task {
           using completion_signatures =
-            completion_signatures<
+            __completion_signatures_<
               set_value_t(),
               set_error_t(exception_ptr),
               set_stopped_t()>;
+
          private:
           friend __scheduler;
 
