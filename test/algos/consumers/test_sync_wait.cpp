@@ -24,7 +24,6 @@
 
 #include <thread>
 #include <chrono>
-#include <system_error>
 
 namespace ex = std::execution;
 using std::optional;
@@ -177,7 +176,7 @@ optional<tuple<std::string>> tag_invoke(
 struct my_other_string_sender_t {
   std::string str_;
 
-  using completion_signatures = typename decltype(ex::just(std::string{}))::completion_signatures;
+  using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just(std::string{}))>;
 
   template <class Recv>
   friend auto tag_invoke(ex::connect_t, my_other_string_sender_t&& self, Recv&& recv) {
