@@ -4763,6 +4763,9 @@ namespace stdexec {
                   apply([](auto&&... __child_ops) noexcept -> void {
                     (execution::start(__child_ops), ...);
                   }, __self.__child_states_);
+                  if constexpr (sizeof...(_SenderIds) == 0) {
+                    __self.__complete();
+                  }
                 }
               }
 
@@ -4812,8 +4815,7 @@ namespace stdexec {
     struct when_all_t {
       template <sender... _Senders>
         requires tag_invocable<when_all_t, _Senders...> &&
-          sender<tag_invoke_result_t<when_all_t, _Senders...>> &&
-          (sizeof...(_Senders) > 0)
+          sender<tag_invoke_result_t<when_all_t, _Senders...>>
       auto operator()(_Senders&&... __sndrs) const
         noexcept(nothrow_tag_invocable<when_all_t, _Senders...>)
         -> tag_invoke_result_t<when_all_t, _Senders...> {
@@ -4821,8 +4823,7 @@ namespace stdexec {
       }
 
       template <sender... _Senders>
-          requires (!tag_invocable<when_all_t, _Senders...>) &&
-            (sizeof...(_Senders) > 0)
+          requires (!tag_invocable<when_all_t, _Senders...>)
       auto operator()(_Senders&&... __sndrs) const
         -> __impl::__sender<__x<decay_t<_Senders>>...> {
         return __impl::__sender<__x<decay_t<_Senders>>...>{
