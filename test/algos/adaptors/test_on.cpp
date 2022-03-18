@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#if defined(__GNUC__) && !defined(__clang__)
+#else
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
@@ -184,3 +186,5 @@ TEST_CASE("on can be customized", "[adaptors][on]") {
   ex::start(op);
   REQUIRE(res == "Hello, world!");
 }
+
+#endif

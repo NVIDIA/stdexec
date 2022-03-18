@@ -40,6 +40,9 @@
  * - exemplify the use of let_value, let_error, let_stopped, transfer_just and just
  * algorithms
  */
+#if defined(__GNUC__) && !defined(__clang__)
+int main() { return 0; }
+#else
 
 #include <iostream>
 #include <stdexcept>
@@ -151,3 +154,5 @@ int main() {
 
   return 0;
 }
+
+#endif
