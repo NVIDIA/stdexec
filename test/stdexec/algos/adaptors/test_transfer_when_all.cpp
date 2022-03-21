@@ -44,6 +44,11 @@ TEST_CASE("transfer_when_all simple example", "[adaptors][transfer_when_all]") {
   auto op = ex::connect(std::move(snd1), expect_value_receiver<double>{3.1415});
   ex::start(op);
 }
+TEST_CASE("transfer_when_all with no senders", "[adaptors][transfer_when_all]") {
+  auto snd = ex::transfer_when_all(inline_scheduler{});
+  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  ex::start(op);
+}
 
 TEST_CASE("transfer_when_all transfers the result when the scheduler dictates",
     "[adaptors][transfer_when_all]") {
@@ -56,6 +61,17 @@ TEST_CASE("transfer_when_all transfers the result when the scheduler dictates",
   CHECK(res == 0.0);
   sched.start_next();
   CHECK(res == 3.1415);
+}
+TEST_CASE("transfer_when_all with no senders transfers the result", "[adaptors][transfer_when_all]") {
+  impulse_scheduler sched;
+  auto snd = ex::transfer_when_all(sched);
+  auto snd1 = std::move(snd) | ex::then([]() { return true; });
+  bool res{false};
+  auto op = ex::connect(std::move(snd1), expect_value_receiver_ex<bool>{&res});
+  ex::start(op);
+  CHECK(!res);
+  sched.start_next();
+  CHECK(res);
 }
 
 TEST_CASE("transfer_when_all_with_variant returns a sender", "[adaptors][transfer_when_all]") {

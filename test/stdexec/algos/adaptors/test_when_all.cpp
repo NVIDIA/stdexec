@@ -68,10 +68,9 @@ TEST_CASE("when_all with just one sender", "[adaptors][when_all]") {
   wait_for_value(std::move(snd), 2);
 }
 
-TEST_CASE("when_all with no senders sender -- should fail", "[adaptors][when_all]") {
-  // Should not compile:
-  // auto snd = ex::when_all();
-  static_assert(!std::invocable<ex::when_all_t>);
+TEST_CASE("when_all with no senders", "[adaptors][when_all]") {
+  ex::sender auto snd = ex::when_all();
+  wait_for_value(std::move(snd));
 }
 
 TEST_CASE("when_all when one sender sends void", "[adaptors][when_all]") {
@@ -98,6 +97,11 @@ TEST_CASE("when_all_with_variant with same type", "[adaptors][when_all]") {
   );
   wait_for_value(
       std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<int>>{3});
+}
+
+TEST_CASE("when_all_with_variant with no senders", "[adaptors][when_all]") {
+  ex::sender auto snd = ex::when_all_with_variant();
+  wait_for_value(std::move(snd));
 }
 
 TEST_CASE("when_all completes when children complete", "[adaptors][when_all]") {
