@@ -82,7 +82,9 @@ namespace std::execution {
 
           template <__one_of<_Tag> _Tag2>
             friend auto tag_invoke(_Tag2, const __env& __self, auto&&...)
+              #if !_P2300_NVHPC
               noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<_Value>>)
+              #endif
               -> unwrap_reference_t<_Value> {
               return __self.__value_;
             }
@@ -187,7 +189,27 @@ namespace std::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
-  namespace __completion_signatures {
+  namespace __compl_sigs {
+    #if _P2300_NVHPC
+    template <class _Ty = __q<__types>, class... _Args>
+      __types<__minvoke<_Ty, _Args...>> __test(set_value_t(*)(_Args...), set_value_t = {}, _Ty = {});
+    template <class _Ty = __q<__types>, class _Error>
+      __types<__minvoke1<_Ty, _Error>> __test(set_error_t(*)(_Error), set_error_t = {}, _Ty = {});
+    template <class _Ty = __q<__types>>
+      __types<__minvoke<_Ty>> __test(set_stopped_t(*)(), set_stopped_t = {}, _Ty = {});
+    __types<> __test(__ignore, __ignore, __ignore = {});
+
+    template <class _Sig>
+      inline constexpr bool __is_compl_sig = false;
+    template <class... _Args>
+      inline constexpr bool __is_compl_sig<set_value_t(_Args...)> = true;
+    template <class _Error>
+      inline constexpr bool __is_compl_sig<set_error_t(_Error)> = true;
+    template <>
+      inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
+
+    #else
+
     template <same_as<set_value_t> _Tag, class _Ty = __q<__types>, class... _Args>
       __types<__minvoke<_Ty, _Args...>> __test(_Tag(*)(_Args...));
     template <same_as<set_error_t> _Tag, class _Ty = __q<__types>, class _Error>
@@ -196,28 +218,39 @@ namespace std::execution {
       __types<__minvoke<_Ty>> __test(_Tag(*)());
     template <class, class = void>
       __types<> __test(...);
+    #endif
 
     struct __none_such {};
     struct __dependent {};
-  } // namespace __completion_signatures
+  } // namespace __compl_sigs
 
   template <class _Env>
     using dependent_completion_signatures =
       __if_c<
         same_as<_Env, no_env>,
-        __completion_signatures::__dependent,
-        __completion_signatures::__none_such>;
+        __compl_sigs::__dependent,
+        __compl_sigs::__none_such>;
 
+#if _P2300_NVHPC
   template <class _Sig>
     concept __completion_signature =
-      __typename<decltype(__completion_signatures::__test((_Sig*) nullptr))>;
+      __compl_sigs::__is_compl_sig<_Sig>;
+
+  template <class _Sig, class _Tag, class _Ty = __q<__types>>
+    using __signal_args_t =
+      decltype(__compl_sigs::__test((_Sig*) nullptr, _Tag{}, _Ty{}));
+#else
+  template <class _Sig>
+    concept __completion_signature =
+      __typename<decltype(__compl_sigs::__test((_Sig*) nullptr))>;
+
+  template <class _Sig, class _Tag, class _Ty = __q<__types>>
+    using __signal_args_t =
+      decltype(__compl_sigs::__test<_Tag, _Ty>((_Sig*) nullptr));
+#endif
 
   template <__completion_signature... _Sigs>
     struct completion_signatures {
-      template <class _Sig, class _Tag, class _Ty = __q<__types>>
-        using __signal_args_t =
-          decltype(__completion_signatures::__test<_Tag, _Ty>((_Sig*) nullptr));
-
       template <class _Tag>
         using __count_of =
           integral_constant<
@@ -237,12 +270,26 @@ namespace std::execution {
             __signal_args_t<_Sigs, set_error_t, __q1<__id>>...>;
     };
 
+#if _P2300_NVHPC
+  template <class _Ty>
+    inline constexpr bool __is_completion_signatures_ = false;
+  template <class... _Sigs>
+    inline constexpr bool __is_completion_signatures_<completion_signatures<_Sigs...>> = true;
+  template <class _Ty>
+    concept __is_completion_signatures =
+      __is_completion_signatures_<_Ty>;
+#else
+  template <class _Ty>
+    concept __is_completion_signatures =
+      __is_instance_of<_Ty, completion_signatures>;
+#endif
+
   template <class...>
     struct __concat_completion_signatures {
       using type = dependent_completion_signatures<no_env>;
     };
 
-  template <__is_instance_of<completion_signatures>... _Completions>
+  template <__is_completion_signatures... _Completions>
     struct __concat_completion_signatures<_Completions...> {
       using type =
         __minvoke<
@@ -254,6 +301,18 @@ namespace std::execution {
     using __concat_completion_signatures_t =
       __t<__concat_completion_signatures<_Completions...>>;
 
+#if _P2300_NVHPC
+  template <class _Traits, class _Env>
+    inline constexpr bool __valid_completion_signatures_ =
+      __is_completion_signatures<_Traits>;
+  template <>
+    inline constexpr bool __valid_completion_signatures_<
+      dependent_completion_signatures<no_env>, no_env> = true;
+
+  template <class _Traits, class _Env>
+    concept __valid_completion_signatures =
+      __valid_completion_signatures_<_Traits, _Env>;
+#else
   template <class _Traits, class _Env>
     concept __valid_completion_signatures =
       __is_instance_of<_Traits, completion_signatures> ||
@@ -261,6 +320,7 @@ namespace std::execution {
         same_as<_Traits, dependent_completion_signatures<no_env>> &&
         same_as<_Env, no_env>
       );
+#endif
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -333,6 +393,7 @@ namespace std::execution {
             typename remove_cvref_t<_Sender>::completion_signatures;
           static_assert(__valid_completion_signatures<_Completions, _Env>);
           return _Completions{};
+#if !_STD_NO_COROUTINES_
         } else if constexpr (__awaitable<_Sender>) {
           using _Result = __await_result_t<_Sender>;
           if constexpr (is_void_v<_Result>) {
@@ -340,8 +401,9 @@ namespace std::execution {
           } else {
             return completion_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
           }
+#endif
         } else {
-          return __completion_signatures::__none_such{};
+          return __compl_sigs::__none_such{};
         }
       }
     };
@@ -477,14 +539,14 @@ namespace std::execution {
       __valid<__single_value_variant_sender_t, _Sender, _Env>;
 
   /////////////////////////////////////////////////////////////////////////////
-  namespace __completion_signatures {
+  namespace __compl_sigs {
     template <class... _Args>
       using __default_set_value = completion_signatures<set_value_t(_Args...)>;
 
     template <class _Err>
       using __default_set_error = completion_signatures<set_error_t(_Err)>;
 
-    template <__is_instance_of<completion_signatures>... _Sigs>
+    template <__is_completion_signatures... _Sigs>
       using __ensure_concat = __minvoke<__concat<__q<completion_signatures>>, _Sigs...>;
 
     template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, class _SetStopped>
@@ -501,7 +563,7 @@ namespace std::execution {
 
     template<class, class _Env, class, class, class, class>
       auto __make(long) -> dependent_completion_signatures<_Env>;
-  } // namespace __completion_signatures
+  } // namespace __compl_sigs
 
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC
@@ -574,14 +636,14 @@ namespace std::execution {
     __valid_completion_signatures<_Env> _Sigs =
       completion_signatures<>,
     template <class...> class _SetValue =
-      __completion_signatures::__default_set_value,
+      __compl_sigs::__default_set_value,
     template <class> class _SetError =
-      __completion_signatures::__default_set_error,
+      __compl_sigs::__default_set_error,
     __valid_completion_signatures<_Env> _SetStopped =
       completion_signatures<set_stopped_t()>>
       requires sender<_Sender, _Env>
   using make_completion_signatures =
-    decltype(__completion_signatures::
+    decltype(__compl_sigs::
       __make<_Sender, _Env, _Sigs, __q<_SetValue>, __q1<_SetError>, _SetStopped>(0));
 
   // Needed fairly often
@@ -775,6 +837,7 @@ namespace std::execution {
         {start(o)} noexcept;
       };
 
+#if !_STD_NO_COROUTINES_
   namespace __as_awaitable {
     struct as_awaitable_t;
   }
@@ -948,6 +1011,7 @@ namespace std::execution {
   } // namespace __connect_awaitable_
   using __connect_awaitable_::__connect_awaitable_t;
   inline constexpr __connect_awaitable_t __connect_awaitable{};
+#endif
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
@@ -1011,6 +1075,7 @@ namespace std::execution {
           "satisfies the operation_state concept");
         return tag_invoke(connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
       }
+#if !_STD_NO_COROUTINES_
       template <class _Awaitable, class _Receiver>
         requires (!__connectable_sender_with<_Awaitable, _Receiver>) &&
           __callable<__connect_awaitable_t, _Awaitable, _Receiver>
@@ -1018,11 +1083,14 @@ namespace std::execution {
         -> __connect_awaitable_::__operation_t<_Receiver> {
         return __connect_awaitable((_Awaitable&&) __await, (_Receiver&&) __rcvr);
       }
+#endif
       // This overload is purely for the purposes of debugging why a
       // sender will not connect. Use the __debug_sender function below.
       template <class _Sender, class _Receiver>
         requires (!__connectable_sender_with<_Sender, _Receiver>) &&
+#if !_STD_NO_COROUTINES_
            (!__callable<__connect_awaitable_t, _Sender, _Receiver>) &&
+#endif
            tag_invocable<__is_debug_env_t, env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         -> __debug_op_state {
@@ -1195,6 +1263,7 @@ namespace std::execution {
       __has_completion_scheduler<_Sender, _CPO> &&
       tag_invocable<_Fun, __completion_scheduler_for<_Sender, _CPO>, _Sender, _As...>;
 
+#if !_STD_NO_COROUTINES_
   /////////////////////////////////////////////////////////////////////////////
   // execution::as_awaitable [execution.coro_utils.as_awaitable]
   namespace __as_awaitable {
@@ -1409,6 +1478,7 @@ namespace std::execution {
     };
   }
   using __with_awaitable_senders::with_awaitable_senders;
+#endif
 
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC: __submit
@@ -2029,7 +2099,7 @@ namespace std::execution {
                 invoke_result_t<_Fun, _Args...>>>;
 
         template <class _Env>
-          using __completion_signatures =
+          using __compl_sigs =
             make_completion_signatures<
               _Sender, _Env, __with_exception_ptr, __set_value>;
 
@@ -2045,7 +2115,7 @@ namespace std::execution {
 
         template <class _Env>
         friend auto tag_invoke(get_completion_signatures_t, const __sender&, _Env) ->
-          __completion_signatures<_Env>;
+          __compl_sigs<_Env>;
 
        public:
         explicit __sender(_Sender __sndr, _Fun __fun)
@@ -2478,7 +2548,12 @@ namespace std::execution {
 
       template <class _Fun>
         struct __applyable_fn {
-          __ operator()(auto&&...) const;
+          #if _P2300_NVHPC
+          template <class... _As>
+            __ operator()(_As&&...) const;
+          #else
+            __ operator()(auto&&...) const;
+          #endif
           template <class... _As>
               requires invocable<_Fun, _As...>
             invoke_result_t<_Fun, _As...> operator()(_As&&...) const {
@@ -2558,7 +2633,7 @@ namespace std::execution {
         };
 
       template <class _Env, class _Fun, class _Set, class _Sig>
-        struct __tfx_signal;
+        struct __tfx_signal {};
 
       template <class _Env, class _Fun, class _Set, class _Ret, class... _Args>
           requires (!same_as<_Set, _Ret>)
@@ -2591,9 +2666,20 @@ namespace std::execution {
             using __which_tuple_t =
               __call_result_t<__which_tuple<_Sender, env_of_t<_Receiver>, _Let>, _As...>;
 
+          #if _P2300_NVHPC
+          template <class... _As>
+            struct __op_state_for {
+              using type =
+                connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
+            };
+          template <class... _As>
+            using __op_state_for_t =
+              typename __op_state_for<_As...>::type;
+          #else
           template <class... _As>
             using __op_state_for_t =
               connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
+          #endif
 
           template <__one_of<_Let> _Tag, class... _As>
               requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
@@ -2671,12 +2757,17 @@ namespace std::execution {
                 _Set>;
 
           template <class _Env, class _Sig>
-            using __tfx_signal_t = __t<__tfx_signal<_Env, _Fun, _Set, _Sig>>;
+            using __tfx_signal_t =
+              typename __impl::__tfx_signal<_Env, _Fun, _Set, _Sig>::type;
 
           template <class _Env>
             using __tfx_signal = __mbind_front_q1<__tfx_signal_t, _Env>;
 
           template <class _Self, class _Env>
+            #if _P2300_NVHPC
+              requires __is_completion_signatures<
+                completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>>
+            #endif
             using __completions =
               __mapply<
                 __transform<
@@ -3564,7 +3655,7 @@ namespace std::execution {
           using __value_t = completion_signatures<>;
 
         template <class _Env>
-          using __completion_signatures =
+          using __compl_sigs =
             make_completion_signatures<
               _Sender,
               _Env,
@@ -3595,7 +3686,7 @@ namespace std::execution {
 
         template <class _Env>
           friend auto tag_invoke(get_completion_signatures_t, __sender&&, _Env) ->
-            __completion_signatures<_Env>;
+            __compl_sigs<_Env>;
 
        public:
         explicit __sender(__decays_to<_Sender> auto&& __sndr)
@@ -3774,19 +3865,27 @@ namespace std::execution {
               using _CvrefEnv = __member_t<_CvrefReceiverId, _Env>;
               using _Traits = __completion_sigs<_CvrefEnv>;
 
-              template <class _Sender, size_t _Index>
+              template <class _Sender, class _Index>
                 using __child_op_state =
                   connect_result_t<
                     __member_t<_WhenAll, _Sender>,
-                    __receiver<_CvrefReceiverId, _Index>>;
+                    __receiver<_CvrefReceiverId, __v<_Index>>>;
 
               using _Indices = index_sequence_for<_SenderIds...>;
+
+#if _P2300_NVHPC
+              using __child_op_states_tuple_t =
+                __minvoke2<
+                  __mzip_with2<__q2<__child_op_state>, __q<tuple>>,
+                  __types<__t<_SenderIds>...>,
+                  __mindex_sequence_for<_SenderIds...>>;
+#endif
 
               template <size_t... _Is>
                 static auto __connect_children(
                     __operation* __self, _WhenAll&& __when_all, index_sequence<_Is...>)
-                    -> tuple<__child_op_state<__t<_SenderIds>, _Is>...> {
-                  return tuple<__child_op_state<__t<_SenderIds>, _Is>...>{
+                    -> tuple<__child_op_state<__t<_SenderIds>, __index<_Is>>...> {
+                  return tuple<__child_op_state<__t<_SenderIds>, __index<_Is>>...>{
                     __conv{[&__when_all, __self]() {
                       return execution::connect(
                           std::get<_Is>(((_WhenAll&&) __when_all).__sndrs_),
@@ -3795,8 +3894,10 @@ namespace std::execution {
                   };
                 }
 
+#if !_P2300_NVHPC
               using __child_op_states_tuple_t =
                   decltype(__connect_children(nullptr, __declval<_WhenAll>(), _Indices{}));
+#endif
 
               void __arrive() noexcept {
                 if (0 == --__count_) {
@@ -3850,7 +3951,11 @@ namespace std::execution {
               }
 
               __operation(_WhenAll&& when_all, _Receiver __rcvr)
-                : __child_states_{__connect_children(this, (_WhenAll&&) when_all, _Indices{})}
+                : __child_states_{
+                    __connect_children(
+                      this,
+                      (_WhenAll&&) when_all,
+                      index_sequence_for<_SenderIds...>{})}
                 , __recvr_((_Receiver&&) __rcvr)
               {}
 
@@ -4101,15 +4206,28 @@ namespace std::this_thread {
       template <class _SenderId>
         struct __state;
 
+      #if _P2300_NVHPC
+      #define _NVCXX_CAPTURE_PACK(_Xs) , class _NVCxxList = __types<_Xs...>
+      #define _NVCXX_EXPAND_PACK(_Xs, __xs, ...) \
+        [&]<class... _Xs>(__types<_Xs...>*, auto&&... __xs) { \
+          __VA_ARGS__ \
+        }((_NVCxxList*) nullptr, (_Xs&&) __xs...);
+      #else
+      #define _NVCXX_CAPTURE_PACK(_Xs)
+      #define _NVCXX_EXPAND_PACK(_Xs, __xs, ...) __VA_ARGS__
+      #endif
+
       template <class _SenderId>
         struct __receiver {
           using _Sender = __t<_SenderId>;
           __state<_SenderId>* __state_;
           execution::run_loop* __loop_;
-          template <class _Sender2 = _Sender, class... _As>
+          template <class _Sender2 = _Sender, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires constructible_from<__sync_wait_result_t<_Sender2>, _As...>
           friend void tag_invoke(execution::set_value_t, __receiver&& __rcvr, _As&&... __as) noexcept try {
-            __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
+            _NVCXX_EXPAND_PACK(_As, __as,
+              __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
+            )
             __rcvr.__loop_->finish();
           } catch(...) {
             execution::set_error((__receiver&&) __rcvr, current_exception());

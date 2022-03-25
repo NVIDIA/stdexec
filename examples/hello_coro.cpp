@@ -22,6 +22,7 @@ int main() { return 0; }
 // Pull in the reference implementation of P2300:
 #include <execution.hpp>
 
+#if !_STD_NO_COROUTINES_
 #include "./task.hpp"
 
 using namespace std::execution;
@@ -50,4 +51,5 @@ int main() try {
 } catch(std::exception & e) {
   std::cout << e.what() << '\n';
 }
+#endif
 #endif

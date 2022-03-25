@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#if defined(__GNUC__) && !defined(__clang__)
+#if _P2300_GCC
 #else
 
 #include <catch2/catch.hpp>

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined(__GNUC__) && !defined(__clang__)
+#if _P2300_GCC
 int main() { return 0; }
 #else
 

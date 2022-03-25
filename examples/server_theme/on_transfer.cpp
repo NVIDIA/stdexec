@@ -32,7 +32,7 @@
  * - show how one can change the execution context
  * - exemplify the use of `on` and `transfer` algorithms
  */
-#if defined(__GNUC__) && !defined(__clang__)
+#if _P2300_GCC
 int main() { return 0; }
 #else
 

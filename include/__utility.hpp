@@ -252,6 +252,14 @@ namespace std {
         using __f = __t<__f_<_Init, _Args...>>;
     };
 
+  #if _P2300_NVHPC
+  template <class _Ty>
+    concept __has_type =
+      requires {
+        typename _Ty::type;
+      };
+  #endif
+
   template <class _Continuation = __q<__types>>
     struct __concat {
       template <class...>
@@ -286,6 +294,9 @@ namespace std {
         struct __f_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
           : __f_<__types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
       template <class... _Args>
+        #if _P2300_NVHPC
+          requires __has_type<__f_<_Args...>>
+        #endif
         using __f = __t<__f_<_Args...>>;
     };
 
@@ -299,8 +310,13 @@ namespace std {
       template <class, class _False>
         using __f = _False;
     };
+  #if _P2300_NVHPC
+  template <class _Pred, class _True, class _False>
+    using __if = __minvoke2<__if_<_Pred::value>, _True, _False>;
+  #else
   template <class _Pred, class _True, class _False>
     using __if = __minvoke2<__if_<__v<_Pred>>, _True, _False>;
+  #endif
   template <bool _Pred, class _True, class _False>
     using __if_c = __minvoke2<__if_<_Pred>, _True, _False>;
 
@@ -453,6 +469,9 @@ namespace std {
   // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369
   struct __qcall_result {
     template <class _Fun, class... _As>
+      #if _P2300_NVHPC
+        requires __callable<_Fun, _As...>
+      #endif
       using __f = __call_result_t<_Fun, _As...>;
   };
   template <bool _Enable, class _Fun, class... _As>

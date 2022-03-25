@@ -17,14 +17,17 @@
 
 #include <concepts.hpp>
 
-#if __has_include(<coroutine>)
+#if __cpp_impl_coroutine && __has_include(<coroutine>)
 #include <coroutine>
 namespace __coro = std;
-#else
+#elif __cpp_coroutines && __has_include(<experimental/coroutine>)
 #include <experimental/coroutine>
 namespace __coro = std::experimental;
+#else
+#define _STD_NO_COROUTINES_ 1
 #endif
 
+#if !_STD_NO_COROUTINES_
 namespace std {
   // Defined some concepts and utilities for working with awaitables
   template <class _Promise, class _Awaiter>
@@ -83,3 +86,4 @@ namespace std {
     using __await_result_t = decltype(std::__as_lvalue(
         std::__get_awaiter(declval<_Awaitable>(), (_Promise*) nullptr)).await_resume());
 }
+#endif
