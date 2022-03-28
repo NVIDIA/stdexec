@@ -2,14 +2,14 @@
 name: CI
 on: push
 jobs:
-#  build-gcc-11:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@master
-#      - uses: docker://lucteo/action-cxx-toolkit.gcc11:latest
-#        with:
-#          cc: gcc-11
-#          checks: build test
+  build-gcc-11:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: docker://lucteo/action-cxx-toolkit.gcc11:latest
+        with:
+          cc: gcc-11
+          checks: build test
   build-clang-12:
     runs-on: ubuntu-latest
     steps:

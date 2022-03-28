@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__GNUC__) && !defined(__clang__)
+#else
+
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -77,3 +80,5 @@ TEST_CASE("start_detached works when changing threads", "[consumers][start_detac
   // the work should be executed
   REQUIRE(called);
 }
+
+#endif

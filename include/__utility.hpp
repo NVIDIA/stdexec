@@ -41,21 +41,31 @@ namespace std {
   template <bool _B>
     using __bool = bool_constant<_B>;
 
+  template <size_t _N>
+    using __index = integral_constant<size_t, _N>;
+
   // Some utilities for manipulating lists of types at compile time
   template <class...>
-    struct __types;
+  struct __types
+#if defined(__GNUC__) && !defined(__clang__)
+  {}  // BUGBUG: GCC does not like this "incomplete type"
+#endif
+  ;
 
   template <class _T>
     using __id = _T;
 
   template <class _T>
-    inline constexpr bool __v = _T::value;
+    inline constexpr auto __v = _T::value;
 
   template <class _T, class _U>
     inline constexpr bool __v<is_same<_T, _U>> = false;
 
   template <class _T>
     inline constexpr bool __v<is_same<_T, _T>> = true;
+
+  template <class _T, _T _I>
+    inline constexpr _T __v<integral_constant<_T, _I>> = _I;
 
   template <template <class...> class _Fn>
     struct __q {
@@ -247,7 +257,8 @@ namespace std {
       template <class...>
         struct __f_ {};
       template <class... _As>
-          requires (sizeof...(_As) == 0) && __minvocable<_Continuation>
+          requires (sizeof...(_As) == 0) &&
+            __minvocable<_Continuation, _As...>
         struct __f_<_As...> {
           using type = __minvoke<_Continuation>;
         };
@@ -454,7 +465,8 @@ namespace std {
       requires is_nothrow_move_constructible_v<_Fn>
     struct __conv {
       _Fn __fn_;
-      operator __call_result_t<_Fn> () && {
+      using type = __call_result_t<_Fn>;
+      operator type() && {
         return ((_Fn&&) __fn_)();
       }
     };
@@ -463,4 +475,30 @@ namespace std {
 
   template <class _T>
     using __cref_t = const remove_reference_t<_T>&;
+
+  template <class _Fn, class _Continuation = __q<__types>>
+    struct __mzip_with2 {
+      template <class, class>
+        struct __f_;
+      template <template <class...> class _C, class... _Cs,
+                template <class...> class _D, class... _Ds>
+          requires requires {
+            typename __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+          }
+        struct __f_<_C<_Cs...>, _D<_Ds...>> {
+          using type = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+        };
+      template <class _C, class _D>
+        using __f = __t<__f_<_C, _D>>;
+    };
+
+  template <size_t... _Indices>
+    auto __mconvert_indices(index_sequence<_Indices...>)
+      -> __types<__index<_Indices>...>;
+  template <size_t _N>
+    using __mmake_index_sequence =
+      decltype(__mconvert_indices(make_index_sequence<_N>{}));
+  template <class... _Ts>
+    using __mindex_sequence_for =
+      __mmake_index_sequence<sizeof...(_Ts)>;
 }

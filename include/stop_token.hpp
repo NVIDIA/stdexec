@@ -377,7 +377,10 @@ namespace std {
       requires (const _Token& __token) {
         { __token.stop_requested() } noexcept -> __boolean_testable_;
         { __token.stop_possible() } noexcept -> __boolean_testable_;
+        // workaround ICE in appleclang 13.1
+#if !defined(__clang__)
         typename __detail::__check_type_alias_exists<_Token::template callback_type>;
+#endif
       };
 
   template <class _Token, typename _Callback, typename _Initializer = _Callback>
