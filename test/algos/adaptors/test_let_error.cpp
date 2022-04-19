@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__GNUC__) && !defined(__clang__)
+#else
+
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -56,18 +59,19 @@ TEST_CASE("let_error can be piped", "[adaptors][let_error]") {
   (void)snd;
 }
 
-TEST_CASE("TODO: let_error returning void can we waited on (error annihilation)",
-    "[adaptors][let_error]") {
+TEST_CASE(
+    "let_error returning void can be waited on (error annihilation)", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just_error(std::exception_ptr{}) |
                         ex::let_error([](std::exception_ptr) { return ex::just(); });
-  // TODO: check why this doesn't work
-  // std::this_thread::sync_wait(std::move(snd));
-  (void)snd;
+  std::this_thread::sync_wait(std::move(snd));
 }
 
-TEST_CASE("TODO: let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
-  ex::sender auto snd = ex::just()                                                      //
-                        | ex::then([] { throw std::logic_error{"error description"}; }) //
+TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
+  ex::sender auto snd = ex::just() //
+                        | ex::then([] {
+                            throw std::logic_error{"error description"};
+                            return std::string{"ok"};
+                          }) //
                         | ex::let_error([](std::exception_ptr eptr) {
                             try {
                               std::rethrow_exception(eptr);
@@ -75,8 +79,7 @@ TEST_CASE("TODO: let_error can be used to produce values (error to value)", "[ad
                               return ex::just(std::string{e.what()});
                             }
                           });
-  // TODO: check why this doesn't work
-  // wait_for_value(std::move(snd), std::string{"error description"});
+  wait_for_value(std::move(snd), std::string{"error description"});
   (void)snd;
 }
 
@@ -159,92 +162,111 @@ struct my_type {
   }
 };
 
-TEST_CASE("TODO: let_error of just_error with custom type", "[adaptors][let_error]") {
-  // TODO: check why this doesn't work
-  // bool param_destructed{false};
-  // ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
-  //                       | ex::let_error([&](my_type obj) { return ex::just(13); });
-  // wait_for_value(std::move(snd), 13);
+TEST_CASE("let_error of just_error with custom type", "[adaptors][let_error]") {
+  bool param_destructed{false};
+  ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
+                        | ex::let_error([&](const my_type& obj) { return ex::just(13); });
+
+  {
+    auto op = ex::connect(std::move(snd), expect_value_receiver<int>{13});
+    CHECK_FALSE(param_destructed);
+    ex::start(op);
+    CHECK_FALSE(param_destructed);
+  }
+  // the parameter is destructed once the operation_state object is destructed
+  CHECK(param_destructed);
 }
 
-TEST_CASE("TODO: let_error exposes a parameter that is destructed when the main operation is destructed ",
+TEST_CASE("let_error exposes a parameter that is destructed when the main operation is destructed ",
     "[adaptors][let_error]") {
+  bool param_destructed{false};
+  bool fun_called{false};
+  impulse_scheduler sched;
 
-  // TODO: make this work after just_error() | let_error() works
+  ex::sender auto s1 = ex::just_error(my_type(&param_destructed));
+  ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
+                        | ex::let_error([&](const my_type& obj) {
+                            CHECK_FALSE(param_destructed);
+                            fun_called = true;
+                            return ex::transfer_just(sched, 13);
+                          });
+  int res{0};
+  {
+    auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>{&res});
+    ex::start(op);
+    // The function is called immediately after starting the operation
+    CHECK(fun_called);
+    // As the returned sender didn't complete yet, the parameter must still be alive
+    CHECK_FALSE(param_destructed);
+    CHECK(res == 0);
 
-  // bool param_destructed{false};
-  // bool fun_called{false};
-  // impulse_scheduler sched;
-  //
-  // ex::sender auto s1 = ex::just_error(my_type(&param_destructed));
-  // ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
-  //                       | ex::let_error([&](my_type obj) {
-  //                           CHECK_FALSE(param_destructed);
-  //                           fun_called = true;
-  //                           return ex::transfer_just(sched, 13);
-  //                         });
-  // int res{0};
-  // auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>{&res});
-  // ex::start(op);
-  // // The function is called immediately after starting the operation
-  // CHECK(fun_called);
-  // // As the returned sender didn't complete yet, the parameter must still be alive
-  // CHECK_FALSE(param_destructed);
-  // CHECK(res == 0);
-  //
-  // // Now, tell the scheduler to execute the final operation
-  // sched.start_next();
-  //
-  // // At this point everything can be destructed
-  // CHECK(param_destructed);
-  // CHECK(res == 13);
+    // Now, tell the scheduler to execute the final operation
+    sched.start_next();
+
+    // As the main operation is still valid, the parameter is not yet destructed
+    CHECK_FALSE(param_destructed);
+  }
+
+  // At this point everything can be destructed
+  CHECK(param_destructed);
+  CHECK(res == 13);
 }
 
-TEST_CASE("TODO: let_error works when changing threads", "[adaptors][let_error]") {
-  // TODO: this test produces a strange "undefined reference" linker error on CI
-  // example::static_thread_pool pool{2};
-  // bool called{false};
-  // {
-  //   // lunch some work on the thread pool
-  //   ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just_error(7))            //
-  //                         | ex::let_error([](int x) { return fallible_just{x * 2 - 1); }}
-  //                         | ex::then([&](int x) {
-  //                             CHECK(x == 13);
-  //                             called = true;
-  //                           });
-  //   ex::start_detached(std::move(snd));
-  // }
-  // // wait for the work to be executed, with timeout
-  // // perform a poor-man's sync
-  // // NOTE: it's a shame that the `join` method in static_thread_pool is not public
-  // for (int i = 0; i < 1000 && !called; i++)
-  //   std::this_thread::sleep_for(1ms);
-  // // the work should be executed
-  // REQUIRE(called);
+struct int_err_transform {
+  using my_res_t = decltype(fallible_just{0});
+
+  my_res_t operator()(std::exception_ptr ep) const {
+    std::rethrow_exception(ep);
+    return {};
+  }
+  my_res_t operator()(int x) const { return fallible_just{x * 2 - 1}; }
+};
+
+TEST_CASE("let_error works when changing threads", "[adaptors][let_error]") {
+  example::static_thread_pool pool{2};
+  bool called{false};
+  {
+    // lunch some work on the thread pool
+    ex::sender auto snd = ex::on(pool.get_scheduler(),
+                              ex::just_error(7))               //
+                          | ex::let_error(int_err_transform{}) //
+                          | ex::then([&](int x) {
+                              CHECK(x == 13);
+                              called = true;
+                            });
+    ex::start_detached(std::move(snd));
+  }
+  // wait for the work to be executed, with timeout
+  // perform a poor-man's sync
+  // NOTE: it's a shame that the `join` method in static_thread_pool is not public
+  for (int i = 0; i < 1000 && !called; i++)
+    std::this_thread::sleep_for(1ms);
+  // the work should be executed
+  REQUIRE(called);
 }
 
 TEST_CASE("let_error has the values_type from the input sender if returning error",
     "[adaptors][let_error]") {
   check_val_types<type_array<type_array<int>>>(
-      fallible_just{7}
+      fallible_just{7} //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
   check_val_types<type_array<type_array<double>>>(
-      fallible_just{3.14}
+      fallible_just{3.14} //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
   check_val_types<type_array<type_array<std::string>>>(
-      fallible_just{std::string{"hello"}}
+      fallible_just{std::string{"hello"}} //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
 }
 TEST_CASE("let_error adds to values_type the value types of the returned sender",
     "[adaptors][let_error]") {
   check_val_types<type_array<type_array<int>>>(
-      fallible_just{1}
+      fallible_just{1} //
       | ex::let_error([](std::exception_ptr) { return ex::just(11); }));
   check_val_types<type_array<type_array<int>, type_array<double>>>(
-      fallible_just{1}
+      fallible_just{1} //
       | ex::let_error([](std::exception_ptr) { return ex::just(3.14); }));
   check_val_types<type_array<type_array<int>, type_array<std::string>>>(
-      fallible_just{1}
+      fallible_just{1} //
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"hello"}); }));
 }
 TEST_CASE("let_error overrides error_types from input sender (and adds std::exception_ptr)",
@@ -262,7 +284,9 @@ TEST_CASE("let_error overrides error_types from input sender (and adds std::exce
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
   check_err_types<type_array<std::exception_ptr, std::string>>( //
       ex::transfer_just(sched3)                                 //
-      | ex::let_error([](std::__one_of<int, std::exception_ptr> auto) { return ex::just_error(std::string{"err"}); }));
+      | ex::let_error([](std::__one_of<int, std::exception_ptr> auto) {
+          return ex::just_error(std::string{"err"});
+        }));
 
   // Returning ex::just
   check_err_types<type_array<std::exception_ptr>>( //
@@ -296,12 +320,11 @@ auto tag_invoke(ex::let_error_t, inline_scheduler sched, my_string_sender_t, Fun
   return ex::just(std::string{"what error?"});
 }
 
-TEST_CASE("TODO: let_error can be customized", "[adaptors][let_error]") {
+TEST_CASE("let_error can be customized", "[adaptors][let_error]") {
   // The customization will return a different value
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
-  // wait_for_value(std::move(snd), std::string{"what error?"});
-  // TODO: check why this doesn't work
-  // invalid check:
-  wait_for_value(std::move(snd), std::string{"hello"});
+  wait_for_value(std::move(snd), std::string{"what error?"});
 }
+
+#endif

@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#if defined(__GNUC__) && !defined(__clang__)
+#else
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
@@ -114,6 +116,18 @@ TEST_CASE("then function is not called when cancelled", "[adaptors][then]") {
   ex::start(op);
   CHECK_FALSE(called);
 }
+TEST_CASE("then advertises completion schedulers", "[adaptors][then]") {
+  inline_scheduler sched{};
+
+  SECTION("for value channel") {
+    ex::sender auto snd = ex::schedule(sched) | ex::then([]{});
+    REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(snd) == sched);
+  }
+  SECTION("for stop channel") {
+    ex::sender auto snd = ex::just_stopped() | ex::transfer(sched) | ex::then([]{});
+    REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(snd) == sched);
+  }
+}
 
 TEST_CASE("then has the values_type corresponding to the given values", "[adaptors][then]") {
   check_val_types<type_array<type_array<int>>>(ex::just() | ex::then([] { return 7; }));
@@ -159,3 +173,5 @@ TEST_CASE("then can be customized", "[adaptors][then]") {
              | ex::then([](std::string x) { return x + ", world"; });
   wait_for_value(std::move(snd), std::string{"hallo"});
 }
+
+#endif

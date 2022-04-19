@@ -46,6 +46,11 @@ namespace example {
           -> __op<std::__x<std::remove_cvref_t<R>>> {
           return {(R&&) rec};
         }
+
+      friend inline_scheduler
+      tag_invoke(std::execution::get_completion_scheduler_t<std::execution::set_value_t>, __sender) noexcept {
+        return {};
+      }
     };
 
     friend __sender tag_invoke(std::execution::schedule_t, const inline_scheduler&) noexcept {

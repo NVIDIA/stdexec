@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__GNUC__) && !defined(__clang__)
+#else
+
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -38,28 +41,24 @@ TEST_CASE("transfer_when_all with environment returns a sender", "[adaptors][tra
   static_assert(ex::sender<decltype(snd), empty_env>);
   (void)snd;
 }
-TEST_CASE("TODO: transfer_when_all simple example", "[adaptors][transfer_when_all]") {
+TEST_CASE("transfer_when_all simple example", "[adaptors][transfer_when_all]") {
   auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
-  // TODO: check why transfer_when_all doesn't work
-  // auto op = ex::connect(std::move(snd1), expect_value_receiver<double>{3.1415});
-  // ex::start(op);
-  (void)snd1;
+  auto op = ex::connect(std::move(snd1), expect_value_receiver<double>{3.1415});
+  ex::start(op);
 }
 
-TEST_CASE("TODO: transfer_when_all transfers the result when the scheduler dictates",
+TEST_CASE("transfer_when_all transfers the result when the scheduler dictates",
     "[adaptors][transfer_when_all]") {
   impulse_scheduler sched;
   auto snd = ex::transfer_when_all(sched, ex::just(3), ex::just(0.1415));
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
   double res{0.0};
-  // TODO: check why transfer_when_all doesn't work
-  // auto op = ex::connect(std::move(snd1), expect_value_receiver_ex<double>{&res});
-  // ex::start(op);
+  auto op = ex::connect(std::move(snd1), expect_value_receiver_ex<double>{&res});
+  ex::start(op);
   CHECK(res == 0.0);
   sched.start_next();
-  // CHECK(res == 3.1415);
-  (void)snd1;
+  CHECK(res == 3.1415);
 }
 
 TEST_CASE("transfer_when_all_with_variant returns a sender", "[adaptors][transfer_when_all]") {
@@ -67,22 +66,20 @@ TEST_CASE("transfer_when_all_with_variant returns a sender", "[adaptors][transfe
   static_assert(ex::sender<decltype(snd)>);
   (void)snd;
 }
-TEST_CASE(
-    "transfer_when_all_with_variant with environment returns a sender", "[adaptors][transfer_when_all]") {
+TEST_CASE("transfer_when_all_with_variant with environment returns a sender",
+    "[adaptors][transfer_when_all]") {
   auto snd = ex::transfer_when_all_with_variant(inline_scheduler{}, ex::just(3), ex::just(0.1415));
   static_assert(ex::sender<decltype(snd), empty_env>);
   (void)snd;
 }
-TEST_CASE("TODO: transfer_when_all_with_variant basic example", "[adaptors][transfer_when_all]") {
+TEST_CASE("transfer_when_all_with_variant basic example", "[adaptors][transfer_when_all]") {
   ex::sender auto snd = ex::transfer_when_all_with_variant( //
       inline_scheduler{},                                   //
       ex::just(2),                                          //
       ex::just(3.14)                                        //
   );
-  // TODO: transfer_when_all_with_variant doesn't work
-  // wait_for_value(
-  //     std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
-  (void)snd;
+  wait_for_value(
+      std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
 }
 
 using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
@@ -117,3 +114,5 @@ TEST_CASE("transfer_when_all_with_variant can be customized", "[adaptors][transf
   );
   wait_for_value(std::move(snd), std::string{"first program"});
 }
+
+#endif

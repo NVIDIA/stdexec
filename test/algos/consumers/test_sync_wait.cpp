@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__GNUC__) && !defined(__clang__)
+#else
+
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -71,12 +74,32 @@ TEST_CASE("sync_wait rethrows received exception", "[consumers][sync_wait]") {
   }
 }
 
-TEST_CASE("TODO: sync_wait handling non-exception errors", "[consumers][sync_wait]") {
-  // TODO: the specification isn't clear what to do with non-exception errors
-  error_scheduler<std::string> sched{std::string{"err"}};
-  ex::sender auto snd = ex::transfer_just(sched, 19);
-  static_assert(std::invocable<decltype(sync_wait), decltype(snd)>);
-  // sync_wait(std::move(snd)); // doesn't work
+TEST_CASE("sync_wait handling error_code errors", "[consumers][sync_wait]") {
+  try {
+    error_scheduler<std::error_code> sched{std::make_error_code(std::errc::argument_out_of_domain)};
+    ex::sender auto snd = ex::transfer_just(sched, 19);
+    static_assert(std::invocable<decltype(sync_wait), decltype(snd)>);
+    sync_wait(std::move(snd)); // doesn't work
+    FAIL("expecting exception to be thrown");
+  } catch (const std::system_error& e) {
+    CHECK(e.code() == std::errc::argument_out_of_domain);
+  } catch (...) {
+    FAIL("expecting std::system_error exception to be thrown");
+  }
+}
+
+TEST_CASE("sync_wait handling non-exception errors", "[consumers][sync_wait]") {
+  try {
+    error_scheduler<std::string> sched{std::string{"err"}};
+    ex::sender auto snd = ex::transfer_just(sched, 19);
+    static_assert(std::invocable<decltype(sync_wait), decltype(snd)>);
+    sync_wait(std::move(snd)); // doesn't work
+    FAIL("expecting exception to be thrown");
+  } catch (const std::string& e) {
+    CHECK(e == "err");
+  } catch (...) {
+    FAIL("expecting std::string exception to be thrown");
+  }
 }
 
 TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_wait]") {
@@ -93,7 +116,7 @@ TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wa
   static_assert(!std::invocable<decltype(sync_wait), decltype(snd)>);
 }
 
-TEST_CASE("TODO: sync_wait works if signaled from a different thread", "[consumers][sync_wait]") {
+TEST_CASE("sync_wait works if signaled from a different thread", "[consumers][sync_wait]") {
   bool thread_started{false};
   bool thread_stopped{false};
   impulse_scheduler sched;
@@ -103,9 +126,7 @@ TEST_CASE("TODO: sync_wait works if signaled from a different thread", "[consume
     thread_started = true;
 
     // Wait for a result that is triggered by the impulse scheduler
-    // TODO: find out why this hangs:
-    //optional<tuple<int>> res = sync_wait(ex::transfer_just(sched, 49));
-    optional<tuple<int>> res = sync_wait(ex::on(sched, ex::just(49)));
+    optional<tuple<int>> res = sync_wait(ex::transfer_just(sched, 49));
     CHECK(res.has_value());
     CHECK(std::get<0>(res.value()) == 49);
 
@@ -143,7 +164,6 @@ TEST_CASE(
 }
 
 using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-using just_string_sender_t = decltype(ex::just(std::string{}));
 
 optional<tuple<std::string>> tag_invoke(
     decltype(sync_wait), inline_scheduler sched, my_string_sender_t&& s) {
@@ -156,14 +176,24 @@ optional<tuple<std::string>> tag_invoke(
   return {res};
 }
 
-optional<tuple<std::string>> tag_invoke(decltype(sync_wait), just_string_sender_t s) {
-  std::string res;
-  auto op = ex::connect(std::move(s), expect_value_receiver_ex{&res});
-  ex::start(op);
-  CHECK(res == "hello");
-  // change the string
-  res = "ciao";
-  return {res};
+struct my_other_string_sender_t {
+  std::string str_;
+
+  using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just(std::string{}))>;
+
+  template <class Recv>
+  friend auto tag_invoke(ex::connect_t, my_other_string_sender_t&& self, Recv&& recv) {
+    return ex::connect(ex::just(std::move(self.str_)), std::forward<Recv>(recv));
+  }
+  template <class Recv>
+  friend auto tag_invoke(ex::connect_t, const my_other_string_sender_t& self, Recv&& recv) {
+    return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
+  }
+};
+
+optional<tuple<std::string>> tag_invoke(decltype(sync_wait), my_other_string_sender_t s) {
+  CHECK(s.str_ == "hello");
+  return {std::string{"ciao"}};
 }
 
 TEST_CASE("sync_wait can be customized with scheduler", "[consumers][sync_wait]") {
@@ -174,13 +204,12 @@ TEST_CASE("sync_wait can be customized with scheduler", "[consumers][sync_wait]"
   CHECK(std::get<0>(res.value()) == "hallo");
 }
 
-TEST_CASE("TODO: sync_wait can be customized without scheduler", "[consumers][sync_wait]") {
+TEST_CASE("sync_wait can be customized without scheduler", "[consumers][sync_wait]") {
   // The customization will return a different value
-  auto snd = ex::just(std::string{"hello"});
+  my_other_string_sender_t snd{std::string{"hello"}};
   optional<tuple<std::string>> res = sync_wait(std::move(snd));
   CHECK(res.has_value());
-  // TODO: customization doesn't work
-  // CHECK(std::get<0>(res.value()) == "ciao");
-  // invalid check:
-  CHECK(std::get<0>(res.value()) == "hello");
+  CHECK(std::get<0>(res.value()) == "ciao");
 }
+
+#endif    

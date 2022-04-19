@@ -53,12 +53,9 @@ TEST_CASE("just_error cannot call set_stopped", "[factories][just_error]") {
   check_sends_stopped<false>(ex::just_error(1));
 }
 
-TEST_CASE("TODO: just_error removes cv qualifier for the given type", "[factories][just_error]") {
+TEST_CASE("just_error removes cv qualifier for the given type", "[factories][just_error]") {
   std::string str{"hello"};
   const std::string& crefstr = str;
   auto snd = ex::just_error(crefstr);
-  // check_err_types<type_array<std::string>>(snd);
-  // TODO: don't return const reference here
-  // incorrect test:
-  check_err_types<type_array<const std::string&>>(snd);
+  check_err_types<type_array<std::string>>(snd);
 }

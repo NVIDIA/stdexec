@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__GNUC__) && !defined(__clang__)
+#else
+
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -46,30 +49,46 @@ TEST_CASE("stopped_as_error can we piped", "[adaptors][stopped_as_error]") {
   ex::start(op);
 }
 
-TEST_CASE("TODO: stopped_as_error can work with `just`", "[adaptors][stopped_as_error]") {
-  // TODO: fix this
-  // ex::sender auto snd = ex::just(11) | ex::stopped_as_error(-1);
-  // auto op = ex::connect(std::move(snd), expect_value_receiver{11});
-  // ex::start(op);
+TEST_CASE("stopped_as_error can work with `just_stopped`", "[adaptors][stopped_as_error]") {
+  ex::sender auto snd = ex::just_stopped() | ex::stopped_as_error(-1);
+  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  ex::start(op);
 }
 
-TEST_CASE("TODO: stopped_as_error can we waited on", "[adaptors][stopped_as_error]") {
+TEST_CASE("stopped_as_error can we waited on", "[adaptors][stopped_as_error]") {
   inline_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 11) | ex::stopped_as_error(std::exception_ptr{});
-  // TODO: fix this
-  // wait_for_value(std::move(snd), 11);
-  (void)snd;
+  wait_for_value(std::move(snd), 11);
 }
 
-TEST_CASE("TODO: stopped_as_error using int error type", "[adaptors][stopped_as_error]") {
-  inline_scheduler sched;
-  ex::sender auto snd = ex::transfer_just(sched, 11) | ex::stopped_as_error(-1);
-  // TODO: fix this
-  // wait_for_value(std::move(snd), 11);
-  (void)snd;
+TEST_CASE("stopped_as_error using error_code error type", "[adaptors][stopped_as_error]") {
+  impulse_scheduler sched; // scheduler that can send stopped signals
+  ex::sender auto snd = ex::transfer_just(sched, 11) |
+                        ex::stopped_as_error(std::error_code(1, std::generic_category()));
+  check_val_types<type_array<type_array<int>>>(snd);
+  check_err_types<type_array<std::exception_ptr, std::error_code>>(snd);
+  check_sends_stopped<false>(snd);
+
+  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{11});
+  ex::start(op);
+  sched.start_next();
 }
 
-// TODO: add more tests; at this point, it's hard to work with `stopped_as_error`
+TEST_CASE("stopped_as_error using error_code error type, for stopped signal",
+    "[adaptors][stopped_as_error]") {
+  stopped_scheduler sched;
+  ex::sender auto snd = ex::transfer_just(sched, 11) |
+                        ex::stopped_as_error(std::error_code(1, std::generic_category()));
+  check_val_types<type_array<type_array<int>>>(snd);
+  check_err_types<type_array<std::exception_ptr, std::error_code>>(snd);
+  check_sends_stopped<false>(snd);
+
+  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  ex::start(op);
+}
+
+// `stopped_as_error` is implemented in terms of `let_error`, so the tests for `let_error` cover
+// more ground.
 
 TEST_CASE("stopped_as_error keeps values_type from input sender", "[adaptors][stopped_as_error]") {
   inline_scheduler sched;
@@ -106,8 +125,8 @@ TEST_CASE("stopped_as_error can add more types to error_types", "[adaptors][stop
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(-1));
 
   check_err_types<type_array<std::exception_ptr>>( //
-      ex::transfer_just(sched1, 11)                                  //
-      | ex::stopped_as_error(-1)                                        //
+      ex::transfer_just(sched1, 11)                //
+      | ex::stopped_as_error(-1)                   //
       | ex::stopped_as_error(std::string{"err"}));
 }
 
@@ -123,3 +142,5 @@ TEST_CASE("stopped_as_error overrides sends_stopped to false", "[adaptors][stopp
   check_sends_stopped<false>( //
       ex::transfer_just(sched3, 3) | ex::stopped_as_error(-1));
 }
+
+#endif
