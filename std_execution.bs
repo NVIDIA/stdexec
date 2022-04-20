@@ -1093,6 +1093,9 @@ The changes since R4 are as follows:
   * `get_completion_signatures` is now required to return an instance of either
     `completion_signatures` or `dependent_completion_signatures`.
   * `make_completion_signatures` made more general.
+  * `receiver_adaptor` handles `get_env` as it does the `set_*` members; that is,
+    `receiver_adaptor` will look for a member named `get_env()` in the derived
+    class, and if found dispatch the `get_env_t` tag invoke customization to it.
 
 ## R4 ## {#r4}
 
