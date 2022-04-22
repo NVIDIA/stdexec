@@ -1096,6 +1096,8 @@ The changes since R4 are as follows:
   * `receiver_adaptor` handles `get_env` as it does the `set_*` members; that is,
     `receiver_adaptor` will look for a member named `get_env()` in the derived
     class, and if found dispatch the `get_env_t` tag invoke customization to it.
+  * `just`, `just_error`, `just_stopped`, and `into_variant` have been respecified
+    as customization point objects instead of functions, following LEWG guidance.
 
 ## R4 ## {#r4}
 
@@ -3766,18 +3768,12 @@ namespace std::execution {
 
   // [exec.factories], sender factories
   namespace <i>senders-factories</i> { // exposition only
-    template&lt;<i>movable-value</i>... Ts>
-      <i>unspecified</i> just(Ts &&...) noexcept(<i>see below</i>);
-    template&lt;<i>movable-value</i> Error>
-      <i>unspecified</i> just_error(Error &&) noexcept(<i>see below</i>);
-    <i>unspecified</i> just_stopped() noexcept;
-
     struct schedule_t;
     struct transfer_just_t;
   }
-  using <i>senders-factories</i>::just;
-  using <i>senders-factories</i>::just_error;
-  using <i>senders-factories</i>::just_stopped;
+  inline constexpr <i>unspecified</i> just{};
+  inline constexpr <i>unspecified</i> just_error{};
+  inline constexpr <i>unspecified</i> just_stopped{};
   using <i>senders-factories</i>::schedule_t;
   using <i>senders-factories</i>::transfer_just_t;
   inline constexpr schedule_t schedule{};
@@ -3810,6 +3806,7 @@ namespace std::execution {
     struct when_all_with_variant_t;
     struct transfer_when_all_t;
     struct transfer_when_all_with_variant_t;
+    struct into_variant_t;
     struct stopped_as_optional_t;
     struct stopped_as_error_t;
     struct ensure_started_t;
@@ -3829,6 +3826,7 @@ namespace std::execution {
   using <i>sender-adaptors</i>::when_all_with_variant_t;
   using <i>sender-adaptors</i>::transfer_when_all_t;
   using <i>sender-adaptors</i>::transfer_when_all_with_variant_t;
+  using <i>sender-adaptors</i>::into_variant_t;
   using <i>sender-adaptors</i>::stopped_as_optional_t;
   using <i>sender-adaptors</i>::stopped_as_error_t;
   using <i>sender-adaptors</i>::ensure_started_t;
@@ -3854,14 +3852,7 @@ namespace std::execution {
   inline constexpr transfer_when_all_with_variant_t
     transfer_when_all_with_variant{};
 
-  namespace <i>sender-adaptor-into-variant</i> { // exposition only
-    template&lt;class S, class E>
-        requires sender&lt;S, E>
-      using <i>into-variant-type</i> = <i>see-below</i>; // exposition-only
-    template&lt;sender S>
-      <i>see-below</i> into_variant(S &&);
-  }
-  using <i>sender-adaptor-into-variant</i>::into_variant;
+  inline constexpr into_variant_t into_variant{};
 
   inline constexpr stopped_as_optional_t stopped_as_optional;
 
@@ -4674,6 +4665,8 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
     `execution::just_error` is used to create a sender that propagates an error to a connected receiver.
     `execution::just_stopped` is used to create a sender that propagates a stopped signal to a connected receiver.
 
+2. Let `just-sender` be the class template:
+
     <pre highlight=c++>
     template&lt;class CPO, class... Ts>
     struct <i>just-sender</i> { // exposition only
@@ -4709,23 +4702,15 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
       friend auto get_completion_signatures(const <i>just-sender</i>&amp;, const Env &)
         -> completion_signatures&lt;CPO(Ts...)>; // not defined
     };
-
-    template&lt;<i>movable-value</i>... Ts>
-      <i>just-sender</i>&lt;set_value_t, decay_t&lt;Ts>...> just(Ts &&... ts) noexcept(<i>see-below</i>);
-
-    template&lt;<i>movable-value</i> T>
-      <i>just-sender</i>&lt;set_error_t, decay_t&lt;T>> just_error(T && t) noexcept(<i>see-below</i>);
-
-    <i>just-sender</i>&lt;set_stopped_t> just_stopped() noexcept;
     </pre>
 
-1. <i>Effects</i>: Initializes `vs_` with <code><i>decayed-tuple</i>&lt;Ts...>(std::forward&lt;Ts>(ts)...)</code>.
+3. The name `execution::just` denotes a customization point object. For some subexpressions `vs...`, let `Vs...` be `decltype((vs))`. If any type `V` in `Vs` does not satisfy <code><i>movable-value</i></code>, `execution::just(vs...)` is ill-formed.
+    Otherwise, `execution::just(vs...)` is expression-equivalent to <code><i>just-sender</i>&lt;set_value_t, decay_t&lt;Ts>...>(vs...)</i></code>.
 
-2. <i>Remarks</i>: The expression in the `noexcept-specifier` is equivalent to
+4. The name `execution::just_error` denotes a customization point object. For some subexpression `err`, let `Err` be `decltype((err))`. If `Err` does not satisfy <code><i>movable-value</i></code>, `execution::just_error(err)` is ill-formed.
+    Otherwise, `execution::just_error(err)` is expression-equivalent to <code><i>just-sender</i>&lt;set_error_t, decay_t&lt;Err>>(err)</i></code>.
 
-    <pre highlight=c++>
-    (is_nothrow_constructible_v&lt;decay_t&lt;Ts>, Ts> &amp;&amp; ...)
-    </pre>
+5. Then name `execution::just_stopped` denotes a customization point object. `execution::just_stopped` is expression-equivalent to <code><i>just-sender</i>&lt;set_stopped_t>()</i></code>.
 
 #### `execution::transfer_just` <b>[exec.transfer_just]</b> #### {#spec-execution.senders.transfer_just}
 
@@ -5743,12 +5728,10 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
             requires sender&lt;S, E>
           using <i>into-variant-type</i> =
             value_types_of_t&lt;S, E>;
-
-        template&lt;sender S>
-          <i>see-below</i> into_variant(S && s);
     </pre>
 
-3. <i>Effects:</i> Returns a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
+3. `execution::into_variant` is a customization point object. For some subexpression `s`, let `S` be `decltype((s))`. If `S` does not satisfy `execution::sender`, `execution::into_variant(s)` is ill-formed. Otherwise, `execution::into_variant(s)` returns
+    a sender `s2`. When `s2` is connected with some receiver `out_r`, it:
 
     1. Constructs a receiver `r`:
 
