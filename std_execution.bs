@@ -4704,10 +4704,6 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
       friend operation_state&lt;decay_t<R>> tag_invoke(connect_t, <i>just-sender</i>&amp;&amp; s, R &amp;&amp; r) {
         return { std::move(s.vs_), std::forward&lt;R>(r) };
       }
-
-      template&lt;class Env>
-      friend auto get_completion_signatures(const <i>just-sender</i>&amp;, const Env &)
-        -> completion_signatures&lt;CPO(Ts...)>; // not defined
     };
 
     template&lt;<i>movable-value</i>... Ts>
