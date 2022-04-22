@@ -2907,6 +2907,7 @@ namespace std::execution {
 
     namespace __impl {
       struct __task {
+        virtual ~__task() {};
         virtual void __execute_() noexcept = 0;
         __task* __next_ = nullptr;
       };
