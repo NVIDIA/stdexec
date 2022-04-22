@@ -6496,21 +6496,21 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
             alias template such that <code><i>error-list</i>&lt;Ts...></code> names
             <code><i>type-list</i>&lt;SetError&lt;Ts>...></code>.
 
-        * Let `Ss` name the type `completion_signatures<>` if `sends_stopped&lt;Sndr,
+        * Let `Ss` name the type `completion_signatures<>` if `sends_stopped<Sndr,
             Env>` is `false`; otherwise, `SetStopped`.
 
         Then:
 
         1. If any of the above types are ill-formed, then
-            `make_completion_signatures&lt;Sndr, Env, AddlSigs, SetValue, SetError,
+            `make_completion_signatures<Sndr, Env, AddlSigs, SetValue, SetError,
             SetStopped>` is ill-formed,
 
         2. Otherwise, if any type in `[AddlSigs, Vs..., Es..., Ss]` is not an
             instantiation of `completion_signatures`, then
-            `make_completion_signatures&lt;Sndr, Env, AddlSigs, SetValue, SetError,
+            `make_completion_signatures<Sndr, Env, AddlSigs, SetValue, SetError,
             SetStopped>` is an alias for `dependent_completion_signatures<no_env>`,
 
-        3. Otherwise, `make_completion_signatures&lt;Sndr, Env, AddlSigs, SetValue,
+        3. Otherwise, `make_completion_signatures<Sndr, Env, AddlSigs, SetValue,
             SetError, SetStopped>` names the type `completion_signatures<Sigs...>`
             where `Sigs...` is the unique set of types in all the template arguments
             of all the `completion_signatures` instantiations in `[AddlSigs, Vs..., Es..., Ss]`.
