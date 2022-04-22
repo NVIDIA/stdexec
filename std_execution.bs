@@ -3903,14 +3903,14 @@ namespace std::execution {
     concept <i>valid-completion-signatures</i> = <i>see below</i>;
 
   // [exec.utils.mkcmplsigs]
-  template <
+  template &lt;
     sender Sndr,
     class Env = no_env,
     <i>valid-completion-signatures&lt;Env></i> AddlSigs = completion_signatures<>,
     template &lt;class...> class SetValue = <i>/* see below */</i>,
     template &lt;class> class SetError = <i>/* see below */</i>,
     <i>valid-completion-signatures&lt;Env></i> SetStopped = completion_signatures&lt;set_stopped_t()>>
-      requires sender<Sndr, Env>
+      requires sender&lt;Sndr, Env>
   using make_completion_signatures = completion_signatures<<i>/* see below */</i>>;
 
   // [exec.ctx], execution contexts
@@ -4704,6 +4704,10 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
       friend operation_state&lt;decay_t<R>> tag_invoke(connect_t, <i>just-sender</i>&amp;&amp; s, R &amp;&amp; r) {
         return { std::move(s.vs_), std::forward&lt;R>(r) };
       }
+
+      template&lt;class Env>
+      friend auto get_completion_signatures(const <i>just-sender</i>&amp;, const Env &)
+        -> completion_signatures&lt;CPO(Ts...)>; // not defined
     };
 
     template&lt;<i>movable-value</i>... Ts>
@@ -4845,6 +4849,11 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
 
     -- <i>end example</i>]
 
+7. If the specification of a sender adaptor requires that the implementation of the `get_completion_signatures` customization point adds the signature `set_error_t(exception_ptr)` as an additional signature, but a customization of that sender adaptor never
+    calls the `exception_ptr` overload of `set_error`, that customization is allowed to omit the `set_error_t(exception_ptr)` additional signature from its implementation of the `get_completion_signatures` sender query. [ Note: This does not allow such a
+    customization to remove the `set_error_t(exception_ptr)` signature from the completion signatures specification if the specification would require it if the additional signatures argument to `make_completion_signatures` was `completion_signatures<>`,
+    but only allows to omit this specific signature from the additional signatures passed to `make_completion_signatures`. --end note ]
+
 #### Sender adaptor closure objects <b>[exec.adapt.objects]</b> #### {#spec-execution.senders.adaptor.objects}
 
 1. A <i>pipeable sender adaptor closure object</i> is a function object that accepts one or more `sender` arguments and returns a `sender`. For a sender adaptor closure object `C` and an expression `S` such that `decltype((S))` models `sender`, the following
@@ -4890,8 +4899,8 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
 
     - Its call pattern is `adaptor(r, bound_args...)`, where `r` is the argument used in a function call expression of `f`.
 
-The expression `adaptor(args...)` is well-formed if and only if the initializations of the bound argument entities of the result, as specified above,
-are all well-formed.
+    The expression `adaptor(args...)` is well-formed if and only if the initializations of the bound argument entities of the result, as specified above,
+     are all well-formed.
 
 #### `execution::on` <b>[exec.on]</b> #### {#spec-execution.senders.adapt.on}
 
@@ -4969,7 +4978,7 @@ are all well-formed.
 
     If the function selected above does not return a sender which is a result of
     a call to `execution::schedule_from(sch, s2)`, where `s2` is a sender which
-    sends equivalent to those sent by `s`, the behavior of calling
+    sends values equivalent to those sent by `s`, the behavior of calling
     `execution::transfer(s, sch)` is undefined.
 
 3. Senders returned from `execution::transfer` shall not propagate the sender queries `get_completion_scheduler<CPO>` to an input sender. They will implement `get_completion_scheduler<CPO>`, where `CPO` is one of `set_value_t` and `set_stopped_t`; this query returns a scheduler equivalent to the `sch` argument from those queries. The `get_completion_scheduler<set_error_t>` is not implemented, as the scheduler cannot be guaranteed in case an error is thrown while trying to schedule work on the given scheduler object.
@@ -5641,7 +5650,7 @@ are all well-formed.
                 return types are <i>not</i> `set_value_t`, and let `Ws...` be
                 the unique set of types in <code>[Sigs2<i><sub>0</sub></i>...,
                 Sigs2<i><sub>1</sub></i>..., ... Sigs2<i><sub>n-1</sub></i>...,
-                set_error_t(exception_ptr), set_stopped_t()]</code>, where
+                set_stopped_t()]</code>, where
                 <code><i>n</i></code> is `sizeof...(Ss)`. If any
                 <code>C<i><sub>i</sub></i></code> is `0`, then the type of
                 `tag_invoke(get_completion_signatures, s2, e)` shall be
@@ -5743,7 +5752,7 @@ are all well-formed.
 
     1. Constructs a receiver `r`:
 
-        1. If `execution::set_value(r, ts...)` is called, calls <code>execution::set_value(out_r, <i>into-variant-type</i>&lt;S>(<i>decayed-tuple</i>&lt;decltype(ts)...>(ts...)))</code>.
+        1. If `execution::set_value(r, ts...)` is called, calls <code>execution::set_value(out_r, <i>into-variant-type</i>&lt;S, env_of_t&lt;decltype((r))>>(<i>decayed-tuple</i>&lt;decltype(ts)...>(ts...)))</code>. If this expression throws an exception, calls `execution::set_error(out_r, current_exception())`.
 
         2. `execution::set_error(r, e)` is expression-equivalent to `execution::set_error(out_r, e)`.
 
@@ -5752,6 +5761,42 @@ are all well-formed.
     2. Calls `execution::connect(s, r)`, resulting in an operation state `op_state2`.
 
     3. Returns an operation state `op_state` that contains `op_state2`. When `execution::start(op_state)` is called, calls `execution::start(op_state2)`.
+
+    4. Given subexpressions `s2` and `e`, where `s2` is a sender returned from `into_variant` or a copy of such, let `S2` be `decltype((s2))` and `E` be `decltype((e))`.
+        Let <code><i>into-variant-set-value</i></code> be the class template:
+
+        <pre highlight=c++>
+            template &lt;class S, class E>
+            struct <i>into-variant-set-value</i> {
+              template &lt;class ...Args>
+              using <i>apply</i> = set_value_t(<i>into-variant-type</i>&lt;S, E>);
+            };
+        </pre>
+
+        Let <code><i>into-variant-is-nothrow</i></code> be the class template:
+
+        <pre highlight=c++>
+            template &lt;class S, class E>
+            struct <i>into-variant-is-nothrow</i> {
+              template &lt;class... Args>
+                using <i>apply</i> = noexcept(
+                  <i>into-variant-type</i>&lt;S, E>(<i>decayed-tuple</i>&lt;Args>(declval<Args>()...)));
+            };
+        </pre>
+
+        Let <code><i>INTO-VARIANT-ERROR-SIGNATURES</i>(S, E)</code> be `completion_signatures<set_error_t(exception_ptr)>` if any of the types in the <code><i>type-list</i></code> named by
+            <code>value_types_of_t&lt;S, E, <i>into-variant-is-nothrow</i>&lt;S, E>::template <i>apply</i>, <i>type-list</i>></code> are `false_type`; otherwise, `completion_signatures<>`.
+
+        The type of `tag_invoke(get_completion_signatures_t, s2, e))` shall be equivalent to:
+
+        <pre highlight=c++>
+            make_completion_signatures<
+                S2,
+                E,
+                <i>INTO-VARIANT-ERROR-SIGNATURES</i>(S, E),
+                <i>into-variant-set-value</i>&lt;S2, E>::template <i>apply</i>
+            >
+        </pre>
 
 #### `execution::stopped_as_optional` <b>[exec.stopped_as_optional]</b> #### {#spec-execution.senders.adapt.stopped_as_optional}
 
@@ -6451,21 +6496,21 @@ are all well-formed.
             alias template such that <code><i>error-list</i>&lt;Ts...></code> names
             <code><i>type-list</i>&lt;SetError&lt;Ts>...></code>.
 
-        * Let `Ss` name the type `completion_signatures<>` if `sends_stopped<Sndr,
+        * Let `Ss` name the type `completion_signatures<>` if `sends_stopped&lt;Sndr,
             Env>` is `false`; otherwise, `SetStopped`.
 
         Then:
 
         1. If any of the above types are ill-formed, then
-            `make_completion_signatures<Sndr, Env, AddlSigs, SetValue, SetError,
+            `make_completion_signatures&lt;Sndr, Env, AddlSigs, SetValue, SetError,
             SetStopped>` is ill-formed,
 
         2. Otherwise, if any type in `[AddlSigs, Vs..., Es..., Ss]` is not an
             instantiation of `completion_signatures`, then
-            `make_completion_signatures<Sndr, Env, AddlSigs, SetValue, SetError,
+            `make_completion_signatures&lt;Sndr, Env, AddlSigs, SetValue, SetError,
             SetStopped>` is an alias for `dependent_completion_signatures<no_env>`,
 
-        3. Otherwise, `make_completion_signatures<Sndr, Env, AddlSigs, SetValue,
+        3. Otherwise, `make_completion_signatures&lt;Sndr, Env, AddlSigs, SetValue,
             SetError, SetStopped>` names the type `completion_signatures<Sigs...>`
             where `Sigs...` is the unique set of types in all the template arguments
             of all the `completion_signatures` instantiations in `[AddlSigs, Vs..., Es..., Ss]`.
