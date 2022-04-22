@@ -3586,6 +3586,9 @@ completions.</p>
     <li data-md>
      <p><code class="highlight"><c- n>receiver_adaptor</c-></code> handles <code class="highlight"><c- n>get_env</c-></code> as it does the <code class="highlight"><c- n>set_</c-><c- o>*</c-></code> members; that is, <code class="highlight"><c- n>receiver_adaptor</c-></code> will look for a member named <code class="highlight"><c- n>get_env</c-><c- p>()</c-></code> in the derived
 class, and if found dispatch the <code class="highlight"><c- n>get_env_t</c-></code> tag invoke customization to it.</p>
+    <li data-md>
+     <p><code class="highlight"><c- n>just</c-></code>, <code class="highlight"><c- n>just_error</c-></code>, <code class="highlight"><c- n>just_stopped</c-></code>, and <code class="highlight"><c- n>into_variant</c-></code> have been respecified
+as customization point objects instead of functions, following LEWG guidance.</p>
    </ul>
    <h3 class="heading settled" data-level="2.2" id="r4"><span class="secno">2.2. </span><span class="content">R4</span><a class="self-link" href="#r4"></a></h3>
    <p>The changes since R3 are as follows:</p>
@@ -5875,18 +5878,12 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
 
   <c- c1>// [exec.factories], sender factories</c->
   <c- k>namespace</c-> <i><c- nn>senders</c-><c- o>-</c-><c- nn>factories</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
-    <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
-      <i><c- n>unspecified</c-></i> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
-    <c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i> <c- n>Error</c-><c- o>></c->
-      <i><c- n>unspecified</c-></i> <c- n>just_error</c-><c- p>(</c-><c- n>Error</c-> <c- o>&amp;&amp;</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-> <c- n>below</c-></i><c- p>);</c->
-    <i><c- n>unspecified</c-></i> <c- nf>just_stopped</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
-
     <c- k>struct</c-> <c- nc>schedule_t</c-><c- p>;</c->
     <c- k>struct</c-> <c- nc>transfer_just_t</c-><c- p>;</c->
   <c- p>}</c->
-  <c- k>using</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>just</c-><c- p>;</c->
-  <c- k>using</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>just_error</c-><c- p>;</c->
-  <c- k>using</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>just_stopped</c-><c- p>;</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>unspecified</c-></i> <c- n>just</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>unspecified</c-></i> <c- n>just_error</c-><c- p>{};</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <i><c- n>unspecified</c-></i> <c- n>just_stopped</c-><c- p>{};</c->
   <c- k>using</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>schedule_t</c-><c- p>;</c->
   <c- k>using</c-> <i><c- n>senders</c-><c- o>-</c-><c- n>factories</c-></i><c- o>::</c-><c- n>transfer_just_t</c-><c- p>;</c->
   <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>schedule_t</c-> <c- n>schedule</c-><c- p>{};</c->
@@ -5919,6 +5916,7 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
     <c- k>struct</c-> <c- nc>when_all_with_variant_t</c-><c- p>;</c->
     <c- k>struct</c-> <c- nc>transfer_when_all_t</c-><c- p>;</c->
     <c- k>struct</c-> <c- nc>transfer_when_all_with_variant_t</c-><c- p>;</c->
+    <c- k>struct</c-> <c- nc>into_variant_t</c-><c- p>;</c->
     <c- k>struct</c-> <c- nc>stopped_as_optional_t</c-><c- p>;</c->
     <c- k>struct</c-> <c- nc>stopped_as_error_t</c-><c- p>;</c->
     <c- k>struct</c-> <c- nc>ensure_started_t</c-><c- p>;</c->
@@ -5938,6 +5936,7 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
   <c- k>using</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>when_all_with_variant_t</c-><c- p>;</c->
   <c- k>using</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>transfer_when_all_t</c-><c- p>;</c->
   <c- k>using</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>transfer_when_all_with_variant_t</c-><c- p>;</c->
+  <c- k>using</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>into_variant_t</c-><c- p>;</c->
   <c- k>using</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>stopped_as_optional_t</c-><c- p>;</c->
   <c- k>using</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>stopped_as_error_t</c-><c- p>;</c->
   <c- k>using</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>adaptors</c-></i><c- o>::</c-><c- n>ensure_started_t</c-><c- p>;</c->
@@ -5963,14 +5962,7 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
   <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>transfer_when_all_with_variant_t</c->
     <c- n>transfer_when_all_with_variant</c-><c- p>{};</c->
 
-  <c- k>namespace</c-> <i><c- nn>sender</c-><c- o>-</c-><c- nn>adaptor</c-><c- o>-</c-><c- nn>into</c-><c- o>-</c-><c- nn>variant</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
-    <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-><c- o>></c->
-        <c- k>requires</c-> <c- n>sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c->
-      <c- k>using</c-> <i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c-> <c- c1>// exposition-only</c->
-    <c- k>template</c-><c- o>&lt;</c-><c- n>sender</c-> <c- n>S</c-><c- o>></c->
-      <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- n>into_variant</c-><c- p>(</c-><c- n>S</c-> <c- o>&amp;&amp;</c-><c- p>);</c->
-  <c- p>}</c->
-  <c- k>using</c-> <i><c- n>sender</c-><c- o>-</c-><c- n>adaptor</c-><c- o>-</c-><c- n>into</c-><c- o>-</c-><c- n>variant</c-></i><c- o>::</c-><c- n>into_variant</c-><c- p>;</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>into_variant_t</c-> <c- n>into_variant</c-><c- p>{};</c->
 
   <c- kr>inline</c-> <c- k>constexpr</c-> <c- n>stopped_as_optional_t</c-> <c- n>stopped_as_optional</c-><c- p>;</c->
 
@@ -6817,6 +6809,8 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
    <ol>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> is used to create a sender that propagates a set of values to a connected receiver. <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code> is used to create a sender that propagates an error to a connected receiver. <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> is used to create a sender that propagates a stopped signal to a connected receiver.</p>
+    <li data-md>
+     <p>Let <code class="highlight"><c- n>just</c-><c- o>-</c-><c- n>sender</c-></code> be the class template:</p>
 <pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>CPO</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
 <c- k>struct</c-> <i><c- nc>just</c-><c- o>-</c-><c- n>sender</c-></i> <c- p>{</c-> <c- c1>// exposition only</c->
   <c- k>using</c-> <c- n>completion_signatures</c-> <c- o>=</c->
@@ -6847,21 +6841,15 @@ argument <code class="highlight"><c- n>CPO</c-></code> in <code class="highlight
     <c- k>return</c-> <c- p>{</c-> <c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>s</c-><c- p>.</c-><c- n>vs_</c-><c- p>),</c-> <c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>R</c-><c- o>></c-><c- p>(</c-><c- n>r</c-><c- p>)</c-> <c- p>};</c->
   <c- p>}</c->
 <c- p>};</c->
-
-<c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
-  <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-><c- o>></c-> <c- n>just</c-><c- p>(</c-><c- n>Ts</c-> <c- o>&amp;&amp;</c-><c- p>...</c-> <c- n>ts</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>);</c->
-
-<c- k>template</c-><c- o>&lt;</c-><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i> <c- n>T</c-><c- o>></c->
-  <i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- n>T</c-><c- o>>></c-> <c- n>just_error</c-><c- p>(</c-><c- n>T</c-> <c- o>&amp;&amp;</c-> <c- n>t</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>(</c-><i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>);</c->
-
-<i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>set_stopped_t</c-><c- o>></c-> <c- n>just_stopped</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
 </r></r></pre>
     <li data-md>
-     <p><i>Effects</i>: Initializes <code class="highlight"><c- n>vs_</c-></code> with <code class="highlight"><i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>forward</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>(</c-><c- n>ts</c-><c- p>)...)</c-></code>.</p>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-></code> denotes a customization point object. For some subexpressions <code class="highlight"><c- n>vs</c-><c- p>...</c-></code>, let <code class="highlight"><c- n>Vs</c-><c- p>...</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>vs</c-><c- p>))</c-></code>. If any type <code class="highlight"><c- n>V</c-></code> in <code class="highlight"><c- n>Vs</c-></code> does not satisfy <code class="highlight"><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>vs</c-><c- p>...)</c-></code> is ill-formed.
+Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>vs</c-><c- p>...)</c-></code> is expression-equivalent to <code class="highlight"><i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>...</c-><c- o>></c-><c- p>(</c-><c- n>vs</c-><c- p>...)</c-></code>.</p>
     <li data-md>
-     <p><i>Remarks</i>: The expression in the <code class="highlight"><c- k>noexcept</c-><c- o>-</c-><c- n>specifier</c-></code> is equivalent to</p>
-<pre class="highlight"><c- p>(</c-><c- n>is_nothrow_constructible_v</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>Ts</c-><c- o>></c-><c- p>,</c-> <c- n>Ts</c-><c- o>></c-> <c- o>&amp;&amp;</c-> <c- p>...)</c->
-</pre>
+     <p>The name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-></code> denotes a customization point object. For some subexpression <code class="highlight"><c- n>err</c-></code>, let <code class="highlight"><c- n>Err</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>err</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>Err</c-></code> does not satisfy <code class="highlight"><i><c- n>movable</c-><c- o>-</c-><c- n>value</c-></i></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-><c- p>(</c-><c- n>err</c-><c- p>)</c-></code> is ill-formed.
+Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_error</c-><c- p>(</c-><c- n>err</c-><c- p>)</c-></code> is expression-equivalent to <code class="highlight"><i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>decay_t</c-><c- o>&lt;</c-><c- n>Err</c-><c- o>>></c-><c- p>(</c-><c- n>err</c-><c- p>)</c-></code>.</p>
+    <li data-md>
+     <p>Then name <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> denotes a customization point object. <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>just_stopped</c-></code> is expression-equivalent to <code class="highlight"><i><c- n>just</c-><c- o>-</c-><c- n>sender</c-></i><c- o>&lt;</c-><c- n>set_stopped_t</c-><c- o>></c-><c- p>()</c-></code>.</p>
    </ol>
    <h5 class="heading settled" data-level="10.8.4.4" id="spec-execution.senders.transfer_just"><span class="secno">10.8.4.4. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-></code> <b>[exec.transfer_just]</b></span><a class="self-link" href="#spec-execution.senders.transfer_just"></a></h5>
    <ol>
@@ -7802,12 +7790,10 @@ of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transf
     <c- k>requires</c-> <c- n>sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c->
   <c- k>using</c-> <i><c- n>into</c-><c- o>-</c-><c- n>variant</c-><c- o>-</c-><c- n>type</c-></i> <c- o>=</c->
     <c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-><c- p>;</c->
-
-<c- k>template</c-><c- o>&lt;</c-><c- n>sender</c-> <c- n>S</c-><c- o>></c->
-  <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i> <c- n>into_variant</c-><c- p>(</c-><c- n>S</c-> <c- o>&amp;&amp;</c-> <c- n>s</c-><c- p>);</c->
 </pre>
     <li data-md>
-     <p><i>Effects:</i> Returns a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
+     <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-></code> is a customization point object. For some subexpression <code class="highlight"><c- n>s</c-></code>, let <code class="highlight"><c- n>S</c-></code> be <code class="highlight"><c- k>decltype</c-><c- p>((</c-><c- n>s</c-><c- p>))</c-></code>. If <code class="highlight"><c- n>S</c-></code> does not satisfy <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> is ill-formed. Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>into_variant</c-><c- p>(</c-><c- n>s</c-><c- p>)</c-></code> returns
+a sender <code class="highlight"><c- n>s2</c-></code>. When <code class="highlight"><c- n>s2</c-></code> is connected with some receiver <code class="highlight"><c- n>out_r</c-></code>, it:</p>
      <ol>
       <li data-md>
        <p>Constructs a receiver <code class="highlight"><c- n>r</c-></code>:</p>
