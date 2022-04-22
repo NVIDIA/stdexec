@@ -5779,8 +5779,9 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
             template &lt;class S, class E>
             struct <i>into-variant-is-nothrow</i> {
               template &lt;class... Args>
-                using <i>apply</i> = noexcept(
-                  <i>into-variant-type</i>&lt;S, E>(<i>decayed-tuple</i>&lt;Args>(declval<Args>()...)));
+                  requires constructible_from&lt;<i>decayed-tuple</i>&lt;Args...>, Args...> 
+                using <i>apply</i> = bool_constant<noexcept(
+                  <i>into-variant-type</i>&lt;S, E>(<i>decayed-tuple</i>&lt;Args...>(declval&lt;Args>()...)))>;
             };
         </pre>
 
