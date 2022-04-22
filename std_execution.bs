@@ -5788,7 +5788,7 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
         Let <code><i>INTO-VARIANT-ERROR-SIGNATURES</i>(S, E)</code> be `completion_signatures<set_error_t(exception_ptr)>` if any of the types in the <code><i>type-list</i></code> named by
             <code>value_types_of_t&lt;S, E, <i>into-variant-is-nothrow</i>&lt;S, E>::template <i>apply</i>, <i>type-list</i>></code> are `false_type`; otherwise, `completion_signatures<>`.
 
-        The type of `tag_invoke(get_completion_signatures_t, s2, e))` shall be equivalent to:
+        The type of `tag_invoke(get_completion_signatures_t{}, s2, e))` shall be equivalent to:
 
         <pre highlight=c++>
             make_completion_signatures<
