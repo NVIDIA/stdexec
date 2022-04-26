@@ -1575,6 +1575,7 @@ namespace std::execution {
             terminate();
           }
           friend void tag_invoke(set_stopped_t, __as_receiver&&) noexcept {}
+          friend __empty_env tag_invoke(get_env_t, const __as_receiver&) noexcept { return {}; };
         };
     }
 
@@ -1583,8 +1584,8 @@ namespace std::execution {
         requires __callable<_Fun&> && move_constructible<_Fun>
       void operator()(_Scheduler&& __sched, _Fun __fun) const
         noexcept(noexcept(
-          submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun}))) {
-        (void) submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun});
+          __submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun}))) {
+        (void) __submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun});
       }
       template <scheduler _Scheduler, class _Fun>
         requires __callable<_Fun&> &&
