@@ -150,8 +150,9 @@ template <indirect_stop_token_provider ParentPromise>
 // worst and save a type-erased stop callback.
 template<>
   struct default_task_context_impl::awaiter_context<void> {
-    explicit awaiter_context(
-        default_task_context_impl& self, auto&) noexcept
+    template <class _Ty>
+      explicit awaiter_context(
+        default_task_context_impl& self, _Ty&) noexcept
     {}
 
     template <indirect_stop_token_provider ParentPromise>

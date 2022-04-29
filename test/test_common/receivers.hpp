@@ -95,7 +95,8 @@ class expect_void_receiver {
 struct expect_void_receiver_ex {
   bool* executed_;
 
-  friend void tag_invoke(ex::set_value_t, expect_void_receiver_ex&& self, const auto&...) noexcept {
+  template <class Ty>
+  friend void tag_invoke(ex::set_value_t, expect_void_receiver_ex&& self, const Ty&...) noexcept {
     *self.executed_ = true;
   }
   friend void tag_invoke(ex::set_stopped_t, expect_void_receiver_ex&&) noexcept {
@@ -133,7 +134,8 @@ class expect_value_receiver {
     CHECK(val == self.value_);
     self.called_ = true;
   }
-  friend void tag_invoke(ex::set_value_t, expect_value_receiver&&, const auto&...) noexcept
+  template <class Ty>
+  friend void tag_invoke(ex::set_value_t, expect_value_receiver&&, const Ty&...) noexcept
       requires RuntimeCheck {
     FAIL_CHECK("set_value called with wrong value types on expect_value_receiver");
   }
@@ -344,15 +346,19 @@ template <typename F>
 struct fun_receiver {
   F f_;
 
-  template <typename... Ts>
+  template <typename... Ts _NVCXX_CAPTURE_PACK(Ts)>
   friend void tag_invoke(ex::set_value_t, fun_receiver&& self, Ts... vals) noexcept try {
-    std::move(self.f_)((Ts &&) vals...);
+    _NVCXX_EXPAND_PACK(Ts, vals,
+      std::move(self.f_)((Ts &&) vals...);
+    )
   } catch(...) {
     ex::set_error(std::move(self), std::current_exception());
   }
   template <typename... Ts>
   friend void tag_invoke(ex::set_value_t, const fun_receiver& self, Ts... vals) noexcept try {
-    self.f_((Ts &&) vals...);
+    _NVCXX_EXPAND_PACK(Ts, vals,
+      self.f_((Ts &&) vals...);
+    )
   } catch(...) {
     ex::set_error(self, std::current_exception());
   }

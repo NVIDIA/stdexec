@@ -56,7 +56,8 @@ struct _retry_receiver
 
   explicit _retry_receiver(_op<S, R>* o) : o_(o) {}
 
-  void set_error(auto&&) && noexcept {
+  template <class Error>
+  void set_error(Error&&) && noexcept {
     o_->_retry(); // This causes the op to be retried
   }
 };

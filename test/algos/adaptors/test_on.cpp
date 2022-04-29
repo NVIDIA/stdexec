@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if _P2300_GCC
+#include <__config.hpp>
+
+#if _P2300_GCC()
 #else
 
 #include <catch2/catch.hpp>

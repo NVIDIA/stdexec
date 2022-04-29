@@ -72,13 +72,10 @@ if (CONAN_SETTINGS_COMPILER_LIBCXX STREQUAL "libc++")
 endif ()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "NVHPC")
-    add_compile_definitions(_P2300_NVHPC)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_compile_definitions(_P2300_GCC)
     add_compile_options(-fdiagnostics-color=always)
     add_compile_options(-Wno-non-template-friend)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    add_compile_definitions(_P2300_CLANG)
     add_compile_options(-fcolor-diagnostics)
 endif ()
 
@@ -143,7 +140,8 @@ catch_discover_tests(test.P2300)
 # Set up examples
 function(def_example target sourceFile)
     add_executable(${target} ${sourceFile})
-    target_link_libraries(${target} P2300)
+    target_link_libraries(${target} P2300 CONAN_PKG::catch2)
+    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()
 
 def_example(example.hello_world "examples/hello_world.cpp")

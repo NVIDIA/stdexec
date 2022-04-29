@@ -17,6 +17,8 @@
 
 #include <type_traits>
 
+#include <__config.hpp>
+
 namespace std {
   struct __ {};
 
@@ -24,6 +26,9 @@ namespace std {
     __ignore() = default;
     __ignore(auto&&) noexcept {}
   };
+
+  template <class...>
+    concept __typename = true;
 
   // For hiding a template type parameter from ADL
   template <class _T>
@@ -33,10 +38,10 @@ namespace std {
       };
     };
   template <class _T>
-    using __x = typename __x_<_T>::__t;
+    _P2300_NVHPC_USING(__x, typename __x_<_T>::__t);
 
   template <class _T>
-    using __t = typename _T::type;
+    _P2300_NVHPC_USING(__t, typename _T::type);
 
   template <bool _B>
     using __bool = bool_constant<_B>;
@@ -53,7 +58,7 @@ namespace std {
   ;
 
   template <class _T>
-    using __id = _T;
+    _P2300_NVHPC_USING(__id, _T);
 
   template <class _T>
     inline constexpr auto __v = _T::value;
@@ -70,110 +75,110 @@ namespace std {
   template <template <class...> class _Fn>
     struct __q {
       template <class... _Args>
-        using __f = _Fn<_Args...>;
+        _P2300_NVHPC_USING(__f, _Fn<_Args...>);
     };
 
   template <template <class> class _Fn>
     struct __q1 {
       template <class _Arg>
-        using __f = _Fn<_Arg>;
+        _P2300_NVHPC_USING(__f, _Fn<_Arg>);
     };
 
   template <template <class, class> class _Fn>
     struct __q2 {
       template <class _First, class _Second>
-        using __f = _Fn<_First, _Second>;
+        _P2300_NVHPC_USING(__f, _Fn<_First, _Second>);
     };
 
   template <template<class...> class _Fn, class... _Front>
     struct __mbind_front_q {
       template <class... _Args>
-        using __f = _Fn<_Front..., _Args...>;
+        _P2300_NVHPC_USING(__f, _Fn<_Front..., _Args...>);
     };
 
   template <template<class...> class _Fn, class... _Front>
     struct __mbind_front_q1 {
       template <class _A>
-        using __f = _Fn<_Front..., _A>;
+        _P2300_NVHPC_USING(__f, _Fn<_Front..., _A>);
     };
 
   template <template<class...> class _Fn, class... _Front>
     struct __mbind_front_q2 {
       template <class _A, class _B>
-        using __f = _Fn<_Front..., _A, _B>;
+        _P2300_NVHPC_USING(__f, _Fn<_Front..., _A, _B>);
     };
 
   template <template<class...> class _Fn, class... _Front>
     struct __mbind_front_q3 {
       template <class _A, class _B, class _C>
-        using __f = _Fn<_Front..., _A, _B, _C>;
+        _P2300_NVHPC_USING(__f, _Fn<_Front..., _A, _B, _C>);
     };
 
   template <class _Fn, class... _Front>
-    using __mbind_front = __mbind_front_q<_Fn::template __f, _Front...>;
+    _P2300_NVHPC_USING(__mbind_front, __mbind_front_q<_Fn::template __f, _Front...>);
 
   template <class _Fn, class... _Back>
-    using __mbind_front1 = __mbind_front_q1<_Fn::template __f, _Back...>;
+    _P2300_NVHPC_USING(__mbind_front1, __mbind_front_q1<_Fn::template __f, _Back...>);
 
   template <class _Fn, class... _Back>
-    using __mbind_front2 = __mbind_front_q2<_Fn::template __f, _Back...>;
+    _P2300_NVHPC_USING(__mbind_front2, __mbind_front_q2<_Fn::template __f, _Back...>);
 
   template <class _Fn, class... _Back>
-    using __mbind_front3 = __mbind_front_q3<_Fn::template __f, _Back...>;
+    _P2300_NVHPC_USING(__mbind_front3, __mbind_front_q3<_Fn::template __f, _Back...>);
 
   template <template<class...> class _Fn, class... _Back>
     struct __mbind_back_q {
       template <class... _Args>
-        using __f = _Fn<_Args..., _Back...>;
+        _P2300_NVHPC_USING(__f, _Fn<_Args..., _Back...>);
     };
 
   template <template<class...> class _Fn, class... _Back>
     struct __mbind_back_q1 {
       template <class _A>
-        using __f = _Fn<_A, _Back...>;
+        _P2300_NVHPC_USING(__f, _Fn<_A, _Back...>);
     };
 
   template <template<class...> class _Fn, class... _Back>
     struct __mbind_back_q2 {
       template <class _A, class _B>
-        using __f = _Fn<_A, _B, _Back...>;
+        _P2300_NVHPC_USING(__f, _Fn<_A, _B, _Back...>);
     };
 
   template <template<class...> class _Fn, class... _Back>
     struct __mbind_back_q3 {
       template <class _A, class _B, class _C>
-        using __f = _Fn<_A, _B, _C, _Back...>;
+        _P2300_NVHPC_USING(__f, _Fn<_A, _B, _C, _Back...>);
     };
 
   template <class _Fn, class... _Back>
-    using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
+    _P2300_NVHPC_USING(__mbind_back, __mbind_back_q<_Fn::template __f, _Back...>);
 
   template <class _Fn, class... _Back>
-    using __mbind_back1 = __mbind_back_q1<_Fn::template __f, _Back...>;
+    _P2300_NVHPC_USING(__mbind_back1, __mbind_back_q1<_Fn::template __f, _Back...>);
 
   template <class _Fn, class... _Back>
-    using __mbind_back2 = __mbind_back_q2<_Fn::template __f, _Back...>;
+    _P2300_NVHPC_USING(__mbind_back2, __mbind_back_q2<_Fn::template __f, _Back...>);
 
   template <class _Fn, class... _Back>
-    using __mbind_back3 = __mbind_back_q3<_Fn::template __f, _Back...>;
+    _P2300_NVHPC_USING(__mbind_back3, __mbind_back_q3<_Fn::template __f, _Back...>);
 
   template <template <class, class, class> class _Fn>
     struct __q3 {
       template <class _First, class _Second, class _Third>
-        using __f = _Fn<_First, _Second, _Third>;
+        _P2300_NVHPC_USING(__f, _Fn<_First, _Second, _Third>);
     };
 
   template <class _Fn, class... _Args>
-    using __minvoke = typename _Fn::template __f<_Args...>;
+    _P2300_NVHPC_USING(__minvoke, typename _Fn::template __f<_Args...>);
 
   template <class _Fn, class _First>
-    using __minvoke1 = typename _Fn::template __f<_First>;
+    _P2300_NVHPC_USING(__minvoke1, typename _Fn::template __f<_First>);
 
   template <class _Fn, class _First, class _Second>
-    using __minvoke2 = typename _Fn::template __f<_First, _Second>;
+    _P2300_NVHPC_USING(__minvoke2, typename _Fn::template __f<_First, _Second>);
 
   template <class _Fn, class _First, class _Second, class _Third>
-    using __minvoke3 = typename _Fn::template __f<_First, _Second, _Third>;
+    _P2300_NVHPC_USING(__minvoke3, typename _Fn::template __f<_First, _Second, _Third>);
 
   template <template <class...> class _T, class... _Args>
     concept __valid = requires { typename _T<_Args...>; };
@@ -187,8 +192,17 @@ namespace std {
   template <template <class, class, class> class _T, class _First, class _Second, class _Third>
     concept __valid3 = requires { typename _T<_First, _Second, _Third>; };
 
+#if _P2300_NVHPC()
   template <class _Fn, class... _Args>
-    concept __minvocable = __valid<_Fn::template __f, _Args...>;
+    concept __minvocable =
+      requires {
+        typename __minvoke<_Fn, _Args...>;
+      };
+#else
+  template <class _Fn, class... _Args>
+    concept __minvocable =
+      __valid<_Fn::template __f, _Args...>;
+#endif
 
   template <class _Fn, class _First>
     concept __minvocable1 = __valid1<_Fn::template __f, _First>;
@@ -220,19 +234,19 @@ namespace std {
           requires requires { typename _T<_A, _B, _C, _D, _E>; }
         struct __f_<_A, _B, _C, _D, _E> { using type = _T<_A, _B, _C, _D, _E>; };
       template <class... _Args>
-        using __f = __t<__f_<_Args...>>;
+        _P2300_NVHPC_USING(__f, __t<__f_<_Args...>>);
     };
 
   template <class _T>
     struct __constant {
       template <class...>
-        using __f = _T;
+        _P2300_NVHPC_USING(__f, _T);
     };
 
   template <class _Fn, class _Continuation = __q<__types>>
     struct __transform {
       template <class... _Args>
-        using __f = __minvoke<_Continuation, __minvoke1<_Fn, _Args>...>;
+        _P2300_NVHPC_USING(__f, __minvoke<_Continuation, __minvoke1<_Fn, _Args>...>);
     };
 
   template <class _Init, class _Fn>
@@ -249,16 +263,55 @@ namespace std {
           using type = _State;
         };
       template <class... _Args>
-        using __f = __t<__f_<_Init, _Args...>>;
+        _P2300_NVHPC_USING(__f, __t<__f_<_Init, _Args...>>);
     };
 
-  #if _P2300_NVHPC
+  #if _P2300_NVHPC()
   template <class _Ty>
     concept __has_type =
       requires {
         typename _Ty::type;
       };
   #endif
+
+  // template <class...>
+  //   struct __concat_ {};
+  // template <>
+  //   struct __concat_<> {
+  //     template <class _Continuation>
+  //       _P2300_NVHPC_USING(__f, __minvoke<_Continuation>);
+  //   };
+  // template <template <class...> class _A, class... _As>
+  //   struct __concat_<_A<_As...>> {
+  //     template <class _Continuation>
+  //       _P2300_NVHPC_USING(__f, __minvoke<_Continuation, _As...>);
+  //   };
+  // template <template <class...> class _A, class... _As,
+  //           template <class...> class _B, class... _Bs,
+  //           class... _Tail>
+  //   struct __concat_<_A<_As...>, _B<_Bs...>, _Tail...>
+  //     : __concat_<__types<_As..., _Bs...>, _Tail...> {};
+  // template <template <class...> class _A, class... _As,
+  //           template <class...> class _B, class... _Bs,
+  //           template <class...> class _C, class... _Cs,
+  //           class... _Tail>
+  //   struct __concat_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _Tail...>
+  //     : __concat_<__types<_As..., _Bs..., _Cs...>, _Tail...> {};
+  // template <template <class...> class _A, class... _As,
+  //           template <class...> class _B, class... _Bs,
+  //           template <class...> class _C, class... _Cs,
+  //           template <class...> class _D, class... _Ds,
+  //           class... _Tail>
+  //   struct __concat_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
+  //     : __concat_<__types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
+
+  // template <class _Continuation = __q<__types>>
+  //   struct __concat {
+  //     template <class... _As>
+  //       _P2300_NVHPC_USING(
+  //         __f, __minvoke<__concat_<_As...>, _Continuation>);
+  //   };
+
 
   template <class _Continuation = __q<__types>>
     struct __concat {
@@ -268,7 +321,7 @@ namespace std {
           requires (sizeof...(_As) == 0) &&
             __minvocable<_Continuation, _As...>
         struct __f_<_As...> {
-          using type = __minvoke<_Continuation>;
+          using type = __minvoke<_Continuation, _As...>;
         };
       template <template <class...> class _A, class... _As>
           requires __minvocable<_Continuation, _As...>
@@ -294,89 +347,86 @@ namespace std {
         struct __f_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
           : __f_<__types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
       template <class... _Args>
-        #if _P2300_NVHPC
-          requires __has_type<__f_<_Args...>>
-        #endif
-        using __f = __t<__f_<_Args...>>;
+        _P2300_NVHPC_USING(__f, __t<__f_<_Args...>>);
     };
 
   template <bool>
     struct __if_ {
       template <class _True, class>
-        using __f = _True;
+        _P2300_NVHPC_USING(__f, _True);
     };
   template <>
     struct __if_<false> {
       template <class, class _False>
-        using __f = _False;
+        _P2300_NVHPC_USING(__f, _False);
     };
-  #if _P2300_NVHPC
+  #if _P2300_NVHPC()
   template <class _Pred, class _True, class _False>
-    using __if = __minvoke2<__if_<_Pred::value>, _True, _False>;
+    _P2300_NVHPC_USING(__if, __minvoke2<__if_<_Pred::value>, _True, _False>);
   #else
   template <class _Pred, class _True, class _False>
-    using __if = __minvoke2<__if_<__v<_Pred>>, _True, _False>;
+    _P2300_NVHPC_USING(__if, __minvoke2<__if_<__v<_Pred>>, _True, _False>);
   #endif
   template <bool _Pred, class _True, class _False>
-    using __if_c = __minvoke2<__if_<_Pred>, _True, _False>;
+    _P2300_NVHPC_USING(__if_c, __minvoke2<__if_<_Pred>, _True, _False>);
 
   template <class _Fn>
     struct __curry {
       template <class... _Ts>
-        using __f = __minvoke<_Fn, _Ts...>;
+        _P2300_NVHPC_USING(__f, __minvoke<_Fn, _Ts...>);
     };
 
   template <class _Fn>
     struct __uncurry : __concat<_Fn> {};
 
   template <class _Fn, class _List>
-    using __mapply =
-      __minvoke<__uncurry<_Fn>, _List>;
+    _P2300_NVHPC_USING(__mapply,
+      __minvoke<__uncurry<_Fn>, _List>);
 
   struct __mcount {
     template <class... _Ts>
-      using __f = integral_constant<size_t, sizeof...(_Ts)>;
+      _P2300_NVHPC_USING(__f, integral_constant<size_t, sizeof...(_Ts)>);
   };
 
   template <class _Fn>
     struct __mcount_if {
       template <class... _Ts>
-        using __f =
-          integral_constant<size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
+        _P2300_NVHPC_USING(__f,
+          integral_constant<size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>);
     };
 
   template <class _T>
     struct __contains {
       template <class... _Args>
-        using __f = __bool<(__v<is_same<_T, _Args>> ||...)>;
+        _P2300_NVHPC_USING(__f, __bool<(__v<is_same<_T, _Args>> ||...)>);
     };
 
   template <class _Continuation = __q<__types>>
     struct __push_back {
       template <class _List, class _Item>
-        using __f =
-          __mapply<__mbind_back<_Continuation, _Item>, _List>;
+        _P2300_NVHPC_USING(__f,
+          __mapply<__mbind_back<_Continuation, _Item>, _List>);
     };
 
   template <class _Continuation = __q<__types>>
     struct __push_back_unique {
       template <class _List, class _Item>
-        using __f =
+        _P2300_NVHPC_USING(__f,
           __mapply<
             __if<
               __mapply<__contains<_Item>, _List>,
               _Continuation,
               __mbind_back<_Continuation, _Item>>,
-            _List>;
+            _List>);
     };
 
   template <class _Continuation = __q<__types>>
     struct __munique {
       template <class... _Ts>
-        using __f =
+        _P2300_NVHPC_USING(__f,
           __mapply<
             _Continuation,
-            __minvoke<__right_fold<__types<>, __push_back_unique<>>, _Ts...>>;
+            __minvoke<__right_fold<__types<>, __push_back_unique<>>, _Ts...>>);
     };
 
   template <class...>
@@ -388,36 +438,36 @@ namespace std {
   template <class _Second, class _First>
     struct __mcompose<_Second, _First> {
       template <class... _Args>
-        using __f = __minvoke1<_Second, __minvoke<_First, _Args...>>;
+        _P2300_NVHPC_USING(__f, __minvoke1<_Second, __minvoke<_First, _Args...>>);
     };
 
   template <class _Last, class _Penultimate, class... _Rest>
     struct __mcompose<_Last, _Penultimate, _Rest...> {
       template <class... _Args>
-        using __f =
-          __minvoke1<_Last, __minvoke<__mcompose<_Penultimate, _Rest...>, _Args...>>;
+        _P2300_NVHPC_USING(__f,
+          __minvoke1<_Last, __minvoke<__mcompose<_Penultimate, _Rest...>, _Args...>>);
     };
 
   template <class _Old, class _New, class _Continuation = __q<__types>>
     struct __replace {
       template <class... _Args>
-        using __f =
-          __minvoke<_Continuation, __if<is_same<_Args, _Old>, _New, _Args>...>;
+        _P2300_NVHPC_USING(__f,
+          __minvoke<_Continuation, __if<is_same<_Args, _Old>, _New, _Args>...>);
     };
 
   template <class _Old, class _Continuation = __q<__types>>
     struct __remove {
       template <class... _Args>
-        using __f =
+        _P2300_NVHPC_USING(__f,
           __minvoke<
             __concat<_Continuation>,
-            __if<is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
+            __if<is_same<_Args, _Old>, __types<>, __types<_Args>>...>);
     };
 
   template <class _Return>
     struct __qf {
       template <class... _Args>
-        using __f = _Return(_Args...);
+        _P2300_NVHPC_USING(__f, _Return(_Args...));
     };
 
   template <class _T>
@@ -443,12 +493,15 @@ namespace std {
     };
   template <class... _As>
       requires (sizeof...(_As) == 1)
-    using __single_t = __t<__front<_As...>>;
+    _P2300_NVHPC_USING_TRAILING(__single_t, __t<__front<_As...>>);
+  template <class... _As>
+      requires (sizeof...(_As) == 1)
+    _P2300_NVHPC_USING_TRAILING(__single0_t, __t<__front<_As...>>);
   template <class _Ty>
     struct __single_or {
       template <class... _As>
           requires (sizeof...(_As) <= 1)
-        using __f = __t<__front<_As..., _Ty>>;
+        _P2300_NVHPC_USING_TRAILING(__f, __t<__front<_As..., _Ty>>);
     };
 
   template <class _Fun, class... _As>
@@ -463,21 +516,21 @@ namespace std {
         { ((_Fun&&) __fun)((_As&&) __as...) } noexcept;
       };
   template <class _Fun, class... _As>
-    using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
+    _P2300_NVHPC_USING(__call_result_t, decltype(__declval<_Fun>()(__declval<_As>()...)));
 
   // For working around clang's lack of support for CWG#2369:
   // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369
   struct __qcall_result {
     template <class _Fun, class... _As>
-      #if _P2300_NVHPC
-        requires __callable<_Fun, _As...>
-      #endif
-      using __f = __call_result_t<_Fun, _As...>;
+      // #if _P2300_NVHPC()
+      //   requires __callable<_Fun, _As...>
+      // #endif
+      _P2300_NVHPC_USING(__f, __call_result_t<_Fun, _As...>);
   };
   template <bool _Enable, class _Fun, class... _As>
-    using __call_result_if_t =
+    _P2300_NVHPC_USING(__call_result_if_t,
       typename __if<__bool<_Enable>, __qcall_result, __>
-        ::template __f<_Fun, _As...>;
+        ::template __f<_Fun, _As...>);
 
   // For emplacing non-movable types into optionals:
   template <class _Fn>
@@ -493,7 +546,7 @@ namespace std {
     __conv(_Fn) -> __conv<_Fn>;
 
   template <class _T>
-    using __cref_t = const remove_reference_t<_T>&;
+    _P2300_NVHPC_USING(__cref_t, const remove_reference_t<_T>&);
 
   template <class _Fn, class _Continuation = __q<__types>>
     struct __mzip_with2 {
@@ -508,7 +561,7 @@ namespace std {
           using type = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
         };
       template <class _C, class _D>
-        using __f = __t<__f_<_C, _D>>;
+        _P2300_NVHPC_USING(__f, __t<__f_<_C, _D>>);
     };
 
   template <size_t... _Indices>
