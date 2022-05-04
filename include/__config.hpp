@@ -60,20 +60,3 @@
 #ifndef _P2300_MSVC
 #define _P2300_MSVC() 0
 #endif
-
-// Macros for various compiler-specific workarounds:
-#if _P2300_NVHPC()
-#define _P2300_NVHPC_USING(_X, ...) \
-  requires __typename<__VA_ARGS__> using _X = __VA_ARGS__
-#define _P2300_NVHPC_USING_(_X, ...) \
-  using _X = __VA_ARGS__
-#define _P2300_NVHPC_USING_TRAILING(_X, ...) \
-  && __typename<__VA_ARGS__> using _X = __VA_ARGS__
-#define _P2300_NVHPC_USING_TRAILING_(_X, ...) \
-  using _X = __VA_ARGS__
-#else
-#define _P2300_NVHPC_USING(_X, ...) using _X = __VA_ARGS__
-#define _P2300_NVHPC_USING_(_X, ...) using _X = __VA_ARGS__
-#define _P2300_NVHPC_USING_TRAILING(_X, ...) using _X = __VA_ARGS__
-#define _P2300_NVHPC_USING_TRAILING_(_X, ...) using _X = __VA_ARGS__
-#endif

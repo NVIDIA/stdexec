@@ -272,22 +272,22 @@ namespace std::execution {
   template <__completion_signature... _Sigs>
     struct completion_signatures {
       template <class _Tag>
-        _P2300_NVHPC_USING(__count_of,
+        using __count_of =
           integral_constant<
             size_t,
-            (__mapply<__mcount, __signal_args_t<_Sigs, _Tag>>::value + ...)>);
+            (__mapply<__mcount, __signal_args_t<_Sigs, _Tag>>::value + ...)>;
 
       template <class _Tuple, class _Variant>
-        _P2300_NVHPC_USING(__value_types,
+        using __value_types =
           __minvoke<
             __concat<_Variant>,
-            __signal_args_t<_Sigs, set_value_t, _Tuple>...>);
+            __signal_args_t<_Sigs, set_value_t, _Tuple>...>;
 
       template <class _Variant>
-        _P2300_NVHPC_USING(__error_types,
+        using __error_types =
           __minvoke<
             __concat<_Variant>,
-            __signal_args_t<_Sigs, set_error_t, __q1<__id>>...>);
+            __signal_args_t<_Sigs, set_error_t, __q1<__id>>...>;
     };
 
 #if _P2300_NVHPC()
@@ -500,17 +500,17 @@ namespace std::execution {
             class _Tuple = __q<__decayed_tuple>,
             class _Variant = __q<__variant>>
       requires sender<_Sender, _Env>
-    _P2300_NVHPC_USING_TRAILING(__value_types_of_t,
+    using __value_types_of_t =
       typename completion_signatures_of_t<_Sender, _Env>::template
-        __value_types<_Tuple, _Variant>);
+        __value_types<_Tuple, _Variant>;
 
   template <class _Sender,
             class _Env = no_env,
             class _Variant = __q<__variant>>
       requires sender<_Sender, _Env>
-    _P2300_NVHPC_USING_TRAILING_(__error_types_of_t,
+    using __error_types_of_t =
       typename completion_signatures_of_t<_Sender, _Env>::template
-        __error_types<_Variant>);
+        __error_types<_Variant>;
 
   template <class _Sender, class _Env = no_env>
       requires sender<_Sender, _Env>
@@ -523,23 +523,23 @@ namespace std::execution {
             template <class...> class _Tuple = __decayed_tuple,
             template <class...> class _Variant = __variant>
       requires sender<_Sender, _Env>
-    _P2300_NVHPC_USING_TRAILING(value_types_of_t,
-      __value_types_of_t<_Sender, _Env, __q<_Tuple>, __q<_Variant>>);
+    using value_types_of_t =
+      __value_types_of_t<_Sender, _Env, __q<_Tuple>, __q<_Variant>>;
 
   template <class _Sender,
             class _Env = no_env,
             template <class...> class _Variant = __variant>
       requires sender<_Sender, _Env>
-    _P2300_NVHPC_USING_TRAILING(error_types_of_t,
-      __error_types_of_t<_Sender, _Env, __q<_Variant>>);
+    using error_types_of_t =
+      __error_types_of_t<_Sender, _Env, __q<_Variant>>;
 
   template <class _Sender, class _Env = no_env>
-    _P2300_NVHPC_USING(__single_sender_value_t,
-      __value_types_of_t<_Sender, _Env, __single_or<void>, __q<__single_t>>);
+    using __single_sender_value_t =
+      __value_types_of_t<_Sender, _Env, __single_or<void>, __q<__single_t>>;
 
   template <class _Sender, class _Env = no_env>
-    _P2300_NVHPC_USING(__single_value_variant_sender_t,
-      value_types_of_t<_Sender, _Env, __types, __single0_t>);
+    using __single_value_variant_sender_t =
+      value_types_of_t<_Sender, _Env, __types, __single0_t>;
 
 #if _P2300_NVHPC()
   template <class _Sender, class _Env = no_env>
@@ -4342,16 +4342,16 @@ namespace std::this_thread {
       // What should sync_wait(just_stopped()) return?
       template <class _Sender>
           requires execution::sender<_Sender, __env>
-        _P2300_NVHPC_USING_TRAILING(__sync_wait_result_t,
+        using __sync_wait_result_t =
           execution::value_types_of_t<
             _Sender,
             __env,
             execution::__decayed_tuple,
-            __single_t>);
+            __single_t>;
 
       template <class _Sender>
-        _P2300_NVHPC_USING(__sync_wait_with_variant_result_t,
-          __sync_wait_result_t<__into_variant_result_t<_Sender>>);
+        using __sync_wait_with_variant_result_t =
+          __sync_wait_result_t<__into_variant_result_t<_Sender>>;
 
       template <class _SenderId>
         struct __state;
