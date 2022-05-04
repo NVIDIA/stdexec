@@ -25,7 +25,7 @@ struct my_oper : non_movable {
   friend void tag_invoke(ex::start_t, my_oper& self) { self.started_ = true; }
 };
 
-struct op_value /*: non_movable*/ {
+struct op_value /*: non_movable*/ { // Intentionally movable!
   bool* started_;
   friend void tag_invoke(ex::start_t, op_value self) { *self.started_ = true; }
 };
