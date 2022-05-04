@@ -320,7 +320,7 @@ namespace std::execution {
   namespace __get_completion_signatures {
     struct get_completion_signatures_t {
       template <class _Sender, class _Env = no_env>
-      constexpr auto operator()(_Sender&& __sndr, const _Env& = {}) const noexcept {
+      constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
         if constexpr (tag_invocable<get_completion_signatures_t, _Sender, _Env>) {
@@ -1576,6 +1576,7 @@ namespace std::execution {
             terminate();
           }
           friend void tag_invoke(set_stopped_t, __as_receiver&&) noexcept {}
+          friend __empty_env tag_invoke(get_env_t, const __as_receiver&) noexcept { return {}; };
         };
     }
 
@@ -1584,8 +1585,8 @@ namespace std::execution {
         requires __callable<_Fun&> && move_constructible<_Fun>
       void operator()(_Scheduler&& __sched, _Fun __fun) const
         noexcept(noexcept(
-          submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun}))) {
-        (void) submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun});
+          __submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun}))) {
+        (void) __submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun});
       }
       template <scheduler _Scheduler, class _Fun>
         requires __callable<_Fun&> &&
