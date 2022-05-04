@@ -30,6 +30,11 @@ namespace std {
   template <class...>
     concept __typename = true;
 
+  struct __non_movable {
+    __non_movable() = default;
+    __non_movable(__non_movable&&) = delete;
+  };
+
   // For hiding a template type parameter from ADL
   template <class _T>
     struct __x_ {

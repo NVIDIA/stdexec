@@ -17,6 +17,7 @@
 #pragma once
 
 #include <execution.hpp>
+#include <test_common/type_helpers.hpp>
 
 #include <functional>
 #include <vector>
@@ -52,6 +53,7 @@ struct impulse_scheduler {
     oper(data* shared_data, R&& recv)
         : data_(shared_data)
         , receiver_((R &&) recv) {}
+    oper(oper&&) = delete;
 
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
       // Enqueue another command to the list of all commands
@@ -124,7 +126,7 @@ struct impulse_scheduler {
 //! Scheduler that executes everything inline, i.e., on the same thread
 struct inline_scheduler {
   template <typename R>
-  struct oper {
+  struct oper : non_movable {
     R recv_;
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
       try {
@@ -141,7 +143,7 @@ struct inline_scheduler {
         ex::set_error_t(std::exception_ptr)>;
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
-      return {(R &&) r};
+      return {{}, (R &&) r};
     }
 
     template <std::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
@@ -160,7 +162,7 @@ struct inline_scheduler {
 template <typename E = std::exception_ptr>
 struct error_scheduler {
   template <typename R>
-  struct oper {
+  struct oper : non_movable {
     R recv_;
     E err_;
 
@@ -179,7 +181,7 @@ struct error_scheduler {
 
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
-      return {(R &&) r, (E &&) self.err_};
+      return {{}, (R &&) r, (E &&) self.err_};
     }
 
     friend error_scheduler tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, my_sender) {
@@ -198,7 +200,7 @@ struct error_scheduler {
 //! Scheduler that returns a sender that always completes with cancellation.
 struct stopped_scheduler {
   template <typename R>
-  struct oper {
+  struct oper : non_movable {
     R recv_;
     friend void tag_invoke(ex::start_t, oper& self) noexcept { ex::set_stopped((R &&) self.recv_); }
   };
@@ -210,7 +212,7 @@ struct stopped_scheduler {
 
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
-      return {(R &&) r};
+      return {{}, (R &&) r};
     }
 
     template <typename CPO>

@@ -17,11 +17,12 @@
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include "test_common/receivers.hpp"
+#include "test_common/type_helpers.hpp"
 
 namespace ex = std::execution;
 
 template <typename R>
-struct op_state {
+struct op_state : non_movable {
   int val_;
   R recv_;
 
@@ -38,7 +39,7 @@ struct my_sender  {
 
   template <class R>
   friend op_state<R> tag_invoke(ex::connect_t, my_sender&& s, R&& r) {
-    return {s.value_, (R &&) r};
+    return {{}, s.value_, (R &&) r};
   }
 };
 
@@ -50,7 +51,7 @@ struct my_sender_unconstrained {
 
   template <class R> // accept any type here
   friend op_state<R> tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) {
-    return {s.value_, (R &&) r};
+    return {{}, s.value_, (R &&) r};
   }
 };
 
@@ -72,7 +73,7 @@ struct strange_receiver {
       ex::connect_t, my_sender, strange_receiver self) {
     *self.called_ = true;
     // NOLINTNEXTLINE
-    return {19, std::move(self)};
+    return {{}, 19, std::move(self)};
   }
 
   friend inline void tag_invoke(ex::set_value_t, strange_receiver, int val) noexcept { REQUIRE(val == 19); }
