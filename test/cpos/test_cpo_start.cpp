@@ -16,28 +16,28 @@
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
+#include <test_common/type_helpers.hpp>
 
 namespace ex = std::execution;
 
-struct my_oper {
+struct my_oper : non_movable {
   bool started_{false};
-
   friend void tag_invoke(ex::start_t, my_oper& self) { self.started_ = true; }
 };
 
-struct op_value {
+struct op_value /*: non_movable*/ { // Intentionally movable!
   bool* started_;
   friend void tag_invoke(ex::start_t, op_value self) { *self.started_ = true; }
 };
-struct op_rvalref {
+struct op_rvalref : non_movable {
   bool* started_;
   friend void tag_invoke(ex::start_t, op_rvalref&& self) { *self.started_ = true; }
 };
-struct op_ref {
+struct op_ref : non_movable {
   bool* started_;
   friend void tag_invoke(ex::start_t, op_ref& self) { *self.started_ = true; }
 };
-struct op_cref {
+struct op_cref : non_movable {
   bool* started_;
   friend void tag_invoke(ex::start_t, const op_cref& self) { *self.started_ = true; }
 };
@@ -51,7 +51,7 @@ TEST_CASE("can call start on an operation state", "[cpo][cpo_start]") {
 TEST_CASE("can call start on an oper with plain value type", "[cpo][cpo_start]") {
   static_assert(!std::invocable<ex::start_t, op_value>, "cannot call start on op_value");
   bool started{false};
-  op_value op{&started};
+  op_value op{/*{},*/ &started};
   ex::start(op);
   REQUIRE(started);
 }
@@ -62,14 +62,14 @@ TEST_CASE("can call start on an oper with r-value ref type", "[cpo][cpo_start]")
 TEST_CASE("can call start on an oper with ref type", "[cpo][cpo_start]") {
   static_assert(std::invocable<ex::start_t, op_ref&>, "cannot call start on op_ref");
   bool started{false};
-  op_ref op{&started};
+  op_ref op{{}, &started};
   ex::start(op);
   REQUIRE(started);
 }
 TEST_CASE("can call start on an oper with const ref type", "[cpo][cpo_start]") {
   static_assert(std::invocable<ex::start_t, const op_cref&>, "cannot call start on op_cref");
   bool started{false};
-  const op_cref op{&started};
+  const op_cref op{{}, &started};
   ex::start(op);
   REQUIRE(started);
 }

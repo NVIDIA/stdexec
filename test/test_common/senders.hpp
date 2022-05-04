@@ -31,7 +31,7 @@ struct fallible_just {
       ex::set_error_t(std::exception_ptr)>;
 
   template <class Receiver>
-  struct operation {
+  struct operation : non_movable {
     std::tuple<Values...> values_;
     Receiver rcvr_;
 
@@ -49,7 +49,7 @@ struct fallible_just {
   template <class Receiver>
   friend auto tag_invoke(ex::connect_t, fallible_just&& self, Receiver&& rcvr) ->
       operation<std::decay_t<Receiver>> {
-    return {std::move(self.values_), std::forward<Receiver>(rcvr)};
+    return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
 };
 
