@@ -22,6 +22,8 @@
 namespace ex = std::execution;
 
 struct oper {
+  oper() = default;
+  oper(oper&&) = delete;
   friend void tag_invoke(ex::start_t, oper&) noexcept {}
 };
 

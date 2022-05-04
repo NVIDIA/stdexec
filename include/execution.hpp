@@ -625,12 +625,12 @@ namespace std::execution {
       struct get_forward_progress_guarantee_t {
         template <class _T>
           requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>
-        tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> operator()(
+        constexpr tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> operator()(
             _T&& __t) const
           noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>) {
-          return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t)) ? true : false;
+          return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t));
         }
-        execution::forward_progress_guarantee operator()(auto&&) const noexcept {
+        constexpr execution::forward_progress_guarantee operator()(auto&&) const noexcept {
           return execution::forward_progress_guarantee::weakly_parallel;
         }
       };
@@ -961,6 +961,12 @@ namespace std::execution {
       using __debug_env_t =
         make_env_t<__is_debug_env_t, int, _Env>;
 
+    struct __debug_op_state {
+      __debug_op_state(auto&&);
+      __debug_op_state(__debug_op_state&&) = delete;
+      friend void tag_invoke(start_t, __debug_op_state&) noexcept;
+    };
+
     template <class _Sig>
       struct __completion;
 
@@ -995,11 +1001,6 @@ namespace std::execution {
         tag_invocable<connect_t, _Sender, _Receiver>;
 
     struct connect_t {
-      struct __debug_op_state {
-        __debug_op_state(auto&&);
-        friend void tag_invoke(start_t, __debug_op_state&) noexcept;
-      };
-
       template <class _Sender, class _Receiver>
         requires __connectable_sender_with<_Sender, _Receiver>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
@@ -1503,7 +1504,7 @@ namespace std::execution {
 
         using completion_signatures = __completion_signatures_<_CPO, _Ts...>;
         template <class _ReceiverId>
-          struct __operation {
+          struct __operation : __non_movable {
             using _Receiver = __t<_ReceiverId>;
             tuple<_Ts...> __vals_;
             _Receiver __rcvr_;
@@ -1521,14 +1522,14 @@ namespace std::execution {
         friend auto tag_invoke(connect_t, const __sender& __sndr, _Receiver&& __rcvr)
           noexcept((is_nothrow_copy_constructible_v<_Ts> &&...))
           -> __operation<__x<remove_cvref_t<_Receiver>>> {
-          return {__sndr.__vals_, (_Receiver&&) __rcvr};
+          return {{}, __sndr.__vals_, (_Receiver&&) __rcvr};
         }
 
         template <class _Receiver>
         friend auto tag_invoke(connect_t, __sender&& __sndr, _Receiver&& __rcvr)
           noexcept((is_nothrow_move_constructible_v<_Ts> &&...))
           -> __operation<__x<remove_cvref_t<_Receiver>>> {
-          return {((__sender&&) __sndr).__vals_, (_Receiver&&) __rcvr};
+          return {{}, ((__sender&&) __sndr).__vals_, (_Receiver&&) __rcvr};
         }
       };
 
@@ -1875,7 +1876,7 @@ namespace std::execution {
 
     template <__class _Derived, operation_state _Base>
       struct __operation_state_adaptor {
-        class __t : __adaptor_base<_Base> {
+        class __t : __adaptor_base<_Base>, __non_movable {
           _DEFINE_MEMBER(start);
 
           template <class _D = _Derived>
@@ -2289,6 +2290,7 @@ namespace std::execution {
           , __recvr_((_Receiver&&)__rcvr)
           , __shared_state_(move(__shared_state)) {
         }
+        __operation(__operation&&) = delete;
 
         static void __notify(__operation_base* __self) noexcept {
           __operation *__op = static_cast<__operation*>(__self);
@@ -2568,12 +2570,12 @@ namespace std::execution {
         };
 
       template <class _Env, class _Fun, class _Set, class... _Args>
-          requires invocable<_Fun, _Args...> &&
-            sender<invoke_result_t<_Fun, _Args...>, _Env>
+          requires invocable<_Fun, _Args&...> &&
+            sender<invoke_result_t<_Fun, _Args&...>, _Env>
         struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
           using type =
             make_completion_signatures<
-              invoke_result_t<_Fun, _Args...>,
+              invoke_result_t<_Fun, _Args&...>,
               _Env,
               completion_signatures<set_error_t(exception_ptr)>>;
         };
@@ -2604,11 +2606,12 @@ namespace std::execution {
               using __op_state_t = __mapply<__q<__op_state_for_t>, __tuple_t>;
               auto& __args =
                 __self.__op_state_->__storage_.__args_.template emplace<__tuple_t>((_As&&) __as...);
-              start(__self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
+              auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
                 __conv{[&] {
                   return connect(std::apply(std::move(__self.__op_state_->__fun_), __args), std::move(__self).base());
                 }}
-              ));
+              );
+              start(__op);
             } catch(...) {
               set_error(std::move(__self).base(), current_exception());
             }
@@ -2645,6 +2648,7 @@ namespace std::execution {
               , __rcvr_((_Receiver2&&) __rcvr)
               , __fun_((_Fun&&) __fun)
             {}
+          __operation(__operation&&) = delete;
 
           connect_result_t<_Sender, __receiver_t> __op_state2_;
           _Receiver __rcvr_;
@@ -2813,6 +2817,7 @@ namespace std::execution {
           : __op_state_(connect((_Sender&&) __sndr, __receiver_t{{}, this}))
           , __rcvr_((_Receiver&&) __rcvr)
         {}
+        __operation(__operation&&) = delete;
 
         friend void tag_invoke(start_t, __operation& __self) noexcept {
           start(__self.__op_state_);
@@ -2940,6 +2945,7 @@ namespace std::execution {
           explicit __operation(_Receiver2&& __rcvr, run_loop* __loop)
             : __rcvr_((_Receiver2 &&) __rcvr)
             , __loop_(__loop) {}
+          __operation(__operation&&) = delete;
         };
     } // namespace __impl
 
@@ -3226,6 +3232,7 @@ namespace std::execution {
           : __sched_(__sched)
           , __rcvr_((decltype(__rcvr)&&) __rcvr)
           , __state1_(connect((_CvrefSender&&) __sndr, __receiver1_t{this})) {}
+        __operation1(__operation1&&) = delete;
 
         friend void tag_invoke(start_t, __operation1& __op_state) noexcept {
           start(__op_state.__state1_);
@@ -3413,6 +3420,7 @@ namespace std::execution {
             , __scheduler_((_Scheduler&&) __sched)
             , __sndr_((_Sender2&&) __sndr)
             , __rcvr_((_Receiver2&&) __rcvr) {}
+          __operation(__operation&&) = delete;
 
           variant<
               connect_result_t<schedule_result_t<_Scheduler>, __receiver_t>,
@@ -3854,6 +3862,7 @@ namespace std::execution {
                 : __child_states_{__connect_children(this, (_WhenAll&&) when_all, _Indices{})}
                 , __recvr_((_Receiver&&) __rcvr)
               {}
+              __operation(__operation&&) = delete;
 
               friend void tag_invoke(start_t, __operation& __self) noexcept {
                 // register stop callback:
@@ -4000,7 +4009,7 @@ namespace std::execution {
 
   namespace __read {
     template <class _Tag, class _ReceiverId>
-      struct __operation {
+      struct __operation : __non_movable {
         __t<_ReceiverId> __rcvr_;
         friend void tag_invoke(start_t, __operation& __self) noexcept try {
           auto __env = get_env(__self.__rcvr_);
@@ -4024,7 +4033,7 @@ namespace std::execution {
         friend auto tag_invoke(connect_t, __sender, _Receiver&& __rcvr)
           noexcept(is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
           -> __operation<_Tag, __x<decay_t<_Receiver>>> {
-          return {(_Receiver&&) __rcvr};
+          return {{}, (_Receiver&&) __rcvr};
         }
 
         template <class _Env>
@@ -4139,7 +4148,7 @@ namespace std::this_thread {
       template <class _SenderId>
         struct __state {
           using _Tuple = __sync_wait_result_t<__t<_SenderId>>;
-          variant<monostate, _Tuple, exception_ptr, execution::set_stopped_t> __data_;
+          variant<monostate, _Tuple, exception_ptr, execution::set_stopped_t> __data_{};
         };
 
       template <class _Sender>

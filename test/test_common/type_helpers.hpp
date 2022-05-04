@@ -20,6 +20,12 @@
 
 namespace ex = std::execution;
 
+//! Used for to make a class non-movable without giving up aggregate initialization
+struct non_movable {
+  non_movable() = default;
+  non_movable(non_movable&&) = delete;
+};
+
 //! Used for debugging, to generate errors to the console
 template <typename T>
 struct type_printer;
