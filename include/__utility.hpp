@@ -197,17 +197,9 @@ namespace std {
   template <template <class, class, class> class _T, class _First, class _Second, class _Third>
     concept __valid3 = requires { typename _T<_First, _Second, _Third>; };
 
-#if _P2300_NVHPC()
-  template <class _Fn, class... _Args>
-    concept __minvocable =
-      requires {
-        typename __minvoke<_Fn, _Args...>;
-      };
-#else
   template <class _Fn, class... _Args>
     concept __minvocable =
       __valid<_Fn::template __f, _Args...>;
-#endif
 
   template <class _Fn, class _First>
     concept __minvocable1 = __valid1<_Fn::template __f, _First>;
@@ -480,9 +472,6 @@ namespace std {
   // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369
   struct __qcall_result {
     template <class _Fun, class... _As>
-      // #if _P2300_NVHPC()
-      //   requires __callable<_Fun, _As...>
-      // #endif
       using __f = __call_result_t<_Fun, _As...>;
   };
   template <bool _Enable, class _Fun, class... _As>

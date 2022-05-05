@@ -290,19 +290,9 @@ namespace std::execution {
             __signal_args_t<_Sigs, set_error_t, __q1<__id>>...>;
     };
 
-#if _P2300_NVHPC()
-  template <class _Ty>
-    inline constexpr bool __is_completion_signatures_ = false;
-  template <class... _Sigs>
-    inline constexpr bool __is_completion_signatures_<completion_signatures<_Sigs...>> = true;
-  template <class _Ty>
-    concept __is_completion_signatures =
-      __is_completion_signatures_<_Ty>;
-#else
   template <class _Ty>
     concept __is_completion_signatures =
       __is_instance_of<_Ty, completion_signatures>;
-#endif
 
   template <class...>
     struct __concat_completion_signatures {
@@ -321,18 +311,6 @@ namespace std::execution {
     using __concat_completion_signatures_t =
       __t<__concat_completion_signatures<_Completions...>>;
 
-#if _P2300_NVHPC()
-  template <class _Traits, class _Env>
-    inline constexpr bool __valid_completion_signatures_ =
-      __is_completion_signatures<_Traits>;
-  template <>
-    inline constexpr bool __valid_completion_signatures_<
-      dependent_completion_signatures<no_env>, no_env> = true;
-
-  template <class _Traits, class _Env>
-    concept __valid_completion_signatures =
-      __valid_completion_signatures_<_Traits, _Env>;
-#else
   template <class _Traits, class _Env>
     concept __valid_completion_signatures =
       __is_instance_of<_Traits, completion_signatures> ||
@@ -340,7 +318,6 @@ namespace std::execution {
         same_as<_Traits, dependent_completion_signatures<no_env>> &&
         same_as<_Env, no_env>
       );
-#endif
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -541,21 +518,6 @@ namespace std::execution {
     using __single_value_variant_sender_t =
       value_types_of_t<_Sender, _Env, __types, __single0_t>;
 
-#if _P2300_NVHPC()
-  template <class _Sender, class _Env = no_env>
-    concept __single_typed_sender =
-      sender<_Sender, _Env> &&
-      requires {
-        typename __single_sender_value_t<_Sender, _Env>;
-      };
-
-  template <class _Sender, class _Env = no_env>
-    concept __single_value_variant_sender =
-      sender<_Sender, _Env> &&
-      requires {
-        typename __single_value_variant_sender_t<_Sender, _Env>;
-      };
-#else
   template <class _Sender, class _Env = no_env>
     concept __single_typed_sender =
       sender<_Sender, _Env> &&
@@ -565,7 +527,6 @@ namespace std::execution {
     concept __single_value_variant_sender =
       sender<_Sender, _Env> &&
       __valid<__single_value_variant_sender_t, _Sender, _Env>;
-#endif
 
   /////////////////////////////////////////////////////////////////////////////
   namespace __compl_sigs {
@@ -1573,21 +1534,11 @@ namespace std::execution {
   namespace __start_detached {
     namespace __impl {
       struct __detached_receiver {
-        #if _P2300_NVHPC()
-        template <class... _Ts>
-        friend void tag_invoke(set_value_t, __detached_receiver&&, _Ts&&...) noexcept {}
-        template <class _Error>
-        [[noreturn]]
-        friend void tag_invoke(set_error_t, __detached_receiver&&, _Error&&) noexcept {
-          terminate();
-        }
-        #else
         friend void tag_invoke(set_value_t, __detached_receiver&&, auto&&...) noexcept {}
         [[noreturn]]
         friend void tag_invoke(set_error_t, __detached_receiver&&, auto&&) noexcept {
           terminate();
         }
-        #endif
         friend void tag_invoke(set_stopped_t, __detached_receiver&&) noexcept {}
         friend __empty_env tag_invoke(get_env_t, const __detached_receiver&) noexcept {
           return {};
@@ -1915,9 +1866,6 @@ namespace std::execution {
       struct __receiver_adaptor {
         class __t : __adaptor_base<_Base> {
           friend _Derived;
-        #if _P2300_NVHPC()
-        public:
-        #endif
           _DEFINE_MEMBER(set_value);
           _DEFINE_MEMBER(set_error);
           _DEFINE_MEMBER(set_stopped);
@@ -1925,17 +1873,8 @@ namespace std::execution {
 
           static constexpr bool __has_base = !derived_from<_Base, __no::__nope>;
 
-          #if _P2300_NVHPC()
-          template <class _D>
-            struct __base_from_derived {
-              using type = decltype(__declval<_D>().base());
-            };
-          template <class _D>
-            using __base_from_derived_t = std::__t<__base_from_derived<_D>>;
-          #else
           template <class _D>
             using __base_from_derived_t = decltype(__declval<_D>().base());
-          #endif
 
           using __get_base_t =
             __if<
@@ -2882,10 +2821,6 @@ namespace std::execution {
             using __tfx_signal = __mbind_front_q1<__tfx_signal_t, _Env>;
 
           template <class _Self, class _Env>
-            #if _P2300_NVHPC()
-              requires __is_completion_signatures<
-                completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>>
-            #endif
             using __completions =
               __mapply<
                 __transform<
@@ -4004,29 +3939,11 @@ namespace std::execution {
               using _CvrefEnv = __member_t<_CvrefReceiverId, _Env>;
               using _Traits = __completion_sigs<_CvrefEnv>;
 
-            #if _P2300_NVHPC()
-              template <class _Sender, class _Index>
-                struct __child_op_state {
-                  using type = connect_result_t<
-                    __member_t<_WhenAll, _Sender>,
-                    __receiver<_CvrefReceiverId, __v<_Index>>>;
-                };
-              template <class _Sender, class _Index>
-                using __child_op_state_t = __t<__child_op_state<_Sender, _Index>>;
-
-
-              using __child_op_states_tuple_t =
-                __minvoke2<
-                  __mzip_with2<__q2<__child_op_state_t>, __q<tuple>>,
-                  __types<__t<_SenderIds>...>,
-                  __mindex_sequence_for<_SenderIds...>>;
-            #else
               template <class _Sender, class _Index>
                 using __child_op_state_t =
                   connect_result_t<
                     __member_t<_WhenAll, _Sender>,
                     __receiver<_CvrefReceiverId, __v<_Index>>>;
-            #endif
 
               using _Indices = index_sequence_for<_SenderIds...>;
 
@@ -4043,10 +3960,8 @@ namespace std::execution {
                   };
                 }
 
-#if !_P2300_NVHPC()
               using __child_op_states_tuple_t =
                   decltype(__connect_children(nullptr, __declval<_WhenAll>(), _Indices{}));
-#endif
 
               void __arrive() noexcept {
                 if (0 == --__count_) {
