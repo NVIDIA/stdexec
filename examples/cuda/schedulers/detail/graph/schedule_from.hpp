@@ -40,23 +40,10 @@ struct receiver_t
   friend void
   tag_invoke(std::execution::set_value_t, receiver_t &&self, Ts&&... ts) noexcept
   {
-    if constexpr (graph_receiver<R>)
-    {
-      auto consumer = self.receiver_.get_consumer();
-      consumer(
-        thread_id_t{},
-        block_id_t{},
-        std::forward<Ts>(ts)...);
-
-      std::execution::set_value(
-        std::move(self.receiver_),
-        std::span<cudaGraphNode_t>{});
-    }
-    else
-    {
-      std::execution::set_value(std::move(self.receiver_),
-                                std::forward<Ts>(ts)...);
-    }
+    auto graph = get_graph(std::execution::get_env(self.receiver_));
+    std::execution::set_value(std::move(self.receiver_),
+                              std::forward<Ts>(ts)...);
+    graph.instantiate().launch();
   }
 
   friend void tag_invoke(
@@ -80,8 +67,6 @@ struct receiver_t
   {
     return ((Tag &&) tag)(std::as_const(self.receiver_), (Ts &&) ts...);
   }
-
-  static constexpr bool is_cuda_graph_api = true;
 };
 
 template <class Scheduler, class S>
@@ -127,8 +112,6 @@ struct sender_t
 
   using value_t = std::execution::
     value_types_of_t<S, std::execution::no_env, cuda::tuple, cuda::variant>;
-
-  static constexpr bool is_cuda_graph_api = true;
 };
 
 } // namespace graph::schedule_from

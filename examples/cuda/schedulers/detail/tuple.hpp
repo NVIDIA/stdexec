@@ -35,6 +35,10 @@ struct tuple_impl_t<I, Head, Tail...> : tuple_impl_t<I + 1, Tail...>
   Head value;
 
   __host__ __device__ tuple_impl_t() = default;
+  __host__ __device__ ~tuple_impl_t() = default;
+
+  __host__ __device__ tuple_impl_t(const tuple_impl_t &) = default;
+  __host__ __device__ tuple_impl_t(tuple_impl_t &&) = default;
 
   template <class H, class... T>
     requires std::is_nothrow_move_constructible_v<Head>
@@ -43,21 +47,8 @@ struct tuple_impl_t<I, Head, Tail...> : tuple_impl_t<I + 1, Tail...>
       , value(std::forward<H>(head))
   {}
 
-  __host__ __device__ void operator=(const tuple_impl_t<I, Head, Tail...> & tpl) noexcept
-    requires std::is_nothrow_copy_assignable_v<Head>
-  {
-    value = tpl.value;
-
-    tuple_impl_t<I + 1, Tail...>::operator=(tpl);
-  }
-
-  __host__ __device__ void operator=(tuple_impl_t<I, Head, Tail...>&& tpl) noexcept
-    requires std::is_nothrow_move_assignable_v<Head>
-  {
-    value = std::move(tpl.value);
-
-    tuple_impl_t<I + 1, Tail...>::operator=(std::move(tpl));
-  }
+  __host__ __device__ tuple_impl_t & operator=(const tuple_impl_t & tpl) = default;
+  __host__ __device__ tuple_impl_t & operator=(tuple_impl_t && tpl) = default;
 };
 
 template <std::size_t I, class Head, class... Tail>
@@ -73,47 +64,6 @@ __host__ __device__ const Head &get(const tuple_impl_t<I, Head, Tail...> &t)
 
 struct tuple_base
 {};
-
-template <class... Ts>
-struct tuple : tuple_base
-             , tuple_impl_t<0, Ts...>
-{
-  template <class Fn>
-  using result_t_ = std::invoke_result_t<Fn, Ts...>;
-
-  template <class Fn>
-  using result_t = std::conditional_t<std::is_same_v<result_t_<Fn>, void>,
-                                      tuple<>,
-                                      tuple<result_t_<Fn>>>;
-
-  constexpr static bool empty = sizeof...(Ts) == 0;
-
-  __host__ __device__ tuple() = default;
-
-  template <class... Us>
-  __host__ __device__ tuple(Us&&... us)
-    requires(sizeof...(Ts) == sizeof...(Us))
-    : tuple_impl_t<0, Ts...>(std::forward<Us>(us)...)
-  {
-  }
-
-  __host__ __device__ tuple &operator=(const tuple& tpl) noexcept
-  {
-    tuple_impl_t<0, Ts...>::operator=(tpl);
-    return *this;
-  }
-
-  __host__ __device__ tuple &operator=(tuple&& tpl) noexcept
-  {
-    tuple_impl_t<0, Ts...>::operator=(std::move(tpl));
-    return *this;
-  }
-
-  __host__ __device__ constexpr static std::size_t size()
-  {
-    return sizeof...(Ts);
-  }
-};
 
 template <class T>
 concept tuple_specialization = std::derived_from<std::decay_t<T>, tuple_base>;
@@ -136,5 +86,55 @@ __host__ __device__ auto apply(F &&f, T &&tpl)
                             std::forward<T>(tpl),
                             std::make_index_sequence<std::decay_t<T>::size()>{});
 }
+
+template <class... Ts>
+struct tuple : tuple_base
+             , tuple_impl_t<0, Ts...>
+{
+  template <class Fn>
+  using result_t_ = std::invoke_result_t<Fn, Ts...>;
+
+  template <class Fn>
+  using result_t = std::conditional_t<std::is_same_v<result_t_<Fn>, void>,
+                                      tuple<>,
+                                      tuple<result_t_<Fn>>>;
+
+  constexpr static bool empty = sizeof...(Ts) == 0;
+
+  __host__ __device__ tuple() = default;
+
+  __host__ __device__ tuple(const tuple &) = default;
+  __host__ __device__ tuple(tuple &&) = default;
+
+  __host__ __device__ tuple & operator=(const tuple &) = default;
+  __host__ __device__ tuple & operator=(tuple &&) = default;
+
+  template <class... Us>
+  __host__ __device__ tuple(tuple<Us...> & other)
+    requires(sizeof...(Ts) == sizeof...(Us))
+    : tuple(apply([](auto &&... us) { return tuple<Ts...>(std::forward<decltype(us)>(us)...); }, other)) {}
+
+  template <class... Us>
+  __host__ __device__ tuple(const tuple<Us...> & other)
+    requires(sizeof...(Ts) == sizeof...(Us))
+    : tuple(apply([](auto &&... us) { return tuple<Ts...>(std::forward<decltype(us)>(us)...); }, other)) {}
+
+  template <class... Us>
+  __host__ __device__ tuple(tuple<Us...> && other)
+    requires(sizeof...(Ts) == sizeof...(Us))
+    : tuple(apply([](auto &&... us) { return tuple<Ts...>(std::forward<decltype(us)>(us)...); }, std::move(other))) {}
+
+  template <class... Us>
+  __host__ __device__ tuple(Us&&... us)
+    requires(sizeof...(Ts) == sizeof...(Us))
+    : tuple_impl_t<0, Ts...>(std::forward<Us>(us)...)
+  {
+  }
+
+  __host__ __device__ constexpr static std::size_t size()
+  {
+    return sizeof...(Ts);
+  }
+};
 
 } // namespace example::cuda

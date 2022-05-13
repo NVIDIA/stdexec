@@ -31,100 +31,135 @@
 
 namespace example::cuda::graph::detail::pipeline_end
 {
+struct trampoline_thread_t {
+    std::thread thread;
+    std::execution::run_loop loop;
 
-template <class S, class Receiver>
-struct receiver_t
-    : std::execution::receiver_adaptor<receiver_t<S, Receiver>, Receiver>
+    trampoline_thread_t() : thread([&]{ loop.run(); })
+    {
+    }
+
+    ~trampoline_thread_t() {
+        loop.finish();
+        thread.join();
+    }
+};
+inline auto get_trampoline_scheduler() {
+    static trampoline_thread_t trampoline_state;
+    return trampoline_state.loop.get_scheduler();
+}
+
+template <class Receiver>
+struct indirect_receiver
 {
-  using super_t =
-    std::execution::receiver_adaptor<receiver_t<S, Receiver>, Receiver>;
-
-  friend super_t;
-
-  cuda::storage_description_t storage_requirement_;
-
-  graph_t graph_;
-  mutable cuda::pipeline_storage_t storage_;
-
-  receiver_t(cudaStream_t stream,
-             Receiver &&receiver,
-             cuda::storage_description_t storage_requirement)
-      : super_t(std::move(receiver))
-      , storage_requirement_(storage_requirement)
-      , graph_(stream)
-  {}
-
-  template <class... Ts>
-  void set_value(Ts&&... ts) &&noexcept
-  try
-  {
-    if constexpr(graph_sender<std::decay_t<S>>)
+public:
+    indirect_receiver(Receiver * r) : base_(r)
     {
-      graph_.instantiate().launch();
-
-      check(cudaStreamSynchronize(graph_.stream_));
-
-      using value_t = value_of_t<S>;
-      value_t &res = *reinterpret_cast<value_t*>(get_storage());
-
-      cuda::invoke(
-        [&](auto&&... args) {
-          std::execution::set_value(std::move(this->base()),
-                                    std::forward<decltype(args)>(args)...);
-        }, res);
-    }
-    else
-    {
-      std::execution::set_value(std::move(this->base()),
-                                std::forward<Ts>(ts)...);
-    }
-  } catch(...) {
-    std::execution::set_error(std::move(this->base()),
-                              std::current_exception());
-  }
-
-  void set_error(std::exception_ptr ex_ptr) && noexcept
-  {
-    std::execution::set_error(std::move(this->base()), ex_ptr);
-  }
-
-  void set_stopped() noexcept
-  {
-    std::execution::set_stopped(std::move(this->base()));
-  }
-
-  [[nodiscard]] consumer_t get_consumer() const noexcept
-  {
-    return {get_storage()};
-  }
-
-  [[nodiscard]] std::byte *get_storage() const noexcept
-  {
-    if (std::byte *storage = storage_.get(); storage != nullptr)
-    {
-      return storage;
     }
 
-    auto env = std::execution::get_env(this->base());
-    storage_ = cuda::pipeline_storage_t(storage_requirement_,
-                                        cuda::get_storage(env));
+    template <class Tag, class ...Ts>
+    __host__ __device__
+    friend auto tag_invoke(Tag, indirect_receiver && self, Ts &&... ts)
+      noexcept(noexcept(tag_invoke(Tag{}, std::move(*self.base_), std::forward<Ts>(ts)...)))
+      -> decltype(tag_invoke(Tag{}, std::declval<Receiver>(), std::forward<Ts>(ts)...))
+    {
+      return tag_invoke(Tag{}, std::move(*self.base_), std::forward<Ts>(ts)...);
+    }
 
-    return storage_.get();
-  }
+    template <class Tag, class ...Ts>
+    __host__ __device__
+    friend auto tag_invoke(Tag, indirect_receiver & self, Ts &&... ts)
+      noexcept(noexcept(tag_invoke(Tag{}, *self.base_, std::forward<Ts>(ts)...)))
+      -> decltype(tag_invoke(Tag{}, std::declval<Receiver &>(), std::forward<Ts>(ts)...))
+    {
+      return tag_invoke(Tag{}, *self.base_, std::forward<Ts>(ts)...);
+    }
 
-  friend auto tag_invoke(std::execution::get_env_t, const receiver_t &self)
-    -> detail::env_t<std::execution::env_of_t<Receiver>>
-  {
-    return detail::env_t<std::execution::env_of_t<Receiver>>{
-      std::execution::get_env(self.base()),
-      self.get_storage(),
-      self.graph_.graph()};
-  }
+    template <class Tag, class ...Ts>
+    __host__ __device__
+    friend auto tag_invoke(Tag, const indirect_receiver & self, Ts &&... ts)
+      noexcept(noexcept(tag_invoke(Tag{}, *static_cast<const Receiver *>(self.base_), std::forward<Ts>(ts)...)))
+      -> decltype(tag_invoke(Tag{}, std::declval<const Receiver &>(), std::forward<Ts>(ts)...))
+    {
+      return tag_invoke(Tag{}, *static_cast<const Receiver *>(self.base_), std::forward<Ts>(ts)...);
+    }
 
-  static constexpr bool is_cuda_graph_api = true;
+private:
+    Receiver *base_;
 };
 
-template <class S>
+template <class Receiver>
+using trampoline_op_state_t = std::execution::connect_result_t<
+  decltype(std::execution::schedule(get_trampoline_scheduler())),
+  Receiver>;
+
+template <std::execution::sender S>
+struct sender_t;
+
+template <class Receiver>
+struct host_callback_data_t {
+  Receiver receiver_;
+  std::optional<trampoline_op_state_t<Receiver>> trampoline_op_state_;
+};
+
+template <class Receiver>
+void host_callback(void * data_v)
+{
+  auto * data = reinterpret_cast<host_callback_data_t<Receiver> *>(data_v);
+
+  data->trampoline_op_state_.emplace(
+      std::execution::connect(std::execution::schedule(get_trampoline_scheduler()), std::move(data->receiver_)));
+  std::execution::start(*data->trampoline_op_state_);
+}
+
+template <std::execution::sender Sender, std::execution::operation_state OpState,
+         class Env, class InventedReceiver, class Receiver>
+struct operation_state_t
+{
+private:
+  OpState *op_state_;
+  InventedReceiver *indirect_receiver_storage_;
+
+  graph_t graph_;
+  cuda::pipeline_storage_t storage_;
+
+  host_callback_data_t<Receiver> host_callback_data_;
+
+public:
+  template <std::execution::sender S>
+  friend struct sender_t;
+
+  operation_state_t(OpState * state, InventedReceiver * indirect_storage, graph_t graph, pipeline_storage_t storage,
+          Receiver && receiver, std::span<const cudaGraphNode_t> predecessors)
+      : op_state_(state)
+      , indirect_receiver_storage_(indirect_storage)
+      , graph_(std::move(graph))
+      , storage_(std::move(storage))
+      , host_callback_data_{std::forward<Receiver>(receiver)}
+  {
+    cudaHostNodeParams host_node_params{};
+    host_node_params.fn = &host_callback<Receiver>;
+    host_node_params.userData = &host_callback_data_;
+
+    cudaGraphNode_t node;
+    check(cudaGraphAddHostNode(&node, graph_.graph(), predecessors.data(), predecessors.size(), &host_node_params));
+  }
+
+  ~operation_state_t()
+  {
+    op_state_->~OpState();
+    indirect_receiver_storage_->~InventedReceiver();
+    check(cudaFree(op_state_));
+    check(cudaFree(indirect_receiver_storage_));
+  }
+
+  friend void tag_invoke(std::execution::start_t, operation_state_t & self) noexcept
+  {
+    std::execution::start(*self.op_state_);
+  }
+};
+
+template <std::execution::sender S>
 struct sender_t
 {
   S sender_;
@@ -135,13 +170,35 @@ struct sender_t
                          Self &&self,
                          Receiver &&receiver) noexcept
   {
-    auto storage_requirement = cuda::storage_requirements(self.sender_);
+    using graph_env_t = detail::env_t<std::execution::env_of_t<Receiver>>;
+    using storage_type = storage_type_for_t<S, graph_env_t>;
 
-    return std::execution::connect(
-      std::move(self.sender_),
-      receiver_t<S, Receiver>{self.stream_,
-                              std::forward<Receiver>(receiver),
-                              storage_requirement});
+    using invented_receiver_t = consumer_receiver_t<storage_type, graph_env_t>;
+    using nested_op_state_t = std::execution::connect_result_t<S, invented_receiver_t>;
+
+    invented_receiver_t * invented_receiver_storage;
+    check(cudaMallocManaged(&invented_receiver_storage, sizeof(invented_receiver_t)));
+    new (invented_receiver_storage) invented_receiver_t(nullptr, std::nullopt);
+
+    nested_op_state_t * op_state_storage;
+    check(cudaMallocManaged(&op_state_storage, sizeof(nested_op_state_t)));
+    new (op_state_storage) auto(std::execution::connect(std::move(self.sender_), indirect_receiver(invented_receiver_storage)));
+
+    auto dependencies = get_predecessors(*op_state_storage);
+
+    auto storage_requirement = cuda::storage_requirements(*op_state_storage);
+    auto pipeline_storage = pipeline_storage_t(storage_requirement);
+    auto graph = graph_t(self.stream_);
+
+    invented_receiver_storage->set_storage_and_env_if_null(pipeline_storage.get(),
+      detail::env_t<std::execution::env_of_t<Receiver>>{
+        std::execution::get_env(receiver),
+        pipeline_storage.get(),
+        graph_info_t(graph.graph(), self.stream_)});
+
+    return operation_state_t<S, nested_op_state_t, graph_env_t, invented_receiver_t, Receiver>(
+        op_state_storage, invented_receiver_storage, std::move(graph), std::move(pipeline_storage),
+        std::forward<Receiver>(receiver), dependencies);
   }
 
   template <std::execution::__sender_queries::__sender_query _Tag, class... _As>

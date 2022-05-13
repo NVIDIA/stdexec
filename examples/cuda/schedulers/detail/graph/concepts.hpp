@@ -23,29 +23,38 @@
 namespace example::cuda::graph
 {
 
-template <class S>
-concept graph_api = requires(S &&s)
-{
-  requires S::is_cuda_graph_api;
-};
-
-template <class S>
-concept graph_sender = std::execution::sender<S> && graph_api<std::decay_t<S>>;
-
-template <class R>
-concept graph_receiver = graph_api<R> &&requires(R &&r)
-{
-  r.get_consumer();
-};
-
 template <class E>
-concept graph_env = requires(E &e)
+concept graph_env = requires(const E &e)
 {
-  { e.graph() } -> std::convertible_to<detail::graph_info_t>;
+  { detail::get_graph(e) } -> std::convertible_to<detail::graph_info_t>;
   { cuda::get_storage(e) } -> std::convertible_to<std::byte *>;
 };
 
-template <graph_sender S>
-using value_of_t = typename std::decay_t<S>::value_t;
+template<typename ...Args>
+using decayed_tuple = tuple<std::decay_t<Args>...>;
+
+template<typename Signature>
+struct transform_signature_impl;
+
+template<typename Tag, typename ...Args>
+struct transform_signature_impl<Tag(Args...)>
+{
+    using type = decayed_tuple<Tag, Args...>;
+};
+
+template<typename Signature>
+using transform_signature_t = typename transform_signature_impl<Signature>::type;
+
+template<typename Signatures>
+struct storage_type_for_impl;
+
+template<typename ...Signatures>
+struct storage_type_for_impl<std::execution::completion_signatures<Signatures...>>
+{
+  using type = variant<transform_signature_t<Signatures>...>;
+};
+
+template<typename Sender, typename Env>
+using storage_type_for_t = typename storage_type_for_impl<std::execution::completion_signatures_of_t<Sender, Env>>::type;
 
 } // namespace example::cuda::graph

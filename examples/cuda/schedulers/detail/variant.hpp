@@ -70,7 +70,7 @@ public:
 
   [[nodiscard]] __host__ __device__ std::size_t index() const { return index_; }
 
-  [[nodiscard]] __host__ __device__ std::uint8_t *data() { return storage_.data; }
+  [[nodiscard]] __host__ __device__ std::byte *data() { return storage_.data; }
 
   template <std::size_t I>
   __host__ __device__ void emplace(const detail::nth_type<I, Ts...> &val)
@@ -143,7 +143,7 @@ namespace detail
 {
 
 template <class F, variant_specialization T>
-__host__ __device__ void apply_impl(std::integral_constant<std::size_t, 0>, F &&f, T &&v)
+__host__ __device__ void visit_impl(std::integral_constant<std::size_t, 0>, F &&f, T &&v)
 {
   if (0 == v.index())
   {
@@ -152,7 +152,7 @@ __host__ __device__ void apply_impl(std::integral_constant<std::size_t, 0>, F &&
 }
 
 template <std::size_t I, class F, variant_specialization T>
-__host__ __device__ void apply_impl(std::integral_constant<std::size_t, I>, F &&f, T &&v)
+__host__ __device__ void visit_impl(std::integral_constant<std::size_t, I>, F &&f, T &&v)
 {
   if (I == v.index())
   {
@@ -161,7 +161,7 @@ __host__ __device__ void apply_impl(std::integral_constant<std::size_t, I>, F &&
     return;
   }
 
-  apply_impl(std::integral_constant<std::size_t, I - 1>{},
+  visit_impl(std::integral_constant<std::size_t, I - 1>{},
              std::forward<F>(f),
              v);
 }
@@ -169,18 +169,21 @@ __host__ __device__ void apply_impl(std::integral_constant<std::size_t, I>, F &&
 } // namespace detail
 
 template <class F, variant_specialization T>
-__host__ __device__ void apply(F &&f, T &&v)
+__host__ __device__ void visit(F &&f, T &&v)
 {
   constexpr std::size_t size = std::decay_t<T>::size();
 
-  return detail::apply_impl(std::integral_constant < std::size_t,
+  return detail::visit_impl(std::integral_constant < std::size_t,
                             (size > 0) ? size - 1 : 0 > {},
                             std::forward<F>(f),
                             std::forward<T>(v));
 }
 
 template <class Fn, class Variant>
-using apply_t = typename Variant::template result_t<Fn>;
+using visit_t = typename Variant::template result_t<Fn>;
+
+template <class Fn, class Variant>
+using apply_t = visit_t<Fn, Variant>;
 
 template <class F, class... Ts>
 __host__ __device__ void invoke(F f, cuda::variant<Ts...> &storage)
@@ -191,7 +194,7 @@ __host__ __device__ void invoke(F f, cuda::variant<Ts...> &storage)
   }
   else
   {
-    cuda::apply(
+    cuda::visit(
       [f](auto &&tpl) { cuda::apply(f, std::forward<decltype(tpl)>(tpl)); },
       storage);
   }

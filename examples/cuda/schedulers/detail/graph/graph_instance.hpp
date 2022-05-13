@@ -59,36 +59,33 @@ struct graph_instance_t
   {
     check(cudaGraphLaunch(instance_, stream_));
   }
-
-  static constexpr bool is_cuda_graph_api = true;
 };
 
 class graph_info_t
 {
-  bool is_launched_multiple_times_{};
   cudaGraph_t graph_{};
+  cudaStream_t stream_{};
 
 public:
   graph_info_t() = default;
 
-  graph_info_t(cudaGraph_t graph, bool is_launched_multiple_times = false)
-      : is_launched_multiple_times_{is_launched_multiple_times}
-      , graph_{graph}
+  graph_info_t(cudaGraph_t graph, cudaStream_t stream)
+      : graph_{graph}
+      , stream_{stream}
   {}
 
-  [[nodiscard]] cudaGraph_t get() const { return graph_; }
-
-  [[nodiscard]] bool is_multi_launch() const
+  [[nodiscard]] graph_instance_t instantiate() const
   {
-    return is_launched_multiple_times_;
+    return graph_instance_t{graph_, stream_};
   }
+
+  [[nodiscard]] cudaGraph_t get() const { return graph_; }
 };
 
 struct graph_t
 {
   cudaStream_t stream_;
   cudaGraph_t graph_;
-  cudaGraphNode_t node_;
 
   explicit graph_t(cudaStream_t stream)
       : stream_(stream)
@@ -99,7 +96,6 @@ struct graph_t
   graph_t(graph_t &&other)
       : stream_(other.stream_)
       , graph_(other.graph_)
-      , node_(other.node_)
   {
     other.graph_ = nullptr;
   }
@@ -124,8 +120,32 @@ struct graph_t
   }
 
   [[nodiscard]] cudaGraph_t graph() const noexcept { return graph_; }
-
-  static constexpr bool is_cuda_graph_api = true;
 };
+
+inline constexpr struct get_predecessors_t
+{
+  template <std::execution::operation_state OpState>
+    requires std::tag_invocable<get_predecessors_t, OpState>
+  constexpr auto operator()(const OpState &op_state) const noexcept
+  {
+    return std::tag_invoke(get_predecessors_t{}, op_state);
+  }
+
+  template <std::execution::operation_state OpState>
+  constexpr std::span<cudaGraphNode_t> operator()(const OpState &op_state) const noexcept
+  {
+    return {};
+  }
+} get_predecessors{};
+
+inline constexpr struct get_graph_t
+{
+  template <class EnvT>
+    requires std::tag_invocable<get_graph_t, EnvT>
+  constexpr auto operator()(EnvT &&env) const noexcept
+  {
+    return std::tag_invoke(get_graph_t{}, std::forward<EnvT>(env));
+  }
+} get_graph{};
 
 } // namespace graph

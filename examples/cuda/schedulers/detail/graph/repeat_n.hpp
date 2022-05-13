@@ -99,7 +99,7 @@ public:
   static constexpr bool is_cuda_graph_api = true;
 };
 
-template <graph_sender S, class Shape>
+template <std::execution::sender S, class Shape>
 struct sender_t : sender_base_t<sender_t<S, Shape>, S>
 {
   using completion_signatures = std::execution::completion_signatures<
@@ -113,7 +113,7 @@ struct sender_t : sender_base_t<sender_t<S, Shape>, S>
   cudaStream_t stream_;
   Shape shape_;
 
-  template <graph_receiver Receiver>
+  template <std::execution::receiver Receiver>
   auto connect(Receiver &&receiver) &&noexcept
   {
     return std::execution::connect(
@@ -133,7 +133,7 @@ struct sender_t : sender_base_t<sender_t<S, Shape>, S>
 
 struct repeat_n_t
 {
-  template <class Shape, graph_sender Sender>
+  template <class Shape, std::execution::sender Sender>
   auto operator()(Shape n, Sender &&sndr) const noexcept
   {
     auto sched =

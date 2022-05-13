@@ -117,22 +117,22 @@ struct pipeline_storage_t
 
 inline constexpr struct storage_requirements_t
 {
-  friend constexpr bool
-  tag_invoke(std::execution::forwarding_sender_query_t, storage_requirements_t)
+  //friend constexpr bool
+  //tag_invoke(std::execution::forwarding_sender_query_t, storage_requirements_t)
+  //{
+    //return true;
+  //}
+
+  template <std::execution::operation_state OpState>
+    requires std::tag_invocable<storage_requirements_t, OpState>
+  constexpr auto operator()(const OpState &op_state) const noexcept
   {
-    return true;
+    return std::tag_invoke(storage_requirements_t{}, op_state);
   }
 
-  template <std::execution::sender Sender>
-    requires std::tag_invocable<storage_requirements_t, Sender>
-  constexpr auto operator()(const Sender &sndr) const noexcept
-  {
-    return std::tag_invoke(storage_requirements_t{}, sndr);
-  }
-
-  template <std::execution::sender Sender>
-    requires(!std::tag_invocable<storage_requirements_t, Sender>)
-  constexpr auto operator()(const Sender &) const noexcept
+  template <std::execution::operation_state OpState>
+    requires(!std::tag_invocable<storage_requirements_t, OpState>)
+  constexpr auto operator()(const OpState &) const noexcept
   {
     return storage_description_t{};
   }

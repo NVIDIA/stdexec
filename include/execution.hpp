@@ -62,6 +62,7 @@ namespace std::execution {
     struct set_value_t {
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
+      __host__ __device__
       void operator()(_Receiver&& __rcvr, _As&&... __as) const
         noexcept(nothrow_tag_invocable<set_value_t, _Receiver, _As...>) {
         (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
@@ -71,6 +72,7 @@ namespace std::execution {
     struct set_error_t {
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
+      __host__ __device__
       void operator()(_Receiver&& __rcvr, _Error&& __err) const
         noexcept(nothrow_tag_invocable<set_error_t, _Receiver, _Error>) {
         (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
@@ -80,6 +82,7 @@ namespace std::execution {
     struct set_stopped_t {
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
+      __host__ __device__
       void operator()(_Receiver&& __rcvr) const
         noexcept(nothrow_tag_invocable<set_stopped_t, _Receiver>) {
         (void) tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
@@ -136,35 +139,29 @@ namespace std::execution {
     template <class _Sig>
       concept __completion_signal =
         requires { typename __id<decltype(__test((_Sig*) nullptr))>; };
-
-    template <class... _Sigs>
-      struct __ {
-        struct type {
-          template <template <class...> class _Tuple, template <class...> class _Variant>
-            using value_types =
-              __minvoke<
-                __concat<__q<_Variant>>,
-                __signal_args_t<_Sigs, set_value_t, __q<_Tuple>>...>;
-
-          template <template <class...> class _Variant>
-            using error_types =
-              __minvoke<
-                __concat<__q<_Variant>>,
-                __signal_args_t<_Sigs, set_error_t, __q1<__id>>...>;
-
-          static constexpr bool sends_stopped =
-            __minvoke<
-              __concat<__count>,
-              __signal_args_t<_Sigs, set_stopped_t>...>::value != 0;
-
-          using __sigs_t = __types<_Sigs...>;
-        };
-      };
   } // namespace __completion_signatures
 
-  template <__completion_signatures::__completion_signal... _Sigs>
-    using completion_signatures =
-      __t<__minvoke<__q<__completion_signatures::__>, _Sigs...>>;
+  template <class... _Sigs>
+  struct completion_signatures {
+    template <template <class...> class _Tuple, template <class...> class _Variant>
+    using value_types =
+      __minvoke<
+        __concat<__q<_Variant>>,
+        __completion_signatures::__signal_args_t<_Sigs, set_value_t, __q<_Tuple>>...>;
+
+    template <template <class...> class _Variant>
+    using error_types =
+      __minvoke<
+        __concat<__q<_Variant>>,
+        __completion_signatures::__signal_args_t<_Sigs, set_error_t, __q1<__id>>...>;
+
+    static constexpr bool sends_stopped =
+      __minvoke<
+        __concat<__count>,
+        __completion_signatures::__signal_args_t<_Sigs, set_stopped_t>...>::value != 0;
+
+    using __sigs_t = __types<_Sigs...>;
+  };
 
   /////////////////////////////////////////////////////////////////////////////
   // env_of
@@ -1845,7 +1842,7 @@ namespace std::execution {
 
           template <class... _As>
             requires __has_set_value<_Derived, _As...>
-          friend void tag_invoke(set_value_t, _Derived&& __self, _As&&... __as)
+          friend constexpr void tag_invoke(set_value_t, _Derived&& __self, _As&&... __as)
             noexcept(noexcept(((_Derived&&) __self).set_value((_As&&) __as...))) {
             ((_Derived&&) __self).set_value((_As&&) __as...);
           }
@@ -1853,14 +1850,14 @@ namespace std::execution {
           template <class _D = _Derived, class... _As>
             requires requires {typename _D::set_value;} &&
               receiver_of<__base_t<_D>, _As...>
-          friend void tag_invoke(set_value_t, _Derived&& __self, _As&&... __as)
+          friend constexpr void tag_invoke(set_value_t, _Derived&& __self, _As&&... __as)
             noexcept(nothrow_receiver_of<__base_t<_D>, _As...>) {
             execution::set_value(__get_base((_Derived&&) __self), (_As&&) __as...);
           }
 
           template <class _Error>
             requires __has_set_error<_Derived, _Error>
-          friend void tag_invoke(set_error_t, _Derived&& __self, _Error&& __err) noexcept {
+          friend constexpr void tag_invoke(set_error_t, _Derived&& __self, _Error&& __err) noexcept {
             static_assert(noexcept(((_Derived&&) __self).set_error((_Error&&) __err)));
             ((_Derived&&) __self).set_error((_Error&&) __err);
           }
@@ -1868,26 +1865,26 @@ namespace std::execution {
           template <class _Error, class _D = _Derived>
             requires requires {typename _D::set_error;} &&
               receiver<__base_t<_D>, _Error>
-          friend void tag_invoke(set_error_t, _Derived&& __self, _Error&& __err) noexcept {
+          friend constexpr void tag_invoke(set_error_t, _Derived&& __self, _Error&& __err) noexcept {
             execution::set_error(__get_base((_Derived&&) __self), (_Error&&) __err);
           }
 
           template <class _D = _Derived>
             requires __has_set_stopped<_D>
-          friend void tag_invoke(set_stopped_t, _Derived&& __self) noexcept {
+          friend constexpr void tag_invoke(set_stopped_t, _Derived&& __self) noexcept {
             static_assert(noexcept(((_Derived&&) __self).set_stopped()));
             ((_Derived&&) __self).set_stopped();
           }
 
           template <class _D = _Derived>
             requires requires {typename _D::set_stopped;}
-          friend void tag_invoke(set_stopped_t, _Derived&& __self) noexcept {
+          friend constexpr void tag_invoke(set_stopped_t, _Derived&& __self) noexcept {
             execution::set_stopped(__get_base((_Derived&&) __self));
           }
 
           // Pass through the get_env receiver query
           template <class _D = _Derived>
-          friend auto tag_invoke(get_env_t, const _Derived& __self)
+          friend constexpr auto tag_invoke(get_env_t, const _Derived& __self)
             -> env_of_t<__base_t<const _D&>> {
             return get_env(__get_base(__self));
           }

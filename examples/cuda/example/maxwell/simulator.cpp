@@ -15,7 +15,7 @@
  */
 
 #include <schedulers/graph_scheduler.hpp>
-#include <schedulers/distributed_scheduler.hpp>
+// #include <schedulers/distributed_scheduler.hpp>
 #include <schedulers/inline_scheduler.hpp>
 #include <schedulers/openmp_scheduler.hpp>
 
@@ -23,8 +23,10 @@
 #include <fstream>
 #include <iomanip>
 #include <charconv>
+#include <iostream>
+#include <map>
 
-namespace distributed = example::cuda::distributed;
+// namespace distributed = example::cuda::distributed;
 namespace graph = example::cuda::graph;
 namespace ex = std::execution;
 
@@ -44,7 +46,7 @@ struct operation_state_t
     for (std::size_t i = 0; i < self.n_; i++)
     {
       // Temporary solution
-      std::this_thread::sync_wait(std::move(self.sender_));
+      std::this_thread::sync_wait(self.sender_);
     }
 
     std::execution::set_value(std::move(self.receiver_));
@@ -81,11 +83,15 @@ struct repeat_n_sender_t
 
 struct repeat_n_t
 {
-  template <graph::graph_sender _Sender>
+  /*template <class _Sender>
+    requires std::same_as<
+        decltype(std::execution::get_completion_scheduler<std::execution::set_value_t>(std::declval<_Sender>())),
+        graph::scheduler_t
+    >
   auto operator()(std::size_t n, _Sender &&__sndr) const noexcept
   {
     return graph::repeat_n(n, std::forward<_Sender>(__sndr));
-  }
+  }*/
 
   template <class _Sender>
   auto operator()(std::size_t n, _Sender &&__sndr) const noexcept
@@ -583,7 +589,7 @@ namespace detail
 
 struct halo_exchange_t
 {
-  template <distributed::distributed_sender _Sender,
+/*  template <distributed::distributed_sender _Sender,
             class Sh1,
             class Sh2,
             class... Ts,
@@ -619,6 +625,7 @@ struct halo_exchange_t
                               tpl,
                               std::make_index_sequence<sizeof...(Ts)>{});
   }
+*/
 
   template <class _Sender, class Sh1, class Sh2, class... Ts>
   auto operator()(_Sender &&sndr,
@@ -667,7 +674,7 @@ auto maxwell_eqs(float dt,
 
   auto write = dump_vtk(write_results, node_id, report_step, accessor);
 
-  return repeat_n(                                                      //
+  /*return repeat_n(                                                      //
            n_outer_iterations,                                          //
            repeat_n(                                                    //
              n_inner_iterations,                                        //
@@ -685,6 +692,13 @@ auto maxwell_eqs(float dt,
              ) |                                                        //
              ex::transfer(writer) |                                     //
              ex::then(std::move(write)));
+             */
+
+  return ex::schedule(computer)
+      | ex::bulk(accessor.cells, update_h(accessor))
+      | ex::bulk(accessor.cells, update_e(time, dt, accessor))
+      | ex::transfer(writer)
+      | ex::then(std::move(write));
 }
 
 std::string bin_name(int node_id)
@@ -1067,6 +1081,7 @@ int main(int argc, char *argv[])
   }
   if (value(params, "run-distributed", run_distributed_default))
   {
-    run_on("GPU (distributed)", distributed::scheduler_t{&argc, &argv});
+    assert(false);
+    // run_on("GPU (distributed)", distributed::scheduler_t{&argc, &argv});
   }
 }

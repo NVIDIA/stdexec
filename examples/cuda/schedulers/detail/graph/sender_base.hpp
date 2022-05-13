@@ -22,9 +22,7 @@ namespace example::cuda::graph::detail
 {
 
 template <class Sender>
-concept expose_requirements =
-     graph_sender<Sender>
-  && requires(const Sender &sndr)
+concept expose_requirements = requires(const Sender &sndr)
 {
   sndr.storage_requirements();
 };
@@ -55,36 +53,39 @@ struct sender_base_t
   {
     return std::execution::get_completion_scheduler<_CPO>(self.sender_);
   }
+};
+
+template <std::execution::sender Sender, class Derived, class Base, class Env>
+struct operation_state_base_t
+{
+  Base op_state_;
+  cudaGraphNode_t node_;
+
+  friend auto tag_invoke(get_predecessors_t, const operation_state_base_t & self) noexcept
+  {
+    return std::span(&self.node_, &self.node_ + 1);
+  }
 
   friend constexpr auto tag_invoke(cuda::storage_requirements_t,
-                                   const Derived &s) noexcept
+                                   const Derived &os) noexcept
   {
     if constexpr(expose_requirements<Derived>)
     {
-      return s.storage_requirements();
+      return os.storage_requirements();
     }
 
-    auto predecessor_requirements = cuda::storage_requirements(s.sender_);
-    using value_t = value_of_t<Derived>;
-    using self_requirement_t = cuda::static_storage_from<value_t>;
-    cuda::storage_description_t self_requirement{};
+    auto predecessor_requirements = cuda::storage_requirements(os.op_state_);
+    using storage_type = storage_type_for_t<Sender, Env>;
+    using self_requirement_t = cuda::static_storage_from<storage_type>;
 
-    if (!std::is_same_v<value_t, cuda::variant<cuda::tuple<>>>)
-    {
-      self_requirement.alignment = self_requirement_t::alignment;
-      self_requirement.size = self_requirement_t::size;
-    }
+    std::size_t alignment = std::max(self_requirement_t::alignment,
+                                     predecessor_requirements.alignment);
 
-    const std::size_t alignment = std::max(self_requirement.alignment,
-                                           predecessor_requirements.alignment);
+    std::size_t size = std::max(self_requirement_t::size,
+                                predecessor_requirements.size);
 
-    const std::size_t size = std::max(self_requirement.size,
-                                      predecessor_requirements.size);
-
-    return cuda::storage_description_t{alignment, size};
+    return storage_description_t{ alignment, size };
   }
-
-  static constexpr bool is_cuda_graph_api = true;
 };
 
 } // namespace graph

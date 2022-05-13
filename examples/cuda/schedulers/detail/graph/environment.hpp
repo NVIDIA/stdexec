@@ -61,18 +61,18 @@ public:
     return cuda::get_storage(self.base_);
   }
 
-  [[nodiscard]] graph_info_t graph() noexcept
+  [[nodiscard]] friend graph_info_t tag_invoke(get_graph_t,
+                                               const env_t &self) noexcept
   {
-    return {graph_};
+    return {self.graph_};
   }
 
-  template <std::__none_of<cuda::get_storage_t> Tag, class... As>
+  template <std::__none_of<cuda::get_storage_t, get_graph_t> Tag, class... As>
   requires std::__callable<Tag, const BaseEnvT&, As...>
   friend auto tag_invoke(Tag tag, const env_t& self, As&&... as) noexcept
   -> std::__call_result_t<Tag, const BaseEnvT&, As...> {
     return (std::forward<Tag>(tag))(self.base_, std::forward<As>(as)...);
   }
 };
-
 
 }

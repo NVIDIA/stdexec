@@ -19,52 +19,106 @@
 
 #include <schedulers/detail/tuple.hpp>
 #include <schedulers/detail/variant.hpp>
+#include <schedulers/detail/graph/concepts.hpp>
 
 namespace example::cuda::graph::detail
 {
 
-struct id_t
+template <class ArgsOut, class Env>
+class consumer_receiver_t
+    : std::execution::receiver_adaptor<consumer_receiver_t<ArgsOut, Env>>
 {
-  unsigned int id_{};
-
-  [[nodiscard]] __host__ __device__ bool is_first() const { return id_ == 0; }
-};
-
-struct thread_id_t : id_t
-{
-  explicit __host__ __device__ thread_id_t(unsigned int id = 0) : id_t{id} {}
-};
-struct block_id_t : id_t
-{
-  explicit __host__ __device__ block_id_t(unsigned int id = 0) : id_t{id} {}
-};
-
-struct consumer_t
-{
-  std::byte *storage_;
+  using super_t =
+    std::execution::receiver_adaptor<consumer_receiver_t<ArgsOut, Env>>;
+  friend super_t;
 
   template <class... Ts>
-  __host__ __device__ void operator()(thread_id_t tid,
-                                      block_id_t bid,
-                                      Ts&&... ts) const
+  __host__ __device__
+  void set_value(Ts &&... ts) && noexcept
   {
-    if (tid.is_first() && bid.is_first())
+    new (storage_) ArgsOut(decayed_tuple<std::execution::set_value_t, Ts...>(std::execution::set_value, std::forward<Ts>(ts)...));
+  }
+
+  template <class Err>
+  __host__ __device__
+  void set_error(Err && err) && noexcept
+  {
+    new (storage_) ArgsOut(decayed_tuple<std::execution::set_error_t, Err>(std::execution::set_error, std::forward<Err>(err)));
+  }
+
+  __host__ __device__
+  void set_stopped() && noexcept
+  {
+    new (storage_) ArgsOut(decayed_tuple<std::execution::set_stopped_t>(std::execution::set_stopped));
+  }
+
+  std::byte * storage_;
+  std::optional<Env> env_;
+
+public:
+  consumer_receiver_t(std::byte * storage, std::optional<Env> env) : storage_(storage), env_(std::move(env))
+  {
+  }
+
+  // break a logical cycle in pipeline_end sender
+  void set_storage_and_env_if_null(std::byte * storage, Env env)
+  {
+    if (!storage_)
     {
-      using storage_t = cuda::variant<cuda::tuple<std::decay_t<Ts>...>>;
-      new (storage_) storage_t{std::forward<Ts>(ts)...};
+      storage_ = storage;
+      env_ = std::move(env);
     }
   }
 
-  __host__ __device__ void operator()(thread_id_t, block_id_t) const {}
+  friend Env tag_invoke(std::execution::get_env_t, const consumer_receiver_t &self)
+  {
+    assert(self.env_);
+    return *self.env_;
+  }
 };
 
-struct sink_consumer_t
+template <class ArgsOut, class Receiver>
+class reader_receiver_t : std::execution::receiver_adaptor<reader_receiver_t<ArgsOut, Receiver>>
 {
-  template <class SrcT, class /* DstT */>
-  __host__ __device__ void operator()(thread_id_t, block_id_t, SrcT &&) const
-  {}
+  using super_t =
+    std::execution::receiver_adaptor<consumer_receiver_t<ArgsOut, Receiver>>;
+  friend super_t;
 
-  __host__ __device__ void operator()(thread_id_t, block_id_t) const {}
+  void set_value() && noexcept
+  {
+    cuda::visit([&](auto signature) {
+      storage_->~ArgsOut();
+
+      cuda::apply([&](auto tag, auto &&... args) {
+        tag(std::move(receiver_), std::forward<decltype(args)>(args)...);
+      }, std::move(signature));
+    }, std::move(*storage_));
+  }
+
+  template <class Err>
+  void set_error(Err && err) noexcept
+  {
+    std::execution::set_error(std::move(receiver_), std::forward<Err>(err));
+  }
+
+  void set_stopped() noexcept
+  {
+    std::execution::set_stopped(std::move(receiver_));
+  }
+
+  ArgsOut * storage_;
+  Receiver receiver_;
+
+public:
+  reader_receiver_t(std::byte * storage, Receiver receiver)
+      : storage_(reinterpret_cast<ArgsOut *>(storage)), receiver_(std::move(receiver))
+  {
+  }
+
+  friend auto tag_invoke(std::execution::get_env_t, const reader_receiver_t & self)
+  {
+    return std::execution::get_env(self.receiver_);
+  }
 };
 
 } // namespace example::cuda::graph::detail
