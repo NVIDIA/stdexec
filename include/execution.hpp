@@ -2912,40 +2912,40 @@ namespace std::execution {
     class run_loop;
 
     namespace __impl {
-      struct __task : private __immovable {
-        virtual void __execute_() noexcept { terminate(); }
+      struct __task : __immovable {
         __task* __next_ = this;
+        union {
+          __task* __tail_;
+          void (*__execute_)(void*) noexcept;
+        };
+
+        void __execute() noexcept { (*__execute_)(this); }
       };
 
       template <typename _ReceiverId>
-        class __operation final : __task {
+        struct __operation : __task {
           using _Receiver = __t<_ReceiverId>;
+          run_loop* __loop_;
+          [[no_unique_address]] _Receiver __rcvr_;
+
+          static void __execute(void* __p) noexcept {
+            auto& __rcvr = ((__operation*) __p)->__rcvr_;
+            try {
+              if (get_stop_token(get_env(__rcvr)).stop_requested()) {
+                set_stopped((_Receiver&&) __rcvr);
+              } else {
+                set_value((_Receiver&&) __rcvr);
+              }
+            } catch(...) {
+              set_error((_Receiver&&) __rcvr, current_exception());
+            }
+          }
 
           friend void tag_invoke(start_t, __operation& __op_state) noexcept {
             __op_state.__start_();
           }
 
-          void __execute_() noexcept override try {
-            if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
-              set_stopped((_Receiver&&) __rcvr_);
-            } else {
-              set_value((_Receiver&&) __rcvr_);
-            }
-          } catch(...) {
-            set_error((_Receiver&&) __rcvr_, current_exception());
-          }
-
           void __start_() noexcept;
-
-          [[no_unique_address]] _Receiver __rcvr_;
-          run_loop* const __loop_;
-
-         public:
-          template <typename _Receiver2>
-          explicit __operation(_Receiver2&& __rcvr, run_loop* __loop)
-            : __rcvr_((_Receiver2 &&) __rcvr)
-            , __loop_(__loop) {}
-          __operation(__operation&&) = delete;
         };
     } // namespace __impl
 
@@ -2954,7 +2954,7 @@ namespace std::execution {
       using __completion_signatures_ = completion_signatures<Ts...>;
 
       template <class>
-        friend class __impl::__operation;
+        friend struct __impl::__operation;
      public:
       class __scheduler {
         struct __schedule_task {
@@ -2968,9 +2968,12 @@ namespace std::execution {
           friend __scheduler;
 
           template <typename _Receiver>
-          friend __impl::__operation<__x<decay_t<_Receiver>>>
+            using __operation = __impl::__operation<__x<decay_t<_Receiver>>>;
+          template <typename _Receiver>
+          friend __operation<_Receiver>
           tag_invoke(connect_t, const __schedule_task& __self, _Receiver&& __rcvr) {
-            return __impl::__operation<__x<decay_t<_Receiver>>>{(_Receiver &&) __rcvr, __self.__loop_};
+            return {{.__execute_ = &__operation<_Receiver>::__execute},
+                    __self.__loop_, (_Receiver &&) __rcvr};
           }
 
           template <class _CPO>
@@ -3024,8 +3027,7 @@ namespace std::execution {
 
       mutex __mutex_;
       condition_variable __cv_;
-      __impl::__task __head_;
-      __impl::__task* __tail_ = &__head_;
+      __impl::__task __head_{.__tail_ = &__head_};
       bool __stop_ = false;
     };
 
@@ -3040,7 +3042,7 @@ namespace std::execution {
 
     inline void run_loop::run() {
       while (auto* __task = __pop_front_()) {
-        __task->__execute_();
+        __task->__execute();
       }
     }
 
@@ -3053,7 +3055,7 @@ namespace std::execution {
     inline void run_loop::__push_back_(__impl::__task* __task) {
       unique_lock __lock{__mutex_};
       __task->__next_ = &__head_;
-      __tail_ = __tail_->__next_ = __task;
+      __head_.__tail_ = __head_.__tail_->__next_ = __task;
       __cv_.notify_one();
     }
 
