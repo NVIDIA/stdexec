@@ -25,9 +25,9 @@ namespace std {
     __ignore(auto&&) noexcept {}
   };
 
-  struct __non_movable {
-    __non_movable() = default;
-    __non_movable(__non_movable&&) = delete;
+  struct __immovable {
+    __immovable() = default;
+    __immovable(__immovable&&) = delete;
   };
 
   // For hiding a template type parameter from ADL

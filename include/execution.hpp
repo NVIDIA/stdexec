@@ -1504,7 +1504,7 @@ namespace std::execution {
 
         using completion_signatures = __completion_signatures_<_CPO, _Ts...>;
         template <class _ReceiverId>
-          struct __operation : __non_movable {
+          struct __operation : __immovable {
             using _Receiver = __t<_ReceiverId>;
             tuple<_Ts...> __vals_;
             _Receiver __rcvr_;
@@ -1876,7 +1876,7 @@ namespace std::execution {
 
     template <__class _Derived, operation_state _Base>
       struct __operation_state_adaptor {
-        class __t : __adaptor_base<_Base>, __non_movable {
+        class __t : __adaptor_base<_Base>, __immovable {
           _DEFINE_MEMBER(start);
 
           template <class _D = _Derived>
@@ -2912,9 +2912,9 @@ namespace std::execution {
     class run_loop;
 
     namespace __impl {
-      struct __task {
-        virtual void __execute_() noexcept = 0;
-        __task* __next_ = nullptr;
+      struct __task : private __immovable {
+        virtual void __execute_() noexcept { terminate(); }
+        __task* __next_ = this;
       };
 
       template <typename _ReceiverId>
@@ -3024,8 +3024,8 @@ namespace std::execution {
 
       mutex __mutex_;
       condition_variable __cv_;
-      __impl::__task* __head_ = nullptr;
-      __impl::__task* __tail_ = nullptr;
+      __impl::__task __head_;
+      __impl::__task* __tail_ = &__head_;
       bool __stop_ = false;
     };
 
@@ -3052,32 +3052,21 @@ namespace std::execution {
 
     inline void run_loop::__push_back_(__impl::__task* __task) {
       unique_lock __lock{__mutex_};
-      if (__head_ == nullptr) {
-        __head_ = __task;
-      } else {
-        __tail_->__next_ = __task;
-      }
-      __tail_ = __task;
-      __task->__next_ = nullptr;
+      __task->__next_ = &__head_;
+      __tail_ = __tail_->__next_ = __task;
       __cv_.notify_one();
     }
 
     inline __impl::__task* run_loop::__pop_front_() {
       unique_lock __lock{__mutex_};
-      while (__head_ == nullptr) {
+      for (; __head_.__next_ == &__head_; __cv_.wait(__lock)) {
         if (__stop_)
           return nullptr;
-        __cv_.wait(__lock);
       }
-      auto* __task = __head_;
-      __head_ = __task->__next_;
-      if (__head_ == nullptr)
-        __tail_ = nullptr;
-      return __task;
+      return exchange(__head_.__next_, __head_.__next_->__next_);
     }
   } // namespace __loop
 
-  // NOT TO SPEC
   using run_loop = __loop::run_loop;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -4009,7 +3998,7 @@ namespace std::execution {
 
   namespace __read {
     template <class _Tag, class _ReceiverId>
-      struct __operation : __non_movable {
+      struct __operation : __immovable {
         __t<_ReceiverId> __rcvr_;
         friend void tag_invoke(start_t, __operation& __self) noexcept try {
           auto __env = get_env(__self.__rcvr_);
