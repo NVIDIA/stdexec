@@ -2913,26 +2913,39 @@ namespace std::execution {
 
     namespace __impl {
       struct __task : private __immovable {
-        virtual void __execute_() noexcept { terminate(); }
         __task* __next_ = this;
+        union {
+          __task* __tail_;
+          void (*__execute_)(void*) noexcept;
+        };
+
+        __task() : __tail_(this) {}
+        explicit __task(void (*__execute)(void*) noexcept) noexcept
+          : __execute_(__execute) {}
+        void __execute() noexcept {
+          (*__execute_)(this);
+        }
       };
 
       template <typename _ReceiverId>
-        class __operation final : __task {
+        class __operation : __task {
           using _Receiver = __t<_ReceiverId>;
 
           friend void tag_invoke(start_t, __operation& __op_state) noexcept {
             __op_state.__start_();
           }
 
-          void __execute_() noexcept override try {
-            if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
-              set_stopped((_Receiver&&) __rcvr_);
-            } else {
-              set_value((_Receiver&&) __rcvr_);
+          static void __execute(void* __p) noexcept {
+            auto& __rcvr = ((__operation*) __p)->__rcvr_;
+            try {
+              if (get_stop_token(get_env(__rcvr)).stop_requested()) {
+                set_stopped((_Receiver&&) __rcvr);
+              } else {
+                set_value((_Receiver&&) __rcvr);
+              }
+            } catch(...) {
+              set_error((_Receiver&&) __rcvr, current_exception());
             }
-          } catch(...) {
-            set_error((_Receiver&&) __rcvr_, current_exception());
           }
 
           void __start_() noexcept;
@@ -2942,9 +2955,10 @@ namespace std::execution {
 
          public:
           template <typename _Receiver2>
-          explicit __operation(_Receiver2&& __rcvr, run_loop* __loop)
-            : __rcvr_((_Receiver2 &&) __rcvr)
-            , __loop_(__loop) {}
+            explicit __operation(_Receiver2&& __rcvr, run_loop* __loop)
+              : __task(&__operation::__execute)
+              , __rcvr_((_Receiver2 &&) __rcvr)
+              , __loop_(__loop) {}
           __operation(__operation&&) = delete;
         };
     } // namespace __impl
@@ -3025,7 +3039,6 @@ namespace std::execution {
       mutex __mutex_;
       condition_variable __cv_;
       __impl::__task __head_;
-      __impl::__task* __tail_ = &__head_;
       bool __stop_ = false;
     };
 
@@ -3040,7 +3053,7 @@ namespace std::execution {
 
     inline void run_loop::run() {
       while (auto* __task = __pop_front_()) {
-        __task->__execute_();
+        __task->__execute();
       }
     }
 
@@ -3053,7 +3066,7 @@ namespace std::execution {
     inline void run_loop::__push_back_(__impl::__task* __task) {
       unique_lock __lock{__mutex_};
       __task->__next_ = &__head_;
-      __tail_ = __tail_->__next_ = __task;
+      __head_.__tail_ = __head_.__tail_->__next_ = __task;
       __cv_.notify_one();
     }
 
