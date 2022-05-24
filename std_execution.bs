@@ -2347,7 +2347,7 @@ This code uses the fact that `sync_wait` associates a scheduler with the receive
 A <dfn export=true>sender adaptor</dfn> is an [=algorithm=] that takes one or more senders, which it may `execution::connect`, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.
 
 Sender adaptors are <i>lazy</i>, that is, they are never allowed to submit any work for execution prior to the returned sender being <dfn lt="start" export=true>started</dfn> later on, and are also guaranteed to not start any input senders passed into them. Sender consumers
-such as [[#design-sender-adaptor-ensure_started]], [[#design-sender-consumer-start_detached]], and [[#design-sender-consumer-sync_wait]] start senders.
+such as [[#design-sender-consumer-start_detached]] and [[#design-sender-consumer-sync_wait]] start senders.
 
 For more implementer-centric description of starting senders, see [[#design-laziness]].
 
@@ -2487,7 +2487,7 @@ Returns a sender that maps the stopped channel to an error of `err`.
 <pre highlight="c++">
 execution::sender auto bulk(
     execution::sender auto input,
-    std::integral auto size,
+    std::integral auto shape,
     invocable&lt;decltype(size), <i>values-sent-by(input)</i>...> function
 );
 </pre>
