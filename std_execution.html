@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R6<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-05-17">2022-05-17</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-05-25">2022-05-25</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4655,7 +4655,7 @@ obtain an object of implementation-defined type to be provided as the first argu
    <h3 class="heading settled" data-level="4.21" id="design-sender-adaptors"><span class="secno">4.21. </span><span class="content">User-facing sender adaptors</span><a class="self-link" href="#design-sender-adaptors"></a></h3>
    <p>A <dfn class="dfn-paneled" data-dfn-type="dfn" data-export id="sender-adaptor">sender adaptor</dfn> is an <a data-link-type="dfn" href="#algorithm" id="ref-for-algorithm①">algorithm</a> that takes one or more senders, which it may <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>connect</c-></code>, as parameters, and returns a sender, whose completion is related to the sender arguments it has received.</p>
    <p>Sender adaptors are <i>lazy</i>, that is, they are never allowed to submit any work for execution prior to the returned sender being <dfn data-dfn-type="dfn" data-export data-lt="start" id="start">started<a class="self-link" href="#start"></a></dfn> later on, and are also guaranteed to not start any input senders passed into them. Sender consumers
-such as <a href="#design-sender-adaptor-ensure_started">§ 4.21.13 execution::ensure_started</a>, <a href="#design-sender-consumer-start_detached">§ 4.22.1 execution::start_detached</a>, and <a href="#design-sender-consumer-sync_wait">§ 4.22.2 this_thread::sync_wait</a> start senders.</p>
+such as <a href="#design-sender-consumer-start_detached">§ 4.22.1 execution::start_detached</a> and <a href="#design-sender-consumer-sync_wait">§ 4.22.2 this_thread::sync_wait</a> start senders.</p>
    <p>For more implementer-centric description of starting senders, see <a href="#design-laziness">§ 5.5 Sender adaptors are lazy</a>.</p>
    <h4 class="heading settled" data-level="4.21.1" id="design-sender-adaptor-transfer"><span class="secno">4.21.1. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span><a class="self-link" href="#design-sender-adaptor-transfer"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>transfer</c-><c- p>(</c->
@@ -4750,7 +4750,7 @@ such as <a href="#design-sender-adaptor-ensure_started">§ 4.21.13 execution::
    <h4 class="heading settled" data-level="4.21.9" id="design-sender-adaptor-bulk"><span class="secno">4.21.9. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span><a class="self-link" href="#design-sender-adaptor-bulk"></a></h4>
 <pre class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>bulk</c-><c- p>(</c->
     <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>input</c-><c- p>,</c->
-    <c- n>std</c-><c- o>::</c-><c- n>integral</c-> <c- k>auto</c-> <c- n>size</c-><c- p>,</c->
+    <c- n>std</c-><c- o>::</c-><c- n>integral</c-> <c- k>auto</c-> <c- n>shape</c-><c- p>,</c->
     <c- n>invocable</c-><c- o>&lt;</c-><c- k>decltype</c-><c- p>(</c-><c- n>size</c-><c- p>),</c-> <i><c- n>values</c-><c- o>-</c-><c- n>sent</c-><c- o>-</c-><c- n>by</c-><c- p>(</c-><c- n>input</c-><c- p>)</c-></i><c- p>...</c-><c- o>></c-> <c- n>function</c->
 <c- p>);</c->
 </pre>
