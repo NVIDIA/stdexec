@@ -400,6 +400,7 @@ namespace std::execution {
           }
 #endif
         } else {
+          static_assert(same_as<_Sender, void>);
           return __compl_sigs::__none_such{};
         }
       }
@@ -677,12 +678,12 @@ namespace std::execution {
       struct get_forward_progress_guarantee_t {
         template <class _T>
           requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>
-        tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> operator()(
-            _T&& __t) const
-          noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>) {
-          return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t)) ? true : false;
+        constexpr auto operator()(_T&& __t) const
+          noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>)
+          -> tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> {
+          return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t));
         }
-        execution::forward_progress_guarantee operator()(auto&&) const noexcept {
+        constexpr execution::forward_progress_guarantee operator()(auto&&) const noexcept {
           return execution::forward_progress_guarantee::weakly_parallel;
         }
       };
@@ -1577,7 +1578,7 @@ namespace std::execution {
 
         using completion_signatures = __completion_signatures_<_CPO, _Ts...>;
         template <class _ReceiverId>
-          struct __operation : __non_movable {
+          struct __operation : __immovable {
             using _Receiver = __t<_ReceiverId>;
             tuple<_Ts...> __vals_;
             _Receiver __rcvr_;
@@ -1649,6 +1650,9 @@ namespace std::execution {
             terminate();
           }
           friend void tag_invoke(set_stopped_t, __as_receiver&&) noexcept {}
+          friend __empty_env tag_invoke(get_env_t, const __as_receiver&) {
+            return {};
+          }
         };
     }
 
@@ -1657,8 +1661,8 @@ namespace std::execution {
         requires __callable<_Fun&> && move_constructible<_Fun>
       void operator()(_Scheduler&& __sched, _Fun __fun) const
         noexcept(noexcept(
-          submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun}))) {
-        (void) submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun});
+          __submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun}))) {
+        (void) __submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun});
       }
       template <scheduler _Scheduler, class _Fun>
         requires __callable<_Fun&> &&
@@ -1962,7 +1966,7 @@ namespace std::execution {
 
     template <__class _Derived, operation_state _Base>
       struct __operation_state_adaptor {
-        class __t : __adaptor_base<_Base>, __non_movable {
+        class __t : __adaptor_base<_Base>, __immovable {
           _DEFINE_MEMBER(start);
 
           template <class _D = _Derived>
@@ -2547,7 +2551,7 @@ namespace std::execution {
 
       template <class... _Ts>
         struct __as_tuple {
-          __decayed_tuple<_Ts...> operator()(_Ts...) const;
+          tuple<_Ts...> operator()(_Ts...) const;
         };
 
       template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
@@ -2693,12 +2697,12 @@ namespace std::execution {
         };
 
       template <class _Env, class _Fun, class _Set, class... _Args>
-          requires invocable<_Fun, _Args...> &&
-            sender<invoke_result_t<_Fun, _Args...>, _Env>
+          requires invocable<_Fun, __decay_ref<_Args>...> &&
+            sender<invoke_result_t<_Fun, __decay_ref<_Args>...>, _Env>
         struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
           using type =
             make_completion_signatures<
-              invoke_result_t<_Fun, _Args...>,
+              invoke_result_t<_Fun, __decay_ref<_Args>...>,
               _Env,
               completion_signatures<set_error_t(exception_ptr)>>;
         };
@@ -4169,7 +4173,7 @@ namespace std::execution {
 
   namespace __read {
     template <class _Tag, class _ReceiverId>
-      struct __operation : __non_movable {
+      struct __operation : __immovable {
         __t<_ReceiverId> __rcvr_;
         friend void tag_invoke(start_t, __operation& __self) noexcept try {
           auto __env = get_env(__self.__rcvr_);
