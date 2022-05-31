@@ -2571,7 +2571,7 @@ namespace std::execution {
 
       template <class _Env, class _Fun, class _Set, class... _Args>
           requires invocable<_Fun, _Args&...> &&
-            sender<invoke_result_t<_Fun, _Args&...>, _Env>
+            sender<invoke_result_t<_Fun, __decay_ref<_Args>...>, _Env>
         struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
           using type =
             make_completion_signatures<
