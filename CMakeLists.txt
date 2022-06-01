@@ -123,6 +123,8 @@ set(test_sourceFiles
     test/algos/consumers/test_start_detached.cpp
     test/algos/consumers/test_sync_wait.cpp
     test/algos/other/test_execute.cpp
+    test/detail/test_completion_signatures.cpp
+    test/detail/test_utility.cpp
     test/queries/test_get_forward_progress_guarantee.cpp
     )
 

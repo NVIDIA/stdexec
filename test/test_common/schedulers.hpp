@@ -174,7 +174,7 @@ struct error_scheduler {
   struct my_sender {
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
-        ex::set_error_t(E),                                  //
+        ex::set_error_t(E),
         ex::set_stopped_t()>;
 
     E err_;
