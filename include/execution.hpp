@@ -2916,7 +2916,7 @@ namespace std::execution {
         __task* __next_ = this;
         union {
           __task* __tail_;
-          void (*__execute_)(void*) noexcept;
+          void (*__execute_)(__task*) noexcept;
         };
 
         void __execute() noexcept { (*__execute_)(this); }
@@ -2928,7 +2928,7 @@ namespace std::execution {
           run_loop* __loop_;
           [[no_unique_address]] _Receiver __rcvr_;
 
-          static void __execute(void* __p) noexcept {
+          static void __execute(__task* __p) noexcept {
             auto& __rcvr = ((__operation*) __p)->__rcvr_;
             try {
               if (get_stop_token(get_env(__rcvr)).stop_requested()) {
@@ -3061,10 +3061,9 @@ namespace std::execution {
 
     inline __impl::__task* run_loop::__pop_front_() {
       unique_lock __lock{__mutex_};
-      for (; __head_.__next_ == &__head_; __cv_.wait(__lock)) {
-        if (__stop_)
-          return nullptr;
-      }
+      __cv_.wait(__lock, [this]{ return __head_.__next_ != &__head_ || __stop_; });
+      if (__head_.__next_ == &__head_)
+        return nullptr;
       return exchange(__head_.__next_, __head_.__next_->__next_);
     }
   } // namespace __loop
@@ -3849,8 +3848,8 @@ namespace std::execution {
                 }
               }
 
-              __operation(_WhenAll&& when_all, _Receiver __rcvr)
-                : __child_states_{__connect_children(this, (_WhenAll&&) when_all, _Indices{})}
+              __operation(_WhenAll&& __when_all, _Receiver __rcvr)
+                : __child_states_{__connect_children(this, (_WhenAll&&) __when_all, _Indices{})}
                 , __recvr_((_Receiver&&) __rcvr)
               {}
               __operation(__operation&&) = delete;
