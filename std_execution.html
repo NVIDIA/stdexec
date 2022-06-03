@@ -3048,7 +3048,7 @@ shown above with <code class="highlight"><c- n>_then_receiver</c-><c- o>::</c-><
 <c- n>namespace</c-> <c- n>exec</c-> <c- o>=</c-> <c- n>execution</c-><c- p>;</c->
 
 <c- n>template</c-> <c- o>&lt;</c-><c- n>class</c-> <c- n>From</c-><c- p>,</c-> <c- n>class</c-> <c- n>To</c-><c- o>></c->
-<c- n>using</c-> <c- n>_decays_to</c-> <c- o>=</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>From</c-><c- o>></c-><c- p>,</c-> <c- n>To</c-><c- o>></c-><c- p>;</c->
+<c- n>concept</c-> <c- n>_decays_to</c-> <c- o>=</c-> <c- n>same_as</c-><c- o>&lt;</c-><c- n>decay_t</c-><c- o>&lt;</c-><c- n>From</c-><c- o>></c-><c- p>,</c-> <c- n>To</c-><c- o>></c-><c- p>;</c->
 
 <c- c1>// _conv needed so we can emplace construct non-movable types into</c->
 <c- c1>// a std::optional.</c->
