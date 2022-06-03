@@ -2288,7 +2288,7 @@ namespace std::execution {
             noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           : __operation_base{nullptr, __notify}
           , __recvr_((_Receiver&&)__rcvr)
-          , __shared_state_(move(__shared_state)) {
+          , __shared_state_(std::move(__shared_state)) {
         }
         __operation(__operation&&) = delete;
 
