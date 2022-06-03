@@ -554,7 +554,7 @@ using namespace std;
 namespace exec = execution;
 
 template <class From, class To>
-using _decays_to = same_as<decay_t<From>, To>;
+concept _decays_to = same_as<decay_t<From>, To>;
 
 // _conv needed so we can emplace construct non-movable types into
 // a std::optional.
