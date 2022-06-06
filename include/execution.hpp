@@ -16,7 +16,6 @@
 #pragma once
 
 #include <atomic>
-#include <barrier>
 #include <cassert>
 #include <condition_variable>
 #include <stdexcept>
@@ -2975,7 +2974,8 @@ namespace std::execution {
           template <typename _Receiver>
           friend __operation<_Receiver>
           tag_invoke(connect_t, const __schedule_task& __self, _Receiver&& __rcvr) {
-            return {{.__execute_ = &__operation<_Receiver>::__execute},
+            return {{.__next_ = &__self.__loop_->__head_,
+                     .__execute_ = &__operation<_Receiver>::__execute},
                     __self.__loop_, (_Receiver &&) __rcvr};
           }
 
@@ -3044,7 +3044,7 @@ namespace std::execution {
     }
 
     inline void run_loop::run() {
-      while (auto* __task = __pop_front_()) {
+      for (__impl::__task* __task; (__task = __pop_front_()) != &__head_;) {
         __task->__execute();
       }
     }
@@ -3065,8 +3065,8 @@ namespace std::execution {
     inline __impl::__task* run_loop::__pop_front_() {
       unique_lock __lock{__mutex_};
       __cv_.wait(__lock, [this]{ return __head_.__next_ != &__head_ || __stop_; });
-      if (__head_.__next_ == &__head_)
-        return nullptr;
+      if (__head_.__tail_ == __head_.__next_)
+        __head_.__tail_ = &__head_;
       return exchange(__head_.__next_, __head_.__next_->__next_);
     }
   } // namespace __loop
