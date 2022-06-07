@@ -55,6 +55,11 @@ namespace std::execution {
     weakly_parallel
   };
 
+  namespace __get_completion_signatures {
+    struct get_completion_signatures_t;
+  }
+  using __get_completion_signatures::get_completion_signatures_t;
+
   /////////////////////////////////////////////////////////////////////////////
   // env_of
   namespace __env {
@@ -64,28 +69,32 @@ namespace std::execution {
         friend void tag_invoke(auto, same_as<no_env> auto, auto&&...) = delete;
       };
 
-      template <__class _Tag, class _Value, class _BaseEnvId = __x<__empty_env>>
+      template <__class _Tag, class _Value, class _BaseEnv>
           requires copy_constructible<unwrap_reference_t<_Value>>
-        struct __env {
-          using _BaseEnv = __t<_BaseEnvId>;
-          [[no_unique_address]] unwrap_reference_t<_Value> __value_;
-          [[no_unique_address]] _BaseEnv __base_env_{};
+        struct __env_ {
+          struct __t {
+            using __base_env_t = _BaseEnv;
+            [[no_unique_address]] unwrap_reference_t<_Value> __value_;
+            [[no_unique_address]] _BaseEnv __base_env_{};
 
-          // Forward only the receiver queries:
-          template <__none_of<_Tag> _Tag2, class... _As>
-              requires __callable<_Tag2, const _BaseEnv&, _As...>
-            friend auto tag_invoke(_Tag2 __tag, const __env& __self, _As&&... __as) noexcept
-              -> __call_result_t<_Tag2, const _BaseEnv&, _As...> {
-              return ((_Tag2&&) __tag)(__self.__base_env_, (_As&&) __as...);
-            }
+            // Forward only the receiver queries:
+            template <__none_of<_Tag, get_completion_signatures_t> _Tag2, same_as<__t> _Self, class... _As>
+                requires __callable<_Tag2, const typename _Self::__base_env_t&, _As...>
+              friend auto tag_invoke(_Tag2 __tag, const _Self& __self, _As&&... __as) noexcept
+                -> __call_result_t<_Tag2, const typename _Self::__base_env_t&, _As...> {
+                return ((_Tag2&&) __tag)(__self.__base_env_, (_As&&) __as...);
+              }
 
-          template <__one_of<_Tag> _Tag2>
-            friend auto tag_invoke(_Tag2, const __env& __self, auto&&...)
-              noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<_Value>>)
-              -> unwrap_reference_t<_Value> {
-              return __self.__value_;
-            }
+            template <same_as<_Tag> _Tag2, same_as<__t> _Self>
+              friend auto tag_invoke(_Tag2, const _Self& __self, auto&&...)
+                noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<_Value>>)
+                -> unwrap_reference_t<_Value> {
+                return __self.__value_;
+              }
+          };
         };
+        template <class _Tag, class _Value, class _BaseEnv = __empty_env>
+          using __env = typename __env_<_Tag, _Value, _BaseEnv>::__t;
 
       template <__class _Tag>
         struct __make_env_t {
@@ -97,7 +106,7 @@ namespace std::execution {
 
           template <class _Value, class _BaseEnv>
             auto operator()(_Value&& __value, _BaseEnv&& __base_env) const
-              -> __env<_Tag, decay_t<_Value>, __x<decay_t<_BaseEnv>>> {
+              -> __env<_Tag, decay_t<_Value>, decay_t<_BaseEnv>> {
               return {(_Value&&) __value, (_BaseEnv&&) __base_env};
             }
 
