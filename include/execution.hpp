@@ -1978,10 +1978,11 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
-    template <class _ReceiverId, class _Fun>
+    template <class _ReceiverId, class _FunId>
       class __receiver
-        : receiver_adaptor<__receiver<_ReceiverId, _Fun>, __t<_ReceiverId>> {
+        : receiver_adaptor<__receiver<_ReceiverId, _FunId>, __t<_ReceiverId>> {
         using _Receiver = __t<_ReceiverId>;
+        using _Fun = __t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
         [[no_unique_address]] _Fun __f_;
 
@@ -2020,11 +2021,12 @@ namespace std::execution {
         {}
       };
 
-    template <class _SenderId, class _Fun>
+    template <class _SenderId, class _FunId>
       struct __sender {
         using _Sender = __t<_SenderId>;
+        using _Fun = __t<_FunId>;
         template <receiver _Receiver>
-          using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _Fun>;
+          using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _FunId>;
 
         [[no_unique_address]] _Sender __sndr_;
         [[no_unique_address]] _Fun __fun_;
@@ -2068,7 +2070,7 @@ namespace std::execution {
 
     struct then_t {
       template <class _Sender, class _Fun>
-        using __sender = __sender<__x<remove_cvref_t<_Sender>>, _Fun>;
+        using __sender = __sender<__x<remove_cvref_t<_Sender>>, __x<remove_cvref_t<_Fun>>>;
 
       template <sender _Sender, __movable_value _Fun>
         requires __tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>
