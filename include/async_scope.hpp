@@ -49,6 +49,7 @@ namespace std::execution {
 
     bool __try_record_start_(async_scope*) noexcept;
     void __record_done_(async_scope*) noexcept;
+    in_place_stop_token __get_stop_token_(async_scope*) noexcept;
 
    namespace __impl {
       template <class _SenderId, class _ReceiverId>
@@ -65,8 +66,21 @@ namespace std::execution {
 
           friend __nest_receiver<_SenderId, _ReceiverId>;
 
+          struct forward_stopped {
+            __nest_operation* __op_;
+            void operator()() noexcept {
+              __op_->__stop_source_.request_stop();
+            }
+          };
+
+          using forward_consumer = typename stop_token_of_t<env_of_t<_Receiver>&>::template
+                  callback_type<forward_stopped>;
+
           [[no_unique_address]] _Receiver __rcvr_;
           async_scope* __scope_;
+          in_place_stop_source __stop_source_;
+          in_place_stop_callback<forward_stopped> __forward_scope_;
+          forward_consumer __forward_consumer_;
           __nest_operation_t<_Sender, _Receiver> __op_;
           bool __nested_;
 
@@ -80,6 +94,8 @@ namespace std::execution {
             explicit __nest_operation(_Receiver2&& __rcvr, _Sender&& __sndr, async_scope* __scope)
               : __rcvr_((_Receiver2 &&) __rcvr) 
               , __scope_(__scope) 
+              , __forward_scope_(__get_stop_token_(this->__scope_), forward_stopped{this})
+              , __forward_consumer_(get_stop_token(this->__rcvr_), forward_stopped{this})
               , __op_(connect(std::move(__sndr), __nest_receiver<_SenderId, _ReceiverId>{this, __scope}))
               , __nested_(true) {}
         };
@@ -109,7 +125,7 @@ namespace std::execution {
       private:
         friend receiver_adaptor<__nest_receiver>;
 
-        __impl::__nest_operation<_SenderId, _ReceiverId>& get_state() {
+        __impl::__nest_operation<_SenderId, _ReceiverId>& get_state() const {
           return *reinterpret_cast<__impl::__nest_operation<_SenderId, _ReceiverId>*>(__op_);
         }
 
@@ -128,8 +144,8 @@ namespace std::execution {
           __record_done_(__scope_);
         }
 
-        make_env_t<get_stop_token_t, never_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(never_stop_token{});
+        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
+          return make_env<get_stop_token_t>(get_state().__stop_source_.get_token());
         }
       };
 
@@ -246,8 +262,8 @@ namespace std::execution {
           __record_done_(__scope);
         }
 
-        make_env_t<get_stop_token_t, never_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(never_stop_token{});
+        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
+          return make_env<get_stop_token_t>(__get_stop_token_(__scope_));
         }
       };
 
@@ -357,8 +373,8 @@ namespace std::execution {
           __record_done_(__scope_);
         }
 
-        make_env_t<get_stop_token_t, never_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(never_stop_token{});
+        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
+          return make_env<get_stop_token_t>(__get_stop_token_(__scope_));
         }
       };
 
@@ -375,10 +391,19 @@ namespace std::execution {
           friend class __future;
         friend struct async_scope;
 
+        struct forward_stopped {
+          __future_state* __op_;
+          void operator()() noexcept {
+            __op_->__stop_source_.request_stop();
+          }
+        };
+
         using __op_t = __future_operation_t<_Sender>;
 
         optional<__op_t> __op_;
+        optional<in_place_stop_callback<forward_stopped>> __forward_scope_;
         variant<monostate, __impl::__future_result_t<_Sender>, execution::set_stopped_t> __data_;
+        in_place_stop_source __stop_source_;
 
         void __push_back_(__impl::__subscription* __task);
         __impl::__subscription* __pop_front_();
@@ -534,8 +559,14 @@ namespace std::execution {
       template <class _Sender>
           requires sender_to<_Sender, __future_receiver<__x<remove_cvref_t<_Sender>>>>
         __future<__x<remove_cvref_t<_Sender>>> spawn_future(_Sender&& __sndr) {
+          using state_t = __future_state<remove_cvref_t<_Sender>>;
           // this could throw; if it does, there's nothing to clean up
-          auto __state = make_unique<__future_state<remove_cvref_t<_Sender>>>();
+          auto __state = make_unique<state_t>();
+
+          // if this throws, there's nothing to clean up
+          __state->__forward_scope_.emplace(
+              __stop_source_.get_token(), 
+              typename state_t::forward_stopped{__state.get()});
 
           // this could throw; if it does, the only clean-up we need is to
           // deallocate the optional, which is handled by __op_to_start's
@@ -614,6 +645,10 @@ namespace std::execution {
           // the last op to finish
           __scope->__evt_.set();
         }
+      }
+
+      friend in_place_stop_token __get_stop_token_(async_scope* __scope) noexcept {
+        return __scope->__stop_source_.get_token();
       }
 
       void __end_of_scope_() noexcept {
