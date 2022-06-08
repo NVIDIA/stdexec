@@ -296,7 +296,14 @@ namespace std::execution {
 
     struct async_scope {
     private:
+      struct end_of_scope_callback {
+          async_scope* __async_scope_;
+          void operator()() {
+            __async_scope_->__end_of_scope_(); // enter stop state
+          }
+      };
       in_place_stop_source __stop_source_;
+      in_place_stop_callback<end_of_scope_callback> __end_of_scope_callback_;
       // (__op_state_ & 1) is 1 until we've been stopped
       // (__op_state_ >> 1) is the number of outstanding operations
       atomic<size_t> __op_state_{1};
@@ -312,7 +319,7 @@ namespace std::execution {
       }
 
     public:
-      async_scope() noexcept = default;
+      async_scope() noexcept : __end_of_scope_callback_(__stop_source_.get_token(), end_of_scope_callback{this}) {};
 
       ~async_scope() {
         __end_of_scope_(); // enter stop state
@@ -398,7 +405,6 @@ namespace std::execution {
       }
 
       bool request_stop() noexcept {
-        __end_of_scope_();
         return __stop_source_.request_stop();
       }
 
