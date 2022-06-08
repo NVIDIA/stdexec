@@ -29,6 +29,12 @@ namespace std::execution {
       async_scope* __scope_;
     };
 
+    template <class _SenderId, class _ReceiverId>
+      struct __nest_receiver;
+
+    template <class _Sender, class _Receiver>
+      using __nest_operation_t = connect_result_t<_Sender, __nest_receiver<__x<_Sender>, __x<_Receiver>>>;
+
     template <class _SenderId>
       struct __receiver;
 
@@ -41,7 +47,166 @@ namespace std::execution {
     template <class _Sender>
       using __future_operation_t = connect_result_t<_Sender, __future_receiver<__x<_Sender>>>;
 
+    bool __try_record_start_(async_scope*) noexcept;
     void __record_done_(async_scope*) noexcept;
+
+   namespace __impl {
+      template <class _SenderId, class _ReceiverId>
+        class __nest_operation : __immovable {
+          using _Sender = __t<_SenderId>;
+          using _Receiver = __t<_ReceiverId>;
+
+          friend void tag_invoke(start_t, __nest_operation& __op_state) noexcept {
+            if (!std::exchange(__op_state.__nested_, false)) { terminate(); }
+            __op_state.__start_();
+          }
+
+          void __start_() noexcept;
+
+          friend __nest_receiver<_SenderId, _ReceiverId>;
+
+          [[no_unique_address]] _Receiver __rcvr_;
+          async_scope* __scope_;
+          __nest_operation_t<_Sender, _Receiver> __op_;
+          bool __nested_;
+
+        public:
+          ~__nest_operation(){
+            if(__nested_) {
+              __record_done_(__scope_);
+            }
+          }
+          template <class _Receiver2>
+            explicit __nest_operation(_Receiver2&& __rcvr, _Sender&& __sndr, async_scope* __scope)
+              : __rcvr_((_Receiver2 &&) __rcvr) 
+              , __scope_(__scope) 
+              , __op_(connect(std::move(__sndr), __nest_receiver<_SenderId, _ReceiverId>{this, __scope}))
+              , __nested_(true) {}
+        };
+    } // namespace __impl
+
+      template <class _SenderId, class _ReceiverId>
+      struct __nest_receiver
+        : private receiver_adaptor<__nest_receiver<_SenderId, _ReceiverId>>, __receiver_base {
+        using _Sender = __t<_SenderId>;
+
+        template<class _State>
+          explicit __nest_receiver(_State* __state, async_scope* __scope) noexcept
+            : receiver_adaptor<__nest_receiver<_SenderId, _ReceiverId>>{}
+            , __receiver_base{__state, __scope} {
+            static_assert(same_as<_State, __impl::__nest_operation<_SenderId, _ReceiverId>>);
+          }
+
+        // receivers uniquely own themselves; we don't need any special move-
+        // construction behaviour, but we do need to ensure no copies are made
+        __nest_receiver(__nest_receiver&&) noexcept = default;
+
+        ~__nest_receiver() = default;
+
+        // it's just simpler to skip this
+        __nest_receiver& operator=(__nest_receiver&&) = delete;
+
+      private:
+        friend receiver_adaptor<__nest_receiver>;
+
+        __impl::__nest_operation<_SenderId, _ReceiverId>& get_state() {
+          return *reinterpret_cast<__impl::__nest_operation<_SenderId, _ReceiverId>*>(__op_);
+        }
+
+        template <class... _As>
+          void set_value(_As&&... __as) noexcept {
+            execution::set_value(std::move(get_state().__rcvr_), (_As &&) __as...);
+            __record_done_(__scope_);
+          }
+        template<class _Error>
+        [[noreturn]] void set_error(_Error&& e) noexcept {
+          execution::set_error(std::move(get_state().__rcvr_), (_Error &&) e);
+          __record_done_(__scope_);
+        }
+        void set_stopped() noexcept {
+          execution::set_stopped(std::move(get_state().__rcvr_));
+          __record_done_(__scope_);
+        }
+
+        make_env_t<get_stop_token_t, never_stop_token> get_env() const& {
+          return make_env<get_stop_token_t>(never_stop_token{});
+        }
+      };
+
+    namespace __impl {
+      template <class _SenderId, class _ReceiverId>
+        inline void __nest_operation<_SenderId, _ReceiverId>::__start_() noexcept {
+          start(__op_);
+        }
+    } // namespace __impl
+
+    template <class _SenderId>
+      class __nest {
+        using _Sender = __t<_SenderId>;
+        friend struct async_scope;
+        template <class _Receiver>
+          using __completions = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
+
+        public:
+
+        ~__nest() {
+          if (__nested_) {
+            __record_done_(__scope_);
+          }
+        }
+
+        private:
+
+        template<class _Sender2>
+        explicit __nest(_Sender2&& __sndr, async_scope* __scope) noexcept
+          : __sndr_((_Sender2 &&) __sndr)
+          , __scope_(__scope)
+          , __nested_(__try_record_start_(this->__scope_)) {
+            if (!__nested_) { terminate(); } // code bug
+          }
+
+        __nest(const __nest&) noexcept = delete;
+        __nest& operator=(const __nest&) noexcept = delete;
+
+        public:
+
+        __nest(__nest&& o) noexcept 
+          : __sndr_(std::move(o.__sndr_))
+          , __scope_(std::exchange(o.__scope_, nullptr))
+          , __nested_(std::exchange(o.__nested_, false)) {
+            if (!__nested_) { terminate(); } // code bug
+          }
+        __nest& operator=(__nest&& o) noexcept {
+            __nest expired = std::move(*this);
+            this->~__nest();
+            new(this) __nest{std::move(o)};
+            return *this;
+        }
+
+        private:
+
+        template <class _Receiver>
+            requires receiver_of<_Receiver, __completions<_Receiver>>
+          friend __impl::__nest_operation<_SenderId, __x<decay_t<_Receiver>>>
+          tag_invoke(connect_t, __nest&& __self, _Receiver&& __rcvr) {
+            if (!std::exchange(__self.__nested_, false)) { terminate(); } // code bug - moved-from
+            try {
+              return __impl::__nest_operation<_SenderId, __x<decay_t<_Receiver>>>{
+                  (_Receiver &&) __rcvr, std::move(__self.__sndr_), __self.__scope_};
+            } catch(...) {
+              __record_done_(__self.__scope_);
+              throw;
+            }
+          }
+
+        template <__decays_to<__nest> _Self, class _Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+            -> completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>;
+
+        [[no_unique_address]] _Sender __sndr_;
+        async_scope* __scope_;
+        bool __nested_;
+      };
 
     template <class _SenderId>
       struct __receiver
@@ -332,6 +497,11 @@ namespace std::execution {
       }
 
       template <class _Sender>
+        __nest<__x<remove_cvref_t<_Sender>>> nest(_Sender&& __sndr) {
+          return __nest<__x<remove_cvref_t<_Sender>>>{(_Sender &&) __sndr, this};
+        }
+
+      template <class _Sender>
           requires sender_to<_Sender, __receiver<__x<remove_cvref_t<_Sender>>>>
         void spawn(_Sender&& __sndr) {
           using __op_t = __operation_t<remove_cvref_t<_Sender>>;
@@ -353,7 +523,7 @@ namespace std::execution {
           // invoke destruct(). We need to ensure that we either call destruct()
           // ourselves or complete the operation so *it* can call destruct().
 
-          if (__try_record_start_()) {
+          if (__try_record_start_(this)) {
             // start is noexcept so we can assume that the operation will complete
             // after this, which means we can rely on its self-ownership to ensure
             // that it is eventually deleted
@@ -381,7 +551,7 @@ namespace std::execution {
           // invoke destruct().  We need to ensure that we either call destruct()
           // ourselves or complete the operation so *it* can call destruct().
 
-          if (__try_record_start_()) {
+          if (__try_record_start_(this)) {
             // start is noexcept so we can assume that the operation will complete
             // after this, which means we can rely on its self-ownership to ensure
             // that it is eventually deleted
@@ -419,8 +589,8 @@ namespace std::execution {
         return __state >> 1;
       }
 
-      [[nodiscard]] bool __try_record_start_() noexcept {
-        auto __op_state = __op_state_.load(std::memory_order_relaxed);
+      [[nodiscard]] friend bool __try_record_start_(async_scope* __scope) noexcept {
+        auto __op_state = __scope->__op_state_.load(std::memory_order_relaxed);
 
         do {
           if (__is_stopping_(__op_state)) {
@@ -428,12 +598,12 @@ namespace std::execution {
           }
 
           assert(__op_state + 2 > __op_state);
-        } while (!__op_state_.compare_exchange_weak(
+        } while (!__scope->__op_state_.compare_exchange_weak(
             __op_state,
             __op_state + 2,
             std::memory_order_relaxed));
 
-        __evt_.reset();
+        __scope->__evt_.reset();
         return true;
       }
 

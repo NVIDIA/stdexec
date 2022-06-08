@@ -27,6 +27,21 @@
 using namespace std::execution;
 using std::this_thread::sync_wait;
 
+struct noop_receiver : receiver_adaptor<noop_receiver> {
+        friend receiver_adaptor<noop_receiver>;
+        template <class... _As>
+            // requires constructible_from<__impl::__future_result_t<_Sender2>, _As...>
+          void set_value(_As&&... ) noexcept {
+          }
+        void set_error(std::exception_ptr) noexcept {
+        }
+        void set_stopped() noexcept {
+        }
+        make_env_t<get_stop_token_t, std::never_stop_token> get_env() const& {
+          return make_env<get_stop_token_t>(std::never_stop_token{});
+        }
+};
+
 int main() {
   example::static_thread_pool ctx{1};
   async_scope scope;
@@ -69,4 +84,24 @@ int main() {
     [](auto&&...)noexcept{printf("\nall done\n");});                      // 10
 
   sync_wait(std::move(allDone));
+
+  {
+    sender auto nest = scope.nest(begin);
+    (void)nest;
+  }
+  sync_wait(scope.empty());
+
+
+  {
+    sender auto nest = scope.nest(begin);
+    auto op = connect(std::move(nest), noop_receiver{});
+  }
+  sync_wait(scope.empty());
+
+  {
+    sender auto nest = scope.nest(begin);
+    sync_wait(std::move(nest));
+  }
+  sync_wait(scope.empty());
+
 }
