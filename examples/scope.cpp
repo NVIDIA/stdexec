@@ -16,6 +16,7 @@
 
 // Pull in the reference implementation of P2300:
 #include <execution.hpp>
+#include <async_scope.hpp>
 
 #include "./schedulers/static_thread_pool.hpp"
 
