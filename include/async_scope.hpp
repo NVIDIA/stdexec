@@ -83,7 +83,7 @@ namespace std::execution {
           async_scope* __scope_;
           in_place_stop_source __stop_source_;
           in_place_stop_callback<__forward_stopped> __forward_scope_;
-          __forward_consumer __forward_consumer_;
+          [[no_unique_address]] __forward_consumer __forward_consumer_;
           __nest_operation_t<_Sender, _Receiver> __op_;
           bool __nested_;
 
@@ -99,7 +99,7 @@ namespace std::execution {
               : __rcvr_((_Receiver2 &&) __rcvr)
               , __scope_(__scope)
               , __forward_scope_(__get_stop_token_(this->__scope_), __forward_stopped{this})
-              , __forward_consumer_(get_stop_token(this->__rcvr_), __forward_stopped{this})
+              , __forward_consumer_(get_stop_token(get_env(this->__rcvr_)), __forward_stopped{this})
               , __op_(connect(std::move(__sndr), __nest_receiver<_SenderId, _ReceiverId>{this, __scope}))
               , __nested_(true)
             {}
@@ -297,6 +297,17 @@ namespace std::execution {
           using _Sender = __t<_SenderId>;
           using _Receiver = __t<_ReceiverId>;
 
+          struct __forward_stopped {
+            __operation* __op_;
+            void operator()() noexcept {
+              __op_->__state_->__stop_source_.request_stop();
+            }
+          };
+
+          using __forward_consumer =
+            typename stop_token_of_t<env_of_t<_Receiver>&>::template
+              callback_type<__forward_stopped>;
+
           friend void tag_invoke(start_t, __operation& __op_state) noexcept {
             __op_state.__start_();
           }
@@ -322,12 +333,14 @@ namespace std::execution {
 
           [[no_unique_address]] _Receiver __rcvr_;
           unique_ptr<__future_state<_Sender>> __state_;
+          [[no_unique_address]] __forward_consumer __forward_consumer_;
 
         public:
           template <class _Receiver2>
             explicit __operation(_Receiver2&& __rcvr, unique_ptr<__future_state<_Sender>> __state)
               : __rcvr_((_Receiver2 &&) __rcvr)
-              , __state_(std::move(__state))
+              , __state_(std::move(__state)) 
+              , __forward_consumer_(get_stop_token(get_env(__rcvr_)), __forward_stopped{this})
             {}
         };
 
