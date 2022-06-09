@@ -33,7 +33,8 @@ namespace std::execution {
       struct __nest_receiver;
 
     template <class _Sender, class _Receiver>
-      using __nest_operation_t = connect_result_t<_Sender, __nest_receiver<__x<_Sender>, __x<_Receiver>>>;
+      using __nest_operation_t =
+        connect_result_t<_Sender, __nest_receiver<__x<_Sender>, __x<_Receiver>>>;
 
     template <class _SenderId>
       struct __receiver;
@@ -45,7 +46,8 @@ namespace std::execution {
       struct __future_receiver;
 
     template <class _Sender>
-      using __future_operation_t = connect_result_t<_Sender, __future_receiver<__x<_Sender>>>;
+      using __future_operation_t =
+        connect_result_t<_Sender, __future_receiver<__x<_Sender>>>;
 
     bool __try_record_start_(async_scope*) noexcept;
     void __record_done_(async_scope*) noexcept;
@@ -66,47 +68,51 @@ namespace std::execution {
 
           friend __nest_receiver<_SenderId, _ReceiverId>;
 
-          struct forward_stopped {
+          struct __forward_stopped {
             __nest_operation* __op_;
             void operator()() noexcept {
               __op_->__stop_source_.request_stop();
             }
           };
 
-          using forward_consumer = typename stop_token_of_t<env_of_t<_Receiver>&>::template
-                  callback_type<forward_stopped>;
+          using __forward_consumer =
+            typename stop_token_of_t<env_of_t<_Receiver>&>::template
+              callback_type<__forward_stopped>;
 
           [[no_unique_address]] _Receiver __rcvr_;
           async_scope* __scope_;
           in_place_stop_source __stop_source_;
-          in_place_stop_callback<forward_stopped> __forward_scope_;
-          forward_consumer __forward_consumer_;
+          in_place_stop_callback<__forward_stopped> __forward_scope_;
+          __forward_consumer __forward_consumer_;
           __nest_operation_t<_Sender, _Receiver> __op_;
           bool __nested_;
 
         public:
-          ~__nest_operation(){
-            if(__nested_) {
+          ~__nest_operation() {
+            if (__nested_) {
               __record_done_(__scope_);
             }
           }
+
           template <class _Receiver2>
             explicit __nest_operation(_Receiver2&& __rcvr, _Sender&& __sndr, async_scope* __scope)
-              : __rcvr_((_Receiver2 &&) __rcvr) 
-              , __scope_(__scope) 
-              , __forward_scope_(__get_stop_token_(this->__scope_), forward_stopped{this})
-              , __forward_consumer_(get_stop_token(this->__rcvr_), forward_stopped{this})
+              : __rcvr_((_Receiver2 &&) __rcvr)
+              , __scope_(__scope)
+              , __forward_scope_(__get_stop_token_(this->__scope_), __forward_stopped{this})
+              , __forward_consumer_(get_stop_token(this->__rcvr_), __forward_stopped{this})
               , __op_(connect(std::move(__sndr), __nest_receiver<_SenderId, _ReceiverId>{this, __scope}))
-              , __nested_(true) {}
+              , __nested_(true)
+            {}
         };
     } // namespace __impl
 
-      template <class _SenderId, class _ReceiverId>
+    template <class _SenderId, class _ReceiverId>
       struct __nest_receiver
-        : private receiver_adaptor<__nest_receiver<_SenderId, _ReceiverId>>, __receiver_base {
+        : private receiver_adaptor<__nest_receiver<_SenderId, _ReceiverId>>
+        , __receiver_base {
         using _Sender = __t<_SenderId>;
 
-        template<class _State>
+        template <class _State>
           explicit __nest_receiver(_State* __state, async_scope* __scope) noexcept
             : receiver_adaptor<__nest_receiver<_SenderId, _ReceiverId>>{}
             , __receiver_base{__state, __scope} {
@@ -134,11 +140,13 @@ namespace std::execution {
             execution::set_value(std::move(get_state().__rcvr_), (_As &&) __as...);
             __record_done_(__scope_);
           }
-        template<class _Error>
-        [[noreturn]] void set_error(_Error&& e) noexcept {
-          execution::set_error(std::move(get_state().__rcvr_), (_Error &&) e);
-          __record_done_(__scope_);
-        }
+
+        template <class _Error>
+          [[noreturn]] void set_error(_Error&& __e) noexcept {
+            execution::set_error(std::move(get_state().__rcvr_), (_Error &&) __e);
+            __record_done_(__scope_);
+          }
+
         void set_stopped() noexcept {
           execution::set_stopped(std::move(get_state().__rcvr_));
           __record_done_(__scope_);
@@ -163,7 +171,7 @@ namespace std::execution {
         template <class _Receiver>
           using __completions = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
 
-        public:
+      public:
 
         ~__nest() {
           if (__nested_) {
@@ -171,41 +179,48 @@ namespace std::execution {
           }
         }
 
-        private:
+      private:
 
-        template<class _Sender2>
-        explicit __nest(_Sender2&& __sndr, async_scope* __scope) noexcept
-          : __sndr_((_Sender2 &&) __sndr)
-          , __scope_(__scope)
-          , __nested_(__try_record_start_(this->__scope_)) {
-            if (!__nested_) { terminate(); } // code bug
+        template <class _Sender2>
+          explicit __nest(_Sender2&& __sndr, async_scope* __scope) noexcept
+            : __sndr_((_Sender2 &&) __sndr)
+            , __scope_(__scope)
+            , __nested_(__try_record_start_(this->__scope_)) {
+            if (!__nested_) {
+              terminate(); // code bug
+            }
           }
 
         __nest(const __nest&) noexcept = delete;
         __nest& operator=(const __nest&) noexcept = delete;
 
-        public:
+      public:
 
-        __nest(__nest&& o) noexcept 
-          : __sndr_(std::move(o.__sndr_))
-          , __scope_(std::exchange(o.__scope_, nullptr))
-          , __nested_(std::exchange(o.__nested_, false)) {
-            if (!__nested_) { terminate(); } // code bug
+        __nest(__nest&& __o) noexcept
+          : __sndr_(std::move(__o.__sndr_))
+          , __scope_(std::exchange(__o.__scope_, nullptr))
+          , __nested_(std::exchange(__o.__nested_, false)) {
+          if (!__nested_) {
+            terminate(); // code bug
           }
-        __nest& operator=(__nest&& o) noexcept {
+        }
+
+        __nest& operator=(__nest&& __o) noexcept {
             __nest expired = std::move(*this);
             this->~__nest();
-            new(this) __nest{std::move(o)};
+            new(this) __nest{std::move(__o)};
             return *this;
         }
 
-        private:
+      private:
 
         template <class _Receiver>
             requires receiver_of<_Receiver, __completions<_Receiver>>
           friend __impl::__nest_operation<_SenderId, __x<decay_t<_Receiver>>>
           tag_invoke(connect_t, __nest&& __self, _Receiver&& __rcvr) {
-            if (!std::exchange(__self.__nested_, false)) { terminate(); } // code bug - moved-from
+            if (!std::exchange(__self.__nested_, false)) {
+              terminate(); // code bug - moved-from
+            }
             try {
               return __impl::__nest_operation<_SenderId, __x<decay_t<_Receiver>>>{
                   (_Receiver &&) __rcvr, std::move(__self.__sndr_), __self.__scope_};
@@ -226,13 +241,14 @@ namespace std::execution {
 
     template <class _SenderId>
       struct __receiver
-        : private receiver_adaptor<__receiver<_SenderId>>, __receiver_base {
+        : private receiver_adaptor<__receiver<_SenderId>>
+        , __receiver_base {
         using _Sender = __t<_SenderId>;
 
-        template <class Op>
-          explicit __receiver(Op* __op, async_scope* __scope) noexcept
+        template <class _Op>
+          explicit __receiver(_Op* __op, async_scope* __scope) noexcept
             : receiver_adaptor<__receiver>{}, __receiver_base{__op, __scope} {
-            static_assert(same_as<Op, optional<__operation_t<_Sender>>>);
+            static_assert(same_as<_Op, optional<__operation_t<_Sender>>>);
           }
 
         // receivers uniquely own themselves; we don't need any special move-
@@ -291,8 +307,8 @@ namespace std::execution {
               set_stopped((_Receiver&&) __rcvr_);
             } else if (__state_->__data_.index() == 1) {
               std::apply(
-                [this](auto&&... as) {
-                  set_value((_Receiver&&) __rcvr_, ((decltype(as)&&)as)...);
+                [this](auto&&... __as) {
+                  set_value((_Receiver&&) __rcvr_, ((decltype(__as)&&) __as)...);
                 },
                 std::move(std::get<1>(__state_->__data_)));
             } else {
@@ -311,7 +327,8 @@ namespace std::execution {
           template <class _Receiver2>
             explicit __operation(_Receiver2&& __rcvr, unique_ptr<__future_state<_Sender>> __state)
               : __rcvr_((_Receiver2 &&) __rcvr)
-              , __state_(std::move(__state)) {}
+              , __state_(std::move(__state))
+            {}
         };
 
       template <sender _Sender>
@@ -325,7 +342,8 @@ namespace std::execution {
 
     template <class _SenderId>
       struct __future_receiver
-        : private receiver_adaptor<__future_receiver<_SenderId>>, __receiver_base {
+        : private receiver_adaptor<__future_receiver<_SenderId>>
+        , __receiver_base {
         using _Sender = __t<_SenderId>;
 
         template <class _State>
@@ -356,18 +374,20 @@ namespace std::execution {
           } catch(...) {
             terminate();
           }
+
         [[noreturn]] void set_error(exception_ptr) noexcept {
           terminate();
         }
+
         void set_stopped() noexcept {
-          auto& state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
-          state.__data_.template emplace<2>(execution::set_stopped);
+          auto& __state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
+          __state.__data_.template emplace<2>(execution::set_stopped);
           __dispatch_result_();
         }
 
         void __dispatch_result_() {
-          auto& state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
-          while(auto* __sub = state.__pop_front_()) {
+          auto& __state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
+          while(auto* __sub = __state.__pop_front_()) {
             __sub->__complete_();
           }
           __record_done_(__scope_);
@@ -391,7 +411,7 @@ namespace std::execution {
           friend class __future;
         friend struct async_scope;
 
-        struct forward_stopped {
+        struct __forward_stopped {
           __future_state* __op_;
           void operator()() noexcept {
             __op_->__stop_source_.request_stop();
@@ -401,7 +421,7 @@ namespace std::execution {
         using __op_t = __future_operation_t<_Sender>;
 
         optional<__op_t> __op_;
-        optional<in_place_stop_callback<forward_stopped>> __forward_scope_;
+        optional<in_place_stop_callback<__forward_stopped>> __forward_scope_;
         variant<monostate, __impl::__future_result_t<_Sender>, execution::set_stopped_t> __data_;
         in_place_stop_source __stop_source_;
 
@@ -486,14 +506,16 @@ namespace std::execution {
 
     struct async_scope {
     private:
-      struct end_of_scope_callback {
+      struct __end_of_scope_callback {
           async_scope* __async_scope_;
           void operator()() {
             __async_scope_->__end_of_scope_(); // enter stop state
           }
       };
+
       in_place_stop_source __stop_source_;
-      in_place_stop_callback<end_of_scope_callback> __end_of_scope_callback_;
+      in_place_stop_callback<__end_of_scope_callback> __end_of_scope_callback_;
+
       // (__op_state_ & 1) is 1 until we've been stopped
       // (__op_state_ >> 1) is the number of outstanding operations
       atomic<size_t> __op_state_{1};
@@ -504,12 +526,14 @@ namespace std::execution {
         [this]() noexcept {
           // make sure to synchronize with all the fetch_subs being done while
           // operations complete
-          (void)__op_state_.load(std::memory_order_acquire);
+          (void) __op_state_.load(std::memory_order_acquire);
         });
       }
 
     public:
-      async_scope() noexcept : __end_of_scope_callback_(__stop_source_.get_token(), end_of_scope_callback{this}) {};
+      async_scope() noexcept
+        : __end_of_scope_callback_(__stop_source_.get_token(), __end_of_scope_callback{this})
+      {}
 
       ~async_scope() {
         __end_of_scope_(); // enter stop state
@@ -559,14 +583,14 @@ namespace std::execution {
       template <class _Sender>
           requires sender_to<_Sender, __future_receiver<__x<remove_cvref_t<_Sender>>>>
         __future<__x<remove_cvref_t<_Sender>>> spawn_future(_Sender&& __sndr) {
-          using state_t = __future_state<remove_cvref_t<_Sender>>;
+          using __state_t = __future_state<remove_cvref_t<_Sender>>;
           // this could throw; if it does, there's nothing to clean up
-          auto __state = make_unique<state_t>();
+          auto __state = make_unique<__state_t>();
 
           // if this throws, there's nothing to clean up
           __state->__forward_scope_.emplace(
-              __stop_source_.get_token(), 
-              typename state_t::forward_stopped{__state.get()});
+              __stop_source_.get_token(),
+              typename __state_t::__forward_stopped{__state.get()});
 
           // this could throw; if it does, the only clean-up we need is to
           // deallocate the optional, which is handled by __op_to_start's
@@ -589,6 +613,7 @@ namespace std::execution {
             execution::start(*__state->__op_);
             return __future<__x<remove_cvref_t<_Sender>>>{std::move(__state)};
           }
+
           // __future will complete with set_stopped
           return __future<__x<remove_cvref_t<_Sender>>>{nullptr};
         }
