@@ -1978,10 +1978,11 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
-    template <class _ReceiverId, class _Fun>
+    template <class _ReceiverId, class _FunId>
       class __receiver
-        : receiver_adaptor<__receiver<_ReceiverId, _Fun>, __t<_ReceiverId>> {
+        : receiver_adaptor<__receiver<_ReceiverId, _FunId>, __t<_ReceiverId>> {
         using _Receiver = __t<_ReceiverId>;
+        using _Fun = __t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
         [[no_unique_address]] _Fun __f_;
 
@@ -2020,11 +2021,12 @@ namespace std::execution {
         {}
       };
 
-    template <class _SenderId, class _Fun>
+    template <class _SenderId, class _FunId>
       struct __sender {
         using _Sender = __t<_SenderId>;
+        using _Fun = __t<_FunId>;
         template <receiver _Receiver>
-          using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _Fun>;
+          using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _FunId>;
 
         [[no_unique_address]] _Sender __sndr_;
         [[no_unique_address]] _Fun __fun_;
@@ -2068,7 +2070,7 @@ namespace std::execution {
 
     struct then_t {
       template <class _Sender, class _Fun>
-        using __sender = __sender<__x<remove_cvref_t<_Sender>>, _Fun>;
+        using __sender = __sender<__x<remove_cvref_t<_Sender>>, __x<remove_cvref_t<_Fun>>>;
 
       template <sender _Sender, __movable_value _Fun>
         requires __tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>
@@ -2461,7 +2463,7 @@ namespace std::execution {
           __decayed_tuple<_Ts...> operator()(_Ts...) const;
         };
 
-      template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
         struct __receiver;
 
       template <class... _Ts>
@@ -2591,13 +2593,14 @@ namespace std::execution {
               completion_signatures<set_error_t(exception_ptr)>>;
         };
 
-      template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
         struct __operation;
 
-      template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
         struct __receiver {
           using _Sender = __t<_SenderId>;
           using _Receiver = __t<_ReceiverId>;
+          using _Fun = __t<_FunId>;
           _Receiver&& base() && noexcept { return (_Receiver&&) __op_state_->__rcvr_;}
           const _Receiver& base() const & noexcept { return __op_state_->__rcvr_;}
 
@@ -2640,14 +2643,15 @@ namespace std::execution {
             return get_env(__self.base());
           }
 
-          __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
+          __operation<_SenderId, _ReceiverId, _FunId, _Let>* __op_state_;
         };
 
-      template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
         struct __operation {
           using _Sender = __t<_SenderId>;
           using _Receiver = __t<_ReceiverId>;
-          using __receiver_t = __receiver<_SenderId, _ReceiverId, _Fun, _Let>;
+          using _Fun = __t<_FunId>;
+          using __receiver_t = __receiver<_SenderId, _ReceiverId, _FunId, _Let>;
 
           friend void tag_invoke(start_t, __operation& __self) noexcept {
             start(__self.__op_state2_);
@@ -2667,23 +2671,24 @@ namespace std::execution {
           [[no_unique_address]] __storage<_Sender, _Receiver, _Fun, _Let> __storage_;
         };
 
-      template <class _SenderId, class _Fun, class _SetId>
+      template <class _SenderId, class _FunId, class _SetId>
         struct __sender {
           using _Sender = __t<_SenderId>;
+          using _Fun = __t<_FunId>;
           using _Set = __t<_SetId>;
           template <class _Self, class _Receiver>
             using __operation_t =
               __operation<
                 __x<__member_t<_Self, _Sender>>,
                 __x<remove_cvref_t<_Receiver>>,
-                _Fun,
+                _FunId,
                 _Set>;
           template <class _Self, class _Receiver>
             using __receiver_t =
               __receiver<
                 __x<__member_t<_Self, _Sender>>,
                 __x<remove_cvref_t<_Receiver>>,
-                _Fun,
+                _FunId,
                 _Set>;
 
           template <class _Env, class _Sig>
@@ -2735,7 +2740,7 @@ namespace std::execution {
         struct __let_xxx_t {
           using type = _SetTag;
           template <class _Sender, class _Fun>
-            using __sender = __impl::__sender<__x<remove_cvref_t<_Sender>>, _Fun, _LetTag>;
+            using __sender = __impl::__sender<__x<remove_cvref_t<_Sender>>, __x<remove_cvref_t<_Fun>>, _LetTag>;
 
           template <sender _Sender, __movable_value _Fun>
             requires __tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>
