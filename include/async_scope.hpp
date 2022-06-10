@@ -546,6 +546,7 @@ namespace std::execution {
     public:
       async_scope() noexcept
         : __end_of_scope_callback_(__stop_source_.get_token(), __end_of_scope_callback{this})
+        , __evt_(true)
       {}
 
       ~async_scope() {

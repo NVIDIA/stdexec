@@ -99,6 +99,7 @@ set(test_sourceFiles
     test/concepts/test_concepts_receiver.cpp
     test/concepts/test_concept_operation_state.cpp
     test/concepts/test_concepts_sender.cpp
+    test/types/test_type_async_scope.cpp
     test/algos/factories/test_just.cpp
     test/algos/factories/test_transfer_just.cpp
     test/algos/factories/test_just_error.cpp
