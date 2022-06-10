@@ -47,14 +47,14 @@ namespace std {
 
      protected:
       using __execute_fn_t = void(__in_place_stop_callback_base*) noexcept;
-      explicit __in_place_stop_callback_base(in_place_stop_source* __source, __execute_fn_t* __execute) noexcept
+      explicit __in_place_stop_callback_base(const in_place_stop_source* __source, __execute_fn_t* __execute) noexcept
         : __source_(__source), __execute_(__execute) {}
 
       void __register_callback_() noexcept;
 
       friend in_place_stop_source;
 
-      in_place_stop_source* __source_;
+      const in_place_stop_source* __source_;
       __execute_fn_t* __execute_;
       __in_place_stop_callback_base* __next_ = nullptr;
       __in_place_stop_callback_base** __prev_ptr_ = nullptr;
@@ -113,7 +113,7 @@ namespace std {
     ~in_place_stop_source();
     in_place_stop_source(in_place_stop_source&&) = delete;
 
-    in_place_stop_token get_token() noexcept;
+    in_place_stop_token get_token() const noexcept;
 
     bool request_stop() noexcept;
     bool stop_requested() const noexcept {
@@ -126,14 +126,14 @@ namespace std {
     template <class>
       friend class in_place_stop_callback;
 
-    uint8_t __lock_() noexcept;
-    void __unlock_(uint8_t) noexcept;
+    uint8_t __lock_() const noexcept;
+    void __unlock_(uint8_t) const noexcept;
 
-    bool __try_lock_unless_stop_requested_(bool) noexcept;
+    bool __try_lock_unless_stop_requested_(bool) const noexcept;
 
-    bool __try_add_callback_(__detail::__in_place_stop_callback_base*) noexcept;
+    bool __try_add_callback_(__detail::__in_place_stop_callback_base*) const noexcept;
 
-    void __remove_callback_(__detail::__in_place_stop_callback_base*) noexcept;
+    void __remove_callback_(__detail::__in_place_stop_callback_base*) const noexcept;
 
     static constexpr uint8_t __stop_requested_flag_ = 1;
     static constexpr uint8_t __locked_flag_ = 2;
@@ -182,13 +182,13 @@ namespace std {
     template <class>
       friend class in_place_stop_callback;
 
-    explicit in_place_stop_token(in_place_stop_source* __source) noexcept
+    explicit in_place_stop_token(const in_place_stop_source* __source) noexcept
       : __source_(__source) {}
 
-    in_place_stop_source* __source_;
+    const in_place_stop_source* __source_;
   };
 
-  inline in_place_stop_token in_place_stop_source::get_token() noexcept {
+  inline in_place_stop_token in_place_stop_source::get_token() const noexcept {
     return in_place_stop_token{this};
   }
 
@@ -269,7 +269,7 @@ namespace std {
     return false;
   }
 
-  inline uint8_t in_place_stop_source::__lock_() noexcept {
+  inline uint8_t in_place_stop_source::__lock_() const noexcept {
     __detail::__spin_wait __spin;
     auto __old_state = __state_.load(memory_order_relaxed);
     do {
@@ -277,7 +277,7 @@ namespace std {
         __spin.__wait();
         __old_state = __state_.load(memory_order_relaxed);
       }
-    } while (!__state_.compare_exchange_weak(
+    } while (!const_cast<atomic<uint8_t>&>(__state_).compare_exchange_weak(
         __old_state,
         __old_state | __locked_flag_,
         memory_order_acquire,
@@ -286,12 +286,12 @@ namespace std {
     return __old_state;
   }
 
-  inline void in_place_stop_source::__unlock_(uint8_t __old_state) noexcept {
-    (void)__state_.store(__old_state, memory_order_release);
+  inline void in_place_stop_source::__unlock_(uint8_t __old_state) const noexcept {
+    (void)const_cast<atomic<uint8_t>&>(__state_).store(__old_state, memory_order_release);
   }
 
   inline bool in_place_stop_source::__try_lock_unless_stop_requested_(
-      bool __set_stop_requested) noexcept {
+      bool __set_stop_requested) const noexcept {
     __detail::__spin_wait __spin;
     auto __old_state = __state_.load(memory_order_relaxed);
     do {
@@ -306,7 +306,7 @@ namespace std {
           __old_state = __state_.load(memory_order_relaxed);
         }
       }
-    } while (!__state_.compare_exchange_weak(
+    } while (!const_cast<atomic<uint8_t>&>(__state_).compare_exchange_weak(
         __old_state,
         __set_stop_requested ? (__locked_flag_ | __stop_requested_flag_) : __locked_flag_,
         memory_order_acq_rel,
@@ -317,17 +317,19 @@ namespace std {
   }
 
   inline bool in_place_stop_source::__try_add_callback_(
-      __detail::__in_place_stop_callback_base* __callbk) noexcept {
+      __detail::__in_place_stop_callback_base* __callbk) const noexcept {
     if (!__try_lock_unless_stop_requested_(false)) {
       return false;
     }
 
-    __callbk->__next_ = __callbacks_;
-    __callbk->__prev_ptr_ = &__callbacks_;
-    if (__callbacks_ != nullptr) {
-      __callbacks_->__prev_ptr_ = &__callbk->__next_;
+    auto& callbacks = *const_cast<__detail::__in_place_stop_callback_base**>(&this->__callbacks_);
+
+    __callbk->__next_ = callbacks;
+    __callbk->__prev_ptr_ = &callbacks;
+    if (callbacks != nullptr) {
+      callbacks->__prev_ptr_ = &__callbk->__next_;
     }
-    __callbacks_ = __callbk;
+    callbacks = __callbk;
 
     __unlock_(0);
 
@@ -335,7 +337,7 @@ namespace std {
   }
 
   inline void in_place_stop_source::__remove_callback_(
-      __detail::__in_place_stop_callback_base* __callbk) noexcept {
+      __detail::__in_place_stop_callback_base* __callbk) const noexcept {
   auto __old_state = __lock_();
 
     if (__callbk->__prev_ptr_ != nullptr) {

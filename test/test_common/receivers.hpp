@@ -59,17 +59,21 @@ struct recv_int_ec {
 
 } // namespace empty_recv
 
+template<class _Env = empty_env>
 class expect_void_receiver {
+  _Env env_;
   bool called_{false};
 
   public:
-  expect_void_receiver() = default;
+  expect_void_receiver(_Env env = _Env{}) : env_(env), called_(false) {}
   ~expect_void_receiver() { CHECK(called_); }
 
   expect_void_receiver(expect_void_receiver&& other)
-      : called_(std::exchange(other.called_, true)) {
+      : env_(other.env_)
+      , called_(std::exchange(other.called_, true)) {
   }
   expect_void_receiver& operator=(expect_void_receiver&& other) {
+    env_ = other.env_;
     called_ = std::exchange(other.called_, true);
     return *this;
   }
@@ -87,8 +91,8 @@ class expect_void_receiver {
   friend void tag_invoke(ex::set_error_t, expect_void_receiver&&, std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called on expect_void_receiver");
   }
-  friend empty_env tag_invoke(ex::get_env_t, const expect_void_receiver&) noexcept {
-    return {};
+  friend _Env tag_invoke(ex::get_env_t, const expect_void_receiver& self) noexcept {
+    return self.env_;
   }
 };
 

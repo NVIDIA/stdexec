@@ -759,6 +759,12 @@ namespace std::execution {
     using stop_token_of_t =
       remove_cvref_t<decltype(get_stop_token(__declval<_T>()))>;
 
+  template <class _SchedulerProvider>
+    concept __scheduler_provider =
+      requires (const _SchedulerProvider& __sp) {
+        { get_scheduler(__sp) } -> scheduler<>;
+      };
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   namespace __start {
@@ -1243,7 +1249,7 @@ namespace std::execution {
           __coro::coroutine_handle<> __continuation_;
         };
 
-      template <typename _PromiseId, typename _Value>
+      template <class _PromiseId, class _Value>
         struct __sender_awaitable_base {
           using _Promise = __t<_PromiseId>;
           struct __receiver : __receiver_base<_Value> {
@@ -1288,7 +1294,7 @@ namespace std::execution {
         __expected_t<_Value> __result_;
       };
 
-      template <typename _PromiseId, typename _SenderId>
+      template <class _PromiseId, class _SenderId>
       struct __sender_awaitable
         : __sender_awaitable_base<
             _PromiseId,
@@ -1402,7 +1408,7 @@ namespace std::execution {
         __coro::coroutine_handle<> __continuation_{};
         __coro::coroutine_handle<> (*__stopped_callback_)(void*) noexcept =
           [](void*) noexcept -> __coro::coroutine_handle<> {
-            std::terminate();
+            terminate();
           };
       };
     } // namespace __impl
@@ -2006,7 +2012,7 @@ namespace std::execution {
             same_as<void, invoke_result_t<_Fun, _As...>> &&
             tag_invocable<set_value_t, _R2>
         void set_value(_As&&... __as) && noexcept try {
-          std::invoke((_Fun&&) __f_, (_As&&) __as...);
+          invoke((_Fun&&) __f_, (_As&&) __as...);
           execution::set_value(((__receiver&&) *this).base());
         } catch(...) {
           execution::set_error(
@@ -2301,7 +2307,7 @@ namespace std::execution {
             noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           : __operation_base{nullptr, __notify}
           , __recvr_((_Receiver&&)__rcvr)
-          , __shared_state_(std::move(__shared_state)) {
+          , __shared_state_(move(__shared_state)) {
         }
         __operation(__operation&&) = delete;
 
@@ -2938,7 +2944,7 @@ namespace std::execution {
         void __execute() noexcept { (*__execute_)(this); }
       };
 
-      template <typename _ReceiverId>
+      template <class _ReceiverId>
         struct __operation : __task {
           using _Receiver = __t<_ReceiverId>;
           run_loop* __loop_;
@@ -2983,14 +2989,20 @@ namespace std::execution {
          private:
           friend __scheduler;
 
-          template <typename _Receiver>
+          template <class _Receiver>
             using __operation = __impl::__operation<__x<decay_t<_Receiver>>>;
-          template <typename _Receiver>
+
+          template <class _Receiver>
           friend __operation<_Receiver>
           tag_invoke(connect_t, const __schedule_task& __self, _Receiver&& __rcvr) {
-            return {{.__next_ = &__self.__loop_->__head_,
+            return __self.__connect_((_Receiver &&) __rcvr);
+          }
+
+          template <class _Receiver>
+          __operation<_Receiver>  __connect_(_Receiver&& __rcvr) const {
+            return {{.__next_ = &__loop_->__head_,
                      .__execute_ = &__operation<_Receiver>::__execute},
-                    __self.__loop_, (_Receiver &&) __rcvr};
+                    __loop_, (_Receiver &&) __rcvr};
           }
 
           template <class _CPO>
@@ -3029,7 +3041,6 @@ namespace std::execution {
 
         run_loop* __loop_;
       };
-
       __scheduler get_scheduler() {
         return __scheduler{this};
       }
@@ -3049,7 +3060,7 @@ namespace std::execution {
     };
 
     namespace __impl {
-      template <typename _ReceiverId>
+      template <class _ReceiverId>
       inline void __operation<_ReceiverId>::__start_() noexcept try {
         __loop_->__push_back_(this);
       } catch(...) {
@@ -4075,7 +4086,7 @@ namespace std::execution {
       return read(get_stop_token);
     }
   }
-} // namespace std::execution
+} // namespace execution
 
 namespace std::this_thread {
   /////////////////////////////////////////////////////////////////////////////
@@ -4131,7 +4142,7 @@ namespace std::this_thread {
           } catch(...) {
             execution::set_error((__receiver&&) __rcvr, current_exception());
           }
-          template <typename _Error>
+          template <class _Error>
           friend void tag_invoke(execution::set_error_t, __receiver&& __rcvr, _Error __err) noexcept {
             exception_ptr eptr;
             if constexpr (__decays_to<_Error, exception_ptr>)

@@ -99,6 +99,7 @@ set(test_sourceFiles
     test/concepts/test_concepts_receiver.cpp
     test/concepts/test_concept_operation_state.cpp
     test/concepts/test_concepts_sender.cpp
+    test/types/test_type_async_scope.cpp
     test/algos/factories/test_just.cpp
     test/algos/factories/test_transfer_just.cpp
     test/algos/factories/test_just_error.cpp
@@ -148,6 +149,7 @@ endfunction()
 
 def_example(example.hello_world "examples/hello_world.cpp")
 def_example(example.hello_coro "examples/hello_coro.cpp")
+def_example(example.scope "examples/scope.cpp")
 def_example(example.retry "examples/retry.cpp")
 def_example(example.then "examples/then.cpp")
 def_example(example.server_theme.let_value "examples/server_theme/let_value.cpp")
