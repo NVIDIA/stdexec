@@ -28,7 +28,7 @@
 namespace ex = std::execution;
 
 template<class _Scheduler>
-void expect_empty(_Scheduler& , ex::P2515::async_scope& scope) {
+void expect_empty(_Scheduler& , ex::P2519::async_scope& scope) {
   ex::run_loop loop;
   ex::scheduler auto sch = loop.get_scheduler();
   auto op = ex::connect(
@@ -41,7 +41,7 @@ void expect_empty(_Scheduler& , ex::P2515::async_scope& scope) {
 
 TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
   example::static_thread_pool ctx{1};
-  ex::P2515::async_scope scope;
+  ex::P2519::async_scope scope;
 
   ex::scheduler auto sch = ctx.get_scheduler();
 

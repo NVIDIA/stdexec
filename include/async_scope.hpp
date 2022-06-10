@@ -17,7 +17,7 @@
 
 #include <execution.hpp>
 
-namespace std::execution::P2515 {
+namespace std::execution::P2519 {
   /////////////////////////////////////////////////////////////////////////////
   // async_scope
   namespace __scope {
