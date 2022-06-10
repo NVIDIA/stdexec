@@ -25,6 +25,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
 using namespace std::execution;
+using namespace std::execution::P2515;
 using std::this_thread::sync_wait;
 
 struct noop_receiver : receiver_adaptor<noop_receiver> {
