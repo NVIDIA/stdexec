@@ -2012,7 +2012,7 @@ namespace std::execution {
             same_as<void, invoke_result_t<_Fun, _As...>> &&
             tag_invocable<set_value_t, _R2>
         void set_value(_As&&... __as) && noexcept try {
-          invoke((_Fun&&) __f_, (_As&&) __as...);
+          std::invoke((_Fun&&) __f_, (_As&&) __as...);
           execution::set_value(((__receiver&&) *this).base());
         } catch(...) {
           execution::set_error(
