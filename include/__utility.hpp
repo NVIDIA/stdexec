@@ -472,7 +472,10 @@ namespace std {
     struct __conv {
       _Fn __fn_;
       using type = __call_result_t<_Fn>;
-      operator type() && {
+      operator type() && noexcept(__nothrow_callable<_Fn>) {
+        return ((_Fn&&) __fn_)();
+      }
+      type operator()() && noexcept(__nothrow_callable<_Fn>) {
         return ((_Fn&&) __fn_)();
       }
     };
