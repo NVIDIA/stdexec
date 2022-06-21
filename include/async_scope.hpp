@@ -257,7 +257,7 @@ namespace std::execution::P2519 {
       using __future_operation_t =
         connect_result_t<_Sender, __future_receiver<__x<_Sender>>>;
 
-    bool __try_record_start_(async_scope*) noexcept;
+    void __record_start_(async_scope*) noexcept;
     void __record_done_(async_scope*) noexcept;
     in_place_stop_token __get_stop_token_(async_scope*) noexcept;
 
@@ -269,6 +269,7 @@ namespace std::execution::P2519 {
 
           friend void tag_invoke(start_t, __nest_operation& __op_state) noexcept {
             if (!std::exchange(__op_state.__nested_, false)) { terminate(); }
+            __record_start_(__op_state.__scope_);
             __op_state.__start_();
           }
 
@@ -379,24 +380,10 @@ namespace std::execution::P2519 {
         template <class _Receiver>
           using __completions = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
 
-      public:
-
-        ~__nest() {
-          if (__nested_) {
-            __record_done_(__scope_);
-          }
-        }
-
-      private:
-
         template <class _Sender2>
           explicit __nest(_Sender2&& __sndr, async_scope* __scope) noexcept
             : __sndr_((_Sender2 &&) __sndr)
-            , __scope_(__scope)
-            , __nested_(__try_record_start_(this->__scope_)) {
-            if (!__nested_) {
-              terminate(); // code bug
-            }
+            , __scope_(__scope) {
           }
 
         __nest(const __nest&) noexcept = delete;
@@ -406,11 +393,7 @@ namespace std::execution::P2519 {
 
         __nest(__nest&& __o) noexcept
           : __sndr_(std::move(__o.__sndr_))
-          , __scope_(std::exchange(__o.__scope_, nullptr))
-          , __nested_(std::exchange(__o.__nested_, false)) {
-          if (!__nested_) {
-            terminate(); // code bug
-          }
+          , __scope_(std::exchange(__o.__scope_, nullptr)) {
         }
 
         __nest& operator=(__nest&& __o) noexcept {
@@ -426,9 +409,6 @@ namespace std::execution::P2519 {
             requires receiver_of<_Receiver, __completions<_Receiver>>
           friend __impl::__nest_operation<_SenderId, __x<decay_t<_Receiver>>>
           tag_invoke(connect_t, __nest&& __self, _Receiver&& __rcvr) {
-            if (!std::exchange(__self.__nested_, false)) {
-              terminate(); // code bug - moved-from
-            }
             try {
               return __impl::__nest_operation<_SenderId, __x<decay_t<_Receiver>>>{
                   (_Receiver &&) __rcvr, std::move(__self.__sndr_), __self.__scope_};
@@ -444,7 +424,6 @@ namespace std::execution::P2519 {
 
         [[no_unique_address]] _Sender __sndr_;
         async_scope* __scope_;
-        bool __nested_;
       };
 
     template <class _SenderId>
@@ -762,7 +741,7 @@ namespace std::execution::P2519 {
 
         [[maybe_unused]] auto __state = __op_state_.load(std::memory_order_relaxed);
 
-        if (!__is_stopping_(__state) || __op_count_(__state) != 0) {
+        if (__op_count_(__state) != 0) {
           terminate();
         }
       }
@@ -794,12 +773,12 @@ namespace std::execution::P2519 {
           // invoke destruct(). We need to ensure that we either call destruct()
           // ourselves or complete the operation so *it* can call destruct().
 
-          if (__try_record_start_(this)) {
-            // start is noexcept so we can assume that the operation will complete
-            // after this, which means we can rely on its self-ownership to ensure
-            // that it is eventually deleted
-            execution::start(**__op_to_start.release());
-          }
+          __record_start_(this);
+
+          // start is noexcept so we can assume that the operation will complete
+          // after this, which means we can rely on its self-ownership to ensure
+          // that it is eventually deleted
+          execution::start(**__op_to_start.release());
         }
 
       template <class _Sender>
@@ -828,16 +807,13 @@ namespace std::execution::P2519 {
           // invoke destruct().  We need to ensure that we either call destruct()
           // ourselves or complete the operation so *it* can call destruct().
 
-          if (__try_record_start_(this)) {
-            // start is noexcept so we can assume that the operation will complete
-            // after this, which means we can rely on its self-ownership to ensure
-            // that it is eventually deleted
-            execution::start(*__state->__op_);
-            return __future<__x<remove_cvref_t<_Sender>>>{std::move(__state)};
-          }
+          __record_start_(this);
 
-          // __future will complete with set_stopped
-          return __future<__x<remove_cvref_t<_Sender>>>{nullptr};
+          // start is noexcept so we can assume that the operation will complete
+          // after this, which means we can rely on its self-ownership to ensure
+          // that it is eventually deleted
+          execution::start(*__state->__op_);
+          return __future<__x<remove_cvref_t<_Sender>>>{std::move(__state)};
         }
 
       [[nodiscard]] auto empty() const noexcept {
@@ -857,24 +833,14 @@ namespace std::execution::P2519 {
       }
 
     private:
-      static constexpr size_t __stopped_bit_{1};
-
-      static bool __is_stopping_(size_t __state) noexcept {
-        return (__state & __stopped_bit_) == 0;
-      }
-
       static size_t __op_count_(size_t __state) noexcept {
         return __state >> 1;
       }
 
-      [[nodiscard]] friend bool __try_record_start_(async_scope* __scope) noexcept {
+      friend void __record_start_(async_scope* __scope) noexcept {
         auto __op_state = __scope->__op_state_.load(std::memory_order_relaxed);
 
         do {
-          if (__is_stopping_(__op_state)) {
-            return false;
-          }
-
           assert(__op_state + 2 > __op_state);
         } while (!__scope->__op_state_.compare_exchange_weak(
             __op_state,
@@ -882,7 +848,6 @@ namespace std::execution::P2519 {
             std::memory_order_relaxed));
 
         __scope->__evt_.reset();
-        return true;
       }
 
       friend void __record_done_(async_scope* __scope) noexcept {
@@ -900,7 +865,7 @@ namespace std::execution::P2519 {
 
       void __end_of_scope_() noexcept {
         // stop adding work
-        auto __old_state = __op_state_.fetch_and(~__stopped_bit_, std::memory_order_release);
+        auto __old_state = __op_state_.fetch_and(0, std::memory_order_release);
 
         if (__op_count_(__old_state) == 0) {
           // there are no outstanding operations to wait for
