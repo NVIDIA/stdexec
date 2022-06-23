@@ -58,11 +58,8 @@ TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
 
   SECTION("after nest result discarded") {
     ex::sender auto begin = ex::schedule(sch);
-    {
-      ex::sender auto nst = scope.nest(begin);
-      // nst holds the scope non-empty
-      // the destructor must run before waiting for empty()
-    }
+    ex::sender auto nst = scope.nest(begin);
+    (void)nst;
     expect_empty(sch, scope);
   }
 
