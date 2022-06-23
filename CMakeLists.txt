@@ -234,6 +234,8 @@ set(test_sourceFiles
     test/exec/async_scope/test_spawn_future.cpp
     test/exec/async_scope/test_empty.cpp
     test/exec/async_scope/test_stop.cpp
+    test/exec/test_ignore_all.cpp
+    test/exec/test_iotas.cpp
     )
 
 add_executable(test.stdexec ${test_sourceFiles})
@@ -257,6 +259,7 @@ def_example(clangd.helper "examples/_clangd_helper_file.cpp")
 def_example(example.hello_world "examples/hello_world.cpp")
 def_example(example.hello_coro "examples/hello_coro.cpp")
 def_example(example.scope "examples/scope.cpp")
+def_example(example.sequence "examples/sequence.cpp")
 def_example(example.retry "examples/retry.cpp")
 def_example(example.then "examples/then.cpp")
 def_example(example.server_theme.let_value "examples/server_theme/let_value.cpp")

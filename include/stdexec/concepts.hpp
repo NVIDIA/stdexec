@@ -172,6 +172,15 @@ namespace stdexec {
       move_constructible<decay_t<_T>> &&
       constructible_from<decay_t<_T>, _T>;
 
+  template<class _T, class _U>
+    concept __equality_comparable_with =
+      requires(const typename std::remove_reference<_T>::type& __t, const typename std::remove_reference<_U>::type& __u) {
+        { __t == __u } -> convertible_to<bool>;
+        { __t != __u } -> convertible_to<bool>;
+        { __u == __t } -> convertible_to<bool>;
+        { __u != __t } -> convertible_to<bool>;
+      };
+
   template <class _Trait>
     concept __is_true = _Trait::value;
 
