@@ -2935,10 +2935,11 @@ namespace std::execution {
 
     namespace __impl {
       struct __task : __immovable {
+        using __execute_fn_t = void(__task*) noexcept;
         __task* __next_ = this;
         union {
+          __execute_fn_t* __execute_;
           __task* __tail_;
-          void (*__execute_)(__task*) noexcept;
         };
 
         void __execute() noexcept { (*__execute_)(this); }
@@ -2949,6 +2950,13 @@ namespace std::execution {
           using _Receiver = __t<_ReceiverId>;
           run_loop* __loop_;
           [[no_unique_address]] _Receiver __rcvr_;
+
+          explicit __operation(__task* __tail) noexcept
+            : __task{.__tail_ = __tail} {}
+          __operation(__task* __next, __execute_fn_t* __execute, run_loop* __loop, _Receiver __rcvr)
+            : __task{{}, __next, {__execute}}
+            , __loop_{__loop}
+            , __rcvr_{(_Receiver&&) __rcvr} {}
 
           static void __execute(__task* __p) noexcept {
             auto& __rcvr = ((__operation*) __p)->__rcvr_;
@@ -3000,9 +3008,7 @@ namespace std::execution {
 
           template <class _Receiver>
           __operation<_Receiver>  __connect_(_Receiver&& __rcvr) const {
-            return {{.__next_ = &__loop_->__head_,
-                     .__execute_ = &__operation<_Receiver>::__execute},
-                    __loop_, (_Receiver &&) __rcvr};
+            return {&__loop_->__head_, &__operation<_Receiver>::__execute, __loop_, (_Receiver &&) __rcvr};
           }
 
           template <class _CPO>
