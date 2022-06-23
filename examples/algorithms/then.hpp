@@ -50,6 +50,8 @@ class _then_receiver
    , f_(std::move(f)) {}
 };
 
+struct then_t;
+
 template<stdex::sender S, class F>
 struct _then_sender {
   S s_;
@@ -71,10 +73,12 @@ struct _then_sender {
   friend auto tag_invoke(stdex::get_completion_signatures_t, _then_sender&&, Env)
     -> _completions_t<Env>;
 
+  friend auto tag_invoke(stdex::get_descriptor_t, const _then_sender&)
+    -> stdex::sender_descriptor_t<then_t(S)>;
+
   // Connect:
   template<class R>
-    //requires stdex::receiver_of<R, _completions_t<stdex::env_of_t<R>>>
-    //requires stdex::receiver_of<R, stdex::completion_signatures_of_t<S, stdex::env_of_t<R>>>
+    requires stdex::receiver_of<R, _completions_t<stdex::env_of_t<R>>>
   friend auto tag_invoke(stdex::connect_t, _then_sender&& self, R r)
     -> stdex::connect_result_t<S, _then_receiver<R, F>> {
       return stdex::connect(
@@ -82,7 +86,10 @@ struct _then_sender {
   }
 };
 
-template<stdex::sender S, class F>
-stdex::sender auto then(S s, F f) {
-  return _then_sender<S, F>{(S&&) s, (F&&) f};
-}
+struct then_t {
+  template<stdex::sender S, class F>
+  stdex::sender auto operator()(S s, F f) const {
+    return _then_sender<S, F>{(S&&) s, (F&&) f};
+  }
+};
+inline constexpr then_t then {};

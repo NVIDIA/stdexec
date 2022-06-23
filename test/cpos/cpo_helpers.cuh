@@ -28,6 +28,7 @@ struct cpo_t {
       ex::set_value_t(),                                   //
       ex::set_error_t(std::exception_ptr),                 //
       ex::set_stopped_t()>;
+  using descriptor_t = ex::sender_descriptor_t<cpo_t()>;
 };
 
 template <class CPO>
@@ -36,6 +37,7 @@ struct free_standing_sender_t {
       ex::set_value_t(),                                   //
       ex::set_error_t(std::exception_ptr),                 //
       ex::set_stopped_t()>;
+  using descriptor_t = ex::sender_descriptor_t<CPO()>;
 
   template <class... Ts>
   friend auto tag_invoke(CPO, const free_standing_sender_t& self, Ts&&...) noexcept {
@@ -50,6 +52,7 @@ struct scheduler_t {
         ex::set_value_t(),                                   //
         ex::set_error_t(std::exception_ptr),                 //
         ex::set_stopped_t()>;
+    using descriptor_t = ex::sender_descriptor_t<ex::schedule_t()>;
 
     template <std::__one_of<ex::set_value_t, CompletionSignals...> Tag>
     friend scheduler_t tag_invoke(

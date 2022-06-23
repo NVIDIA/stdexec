@@ -34,6 +34,7 @@ struct op_state : non_movable {
 struct my_sender  {
   using completion_signatures =
     ex::completion_signatures<ex::set_value_t(int)>;
+  using descriptor_t = ex::sender_descriptor_t<my_sender()>;
 
   int value_{0};
 
@@ -46,6 +47,7 @@ struct my_sender  {
 struct my_sender_unconstrained {
   using completion_signatures =
     ex::completion_signatures<ex::set_value_t(int)>;
+  using descriptor_t = ex::sender_descriptor_t<my_sender_unconstrained()>;
 
   int value_{0};
 

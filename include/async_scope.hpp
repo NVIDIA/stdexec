@@ -22,6 +22,8 @@ namespace std::execution::P2519 {
   // async_scope
   namespace __scope {
     struct async_scope;
+    struct _async_scope_nest_t {};
+    struct _async_scope_future_t {};
 
     namespace __impl {
 
@@ -34,12 +36,15 @@ namespace std::execution::P2519 {
         struct __operation;
 
         struct __async_manual_reset_event;
+        struct __async_manual_reset_event_async_wait {};
 
         struct __sender {
           using completion_signatures =
             execution::completion_signatures<
               execution::set_value_t(),
               execution::set_error_t(exception_ptr)>;
+          using descriptor_t =
+            std::execution::sender_descriptor_t<__async_manual_reset_event_async_wait()>;
 
           template <__decays_to<__sender> _Self, receiver _Receiver>
               requires __scheduler_provider<env_of_t<_Receiver>> &&
@@ -79,6 +84,8 @@ namespace std::execution::P2519 {
             (void)__state_.compare_exchange_strong(
                 __old_state, nullptr, std::memory_order_acq_rel);
           }
+
+          using async_wait_t = __async_manual_reset_event_async_wait;
 
           [[nodiscard]] __sender async_wait() const noexcept {
             return __sender{this};
@@ -442,6 +449,9 @@ namespace std::execution::P2519 {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>;
 
+        friend auto tag_invoke(get_descriptor_t, const __nest&)
+          -> sender_descriptor_t<_async_scope_nest_t(_Sender)>;
+
         [[no_unique_address]] _Sender __sndr_;
         async_scope* __scope_;
         bool __nested_;
@@ -722,6 +732,9 @@ namespace std::execution::P2519 {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>;
 
+        friend auto tag_invoke(get_descriptor_t, const __future&)
+          -> sender_descriptor_t<_async_scope_future_t(_Sender)>;
+
         unique_ptr<__future_state<_Sender>> __state_;
       };
 
@@ -766,6 +779,8 @@ namespace std::execution::P2519 {
           terminate();
         }
       }
+
+      using nest_t = _async_scope_nest_t;
 
       template <class _Sender>
         __nest<__x<remove_cvref_t<_Sender>>> nest(_Sender&& __sndr) {

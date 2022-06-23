@@ -29,6 +29,8 @@ struct fallible_just {
     ex::completion_signatures<
       ex::set_value_t(Values...),
       ex::set_error_t(std::exception_ptr)>;
+  using descriptor_t =
+    ex::sender_descriptor_t<fallible_just()>;
 
   template <class Receiver>
   struct operation : non_movable {

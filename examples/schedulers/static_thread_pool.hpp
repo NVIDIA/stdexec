@@ -58,6 +58,8 @@ namespace example {
             std::execution::set_value_t(),
             std::execution::set_error_t(std::exception_ptr),
             std::execution::set_stopped_t()>;
+        using descriptor_t =
+          std::execution::sender_descriptor_t<std::execution::schedule_t()>;
        private:
         template <typename Receiver>
         operation<std::__x<std::decay_t<Receiver>>>

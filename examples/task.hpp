@@ -59,39 +59,49 @@ struct forward_stop_request {
   }
 };
 
+struct task_t {};
+
 ////////////////////////////////////////////////////////////////////////////////
 // This is the context that is associated with basic_task's promise type
 // by default. It handles forwarding of stop requests from parent to child.
 class default_task_context_impl {
-  std::in_place_stop_token stop_token_;
+  class promise_context {
+    // This is the context associated with basic_task's awaiter. By default
+    // it does nothing.
+    template <class ParentPromise>
+      struct awaiter_context {
+        explicit awaiter_context(promise_context&, ParentPromise&) noexcept
+        {}
+      };
 
-  // This is the context associated with basic_task's awaiter. By default
-  // it does nothing.
-  template <class ParentPromise>
-    struct awaiter_context {
-      explicit awaiter_context(
-          default_task_context_impl&, ParentPromise&) noexcept
-      {}
-    };
+    std::in_place_stop_token stop_token_;
+
+    friend auto tag_invoke(
+          std::execution::get_stop_token_t, const promise_context& self)
+        noexcept -> std::in_place_stop_token {
+      return self.stop_token_;
+    }
+  public:
+    promise_context() = default;
+
+    bool stop_requested() const noexcept {
+      return stop_token_.stop_requested();
+    }
+
+    template <class ThisPromise, class ParentPromise = void>
+      using awaiter_context_t = awaiter_context<ParentPromise>;
+  };
 
   friend auto tag_invoke(
-        std::execution::get_stop_token_t, const default_task_context_impl& self)
-      noexcept -> std::in_place_stop_token {
-    return self.stop_token_;
+        std::execution::get_descriptor_t, const default_task_context_impl& self)
+      noexcept -> std::execution::sender_descriptor_t<task_t()> {
+    return {};
   }
-
 public:
   default_task_context_impl() = default;
 
-  bool stop_requested() const noexcept {
-    return stop_token_.stop_requested();
-  }
-
   template <class ThisPromise>
-    using promise_context_t = default_task_context_impl;
-
-  template <class ThisPromise, class ParentPromise = void>
-    using awaiter_context_t = awaiter_context<ParentPromise>;
+    using promise_context_t = promise_context;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,13 +109,12 @@ public:
 // the parent coroutine's promise type is known, is a stop_token_provider,
 // and its stop token type is neither in_place_stop_token nor unstoppable.
 template <indirect_stop_token_provider ParentPromise>
-  struct default_task_context_impl::awaiter_context<ParentPromise> {
+  struct default_task_context_impl::promise_context::awaiter_context<ParentPromise> {
     using stop_token_t = std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>;
     using stop_callback_t =
       typename stop_token_t::template callback_type<forward_stop_request>;
 
-    explicit awaiter_context(
-        default_task_context_impl& self, ParentPromise& parent) noexcept
+    explicit awaiter_context(promise_context& self, ParentPromise& parent) noexcept
         // Register a callback that will request stop on this basic_task's
         // stop_source when stop is requested on the parent coroutine's stop
         // token.
@@ -127,9 +136,8 @@ template <indirect_stop_token_provider ParentPromise>
     requires std::same_as<
         std::in_place_stop_token,
         std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>>
-  struct default_task_context_impl::awaiter_context<ParentPromise> {
-    explicit awaiter_context(
-        default_task_context_impl& self, ParentPromise& parent) noexcept {
+  struct default_task_context_impl::promise_context::awaiter_context<ParentPromise> {
+    explicit awaiter_context(promise_context& self, ParentPromise& parent) noexcept {
       self.stop_token_ =
         std::execution::get_stop_token(std::execution::get_env(parent));
     }
@@ -140,23 +148,20 @@ template <indirect_stop_token_provider ParentPromise>
 template <indirect_stop_token_provider ParentPromise>
     requires std::unstoppable_token<
         std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>>
-  struct default_task_context_impl::awaiter_context<ParentPromise> {
-    explicit awaiter_context(
-        default_task_context_impl&, ParentPromise&) noexcept
+  struct default_task_context_impl::promise_context::awaiter_context<ParentPromise> {
+    explicit awaiter_context(promise_context&, ParentPromise&) noexcept
     {}
   }; 
 
 // Finally, if we don't know the parent coroutine's promise type, assume the
 // worst and save a type-erased stop callback.
 template<>
-  struct default_task_context_impl::awaiter_context<void> {
-    explicit awaiter_context(
-        default_task_context_impl& self, auto&) noexcept
+  struct default_task_context_impl::promise_context::awaiter_context<void> {
+    explicit awaiter_context(promise_context& self, auto&) noexcept
     {}
 
     template <indirect_stop_token_provider ParentPromise>
-      explicit awaiter_context(
-          default_task_context_impl& self, ParentPromise& parent) {
+      explicit awaiter_context(promise_context& self, ParentPromise& parent) {
         // Register a callback that will request stop on this basic_task's
         // stop_source when stop is requested on the parent coroutine's stop
         // token.
@@ -322,11 +327,19 @@ private:
   friend auto tag_invoke(std::execution::get_completion_signatures_t, const basic_task&, auto)
     -> std::conditional_t<std::is_void_v<T>, _task_traits_t<>, _task_traits_t<T>>;
 
+  template <std::invocable<const Context&> Tag>
+    friend auto tag_invoke(Tag tag, const basic_task& self)
+      noexcept(std::is_nothrow_invocable_v<Tag, const Context&>)
+      -> std::invoke_result_t<Tag, const Context&> {
+      return std::move(tag)(self.ctx_);
+    }
+
   explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
     : coro_(__coro)
   {}
 
   __coro::coroutine_handle<promise_type> coro_;
+  [[no_unique_address]] Context ctx_;
 };
 
 template <class T>

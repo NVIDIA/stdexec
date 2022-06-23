@@ -89,6 +89,8 @@ struct _op {
   }
 };
 
+struct retry_t;
+
 template<class S>
 struct _retry_sender {
   S s_;
@@ -106,13 +108,19 @@ struct _retry_sender {
         stdex::completion_signatures<stdex::set_error_t(std::exception_ptr)>,
         _value, _error>;
 
+  friend auto tag_invoke(stdex::get_descriptor_t, const _retry_sender&)
+    -> stdex::sender_descriptor_t<retry_t(S)>;
+
   template<stdex::receiver R>
   friend _op<S, R> tag_invoke(stdex::connect_t, _retry_sender&& self, R r) {
     return {(S&&) self.s_, (R&&) r};
   }
 };
 
-template<stdex::sender S>
-stdex::sender auto retry(S s) {
-  return _retry_sender{(S&&) s};
-}
+struct retry_t {
+  template<stdex::sender S>
+  stdex::sender auto operator()(S s) const {
+    return _retry_sender{(S&&) s};
+  }
+};
+inline constexpr retry_t retry {};

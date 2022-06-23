@@ -358,20 +358,56 @@ namespace std::execution {
   using __get_completion_signatures::get_completion_signatures_t;
   inline constexpr get_completion_signatures_t get_completion_signatures {};
 
+  template <class _Fn>
+      requires is_function_v<_Fn>
+    using sender_descriptor_t = _Fn*;
+
+  namespace __get_descriptor {
+    struct get_descriptor_t {
+      template <class _Sender>
+        constexpr auto operator()(const _Sender&) const noexcept {
+          if constexpr (tag_invocable<get_descriptor_t, const _Sender&>) {
+            return tag_invoke_result_t<get_descriptor_t, const _Sender&>{};
+          } else if constexpr (requires {typename _Sender::descriptor_t;}) {
+            return typename _Sender::descriptor_t{};
+          } else {
+            return void();
+          }
+        }
+    };
+  } // namespace __get_descriptor
+
+  using __get_descriptor::get_descriptor_t;
+  inline constexpr get_descriptor_t get_descriptor {};
+
+  template <class _Sender>
+    concept __has_get_descriptor =
+      requires (_Sender&& __sender) {
+        get_descriptor(__sender);
+      };
+
+  template <class _Tag, __has_get_descriptor... _Args>
+    auto __test_valid_sender_descriptor(_Tag(*)(_Args...))
+      -> void (_Tag::*)(_Args...);
+
+  template <class _Desc>
+    concept __valid_sender_descriptor =
+      requires (_Desc __desc) {
+        __test_valid_sender_descriptor(__desc);
+      };
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   // NOT TO SPEC (YET)
-  template <class _Sender, class _Env>
-    concept __sender =
-      requires (_Sender&& __sndr, _Env&& __env) {
-        { get_completion_signatures((_Sender&&) __sndr, (_Env&&) __env) } ->
-          __valid_completion_signatures<_Env>;
-      };
-
   template <class _Sender, class _Env = no_env>
     concept sender =
-      __sender<_Sender, _Env> &&
-      __sender<_Sender, no_env> &&
+      requires (_Sender&& __sndr, _Env&& __env) {
+        { get_descriptor(__sndr) }
+          -> __valid_sender_descriptor;
+
+        { get_completion_signatures((_Sender&&) __sndr, (_Env&&) __env) }
+          -> __valid_completion_signatures<_Env>;
+      } &&
       move_constructible<remove_cvref_t<_Sender>>;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1508,6 +1544,7 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
   namespace __just {
+    struct just_t;
 
     template <class _CPO, class... _Ts>
     using __completion_signatures_ = completion_signatures<_CPO(_Ts...)>;
@@ -1516,7 +1553,11 @@ namespace std::execution {
       struct __sender {
         tuple<_Ts...> __vals_;
 
-        using completion_signatures = __completion_signatures_<_CPO, _Ts...>;
+        using completion_signatures =
+          __completion_signatures_<_CPO, _Ts...>;
+        using descriptor_t =
+          sender_descriptor_t<just_t()>;
+
         template <class _ReceiverId>
           struct __operation : __immovable {
             using _Receiver = __t<_ReceiverId>;
@@ -1547,31 +1588,34 @@ namespace std::execution {
         }
       };
 
-    inline constexpr struct __just_t {
+    struct just_t {
       template <__movable_value... _Ts>
       __sender<set_value_t, decay_t<_Ts>...> operator()(_Ts&&... __ts) const
         noexcept((is_nothrow_constructible_v<decay_t<_Ts>, _Ts> &&...)) {
         return {{(_Ts&&) __ts...}};
       }
-    } just {};
+    };
 
-    inline constexpr struct __just_error_t {
+    struct just_error_t {
       template <__movable_value _Error>
       __sender<set_error_t, decay_t<_Error>> operator()(_Error&& __err) const
         noexcept(is_nothrow_constructible_v<decay_t<_Error>, _Error>) {
         return {{(_Error&&) __err}};
       }
-    } just_error {};
+    };
 
-    inline constexpr struct __just_stopped_t {
+    struct just_stopped_t {
       __sender<set_stopped_t> operator()() const noexcept {
         return {{}};
       }
-    } just_stopped {};
+    };
   }
-  using __just::just;
-  using __just::just_error;
-  using __just::just_stopped;
+  using __just::just_t;
+  inline constexpr just_t just {};
+  using __just::just_error_t;
+  inline constexpr just_error_t just_error {};
+  using __just::just_stopped_t;
+  inline constexpr just_stopped_t just_stopped {};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
@@ -1785,6 +1829,10 @@ namespace std::execution {
             -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Base&, _As...> {
             return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
           }
+
+          template <same_as<_Derived> _Self>
+            friend auto tag_invoke(get_descriptor_t, const _Self&) noexcept
+              -> typename _Self::descriptor_t;
 
          protected:
           using __adaptor_base<_Base>::base;
@@ -2027,6 +2075,8 @@ namespace std::execution {
         {}
       };
 
+    struct then_t;
+
     template <class _SenderId, class _FunId>
       struct __sender {
         using _Sender = __t<_SenderId>;
@@ -2061,8 +2111,11 @@ namespace std::execution {
         }
 
         template <__decays_to<__sender> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
-          __completion_signatures<_Self, _Env>;
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) noexcept
+          -> __completion_signatures<_Self, _Env>;
+
+        friend auto tag_invoke(get_descriptor_t, const __sender&) noexcept
+          -> sender_descriptor_t<then_t(_Sender)>;
 
         // forward sender queries:
         template <__sender_queries::__sender_query _Tag, class... _As>
@@ -2351,6 +2404,8 @@ namespace std::execution {
         }
       };
 
+    struct split_t;
+
     template <class _SenderId>
       class __sender {
         using _Sender = __t<_SenderId>;
@@ -2395,9 +2450,12 @@ namespace std::execution {
               __set_value_t,
               __set_error_t>;
 
+        friend auto tag_invoke(get_descriptor_t, const __sender&) noexcept
+          -> sender_descriptor_t<split_t(_Sender)>;
+
         explicit __sender(_Sender __sndr)
-            : __sndr_((_Sender&&) __sndr)
-            , __shared_state_{make_shared<__sh_state_>(__sndr_)}
+          : __sndr_((_Sender&&) __sndr)
+          , __shared_state_{make_shared<__sh_state_>(__sndr_)}
         {}
       };
 
@@ -2677,28 +2735,28 @@ namespace std::execution {
           [[no_unique_address]] __storage<_Sender, _Receiver, _Fun, _Let> __storage_;
         };
 
-      template <class _SenderId, class _FunId, class _SetId>
+      template <class _SenderId, class _FunId, class _LetId>
         struct __sender {
           using _Sender = __t<_SenderId>;
           using _Fun = __t<_FunId>;
-          using _Set = __t<_SetId>;
+          using _Let = __t<_LetId>;
           template <class _Self, class _Receiver>
             using __operation_t =
               __operation<
                 __x<__member_t<_Self, _Sender>>,
                 __x<remove_cvref_t<_Receiver>>,
                 _FunId,
-                _Set>;
+                _Let>;
           template <class _Self, class _Receiver>
             using __receiver_t =
               __receiver<
                 __x<__member_t<_Self, _Sender>>,
                 __x<remove_cvref_t<_Receiver>>,
                 _FunId,
-                _Set>;
+                _Let>;
 
           template <class _Env, class _Sig>
-            using __tfx_signal_t = __t<__tfx_signal<_Env, _Fun, _Set, _Sig>>;
+            using __tfx_signal_t = __t<__tfx_signal<_Env, _Fun, _Let, _Sig>>;
 
           template <class _Env>
             using __tfx_signal = __mbind_front_q1<__tfx_signal_t, _Env>;
@@ -2737,6 +2795,9 @@ namespace std::execution {
           template <__decays_to<__sender> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
               -> __completions<__member_t<_Self, _Sender>, _Env> requires true;
+
+          friend auto tag_invoke(get_descriptor_t, const __sender&) noexcept
+            -> sender_descriptor_t<_Let(_Sender)>;
 
           _Sender __sndr_;
           _Fun __fun_;
@@ -2849,6 +2910,9 @@ namespace std::execution {
         _Receiver __rcvr_;
       };
 
+    struct stopped_as_error_t;
+    struct stopped_as_optional_t;
+
     template <class _SenderId>
       struct __sender {
         using _Sender = __t<_SenderId>;
@@ -2894,21 +2958,24 @@ namespace std::execution {
               __set_error_t,
               completion_signatures<>>;
 
+        friend auto tag_invoke(get_descriptor_t, const __sender&) noexcept
+          -> sender_descriptor_t<stopped_as_optional_t(_Sender)>;
+
         _Sender __sndr_;
       };
 
-    struct __stopped_as_optional_t {
+    struct stopped_as_optional_t {
       template <sender _Sender>
         auto operator()(_Sender&& __sndr) const
           -> __sender<__x<decay_t<_Sender>>> {
           return {(_Sender&&) __sndr};
         }
-      __binder_back<__stopped_as_optional_t> operator()() const noexcept {
+      __binder_back<stopped_as_optional_t> operator()() const noexcept {
         return {};
       }
     };
 
-    struct __stopped_as_error_t {
+    struct stopped_as_error_t {
       template <sender _Sender, __movable_value _Error>
         auto operator()(_Sender&& __sndr, _Error __err) const {
           return (_Sender&&) __sndr
@@ -2918,15 +2985,15 @@ namespace std::execution {
         }
       template <__movable_value _Error>
         auto operator()(_Error __err) const
-          -> __binder_back<__stopped_as_error_t, _Error> {
+          -> __binder_back<stopped_as_error_t, _Error> {
           return {{}, {}, {(_Error&&) __err}};
         }
     };
   } // namespace __stopped_as_xxx
-  using __stopped_as_xxx::__stopped_as_optional_t;
-  inline constexpr __stopped_as_optional_t stopped_as_optional{};
-  using __stopped_as_xxx::__stopped_as_error_t;
-  inline constexpr __stopped_as_error_t stopped_as_error{};
+  using __stopped_as_xxx::stopped_as_optional_t;
+  inline constexpr stopped_as_optional_t stopped_as_optional{};
+  using __stopped_as_xxx::stopped_as_error_t;
+  inline constexpr stopped_as_error_t stopped_as_error{};
 
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
@@ -2993,6 +3060,9 @@ namespace std::execution {
               set_value_t(),
               set_error_t(exception_ptr),
               set_stopped_t()>;
+
+          using descriptor_t =
+            sender_descriptor_t<schedule_t()>;
 
          private:
           friend __scheduler;
@@ -3263,10 +3333,13 @@ namespace std::execution {
         }
       };
 
+    struct schedule_from_t;
+
     template <class _SchedulerId, class _SenderId>
       struct __sender {
         using _Scheduler = __t<_SchedulerId>;
         using _Sender = __t<_SenderId>;
+        using descriptor_t = sender_descriptor_t<schedule_from_t(_Sender)>;
         _Scheduler __sched_;
         _Sender __sndr_;
 
@@ -3364,6 +3437,7 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
   namespace __on {
+    struct on_t;
     namespace __impl {
       template <class _SchedulerId, class _SenderId, class _ReceiverId>
         struct __operation;
@@ -3458,6 +3532,7 @@ namespace std::execution {
         struct __sender {
           using _Scheduler = __t<_SchedulerId>;
           using _Sender = __t<_SenderId>;
+          using descriptor_t = sender_descriptor_t<on_t(_Sender)>;
           template <class _ReceiverId>
             using __receiver_ref_t =
               __receiver_ref<_SchedulerId, _SenderId, _ReceiverId>;
@@ -3554,6 +3629,7 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.into_variant]
   namespace __into_variant {
+    struct into_variant_t;
     template <class _Sender, class _Env>
         requires sender<_Sender, _Env>
       using __into_variant_result_t =
@@ -3589,7 +3665,6 @@ namespace std::execution {
     template <class _SenderId>
       class __sender {
         using _Sender = __t<_SenderId>;
-        friend sender_adaptor<__sender, _Sender>;
         template <class _Receiver>
           using __receiver_t = __receiver<_SenderId, __x<remove_cvref_t<_Receiver>>>;
 
@@ -3631,28 +3706,32 @@ namespace std::execution {
             __completion_signatures<_Env>;
 
        public:
+        using descriptor_t =
+          sender_descriptor_t<into_variant_t(_Sender)>;
+
         explicit __sender(__decays_to<_Sender> auto&& __sndr)
           : __sndr_((decltype(__sndr)) __sndr) {}
       };
 
-    struct __into_variant_t {
+    struct into_variant_t {
       template <sender _Sender>
         auto operator()(_Sender&& __sndr) const
           -> __sender<__x<remove_cvref_t<_Sender>>> {
           return __sender<__x<remove_cvref_t<_Sender>>>{(_Sender&&) __sndr};
         }
       auto operator()() const noexcept {
-        return __binder_back<__into_variant_t>{};
+        return __binder_back<into_variant_t>{};
       }
     };
   } // namespace __into_variant
-  using __into_variant::__into_variant_t;
-  inline constexpr __into_variant_t into_variant{};
+  using __into_variant::into_variant_t;
+  inline constexpr into_variant_t into_variant{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.when_all]
   // [execution.senders.adaptors.when_all_with_variant]
   namespace __when_all {
+    struct when_all_t;
     namespace __impl {
       enum __state_t { __started, __error, __stopped };
 
@@ -3711,6 +3790,8 @@ namespace std::execution {
 
       template <class... _SenderIds>
         struct __sender {
+          using descriptor_t =
+            sender_descriptor_t<when_all_t(__t<_SenderIds>...)>;
           template <class... _Sndrs>
             explicit __sender(_Sndrs&&... __sndrs)
               : __sndrs_((_Sndrs&&) __sndrs...)
@@ -3980,7 +4061,7 @@ namespace std::execution {
 
       template <sender... _Senders>
         requires (!tag_invocable<when_all_with_variant_t, _Senders...>) &&
-          (__callable<__into_variant_t, _Senders> &&...)
+          (__callable<into_variant_t, _Senders> &&...)
       auto operator()(_Senders&&... __sndrs) const {
           return when_all_t{}(into_variant((_Senders&&) __sndrs)...);
       }
@@ -4016,7 +4097,7 @@ namespace std::execution {
 
       template <scheduler _Sched, sender... _Senders>
         requires (!tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>) &&
-          (__callable<__into_variant_t, _Senders> &&...)
+          (__callable<into_variant_t, _Senders> &&...)
       auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
         return transfer_when_all_t{}((_Sched&&) __sched, into_variant((_Senders&&) __sndrs)...);
       }
@@ -4043,6 +4124,8 @@ namespace std::execution {
         }
       };
 
+    struct read_t;
+
     template <class _Tag>
       struct __sender {
         template <class _Env>
@@ -4051,6 +4134,8 @@ namespace std::execution {
             completion_signatures<
               set_value_t(__call_result_t<_Tag, _Env>),
               set_error_t(exception_ptr)>;
+          using descriptor_t =
+            sender_descriptor_t<read_t()>;
 
         template <class _Receiver>
           requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
@@ -4068,15 +4153,15 @@ namespace std::execution {
             __completions_t<_Env>;
       };
 
-    struct __read_t {
+    struct read_t {
       template <class _Tag>
       constexpr __sender<_Tag> operator()(_Tag) const noexcept {
         return {};
       }
     };
   } // namespace __read
-
-  inline constexpr __read::__read_t read {};
+  using __read::read_t;
+  inline constexpr read_t read {};
 
   namespace __general_queries::__impl {
     inline auto get_scheduler_t::operator()() const noexcept {
@@ -4333,11 +4418,15 @@ namespace std::execution::extra {
         }
       };
 
+    template <class... _Sigs>
+      struct __create_t;
+
     template <class _Sigs, class _FnId, class _ArgsId>
       struct __sender {
         using _Fn = __t<_FnId>;
         using _Args = __t<_ArgsId>;
         using completion_signatures = _Sigs;
+        using descriptor_t = sender_descriptor_t<__minvoke<__uncurry<__q<__create_t>>, _Sigs>()>;
 
         _Fn __fn_;
         _Args __args_;

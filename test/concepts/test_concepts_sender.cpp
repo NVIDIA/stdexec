@@ -33,6 +33,8 @@ struct my_sender0 {
       ex::set_value_t(),                   //
       ex::set_error_t(std::exception_ptr), //
       ex::set_stopped_t()>;
+  using descriptor_t =
+    ex::sender_descriptor_t<my_sender0()>;
 
   friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&& r) { return {}; }
 };
@@ -51,6 +53,8 @@ struct my_sender_int {
       ex::set_value_t(int),                //
       ex::set_error_t(std::exception_ptr), //
       ex::set_stopped_t()>;
+  using descriptor_t =
+    ex::sender_descriptor_t<my_sender_int()>;
 
   friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&& r) { return {}; }
 };
@@ -90,6 +94,8 @@ struct multival_sender {
       ex::set_value_t(int, double), //
       ex::set_value_t(short, long), //
       ex::set_error_t(std::exception_ptr)>;
+  using descriptor_t =
+    ex::sender_descriptor_t<multival_sender()>;
 
   friend oper tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&& r) { return {}; }
 };
@@ -106,6 +112,8 @@ struct ec_sender {
       ex::set_value_t(),                   //
       ex::set_error_t(std::exception_ptr), //
       ex::set_error_t(int)>;
+  using descriptor_t =
+    ex::sender_descriptor_t<ec_sender()>;
 
   friend oper tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&& r) { return {}; }
 };

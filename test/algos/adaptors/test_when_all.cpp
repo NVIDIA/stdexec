@@ -291,6 +291,7 @@ struct my_string_sender_t {
   std::string str_;
 
   using completion_signatures = typename decltype(ex::just(std::string{}))::completion_signatures;
+  using descriptor_t = ex::sender_descriptor_t<my_string_sender_t()>;
 
   template <class Recv>
   friend auto tag_invoke(ex::connect_t, my_string_sender_t&& self, Recv&& recv) {

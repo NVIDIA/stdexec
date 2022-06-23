@@ -79,6 +79,7 @@ struct impulse_scheduler {
         ex::set_value_t(),                                   //
         ex::set_error_t(std::exception_ptr),                 //
         ex::set_stopped_t()>;
+    using descriptor_t = ex::sender_descriptor_t<ex::schedule_t()>;
     data* shared_data_;
 
     template <class R>
@@ -141,6 +142,7 @@ struct inline_scheduler {
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
         ex::set_error_t(std::exception_ptr)>;
+    using descriptor_t = ex::sender_descriptor_t<ex::schedule_t()>;
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {{}, (R &&) r};
@@ -176,6 +178,7 @@ struct error_scheduler {
         ex::set_value_t(),                                   //
         ex::set_error_t(E),
         ex::set_stopped_t()>;
+    using descriptor_t = ex::sender_descriptor_t<ex::schedule_t()>;
 
     E err_;
 
@@ -209,6 +212,7 @@ struct stopped_scheduler {
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
         ex::set_stopped_t()>;
+    using descriptor_t = ex::sender_descriptor_t<ex::schedule_t()>;
 
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {

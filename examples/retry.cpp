@@ -30,6 +30,8 @@ struct fail_some {
     std::execution::completion_signatures<
       std::execution::set_value_t(int),
       std::execution::set_error_t(std::exception_ptr)>;
+  using descriptor_t =
+    std::execution::sender_descriptor_t<fail_some()>;
   template <class R>
   struct op {
     R r_;

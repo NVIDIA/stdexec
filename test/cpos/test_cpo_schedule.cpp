@@ -25,6 +25,8 @@ struct my_sender {
       ex::set_value_t(),                   //
       ex::set_error_t(std::exception_ptr), //
       ex::set_stopped_t()>;
+  using descriptor_t =
+    ex::sender_descriptor_t<ex::schedule_t()>;
 
   bool from_scheduler_{false};
 };

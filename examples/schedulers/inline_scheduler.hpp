@@ -39,6 +39,8 @@ namespace example {
         std::execution::completion_signatures<
           std::execution::set_value_t(),
           std::execution::set_error_t(std::exception_ptr)>;
+      using descriptor_t =
+        std::execution::sender_descriptor_t<std::execution::schedule_t()>;
 
       template <class R>
         friend auto tag_invoke(std::execution::connect_t, __sender, R&& rec)

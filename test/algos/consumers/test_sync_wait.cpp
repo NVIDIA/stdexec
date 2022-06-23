@@ -180,6 +180,7 @@ struct my_other_string_sender_t {
   std::string str_;
 
   using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just(std::string{}))>;
+  using descriptor_t = ex::sender_descriptor_t<my_other_string_sender_t()>;
 
   template <class Recv>
   friend auto tag_invoke(ex::connect_t, my_other_string_sender_t&& self, Recv&& recv) {
