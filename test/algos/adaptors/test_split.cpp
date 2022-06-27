@@ -181,6 +181,35 @@ TEST_CASE("split can be an rvalue", "[adaptors][split]") {
 
   REQUIRE( val == 42 );
 }
+struct move_only_type {
+  move_only_type(int v) : val(v) {}
+  move_only_type(move_only_type&&) = default;
+  int val;
+};
+struct copy_and_movable_type {
+  copy_and_movable_type(int v) : val(v) {}
+  int val;
+};
+TEMPLATE_TEST_CASE("split move only sender", "[adaptors][split]", move_only_type, copy_and_movable_type) {
+  int called = 0;
+  auto multishot = 
+      ex::just(TestType(10)) |
+      ex::then([&](TestType mot) { ++called; return TestType(mot.val+1); }) |
+      ex::split();
+  auto wa =
+    ex::when_all(
+        ex::then(multishot, [](const TestType& mot) { return mot.val; }),
+        ex::then(multishot, [](const TestType& mot) { return mot.val * 2; }),
+        ex::then(multishot, [](const TestType& mot) { return mot.val * 3; })
+      );
+
+  auto [v1, v2, v3] = std::this_thread::sync_wait(std::move(wa)).value();
+
+  REQUIRE( called == 1 );
+  REQUIRE( v1 == 11 );
+  REQUIRE( v2 == 22 );
+  REQUIRE( v3 == 33 );
+}
 TEST_CASE("split can nest", "[adaptors][split]") {
   auto split_1 = ex::just(42) | ex::split();
   auto split_2 = split_1 | ex::split();
