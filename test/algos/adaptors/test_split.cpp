@@ -194,13 +194,13 @@ TEMPLATE_TEST_CASE("split move only sender", "[adaptors][split]", move_only_type
   int called = 0;
   auto multishot = 
       ex::just(TestType(10)) |
-      ex::then([&](TestType mot) { ++called; return TestType(mot.val+1); }) |
+      ex::then([&](TestType obj) { ++called; return TestType(obj.val+1); }) |
       ex::split();
   auto wa =
     ex::when_all(
-        ex::then(multishot, [](const TestType& mot) { return mot.val; }),
-        ex::then(multishot, [](const TestType& mot) { return mot.val * 2; }),
-        ex::then(multishot, [](const TestType& mot) { return mot.val * 3; })
+        ex::then(multishot, [](const TestType& obj) { return obj.val; }),
+        ex::then(multishot, [](const TestType& obj) { return obj.val * 2; }),
+        ex::then(multishot, [](const TestType& obj) { return obj.val * 3; })
       );
 
   auto [v1, v2, v3] = std::this_thread::sync_wait(std::move(wa)).value();
