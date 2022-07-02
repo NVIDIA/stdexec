@@ -4759,9 +4759,7 @@ namespace _P2300::this_thread {
         return std::move(std::get<1>(__state.__data_));
       }
     };
-  } // namespace __sync_wait
 
-  namespace __sync_wait {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
