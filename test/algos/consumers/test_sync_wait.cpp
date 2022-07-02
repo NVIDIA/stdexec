@@ -29,6 +29,7 @@ namespace ex = std::execution;
 using std::optional;
 using std::tuple;
 using _P2300::this_thread::sync_wait;
+using _P2300::this_thread::sync_wait_with_variant;
 
 using namespace std::chrono_literals;
 
@@ -111,6 +112,32 @@ TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wa
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
   check_val_types<type_array<type_array<int>, type_array<std::string>>>(snd);
   static_assert(!std::invocable<decltype(sync_wait), decltype(snd)>);
+}
+
+TEST_CASE("sync_wait_with_variant accepts multi-variant senders", "[consumers][sync_wait_with_variant]") {
+  ex::sender auto snd =
+      fallible_just{13}
+      | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
+  check_val_types<type_array<type_array<int>, type_array<std::string>>>(snd);
+  static_assert(std::invocable<decltype(sync_wait_with_variant), decltype(snd)>);
+
+  std::optional<std::tuple<std::variant<std::tuple<int>, std::tuple<std::string>>>> res =
+    sync_wait_with_variant(snd);
+
+  CHECK(res.has_value());
+  CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
+}
+
+TEST_CASE("sync_wait_with_variant accepts single-value senders", "[consumers][sync_wait_with_variant]") {
+  ex::sender auto snd = ex::just(13);
+  check_val_types<type_array<type_array<int>>>(snd);
+  static_assert(std::invocable<decltype(sync_wait_with_variant), decltype(snd)>);
+
+  std::optional<std::tuple<std::variant<std::tuple<int>>>> res =
+    sync_wait_with_variant(snd);
+
+  CHECK(res.has_value());
+  CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
 }
 
 TEST_CASE("sync_wait works if signaled from a different thread", "[consumers][sync_wait]") {
