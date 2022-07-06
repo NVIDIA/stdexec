@@ -669,12 +669,12 @@ namespace std::execution {
   // [execution.schedulers]
   template <class _Scheduler>
     concept scheduler =
-      copy_constructible<remove_cvref_t<_Scheduler>> &&
-      equality_comparable<remove_cvref_t<_Scheduler>> &&
       requires(_Scheduler&& __sched, const __sender_queries::get_completion_scheduler_t<set_value_t> __tag) {
         { schedule((_Scheduler&&) __sched) } -> sender;
         { tag_invoke(__tag, schedule((_Scheduler&&) __sched)) } -> same_as<remove_cvref_t<_Scheduler>>;
-      };
+      } &&
+      equality_comparable<remove_cvref_t<_Scheduler>> &&
+      copy_constructible<remove_cvref_t<_Scheduler>>;
 
   // NOT TO SPEC
   template <scheduler _Scheduler>
