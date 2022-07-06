@@ -389,7 +389,7 @@ namespace std::execution {
   namespace __get_completion_signatures {
     struct get_completion_signatures_t {
       template <class _Sender, class _Env = no_env>
-      constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept {
+      constexpr auto operator()(_Sender&& __sndr, const _Env& = {}) const noexcept {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
         if constexpr (tag_invocable<get_completion_signatures_t, _Sender, _Env>) {
@@ -412,6 +412,7 @@ namespace std::execution {
           }
 #endif
         } else {
+          static_assert(same_as<_Sender, void>);
           return __compl_sigs::__none_such{};
         }
       }
@@ -689,9 +690,9 @@ namespace std::execution {
       struct get_forward_progress_guarantee_t {
         template <class _T>
           requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>
-        constexpr tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> operator()(
-            _T&& __t) const
-          noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>) {
+        constexpr auto operator()(_T&& __t) const
+          noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>)
+          -> tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> {
           return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t));
         }
         constexpr execution::forward_progress_guarantee operator()(auto&&) const noexcept {
@@ -1667,7 +1668,9 @@ namespace std::execution {
             terminate();
           }
           friend void tag_invoke(set_stopped_t, __as_receiver&&) noexcept {}
-          friend __empty_env tag_invoke(get_env_t, const __as_receiver&) noexcept { return {}; };
+          friend __empty_env tag_invoke(get_env_t, const __as_receiver&) {
+            return {};
+          }
         };
     }
 
@@ -2570,7 +2573,7 @@ namespace std::execution {
 
       template <class... _Ts>
         struct __as_tuple {
-          __decayed_tuple<_Ts...> operator()(_Ts...) const;
+          tuple<_Ts...> operator()(_Ts...) const;
         };
 
       template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
@@ -3098,14 +3101,7 @@ namespace std::execution {
           run_loop* __loop_;
           [[no_unique_address]] _Receiver __rcvr_;
 
-          explicit __operation(__task* __tail) noexcept
-            : __task{.__tail_ = __tail} {}
-          __operation(__task* __next, __execute_fn_t* __execute, run_loop* __loop, _Receiver __rcvr)
-            : __task{{}, __next, {__execute}}
-            , __loop_{__loop}
-            , __rcvr_{(_Receiver&&) __rcvr} {}
-
-          static void __execute(__task* __p) noexcept {
+          static void __execute_impl(__task* __p) noexcept {
             auto& __rcvr = ((__operation*) __p)->__rcvr_;
             try {
               if (get_stop_token(get_env(__rcvr)).stop_requested()) {
@@ -3117,6 +3113,13 @@ namespace std::execution {
               set_error((_Receiver&&) __rcvr, current_exception());
             }
           }
+
+          explicit __operation(__task* __tail) noexcept
+            : __task{.__tail_ = __tail} {}
+          __operation(__task* __next, run_loop* __loop, _Receiver __rcvr)
+            : __task{{}, __next, {&__execute_impl}}
+            , __loop_{__loop}
+            , __rcvr_{(_Receiver&&) __rcvr} {}
 
           friend void tag_invoke(start_t, __operation& __op_state) noexcept {
             __op_state.__start_();
@@ -3131,7 +3134,7 @@ namespace std::execution {
       using __completion_signatures_ = completion_signatures<Ts...>;
 
       template <class>
-        friend struct __impl::__operation;
+        friend class __impl::__operation;
      public:
       class __scheduler {
         struct __schedule_task {
@@ -3155,7 +3158,7 @@ namespace std::execution {
 
           template <class _Receiver>
           __operation<_Receiver>  __connect_(_Receiver&& __rcvr) const {
-            return {&__loop_->__head_, &__operation<_Receiver>::__execute, __loop_, (_Receiver &&) __rcvr};
+            return {&__loop_->__head_, __loop_, (_Receiver &&) __rcvr};
           }
 
           template <class _CPO>
@@ -3249,6 +3252,7 @@ namespace std::execution {
     }
   } // namespace __loop
 
+  // NOT TO SPEC
   using run_loop = __loop::run_loop;
 
   /////////////////////////////////////////////////////////////////////////////
