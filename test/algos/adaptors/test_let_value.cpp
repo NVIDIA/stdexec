@@ -70,17 +70,17 @@ TEST_CASE("let_value can be used to produce values", "[adaptors][let_value]") {
 }
 
 TEST_CASE("let_value can be used to transform values", "[adaptors][let_value]") {
-  ex::sender auto snd = ex::just(13) | ex::let_value([](int x) { return ex::just(x + 4); });
+  ex::sender auto snd = ex::just(13) | ex::let_value([](int& x) { return ex::just(x + 4); });
   wait_for_value(std::move(snd), 17);
 }
 
 TEST_CASE("let_value can be used with multiple parameters", "[adaptors][let_value]") {
-  auto snd = ex::just(3, 0.1415) | ex::let_value([](int x, double y) { return ex::just(x + y); });
+  auto snd = ex::just(3, 0.1415) | ex::let_value([](int& x, double y) { return ex::just(x + y); });
   wait_for_value(std::move(snd), 3.1415);
 }
 
 TEST_CASE("let_value can be used to change the sender", "[adaptors][let_value]") {
-  ex::sender auto snd = ex::just(13) | ex::let_value([](int x) { return ex::just_error(x + 4); });
+  ex::sender auto snd = ex::just(13) | ex::let_value([](int& x) { return ex::just_error(x + 4); });
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
 }
@@ -101,15 +101,15 @@ TEST_CASE("let_value can be used for composition", "[adaptors][let_value]") {
   bool called1{false};
   bool called2{false};
   bool called3{false};
-  auto f1 = [&](int x) {
+  auto f1 = [&](int& x) {
     called1 = true;
     return ex::just(2 * x);
   };
-  auto f2 = [&](int x) {
+  auto f2 = [&](int& x) {
     called2 = true;
     return ex::just(x + 3);
   };
-  auto f3 = [&](int x) {
+  auto f3 = [&](int& x) {
     called3 = true;
     if (!is_prime(x))
       throw std::logic_error("not prime");
@@ -128,7 +128,7 @@ TEST_CASE("let_value can be used for composition", "[adaptors][let_value]") {
 
 TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_value]") {
   auto snd = ex::just(13) //
-             | ex::let_value([](int x) {
+             | ex::let_value([](int& x) {
                  throw std::logic_error{"err"};
                  return ex::just(x + 5);
                });
@@ -153,7 +153,7 @@ TEST_CASE("let_value function is not called on error", "[adaptors][let_value]") 
   bool called{false};
   error_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::let_value([&](int x) {
+                        | ex::let_value([&](int& x) {
                             called = true;
                             return ex::just(x + 5);
                           });
@@ -165,7 +165,7 @@ TEST_CASE("let_value function is not called when cancelled", "[adaptors][let_val
   bool called{false};
   stopped_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::let_value([&](int x) {
+                        | ex::let_value([&](int& x) {
                             called = true;
                             return ex::just(x + 5);
                           });
@@ -238,7 +238,7 @@ TEST_CASE("let_value works when changing threads", "[adaptors][let_value]") {
   {
     // lunch some work on the thread pool
     ex::sender auto snd = ex::transfer_just(pool.get_scheduler(), 7)                 //
-                          | ex::let_value([](int x) { return ex::just(x * 2 - 1); }) //
+                          | ex::let_value([](int& x) { return ex::just(x * 2 - 1); }) //
                           | ex::then([&](int x) {
                               CHECK(x == 13);
                               called = true;
@@ -298,7 +298,7 @@ auto tag_invoke(ex::let_value_t, inline_scheduler sched, my_string_sender_t, Fun
 TEST_CASE("let_value can be customized", "[adaptors][let_value]") {
   // The customization will return a different value
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
-             | ex::let_value([](std::string x) { return ex::just(x + ", world"); });
+             | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
   wait_for_value(std::move(snd), std::string{"hallo"});
 }
 

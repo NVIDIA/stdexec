@@ -16,6 +16,7 @@
 #pragma once
 
 #include <type_traits>
+#include <utility>
 
 #include <__config.hpp>
 
@@ -30,9 +31,9 @@ namespace std {
   template <class...>
     concept __typename = true;
 
-  struct __non_movable {
-    __non_movable() = default;
-    __non_movable(__non_movable&&) = delete;
+  struct __immovable {
+    __immovable() = default;
+    __immovable(__immovable&&) = delete;
   };
 
   // For hiding a template type parameter from ADL
@@ -485,7 +486,10 @@ namespace std {
     struct __conv {
       _Fn __fn_;
       using type = __call_result_t<_Fn>;
-      operator type() && {
+      operator type() && noexcept(__nothrow_callable<_Fn>) {
+        return ((_Fn&&) __fn_)();
+      }
+      type operator()() && noexcept(__nothrow_callable<_Fn>) {
         return ((_Fn&&) __fn_)();
       }
     };

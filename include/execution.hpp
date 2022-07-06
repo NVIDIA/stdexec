@@ -74,6 +74,11 @@ namespace std::execution {
     weakly_parallel
   };
 
+  namespace __get_completion_signatures {
+    struct get_completion_signatures_t;
+  }
+  using __get_completion_signatures::get_completion_signatures_t;
+
   /////////////////////////////////////////////////////////////////////////////
   // env_of
   namespace __env {
@@ -83,32 +88,39 @@ namespace std::execution {
         friend void tag_invoke(auto, same_as<no_env> auto, auto&&...) = delete;
       };
 
-      template <__class _Tag, class _Value, class _BaseEnvId = __x<__empty_env>>
+      template <__class _Tag, class _Value, class _BaseEnv>
           requires copy_constructible<unwrap_reference_t<_Value>>
-        struct __env {
-          using _BaseEnv = __t<_BaseEnvId>;
-          [[no_unique_address]] unwrap_reference_t<_Value> __value_;
-          [[no_unique_address]] _BaseEnv __base_env_{};
+        struct __env_ {
+          struct __t {
+            using __base_env_t = _BaseEnv;
+            [[no_unique_address]] unwrap_reference_t<_Value> __value_;
+            [[no_unique_address]] _BaseEnv __base_env_{};
 
-          // Forward only the receiver queries:
-          template <__none_of<_Tag> _Tag2, class... _As _NVCXX_CAPTURE_PACK(_As)>
-              requires __callable<_Tag2, const _BaseEnv&, _As...>
-            friend auto tag_invoke(_Tag2 __tag, const __env& __self, _As&&... __as) noexcept
-              -> __call_result_t<_Tag2, const _BaseEnv&, _As...> {
-              _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-                return ((_Tag2&&) __tag)(__self.__base_env_, (_As&&) __as...);
-              )
-            }
+            // Forward only the receiver queries:
+            template <
+                __none_of<_Tag, get_completion_signatures_t> _Tag2,
+                same_as<__t> _Self,
+                class... _As _NVCXX_CAPTURE_PACK(_As)>
+                requires __callable<_Tag2, const typename _Self::__base_env_t&, _As...>
+              friend auto tag_invoke(_Tag2 __tag, const _Self& __self, _As&&... __as) noexcept
+                -> __call_result_t<_Tag2, const typename _Self::__base_env_t&, _As...> {
+                _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+                  return ((_Tag2&&) __tag)(__self.__base_env_, (_As&&) __as...);
+                )
+              }
 
-          template <__one_of<_Tag> _Tag2>
-            friend auto tag_invoke(_Tag2, const __env& __self, auto&&...)
-              #if !_P2300_NVHPC()
-              noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<_Value>>)
-              #endif
-              -> unwrap_reference_t<_Value> {
-              return __self.__value_;
-            }
+            template <same_as<_Tag> _Tag2, same_as<__t> _Self>
+              friend auto tag_invoke(_Tag2, const _Self& __self, auto&&...)
+                #if !_P2300_NVHPC()
+                noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<_Value>>)
+                #endif
+                -> unwrap_reference_t<_Value> {
+                return __self.__value_;
+              }
+          };
         };
+        template <class _Tag, class _Value, class _BaseEnv = __empty_env>
+          using __env = typename __env_<_Tag, _Value, _BaseEnv>::__t;
 
       template <__class _Tag>
         struct __make_env_t {
@@ -120,7 +132,7 @@ namespace std::execution {
 
           template <class _Value, class _BaseEnv>
             auto operator()(_Value&& __value, _BaseEnv&& __base_env) const
-              -> __env<_Tag, decay_t<_Value>, __x<decay_t<_BaseEnv>>> {
+              -> __env<_Tag, decay_t<_Value>, decay_t<_BaseEnv>> {
               return {(_Value&&) __value, (_BaseEnv&&) __base_env};
             }
 
@@ -275,7 +287,7 @@ namespace std::execution {
         using __count_of =
           integral_constant<
             size_t,
-            (__mapply<__mcount, __signal_args_t<_Sigs, _Tag>>::value + ...)>;
+            (__mapply<__mcount, __signal_args_t<_Sigs, _Tag>>::value + ... + 0u)>;
 
       template <class _Tuple, class _Variant>
         using __value_types =
@@ -377,7 +389,7 @@ namespace std::execution {
   namespace __get_completion_signatures {
     struct get_completion_signatures_t {
       template <class _Sender, class _Env = no_env>
-      constexpr auto operator()(_Sender&& __sndr, const _Env& = {}) const noexcept {
+      constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
         if constexpr (tag_invocable<get_completion_signatures_t, _Sender, _Env>) {
@@ -677,12 +689,12 @@ namespace std::execution {
       struct get_forward_progress_guarantee_t {
         template <class _T>
           requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>
-        tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> operator()(
+        constexpr tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> operator()(
             _T&& __t) const
           noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>) {
-          return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t)) ? true : false;
+          return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t));
         }
-        execution::forward_progress_guarantee operator()(auto&&) const noexcept {
+        constexpr execution::forward_progress_guarantee operator()(auto&&) const noexcept {
           return execution::forward_progress_guarantee::weakly_parallel;
         }
       };
@@ -713,12 +725,12 @@ namespace std::execution {
   // [execution.schedulers]
   template <class _Scheduler>
     concept scheduler =
-      copy_constructible<remove_cvref_t<_Scheduler>> &&
-      equality_comparable<remove_cvref_t<_Scheduler>> &&
       requires(_Scheduler&& __sched, const __sender_queries::get_completion_scheduler_t<set_value_t> __tag) {
         { schedule((_Scheduler&&) __sched) } -> sender;
         { tag_invoke(__tag, schedule((_Scheduler&&) __sched)) } -> same_as<remove_cvref_t<_Scheduler>>;
-      };
+      } &&
+      equality_comparable<remove_cvref_t<_Scheduler>> &&
+      copy_constructible<remove_cvref_t<_Scheduler>>;
 
   // NOT TO SPEC
   template <scheduler _Scheduler>
@@ -802,6 +814,12 @@ namespace std::execution {
   template <class _T>
     using stop_token_of_t =
       remove_cvref_t<decltype(get_stop_token(__declval<_T>()))>;
+
+  template <class _SchedulerProvider>
+    concept __scheduler_provider =
+      requires (const _SchedulerProvider& __sp) {
+        { get_scheduler(__sp) } -> scheduler<>;
+      };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
@@ -1305,7 +1323,7 @@ namespace std::execution {
           __coro::coroutine_handle<> __continuation_;
         };
 
-      template <typename _PromiseId, typename _Value>
+      template <class _PromiseId, class _Value>
         struct __sender_awaitable_base {
           using _Promise = __t<_PromiseId>;
           struct __receiver : __receiver_base<_Value> {
@@ -1350,7 +1368,7 @@ namespace std::execution {
         __expected_t<_Value> __result_;
       };
 
-      template <typename _PromiseId, typename _SenderId>
+      template <class _PromiseId, class _SenderId>
       struct __sender_awaitable
         : __sender_awaitable_base<
             _PromiseId,
@@ -1464,7 +1482,7 @@ namespace std::execution {
         __coro::coroutine_handle<> __continuation_{};
         __coro::coroutine_handle<> (*__stopped_callback_)(void*) noexcept =
           [](void*) noexcept -> __coro::coroutine_handle<> {
-            std::terminate();
+            terminate();
           };
       };
     } // namespace __impl
@@ -1577,7 +1595,7 @@ namespace std::execution {
 
         using completion_signatures = __completion_signatures_<_CPO, _Ts...>;
         template <class _ReceiverId>
-          struct __operation : __non_movable {
+          struct __operation : __immovable {
             using _Receiver = __t<_ReceiverId>;
             tuple<_Ts...> __vals_;
             _Receiver __rcvr_;
@@ -1649,6 +1667,7 @@ namespace std::execution {
             terminate();
           }
           friend void tag_invoke(set_stopped_t, __as_receiver&&) noexcept {}
+          friend __empty_env tag_invoke(get_env_t, const __as_receiver&) noexcept { return {}; };
         };
     }
 
@@ -1657,8 +1676,8 @@ namespace std::execution {
         requires __callable<_Fun&> && move_constructible<_Fun>
       void operator()(_Scheduler&& __sched, _Fun __fun) const
         noexcept(noexcept(
-          submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun}))) {
-        (void) submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun});
+          __submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun}))) {
+        (void) __submit(schedule((_Scheduler&&) __sched), __impl::__as_receiver<_Fun>{(_Fun&&) __fun});
       }
       template <scheduler _Scheduler, class _Fun>
         requires __callable<_Fun&> &&
@@ -1826,18 +1845,18 @@ namespace std::execution {
         class __t : __adaptor_base<_Base> {
           _DEFINE_MEMBER(connect);
 
-          template <__decays_to<_Derived> _Self, receiver _Receiver>
-          friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+          template <same_as<connect_t> _Connect, __decays_to<_Derived> _Self, receiver _Receiver>
+          friend auto tag_invoke(_Connect, _Self&& __self, _Receiver&& __rcvr)
             noexcept(noexcept(_CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr)))
             -> decltype(_CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr))
           {
             return _CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr);
           }
 
-          template <__decays_to<_Derived> _Self, receiver _Receiver>
+          template <same_as<connect_t> _Connect, __decays_to<_Derived> _Self, receiver _Receiver>
             requires _MISSING_MEMBER(decay_t<_Self>, connect) &&
               sender_to<__member_t<_Self, _Base>, _Receiver>
-          friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+          friend auto tag_invoke(_Connect, _Self&& __self, _Receiver&& __rcvr)
             noexcept(__has_nothrow_connect<__member_t<_Self, _Base>, _Receiver>)
             -> connect_result_t<__member_t<_Self, _Base>, _Receiver> {
             return execution::connect(((__t&&) __self).base(), (_Receiver&&) __rcvr);
@@ -1894,8 +1913,8 @@ namespace std::execution {
               }
             }
 
-          template <class... _As _NVCXX_CAPTURE_PACK(_As)>
-          friend auto tag_invoke(set_value_t, _Derived&& __self, _As&&... __as) noexcept
+          template <same_as<set_value_t> _SetValue, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          friend auto tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept
             -> decltype(_CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...)) {
             _NVCXX_EXPAND_PACK(_As, __as,
               static_assert(noexcept(_CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...)));
@@ -1903,54 +1922,54 @@ namespace std::execution {
             )
           }
 
-          template <class _D = _Derived, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <same_as<set_value_t> _SetValue, class _D = _Derived, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires _MISSING_MEMBER(_D, set_value) &&
               tag_invocable<set_value_t, __base_t<_D>, _As...>
-          friend void tag_invoke(set_value_t, _Derived&& __self, _As&&... __as) noexcept {
+          friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
             _NVCXX_EXPAND_PACK(_As, __as,
               execution::set_value(__get_base((_D&&) __self), (_As&&) __as...);
             )
           }
 
-          template <class _Error>
-          friend auto tag_invoke(set_error_t, _Derived&& __self, _Error&& __err) noexcept
+          template <same_as<set_error_t> _SetError, class _Error>
+          friend auto tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept
             -> decltype(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err)) {
             static_assert(noexcept(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err)));
             _CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err);
           }
 
-          template <class _Error, class _D = _Derived>
+          template <same_as<set_error_t> _SetError, class _Error, class _D = _Derived>
             requires _MISSING_MEMBER(_D, set_error) &&
               tag_invocable<set_error_t, __base_t<_D>, _Error>
-          friend void tag_invoke(set_error_t, _Derived&& __self, _Error&& __err) noexcept {
+          friend void tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
             execution::set_error(__get_base((_Derived&&) __self), (_Error&&) __err);
           }
 
-          template <class _D = _Derived>
-          friend auto tag_invoke(set_stopped_t, _Derived&& __self) noexcept
+          template <same_as<set_stopped_t> _SetStopped, class _D = _Derived>
+          friend auto tag_invoke(_SetStopped, _Derived&& __self) noexcept
             -> decltype(_CALL_MEMBER(set_stopped, (_D&&) __self)) {
             static_assert(noexcept(_CALL_MEMBER(set_stopped, (_Derived&&) __self)));
             _CALL_MEMBER(set_stopped, (_Derived&&) __self);
           }
 
-          template <class _D = _Derived>
+          template <same_as<set_stopped_t> _SetStopped, class _D = _Derived>
             requires _MISSING_MEMBER(_D, set_stopped) &&
               tag_invocable<set_stopped_t, __base_t<_D>>
-          friend void tag_invoke(set_stopped_t, _Derived&& __self) noexcept {
+          friend void tag_invoke(_SetStopped, _Derived&& __self) noexcept {
             execution::set_stopped(__get_base((_Derived&&) __self));
           }
 
           // Pass through the get_env receiver query
-          template <class _D = _Derived>
-          friend auto tag_invoke(get_env_t, const _Derived& __self)
+          template <same_as<get_env_t> _GetEnv, class _D = _Derived>
+          friend auto tag_invoke(_GetEnv, const _Derived& __self)
             -> decltype(_CALL_MEMBER(get_env, (const _D&) __self)) {
             return _CALL_MEMBER(get_env, __self);
           }
 
-          template <class _D = _Derived>
+          template <same_as<get_env_t> _GetEnv, class _D = _Derived>
             requires _MISSING_MEMBER(_D, get_env)
-          friend auto tag_invoke(get_env_t, const _Derived& __self)
-            -> invoke_result_t<get_env_t, __base_t<const _D&>> {
+          friend auto tag_invoke(_GetEnv, const _Derived& __self)
+            -> __call_result_t<get_env_t, __base_t<const _D&>> {
             return execution::get_env(__get_base(__self));
           }
 
@@ -1962,19 +1981,19 @@ namespace std::execution {
 
     template <__class _Derived, operation_state _Base>
       struct __operation_state_adaptor {
-        class __t : __adaptor_base<_Base>, __non_movable {
+        class __t : __adaptor_base<_Base>, __immovable {
           _DEFINE_MEMBER(start);
 
-          template <class _D = _Derived>
-          friend auto tag_invoke(start_t, _Derived& __self) noexcept
+          template <same_as<start_t> _Start, class _D = _Derived>
+          friend auto tag_invoke(_Start, _Derived& __self) noexcept
             -> decltype(_CALL_MEMBER(start, (_D&) __self)) {
             static_assert(noexcept(_CALL_MEMBER(start, (_D&) __self)));
             _CALL_MEMBER(start, (_D&) __self);
           }
 
-          template <class _D = _Derived>
+          template <same_as<start_t> _Start, class _D = _Derived>
             requires _MISSING_MEMBER(_D, start)
-          friend void tag_invoke(start_t, _Derived& __self) noexcept {
+          friend void tag_invoke(_Start, _Derived& __self) noexcept {
             execution::start(__c_cast<__t>(__self).base());
           }
 
@@ -2002,17 +2021,17 @@ namespace std::execution {
         class __t : __adaptor_base<_Base> {
           _DEFINE_MEMBER(schedule);
 
-          template <__decays_to<_Derived> _Self>
-          friend auto tag_invoke(schedule_t, _Self&& __self)
+          template <same_as<schedule_t> _Schedule, __decays_to<_Derived> _Self>
+          friend auto tag_invoke(_Schedule, _Self&& __self)
             noexcept(noexcept(_CALL_MEMBER(schedule, (_Self&&) __self)))
             -> decltype(_CALL_MEMBER(schedule, (_Self&&) __self)) {
             return _CALL_MEMBER(schedule, (_Self&&) __self);
           }
 
-          template <__decays_to<_Derived> _Self>
+          template <same_as<schedule_t> _Schedule, __decays_to<_Derived> _Self>
             requires _MISSING_MEMBER(decay_t<_Self>, schedule) &&
               scheduler<__member_t<_Self, _Base>>
-          friend auto tag_invoke(schedule_t, _Self&& __self)
+          friend auto tag_invoke(_Schedule, _Self&& __self)
             noexcept(noexcept(execution::schedule(__declval<__member_t<_Self, _Base>>())))
             -> schedule_result_t<_Self> {
             return execution::schedule(__c_cast<__t>((_Self&&) __self).base());
@@ -2060,13 +2079,14 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
-    template <class _ReceiverId, class _Fun>
+    template <class _ReceiverId, class _FunId>
       class __receiver
-        : receiver_adaptor<__receiver<_ReceiverId, _Fun>, __t<_ReceiverId>> {
+        : receiver_adaptor<__receiver<_ReceiverId, _FunId>, __t<_ReceiverId>> {
       #if _P2300_NON_LEXICAL_FRIENDSHIP
       public:
       #endif
         using _Receiver = __t<_ReceiverId>;
+        using _Fun = __t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
         [[no_unique_address]] _Fun __f_;
 
@@ -2090,7 +2110,7 @@ namespace std::execution {
             same_as<void, invoke_result_t<_Fun, _As...>> &&
             tag_invocable<set_value_t, _R2>
         void set_value(_As&&... __as) && noexcept try {
-          invoke((_Fun&&) __f_, (_As&&) __as...);
+          std::invoke((_Fun&&) __f_, (_As&&) __as...);
           execution::set_value(((__receiver&&) *this).base());
         } catch(...) {
           execution::set_error(
@@ -2105,17 +2125,14 @@ namespace std::execution {
         {}
       };
 
-    template <class _SenderId, class _Fun>
-      class __sender
-        : sender_adaptor<__sender<_SenderId, _Fun>, __t<_SenderId>> {
-      #if _P2300_NON_LEXICAL_FRIENDSHIP
-      public:
-      #endif
+    template <class _SenderId, class _FunId>
+      struct __sender {
         using _Sender = __t<_SenderId>;
-        friend sender_adaptor<__sender, _Sender>;
-        template <class _Receiver>
-          using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _Fun>;
+        using _Fun = __t<_FunId>;
+        template <receiver _Receiver>
+          using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _FunId>;
 
+        [[no_unique_address]] _Sender __sndr_;
         [[no_unique_address]] _Fun __fun_;
 
         template <class... _Args>
@@ -2126,36 +2143,41 @@ namespace std::execution {
                 __remove<void, __qf<set_value_t>>,
                 invoke_result_t<_Fun, _Args...>>>;
 
-        template <class _Env>
-          using __compl_sigs =
+        template <class _Self, class _Env>
+          using __completion_signatures =
             make_completion_signatures<
-              _Sender, _Env, __with_exception_ptr, __set_value>;
+              __member_t<_Self, _Sender>, _Env, __with_exception_ptr, __set_value>;
 
-        template <class _Receiver>
+        template <__decays_to<__sender> _Self, receiver _Receiver>
           // BUGBUG
-          //requires sender_to<_Sender, __receiver<_Receiver>>
-        auto connect(_Receiver&& __rcvr) &&
-          //noexcept(__has_nothrow_connect<_Sender, __receiver<_Receiver>>)
-          /*-> connect_result_t<_Sender, __receiver<_Receiver>>*/ {
+          requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+          // BUGBUG
+          noexcept(__has_nothrow_connect<__member_t<_Self, _Sender>, __receiver<_Receiver>>)
+          // BUGBUG
+          -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
           return execution::connect(
-              ((__sender&&) *this).base(),
-              __receiver<_Receiver>{(_Receiver&&) __rcvr, (_Fun&&) __fun_});
+              ((_Self&&) __self).__sndr_,
+              __receiver<_Receiver>{(_Receiver&&) __rcvr, ((_Self&&) __self).__fun_});
         }
 
-        template <class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, const __sender&, _Env) ->
-          __compl_sigs<_Env>;
+        template <__decays_to<__sender> _Self, class _Env>
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
+          __completion_signatures<_Self, _Env>;
 
-       public:
-        explicit __sender(_Sender __sndr, _Fun __fun)
-          : sender_adaptor<__sender, _Sender>{(_Sender&&) __sndr}
-          , __fun_((_Fun&&) __fun)
-        {}
+        // forward sender queries:
+        template <__sender_queries::__sender_query _Tag, class... _As>
+          requires __callable<_Tag, const _Sender&, _As...>
+        friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
+          noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
+          -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+          return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+        }
       };
 
     struct then_t {
       template <class _Sender, class _Fun>
-        using __sender = __sender<__x<remove_cvref_t<_Sender>>, _Fun>;
+        using __sender = __sender<__x<remove_cvref_t<_Sender>>, __x<remove_cvref_t<_Fun>>>;
 
       template <sender _Sender, __movable_value _Fun>
         requires __tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>
@@ -2172,7 +2194,8 @@ namespace std::execution {
         return tag_invoke(then_t{}, (_Sender&&) __sndr, (_Fun&&) __fun);
       }
       template <sender _Sender, __movable_value _Fun>
-        requires (!__tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>) &&
+        requires
+          (!__tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>) &&
           (!tag_invocable<then_t, _Sender, _Fun>) &&
           sender<__sender<_Sender, _Fun>>
       __sender<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
@@ -2550,7 +2573,7 @@ namespace std::execution {
           __decayed_tuple<_Ts...> operator()(_Ts...) const;
         };
 
-      template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
         struct __receiver;
 
       template <class... _Ts>
@@ -2693,23 +2716,24 @@ namespace std::execution {
         };
 
       template <class _Env, class _Fun, class _Set, class... _Args>
-          requires invocable<_Fun, _Args...> &&
-            sender<invoke_result_t<_Fun, _Args...>, _Env>
+          requires invocable<_Fun, __decay_ref<_Args>...> &&
+            sender<invoke_result_t<_Fun, __decay_ref<_Args>...>, _Env>
         struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
           using type =
             make_completion_signatures<
-              invoke_result_t<_Fun, _Args...>,
+              invoke_result_t<_Fun, __decay_ref<_Args>...>,
               _Env,
               completion_signatures<set_error_t(exception_ptr)>>;
         };
 
-      template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
         struct __operation;
 
-      template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
         struct __receiver {
           using _Sender = __t<_SenderId>;
           using _Receiver = __t<_ReceiverId>;
+          using _Fun = __t<_FunId>;
           _Receiver&& base() && noexcept { return (_Receiver&&) __op_state_->__rcvr_;}
           const _Receiver& base() const & noexcept { return __op_state_->__rcvr_;}
 
@@ -2767,14 +2791,15 @@ namespace std::execution {
             return get_env(__self.base());
           }
 
-          __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
+          __operation<_SenderId, _ReceiverId, _FunId, _Let>* __op_state_;
         };
 
-      template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
         struct __operation {
           using _Sender = __t<_SenderId>;
           using _Receiver = __t<_ReceiverId>;
-          using __receiver_t = __receiver<_SenderId, _ReceiverId, _Fun, _Let>;
+          using _Fun = __t<_FunId>;
+          using __receiver_t = __receiver<_SenderId, _ReceiverId, _FunId, _Let>;
 
           friend void tag_invoke(start_t, __operation& __self) noexcept {
             start(__self.__op_state2_);
@@ -2794,23 +2819,24 @@ namespace std::execution {
           [[no_unique_address]] __storage<_Sender, _Receiver, _Fun, _Let> __storage_;
         };
 
-      template <class _SenderId, class _Fun, class _SetId>
+      template <class _SenderId, class _FunId, class _SetId>
         struct __sender {
           using _Sender = __t<_SenderId>;
+          using _Fun = __t<_FunId>;
           using _Set = __t<_SetId>;
           template <class _Self, class _Receiver>
             using __operation_t =
               __operation<
                 __x<__member_t<_Self, _Sender>>,
                 __x<remove_cvref_t<_Receiver>>,
-                _Fun,
+                _FunId,
                 _Set>;
           template <class _Self, class _Receiver>
             using __receiver_t =
               __receiver<
                 __x<__member_t<_Self, _Sender>>,
                 __x<remove_cvref_t<_Receiver>>,
-                _Fun,
+                _FunId,
                 _Set>;
 
           template <class _Env, class _Sig>
@@ -2865,7 +2891,7 @@ namespace std::execution {
         struct __let_xxx_t {
           using type = _SetTag;
           template <class _Sender, class _Fun>
-            using __sender = __impl::__sender<__x<remove_cvref_t<_Sender>>, _Fun, _LetTag>;
+            using __sender = __impl::__sender<__x<remove_cvref_t<_Sender>>, __x<remove_cvref_t<_Fun>>, _LetTag>;
 
           template <sender _Sender, __movable_value _Fun>
             requires __tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>
@@ -3055,40 +3081,48 @@ namespace std::execution {
     class run_loop;
 
     namespace __impl {
-      struct __task {
-        virtual void __execute_() noexcept = 0;
-        __task* __next_ = nullptr;
+      struct __task : __immovable {
+        using __execute_fn_t = void(__task*) noexcept;
+        __task* __next_ = this;
+        union {
+          __execute_fn_t* __execute_;
+          __task* __tail_;
+        };
+
+        void __execute() noexcept { (*__execute_)(this); }
       };
 
-      template <typename _ReceiverId>
-        class __operation final : __task {
+      template <class _ReceiverId>
+        struct __operation : __task {
           using _Receiver = __t<_ReceiverId>;
+          run_loop* __loop_;
+          [[no_unique_address]] _Receiver __rcvr_;
+
+          explicit __operation(__task* __tail) noexcept
+            : __task{.__tail_ = __tail} {}
+          __operation(__task* __next, __execute_fn_t* __execute, run_loop* __loop, _Receiver __rcvr)
+            : __task{{}, __next, {__execute}}
+            , __loop_{__loop}
+            , __rcvr_{(_Receiver&&) __rcvr} {}
+
+          static void __execute(__task* __p) noexcept {
+            auto& __rcvr = ((__operation*) __p)->__rcvr_;
+            try {
+              if (get_stop_token(get_env(__rcvr)).stop_requested()) {
+                set_stopped((_Receiver&&) __rcvr);
+              } else {
+                set_value((_Receiver&&) __rcvr);
+              }
+            } catch(...) {
+              set_error((_Receiver&&) __rcvr, current_exception());
+            }
+          }
 
           friend void tag_invoke(start_t, __operation& __op_state) noexcept {
             __op_state.__start_();
           }
 
-          void __execute_() noexcept override try {
-            if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
-              set_stopped((_Receiver&&) __rcvr_);
-            } else {
-              set_value((_Receiver&&) __rcvr_);
-            }
-          } catch(...) {
-            set_error((_Receiver&&) __rcvr_, current_exception());
-          }
-
           void __start_() noexcept;
-
-          [[no_unique_address]] _Receiver __rcvr_;
-          run_loop* const __loop_;
-
-         public:
-          template <typename _Receiver2>
-          explicit __operation(_Receiver2&& __rcvr, run_loop* __loop)
-            : __rcvr_((_Receiver2 &&) __rcvr)
-            , __loop_(__loop) {}
-          __operation(__operation&&) = delete;
         };
     } // namespace __impl
 
@@ -3097,7 +3131,7 @@ namespace std::execution {
       using __completion_signatures_ = completion_signatures<Ts...>;
 
       template <class>
-        friend class __impl::__operation;
+        friend struct __impl::__operation;
      public:
       class __scheduler {
         struct __schedule_task {
@@ -3110,10 +3144,18 @@ namespace std::execution {
          private:
           friend __scheduler;
 
-          template <typename _Receiver>
-          friend __impl::__operation<__x<decay_t<_Receiver>>>
+          template <class _Receiver>
+            using __operation = __impl::__operation<__x<decay_t<_Receiver>>>;
+
+          template <class _Receiver>
+          friend __operation<_Receiver>
           tag_invoke(connect_t, const __schedule_task& __self, _Receiver&& __rcvr) {
-            return __impl::__operation<__x<decay_t<_Receiver>>>{(_Receiver &&) __rcvr, __self.__loop_};
+            return __self.__connect_((_Receiver &&) __rcvr);
+          }
+
+          template <class _Receiver>
+          __operation<_Receiver>  __connect_(_Receiver&& __rcvr) const {
+            return {&__loop_->__head_, &__operation<_Receiver>::__execute, __loop_, (_Receiver &&) __rcvr};
           }
 
           template <class _CPO>
@@ -3152,7 +3194,6 @@ namespace std::execution {
 
         run_loop* __loop_;
       };
-
       __scheduler get_scheduler() {
         return __scheduler{this};
       }
@@ -3167,13 +3208,12 @@ namespace std::execution {
 
       mutex __mutex_;
       condition_variable __cv_;
-      __impl::__task* __head_ = nullptr;
-      __impl::__task* __tail_ = nullptr;
+      __impl::__task __head_{.__tail_ = &__head_};
       bool __stop_ = false;
     };
 
     namespace __impl {
-      template <typename _ReceiverId>
+      template <class _ReceiverId>
       inline void __operation<_ReceiverId>::__start_() noexcept try {
         __loop_->__push_back_(this);
       } catch(...) {
@@ -3182,8 +3222,8 @@ namespace std::execution {
     }
 
     inline void run_loop::run() {
-      while (auto* __task = __pop_front_()) {
-        __task->__execute_();
+      for (__impl::__task* __task; (__task = __pop_front_()) != &__head_;) {
+        __task->__execute();
       }
     }
 
@@ -3195,32 +3235,20 @@ namespace std::execution {
 
     inline void run_loop::__push_back_(__impl::__task* __task) {
       unique_lock __lock{__mutex_};
-      if (__head_ == nullptr) {
-        __head_ = __task;
-      } else {
-        __tail_->__next_ = __task;
-      }
-      __tail_ = __task;
-      __task->__next_ = nullptr;
+      __task->__next_ = &__head_;
+      __head_.__tail_ = __head_.__tail_->__next_ = __task;
       __cv_.notify_one();
     }
 
     inline __impl::__task* run_loop::__pop_front_() {
       unique_lock __lock{__mutex_};
-      while (__head_ == nullptr) {
-        if (__stop_)
-          return nullptr;
-        __cv_.wait(__lock);
-      }
-      auto* __task = __head_;
-      __head_ = __task->__next_;
-      if (__head_ == nullptr)
-        __tail_ = nullptr;
-      return __task;
+      __cv_.wait(__lock, [this]{ return __head_.__next_ != &__head_ || __stop_; });
+      if (__head_.__tail_ == __head_.__next_)
+        __head_.__tail_ = &__head_;
+      return exchange(__head_.__next_, __head_.__next_->__next_);
     }
   } // namespace __loop
 
-  // NOT TO SPEC
   using run_loop = __loop::run_loop;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -4014,12 +4042,9 @@ namespace std::execution {
                 }
               }
 
-              __operation(_WhenAll&& when_all, _Receiver __rcvr)
+              __operation(_WhenAll&& __when_all, _Receiver __rcvr)
                 : __child_states_{
-                    __connect_children(
-                      this,
-                      (_WhenAll&&) when_all,
-                      index_sequence_for<_SenderIds...>{})}
+                    __connect_children(this, (_WhenAll&&) __when_all, _Indices{})}
                 , __recvr_((_Receiver&&) __rcvr)
               {}
               __operation(__operation&&) = delete;
@@ -4169,7 +4194,7 @@ namespace std::execution {
 
   namespace __read {
     template <class _Tag, class _ReceiverId>
-      struct __operation : __non_movable {
+      struct __operation : __immovable {
         __t<_ReceiverId> __rcvr_;
         friend void tag_invoke(start_t, __operation& __self) noexcept try {
           auto __env = get_env(__self.__rcvr_);
@@ -4228,7 +4253,7 @@ namespace std::execution {
       return read(get_stop_token);
     }
   }
-} // namespace std::execution
+} // namespace execution
 
 namespace std::this_thread {
   /////////////////////////////////////////////////////////////////////////////
@@ -4343,6 +4368,7 @@ namespace std::this_thread {
           execution::get_completion_scheduler<execution::set_value_t>(__sndr);
         return tag_invoke(sync_wait_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
+
       // TODO: constrain on return type
       template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
@@ -4354,6 +4380,7 @@ namespace std::this_thread {
         nothrow_tag_invocable<sync_wait_t, _Sender>) {
         return tag_invoke(sync_wait_t{}, (_Sender&&) __sndr);
       }
+
       template <execution::__single_value_variant_sender<__impl::__env> _Sender>
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
@@ -4436,5 +4463,79 @@ namespace std::this_thread {
   using __sync_wait::sync_wait_with_variant_t;
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 } // namespace std::this_thread
+
+// Things that are not yet part of a proposal:
+namespace std::execution::extra {
+  namespace __create {
+    struct __void {
+      template <class _Fn>
+        void emplace(_Fn&& __fn) noexcept(__nothrow_callable<_Fn>) {
+          ((_Fn&&) __fn)();
+        }
+    };
+
+    template <class _Receiver, class _Args>
+      struct __context {
+        [[no_unique_address]] _Receiver receiver;
+        [[no_unique_address]] _Args args;
+      };
+
+    template <class _ReceiverId, class _FnId, class _ArgsId>
+      struct __operation {
+        using _Fn = __t<_FnId>;
+        using _Context = __context<__t<_ReceiverId>, __t<_ArgsId>>;
+        using _Result = __call_result_t<_Fn, _Context&>;
+        using _State = __if_c<same_as<_Result, void>, __void, optional<_Result>>;
+
+        [[no_unique_address]] _Context __ctx_;
+        [[no_unique_address]] _Fn __fn_;
+        [[no_unique_address]] _State __state_{};
+
+        friend void tag_invoke(start_t, __operation& __self) noexcept {
+          __self.__state_.emplace(__conv{
+            [&]() noexcept {
+              return ((_Fn&&) __self.__fn_)(__self.__ctx_);
+            }
+          });
+        }
+      };
+
+    template <class _Sigs, class _FnId, class _ArgsId>
+      struct __sender {
+        using _Fn = __t<_FnId>;
+        using _Args = __t<_ArgsId>;
+        using completion_signatures = _Sigs;
+
+        _Fn __fn_;
+        _Args __args_;
+
+        template <__decays_to<__sender> _Self, receiver_of<_Sigs> _Receiver>
+          requires __callable<_Fn, __context<_Receiver, _Args>&> &&
+            constructible_from<_Fn, __member_t<_Self, _Fn>> &&
+            constructible_from<_Args, __member_t<_Self, _Args>>
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+          -> __operation<__x<decay_t<_Receiver>>, _FnId, _ArgsId> {
+          static_assert(__nothrow_callable<_Fn, __context<_Receiver, _Args>&>);
+          return {{(_Receiver&&) __rcvr, ((_Self&&) __self).__args_}, ((_Self&&) __self).__fn_};
+        }
+      };
+
+    template <class... _Sigs>
+      struct __create_t {
+        using __compl_sigs = completion_signatures<_Sigs...>;
+
+        template <class _Fn, class... _Args>
+            requires move_constructible<_Fn> &&
+              constructible_from<__decayed_tuple<_Args...>, _Args...>
+          auto operator()(_Fn __fn, _Args&&... __args) const
+            -> __sender<__compl_sigs, __x<_Fn>, __x<__decayed_tuple<_Args...>>> {
+            return {(_Fn&&) __fn, {(_Args&&) __args...}};
+          }
+      };
+  } // namespace __create
+
+  template <class... _Sigs>
+    inline constexpr __create::__create_t<_Sigs...> create {};
+} // namespace std::execution::extra
 
 _PRAGMA_POP()
