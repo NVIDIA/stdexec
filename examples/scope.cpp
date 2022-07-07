@@ -38,8 +38,8 @@ struct noop_receiver : receiver_adaptor<noop_receiver> {
         }
         void set_stopped() noexcept {
         }
-        make_env_t<get_stop_token_t, std::never_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(std::never_stop_token{});
+        auto get_env() const& {
+          return make_env(with<get_stop_token_t>(std::never_stop_token{}));
         }
 };
 

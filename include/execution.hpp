@@ -63,61 +63,81 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // env_of
   namespace __env {
-    namespace __impl {
-      struct __empty_env {};
-      struct no_env {
-        friend void tag_invoke(auto, same_as<no_env> auto, auto&&...) = delete;
+    struct __empty_env {};
+    struct no_env {
+      friend void tag_invoke(auto, same_as<no_env> auto, auto&&...) = delete;
+    };
+
+    template <__class _Tag, class _Value>
+        requires copy_constructible<unwrap_reference_t<_Value>>
+      struct __with_x {
+        struct __t {
+          using __tag_t = _Tag;
+          using __value_t = _Value;
+          [[no_unique_address]] unwrap_reference_t<_Value> __value_;
+
+          friend auto tag_invoke(same_as<_Tag> auto, const __t& __self, auto&&...)
+            noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<_Value>>)
+            -> unwrap_reference_t<_Value> {
+            return __self.__value_;
+          }
+        };
+      };
+    template <class _With>
+      struct __with_ : _With {};
+    template <class _Tag, class _Value>
+      using __with = __with_<__t<__with_x<_Tag, _Value>>>;
+
+    template <__class _Tag>
+      struct __with_t {
+        template <class _Value>
+          __with<_Tag, decay_t<_Value>> operator()(_Value&& __val) const {
+            return {{(_Value&&) __val}};
+          }
       };
 
-      template <__class _Tag, class _Value, class _BaseEnv>
-          requires copy_constructible<unwrap_reference_t<_Value>>
-        struct __env_ {
-          struct __t {
-            using __base_env_t = _BaseEnv;
-            [[no_unique_address]] unwrap_reference_t<_Value> __value_;
-            [[no_unique_address]] _BaseEnv __base_env_{};
+    template <class _BaseEnvId, class... _Withs>
+      struct __env_ : _Withs... {
+        using _BaseEnv = __t<_BaseEnvId>;
+        using __base_env_t = _BaseEnv;
+        [[no_unique_address]] _BaseEnv __base_env_{};
 
-            // Forward only the receiver queries:
-            template <__none_of<_Tag, get_completion_signatures_t> _Tag2, same_as<__t> _Self, class... _As>
-                requires __callable<_Tag2, const typename _Self::__base_env_t&, _As...>
-              friend auto tag_invoke(_Tag2 __tag, const _Self& __self, _As&&... __as) noexcept
-                -> __call_result_t<_Tag2, const typename _Self::__base_env_t&, _As...> {
-                return ((_Tag2&&) __tag)(__self.__base_env_, (_As&&) __as...);
-              }
+        // Forward the receiver queries:
+        template <
+            __none_of<typename _Withs::__tag_t..., get_completion_signatures_t> _Tag,
+            same_as<__env_> _Self,
+            class... _As>
+            requires __callable<_Tag, const typename _Self::__base_env_t&, _As...>
+          friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as) noexcept
+            -> __call_result_t<_Tag, const typename _Self::__base_env_t&, _As...> {
+            return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
+          }
+      };
+    template <class _BaseEnv, class... _Withs>
+      using __env = __env_<__x<_BaseEnv>, _Withs...>;
 
-            template <same_as<_Tag> _Tag2, same_as<__t> _Self>
-              friend auto tag_invoke(_Tag2, const _Self& __self, auto&&...)
-                noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<_Value>>)
-                -> unwrap_reference_t<_Value> {
-                return __self.__value_;
-              }
-          };
-        };
-        template <class _Tag, class _Value, class _BaseEnv = __empty_env>
-          using __env = typename __env_<_Tag, _Value, _BaseEnv>::__t;
+    // For making an evaluation environment from key/value pairs and optionally
+    // another environment.
+    struct __make_env_t {
+      template <class... _Ws>
+        auto operator()(__with_<_Ws>... __ws) const
+          noexcept((is_nothrow_move_constructible_v<_Ws> &&...))
+          -> __env<__empty_env, _Ws...> {
+          return {std::move(__ws)..., {}};
+        }
 
-      template <__class _Tag>
-        struct __make_env_t {
-          template <class _Value>
-            __env<_Tag, decay_t<_Value>> operator()(_Value&& __value) const
-              noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<decay_t<_Value>>>) {
-              return {(_Value&&) __value};
-            }
+      template <__none_of<no_env> _BaseEnv, class... _Ws>
+        auto operator()(_BaseEnv&& __base_env, __with_<_Ws>... __ws) const
+          -> __env<decay_t<_BaseEnv>, _Ws...> {
+          return {std::move(__ws)..., (_BaseEnv&&) __base_env};
+        }
 
-          template <class _Value, class _BaseEnv>
-            auto operator()(_Value&& __value, _BaseEnv&& __base_env) const
-              -> __env<_Tag, decay_t<_Value>, decay_t<_BaseEnv>> {
-              return {(_Value&&) __value, (_BaseEnv&&) __base_env};
-            }
-
-            auto operator()(auto&&, no_env) const noexcept
-              -> no_env {
-              return {};
-            }
-        };
-    } // namespace __impl
-    using __impl::__empty_env;
-    using __impl::no_env;
+      template <class... _Ws>
+        auto operator()(no_env, __with_<_Ws>...) const noexcept
+          -> no_env {
+          return {};
+        }
+    };
 
     // For getting an evaluation environment from a receiver
     struct get_env_t {
@@ -131,24 +151,23 @@ namespace std::execution {
           return tag_invoke(*this, __with_env);
         }
     };
-
-    // For making an evaluation environment from a key/value pair, and optionally
-    // another environment.
-    template <__class _Tag>
-      inline constexpr __impl::__make_env_t<_Tag> make_env {};
   } // namespace __env
-  using __env::get_env_t;
-  inline constexpr __env::get_env_t get_env{};
-  using __env::no_env;
-  using __env::make_env;
   using __env::__empty_env;
+  using __env::no_env;
+  using __env::get_env_t;
+  template <__class _Tag>
+    inline constexpr __env::__with_t<_Tag> with {};
+  inline constexpr __env::__make_env_t make_env {};
+  inline constexpr __env::get_env_t get_env{};
+  template <class _Tag, class _Value>
+    using with_t = __env::__with<_Tag, decay_t<_Value>>;
 
   template <class _EnvProvider>
     using env_of_t = decay_t<__call_result_t<get_env_t, _EnvProvider>>;
 
-  template <__class _Tag, class _Value, class _BaseEnv = __empty_env>
+  template <class... _Ts>
     using make_env_t =
-      decltype(make_env<_Tag>(__declval<_Value>(), __declval<_BaseEnv>()));
+      decltype(make_env(__declval<_Ts>()...));
 
   template <class _EnvProvider>
     concept environment_provider =
@@ -247,12 +266,12 @@ namespace std::execution {
 
   template <class...>
     struct __concat_completion_signatures {
-      using type = dependent_completion_signatures<no_env>;
+      using __t = dependent_completion_signatures<no_env>;
     };
 
   template <__is_instance_of<completion_signatures>... _Completions>
     struct __concat_completion_signatures<_Completions...> {
-      using type =
+      using __t =
         __minvoke<
           __concat<__munique<__q<completion_signatures>>>,
           _Completions...>;
@@ -398,7 +417,7 @@ namespace std::execution {
           _WithEnv,
           dependent_completion_signatures<no_env>>);
      public:
-      using type = _WithEnv;
+      using __t = _WithEnv;
     };
 
   template <class _Sender, class _Env = no_env>
@@ -973,7 +992,7 @@ namespace std::execution {
     };
     template <class _Env>
       using __debug_env_t =
-        make_env_t<__is_debug_env_t, int, _Env>;
+        make_env_t<_Env, with_t<__is_debug_env_t, bool>>;
 
     struct __debug_op_state {
       __debug_op_state(auto&&);
@@ -2214,9 +2233,8 @@ namespace std::execution {
         }
 
         friend auto tag_invoke(get_env_t, const __receiver& __self)
-          -> make_env_t<get_stop_token_t, in_place_stop_token>
-        {
-          return make_env<get_stop_token_t>(__self.__sh_state_.__stop_source_.get_token());
+          -> make_env_t<with_t<get_stop_token_t, in_place_stop_token>> {
+          return make_env(with<get_stop_token_t>(__self.__sh_state_.__stop_source_.get_token()));
         }
 
         explicit __receiver(_SharedState &__sh_state) noexcept
@@ -2246,14 +2264,14 @@ namespace std::execution {
         using __bound_values_t =
           __value_types_of_t<
             _Sender,
-            make_env_t<get_stop_token_t, in_place_stop_token>,
+            make_env_t<with_t<get_stop_token_t, in_place_stop_token>>,
             __mbind_front_q<__decayed_tuple, set_value_t>,
             __q<__bind_tuples>>;
 
         using __variant_t =
           __error_types_of_t<
             _Sender,
-            make_env_t<get_stop_token_t, in_place_stop_token>,
+            make_env_t<with_t<get_stop_token_t, in_place_stop_token>>,
             __transform<
               __mbind_front_q<__decayed_tuple, set_error_t>,
               __bound_values_t>>;
@@ -2390,7 +2408,7 @@ namespace std::execution {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
             make_completion_signatures<
               _Sender,
-              make_env_t<get_stop_token_t, in_place_stop_token>,
+              make_env_t<with_t<get_stop_token_t, in_place_stop_token>>,
               completion_signatures<set_error_t(const exception_ptr&)>,
               __set_value_t,
               __set_error_t>;
@@ -2585,14 +2603,14 @@ namespace std::execution {
       template <class _Env, class _Fun, class _Set, class _Ret, class... _Args>
           requires (!same_as<_Set, _Ret>)
         struct __tfx_signal<_Env, _Fun, _Set, _Ret(_Args...)> {
-          using type = completion_signatures<_Ret(_Args...)>;
+          using __t = completion_signatures<_Ret(_Args...)>;
         };
 
       template <class _Env, class _Fun, class _Set, class... _Args>
           requires invocable<_Fun, __decay_ref<_Args>...> &&
             sender<invoke_result_t<_Fun, __decay_ref<_Args>...>, _Env>
         struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
-          using type =
+          using __t =
             make_completion_signatures<
               invoke_result_t<_Fun, __decay_ref<_Args>...>,
               _Env,
@@ -2744,7 +2762,7 @@ namespace std::execution {
 
       template <class _LetTag, class _SetTag>
         struct __let_xxx_t {
-          using type = _SetTag;
+          using __t = _SetTag;
           template <class _Sender, class _Fun>
             using __sender = __impl::__sender<__x<remove_cvref_t<_Sender>>, __x<remove_cvref_t<_Fun>>, _LetTag>;
 
@@ -3381,10 +3399,10 @@ namespace std::execution {
             return __op_state_->__rcvr_;
           }
           auto get_env() const
-            -> make_env_t<get_scheduler_t, _Scheduler, env_of_t<_Receiver>> {
-            return make_env<get_scheduler_t>(
-              __op_state_->__scheduler_,
-              execution::get_env(this->base()));
+            -> make_env_t<env_of_t<_Receiver>, with_t<get_scheduler_t, _Scheduler>> {
+            return make_env(
+              execution::get_env(this->base()),
+              with<get_scheduler_t>(__op_state_->__scheduler_));
           }
         };
 
@@ -3500,7 +3518,7 @@ namespace std::execution {
               _Env,
               make_completion_signatures<
                 __member_t<_Self, _Sender>,
-                make_env_t<get_scheduler_t, _Scheduler, _Env>,
+                make_env_t<_Env, with_t<get_scheduler_t, _Scheduler>>,
                 completion_signatures<set_error_t(exception_ptr)>>,
               __value_t>;
         };
@@ -3664,7 +3682,7 @@ namespace std::execution {
 
       template <class _Env>
         using __env_t =
-          make_env_t<get_stop_token_t, in_place_stop_token, _Env>;
+          make_env_t<_Env, with_t<get_stop_token_t, in_place_stop_token>>;
 
       template <class...>
         using __swallow_values = completion_signatures<>;
@@ -3676,7 +3694,7 @@ namespace std::execution {
 
       template <class _Env, class... _Senders>
         struct __traits {
-          using type = dependent_completion_signatures<_Env>;
+          using __t = dependent_completion_signatures<_Env>;
         };
 
       template <class _Env, class... _Senders>
@@ -3700,7 +3718,7 @@ namespace std::execution {
                 _Env,
                 __q<__types>,
                 __single_or<__types<>>>...>;
-          using type =
+          using __t =
             __if_c<
               (!__count_of<set_value_t, _Senders, _Env>::value ||...),
               __non_values,
@@ -3790,10 +3808,10 @@ namespace std::execution {
                 __op_state_->__arrive();
               }
               friend auto tag_invoke(get_env_t, const __receiver& __self)
-                -> __env_t<env_of_t<_Receiver>> {
-                return make_env<get_stop_token_t>(
-                  __self.__op_state_->__stop_source_.get_token(),
-                  get_env(__self.base()));
+                -> make_env_t<env_of_t<_Receiver>, with_t<get_stop_token_t, in_place_stop_token>> {
+                return make_env(
+                  get_env(__self.base()),
+                  with<get_stop_token_t>(__self.__op_state_->__stop_source_.get_token()));
               }
               __operation<_CvrefReceiverId>* __op_state_;
             };

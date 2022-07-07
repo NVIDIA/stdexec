@@ -140,7 +140,7 @@ namespace example {
 
   template <typename ReceiverId>
     class operation : task_base {
-      using Receiver = typename ReceiverId::type;
+      using Receiver = std::__t<ReceiverId>;
       friend static_thread_pool::scheduler::sender;
 
       static_thread_pool& pool_;
