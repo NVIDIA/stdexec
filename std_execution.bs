@@ -6058,8 +6058,8 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
     <code>execution::sender&lt;S, <i>sync-wait-env</i>></code> is `false`,
     or the number of the arguments <code>completion_signatures_of_t&lt;S,
     <i>sync-wait-env</i>>::value_types</code> passed into the `Variant` template
-    parameter is not 1, `this_thread::sync_wait` is ill-formed. Otherwise,
-    `this_thread::sync_wait` is expression-equivalent to:
+    parameter is not 1, `this_thread::sync_wait(s)` is ill-formed. Otherwise,
+    `this_thread::sync_wait(s)` is expression-equivalent to:
 
     1. `tag_invoke(this_thread::sync_wait, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid.
 
@@ -6087,8 +6087,8 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
     object. For some subexpression `s`, let `S` be the type of
     `execution::into_variant(s)`. If <code>execution::sender&lt;S,
     <i>sync-wait-env</i>></code> is `false`,
-    `this_thread::sync_wait_with_variant` is ill-formed. Otherwise,
-    `this_thread::sync_wait_with_variant` is expression-equivalent to:
+    `this_thread::sync_wait_with_variant(s)` is ill-formed. Otherwise,
+    `this_thread::sync_wait_with_variant(s)` is expression-equivalent to:
 
     1. `tag_invoke(this_thread::sync_wait_with_variant, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid.
 
