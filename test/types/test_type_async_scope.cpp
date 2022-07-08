@@ -33,8 +33,7 @@ void expect_empty(_Scheduler& , ex::P2519::async_scope& scope) {
   ex::scheduler auto sch = loop.get_scheduler();
   auto op = ex::connect(
     ex::then(scope.empty(), [&](){  loop.finish(); }), 
-    expect_void_receiver<ex::make_env_t<ex::get_scheduler_t, decltype(sch)>>{
-      ex::make_env<ex::get_scheduler_t>(sch)});
+    expect_void_receiver{ex::make_env(ex::with<ex::get_scheduler_t>(sch))});
   ex::start(op);
   loop.run();
 }

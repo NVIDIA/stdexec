@@ -133,10 +133,12 @@ namespace std::execution::P2519 {
             friend receiver_adaptor<__receiver, _Receiver>;
 
             auto get_env() const&
-              -> make_env_t<get_stop_token_t, never_stop_token, env_of_t<_Receiver>> {
-              return make_env<get_stop_token_t>(
-                never_stop_token{},
-                execution::get_env(this->base()));
+              -> make_env_t<
+                  env_of_t<_Receiver>,
+                  with_t<get_stop_token_t, never_stop_token>> {
+              return make_env(
+                execution::get_env(this->base()),
+                with<get_stop_token_t>(never_stop_token{}));
             }
 
           public:
@@ -360,8 +362,9 @@ namespace std::execution::P2519 {
           __record_done_(__scope_);
         }
 
-        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(get_state().__stop_source_.get_token());
+        auto get_env() const&
+          -> make_env_t<with_t<get_stop_token_t, in_place_stop_token>> {
+          return make_env(with<get_stop_token_t>(get_state().__stop_source_.get_token()));
         }
       };
 
@@ -464,8 +467,8 @@ namespace std::execution::P2519 {
           __record_done_(__scope);
         }
 
-        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(__get_stop_token_(__scope_));
+        auto get_env() const& {
+          return make_env(with<get_stop_token_t>(__get_stop_token_(__scope_)));
         }
       };
 
@@ -592,8 +595,8 @@ namespace std::execution::P2519 {
           __record_done_(__scope_);
         }
 
-        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(__get_stop_token_(__scope_));
+        auto get_env() const& {
+          return make_env(with<get_stop_token_t>(__get_stop_token_(__scope_)));
         }
       };
 

@@ -65,15 +65,16 @@ class expect_void_receiver {
   bool called_{false};
 
   public:
-  expect_void_receiver(_Env env = _Env{}) : env_(env), called_(false) {}
+  expect_void_receiver() = default;
+  explicit expect_void_receiver(_Env env) : env_(std::move(env)) {}
   ~expect_void_receiver() { CHECK(called_); }
 
   expect_void_receiver(expect_void_receiver&& other)
-      : env_(other.env_)
+      : env_(std::move(other.env_))
       , called_(std::exchange(other.called_, true)) {
   }
   expect_void_receiver& operator=(expect_void_receiver&& other) {
-    env_ = other.env_;
+    env_ = std::move(other.env_);
     called_ = std::exchange(other.called_, true);
     return *this;
   }
