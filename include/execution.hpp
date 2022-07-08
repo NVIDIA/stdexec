@@ -4763,7 +4763,7 @@ namespace _P2300::this_thread {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
-      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
+      template <execution::sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           execution::__tag_invocable_with_completion_scheduler<
             sync_wait_with_variant_t, execution::set_value_t, _Sender>
@@ -4781,7 +4781,7 @@ namespace _P2300::this_thread {
         return tag_invoke(
           sync_wait_with_variant_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
-      template <execution::__single_value_variant_sender<__impl::__env> _Sender> // NOT TO SPEC
+      template <execution::sender<__impl::__env> _Sender> // NOT TO SPEC
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_with_variant_t, execution::set_value_t, _Sender>) &&
