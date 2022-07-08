@@ -88,13 +88,15 @@ namespace std::execution {
     template <class _Tag, class _Value>
       using __with = __with_<__t<__with_x<_Tag, _Value>>>;
 
-    template <__class _Tag>
-      struct __with_t {
-        template <class _Value>
-          __with<_Tag, decay_t<_Value>> operator()(_Value&& __val) const {
-            return {{(_Value&&) __val}};
-          }
-      };
+    template <__class _Tag, class _Value>
+      __with<_Tag, decay_t<_Value>> with(_Value&& __val) {
+        return {{(_Value&&) __val}};
+      }
+
+    template <__class _Tag, class _Value>
+      __with<_Tag, decay_t<_Value>> with(_Tag, _Value&& __val) {
+        return {{(_Value&&) __val}};
+      }
 
     template <class _BaseEnvId, class... _Withs>
       struct __env_ : _Withs... {
@@ -155,11 +157,10 @@ namespace std::execution {
   using __env::__empty_env;
   using __env::no_env;
   using __env::get_env_t;
-  template <__class _Tag>
-    inline constexpr __env::__with_t<_Tag> with {};
+  using __env::with;
   inline constexpr __env::__make_env_t make_env {};
   inline constexpr __env::get_env_t get_env{};
-  template <class _Tag, class _Value>
+  template <__class _Tag, class _Value>
     using with_t = __env::__with<_Tag, decay_t<_Value>>;
 
   template <class _EnvProvider>
@@ -2234,7 +2235,7 @@ namespace std::execution {
 
         friend auto tag_invoke(get_env_t, const __receiver& __self)
           -> make_env_t<with_t<get_stop_token_t, in_place_stop_token>> {
-          return make_env(with<get_stop_token_t>(__self.__sh_state_.__stop_source_.get_token()));
+          return make_env(with(get_stop_token, __self.__sh_state_.__stop_source_.get_token()));
         }
 
         explicit __receiver(_SharedState &__sh_state) noexcept
@@ -3402,7 +3403,7 @@ namespace std::execution {
             -> make_env_t<env_of_t<_Receiver>, with_t<get_scheduler_t, _Scheduler>> {
             return make_env(
               execution::get_env(this->base()),
-              with<get_scheduler_t>(__op_state_->__scheduler_));
+              with(get_scheduler, __op_state_->__scheduler_));
           }
         };
 
@@ -3800,7 +3801,7 @@ namespace std::execution {
               void set_stopped() && noexcept {
                 __state_t __expected = __started;
                 // Transition to the "stopped" state if and only if we're in the
-                // "started" state. (_If this fails, it's because we're in an
+                // "started" state. (If this fails, it's because we're in an
                 // error state, which trumps cancellation.)
                 if (__op_state_->__state_.compare_exchange_strong(__expected, __stopped)) {
                   __op_state_->__stop_source_.request_stop();
@@ -3811,7 +3812,7 @@ namespace std::execution {
                 -> make_env_t<env_of_t<_Receiver>, with_t<get_stop_token_t, in_place_stop_token>> {
                 return make_env(
                   get_env(__self.base()),
-                  with<get_stop_token_t>(__self.__op_state_->__stop_source_.get_token()));
+                  with(get_stop_token, __self.__op_state_->__stop_source_.get_token()));
               }
               __operation<_CvrefReceiverId>* __op_state_;
             };

@@ -138,7 +138,7 @@ namespace std::execution::P2519 {
                   with_t<get_stop_token_t, never_stop_token>> {
               return make_env(
                 execution::get_env(this->base()),
-                with<get_stop_token_t>(never_stop_token{}));
+                with(get_stop_token, never_stop_token{}));
             }
 
           public:
@@ -364,7 +364,7 @@ namespace std::execution::P2519 {
 
         auto get_env() const&
           -> make_env_t<with_t<get_stop_token_t, in_place_stop_token>> {
-          return make_env(with<get_stop_token_t>(get_state().__stop_source_.get_token()));
+          return make_env(with(get_stop_token, get_state().__stop_source_.get_token()));
         }
       };
 
@@ -468,7 +468,7 @@ namespace std::execution::P2519 {
         }
 
         auto get_env() const& {
-          return make_env(with<get_stop_token_t>(__get_stop_token_(__scope_)));
+          return make_env(with(get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
@@ -596,7 +596,7 @@ namespace std::execution::P2519 {
         }
 
         auto get_env() const& {
-          return make_env(with<get_stop_token_t>(__get_stop_token_(__scope_)));
+          return make_env(with(get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
