@@ -4763,14 +4763,22 @@ namespace _P2300::this_thread {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
-      template <execution::sender<__impl::__env> _Sender> // NOT TO SPEC
+
+      template <class _Sender>
+      using __schedule_result_t =
+        tag_invoke_result_t<
+          sync_wait_with_variant_t,
+          execution::__completion_scheduler_for<_Sender, execution::set_value_t>,
+          _Sender>;
+      template <class _Sender>
+      using __non_schedule_result_t = tag_invoke_result_t<sync_wait_with_variant_t, _Sender>;
+
+      template <execution::sender<__impl::__env> _Sender>
         requires
           execution::__tag_invocable_with_completion_scheduler<
-            sync_wait_with_variant_t, execution::set_value_t, _Sender>
-      tag_invoke_result_t<
-        sync_wait_with_variant_t,
-        execution::__completion_scheduler_for<_Sender, execution::set_value_t>,
-        _Sender>
+            sync_wait_with_variant_t, execution::set_value_t, _Sender> &&
+            std::is_same_v<__schedule_result_t<_Sender>, optional<__impl::__sync_wait_with_variant_result_t<_Sender>>>
+      __schedule_result_t<_Sender>
       operator()(_Sender&& __sndr) const noexcept(
         nothrow_tag_invocable<
           sync_wait_with_variant_t,
@@ -4781,12 +4789,13 @@ namespace _P2300::this_thread {
         return tag_invoke(
           sync_wait_with_variant_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
-      template <execution::sender<__impl::__env> _Sender> // NOT TO SPEC
+      template <execution::sender<__impl::__env> _Sender>
         requires
           (!execution::__tag_invocable_with_completion_scheduler<
             sync_wait_with_variant_t, execution::set_value_t, _Sender>) &&
-          tag_invocable<sync_wait_with_variant_t, _Sender>
-      tag_invoke_result_t<sync_wait_with_variant_t, _Sender>
+          tag_invocable<sync_wait_with_variant_t, _Sender> &&
+          std::is_same_v<__non_schedule_result_t<_Sender>, optional<__impl::__sync_wait_with_variant_result_t<_Sender>>>
+      __non_schedule_result_t<_Sender>
       operator()(_Sender&& __sndr) const noexcept(
         nothrow_tag_invocable<sync_wait_with_variant_t, _Sender>) {
         return tag_invoke(sync_wait_with_variant_t{}, (_Sender&&) __sndr);

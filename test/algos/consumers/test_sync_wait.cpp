@@ -254,7 +254,7 @@ struct my_multi_value_sender_t {
 };
 
 using my_transfered_multi_value_sender_t = decltype(ex::transfer(my_multi_value_sender_t{}, inline_scheduler{}));
-optional<tuple<std::string>> tag_invoke(
+optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> tag_invoke(
     decltype(sync_wait_with_variant), inline_scheduler sched, my_transfered_multi_value_sender_t&& s) {
   std::string res;
   auto op = ex::connect(std::move(s), expect_value_receiver_ex{&res});
@@ -265,7 +265,7 @@ optional<tuple<std::string>> tag_invoke(
   return {res};
 }
 
-optional<tuple<std::string>> tag_invoke(decltype(sync_wait_with_variant), my_multi_value_sender_t s) {
+optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> tag_invoke(decltype(sync_wait_with_variant), my_multi_value_sender_t s) {
   CHECK(s.str_ == "hello_multi");
   return {std::string{"ciao_multi"}};
 }
@@ -274,17 +274,17 @@ TEST_CASE("sync_wait_with_variant can be customized with scheduler", "[consumers
   // The customization will return a different value
   auto snd = ex::transfer(my_multi_value_sender_t{"hello_multi"}, inline_scheduler{});
   auto snd2 = ex::transfer_just(inline_scheduler{}, std::string{"hello"});
-  optional<tuple<std::string>> res = sync_wait_with_variant(std::move(snd));
+  optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> res = sync_wait_with_variant(std::move(snd));
   CHECK(res.has_value());
-  CHECK(std::get<0>(res.value()) == "hallo_multi");
+  CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(std::string{"hallo_multi"}));
 }
 
 TEST_CASE("sync_wait_with_variant can be customized without scheduler", "[consumers][sync_wait_with_variant]") {
   // The customization will return a different value
   my_multi_value_sender_t snd{std::string{"hello_multi"}};
-  optional<tuple<std::string>> res = sync_wait_with_variant(std::move(snd));
+  optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> res = sync_wait_with_variant(std::move(snd));
   CHECK(res.has_value());
-  CHECK(std::get<0>(res.value()) == "ciao_multi");
+  CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(std::string{"ciao_multi"}));
 }
 
 using multi_value_impl_t = decltype(fallible_just{std::string{}} | ex::let_error([](std::exception_ptr) { return ex::just(0); }));
