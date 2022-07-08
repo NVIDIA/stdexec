@@ -4438,7 +4438,7 @@ Consider the following example where we want to execute first on a CPU thread po
 <c- c1>// result == 610</c->
 </pre>
    </table>
-   <p>Certain sender adaptors are not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the adaptors involved. Specifically, the following sender adaptors are not pipeable.</p>
+   <p>Certain sender adaptors are not pipeable, because using the pipeline syntax can result in confusion of the semantics of the adaptors involved. Specifically, the following sender adaptors are not pipeable.</p>
    <ul>
     <li data-md>
      <p><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all_with_variant</c-></code>: Since this sender adaptor takes a variadic pack of senders, a partially applied form would be ambiguous with a non partially applied form with an arity of one less.</p>
