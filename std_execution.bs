@@ -1083,6 +1083,11 @@ The changes since R5 are as follows:
   * Reorder constraints of the `scheduler` concept to avoid constraint recursion
     when used in tandem with poorly-constrained, implicitly convertible types.
 
+<b>Fixes:</b>					 
+
+  * Fix typo in the specification of `in_place_stop_source` about the relative
+    lifetimes of the tokens and the source that produced them.
+					 
 ## R5 ## {#r5}
 
 The changes since R4 are as follows:
@@ -3371,7 +3376,7 @@ Insert a new subclause, Class `in_place_stop_source` <b>[stopsource.inplace]</b>
 1. The class `in_place_stop_source` implements the semantics of making a stop request, without the need for a dynamic allocation of a shared state.
     A stop request made on a `in_place_stop_source` object is visible to all associated `in_place_stop_token` ([stoptoken.inplace]) objects.
     Once a stop request has been made it cannot be withdrawn (a subsequent stop request has no effect).
-    All uses of `in_place_stop_token` objects associated with a given `in_place_stop_source` object must happen before the invocation of the destructor of that `in_place_stop_token` object.
+    All uses of `in_place_stop_token` objects associated with a given `in_place_stop_source` object must happen before the invocation of the destructor of that `in_place_stop_source` object.
 
 <pre highlight=c++>
 namespace std {
