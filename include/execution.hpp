@@ -2331,7 +2331,7 @@ namespace std::execution {
         template <__decays_to<__sender> _Self, class _Receiver>
           requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          noexcet(__has_nothrow_connect<_Sender, __receiver<_Receiver>>)
+          noexcept(__has_nothrow_connect<_Sender, __receiver<_Receiver>>)
           -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
           return execution::connect(
               ((_Self&&) __self).__sndr_,
@@ -2445,9 +2445,9 @@ namespace std::execution {
         explicit __receiver(_SharedState &__sh_state) noexcept
           : __sh_state_(__sh_state) {
         }
-};
+    };
 
-    struct __opeation_base {
+    struct __operation_base {
       using __notify_fn = void(__operation_base*) noexcept;
 
       __operation_base * __next_{};
