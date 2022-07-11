@@ -2328,7 +2328,7 @@ namespace std::execution {
               __completion_signatures::__default_set_error,
               __set_stopped>;
 
-        template <__decays_to<__sender> _Self, class _Receiver>
+        template <__decays_to<__sender> _Self, receiver _Receiver>
           requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
           noexcept(__has_nothrow_connect<_Sender, __receiver<_Receiver>>)
