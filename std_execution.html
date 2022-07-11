@@ -3572,6 +3572,12 @@ declarative syntax.</p>
      <p>Reorder constraints of the <code class="highlight"><c- n>scheduler</c-></code> concept to avoid constraint recursion
 when used in tandem with poorly-constrained, implicitly convertible types.</p>
    </ul>
+   <p><b>Fixes:</b></p>
+   <ul>
+    <li data-md>
+     <p>Fix typo in the specification of <code class="highlight"><c- n>in_place_stop_source</c-></code> about the relative
+lifetimes of the tokens and the source that produced them.</p>
+   </ul>
    <h3 class="heading settled" data-level="2.2" id="r5"><span class="secno">2.2. </span><span class="content">R5</span><a class="self-link" href="#r5"></a></h3>
    <p>The changes since R4 are as follows:</p>
    <p><b>Fixes:</b></p>
@@ -5480,7 +5486,7 @@ An <code class="highlight"><c- n>in_place_stop_token</c-></code> can also be pas
      <p>The class <code class="highlight"><c- n>in_place_stop_source</c-></code> implements the semantics of making a stop request, without the need for a dynamic allocation of a shared state.
 A stop request made on a <code class="highlight"><c- n>in_place_stop_source</c-></code> object is visible to all associated <code class="highlight"><c- n>in_place_stop_token</c-></code> ([stoptoken.inplace]) objects.
 Once a stop request has been made it cannot be withdrawn (a subsequent stop request has no effect).
-All uses of <code class="highlight"><c- n>in_place_stop_token</c-></code> objects associated with a given <code class="highlight"><c- n>in_place_stop_source</c-></code> object must happen before the invocation of the destructor of that <code class="highlight"><c- n>in_place_stop_token</c-></code> object.</p>
+All uses of <code class="highlight"><c- n>in_place_stop_token</c-></code> objects associated with a given <code class="highlight"><c- n>in_place_stop_source</c-></code> object must happen before the invocation of the destructor of that <code class="highlight"><c- n>in_place_stop_source</c-></code> object.</p>
    </ol>
 <pre class="highlight"><c- k>namespace</c-> <c- nn>std</c-> <c- p>{</c->
   <c- k>class</c-> <c- nc>in_place_stop_source</c-> <c- p>{</c->
