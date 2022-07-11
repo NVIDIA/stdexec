@@ -51,10 +51,10 @@ int main() {
 
   sender auto begin = schedule(sch);                                      // 2
 
-  sender auto printVoid = then(begin, 
+  sender auto printVoid = then(begin,
     []()noexcept { printf("void\n"); });                                  // 3
 
-  sender auto printEmpty = then(on(sch, scope.empty()), 
+  sender auto printEmpty = then(on(sch, scope.empty()),
     []()noexcept{ printf("scope is empty\n"); });                         // 4
 
 
@@ -77,11 +77,11 @@ int main() {
 
   sender auto fortyTwoFuture = scope.spawn_future(fortyTwo);              // 8
 
-  sender auto printFortyTwo = then(std::move(fortyTwoFuture), 
+  sender auto printFortyTwo = then(std::move(fortyTwoFuture),
     [](int fortyTwo)noexcept{ printf("%d\n", fortyTwo); });               // 9
 
   sender auto allDone = then(
-    when_all(printEmpty, std::move(printFortyTwo)), 
+    when_all(printEmpty, std::move(printFortyTwo)),
     [](auto&&...)noexcept{printf("\nall done\n");});                      // 10
 
   sync_wait(std::move(allDone));

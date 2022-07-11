@@ -2154,7 +2154,7 @@ namespace std::execution {
               ((__receiver&&) *this).base(),
               current_exception());
         }
-        
+
         // Handle the case when the invocable returns void
         template <class _R2 = _Receiver, class _Error>
           requires invocable<_Fun, _Error> &&
@@ -2187,7 +2187,7 @@ namespace std::execution {
         [[no_unique_address]] _Fun __fun_;
 
         template <class _Error>
-            requires invocable<_Fun, _Error>  
+            requires invocable<_Fun, _Error>
           using __set_error =
             completion_signatures<
               __minvoke1<
@@ -2197,7 +2197,7 @@ namespace std::execution {
         template <class _Self, class _Env>
           using __completion_signatures =
             make_completion_signatures<
-              __member_t<_Self, _Sender>, _Env, __with_exception_ptr, 
+              __member_t<_Self, _Sender>, _Env, __with_exception_ptr,
               __completion_signatures::__default_set_value,
               __set_error>;
 
@@ -2241,9 +2241,9 @@ namespace std::execution {
       sender auto operator()(_Sender&& __sndr, _Fun __fun) const
         noexcept(nothrow_tag_invocable<upon_error_t, _Sender, _Fun>) {
         return tag_invoke(upon_error_t{}, (_Sender&&) __sndr, (_Fun&&) __fun);
-      }
+
       template <sender _Sender, __movable_value _Fun>
-        requires 
+        requires
           (!__tag_invocable_with_completion_scheduler<upon_error_t, set_error_t, _Sender, _Fun>) &&
           (!tag_invocable<upon_error_t, _Sender, _Fun>) &&
           sender<__sender<_Sender, _Fun>>
@@ -2323,7 +2323,7 @@ namespace std::execution {
         template <class _Self, class _Env>
           using __completion_signatures =
             make_completion_signatures<
-              __member_t<_Self, _Sender>, _Env, __with_exception_ptr, 
+              __member_t<_Self, _Sender>, _Env, __with_exception_ptr,
               __completion_signatures::__default_set_value,
               __completion_signatures::__default_set_error,
               __set_stopped>;
@@ -2331,7 +2331,7 @@ namespace std::execution {
         template <__decays_to<__sender> _Self, class _Receiver>
           requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          noexcept(__has_nothrow_connect<_Sender, __receiver<_Receiver>>)
+          noexcet(__has_nothrow_connect<_Sender, __receiver<_Receiver>>)
           -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
           return execution::connect(
               ((_Self&&) __self).__sndr_,
@@ -2354,9 +2354,9 @@ namespace std::execution {
     struct upon_stopped_t {
       template <class _Sender, class _Fun>
         using __sender = __sender<__x<remove_cvref_t<_Sender>>, __x<remove_cvref_t<_Fun>>>;
-      
+
       template <sender _Sender, __movable_value _Fun>
-        requires 
+        requires
           __tag_invocable_with_completion_scheduler<upon_stopped_t, set_stopped_t, _Sender, _Fun> &&
           __callable<_Fun>
       sender auto operator()(_Sender&& __sndr, _Fun __fun) const
@@ -2392,7 +2392,7 @@ namespace std::execution {
   namespace __bulk {
     struct bulk_t {
       template <sender _Sender, integral _Shape, __movable_value _Fun>
-        requires __tag_invocable_with_completion_scheduler<bulk_t, set_value_t, _Sender, _Shape, _Fun> 
+        requires __tag_invocable_with_completion_scheduler<bulk_t, set_value_t, _Sender, _Shape, _Fun>
       sender auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const
         noexcept(nothrow_tag_invocable<bulk_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Shape, _Fun>) {
         auto __sched = get_completion_scheduler<set_value_t>(__sndr);
@@ -2414,7 +2414,7 @@ namespace std::execution {
   using __bulk::bulk_t;
   inline constexpr bulk_t bulk{};
 
-  /////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.split]
   namespace __split {
     template <class _SharedState>
@@ -2445,9 +2445,9 @@ namespace std::execution {
         explicit __receiver(_SharedState &__sh_state) noexcept
           : __sh_state_(__sh_state) {
         }
-      };
+};
 
-    struct __operation_base {
+    struct __opeation_base {
       using __notify_fn = void(__operation_base*) noexcept;
 
       __operation_base * __next_{};

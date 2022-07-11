@@ -212,4 +212,4 @@ TEST_CASE("sync_wait can be customized without scheduler", "[consumers][sync_wai
   CHECK(std::get<0>(res.value()) == "ciao");
 }
 
-#endif    
+#endif

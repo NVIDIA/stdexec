@@ -144,7 +144,7 @@ template <indirect_stop_token_provider ParentPromise>
     explicit awaiter_context(
         default_task_context_impl&, ParentPromise&) noexcept
     {}
-  }; 
+  };
 
 // Finally, if we don't know the parent coroutine's promise type, assume the
 // worst and save a type-erased stop callback.
@@ -304,7 +304,7 @@ private:
   }
 
   // Make this task generally awaitable:
-  friend _task_awaitable<> operator co_await(basic_task&& self) noexcept 
+  friend _task_awaitable<> operator co_await(basic_task&& self) noexcept
       requires well_formed<awaiter_context_t, _promise> {
     return _task_awaitable<>{std::exchange(self.coro_, {})};
   }
