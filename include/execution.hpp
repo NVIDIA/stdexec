@@ -2241,7 +2241,7 @@ namespace std::execution {
       sender auto operator()(_Sender&& __sndr, _Fun __fun) const
         noexcept(nothrow_tag_invocable<upon_error_t, _Sender, _Fun>) {
         return tag_invoke(upon_error_t{}, (_Sender&&) __sndr, (_Fun&&) __fun);
-
+      }
       template <sender _Sender, __movable_value _Fun>
         requires
           (!__tag_invocable_with_completion_scheduler<upon_error_t, set_error_t, _Sender, _Fun>) &&
