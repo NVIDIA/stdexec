@@ -2496,12 +2496,12 @@ namespace std::execution {
         void __notify() noexcept {
           void* const __completion_state = static_cast<void*>(this);
           void *__old = __head_.exchange(__completion_state, memory_order_acq_rel);
-          __operation_base *_op_state = static_cast<__operation_base*>(__old);
+          __operation_base *__op_state = static_cast<__operation_base*>(__old);
 
-          while(_op_state != nullptr) {
-            __operation_base *__next = _op_state->__next_;
-            _op_state->__notify_(_op_state);
-            _op_state = __next;
+          while(__op_state != nullptr) {
+            __operation_base *__next = __op_state->__next_;
+            __op_state->__notify_(__op_state);
+            __op_state = __next;
           }
         }
       };
