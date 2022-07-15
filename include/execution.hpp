@@ -4012,10 +4012,10 @@ namespace std::execution {
                 }
                 __op_state_->__arrive();
               }
-              auto get_env() const {
+              auto get_env() const
                 -> make_env_t<env_of_t<_Receiver>, with_t<get_stop_token_t, in_place_stop_token>> {
                 return make_env(
-                  get_env(base()),
+                  execution::get_env(base()),
                   with(get_stop_token, __op_state_->__stop_source_.get_token()));
               }
               __operation<_CvrefReceiverId>* __op_state_;
