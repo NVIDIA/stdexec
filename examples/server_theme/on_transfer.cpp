@@ -40,13 +40,31 @@ int main() { return 0; }
 #include <array>
 #include <string_view>
 #include <cstring>
+#include <mutex>
 
 // Pull in the reference implementation of P2300:
 #include <execution.hpp>
+#include <async_scope.hpp>
 // Use a thread pool
 #include "../schedulers/static_thread_pool.hpp"
 
 namespace ex = std::execution;
+
+struct sync {
+private:
+  static std::mutex s_mtx_;
+
+public:
+  std::ostream& sout_;
+  std::unique_lock<std::mutex> lock_{s_mtx_};
+
+  template <class T>
+  friend sync&& operator<<(sync&& self, const T& value) {
+    self.sout_ << value;
+    return std::move(self);
+  }
+};
+std::mutex sync::s_mtx_{};
 
 size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {
   const char fake_data[] = "Hello, world!";
@@ -57,7 +75,7 @@ size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {
 }
 
 void process_read_data(const char* read_data, size_t read_len) {
-  std::cout << "Processing '" << std::string_view{read_data, read_len} << "'\n";
+  sync{std::cout} << "Processing '" << std::string_view{read_data, read_len} << "'\n";
 }
 
 int main() {
@@ -69,6 +87,8 @@ int main() {
   ex::scheduler auto io_sched = io_pool.get_scheduler();
 
   std::array<std::byte, 16*1024> buffer;
+
+  ex::P2519::async_scope scope;
 
   // Fake a couple of requests
   for (int i = 0; i < 10; i++) {
@@ -89,13 +109,11 @@ int main() {
         // done
         ;
 
-
     // execute the whole flow asynchronously
-    ex::start_detached(std::move(snd));
+    scope.spawn(std::move(snd));
   }
 
-  io_pool.request_stop();
-  work_pool.request_stop();
+  (void) std::this_thread::sync_wait(scope.empty());
 
   return 0;
 }
