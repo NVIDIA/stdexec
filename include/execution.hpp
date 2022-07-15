@@ -4012,11 +4012,11 @@ namespace std::execution {
                 }
                 __op_state_->__arrive();
               }
-              friend auto tag_invoke(get_env_t, const __receiver& __self)
+              auto get_env() const {
                 -> make_env_t<env_of_t<_Receiver>, with_t<get_stop_token_t, in_place_stop_token>> {
                 return make_env(
-                  get_env(__self.base()),
-                  with(get_stop_token, __self.__op_state_->__stop_source_.get_token()));
+                  get_env(base()),
+                  with(get_stop_token, __op_state_->__stop_source_.get_token()));
               }
               __operation<_CvrefReceiverId>* __op_state_;
             };
