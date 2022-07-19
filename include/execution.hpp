@@ -121,11 +121,12 @@ namespace std::execution {
     // For making an evaluation environment from key/value pairs and optionally
     // another environment.
     struct __make_env_t {
-      template <class... _Ws>
-        auto operator()(__with_<_Ws>... __ws) const
-          noexcept((is_nothrow_move_constructible_v<_Ws> &&...))
-          -> __env<__empty_env, _Ws...> {
-          return {std::move(__ws)..., {}};
+      template <class _W, class... _Ws>
+        auto operator()(__with_<_W> __w, __with_<_Ws>... __ws) const
+          noexcept(is_nothrow_move_constructible_v<_W> &&
+            (is_nothrow_move_constructible_v<_Ws> &&...))
+          -> __env<__empty_env, _W, _Ws...> {
+          return {std::move(__w), std::move(__ws)..., {}};
         }
 
       template <__none_of<no_env> _BaseEnv, class... _Ws>
