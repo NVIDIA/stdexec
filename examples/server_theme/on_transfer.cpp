@@ -50,7 +50,7 @@ int main() { return 0; }
 
 namespace ex = std::execution;
 
-struct sync {
+struct sync_stream {
 private:
   static std::mutex s_mtx_;
 
@@ -59,12 +59,16 @@ public:
   std::unique_lock<std::mutex> lock_{s_mtx_};
 
   template <class T>
-  friend sync&& operator<<(sync&& self, const T& value) {
+  friend sync_stream&& operator<<(sync_stream&& self, const T& value) {
     self.sout_ << value;
     return std::move(self);
   }
+  friend sync_stream&& operator<<(sync_stream&& self, std::ostream& (*manip)(std::ostream&)) {
+    self.sout_ << manip;
+    return std::move(self);
+  }
 };
-std::mutex sync::s_mtx_{};
+std::mutex sync_stream::s_mtx_{};
 
 size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {
   const char fake_data[] = "Hello, world!";
@@ -75,7 +79,7 @@ size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {
 }
 
 void process_read_data(const char* read_data, size_t read_len) {
-  sync{std::cout} << "Processing '" << std::string_view{read_data, read_len} << "'\n";
+  sync_stream{std::cout} << "Processing '" << std::string_view{read_data, read_len} << "'\n";
 }
 
 int main() {
