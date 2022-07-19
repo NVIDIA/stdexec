@@ -5872,7 +5872,7 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
 
             2. When `execution::set_error(r, e)` is called, decay-copies `e`
                 into `sh_state`. If there is an operation state awaiting completion,
-                it then notifies the operation states that the results are ready.
+                it then notifies the operation state that the results are ready.
 
             3. When `execution::set_stopped(r)` is called, it then notifies any
                 awaiting operation state that the results are ready.
