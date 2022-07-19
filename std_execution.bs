@@ -1074,6 +1074,20 @@ This proposal also draws heavily from our experience with [Thrust](https://githu
 
 # Revision history # {#revisions}
 
+## R6 ## {#r6}
+
+The changes since R5 are as follows:
+
+<b>Enhancements:</b>
+
+  * Reorder constraints of the `scheduler` concept to avoid constraint recursion
+    when used in tandem with poorly-constrained, implicitly convertible types.
+
+<b>Fixes:</b>					 
+
+  * Fix typo in the specification of `in_place_stop_source` about the relative
+    lifetimes of the tokens and the source that produced them.
+					 
 ## R5 ## {#r5}
 
 The changes since R4 are as follows:
@@ -2032,7 +2046,7 @@ auto [result] = this_thread::sync_wait(snd).value();
 </pre>
 </table>
 
-Certain sender adaptors are not be pipeable, because using the pipeline syntax can result in confusion of the semantics of the adaptors involved. Specifically, the following sender adaptors are not pipeable.
+Certain sender adaptors are not pipeable, because using the pipeline syntax can result in confusion of the semantics of the adaptors involved. Specifically, the following sender adaptors are not pipeable.
 
 * `execution::when_all` and `execution::when_all_with_variant`: Since this sender adaptor takes a variadic pack of senders, a partially applied form would be ambiguous with a non partially applied form with an arity of one less.
 * `execution::on`: This sender adaptor changes how the sender passed to it is executed, not what happens to its result, but allowing it in a pipeline makes it read as if it performed a function more similar to `transfer`.
@@ -3362,7 +3376,7 @@ Insert a new subclause, Class `in_place_stop_source` <b>[stopsource.inplace]</b>
 1. The class `in_place_stop_source` implements the semantics of making a stop request, without the need for a dynamic allocation of a shared state.
     A stop request made on a `in_place_stop_source` object is visible to all associated `in_place_stop_token` ([stoptoken.inplace]) objects.
     Once a stop request has been made it cannot be withdrawn (a subsequent stop request has no effect).
-    All uses of `in_place_stop_token` objects associated with a given `in_place_stop_source` object must happen before the invocation of the destructor of that `in_place_stop_token` object.
+    All uses of `in_place_stop_token` objects associated with a given `in_place_stop_source` object must happen before the invocation of the destructor of that `in_place_stop_source` object.
 
 <pre highlight=c++>
 namespace std {
@@ -4077,12 +4091,12 @@ namespace std::execution {
     <pre highlight=c++>
     template&lt;class S>
       concept scheduler =
-        copy_constructible&lt;remove_cvref_t&lt;S>> &&
-        equality_comparable&lt;remove_cvref_t&lt;S>> &&
         requires(S&& s, const get_completion_scheduler_t&lt;set_value_t> tag) {
           { execution::schedule(std::forward&lt;S>(s)) } -> sender;
           { tag_invoke(tag, execution::schedule(std::forward&lt;S>(s))) } -> same_as&lt;remove_cvref_t&lt;S>>;
-        };
+        } &&
+        equality_comparable&lt;remove_cvref_t&lt;S>> &&
+        copy_constructible&lt;remove_cvref_t&lt;S>>;
     </pre>
 
 2. Let `S` be the type of a scheduler and let `E` be the type of an execution environment for which `sender<schedule_result_t<S>, E>` is `true`. Then `sender_of<schedule_result_t<S>, E>` shall be `true`.
@@ -6049,8 +6063,8 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
     <code>execution::sender&lt;S, <i>sync-wait-env</i>></code> is `false`,
     or the number of the arguments <code>completion_signatures_of_t&lt;S,
     <i>sync-wait-env</i>>::value_types</code> passed into the `Variant` template
-    parameter is not 1, `this_thread::sync_wait` is ill-formed. Otherwise,
-    `this_thread::sync_wait` is expression-equivalent to:
+    parameter is not 1, `this_thread::sync_wait(s)` is ill-formed. Otherwise,
+    `this_thread::sync_wait(s)` is expression-equivalent to:
 
     1. `tag_invoke(this_thread::sync_wait, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid.
 
@@ -6078,8 +6092,8 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
     object. For some subexpression `s`, let `S` be the type of
     `execution::into_variant(s)`. If <code>execution::sender&lt;S,
     <i>sync-wait-env</i>></code> is `false`,
-    `this_thread::sync_wait_with_variant` is ill-formed. Otherwise,
-    `this_thread::sync_wait_with_variant` is expression-equivalent to:
+    `this_thread::sync_wait_with_variant(s)` is ill-formed. Otherwise,
+    `this_thread::sync_wait_with_variant(s)` is expression-equivalent to:
 
     1. `tag_invoke(this_thread::sync_wait_with_variant, execution::get_completion_scheduler<execution::set_value_t>(s), s)`, if this expression is valid.
 

@@ -138,8 +138,8 @@ namespace std {
     static constexpr uint8_t __stop_requested_flag_ = 1;
     static constexpr uint8_t __locked_flag_ = 2;
 
-    atomic<uint8_t> __state_{0};
-    __detail::__in_place_stop_callback_base* __callbacks_ = nullptr;
+    mutable atomic<uint8_t> __state_{0};
+    mutable __detail::__in_place_stop_callback_base* __callbacks_ = nullptr;
     thread::id __notifying_thread_;
   };
 
@@ -277,7 +277,7 @@ namespace std {
         __spin.__wait();
         __old_state = __state_.load(memory_order_relaxed);
       }
-    } while (!const_cast<atomic<uint8_t>&>(__state_).compare_exchange_weak(
+    } while (!__state_.compare_exchange_weak(
         __old_state,
         __old_state | __locked_flag_,
         memory_order_acquire,
@@ -287,7 +287,7 @@ namespace std {
   }
 
   inline void in_place_stop_source::__unlock_(uint8_t __old_state) const noexcept {
-    (void)const_cast<atomic<uint8_t>&>(__state_).store(__old_state, memory_order_release);
+    (void)__state_.store(__old_state, memory_order_release);
   }
 
   inline bool in_place_stop_source::__try_lock_unless_stop_requested_(
@@ -306,7 +306,7 @@ namespace std {
           __old_state = __state_.load(memory_order_relaxed);
         }
       }
-    } while (!const_cast<atomic<uint8_t>&>(__state_).compare_exchange_weak(
+    } while (!__state_.compare_exchange_weak(
         __old_state,
         __set_stop_requested ? (__locked_flag_ | __stop_requested_flag_) : __locked_flag_,
         memory_order_acq_rel,
@@ -322,14 +322,12 @@ namespace std {
       return false;
     }
 
-    auto& callbacks = *const_cast<__detail::__in_place_stop_callback_base**>(&this->__callbacks_);
-
-    __callbk->__next_ = callbacks;
-    __callbk->__prev_ptr_ = &callbacks;
-    if (callbacks != nullptr) {
-      callbacks->__prev_ptr_ = &__callbk->__next_;
+    __callbk->__next_ = __callbacks_;
+    __callbk->__prev_ptr_ = &__callbacks_;
+    if (__callbacks_ != nullptr) {
+      __callbacks_->__prev_ptr_ = &__callbk->__next_;
     }
-    callbacks = __callbk;
+    __callbacks_ = __callbk;
 
     __unlock_(0);
 

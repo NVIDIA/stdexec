@@ -31,18 +31,18 @@ namespace std {
     __immovable(__immovable&&) = delete;
   };
 
+  template <class _T>
+    using __t = typename _T::__t;
+
   // For hiding a template type parameter from ADL
   template <class _T>
     struct __x_ {
-      struct __t {
-        using type = _T;
+      using __t = struct __t_ {
+        using __t = _T;
       };
     };
   template <class _T>
-    using __x = typename __x_<_T>::__t;
-
-  template <class _T>
-    using __t = typename _T::type;
+    using __x = __t<__x_<_T>>;
 
   template <bool _B>
     using __bool = bool_constant<_B>;
@@ -52,7 +52,7 @@ namespace std {
 
   // Some utilities for manipulating lists of types at compile time
   template <class...>
-  struct __types
+    struct __types
 #if defined(__GNUC__) && !defined(__clang__)
   {}  // BUGBUG: GCC does not like this "incomplete type"
 #endif
@@ -209,22 +209,22 @@ namespace std {
     struct __defer {
       template <class... _Args>
           requires __valid<_T, _Args...>
-        struct __f_ { using type = _T<_Args...>; };
+        struct __f_ { using __t = _T<_Args...>; };
       template <class _A>
           requires requires { typename _T<_A>; }
-        struct __f_<_A> { using type = _T<_A>; };
+        struct __f_<_A> { using __t = _T<_A>; };
       template <class _A, class _B>
           requires requires { typename _T<_A, _B>; }
-        struct __f_<_A, _B> { using type = _T<_A, _B>; };
+        struct __f_<_A, _B> { using __t = _T<_A, _B>; };
       template <class _A, class _B, class _C>
           requires requires { typename _T<_A, _B, _C>; }
-        struct __f_<_A, _B, _C> { using type = _T<_A, _B, _C>; };
+        struct __f_<_A, _B, _C> { using __t = _T<_A, _B, _C>; };
       template <class _A, class _B, class _C, class _D>
           requires requires { typename _T<_A, _B, _C, _D>; }
-        struct __f_<_A, _B, _C, _D> { using type = _T<_A, _B, _C, _D>; };
+        struct __f_<_A, _B, _C, _D> { using __t = _T<_A, _B, _C, _D>; };
       template <class _A, class _B, class _C, class _D, class _E>
           requires requires { typename _T<_A, _B, _C, _D, _E>; }
-        struct __f_<_A, _B, _C, _D, _E> { using type = _T<_A, _B, _C, _D, _E>; };
+        struct __f_<_A, _B, _C, _D, _E> { using __t = _T<_A, _B, _C, _D, _E>; };
       template <class... _Args>
         using __f = __t<__f_<_Args...>>;
     };
@@ -252,7 +252,7 @@ namespace std {
         {};
       template <class _State>
         struct __f_<_State> {
-          using type = _State;
+          using __t = _State;
         };
       template <class... _Args>
         using __f = __t<__f_<_Init, _Args...>>;
@@ -266,12 +266,12 @@ namespace std {
           requires (sizeof...(_As) == 0) &&
             __minvocable<_Continuation, _As...>
         struct __f_<_As...> {
-          using type = __minvoke<_Continuation>;
+          using __t = __minvoke<_Continuation>;
         };
       template <template <class...> class _A, class... _As>
           requires __minvocable<_Continuation, _As...>
         struct __f_<_A<_As...>> {
-          using type = __minvoke<_Continuation, _As...>;
+          using __t = __minvoke<_Continuation, _As...>;
         };
       template <template <class...> class _A, class... _As,
                 template <class...> class _B, class... _Bs,
@@ -429,7 +429,7 @@ namespace std {
     struct __front;
   template <class _A, class... _As>
     struct __front<_A, _As...> {
-      using type = _A;
+      using __t = _A;
     };
   template <class... _As>
       requires (sizeof...(_As) == 1)
@@ -471,11 +471,11 @@ namespace std {
       requires is_nothrow_move_constructible_v<_Fn>
     struct __conv {
       _Fn __fn_;
-      using type = __call_result_t<_Fn>;
-      operator type() && noexcept(__nothrow_callable<_Fn>) {
+      using __t = __call_result_t<_Fn>;
+      operator __t() && noexcept(__nothrow_callable<_Fn>) {
         return ((_Fn&&) __fn_)();
       }
-      type operator()() && noexcept(__nothrow_callable<_Fn>) {
+      __t operator()() && noexcept(__nothrow_callable<_Fn>) {
         return ((_Fn&&) __fn_)();
       }
     };
@@ -495,7 +495,7 @@ namespace std {
             typename __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
           }
         struct __f_<_C<_Cs...>, _D<_Ds...>> {
-          using type = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+          using __t = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
         };
       template <class _C, class _D>
         using __f = __t<__f_<_C, _D>>;

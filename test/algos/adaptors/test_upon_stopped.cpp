@@ -23,22 +23,22 @@
 namespace ex = std::execution;
 
 // TODO: implement upon_stopped
-// TEST_CASE("then returns a sender", "[adaptors][upon_stopped]") {
-//   auto snd = ex::upon_stopped(ex::just_stopped(), []() {});
-//   static_assert(ex::sender<decltype(snd)>);
-//   (void)snd;
-// }
-// TEST_CASE("then with environment returns a sender", "[adaptors][upon_stopped]") {
-//   auto snd = ex::upon_stopped(ex::just_stopped(), []() {});
-//   static_assert(ex::sender<decltype(snd), empty_env>);
-//   (void)snd;
-// }
-// TEST_CASE("then simple example", "[adaptors][upon_stopped]") {
-//   bool called{false};
-//   auto snd = ex::upon_stopped(ex::just_stopped(), [&]() { called = true; });
-//   auto op = ex::connect(std::move(snd), expect_error_receiver{});
-//   ex::start(op);
-//   // The receiver checks that it's called
-//   // we also check that the function was invoked
-//   CHECK(called);
-// }
+TEST_CASE("upon_stopped returns a sender", "[adaptors][upon_stopped]") {
+  auto snd = ex::upon_stopped(ex::just_stopped(), []() {});
+  static_assert(ex::sender<decltype(snd)>);
+  (void)snd;
+}
+TEST_CASE("upon_stopped with environment returns a sender", "[adaptors][upon_stopped]") {
+  auto snd = ex::upon_stopped(ex::just_stopped(), []() {});
+  static_assert(ex::sender<decltype(snd), empty_env>);
+  (void)snd;
+}
+TEST_CASE("upon_stopped simple example", "[adaptors][upon_stopped]") {
+  bool called{false};
+  auto snd = ex::upon_stopped(ex::just_stopped(), [&]() { called = true; return 0; });
+  auto op = ex::connect(std::move(snd), expect_value_receiver{0});
+  ex::start(op);
+  // The receiver checks that it's called
+  // we also check that the function was invoked
+  CHECK(called);
+}

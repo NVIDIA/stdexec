@@ -85,7 +85,7 @@ namespace std::execution::P2519 {
           }
 
         private:
-          atomic<void*> __state_{};
+          mutable atomic<void*> __state_{};
 
           friend struct __op_base;
 
@@ -133,10 +133,12 @@ namespace std::execution::P2519 {
             friend receiver_adaptor<__receiver, _Receiver>;
 
             auto get_env() const&
-              -> make_env_t<get_stop_token_t, never_stop_token, env_of_t<_Receiver>> {
-              return make_env<get_stop_token_t>(
-                never_stop_token{},
-                execution::get_env(this->base()));
+              -> make_env_t<
+                  env_of_t<_Receiver>,
+                  with_t<get_stop_token_t, never_stop_token>> {
+              return make_env(
+                execution::get_env(this->base()),
+                with(get_stop_token, never_stop_token{}));
             }
 
           public:
@@ -206,11 +208,10 @@ namespace std::execution::P2519 {
         }
 
         inline void __async_manual_reset_event::__start_or_wait_(__op_base& __op, const __async_manual_reset_event& __evt) noexcept {
-          __async_manual_reset_event& __e = const_cast<__async_manual_reset_event&>(__evt);
           // Try to push op onto the stack of waiting ops.
-          void* const __signalled_state = &__e;
+          const void* const __signalled_state = &__evt;
 
-          void* __top = __e.__state_.load(std::memory_order_acquire);
+          void* __top = __evt.__state_.load(std::memory_order_acquire);
 
           do {
             if (__top == __signalled_state) {
@@ -222,7 +223,7 @@ namespace std::execution::P2519 {
             // note: on the first iteration, this line transitions __op.__next_ from
             //       indeterminate to a well-defined value
             __op.__next_ = static_cast<__op_base*>(__top);
-          } while (!__e.__state_.compare_exchange_weak(
+          } while (!__evt.__state_.compare_exchange_weak(
               __top,
               static_cast<void*>(&__op),
               std::memory_order_release,
@@ -361,8 +362,9 @@ namespace std::execution::P2519 {
           __record_done_(__scope_);
         }
 
-        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(get_state().__stop_source_.get_token());
+        auto get_env() const&
+          -> make_env_t<with_t<get_stop_token_t, in_place_stop_token>> {
+          return make_env(with(get_stop_token, get_state().__stop_source_.get_token()));
         }
       };
 
@@ -465,8 +467,8 @@ namespace std::execution::P2519 {
           __record_done_(__scope);
         }
 
-        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(__get_stop_token_(__scope_));
+        auto get_env() const& {
+          return make_env(with(get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
@@ -593,8 +595,8 @@ namespace std::execution::P2519 {
           __record_done_(__scope_);
         }
 
-        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(__get_stop_token_(__scope_));
+        auto get_env() const& {
+          return make_env(with(get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
