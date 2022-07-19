@@ -298,6 +298,11 @@ namespace std::execution {
     struct _MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)> {
       template <class _Receiver>
         struct _WITH_RECEIVER_ : false_type {};
+
+      friend auto operator,(_MISSING_COMPLETION_SIGNAL_, auto)
+        -> _MISSING_COMPLETION_SIGNAL_ {
+        return {};
+      }
     };
 
   namespace __receiver_concepts {
