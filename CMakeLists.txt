@@ -128,6 +128,7 @@ set(test_sourceFiles
     test/detail/test_completion_signatures.cpp
     test/detail/test_create.cpp
     test/detail/test_utility.cpp
+    test/queries/test_env.cpp
     test/queries/test_get_forward_progress_guarantee.cpp
     )
 
