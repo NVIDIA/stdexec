@@ -20,6 +20,7 @@
 
 namespace ex = std::execution;
 
+namespace {
 struct uncustomized_scheduler {
   struct operation_state {
     friend void tag_invoke(ex::start_t, operation_state& self) noexcept {}
@@ -73,6 +74,7 @@ struct customized_scheduler {
     return fpg;
   }
 };
+}
 
 TEST_CASE("get_forward_progress_guarantee ", "[sched_queries][get_forward_progress_guarantee]") {
   STATIC_REQUIRE(ex::get_forward_progress_guarantee(uncustomized_scheduler{}) ==

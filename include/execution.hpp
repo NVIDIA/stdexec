@@ -83,19 +83,28 @@ namespace std::execution {
           }
         };
       };
+    template <class _Tag>
+      struct __with_x<_Tag, __none_such> {
+        struct __t {
+          using __tag_t = _Tag;
+          using __value_t = __none_such;
+
+          friend void tag_invoke(same_as<_Tag> auto, const __t& __self, auto&&...) = delete;
+        };
+      };
     template <class _With>
       struct __with_ : _With {};
     template <class _Tag, class _Value>
       using __with = __with_<__t<__with_x<_Tag, _Value>>>;
 
     template <__class _Tag, class _Value>
-      __with<_Tag, decay_t<_Value>> with(_Value&& __val) {
+      __with<_Tag, decay_t<_Value>> with(_Tag, _Value&& __val) {
         return {{(_Value&&) __val}};
       }
 
-    template <__class _Tag, class _Value>
-      __with<_Tag, decay_t<_Value>> with(_Tag, _Value&& __val) {
-        return {{(_Value&&) __val}};
+    template <__class _Tag>
+      __with<_Tag, __none_such> with(_Tag) {
+        return {{}};
       }
 
     template <class _BaseEnvId, class... _Withs>
@@ -226,7 +235,6 @@ namespace std::execution {
     template <class, class = void>
       __types<> __test(...);
 
-    struct __none_such {};
     struct __dependent {};
   } // namespace __completion_signatures
 
@@ -235,7 +243,7 @@ namespace std::execution {
       __if_c<
         same_as<_Env, no_env>,
         __completion_signatures::__dependent,
-        __completion_signatures::__none_such>;
+        __none_such>;
 
   template <class _Sig>
     concept __completion_signature =
@@ -375,7 +383,7 @@ namespace std::execution {
             return completion_signatures<set_value_t(_Result), set_error_t(exception_ptr)>{};
           }
         } else {
-          return __completion_signatures::__none_such{};
+          return __none_such{};
         }
       }
     };

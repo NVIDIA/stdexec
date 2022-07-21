@@ -26,6 +26,8 @@ namespace std {
     __ignore(auto&&) noexcept {}
   };
 
+  struct __none_such {};
+
   struct __immovable {
     __immovable() = default;
     __immovable(__immovable&&) = delete;
