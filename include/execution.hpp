@@ -4289,11 +4289,11 @@ namespace std::execution {
         }
 
         template <class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) ->
-            dependent_completion_signatures<_Env>;
-        template <__typename _Env>
-          friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) ->
-            __completions_t<_Env>;
+          friend auto tag_invoke(get_completion_signatures_t, __sender, _Env)
+            -> dependent_completion_signatures<_Env>;
+        template <__none_of<no_env> _Env>
+          friend auto tag_invoke(get_completion_signatures_t, __sender, _Env)
+            -> __completions_t<_Env>;
       };
 
     struct __read_t {
@@ -4305,6 +4305,111 @@ namespace std::execution {
   } // namespace __read
 
   inline constexpr __read::__read_t read {};
+
+  // NOT TO SPEC
+  namespace __write {
+    struct __write_t;
+
+    template <class _ReceiverId, class... _Withs>
+      struct __operation_base {
+        using _Receiver = __t<_ReceiverId>;
+        _Receiver __rcvr_;
+        tuple<_Withs...> __withs_;
+      };
+
+    template <class _ReceiverId, class... _Withs>
+      struct __receiver
+        : receiver_adaptor<__receiver<_ReceiverId, _Withs...>> {
+        using _Receiver = __t<_ReceiverId>;
+
+        _Receiver&& base() && noexcept {
+          return (_Receiver&&) __op_->__rcvr_;
+        }
+        const _Receiver& base() const & noexcept {
+          return __op_->__rcvr_;
+        }
+
+        auto get_env() const
+          -> make_env_t<env_of_t<_Receiver>, _Withs...> {
+          return std::apply(
+            bind_front(make_env, execution::get_env(base())),
+            __op_->__withs_);
+        }
+
+        __operation_base<_ReceiverId, _Withs...>* __op_;
+      };
+
+    template <class _SenderId, class _ReceiverId, class... _Withs>
+      struct __operation : __operation_base<_ReceiverId, _Withs...> {
+        using _Sender = __t<_SenderId>;
+        using __base_t = __operation_base<_ReceiverId, _Withs...>;
+        using __receiver_t = __receiver<_ReceiverId, _Withs...>;
+        connect_result_t<_Sender, __receiver_t> __state_;
+
+        __operation(auto&& __sndr, auto&& __rcvr, auto&& __withs)
+          : __base_t{(decltype(__rcvr)) __rcvr, (decltype(__withs)) __withs}
+          , __state_{connect((decltype(__sndr)) __sndr, __receiver_t{{}, this})}
+        {}
+
+        friend void tag_invoke(start_t, __operation& __self) noexcept {
+          start(__self.__state_);
+        }
+      };
+
+    template <class _SenderId, class... _Withs>
+      struct __sender {
+        using _Sender = __t<_SenderId>;
+        template <class _ReceiverId>
+          using __receiver_t =
+            __receiver<_ReceiverId, _Withs...>;
+        template <class _ReceiverId>
+          using __operation_t =
+            __operation<_SenderId, _ReceiverId, _Withs...>;
+
+        _Sender __sndr_;
+        tuple<_Withs...> __withs_;
+
+        template <__decays_to<__sender> _Self, receiver _Receiver>
+          requires sender_to<_Sender, __receiver_t<__x<decay_t<_Receiver>>>>
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+          -> __operation_t<__x<decay_t<_Receiver>>> {
+          return {((_Self&&) __self).__sndr_,
+                  (_Receiver&&) __rcvr,
+                  ((_Self&&) __self).__withs_};
+        }
+
+        template <__sender_queries::__sender_query _Tag, class... _As>
+          requires __callable<_Tag, const _Sender&, _As...>
+        friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
+          noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
+          -> __call_result_if_t<__sender_queries::__sender_query<_Tag>, _Tag, const _Sender&, _As...> {
+          return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+        }
+
+        template <__decays_to<__sender> _Self, class _Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+            -> make_completion_signatures<
+                __member_t<_Self, _Sender>,
+                make_env_t<_Env, _Withs...>>;
+      };
+
+    struct __write_t {
+      template <sender _Sender, class... _Withs>
+        auto operator()(_Sender&& __sndr, __env::__with_<_Withs>... __withs) const
+          -> __sender<__x<decay_t<_Sender>>, __env::__with_<_Withs>...> {
+          return {(_Sender&&) __sndr, {std::move(__withs)...}};
+        }
+
+      template <class... _Withs>
+        auto operator()(__env::__with_<_Withs>... __withs) const
+          -> __binder_back<__write_t, __env::__with_<_Withs>...> {
+          return {{}, {}, {std::move(__withs)...}};
+        }
+    };
+  } // namespace __write
+
+  // NOT TO SPEC
+  inline constexpr __write::__write_t write {};
 
   namespace __general_queries::__impl {
     inline auto get_scheduler_t::operator()() const noexcept {
