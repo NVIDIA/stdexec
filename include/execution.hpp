@@ -72,19 +72,15 @@ namespace std::execution {
         requires copy_constructible<unwrap_reference_t<_Value>>
       struct __with_x {
         struct __t {
+          using __tag_t = _Tag;
+          using __value_t = _Value;
           [[no_unique_address]] unwrap_reference_t<_Value> __value_;
-          template <class> // for making the type unique for the sake of inheritance
-            struct __f {
-              __f(__t __with)
-                : __value_((unwrap_reference_t<_Value>&&) __with.__value_) {}
-              [[no_unique_address]] unwrap_reference_t<_Value> __value_;
 
-              friend auto tag_invoke(same_as<_Tag> auto, const __f& __self, auto&&...)
-                noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<_Value>>)
-                -> unwrap_reference_t<_Value> {
-                return __self.__value_;
-              }
-            };
+          friend auto tag_invoke(same_as<_Tag> auto, const __t& __self, auto&&...)
+            noexcept(is_nothrow_copy_constructible_v<unwrap_reference_t<_Value>>)
+            -> unwrap_reference_t<_Value> {
+            return __self.__value_;
+          }
         };
       };
     template <class _With>
@@ -103,9 +99,22 @@ namespace std::execution {
       }
 
     template <class _BaseEnvId, class... _Withs>
-      struct __env_
-        : __t<_BaseEnvId>
-        , __minvoke<_Withs, _BaseEnvId>... {};
+      struct __env_ : _Withs... {
+        using _BaseEnv = __t<_BaseEnvId>;
+        using __base_env_t = _BaseEnv;
+        [[no_unique_address]] _BaseEnv __base_env_{};
+
+        // Forward the receiver queries:
+        template <
+            __none_of<typename _Withs::__tag_t..., get_completion_signatures_t> _Tag,
+            same_as<__env_> _Self,
+            class... _As>
+            requires __callable<_Tag, const typename _Self::__base_env_t&, _As...>
+          friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as) noexcept
+            -> __call_result_t<_Tag, const typename _Self::__base_env_t&, _As...> {
+            return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
+          }
+      };
     template <class _BaseEnv, class... _Withs>
       using __env = __env_<__x<_BaseEnv>, _Withs...>;
 
@@ -117,13 +126,13 @@ namespace std::execution {
           noexcept(is_nothrow_move_constructible_v<_W> &&
             (is_nothrow_move_constructible_v<_Ws> &&...))
           -> __env<__empty_env, _W, _Ws...> {
-          return {{}, std::move(__w), std::move(__ws)...};
+          return {std::move(__w), std::move(__ws)..., {}};
         }
 
       template <__none_of<no_env> _BaseEnv, class... _Ws>
         auto operator()(_BaseEnv&& __base_env, __with_<_Ws>... __ws) const
           -> __env<decay_t<_BaseEnv>, _Ws...> {
-          return {(_BaseEnv&&) __base_env, std::move(__ws)...};
+          return {std::move(__ws)..., (_BaseEnv&&) __base_env};
         }
 
       template <class... _Ws>
