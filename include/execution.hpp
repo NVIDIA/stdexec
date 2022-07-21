@@ -4306,7 +4306,7 @@ namespace std::execution {
 
   inline constexpr __read::__read_t read {};
 
-  // namespace __write
+  // NOT TO SPEC
   namespace __write {
     struct __write_t;
 
@@ -4332,9 +4332,7 @@ namespace std::execution {
         auto get_env() const
           -> make_env_t<env_of_t<_Receiver>, _Withs...> {
           return std::apply(
-            [this](auto&... __withs) {
-              return make_env(execution::get_env(base()), __withs...);
-            },
+            bind_front(make_env, execution::get_env(base())),
             __op_->__withs_);
         }
 
@@ -4348,8 +4346,8 @@ namespace std::execution {
         using __receiver_t = __receiver<_ReceiverId, _Withs...>;
         connect_result_t<_Sender, __receiver_t> __state_;
 
-        __operation(auto&& __sndr, auto&& __rcvr, tuple<_Withs...>&& __withs)
-          : __base_t{(decltype(__rcvr)) __rcvr, std::move(__withs)}
+        __operation(auto&& __sndr, auto&& __rcvr, auto&& __withs)
+          : __base_t{(decltype(__rcvr)) __rcvr, (decltype(__withs)) __withs}
           , __state_{connect((decltype(__sndr)) __sndr, __receiver_t{{}, this})}
         {}
 
@@ -4409,6 +4407,8 @@ namespace std::execution {
         }
     };
   } // namespace __write
+
+  // NOT TO SPEC
   inline constexpr __write::__write_t write {};
 
   namespace __general_queries::__impl {
