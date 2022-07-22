@@ -723,13 +723,17 @@ namespace std::execution::P2519 {
       atomic<size_t> __op_state_{1};
       __async_manual_reset_event __evt_;
 
-      [[nodiscard]] auto __await_and_sync_() const noexcept {
-        return then(__evt_.async_wait(),
-        [this]() noexcept {
+      struct __load_atomic {
+        const atomic<size_t>& __op_state_;
+        void operator()() noexcept {
           // make sure to synchronize with all the fetch_subs being done while
           // operations complete
           (void) __op_state_.load(std::memory_order_acquire);
-        });
+        }
+      };
+
+      [[nodiscard]] auto __await_and_sync_() const noexcept {
+        return then(__evt_.async_wait(), __load_atomic{__op_state_});
       }
 
     public:

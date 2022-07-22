@@ -28,19 +28,19 @@ using namespace std::execution;
 using namespace std::execution::P2519;
 using std::this_thread::sync_wait;
 
-struct noop_receiver : receiver_adaptor<noop_receiver> {
-        friend receiver_adaptor<noop_receiver>;
-        template <class... _As>
-            // requires constructible_from<__impl::__future_result_t<_Sender2>, _As...>
-          void set_value(_As&&... ) noexcept {
-          }
-        void set_error(std::exception_ptr) noexcept {
-        }
-        void set_stopped() noexcept {
-        }
-        auto get_env() const& {
-          return make_env(with(get_stop_token, std::never_stop_token{}));
-        }
+class noop_receiver : receiver_adaptor<noop_receiver> {
+  friend receiver_adaptor<noop_receiver>;
+  template <class... _As>
+      // requires constructible_from<__impl::__future_result_t<_Sender2>, _As...>
+    void set_value(_As&&... ) noexcept {
+    }
+  void set_error(std::exception_ptr) noexcept {
+  }
+  void set_stopped() noexcept {
+  }
+  auto get_env() const& {
+    return make_env(with(get_stop_token, std::never_stop_token{}));
+  }
 };
 
 int main() {
@@ -57,7 +57,6 @@ int main() {
   sender auto printEmpty = then(on(sch, scope.empty()),
     []()noexcept{ printf("scope is empty\n"); });                         // 4
 
-
   printf("\n"
     "spawn void\n"
     "==========\n");
@@ -65,7 +64,6 @@ int main() {
   scope.spawn(printVoid);                                                 // 5
 
   sync_wait(printEmpty);
-
 
   printf("\n"
     "spawn void and 42\n"
@@ -92,7 +90,6 @@ int main() {
   }
   sync_wait(scope.empty());
 
-
   {
     sender auto nest = scope.nest(begin);
     auto op = connect(std::move(nest), noop_receiver{});
@@ -104,5 +101,4 @@ int main() {
     sync_wait(std::move(nest));
   }
   sync_wait(scope.empty());
-
 }
