@@ -4340,7 +4340,9 @@ namespace std::execution {
         auto get_env() const
           -> make_env_t<env_of_t<_Receiver>, _Withs...> {
           return std::apply(
-            bind_front(make_env, execution::get_env(base())),
+            [this](auto&... __withs) {
+              return make_env(execution::get_env(base()), __withs...);
+            },
             __op_->__withs_);
         }
 
