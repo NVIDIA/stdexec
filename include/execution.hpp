@@ -4402,7 +4402,8 @@ namespace std::execution {
       };
 
     struct __write_t {
-      template <sender _Sender, class... _Withs>
+      template <__is_not_instance_of<__env::__with_> _Sender, class... _Withs>
+          requires sender<_Sender>
         auto operator()(_Sender&& __sndr, __env::__with_<_Withs>... __withs) const
           -> __sender<__x<decay_t<_Sender>>, __env::__with_<_Withs>...> {
           return {(_Sender&&) __sndr, {std::move(__withs)...}};
