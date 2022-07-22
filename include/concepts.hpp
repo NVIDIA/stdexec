@@ -123,6 +123,10 @@ namespace std {
     concept __is_instance_of =
       __is_instance_of_<_Ty, _T>;
 
+  template <class _Ty, template <class...> class _T>
+    concept __is_not_instance_of =
+      !__is_instance_of<_Ty, _T>;
+
   template <class...>
     concept __typename = true;
 
