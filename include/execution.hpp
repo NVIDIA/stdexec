@@ -2948,7 +2948,7 @@ namespace std::execution {
                   __q<__concat_completion_signatures_t>>,
                 completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>>;
 
-          template <__decays_to<__sender> _Self, class _Receiver>
+          template <__decays_to<__sender> _Self, receiver _Receiver>
               requires
                 sender_to<__member_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
