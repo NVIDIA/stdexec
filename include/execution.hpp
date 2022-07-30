@@ -2569,28 +2569,6 @@ namespace std::execution {
             __self.__on_stop_.emplace(
                 get_stop_token(get_env(__self.__recvr_)),
                 __on_stop_requested{__shared_state->__stop_source_});
-            if (__shared_state->__stop_source_.stop_requested()) {
-              // If we are starting the first split sender, then __old
-              // is nullptr and the inner sender has not been started yet.
-              // There is no need to start it; put the shared state into
-              // the "stopped" state, notify the receiver, and return.
-              if (__old == nullptr) {
-                // No need to exchange here; the inner sender isn't running
-                // yet, so there is no race.
-                __head.store(__completion_state, memory_order_release);
-                set_stopped((_Receiver&&) __self.__recvr_);
-                return;
-              }
-              // Otherwise, the inner sender has been started already but
-              // hasn't completed yet, and __old points to the head of the
-              // list of waiting operation states. The stop request has
-              // already been sent both to the inner operation and (by dint
-              // of the stop callbacks), to all of the waiting operation
-              // states. We can't __notify_ the waiting operations; we have
-              // to wait for the inner sender to complete and notify all the
-              // waiting states. Fall through and add __self to the list of
-              // waiting states to be notified in due time with the others.
-            }
           }
 
           do {
@@ -2605,7 +2583,15 @@ namespace std::execution {
               memory_order_acquire));
 
           if (__old == nullptr) {
-            start(__shared_state->__op_state2_);
+            // the inner sender isn't running
+            if (__shared_state->__stop_source_.stop_requested()) {
+              // 1. resets __head to completion state
+              // 2. notifies waiting threads
+              // 3. propagates "stopped" signal to `out_r'`
+              __shared_state->__notify();
+            } else {
+              start(__shared_state->__op_state2_);
+            }
           }
         }
       };
@@ -2688,7 +2674,7 @@ namespace std::execution {
         return {{}, {}, {}};
       }
     };
-  }
+  } // namespace __split
   using __split::split_t;
   inline constexpr split_t split{};
 
