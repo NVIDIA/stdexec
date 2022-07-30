@@ -24,7 +24,6 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <examples/schedulers/static_thread_pool.hpp>
-#include <examples/schedulers/inline_scheduler.hpp>
 
 namespace ex = std::execution;
 
@@ -121,6 +120,121 @@ TEST_CASE("split forwards stop signal", "[adaptors][split]") {
   ex::start(op);
   // The receiver will ensure that the right value is produced
 }
+TEST_CASE("split forwards external stop signal (1)", "[adaptors][split]") {
+  std::in_place_stop_source ssource;
+  bool called = false;
+  int counter{};
+  auto split = ex::split(ex::just() | ex::then([&]{ called = true; }));
+  auto sndr =
+    ex::write(
+      ex::upon_stopped(
+        split,
+        [&]{ ++counter; return 42; }),
+      ex::with(ex::get_stop_token, ssource.get_token()));
+  auto op1 = ex::connect(sndr, expect_value_receiver{42});
+  auto op2 = ex::connect(sndr, expect_value_receiver{42});
+  ssource.request_stop();
+  REQUIRE( counter == 0 );
+  ex::start(op1);
+  REQUIRE( counter == 1 );
+  REQUIRE( !called );
+  ex::start(op2);
+  REQUIRE( counter == 2 );
+}
+TEST_CASE("split forwards external stop signal (2)", "[adaptors][split]") {
+  std::in_place_stop_source ssource;
+  bool called = false;
+  int counter{};
+  auto split = ex::split(ex::just() | ex::then([&]{ called = true; return 7; }));
+  auto sndr =
+    ex::write(
+      ex::upon_stopped(
+        split,
+        [&]{ ++counter; return 42; }),
+      ex::with(ex::get_stop_token, ssource.get_token()));
+  auto op1 = ex::connect(sndr, expect_value_receiver{7});
+  auto op2 = ex::connect(sndr, expect_value_receiver{7});
+  REQUIRE( counter == 0 );
+  ex::start(op1); // operation starts and finishes.
+  REQUIRE( counter == 0 );
+  REQUIRE( called );
+  ssource.request_stop();
+  ex::start(op2); // operation is done, result is delivered.
+  REQUIRE( counter == 0 );
+}
+TEST_CASE("split forwards external stop signal (3)", "[adaptors][split]") {
+  impulse_scheduler sched;
+  std::in_place_stop_source ssource;
+  bool called = false;
+  int counter{};
+  auto split =
+    ex::split(
+      ex::on(
+        sched,
+        ex::just() | ex::then([&]{ called = true; return 7; })));
+  auto sndr =
+    ex::write(
+      ex::upon_stopped(
+        split,
+        [&]{ ++counter; return 42; }),
+      ex::with(ex::get_stop_token, ssource.get_token()));
+  auto op1 = ex::connect(sndr, expect_value_receiver{42});
+  auto op2 = ex::connect(sndr, expect_value_receiver{42});
+  REQUIRE( counter == 0 );
+  ex::start(op1); // puts a unit of work on the impulse_scheduler and
+                  // op1 into the list of waiting operations.
+  REQUIRE( counter == 0 );
+  REQUIRE( !called );
+  ssource.request_stop();
+  ex::start(op2); // puts op2 in the list of waiting operations.
+  REQUIRE( counter == 0 );
+  REQUIRE( !called );
+  sched.start_next(); // Impulse scheduler notices stop has been requested
+                      // and completes op1 with "stopped", which notifies
+                      // all waiting states.
+  REQUIRE( counter == 2 );
+  REQUIRE( !called );
+}
+TEST_CASE("split forwards external stop signal (4)", "[adaptors][split]") {
+  impulse_scheduler sched;
+  std::in_place_stop_source ssource;
+  bool called = false;
+  int counter{};
+  auto split =
+    ex::split(ex::just() | ex::then([&]{ called = true; return 7; }));
+  auto sndr1 =
+    ex::on(
+      sched,
+      ex::upon_stopped(
+        ex::write(
+          split,
+          ex::with(ex::get_stop_token, ssource.get_token())),
+        [&]{ ++counter; return 42; }));
+  auto sndr2 =
+    ex::write(
+      ex::on(
+        sched,
+        ex::upon_stopped(
+          split,
+          [&]{ ++counter; return 42; })),
+      ex::with(ex::get_stop_token, ssource.get_token()));
+  auto op1 = ex::connect(sndr1, expect_value_receiver{7});
+  auto op2 = ex::connect(sndr2, expect_stopped_receiver{});
+  REQUIRE( counter == 0 );
+  ex::start(op1); // puts a unit of work on the impulse_scheduler.
+  REQUIRE( counter == 0 );
+  REQUIRE( !called );
+  sched.start_next(); // Impulse scheduler starts split sender, which
+                      // completes with 7.
+  REQUIRE( counter == 0 );
+  REQUIRE( called );
+  ex::start(op2); // puts another unit of work on the impulse_scheduler
+  REQUIRE( counter == 0 );
+  ssource.request_stop();
+  sched.start_next(); // Impulse scheduler notices stop has been
+                      // requested and "stops" the work.
+  REQUIRE( counter == 0 );
+}
 TEST_CASE("split forwards results from a different thread", "[adaptors][split]") {
   example::static_thread_pool pool{1};
   auto split = ex::schedule(pool.get_scheduler()) | //
@@ -158,7 +272,7 @@ TEST_CASE("split is thread-safe", "[adaptors][split]") {
   }();
   for (unsigned tid = 0; tid < n_threads; tid++) {
     threads[tid] = std::thread([&split, &delays, &thread_results, tid] {
-      example::inline_scheduler scheduler{};
+      inline_scheduler scheduler{};
 
       std::this_thread::sleep_for(delays[tid]);
       auto [val] = std::this_thread::sync_wait(
