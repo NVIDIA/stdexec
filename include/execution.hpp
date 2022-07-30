@@ -406,7 +406,8 @@ namespace std::execution {
     concept sender =
       __sender<_Sender, _Env> &&
       __sender<_Sender, no_env> &&
-      move_constructible<remove_cvref_t<_Sender>>;
+      move_constructible<remove_cvref_t<_Sender>> &&
+      constructible_from<remove_cvref_t<_Sender>, _Sender>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
