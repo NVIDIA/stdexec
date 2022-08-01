@@ -5478,8 +5478,8 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
                 <code><i>Signal</i></code> be whichever receiver completion-signal
                 was used to complete r's receiver contract ([exec.recv]). Calls
                 <code><i>Signal</i>(out_r', args2...)</code>, where `args2...` is a
-                pack of const lvalues referencing the subobjects of `sh_state` that have
-                been saved by the original call to <code><i>Signal</i>(r,
+                pack of const lvalues referencing the subobjects of `sh_state` that
+                have been saved by the original call to <code><i>Signal</i>(r,
                 args...)</code> and returns.
 
             * Otherwise, it emplace constructs the stop callback optional with
@@ -5488,14 +5488,16 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
                 <code><i>stop-src</i></code> refers to the stop source of
                 `sh_state`.
 
-            * Then, it checks to see if
-                <code><i>stop-src</i>.stop_requested()</code> is `true`. If so, it
-                calls `execution::set_stopped(out_r')`.
-
             * Otherwise, it adds a pointer to `op_state` to the list of
-                operation states in `sh_state` and calls
-                `execution::start(op_state2)` if this would be the first such
-                invocation.
+                operation states in `sh_state`. If `op_state` is the first such
+                state added to the list:
+
+                  * If <code><i>stop-src</i>.stop_requested()</code> is `true`,
+                      all of the operation states in `sh_state`'s list of operation
+                      states are notified as if `execution::set_stopped(r)` had
+                      been called.
+
+                  * Otherwise, `execution::start(op_state2)` is called.
 
         6. When `r` completes it will notify `op_state` that the result are
             ready. Let <code><i>Signal</i></code> be whichever receiver
