@@ -252,7 +252,7 @@ TEST_CASE("error_types_of_t can be used to get error types",
     "[detail][completion_signatures]") {
   using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
   using err_t = ex::error_types_of_t<snd_t, ex::no_env, __types>;
-  static_assert(is_same_v<err_t, __types<std::exception_ptr>>);
+  static_assert(is_same_v<err_t, __types<>>);
 }
 
 TEST_CASE(
@@ -263,5 +263,5 @@ TEST_CASE(
   using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
   using err_t =
       ex::error_types_of_t<snd_t, ex::no_env, tr::template __f>;
-  static_assert(is_same_v<err_t, __types<ex::set_error_t(std::exception_ptr)>>);
+  static_assert(is_same_v<err_t, __types<>>);
 }

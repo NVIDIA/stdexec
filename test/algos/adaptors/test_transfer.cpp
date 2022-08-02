@@ -175,9 +175,9 @@ TEST_CASE("transfer keeps error_types from scheduler's sender", "[adaptors][tran
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
-  check_err_types<type_array<std::exception_ptr>>(ex::transfer(ex::just(1), sched1));
+  check_err_types<type_array<>>(ex::transfer(ex::just(1), sched1));
   check_err_types<type_array<std::exception_ptr>>(ex::transfer(ex::just(2), sched2));
-  check_err_types<type_array<std::exception_ptr, int>>(ex::transfer(ex::just(3), sched3));
+  check_err_types<type_array<int>>(ex::transfer(ex::just(3), sched3));
 }
 TEST_CASE("transfer keeps sends_stopped from scheduler's sender", "[adaptors][transfer]") {
   inline_scheduler sched1{};

@@ -129,18 +129,13 @@ struct inline_scheduler {
   struct oper : non_movable {
     R recv_;
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
-      try {
-        ex::set_value((R &&) self.recv_);
-      } catch (...) {
-        ex::set_error((R &&) self.recv_, std::current_exception());
-      }
+      ex::set_value((R &&) self.recv_);
     }
   };
 
   struct my_sender {
-    using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                   //
-        ex::set_error_t(std::exception_ptr)>;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {{}, (R &&) r};

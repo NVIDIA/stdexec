@@ -65,9 +65,15 @@ namespace std {
   template<class _T>
     concept destructible = is_nothrow_destructible_v<_T>;
 
+#if __has_builtin(__is_constructible)
+  template<class _T, class... _As>
+    concept constructible_from =
+      destructible<_T> && __is_constructible(_T, _As...);
+#else
   template<class _T, class... _As>
     concept constructible_from =
       destructible<_T> && is_constructible_v<_T, _As...>;
+#endif
 
   template<class _T>
     concept move_constructible = constructible_from<_T, _T>;
@@ -76,11 +82,6 @@ namespace std {
     concept copy_constructible =
       move_constructible<_T> &&
       constructible_from<_T, _T const&>;
-
-  template<class _F, class... _As>
-    concept invocable = requires {
-      typename invoke_result_t<_F, _As...>;
-    };
 }
 #endif
 
@@ -96,6 +97,10 @@ namespace std {
   template <class _T, class... _As>
     concept __one_of =
       (same_as<_T, _As> ||...);
+
+  template <class _T, class... _Us>
+    concept __all_of =
+      (same_as<_T, _Us> &&...);
 
   template <class _T, class... _Us>
     concept __none_of =
@@ -130,4 +135,17 @@ namespace std {
   template <class...>
     concept __typename = true;
 
+#if __has_builtin(__is_nothrow_constructible)
+  template<class _T, class... _As>
+    concept __nothrow_constructible_from =
+      constructible_from<_T, _As...> && __is_nothrow_constructible(_T, _As...);
+#else
+  template<class _T, class... _As>
+    concept __nothrow_constructible_from =
+      constructible_from<_T, _As...> && is_nothrow_constructible_v<_T, _As...>;
+#endif
+
+  template <class _Ty>
+    concept __nothrow_decay_copyable =
+      __nothrow_constructible_from<decay_t<_Ty>, _Ty>;
 } // namespace std

@@ -223,6 +223,22 @@ namespace std::execution {
   inline constexpr set_error_t set_error{};
   inline constexpr set_stopped_t set_stopped{};
 
+  inline constexpr struct __try_call_t {
+    template <class _Receiver, class _Fun, class... _Args>
+        requires __callable<_Fun, _Args...>
+      void operator()(_Receiver&& __rcvr, _Fun __fun, _Args&&... __args) const noexcept {
+        if constexpr (__nothrow_callable<_Fun, _Args...>) {
+          ((_Fun&&) __fun)((_Args&&) __args...);
+        } else {
+          try {
+            ((_Fun&&) __fun)((_Args&&) __args...);
+          } catch(...) {
+            set_error((_Receiver&&) __rcvr, current_exception());
+          }
+        }
+      }
+  } __try_call {};
+
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   namespace __completion_signatures {
@@ -518,6 +534,14 @@ namespace std::execution {
     concept __single_value_variant_sender =
       sender<_Sender, _Env> &&
       __valid<__single_value_variant_sender_t, _Sender, _Env>;
+
+  template <class... Errs>
+    using __nofail = __bool<sizeof...(Errs) == 0>;
+
+  template <class _Sender, class _Env = no_env>
+    concept __nofail_sender =
+      sender<_Sender, _Env> &&
+      (__v<error_types_of_t<_Sender, _Env, __nofail>>);
 
   /////////////////////////////////////////////////////////////////////////////
   namespace __completion_signatures {
@@ -1156,7 +1180,7 @@ namespace std::execution {
     using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
   template <class _Sender, class _Receiver>
-    concept __has_nothrow_connect =
+    concept __nothrow_connectable =
       noexcept(connect(__declval<_Sender>(), __declval<_Receiver>()));
 
   using __connect::__debug_sender;
@@ -1344,7 +1368,7 @@ namespace std::execution {
         connect_result_t<_Sender, __receiver> __op_state_;
        public:
         __sender_awaitable(_Sender&& sender, __coro::coroutine_handle<_Promise> __hcoro)
-            noexcept(__has_nothrow_connect<_Sender, __receiver>)
+            noexcept(__nothrow_connectable<_Sender, __receiver>)
           : __op_state_(connect((_Sender&&)sender, __receiver{{&this->__result_, __hcoro}}))
         {}
 
@@ -1808,7 +1832,7 @@ namespace std::execution {
             requires _MISSING_MEMBER(decay_t<_Self>, connect) &&
               sender_to<__member_t<_Self, _Base>, _Receiver>
           friend auto tag_invoke(_Connect, _Self&& __self, _Receiver&& __rcvr)
-            noexcept(__has_nothrow_connect<__member_t<_Self, _Base>, _Receiver>)
+            noexcept(__nothrow_connectable<__member_t<_Self, _Base>, _Receiver>)
             -> connect_result_t<__member_t<_Self, _Base>, _Receiver> {
             return execution::connect(((__t&&) __self).base(), (_Receiver&&) __rcvr);
           }
@@ -2074,7 +2098,23 @@ namespace std::execution {
 
         template <class... _Args>
             requires invocable<_Fun, _Args...>
-          using __set_value =
+          using __non_throwing_ =
+            __bool<__nothrow_invocable<_Fun, _Args...>>;
+
+        template <class... _Bool>
+          using __all_of_ = __bool<__all_of<__bool<true>, _Bool...>>;
+
+        template <class _Self, class _Env>
+          using __with_error_ =
+            __if_c<
+              __v<value_types_of_t<
+                __member_t<_Self, _Sender>, _Env, __non_throwing_, __all_of_>>,
+              completion_signatures<>,
+              __with_exception_ptr>;
+
+        template <class... _Args>
+            requires invocable<_Fun, _Args...>
+          using __set_value_ =
             completion_signatures<
               __minvoke1<
                 __remove<void, __qf<set_value_t>>,
@@ -2083,12 +2123,12 @@ namespace std::execution {
         template <class _Self, class _Env>
           using __completion_signatures =
             make_completion_signatures<
-              __member_t<_Self, _Sender>, _Env, __with_exception_ptr, __set_value>;
+              __member_t<_Self, _Sender>, _Env, __with_error_<_Self, _Env>, __set_value_>;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
           requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          noexcept(__has_nothrow_connect<__member_t<_Self, _Sender>, __receiver<_Receiver>>)
+          noexcept(__nothrow_connectable<__member_t<_Self, _Sender>, __receiver<_Receiver>>)
           -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
           return execution::connect(
               ((_Self&&) __self).__sndr_,
@@ -2219,7 +2259,7 @@ namespace std::execution {
         template <__decays_to<__sender> _Self, receiver _Receiver>
           requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          noexcept(__has_nothrow_connect<__member_t<_Self, _Sender>, __receiver<_Receiver>>)
+          noexcept(__nothrow_connectable<__member_t<_Self, _Sender>, __receiver<_Receiver>>)
           -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
           return execution::connect(
               ((_Self&&) __self).__sndr_,
@@ -2346,7 +2386,7 @@ namespace std::execution {
         template <__decays_to<__sender> _Self, receiver _Receiver>
           requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          noexcept(__has_nothrow_connect<_Sender, __receiver<_Receiver>>)
+          noexcept(__nothrow_connectable<_Sender, __receiver<_Receiver>>)
           -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
           return execution::connect(
               ((_Self&&) __self).__sndr_,
@@ -2832,8 +2872,9 @@ namespace std::execution {
         struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
           using __t =
             make_completion_signatures<
-              invoke_result_t<_Fun, __decay_ref<_Args>...>,
+              __result_sender_t<_Fun, _Args...>,
               _Env,
+              // because we don't know if connect-ing the result sender will throw:
               completion_signatures<set_error_t(exception_ptr)>>;
         };
 
@@ -2845,16 +2886,26 @@ namespace std::execution {
           using _Sender = __t<_SenderId>;
           using _Receiver = __t<_ReceiverId>;
           using _Fun = __t<_FunId>;
+          using _Env = env_of_t<_Receiver>;
           _Receiver&& base() && noexcept { return (_Receiver&&) __op_state_->__rcvr_;}
           const _Receiver& base() const & noexcept { return __op_state_->__rcvr_;}
 
           template <class... _As>
             using __which_tuple_t =
-              __call_result_t<__which_tuple<_Sender, env_of_t<_Receiver>, _Let>, _As...>;
+              __call_result_t<__which_tuple<_Sender, _Env, _Let>, _As...>;
 
           template <class... _As>
             using __op_state_for_t =
               connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
+
+          // handle the case when let_error is used with an input sender that
+          // never completes with set_error(exception_ptr)
+          template <__decays_to<exception_ptr> _Err>
+              requires same_as<_Let, set_error_t> &&
+                (!__v<__error_types_of_t<_Sender, _Env, __contains<exception_ptr>>>)
+            friend void tag_invoke(set_error_t, __receiver&& __self, _Err&& __err) noexcept {
+              set_error(std::move(__self).base(), current_exception());
+            }
 
           template <__one_of<_Let> _Tag, class... _As>
               requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
@@ -2875,7 +2926,7 @@ namespace std::execution {
             }
 
           template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
-              requires __none_of<_Tag, _Let> && tag_invocable<_Tag, _Receiver, _As...>
+              requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
             friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept try {
               __tag(std::move(__self).base(), (_As&&) __as...);
             } catch(...) {
@@ -3442,15 +3493,20 @@ namespace std::execution {
     // it to the output receiver from within the desired context.
     template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
       struct __receiver1 {
+        using _Scheduler = __t<_SchedulerId>;
         using _CvrefSender = __t<_CvrefSenderId>;
         using _Receiver = __t<_ReceiverId>;
         using __receiver2_t =
           __receiver2<_SchedulerId, _CvrefSenderId, _ReceiverId>;
         __operation1<_SchedulerId, _CvrefSenderId, _ReceiverId>* __op_state_;
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args>
-          requires __callable<_Tag, _Receiver, _Args...>
-        friend void tag_invoke(_Tag, __receiver1&& __self, _Args&&... __args) noexcept try {
+        template <class... _Args>
+          static constexpr bool __nothrow_complete_ =
+            __nothrow_connectable<schedule_result_t<_Scheduler>, __receiver2_t> &&
+            (__nothrow_decay_copyable<_Args> &&...);
+
+        template <class _Tag, class... _Args>
+        static void __complete_(_Tag __tag, __receiver1&& __self, _Args&&... __args) noexcept(__nothrow_complete_<_Args...>) {
           // Write the tag and the args into the operation state so that
           // we can forward the completion from within the scheduler's
           // execution context.
@@ -3463,8 +3519,17 @@ namespace std::execution {
               }});
           // Enqueue the scheduled operation:
           start(*__self.__op_state_->__state2_);
-        } catch(...) {
-          set_error((_Receiver&&) __self.__op_state_->__rcvr_, current_exception());
+        }
+
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args>
+          requires __callable<_Tag, _Receiver, _Args...>
+        friend void tag_invoke(_Tag __tag, __receiver1&& __self, _Args&&... __args) noexcept {
+          __try_call(
+            (_Receiver&&) __self.__op_state_->__rcvr_,
+            __fun_c<__complete_<_Tag, _Args...>>,
+            (_Tag&&) __tag,
+            (__receiver1&&) __self,
+            (_Args&&) __args...);
         }
 
         friend auto tag_invoke(get_env_t, const __receiver1& __self)
@@ -3527,6 +3592,17 @@ namespace std::execution {
           return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
         }
 
+        template <class... _Errs>
+          using __all_nothrow_decay_copyable =
+            __bool<(__nothrow_decay_copyable<_Errs> &&...)>;
+
+        template <class _Env>
+          using __with_error_t =
+            __if_c<
+              __v<error_types_of_t<schedule_result_t<_Scheduler>, _Env, __all_nothrow_decay_copyable>>,
+              completion_signatures<>,
+              __with_exception_ptr>;
+
         template <class...>
           using __value_t = completion_signatures<>;
 
@@ -3538,7 +3614,7 @@ namespace std::execution {
               make_completion_signatures<
                 schedule_result_t<_Scheduler>,
                 _Env,
-                completion_signatures<set_error_t(exception_ptr)>,
+                __with_error_t<_Env>,
                 __value_t>>;
       };
 
@@ -3848,7 +3924,7 @@ namespace std::execution {
         template <class _Receiver>
           requires sender_to<_Sender, __receiver_t<_Receiver>>
         friend auto tag_invoke(connect_t, __sender&& __self, _Receiver&& __rcvr)
-          noexcept(__has_nothrow_connect<_Sender, __receiver_t<_Receiver>>)
+          noexcept(__nothrow_connectable<_Sender, __receiver_t<_Receiver>>)
           -> connect_result_t<_Sender, __receiver_t<_Receiver>> {
           return execution::connect(
               (_Sender&&) __self.__sndr_,

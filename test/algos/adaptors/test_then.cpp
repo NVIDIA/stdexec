@@ -140,10 +140,10 @@ TEST_CASE("then keeps error_types from input sender", "[adaptors][then]") {
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
+  check_err_types<type_array<>>( //
+      ex::transfer_just(sched1) | ex::then([]() noexcept {}));
   check_err_types<type_array<std::exception_ptr>>( //
-      ex::transfer_just(sched1) | ex::then([] {}));
-  check_err_types<type_array<std::exception_ptr>>( //
-      ex::transfer_just(sched2) | ex::then([] {}));
+      ex::transfer_just(sched2) | ex::then([]() noexcept {}));
   check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched3) | ex::then([] {}));
 }
