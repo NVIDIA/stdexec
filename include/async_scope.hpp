@@ -152,7 +152,7 @@ namespace std::execution::P2519 {
         template <class _Receiver>
           auto __connect_as_unstoppable(_Receiver&& __rcvr)
             noexcept(
-              __has_nothrow_connect<
+              __nothrow_connectable<
                 schedule_result_t<__scheduler_from_env_of<_Receiver>>,
                 __receiver<__x<_Receiver>>>)
             -> connect_result_t<
