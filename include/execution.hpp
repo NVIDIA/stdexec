@@ -2996,13 +2996,13 @@ namespace std::execution {
           template <class _Env>
             using __tfx_signal = __mbind_front_q1<__tfx_signal_t, _Env>;
 
-          template <class _Self, class _Env>
+          template <class _Sender, class _Env>
             using __completions =
               __mapply<
                 __transform<
                   __tfx_signal<_Env>,
                   __q<__concat_completion_signatures_t>>,
-                completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>>;
+                completion_signatures_of_t<_Sender, _Env>>;
 
           template <__decays_to<__sender> _Self, receiver _Receiver>
               requires
