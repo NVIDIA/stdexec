@@ -25,6 +25,22 @@
   ((static_cast<__VA_ARGS__(*)()noexcept>(0))())
 
 namespace std {
+#if !(__has_include(<concepts>) && __cpp_lib_concepts	>= 202002)
+  template<class _F, class... _As>
+    concept invocable =
+      requires(_F&& __f, _As&&... __as) {
+        std::invoke((_F&&) __f, (_As&&) __as...);
+      };
+#endif
+
+  template <class _F, class... _As>
+    concept __nothrow_invocable =
+      invocable<_F, _As...> &&
+      requires(_F&& __f, _As&&... __as) {
+        { std::invoke((_F&&) __f, (_As&&) __as...) } noexcept;
+      };
+
+
   template <auto _Fun>
     struct __fun_c_t {
       template <class... _Args>

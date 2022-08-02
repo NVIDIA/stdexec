@@ -82,12 +82,6 @@ namespace std {
     concept copy_constructible =
       move_constructible<_T> &&
       constructible_from<_T, _T const&>;
-
-  template<class _F, class... _As>
-    concept invocable =
-      requires(_F&& __f, _As&&... __as) {
-        std::invoke((_F&&) __f, (_As&&) __as...);
-      };
 }
 #endif
 
@@ -150,13 +144,6 @@ namespace std {
     concept __nothrow_constructible_from =
       constructible_from<_T, _As...> && is_nothrow_constructible_v<_T, _As...>;
 #endif
-
-  template <class _F, class... _As>
-    concept __nothrow_invocable =
-      invocable<_F, _As...> &&
-      requires(_F&& __f, _As&&... __as) {
-        { std::invoke((_F&&) __f, (_As&&) __as...) } noexcept;
-      };
 
   template <class _Ty>
     concept __nothrow_decay_copyable =
