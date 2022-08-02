@@ -2908,7 +2908,7 @@ namespace std::execution {
               requires same_as<_Let, set_error_t> &&
                 (!__v<__error_types_of_t<_Sender, _Env, __contains<exception_ptr>>>)
             friend void tag_invoke(set_error_t, __receiver&& __self, _Err&& __err) noexcept {
-              set_error(std::move(__self).base(), current_exception());
+              set_error(std::move(__self).base(), (_Err&&) __err);
             }
 
           template <__one_of<_Let> _Tag, class... _As>
