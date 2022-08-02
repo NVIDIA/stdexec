@@ -2136,8 +2136,12 @@ namespace std::execution {
         }
 
         template <__decays_to<__sender> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
-          __completion_signatures<_Self, _Env>;
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+          -> dependent_completion_signatures<_Env>;
+
+        template <__decays_to<__sender> _Self, class _Env>
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+          -> __completion_signatures<_Self, _Env> requires true;
 
         // forward sender queries:
         template <__sender_queries::__sender_query _Tag, class... _As>
