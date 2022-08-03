@@ -2811,13 +2811,9 @@ namespace std::execution {
       template <class _Fun, class... _As>
         using __result_sender_t = __call_result_t<_Fun, __decay_ref<_As>...>;
 
-      template <class _Sender, class _Receiver, class _Fun, class _Let>
+      template <class _Sender, class _Receiver, class _Fun, class _SetTag>
           requires sender<_Sender, env_of_t<_Receiver>>
-        struct __storage;
-
-      // Storage for let_value:
-      template <class _Sender, class _Receiver, class _Fun>
-        struct __storage<_Sender, _Receiver, _Fun, set_value_t> {
+        struct __storage {
           template <class... _As>
             using __op_state_for_t =
               connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
@@ -2825,45 +2821,13 @@ namespace std::execution {
           // Compute a variant of tuples to hold all the values of the input
           // sender:
           using __args_t =
-            __value_types_of_t<_Sender, env_of_t<_Receiver>, __q<__decayed_tuple>, __nullable_variant_t>;
+            __gather_sigs_t<_SetTag, _Sender, env_of_t<_Receiver>, __q<__decayed_tuple>, __nullable_variant_t>;
           __args_t __args_;
 
           // Compute a variant of operation states:
           using __op_state3_t =
-            __value_types_of_t<_Sender, env_of_t<_Receiver>, __q<__op_state_for_t>, __nullable_variant_t>;
+            __gather_sigs_t<_SetTag, _Sender, env_of_t<_Receiver>, __q<__op_state_for_t>, __nullable_variant_t>;
           __op_state3_t __op_state3_;
-        };
-
-      // Storage for let_error:
-      template <class _Sender, class _Receiver, class _Fun>
-        struct __storage<_Sender, _Receiver, _Fun, set_error_t> {
-          template <class _Error>
-            using __op_state_for_t =
-              connect_result_t<__result_sender_t<_Fun, _Error>, _Receiver>;
-
-          // Compute a variant of tuples to hold all the errors of the input
-          // sender:
-          using __args_t =
-            __error_types_of_t<
-              _Sender,
-              env_of_t<_Receiver>,
-              __transform<__q<__decayed_tuple>, __nullable_variant_t>>;
-          __args_t __args_;
-
-          // Compute a variant of operation states:
-          using __op_state3_t =
-            __error_types_of_t<
-              _Sender,
-              env_of_t<_Receiver>,
-              __transform<__q1<__op_state_for_t>, __nullable_variant_t>>;
-          __op_state3_t __op_state3_;
-        };
-
-      // Storage for let_stopped
-      template <class _Sender, class _Receiver, class _Fun>
-        struct __storage<_Sender, _Receiver, _Fun, set_stopped_t> {
-          variant<tuple<>> __args_;
-          variant<monostate, connect_result_t<__call_result_t<_Fun>, _Receiver>> __op_state3_;
         };
 
       template <class _Env, class _Fun, class _Set, class _Sig>
@@ -3410,52 +3374,55 @@ namespace std::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.schedule_from]
   namespace __schedule_from {
-    // The completion information can be stored in situ within a variant in
-    // the operation state
+    // Compute a variant type that is capable of storing the results of the
+    // input sender when it completes. The variant has type:
+    //   variant<
+    //     tuple<set_stopped_t>,
+    //     tuple<set_value_t, decay_t<_Values1>...>,
+    //     tuple<set_value_t, decay_t<_Values2>...>,
+    //        ...
+    //     tuple<set_error_t, decay_t<_Error1>>,
+    //     tuple<set_error_t, decay_t<_Error2>>,
+    //        ...
+    //   >
+    template <class _State, class... _Tuples>
+      using __make_bind_ = __mbind_back<_State, _Tuples...>;
+
+    template <class _State>
+      using __make_bind = __mbind_front_q<__make_bind_, _State>;
+
+    template <class _Tag>
+      using __tuple_t = __mbind_front_q<__decayed_tuple, _Tag>;
+
+    template <class _Sender, class _Env, class _State, class _Tag>
+      using __bind_completions_t =
+        __gather_sigs_t<_Tag, _Sender, _Env, __tuple_t<_Tag>, __make_bind<_State>>;
+
+    template <class _Sender, class _Env>
+      using __variant_for_t =
+        __minvoke<
+          __minvoke<
+            __fold_right<__q<__variant>, __mbind_front_q2<__bind_completions_t, _Sender, _Env>>,
+            set_value_t,
+            set_error_t,
+            set_stopped_t>>;
+
     template <class _Sender, class _Env>
         requires sender<_Sender, _Env>
       struct __completion_storage {
-        // Compute a variant type that is capable of storing the results of the
-        // input sender when it completes. The variant has type:
-        //   variant<
-        //     tuple<set_stopped_t>,
-        //     tuple<set_value_t, decay_t<_Values1>...>,
-        //     tuple<set_value_t, decay_t<_Values2>...>,
-        //        ...
-        //     tuple<set_error_t, decay_t<_Error1>>,
-        //     tuple<set_error_t, decay_t<_Error2>>,
-        //        ...
-        //   >
-        template <class... _Ts>
-          using __bind_tuples =
-            __mbind_front_q<__variant, tuple<set_stopped_t>, _Ts...>;
-
-        using __bound_values_t =
-          __value_types_of_t<
-            _Sender,
-            _Env,
-            __mbind_front_q<__decayed_tuple, set_value_t>,
-            __q<__bind_tuples>>;
-
-        using __variant_t =
-          __error_types_of_t<
-            _Sender,
-            _Env,
-            __transform<
-              __mbind_front_q<__decayed_tuple, set_error_t>,
-              __bound_values_t>>;
-
+        // The completion information can be stored in situ within a variant in
+        // the operation state
         template <class _Receiver>
-          struct __f : private __variant_t {
+          struct __f : private __variant_for_t<_Sender, _Env> {
             __f() = default;
-            using __variant_t::emplace;
+            using __variant_for_t<_Sender, _Env>::emplace;
 
             void __complete(_Receiver& __rcvr) noexcept try {
               std::visit([&](auto&& __tupl) -> void {
                 std::apply([&](auto __tag, auto&&... __args) -> void {
                   __tag((_Receiver&&) __rcvr, (decltype(__args)&&) __args...);
                 }, (decltype(__tupl)&&) __tupl);
-              }, (__variant_t&&) *this);
+              }, (__variant_for_t<_Sender, _Env>&&) *this);
             } catch(...) {
               set_error((_Receiver&&) __rcvr, current_exception());
             }
