@@ -63,11 +63,7 @@ struct impulse_scheduler {
         if (ex::get_stop_token(ex::get_env(self.receiver_)).stop_requested()) {
           ex::set_stopped((R &&) self.receiver_);
         } else {
-          try {
-            ex::set_value((R &&) self.receiver_);
-          } catch (...) {
-            ex::set_error((R &&) self.receiver_, std::current_exception());
-          }
+          ex::set_value((R &&) self.receiver_);
         }
       });
       self.data_->cv_.notify_all();
@@ -77,7 +73,6 @@ struct impulse_scheduler {
   struct my_sender {
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
-        ex::set_error_t(std::exception_ptr),                 //
         ex::set_stopped_t()>;
     data* shared_data_;
 

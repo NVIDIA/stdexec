@@ -109,12 +109,12 @@ TEST_CASE("__error_types_of_t can also transform error types", "[detail][complet
 
 template <typename CS, typename ExpectedValTypes>
 void expect_val_types() {
-  using t = typename CS::template __value_types<__types, __types>;
+  using t = typename CS::template __gather_sigs<ex::set_value_t, __q<__types>, __q<__types>>;
   static_assert(is_same_v<t, ExpectedValTypes>);
 }
 template <typename CS, typename ExpectedErrTypes>
 void expect_err_types() {
-  using t = typename CS::template __error_types<__types>;
+  using t = typename CS::template __gather_sigs<ex::set_error_t, std::__q1<std::__id>, __q<__types>>;
   static_assert(is_same_v<t, ExpectedErrTypes>);
 }
 

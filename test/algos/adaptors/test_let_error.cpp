@@ -227,10 +227,9 @@ TEST_CASE("let_error works when changing threads", "[adaptors][let_error]") {
   bool called{false};
   {
     // lunch some work on the thread pool
-    ex::sender auto snd = ex::on(pool.get_scheduler(),
-                              ex::just_error(7))               //
-                          | ex::let_error(int_err_transform{}) //
-                          | ex::then([&](int x) {
+    ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just_error(7)) //
+                          | ex::let_error(int_err_transform{})            //
+                          | ex::then([&](auto x) -> void {
                               CHECK(x == 13);
                               called = true;
                             });

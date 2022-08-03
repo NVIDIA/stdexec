@@ -232,7 +232,7 @@ namespace std {
     };
 
   template <class _T>
-    struct __constant {
+    struct __mconst {
       template <class...>
         using __f = _T;
     };
@@ -512,4 +512,9 @@ namespace std {
   template <class... _Ts>
     using __mindex_sequence_for =
       __mmake_index_sequence<sizeof...(_Ts)>;
+
+  template <class... _Bools>
+    using __mand = __bool<(__v<_Bools> &&...)>;
+  template <class... _Bools>
+    using __mor = __bool<(__v<_Bools> ||...)>;
 }
