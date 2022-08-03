@@ -107,7 +107,7 @@ TEST_CASE("stopped_as_error keeps error_types from input sender", "[adaptors][st
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched2, 13) | ex::stopped_as_error(std::exception_ptr{}));
 
-  check_err_types<type_array<int, std::exception_ptr>>( //
+  check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(std::exception_ptr{}));
 }
 
@@ -121,7 +121,7 @@ TEST_CASE("stopped_as_error can add more types to error_types", "[adaptors][stop
   check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched2, 13) | ex::stopped_as_error(-1));
 
-  check_err_types<type_array<int, std::exception_ptr>>( //
+  check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(-1));
 
   check_err_types<type_array<>>( //
