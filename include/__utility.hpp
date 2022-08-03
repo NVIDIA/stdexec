@@ -120,14 +120,14 @@ namespace std {
   template <class _Fn, class... _Front>
     using __mbind_front = __mbind_front_q<_Fn::template __f, _Front...>;
 
-  template <class _Fn, class... _Back>
-    using __mbind_front1 = __mbind_front_q1<_Fn::template __f, _Back...>;
+  template <class _Fn, class... _Front>
+    using __mbind_front1 = __mbind_front_q1<_Fn::template __f, _Front...>;
 
-  template <class _Fn, class... _Back>
-    using __mbind_front2 = __mbind_front_q2<_Fn::template __f, _Back...>;
+  template <class _Fn, class... _Front>
+    using __mbind_front2 = __mbind_front_q2<_Fn::template __f, _Front...>;
 
-  template <class _Fn, class... _Back>
-    using __mbind_front3 = __mbind_front_q3<_Fn::template __f, _Back...>;
+  template <class _Fn, class... _Front>
+    using __mbind_front3 = __mbind_front_q3<_Fn::template __f, _Front...>;
 
   template <template<class...> class _Fn, class... _Back>
     struct __mbind_back_q {
@@ -244,7 +244,7 @@ namespace std {
     };
 
   template <class _Init, class _Fn>
-    struct __right_fold {
+    struct __fold_right {
       template <class...>
         struct __f_ {};
       template <class _State, class _Head, class... _Tail>
@@ -368,7 +368,7 @@ namespace std {
         using __f =
           __mapply<
             _Continuation,
-            __minvoke<__right_fold<__types<>, __push_back_unique<>>, _Ts...>>;
+            __minvoke<__fold_right<__types<>, __push_back_unique<>>, _Ts...>>;
     };
 
   template <class...>
