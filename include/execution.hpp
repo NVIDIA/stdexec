@@ -3407,28 +3407,6 @@ namespace std::execution {
             set_error_t,
             set_stopped_t>>;
 
-    template <class _Sender, class _Env>
-        requires sender<_Sender, _Env>
-      struct __completion_storage {
-        // The completion information can be stored in situ within a variant in
-        // the operation state
-        template <class _Receiver>
-          struct __f : private __variant_for_t<_Sender, _Env> {
-            __f() = default;
-            using __variant_for_t<_Sender, _Env>::emplace;
-
-            void __complete(_Receiver& __rcvr) noexcept try {
-              std::visit([&](auto&& __tupl) -> void {
-                std::apply([&](auto __tag, auto&&... __args) -> void {
-                  __tag((_Receiver&&) __rcvr, (decltype(__args)&&) __args...);
-                }, (decltype(__tupl)&&) __tupl);
-              }, (__variant_for_t<_Sender, _Env>&&) *this);
-            } catch(...) {
-              set_error((_Receiver&&) __rcvr, current_exception());
-            }
-          };
-      };
-
     template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
       struct __operation1;
 
@@ -3451,7 +3429,7 @@ namespace std::execution {
         // context and is ready to run, forward the completion signal in
         // the operation state
         friend void tag_invoke(set_value_t, __receiver2&& __self) noexcept {
-          __self.__op_state_->__data_.__complete(__self.__op_state_->__rcvr_);
+          __self.__op_state_->__complete();
         }
 
         template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Args>
@@ -3529,10 +3507,12 @@ namespace std::execution {
           __receiver1<_SchedulerId, _CvrefSenderId, _ReceiverId>;
         using __receiver2_t =
           __receiver2<_SchedulerId, _CvrefSenderId, _ReceiverId>;
+        using __variant_t =
+          __variant_for_t<_CvrefSender, env_of_t<_Receiver>>;
 
         _Scheduler __sched_;
         _Receiver __rcvr_;
-        __minvoke<__completion_storage<_CvrefSender, env_of_t<_Receiver>>, _Receiver> __data_;
+        __variant_t __data_;
         connect_result_t<_CvrefSender, __receiver1_t> __state1_;
         optional<connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t>> __state2_;
 
@@ -3544,6 +3524,16 @@ namespace std::execution {
 
         friend void tag_invoke(start_t, __operation1& __op_state) noexcept {
           start(__op_state.__state1_);
+        }
+
+        void __complete() noexcept try {
+          std::visit([&](auto&& __tupl) -> void {
+            std::apply([&](auto __tag, auto&&... __args) -> void {
+              __tag((_Receiver&&) __rcvr_, (decltype(__args)&&) __args...);
+            }, (decltype(__tupl)&&) __tupl);
+          }, (__variant_t&&) __data_);
+        } catch(...) {
+          set_error((_Receiver&&) __rcvr_, current_exception());
         }
       };
 
