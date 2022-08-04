@@ -25,6 +25,35 @@
   ((static_cast<__VA_ARGS__(*)()noexcept>(0))())
 
 namespace std {
+#if !(__has_include(<concepts>) && __cpp_lib_concepts	>= 202002)
+  template<class _F, class... _As>
+    concept invocable =
+      requires(_F&& __f, _As&&... __as) {
+        std::invoke((_F&&) __f, (_As&&) __as...);
+      };
+#endif
+
+  template <class _F, class... _As>
+    concept __nothrow_invocable =
+      invocable<_F, _As...> &&
+      requires(_F&& __f, _As&&... __as) {
+        { std::invoke((_F&&) __f, (_As&&) __as...) } noexcept;
+      };
+
+
+  template <auto _Fun>
+    struct __fun_c_t {
+      template <class... _Args>
+          requires __callable<decltype(_Fun), _Args...>
+        auto operator()(_Args&&... __args) const
+          noexcept(noexcept(((decltype(_Fun)&&) _Fun)((_Args&&) __args...)))
+          -> __call_result_t<decltype(_Fun), _Args...> {
+          return ((decltype(_Fun)&&) _Fun)((_Args&&) __args...);
+        }
+    };
+  template <auto _Fun>
+    inline constexpr __fun_c_t<_Fun> __fun_c {};
+
   // [func.tag_invoke], tag_invoke
   namespace __tag_invoke {
     void tag_invoke();
@@ -79,4 +108,4 @@ namespace std {
   using __tag_invoke::nothrow_tag_invocable;
   using __tag_invoke::tag_invoke_result_t;
   using __tag_invoke::tag_invoke_result;
-}
+} // namespace std

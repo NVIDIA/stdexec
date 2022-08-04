@@ -56,7 +56,6 @@ namespace example {
         using completion_signatures =
           std::execution::completion_signatures<
             std::execution::set_value_t(),
-            std::execution::set_error_t(std::exception_ptr),
             std::execution::set_stopped_t()>;
        private:
         template <typename Receiver>

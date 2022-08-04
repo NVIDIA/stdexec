@@ -4516,7 +4516,7 @@ enum class forward_progress_guarantee {
     (ignoring differences in rvalue-reference qualification).
 
 8. Let `r` be an rvalue receiver of type `R`, and let `S` be the type of a
-    sender. If `completion_signatures_of_t<S, env_of_t<R>>::sends_stopped` is well formed and
+    sender. If `sends_stopped<S, env_of_t<R>>` is well formed and
     `false`, such a sender `S` shall not odr-use `execution::set_stopped(r)`.
 
 9. Let `S` be the type of a sender, let `E` be the type of an execution
@@ -4533,8 +4533,8 @@ enum class forward_progress_guarantee {
           name the same type as `value_types_of_t<S, no_env, Tuple, Variant1>`,
       * `error_types_of_t<S, E, Variant2>` shall also be well-formed and shall
           name the same type as `error_types_of_t<S, no_env, Variant2>`, and
-      * `completion_signatures_of_t<S, E>::sends_stopped` shall have the same
-          value as `completion_signatures_of_t<S, no_env>::sends_stopped`.
+      * `sends_stopped<S, E>` shall have the same
+          value as `sends_stopped<S, no_env>`.
 10. [<i>Note</i>: The types <code>Args<i><sub>i</sub></i>...</code> and <code>E<i><sub>i</sub></i>...</code> captured in `value_types` and `error_types` can appear in any order.
      For example, a sender that can yield, in case of an error, either `exception_ptr` or `error_code` can have `error_types` be either `Variant<exception_ptr, error_code>` or `Variant<error_code, exception_ptr>`. --<i>end note</i>]
 

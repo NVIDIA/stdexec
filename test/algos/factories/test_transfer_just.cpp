@@ -118,9 +118,9 @@ TEST_CASE(
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
-  check_err_types<type_array<std::exception_ptr>>(ex::transfer_just(sched1, 1));
+  check_err_types<type_array<>>(ex::transfer_just(sched1, 1));
   check_err_types<type_array<std::exception_ptr>>(ex::transfer_just(sched2, 2));
-  check_err_types<type_array<std::exception_ptr, int>>(ex::transfer_just(sched3, 3));
+  check_err_types<type_array<int>>(ex::transfer_just(sched3, 3));
 }
 TEST_CASE("transfer_just keeps sends_stopped from scheduler's sender", "[factories][transfer_just]") {
   inline_scheduler sched1{};

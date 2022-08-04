@@ -162,9 +162,9 @@ TEST_CASE("schedule_from keeps error_types from scheduler's sender", "[adaptors]
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
-  check_err_types<type_array<std::exception_ptr>>(ex::schedule_from(sched1, ex::just(1)));
+  check_err_types<type_array<>>(ex::schedule_from(sched1, ex::just(1)));
   check_err_types<type_array<std::exception_ptr>>(ex::schedule_from(sched2, ex::just(2)));
-  check_err_types<type_array<std::exception_ptr, int>>(ex::schedule_from(sched3, ex::just(3)));
+  check_err_types<type_array<int>>(ex::schedule_from(sched3, ex::just(3)));
 }
 TEST_CASE("schedule_from keeps sends_stopped from scheduler's sender", "[adaptors][schedule_from]") {
   inline_scheduler sched1{};
