@@ -2875,7 +2875,7 @@ namespace std::execution {
           // never completes with set_error(exception_ptr)
           template <__decays_to<exception_ptr> _Error>
               requires same_as<_Let, set_error_t> &&
-                (!__v<__error_types_of_t<_Sender, _Env, __contains<exception_ptr>>>)
+                (!__v<__error_types_of_t<_Sender, _Env, __transform<__q1<decay_t>, __contains<exception_ptr>>>>)
             friend void tag_invoke(set_error_t, __receiver&& __self, _Error&& __err) noexcept {
               set_error(std::move(__self).base(), (_Error&&) __err);
             }

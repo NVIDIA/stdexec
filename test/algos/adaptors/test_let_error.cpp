@@ -53,6 +53,20 @@ TEST_CASE("let_error simple example", "[adaptors][let_error]") {
   // we also check that the function was invoked
   CHECK(called);
 }
+TEST_CASE("let_error simple example reference", "[adaptors][let_error]") {
+  bool called{false};
+  auto snd = ex::let_error(
+      ex::split(ex::just_error(std::exception_ptr{})), [&](std::exception_ptr) {
+        called = true;
+        return ex::just();
+      });
+  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  ex::start(op);
+  // The receiver checks that it's called
+  // we also check that the function was invoked
+  CHECK(called);
+}
+
 
 TEST_CASE("let_error can be piped", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just() | ex::let_error([](std::exception_ptr) { return ex::just(); });
