@@ -2526,7 +2526,7 @@ namespace std::execution {
           using __bind_tuples =
             __mbind_front_q<
               __variant,
-              tuple<set_stopped_t>,
+              tuple<set_stopped_t>, // Initial state of the variant is set_stopped
               tuple<set_error_t, exception_ptr>,
               _Ts...>;
 
@@ -2633,7 +2633,15 @@ namespace std::execution {
               memory_order_acquire));
 
           if (__old == nullptr) {
-            start(__shared_state->__op_state2_);
+            // the inner sender isn't running
+            if (__shared_state->__stop_source_.stop_requested()) {
+              // 1. resets __head to completion state
+              // 2. notifies waiting threads
+              // 3. propagates "stopped" signal to `out_r'`
+              __shared_state->__notify();
+            } else {
+              start(__shared_state->__op_state2_);
+            }
           }
         }
       };
@@ -2716,7 +2724,7 @@ namespace std::execution {
         return {{}, {}, {}};
       }
     };
-  }
+  } // namespace __split
   using __split::split_t;
   inline constexpr split_t split{};
 
