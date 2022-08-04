@@ -7580,18 +7580,24 @@ defined class type equivalent to the following:</p>
           <li data-md>
            <p>If <code class="highlight"><c- n>r</c-></code>'s receiver contract has already been satisfied, then let <code class="highlight"><i><c- n>Signal</c-></i></code> be whichever receiver completion-signal
 was used to complete r’s receiver contract ([exec.recv]). Calls <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>out_r</c->'<c- p>,</c-> <c- n>args2</c-><c- p>...)</c-></code>, where <code class="highlight"><c- n>args2</c-><c- p>...</c-></code> is a
-pack of const lvalues referencing the subobjects of <code class="highlight"><c- n>sh_state</c-></code> that have
-been saved by the original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> and returns.</p>
+pack of const lvalues referencing the subobjects of <code class="highlight"><c- n>sh_state</c-></code> that
+have been saved by the original call to <code class="highlight"><i><c- n>Signal</c-></i><c- p>(</c-><c- n>r</c-><c- p>,</c-> <c- n>args</c-><c- p>...)</c-></code> and returns.</p>
           <li data-md>
            <p>Otherwise, it emplace constructs the stop callback optional with
 the arguments <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>get_stop_token</c-><c- p>(</c-><c- n>get_env</c-><c- p>(</c-><c- n>out_r</c->'<c- p>))</c-></code> and <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>callback</c-><c- o>-</c-><c- n>fn</c-></i><c- p>{</c-><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i><c- p>}</c-></code>, where <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i></code> refers to the stop source of <code class="highlight"><c- n>sh_state</c-></code>.</p>
           <li data-md>
-           <p>Then, it checks to see if <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i><c- p>.</c-><c- n>stop_requested</c-><c- p>()</c-></code> is <code class="highlight">true</code>. If so, it
-calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>out_r</c->'<c- p>)</c-></code>.</p>
-          <li data-md>
            <p>Otherwise, it adds a pointer to <code class="highlight"><c- n>op_state</c-></code> to the list of
-operation states in <code class="highlight"><c- n>sh_state</c-></code> and calls <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code> if this would be the first such
-invocation.</p>
+operation states in <code class="highlight"><c- n>sh_state</c-></code>. If <code class="highlight"><c- n>op_state</c-></code> is the first such
+state added to the list:</p>
+           <ul>
+            <li data-md>
+             <p>If <code class="highlight"><i><c- n>stop</c-><c- o>-</c-><c- n>src</c-></i><c- p>.</c-><c- n>stop_requested</c-><c- p>()</c-></code> is <code class="highlight">true</code>,
+  all of the operation states in <code class="highlight"><c- n>sh_state</c-></code>'s list of operation
+  states are notified as if <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped</c-><c- p>(</c-><c- n>r</c-><c- p>)</c-></code> had
+  been called.</p>
+            <li data-md>
+             <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>start</c-><c- p>(</c-><c- n>op_state2</c-><c- p>)</c-></code> is called.</p>
+           </ul>
          </ul>
         <li data-md>
          <p>When <code class="highlight"><c- n>r</c-></code> completes it will notify <code class="highlight"><c- n>op_state</c-></code> that the result are
