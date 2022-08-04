@@ -1097,11 +1097,21 @@ namespace std::execution {
 
     struct connect_t {
       template <class _Sender, class _Receiver>
+      static constexpr bool __nothrow_connect() noexcept {
+        if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
+          return nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
+        } else {
+          return false;
+        }
+      }
+
+      template <class _Sender, class _Receiver>
         requires
           __connectable_with_tag_invoke<_Sender, _Receiver> ||
           __callable<__connect_awaitable_t, _Sender, _Receiver> ||
           tag_invocable<__is_debug_env_t, env_of_t<_Receiver>>
-      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const {
+      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
+          noexcept(__nothrow_connect<_Sender, _Receiver>()) {
         if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
