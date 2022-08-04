@@ -1090,42 +1090,32 @@ namespace std::execution {
     struct connect_t;
 
     template <class _Sender, class _Receiver>
-      concept __connectable_sender_with =
+      concept __connectable_with_tag_invoke =
         sender<_Sender, env_of_t<_Receiver>> &&
         __receiver_from<_Receiver, _Sender> &&
         tag_invocable<connect_t, _Sender, _Receiver>;
 
     struct connect_t {
       template <class _Sender, class _Receiver>
-        requires __connectable_sender_with<_Sender, _Receiver>
-      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
-        noexcept(nothrow_tag_invocable<connect_t, _Sender, _Receiver>)
-        -> tag_invoke_result_t<connect_t, _Sender, _Receiver> {
-        static_assert(
-          operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
-          "execution::connect(sender, receiver) must return a type that "
-          "satisfies the operation_state concept");
-        return tag_invoke(connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
-      }
-      template <class _Awaitable, class _Receiver>
-        requires (!__connectable_sender_with<_Awaitable, _Receiver>) &&
-          __callable<__connect_awaitable_t, _Awaitable, _Receiver>
-      auto operator()(_Awaitable&& __await, _Receiver&& __rcvr) const
-        -> __connect_awaitable_::__operation_t<_Receiver> {
-        return __connect_awaitable((_Awaitable&&) __await, (_Receiver&&) __rcvr);
-      }
-      // This overload is purely for the purposes of debugging why a
-      // sender will not connect. Use the __debug_sender function below.
-      template <class _Sender, class _Receiver>
-        requires (!__connectable_sender_with<_Sender, _Receiver>) &&
-           (!__callable<__connect_awaitable_t, _Sender, _Receiver>) &&
-           tag_invocable<__is_debug_env_t, env_of_t<_Receiver>>
-      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
-        -> __debug_op_state {
-        // This should generate an instantiate backtrace that contains useful
-        // debugging information.
-        using std::__tag_invoke::tag_invoke;
-        return tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+        requires
+          __connectable_with_tag_invoke<_Sender, _Receiver> ||
+          __callable<__connect_awaitable_t, _Sender, _Receiver> ||
+          tag_invocable<__is_debug_env_t, env_of_t<_Receiver>>
+      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const {
+        if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
+          static_assert(
+            operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
+            "execution::connect(sender, receiver) must return a type that "
+            "satisfies the operation_state concept");
+          return tag_invoke(connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+        } else if constexpr (__callable<__connect_awaitable_t, _Sender, _Receiver>) {
+          return __connect_awaitable((_Sender&&) __sndr, (_Receiver&&) __rcvr);
+        } else {
+          // This should generate an instantiate backtrace that contains useful
+          // debugging information.
+          using std::__tag_invoke::tag_invoke;
+          return tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+        }
       }
     };
 
