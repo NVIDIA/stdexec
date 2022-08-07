@@ -4750,7 +4750,7 @@ namespace std::execution::extra {
         }
       };
 
-    template <class... _Sigs>
+    template <__completion_signature... _Sigs>
       struct __create_t {
         using __compl_sigs = completion_signatures<_Sigs...>;
 
@@ -4764,7 +4764,7 @@ namespace std::execution::extra {
       };
   } // namespace __create
 
-  template <class... _Sigs>
+  template <__completion_signature... _Sigs>
     inline constexpr __create::__create_t<_Sigs...> create {};
 } // namespace std::execution::extra
 
