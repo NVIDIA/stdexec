@@ -3539,8 +3539,7 @@ namespace std::execution {
           std::visit([&](auto&& __tupl) -> void {
             if constexpr (__decays_to<decltype(__tupl), monostate>) {
               terminate(); // reaching this indicates a bug in schedule_from
-            }
-            else {
+            } else {
               std::apply([&](auto __tag, auto&&... __args) -> void {
                 __tag((_Receiver&&) __rcvr_, (decltype(__args)&&) __args...);
               }, (decltype(__tupl)&&) __tupl);
