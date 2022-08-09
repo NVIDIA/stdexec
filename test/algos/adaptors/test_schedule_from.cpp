@@ -105,6 +105,23 @@ TEST_CASE("schedule_from works when changing threads", "[adaptors][schedule_from
   REQUIRE(called);
 }
 
+struct non_default_constructible {
+    int x;
+
+    non_default_constructible(int x) : x(x) {}
+
+    friend bool operator==(non_default_constructible const& lhs, non_default_constructible const& rhs) {
+        return lhs.x == rhs.x;
+    }
+};
+
+TEST_CASE("schedule_from can accept non-default constructible types", "[adaptors][schedule_from]") {
+  auto snd = ex::schedule_from(inline_scheduler{}, ex::just(non_default_constructible{13}));
+  auto op = ex::connect(std::move(snd), expect_value_receiver{non_default_constructible{13}});
+  ex::start(op);
+  // The receiver checks if we receive the right value
+}
+
 TEST_CASE("schedule_from can be called with rvalue ref scheduler", "[adaptors][schedule_from]") {
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(13));
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});

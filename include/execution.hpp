@@ -472,6 +472,8 @@ namespace std::execution {
           __mconst<__not_a_variant>>,
         _Ts...>;
 
+  using __nullable_variant_t = __munique<__mbind_front<__q<variant>, monostate>>;
+
   template <class... _Ts>
     using __decayed_tuple = tuple<decay_t<_Ts>...>;
 
@@ -2757,8 +2759,6 @@ namespace std::execution {
   // [execution.senders.adaptors.let_stopped]
   namespace __let {
     namespace __impl {
-      using __nullable_variant_t = __munique<__mbind_front<__q<variant>, monostate>>;
-
       template <class... _Ts>
         struct __as_tuple {
           __decayed_tuple<_Ts...> operator()(_Ts...) const;
@@ -3385,6 +3385,7 @@ namespace std::execution {
     // Compute a variant type that is capable of storing the results of the
     // input sender when it completes. The variant has type:
     //   variant<
+    //     monostate,
     //     tuple<set_stopped_t>,
     //     tuple<set_value_t, decay_t<_Values1>...>,
     //     tuple<set_value_t, decay_t<_Values2>...>,
@@ -3410,7 +3411,7 @@ namespace std::execution {
       using __variant_for_t =
         __minvoke<
           __minvoke<
-            __fold_right<__q<__variant>, __mbind_front_q2<__bind_completions_t, _Sender, _Env>>,
+            __fold_right<__nullable_variant_t, __mbind_front_q2<__bind_completions_t, _Sender, _Env>>,
             set_value_t,
             set_error_t,
             set_stopped_t>>;
@@ -3536,9 +3537,13 @@ namespace std::execution {
 
         void __complete() noexcept try {
           std::visit([&](auto&& __tupl) -> void {
-            std::apply([&](auto __tag, auto&&... __args) -> void {
-              __tag((_Receiver&&) __rcvr_, (decltype(__args)&&) __args...);
-            }, (decltype(__tupl)&&) __tupl);
+            if constexpr (__decays_to<decltype(__tupl), monostate>) {
+              terminate(); // reaching this indicates a bug in schedule_from
+            } else {
+              std::apply([&](auto __tag, auto&&... __args) -> void {
+                __tag((_Receiver&&) __rcvr_, (decltype(__args)&&) __args...);
+              }, (decltype(__tupl)&&) __tupl);
+            }
           }, (__variant_t&&) __data_);
         } catch(...) {
           set_error((_Receiver&&) __rcvr_, current_exception());
