@@ -4414,9 +4414,9 @@ namespace std::execution {
         using __receiver_t = __receiver<_ReceiverId, _Withs...>;
         connect_result_t<_Sender, __receiver_t> __state_;
 
-        __operation(auto&& __sndr, auto&& __rcvr, auto&& __withs)
+        __operation(_Sender&& __sndr, auto&& __rcvr, auto&& __withs)
           : __base_t{(decltype(__rcvr)) __rcvr, (decltype(__withs)) __withs}
-          , __state_{connect((decltype(__sndr)) __sndr, __receiver_t{{}, this})}
+          , __state_{connect((_Sender&&) __sndr, __receiver_t{{}, this})}
         {}
 
         friend void tag_invoke(start_t, __operation& __self) noexcept {
@@ -4430,17 +4430,17 @@ namespace std::execution {
         template <class _ReceiverId>
           using __receiver_t =
             __receiver<_ReceiverId, _Withs...>;
-        template <class _ReceiverId>
+        template <class _Self, class _ReceiverId>
           using __operation_t =
-            __operation<_SenderId, _ReceiverId, _Withs...>;
+            __operation<__x<__member_t<_Self, _Sender>>, _ReceiverId, _Withs...>;
 
         _Sender __sndr_;
         tuple<_Withs...> __withs_;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
-          requires sender_to<_Sender, __receiver_t<__x<decay_t<_Receiver>>>>
+          requires sender_to<__member_t<_Self, _Sender>, __receiver_t<__x<decay_t<_Receiver>>>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          -> __operation_t<__x<decay_t<_Receiver>>> {
+          -> __operation_t<_Self, __x<decay_t<_Receiver>>> {
           return {((_Self&&) __self).__sndr_,
                   (_Receiver&&) __rcvr,
                   ((_Self&&) __self).__withs_};
