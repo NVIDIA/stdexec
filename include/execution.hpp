@@ -1241,12 +1241,12 @@ namespace _P2300::execution {
         connect((_Sender&&) __sndr, (_Receiver&&) __rcvr);
       };
 
-  template<class _Sender, class _Env = no_env, class... _Ts>
+  template<class _Sender, class _SetValueSig, class _Env = no_env>
     concept sender_of =
       sender<_Sender, _Env> &&
       same_as<
-        __types<__types<_Ts...>>,
-        value_types_of_t<_Sender, _Env, __types, __types>>;
+        __types<_SetValueSig>,
+        __value_types_of_t<_Sender, _Env, __qf<set_value_t>, __q<__types>>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd_queries], sender queries
