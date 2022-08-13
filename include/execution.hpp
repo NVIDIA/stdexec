@@ -15,6 +15,11 @@
  */
 #pragma once
 
+#ifdef __noinline__
+// CUDA headers bad, see https://github.com/NVIDIA/thrust/issues/1703
+#undef __noinline__
+#endif
+
 #include <any>
 #include <atomic>
 #include <barrier>

@@ -36,38 +36,28 @@ class consumer_receiver_t
   __host__ __device__
   void set_value(Ts &&... ts) && noexcept
   {
-    new (storage_) ArgsOut(decayed_tuple<std::execution::set_value_t, Ts...>(std::execution::set_value, std::forward<Ts>(ts)...));
+    new (*storage_ptr_) ArgsOut(decayed_tuple<std::execution::set_value_t, Ts...>(std::execution::set_value, std::forward<Ts>(ts)...));
   }
 
   template <class Err>
   __host__ __device__
   void set_error(Err && err) && noexcept
   {
-    new (storage_) ArgsOut(decayed_tuple<std::execution::set_error_t, Err>(std::execution::set_error, std::forward<Err>(err)));
+    new (*storage_ptr_) ArgsOut(decayed_tuple<std::execution::set_error_t, Err>(std::execution::set_error, std::forward<Err>(err)));
   }
 
   __host__ __device__
   void set_stopped() && noexcept
   {
-    new (storage_) ArgsOut(decayed_tuple<std::execution::set_stopped_t>(std::execution::set_stopped));
+    new (*storage_ptr_) ArgsOut(decayed_tuple<std::execution::set_stopped_t>(std::execution::set_stopped));
   }
 
-  std::byte * storage_;
+  std::byte ** storage_ptr_;
   std::optional<Env> env_;
 
 public:
-  consumer_receiver_t(std::byte * storage, std::optional<Env> env) : storage_(storage), env_(std::move(env))
+  consumer_receiver_t(std::byte ** storage_ptr, std::optional<Env> env) : storage_ptr_(storage_ptr), env_(std::move(env))
   {
-  }
-
-  // break a logical cycle in pipeline_end sender
-  void set_storage_and_env_if_null(std::byte * storage, Env env)
-  {
-    if (!storage_)
-    {
-      storage_ = storage;
-      env_ = std::move(env);
-    }
   }
 
   friend Env tag_invoke(std::execution::get_env_t, const consumer_receiver_t &self)
@@ -87,31 +77,33 @@ class reader_receiver_t : std::execution::receiver_adaptor<reader_receiver_t<Arg
   void set_value() && noexcept
   {
     cuda::visit([&](auto signature) {
-      storage_->~ArgsOut();
+      storage_ptr_->~ArgsOut();
 
       cuda::apply([&](auto tag, auto &&... args) {
         tag(std::move(receiver_), std::forward<decltype(args)>(args)...);
       }, std::move(signature));
-    }, std::move(*storage_));
+    }, std::move(**storage_ptr_));
   }
 
   template <class Err>
   void set_error(Err && err) noexcept
   {
+    storage_ptr_->~ArgsOut();
     std::execution::set_error(std::move(receiver_), std::forward<Err>(err));
   }
 
   void set_stopped() noexcept
   {
+    storage_ptr_->~ArgsOut();
     std::execution::set_stopped(std::move(receiver_));
   }
 
-  ArgsOut * storage_;
+  ArgsOut ** storage_ptr_;
   Receiver receiver_;
 
 public:
-  reader_receiver_t(std::byte * storage, Receiver receiver)
-      : storage_(reinterpret_cast<ArgsOut *>(storage)), receiver_(std::move(receiver))
+  reader_receiver_t(std::byte ** storage_ptr, Receiver receiver)
+      : storage_ptr_(reinterpret_cast<ArgsOut **>(storage_ptr)), receiver_(std::move(receiver))
   {
   }
 

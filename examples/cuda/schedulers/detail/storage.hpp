@@ -138,21 +138,21 @@ inline constexpr struct storage_requirements_t
   }
 } storage_requirements{};
 
-inline constexpr struct get_storage_t
+inline constexpr struct get_storage_ptr_t
 {
   template <class EnvT>
-    requires std::tag_invocable<get_storage_t, EnvT>
+    requires std::tag_invocable<get_storage_ptr_t, EnvT>
   constexpr auto operator()(EnvT &&env) const noexcept
   {
-    return std::tag_invoke(get_storage_t{}, std::forward<EnvT>(env));
+    return std::tag_invoke(get_storage_ptr_t{}, std::forward<EnvT>(env));
   }
 
   template <class EnvT>
-    requires(!std::tag_invocable<get_storage_t, EnvT>)
-  constexpr std::byte * operator()(EnvT&&) const noexcept
+    requires(!std::tag_invocable<get_storage_ptr_t, EnvT>)
+  constexpr std::byte ** operator()(EnvT&&) const noexcept
   {
     return nullptr;
   }
-} get_storage{};
+} get_storage_ptr{};
 
 } // namespace example::cuda::detail

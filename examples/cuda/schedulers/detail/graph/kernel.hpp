@@ -24,6 +24,8 @@
 #include <schedulers/detail/tuple.hpp>
 #include <schedulers/detail/variant.hpp>
 
+#include <cooperative_groups.h>
+
 #include <execution.hpp>
 #include <span>
 
@@ -40,10 +42,10 @@ struct bulk_kernel_t
   __global__ __launch_bounds__(BlockThreads) static void kernel(Shape shape,
                                                                 F f,
                                                                 Receiver * receiver,
-                                                                ArgsInput * args)
+                                                                ArgsInput ** args)
   {
     cuda::visit([=] __device__ (auto signature) {
-      args->~ArgsInput();
+      (*args)->~ArgsInput();
 
       cuda::apply(
         [=] __device__(auto tag, auto &&... args) {
@@ -58,14 +60,22 @@ struct bulk_kernel_t
             }
           }
 
-          __syncthreads();
+          if (blockDim.x == 1)
+          {
+            __syncthreads();
+          }
+          else
+          {
+            cooperative_groups::this_grid().sync();
+          }
+
           if (i == 0)
           {
             tag(std::move(*receiver), std::forward<decltype(args)>(args)...);
           }
         },
         std::move(signature));
-    }, std::move(*args));
+    }, std::move(**args));
   }
 };
 
@@ -79,10 +89,10 @@ struct then_kernel_t
   __global__ __launch_bounds__(BlockThreads) static void kernel(Shape shape,
                                                                 F f,
                                                                 Receiver * receiver,
-                                                                ArgsInput * args)
+                                                                ArgsInput ** args)
   {
     cuda::visit([=] __device__ (auto signature) {
-      args->~ArgsInput();
+      (*args)->~ArgsInput();
 
       cuda::apply(
         [=] __device__(auto tag, auto &&... args) {
@@ -106,7 +116,7 @@ struct then_kernel_t
           }
         },
         std::move(signature));
-    }, std::move(*args));
+    }, std::move(**args));
   }
 };
 
@@ -131,7 +141,7 @@ public:
     : Base{std::move(state)}, receiver_(std::forward<Receiver>(rcvr))
   {
     using storage_type = storage_type_for_t<Sender, Env>;
-    std::byte *storage_ptr = cuda::get_storage(env);
+    std::byte **storage_ptr = cuda::get_storage_ptr(env);
 
     auto receiver_ptr = &receiver_;
     void *kernel_args[4] = {&shape, &function, &receiver_ptr, &storage_ptr};
@@ -158,6 +168,12 @@ public:
                                  predecessors.data(),
                                  predecessors.size(),
                                  &kernel_node_params));
+    if (grid_size != 1)
+    {
+      cudaKernelNodeAttrValue attributes;
+      attributes.cooperative = 1;
+      check(cudaGraphKernelNodeSetAttribute(this->node_, cudaKernelNodeAttributeCooperative, &attributes));
+    }
   }
 
   friend void tag_invoke(std::execution::start_t, operation_state_t & self) noexcept
@@ -179,7 +195,7 @@ struct sender_t : sender_base_t<sender_t<KernelT, S, Shape, F>, S>
     auto env = std::execution::get_env(receiver);
 
     using storage_type = storage_type_for_t<S, decltype(env)>;
-    std::byte *storage_ptr = cuda::get_storage(env);
+    std::byte **storage_ptr = cuda::get_storage_ptr(env);
 
     using invented_receiver_t = consumer_receiver_t<storage_type, decltype(env)>;
     invented_receiver_t invented_receiver(storage_ptr, env);

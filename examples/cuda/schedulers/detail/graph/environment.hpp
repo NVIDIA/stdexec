@@ -37,28 +37,28 @@ class env_t
 {
   BaseEnvT base_;
 
-  std::byte *storage_{};
+  std::byte **storage_ptr_{};
   graph_info_t graph_{};
 
 
 public:
   explicit env_t(BaseEnvT base,
-                 std::byte *storage,
+                 std::byte **storage_ptr,
                  graph_info_t graph)
       : base_(std::forward<BaseEnvT>(base))
-      , storage_(storage)
+      , storage_ptr_(storage_ptr)
       , graph_(graph)
   {}
 
-  [[nodiscard]] friend std::byte *tag_invoke(cuda::get_storage_t,
+  [[nodiscard]] friend std::byte **tag_invoke(cuda::get_storage_ptr_t,
                                              const env_t &self) noexcept
   {
-    if (self.storage_)
+    if (self.storage_ptr_)
     {
-      return self.storage_;
+      return self.storage_ptr_;
     }
 
-    return cuda::get_storage(self.base_);
+    return cuda::get_storage_ptr(self.base_);
   }
 
   [[nodiscard]] friend graph_info_t tag_invoke(get_graph_t,
@@ -67,7 +67,7 @@ public:
     return {self.graph_};
   }
 
-  template <std::__none_of<cuda::get_storage_t, get_graph_t> Tag, class... As>
+  template <std::__none_of<cuda::get_storage_ptr_t, get_graph_t> Tag, class... As>
   requires std::__callable<Tag, const BaseEnvT&, As...>
   friend auto tag_invoke(Tag tag, const env_t& self, As&&... as) noexcept
   -> std::__call_result_t<Tag, const BaseEnvT&, As...> {

@@ -27,7 +27,7 @@ template <class E>
 concept graph_env = requires(const E &e)
 {
   { detail::get_graph(e) } -> std::convertible_to<detail::graph_info_t>;
-  { cuda::get_storage(e) } -> std::convertible_to<std::byte *>;
+  { cuda::get_storage_ptr(e) } -> std::convertible_to<std::byte **>;
 };
 
 template<typename ...Args>

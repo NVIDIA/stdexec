@@ -117,8 +117,8 @@ template <std::execution::sender Sender, std::execution::operation_state OpState
 struct operation_state_t
 {
 private:
+  std::byte **storage_ptr_;
   OpState *op_state_;
-  InventedReceiver *indirect_receiver_storage_;
 
   graph_t graph_;
   cuda::pipeline_storage_t storage_;
@@ -129,10 +129,10 @@ public:
   template <std::execution::sender S>
   friend struct sender_t;
 
-  operation_state_t(OpState * state, InventedReceiver * indirect_storage, graph_t graph, pipeline_storage_t storage,
+  operation_state_t(std::byte ** storage_ptr, OpState * state, graph_t graph, pipeline_storage_t storage,
           Receiver && receiver, std::span<const cudaGraphNode_t> predecessors)
-      : op_state_(state)
-      , indirect_receiver_storage_(indirect_storage)
+      : storage_ptr_(storage_ptr)
+      , op_state_(state)
       , graph_(std::move(graph))
       , storage_(std::move(storage))
       , host_callback_data_{std::forward<Receiver>(receiver)}
@@ -148,9 +148,8 @@ public:
   ~operation_state_t()
   {
     op_state_->~OpState();
-    indirect_receiver_storage_->~InventedReceiver();
     check(cudaFree(op_state_));
-    check(cudaFree(indirect_receiver_storage_));
+    check(cudaFree(storage_ptr_));
   }
 
   friend void tag_invoke(std::execution::start_t, operation_state_t & self) noexcept
@@ -176,28 +175,29 @@ struct sender_t
     using invented_receiver_t = consumer_receiver_t<storage_type, graph_env_t>;
     using nested_op_state_t = std::execution::connect_result_t<S, invented_receiver_t>;
 
-    invented_receiver_t * invented_receiver_storage;
-    check(cudaMallocManaged(&invented_receiver_storage, sizeof(invented_receiver_t)));
-    new (invented_receiver_storage) invented_receiver_t(nullptr, std::nullopt);
+    std::byte ** storage_ptr;
+    check(cudaMallocManaged(&storage_ptr, sizeof(std::byte *)));
+    new (storage_ptr) std::byte*(nullptr);
+
+    auto graph = graph_t(self.stream_);
+    auto invented_env = detail::env_t<std::execution::env_of_t<Receiver>>{
+      std::execution::get_env(receiver),
+      storage_ptr,
+      graph_info_t(graph.graph(), self.stream_)};
 
     nested_op_state_t * op_state_storage;
     check(cudaMallocManaged(&op_state_storage, sizeof(nested_op_state_t)));
-    new (op_state_storage) auto(std::execution::connect(std::move(self.sender_), indirect_receiver(invented_receiver_storage)));
+    new (op_state_storage) auto(std::execution::connect(std::move(self.sender_),
+        invented_receiver_t(storage_ptr, std::move(invented_env))));
 
     auto dependencies = get_predecessors(*op_state_storage);
 
     auto storage_requirement = cuda::storage_requirements(*op_state_storage);
     auto pipeline_storage = pipeline_storage_t(storage_requirement);
-    auto graph = graph_t(self.stream_);
-
-    invented_receiver_storage->set_storage_and_env_if_null(pipeline_storage.get(),
-      detail::env_t<std::execution::env_of_t<Receiver>>{
-        std::execution::get_env(receiver),
-        pipeline_storage.get(),
-        graph_info_t(graph.graph(), self.stream_)});
+    *storage_ptr = pipeline_storage.get();
 
     return operation_state_t<S, nested_op_state_t, graph_env_t, invented_receiver_t, Receiver>(
-        op_state_storage, invented_receiver_storage, std::move(graph), std::move(pipeline_storage),
+        storage_ptr, op_state_storage, std::move(graph), std::move(pipeline_storage),
         std::forward<Receiver>(receiver), dependencies);
   }
 
