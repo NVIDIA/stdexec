@@ -39,6 +39,13 @@ struct my_sender0 {
 TEST_CASE("type w/ proper types, is a sender & sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender0>);
   REQUIRE(ex::sender<my_sender0, empty_env>);
+
+  REQUIRE(ex::sender_of<my_sender0, ex::set_value_t()>);
+  REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr)>);
+  REQUIRE(ex::sender_of<my_sender0, ex::set_stopped_t()>);
+  REQUIRE(ex::sender_of<my_sender0, ex::set_value_t(), empty_env>);
+  REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr), empty_env>);
+  REQUIRE(ex::sender_of<my_sender0, ex::set_stopped_t(), empty_env>);
 }
 TEST_CASE(
     "sender that accepts a void sender models sender_to the given sender", "[concepts][sender]") {
