@@ -1736,7 +1736,7 @@ namespace std::execution {
 
     template <__sender_adaptor_closure _T0, __sender_adaptor_closure _T1>
     __compose<remove_cvref_t<_T0>, remove_cvref_t<_T1>> operator|(_T0&& __t0, _T1&& __t1) {
-      return {(_T0&&) __t0, (_T1&&) __t1};
+      return {{}, (_T0&&) __t0, (_T1&&) __t1};
     }
 
     template <sender _Sender, __sender_adaptor_closure _Closure>
