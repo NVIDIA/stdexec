@@ -25,7 +25,7 @@ int main() { return 0; }
 #include "./schedulers/static_thread_pool.hpp"
 
 using namespace std::execution;
-using std::this_thread::sync_wait;
+using _P2300::this_thread::sync_wait;
 
 int main() {
   example::static_thread_pool ctx{8};

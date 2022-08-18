@@ -389,7 +389,7 @@ inline void wait_for_value(S&& snd, Ts&&... val) {
   static_assert(ex::__single_value_variant_sender<S>,
       "Sender passed to sync_wait needs to have one variant for sending set_value");
 
-  std::optional<std::tuple<Ts...>> res = std::this_thread::sync_wait((S &&) snd);
+  std::optional<std::tuple<Ts...>> res = _P2300::this_thread::sync_wait((S &&) snd);
   CHECK(res.has_value());
   std::tuple<Ts...> expected((Ts &&) val...);
   if constexpr (std::tuple_size_v<std::tuple<Ts...>> == 1)

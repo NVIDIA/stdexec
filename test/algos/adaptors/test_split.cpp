@@ -63,8 +63,8 @@ TEST_CASE("split executes predecessor sender once", "[adaptors][split]") {
   SECTION("without parameters") {
     int counter{};
     auto snd = ex::split(ex::just() | ex::then([&] { counter++; }));
-    std::this_thread::sync_wait(snd | ex::then([]{}));
-    std::this_thread::sync_wait(snd | ex::then([]{}));
+    _P2300::this_thread::sync_wait(snd | ex::then([]{}));
+    _P2300::this_thread::sync_wait(snd | ex::then([]{}));
     REQUIRE( counter == 1 );
   }
 }
@@ -244,7 +244,7 @@ TEST_CASE("split forwards results from a different thread", "[adaptors][split]")
                }) | //
                ex::split();
 
-  auto [val] = std::this_thread::sync_wait(split).value();
+  auto [val] = _P2300::this_thread::sync_wait(split).value();
   REQUIRE( val == 42 );
 }
 TEST_CASE("split is thread-safe", "[adaptors][split]") {
@@ -275,7 +275,7 @@ TEST_CASE("split is thread-safe", "[adaptors][split]") {
       inline_scheduler scheduler{};
 
       std::this_thread::sleep_for(delays[tid]);
-      auto [val] = std::this_thread::sync_wait(
+      auto [val] = _P2300::this_thread::sync_wait(
           split |                   //
           ex::transfer(scheduler) | //
           ex::then([](int v) { return v; })).value();
@@ -288,7 +288,7 @@ TEST_CASE("split is thread-safe", "[adaptors][split]") {
   }
 }
 TEST_CASE("split can be an rvalue", "[adaptors][split]") {
-  auto [val] = std::this_thread::sync_wait(
+  auto [val] = _P2300::this_thread::sync_wait(
       ex::just(42) |
       ex::split() |
       ex::then([](int v) { return v; } )).value();
@@ -299,21 +299,21 @@ TEST_CASE("split can nest", "[adaptors][split]") {
   auto split_1 = ex::just(42) | ex::split();
   auto split_2 = split_1 | ex::split();
 
-  auto [v1] = std::this_thread::sync_wait(
+  auto [v1] = _P2300::this_thread::sync_wait(
       split_1 | //
       ex::then([](const int &cv) {
         int &v = const_cast<int&>(cv);
         return v = 1;
       })).value();
 
-  auto [v2] = std::this_thread::sync_wait(
+  auto [v2] = _P2300::this_thread::sync_wait(
       split_2 | //
       ex::then([](const int &cv) {
         int &v = const_cast<int&>(cv);
         return v = 2;
       })).value();
 
-  auto [v3] = std::this_thread::sync_wait(split_1).value();
+  auto [v3] = _P2300::this_thread::sync_wait(split_1).value();
 
   REQUIRE( v1 == 1 );
   REQUIRE( v2 == 2 );

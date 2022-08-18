@@ -19,10 +19,21 @@
 
 #if __has_include(<concepts>) && __cpp_lib_concepts	>= 202002
 #include <concepts>
+namespace __std_concepts_polyfill {
+  using std::same_as;
+  using std::integral;
+  using std::derived_from;
+  using std::convertible_to;
+  using std::equality_comparable;
+  using std::destructible;
+  using std::constructible_from;
+  using std::move_constructible;
+  using std::copy_constructible;
+}
 #else
 #include <type_traits>
 
-namespace std {
+namespace __std_concepts_polyfill {
   // C++20 concepts
   #if defined(__clang__)
   template<class _A, class _B>
@@ -45,25 +56,25 @@ namespace std {
 
   template<class _A, class _B>
     concept derived_from =
-      is_base_of_v<_B, _A> &&
-      is_convertible_v<const volatile _A*, const volatile _B*>;
+      std::is_base_of_v<_B, _A> &&
+      std::is_convertible_v<const volatile _A*, const volatile _B*>;
 
   template<class _From, class _To>
     concept convertible_to =
-      is_convertible_v<_From, _To> &&
+      std::is_convertible_v<_From, _To> &&
       requires(_From (&__fun)()) {
         static_cast<_To>(__fun());
       };
 
   template<class _T>
     concept equality_comparable =
-      requires(const remove_reference_t<_T>& __t) {
+      requires(const std::remove_reference_t<_T>& __t) {
         { __t == __t } -> convertible_to<bool>;
         { __t != __t } -> convertible_to<bool>;
       };
 
   template<class _T>
-    concept destructible = is_nothrow_destructible_v<_T>;
+    concept destructible = std::is_nothrow_destructible_v<_T>;
 
 #if __has_builtin(__is_constructible)
   template<class _T, class... _As>
@@ -82,17 +93,24 @@ namespace std {
     concept copy_constructible =
       move_constructible<_T> &&
       constructible_from<_T, _T const&>;
+} // namespace __std_concepts_polyfill
+
+namespace std {
+  using namespace __std_concepts_polyfill;
 }
 #endif
 
-namespace std {
+namespace _P2300 {
+  using namespace __std_concepts_polyfill;
+  using std::decay_t;
+
   template<class _T, class _U>
     concept __decays_to =
       same_as<decay_t<_T>, _U>;
 
   template <class _C>
     concept __class =
-      is_class_v<_C> && __decays_to<_C, _C>;
+      std::is_class_v<_C> && __decays_to<_C, _C>;
 
   template <class _T, class... _As>
     concept __one_of =
@@ -142,10 +160,10 @@ namespace std {
 #else
   template<class _T, class... _As>
     concept __nothrow_constructible_from =
-      constructible_from<_T, _As...> && is_nothrow_constructible_v<_T, _As...>;
+      constructible_from<_T, _As...> && std::is_nothrow_constructible_v<_T, _As...>;
 #endif
 
   template <class _Ty>
     concept __nothrow_decay_copyable =
       __nothrow_constructible_from<decay_t<_Ty>, _Ty>;
-} // namespace std
+} // namespace _P2300

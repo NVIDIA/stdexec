@@ -92,7 +92,7 @@ int main() {
 
   std::array<std::byte, 16*1024> buffer;
 
-  ex::P2519::async_scope scope;
+  _P2519::execution::async_scope scope;
 
   // Fake a couple of requests
   for (int i = 0; i < 10; i++) {
@@ -117,7 +117,7 @@ int main() {
     scope.spawn(std::move(snd));
   }
 
-  (void) std::this_thread::sync_wait(scope.empty());
+  (void) _P2300::this_thread::sync_wait(scope.empty());
 
   return 0;
 }

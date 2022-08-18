@@ -18,7 +18,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace std {
+namespace _P2300 {
   struct __ {};
 
   struct __ignore {
@@ -47,10 +47,10 @@ namespace std {
     using __x = __t<__x_<_T>>;
 
   template <bool _B>
-    using __bool = bool_constant<_B>;
+    using __bool = std::bool_constant<_B>;
 
   template <size_t _N>
-    using __index = integral_constant<size_t, _N>;
+    using __index = std::integral_constant<size_t, _N>;
 
   // Some utilities for manipulating lists of types at compile time
   template <class...>
@@ -67,13 +67,13 @@ namespace std {
     inline constexpr auto __v = _T::value;
 
   template <class _T, class _U>
-    inline constexpr bool __v<is_same<_T, _U>> = false;
+    inline constexpr bool __v<std::is_same<_T, _U>> = false;
 
   template <class _T>
-    inline constexpr bool __v<is_same<_T, _T>> = true;
+    inline constexpr bool __v<std::is_same<_T, _T>> = true;
 
   template <class _T, _T _I>
-    inline constexpr _T __v<integral_constant<_T, _I>> = _I;
+    inline constexpr _T __v<std::integral_constant<_T, _I>> = _I;
 
   template <template <class...> class _Fn>
     struct __q {
@@ -327,20 +327,20 @@ namespace std {
 
   struct __mcount {
     template <class... _Ts>
-      using __f = integral_constant<size_t, sizeof...(_Ts)>;
+      using __f = std::integral_constant<size_t, sizeof...(_Ts)>;
   };
 
   template <class _Fn>
     struct __mcount_if {
       template <class... _Ts>
         using __f =
-          integral_constant<size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
+          std::integral_constant<size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
     };
 
   template <class _T>
     struct __contains {
       template <class... _Args>
-        using __f = __bool<(__v<is_same<_T, _Args>> ||...)>;
+        using __f = __bool<(__v<std::is_same<_T, _Args>> ||...)>;
     };
 
   template <class _Continuation = __q<__types>>
@@ -394,7 +394,7 @@ namespace std {
     struct __replace {
       template <class... _Args>
         using __f =
-          __minvoke<_Continuation, __if<is_same<_Args, _Old>, _New, _Args>...>;
+          __minvoke<_Continuation, __if<std::is_same<_Args, _Old>, _New, _Args>...>;
     };
 
   template <class _Old, class _Continuation = __q<__types>>
@@ -403,7 +403,7 @@ namespace std {
         using __f =
           __minvoke<
             __concat<_Continuation>,
-            __if<is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
+            __if<std::is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
     };
 
   template <class _Return>
@@ -470,7 +470,7 @@ namespace std {
 
   // For emplacing non-movable types into optionals:
   template <class _Fn>
-      requires is_nothrow_move_constructible_v<_Fn>
+      requires std::is_nothrow_move_constructible_v<_Fn>
     struct __conv {
       _Fn __fn_;
       using __t = __call_result_t<_Fn>;
@@ -485,7 +485,7 @@ namespace std {
     __conv(_Fn) -> __conv<_Fn>;
 
   template <class _T>
-    using __cref_t = const remove_reference_t<_T>&;
+    using __cref_t = const std::remove_reference_t<_T>&;
 
   template <class _Fn, class _Continuation = __q<__types>>
     struct __mzip_with2 {
@@ -504,11 +504,11 @@ namespace std {
     };
 
   template <size_t... _Indices>
-    auto __mconvert_indices(index_sequence<_Indices...>)
+    auto __mconvert_indices(std::index_sequence<_Indices...>)
       -> __types<__index<_Indices>...>;
   template <size_t _N>
     using __mmake_index_sequence =
-      decltype(__mconvert_indices(make_index_sequence<_N>{}));
+      decltype(__mconvert_indices(std::make_index_sequence<_N>{}));
   template <class... _Ts>
     using __mindex_sequence_for =
       __mmake_index_sequence<sizeof...(_Ts)>;
