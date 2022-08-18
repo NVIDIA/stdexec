@@ -74,7 +74,7 @@ namespace __std_concepts_polyfill {
       };
 
   template<class _T>
-    concept destructible = is_nothrow_destructible_v<_T>;
+    concept destructible = std::is_nothrow_destructible_v<_T>;
 
 #if __has_builtin(__is_constructible)
   template<class _T, class... _As>
