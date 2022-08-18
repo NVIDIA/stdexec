@@ -56,12 +56,12 @@ namespace __std_concepts_polyfill {
 
   template<class _A, class _B>
     concept derived_from =
-      is_base_of_v<_B, _A> &&
-      is_convertible_v<const volatile _A*, const volatile _B*>;
+      std::is_base_of_v<_B, _A> &&
+      std::is_convertible_v<const volatile _A*, const volatile _B*>;
 
   template<class _From, class _To>
     concept convertible_to =
-      is_convertible_v<_From, _To> &&
+      std::is_convertible_v<_From, _To> &&
       requires(_From (&__fun)()) {
         static_cast<_To>(__fun());
       };
