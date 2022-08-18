@@ -22,7 +22,7 @@
 #include <optional>
 
 using namespace std;
-namespace exec = execution;
+namespace exec = _P2300::execution;
 
 namespace {
   struct immovable {
@@ -32,10 +32,10 @@ namespace {
 
   struct create_test_fixture {
     example::static_thread_pool pool_{2};
-    exec::P2519::async_scope scope_;
+    _P2519::execution::async_scope scope_;
 
     ~create_test_fixture() {
-      std::this_thread::sync_wait(scope_.empty());
+      _P2300::this_thread::sync_wait(scope_.empty());
     }
 
     void anIntAPI(int a, int b, void* context, void (*completed)(void* context, int result)) {
@@ -69,7 +69,7 @@ namespace {
 
 TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result", "[detail][create]") {
   auto snd = [this](int a, int b) {
-    return exec::extra::create<exec::set_value_t(int)>(
+    return _PXXXX::execution::create<exec::set_value_t(int)>(
       [a, b, this]<class Context>(Context& ctx) noexcept {
         anIntAPI(a, b, &ctx, [](void* pv, int result) {
           exec::set_value(std::move(static_cast<Context*>(pv)->receiver), result);
@@ -79,7 +79,7 @@ TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result"
   }(1, 2);
 
   REQUIRE_NOTHROW([&] {
-    auto [res] = std::this_thread::sync_wait(std::move(snd)).value();
+    auto [res] = _P2300::this_thread::sync_wait(std::move(snd)).value();
     CHECK(res == 3);
   }());
 }
@@ -87,7 +87,7 @@ TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result"
 TEST_CASE_METHOD(create_test_fixture, "wrap an async API that doesn't compute a result", "[detail][create]") {
   bool called = false;
   auto snd = [&called, this]() {
-    return exec::extra::create<exec::set_value_t()>(
+    return _PXXXX::execution::create<exec::set_value_t()>(
       [this]<class Context>(Context& ctx) noexcept {
         aVoidAPI(&ctx, [](void* pv) {
           Context& ctx = *static_cast<Context*>(pv);
@@ -99,7 +99,7 @@ TEST_CASE_METHOD(create_test_fixture, "wrap an async API that doesn't compute a 
     );
   }();
 
-  std::optional<std::tuple<>> res = std::this_thread::sync_wait(std::move(snd));
+  std::optional<std::tuple<>> res = _P2300::this_thread::sync_wait(std::move(snd));
   CHECK(res.has_value());
   CHECK(called);
 }

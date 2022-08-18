@@ -57,7 +57,7 @@ int main() {
   //   fail!
   //   fail!
   //   success!
-  auto [a] = std::this_thread::sync_wait(std::move(x)).value();
+  auto [a] = _P2300::this_thread::sync_wait(std::move(x)).value();
   (void) a;
 }
 

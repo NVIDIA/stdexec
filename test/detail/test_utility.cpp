@@ -20,6 +20,7 @@
 #include <optional>
 
 using namespace std;
+using namespace _P2300;
 
 TEST_CASE(
     "transform identity will return the given types (wrapped in __types)", "[detail][transform]") {
