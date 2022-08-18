@@ -130,6 +130,11 @@ set(test_sourceFiles
     test/detail/test_utility.cpp
     test/queries/test_env.cpp
     test/queries/test_get_forward_progress_guarantee.cpp
+    test/async_scope/test_dtor.cpp
+    test/async_scope/test_spawn.cpp
+    test/async_scope/test_spawn_future.cpp
+    test/async_scope/test_empty.cpp
+    test/async_scope/test_stop.cpp
     )
 
 add_executable(test.P2300 ${test_sourceFiles})
