@@ -3,8 +3,8 @@
 #include "examples/schedulers/static_thread_pool.hpp"
 
 namespace ex = std::execution;
-using std::execution::P2519::async_scope;
-using std::this_thread::sync_wait;
+using _P2519::execution::async_scope;
+using _P2300::this_thread::sync_wait;
 
 TEST_CASE("async_scope can be created and them immediately destructed", "[async_scope][dtor]") {
   async_scope scope;

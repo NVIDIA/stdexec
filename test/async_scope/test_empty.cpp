@@ -4,8 +4,8 @@
 #include "test_common/receivers.hpp"
 
 namespace ex = std::execution;
-using std::execution::P2519::async_scope;
-using std::this_thread::sync_wait;
+using _P2519::execution::async_scope;
+using _P2300::this_thread::sync_wait;
 
 TEST_CASE("TODO: empty will complete immediately on an empty async_scope", "[async_scope][empty]") {
   async_scope scope;
