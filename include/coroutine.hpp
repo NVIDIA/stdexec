@@ -28,7 +28,7 @@ namespace __coro = std::experimental;
 #error No coroutine support found
 #endif
 
-namespace std {
+namespace _P2300 {
   // Defined some concepts and utilities for working with awaitables
   template <class _Promise, class _Awaiter>
   decltype(auto) __await_suspend(_Awaiter& __await) {
@@ -45,7 +45,7 @@ namespace std {
     concept __awaiter =
       requires (_Awaiter& __await) {
         __await.await_ready() ? 1 : 0;
-        {std::__await_suspend<_Promise>(__await)} -> __await_suspend_result;
+        { (__await_suspend<_Promise>)(__await) } -> __await_suspend_result;
         __await.await_resume();
       };
 
@@ -75,7 +75,7 @@ namespace std {
   template <class _Awaitable, class _Promise = void>
     concept __awaitable =
       requires (_Awaitable&& __await, _Promise* __promise) {
-        {std::__get_awaiter((_Awaitable&&) __await, __promise)} -> __awaiter<_Promise>;
+        { (__get_awaiter)((_Awaitable&&) __await, __promise) } -> __awaiter<_Promise>;
       };
 
   template <class _T>
@@ -83,6 +83,6 @@ namespace std {
 
   template <class _Awaitable, class _Promise = void>
       requires __awaitable<_Awaitable, _Promise>
-    using __await_result_t = decltype(std::__as_lvalue(
-        std::__get_awaiter(declval<_Awaitable>(), (_Promise*) nullptr)).await_resume());
+    using __await_result_t = decltype((__as_lvalue)(
+        (__get_awaiter)(std::declval<_Awaitable>(), (_Promise*) nullptr)).await_resume());
 }

@@ -77,7 +77,7 @@ TEST_CASE(
     "let_error returning void can be waited on (error annihilation)", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just_error(std::exception_ptr{}) |
                         ex::let_error([](std::exception_ptr) { return ex::just(); });
-  std::this_thread::sync_wait(std::move(snd));
+  _P2300::this_thread::sync_wait(std::move(snd));
 }
 
 TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {

@@ -24,15 +24,23 @@
 #define _DECLVAL(...) \
   ((static_cast<__VA_ARGS__(*)()noexcept>(0))())
 
-namespace std {
-#if !(__has_include(<concepts>) && __cpp_lib_concepts	>= 202002)
+namespace __std_concepts_polyfill {
+#if __has_include(<concepts>) && __cpp_lib_concepts	>= 202002
+  using std::invocable;
+#else
   template<class _F, class... _As>
     concept invocable =
       requires(_F&& __f, _As&&... __as) {
         std::invoke((_F&&) __f, (_As&&) __as...);
       };
 #endif
+}
 
+namespace std {
+  using namespace __std_concepts_polyfill;
+}
+
+namespace _P2300 {
   template <class _F, class... _As>
     concept __nothrow_invocable =
       invocable<_F, _As...> &&
@@ -108,4 +116,4 @@ namespace std {
   using __tag_invoke::nothrow_tag_invocable;
   using __tag_invoke::tag_invoke_result_t;
   using __tag_invoke::tag_invoke_result;
-} // namespace std
+} // namespace _P2300

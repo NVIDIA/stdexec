@@ -51,7 +51,7 @@ TEST_CASE("then can be piped", "[adaptors][then]") {
 
 TEST_CASE("then returning void can we waited on", "[adaptors][then]") {
   ex::sender auto snd = ex::just() | ex::then([] {});
-  std::this_thread::sync_wait(std::move(snd));
+  _P2300::this_thread::sync_wait(std::move(snd));
 }
 
 TEST_CASE("then can be used to transform the value", "[adaptors][then]") {
