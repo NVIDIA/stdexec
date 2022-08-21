@@ -1817,6 +1817,8 @@ namespace _P2300::execution {
 
     // BUGBUG Not to spec: on gcc and nvc++, member functions in derived classes
     // don't shadow type aliases of the same name in base classes. :-O
+    // On mingw gcc, 'bool(type::existing_member_function)' evaluates to true,
+    // but 'int(type::existing_member_function)' is an error (as desired).
     #define _DISPATCH_MEMBER(_TAG) \
       template <class _Self, class... _Ts> \
       static auto __call_ ## _TAG(_Self&& __self, _Ts&&... __ts) \
@@ -1837,9 +1839,9 @@ namespace _P2300::execution {
       _DISPATCH_MEMBER(_TAG) \
       template<class _D> \
       static constexpr bool __missing_ ## _TAG() noexcept { \
-        return requires { requires bool(_D::_TAG); }; \
+        return requires { requires bool(int(_D::_TAG)); }; \
       }\
-      static constexpr bool _TAG = true \
+      static constexpr int _TAG = 1 \
       /**/
     #endif
 
