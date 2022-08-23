@@ -49,8 +49,8 @@ namespace _P2300 {
   template <bool _B>
     using __bool = std::bool_constant<_B>;
 
-  template <size_t _N>
-    using __index = std::integral_constant<size_t, _N>;
+  template <std::size_t _N>
+    using __index = std::integral_constant<std::size_t, _N>;
 
   // Some utilities for manipulating lists of types at compile time
   template <class...>
@@ -327,14 +327,14 @@ namespace _P2300 {
 
   struct __mcount {
     template <class... _Ts>
-      using __f = std::integral_constant<size_t, sizeof...(_Ts)>;
+      using __f = std::integral_constant<std::size_t, sizeof...(_Ts)>;
   };
 
   template <class _Fn>
     struct __mcount_if {
       template <class... _Ts>
         using __f =
-          std::integral_constant<size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
+          std::integral_constant<std::size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
     };
 
   template <class _T>
@@ -503,10 +503,10 @@ namespace _P2300 {
         using __f = __t<__f_<_C, _D>>;
     };
 
-  template <size_t... _Indices>
+  template <std::size_t... _Indices>
     auto __mconvert_indices(std::index_sequence<_Indices...>)
       -> __types<__index<_Indices>...>;
-  template <size_t _N>
+  template <std::size_t _N>
     using __mmake_index_sequence =
       decltype(__mconvert_indices(std::make_index_sequence<_N>{}));
   template <class... _Ts>
