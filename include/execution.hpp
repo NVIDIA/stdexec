@@ -2073,7 +2073,7 @@ namespace _P2300::execution {
     concept __receiver_of_maybe_void =
       (same_as<__types<void>, __types<_As...>> &&
         receiver_of<_Receiver, completion_signatures<set_value_t()>>) ||
-      receiver_of<_Receiver, completion_signatures<set_value_t(_As)...>>;
+      receiver_of<_Receiver, completion_signatures<set_value_t(_As...)>>;
 
   template <class _Receiver, class _Fun, class... _As>
     concept __receiver_of_invoke_result =
