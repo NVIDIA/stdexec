@@ -2473,7 +2473,7 @@ namespace _P2300::execution {
 
         template <class... _As>
         void set_value(_As&&... __as) && noexcept 
-          requires __nothrow_callable<_Fun, _Shape, _As...> {
+          requires __nothrow_callable<_Fun, _Shape, _As&...> {
           for (_Shape __i{}; __i != __shape_; ++__i) {
             __f_(__i, __as...);
           }
@@ -2482,7 +2482,7 @@ namespace _P2300::execution {
 
         template <class... _As>
         void set_value(_As&&... __as) && noexcept 
-          requires __callable<_Fun, _Shape, _As...> {
+          requires __callable<_Fun, _Shape, _As&...> {
           try {
             for (_Shape __i{}; __i != __shape_; ++__i) {
               __f_(__i, __as...);
@@ -2512,7 +2512,7 @@ namespace _P2300::execution {
         [[no_unique_address]] _Shape __shape_;
         [[no_unique_address]] _Fun __fun_;
 
-        template <class _Tag, class _Fun, class _Sender, class _Env>
+        template <class _Fun, class _Sender, class _Env>
           using __with_error_invoke_t =
             __if_c<
               __v<__value_types_of_t<
@@ -2528,7 +2528,7 @@ namespace _P2300::execution {
             __make_completion_signatures<
               __member_t<_Self, _Sender>,
               _Env,
-              __with_error_invoke_t<set_value_t, _Fun, __member_t<_Self, _Sender>, _Env>>;
+              __with_error_invoke_t<_Fun, __member_t<_Self, _Sender>, _Env>>;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
           requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
@@ -2584,7 +2584,7 @@ namespace _P2300::execution {
            (!tag_invocable<bulk_t, _Sender, _Shape, _Fun>)
       __sender<_Sender, _Shape, _Fun> operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
         return __sender<_Sender, _Shape, _Fun>{
-          (_Sender&&)__sndr, __shape, __fun};
+          (_Sender&&) __sndr, __shape, (_Fun&&) __fun};
       }
       template <integral _Shape, class _Fun>
       __binder_back<bulk_t, _Shape, _Fun> operator()(_Shape __shape, _Fun __fun) const {
