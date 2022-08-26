@@ -530,7 +530,7 @@ namespace _P2519::execution {
           template <class _Receiver2>
             explicit __operation(_Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender>> __state)
               : __rcvr_((_Receiver2 &&) __rcvr)
-              , __state_(std::move(__state)) 
+              , __state_(std::move(__state))
               , __forward_consumer_(get_stop_token(get_env(__rcvr_)), __forward_stopped{this})
             {}
         };
@@ -722,11 +722,11 @@ namespace _P2519::execution {
 
       // (__op_state_ & 1) is 1 until we've been stopped
       // (__op_state_ >> 1) is the number of outstanding operations
-      std::atomic<size_t> __op_state_{1};
+      std::atomic<std::size_t> __op_state_{1};
       __async_manual_reset_event __evt_;
 
       struct __load_atomic {
-        const std::atomic<size_t>& __op_state_;
+        const std::atomic<std::size_t>& __op_state_;
         void operator()() noexcept {
           // make sure to synchronize with all the fetch_subs being done while
           // operations complete
@@ -841,7 +841,7 @@ namespace _P2519::execution {
       }
 
     private:
-      static size_t __op_count_(size_t __state) noexcept {
+      static std::size_t __op_count_(std::size_t __state) noexcept {
         return __state >> 1;
       }
 

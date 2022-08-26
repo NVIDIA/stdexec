@@ -4023,7 +4023,7 @@ namespace _P2300::execution {
           template <class _CvrefReceiverId>
             struct __operation;
 
-          template <class _CvrefReceiverId, size_t _Index>
+          template <class _CvrefReceiverId, std::size_t _Index>
             struct __receiver : receiver_adaptor<__receiver<_CvrefReceiverId, _Index>> {
               using _WhenAll = __member_t<_CvrefReceiverId, __sender>;
               using _Receiver = __t<decay_t<_CvrefReceiverId>>;
@@ -4100,7 +4100,7 @@ namespace _P2300::execution {
               using _CvrefEnv = __member_t<_CvrefReceiverId, _Env>;
               using _Traits = __completion_sigs<_CvrefEnv>;
 
-              template <class _Sender, size_t _Index>
+              template <class _Sender, std::size_t _Index>
                 using __child_op_state =
                   connect_result_t<
                     __member_t<_WhenAll, _Sender>,
@@ -4108,7 +4108,7 @@ namespace _P2300::execution {
 
               using _Indices = std::index_sequence_for<_SenderIds...>;
 
-              template <size_t... _Is>
+              template <std::size_t... _Is>
                 static auto __connect_children(
                     __operation* __self, _WhenAll&& __when_all, std::index_sequence<_Is...>)
                     -> std::tuple<__child_op_state<__t<_SenderIds>, _Is>...> {
@@ -4212,7 +4212,7 @@ namespace _P2300::execution {
 
               __child_op_states_tuple_t __child_states_;
               _Receiver __recvr_;
-              std::atomic<size_t> __count_{sizeof...(_SenderIds)};
+              std::atomic<std::size_t> __count_{sizeof...(_SenderIds)};
               // Could be non-atomic here and atomic_ref everywhere except __completion_fn
               std::atomic<__state_t> __state_{__started};
               error_types_of_t<__sender, __env_t<_Env>, __variant> __errors_{};
