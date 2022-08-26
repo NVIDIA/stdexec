@@ -5367,13 +5367,13 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
 
         4. Given subexpressions `s2` and `e` where `s2` is a sender returned
             from `bulk` or a copy of such, let `S2` be `decltype((s2))`, let
-            `E` be `decltype((e))`, let `S'` be `copy_cvref_t<S2, S>` and let
-            <code><i>nothrow-callable</i></code> be the alias template:
+            `E` be `decltype((e))`, let `S'` be `copy_cvref_t<S2, S>`, let `Shape` be 
+            `decltype((shape))` and let <code><i>nothrow-callable</i></code> be the alias template:
 
               <pre highlight="c++">
               template &lt;class... As>
                 using <i>nothrow-callable</i> =
-                  bool_constant&lt;is_nothrow_invocable_v&lt;decay_t&lt;F>&, As...>>;
+                  bool_constant&lt;is_nothrow_invocable_v&lt;decay_t&lt;F>&, Shape, As...>>;
               </pre>
 
             1. If any of the types in the <code><i>type-list</i></code> named by
