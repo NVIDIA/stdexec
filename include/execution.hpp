@@ -4889,6 +4889,9 @@ namespace std {
   namespace execution {
     using namespace _P2300::execution;
   }
+  namespace this_thread {
+    using namespace _P2300::this_thread;
+  }
 }
 
 _PRAGMA_POP()
