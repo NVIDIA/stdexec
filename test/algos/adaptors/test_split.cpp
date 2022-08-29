@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 
-#if defined(__GNUC__) && !defined(__clang__)
-#else
-
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -329,5 +326,3 @@ TEST_CASE("split doesn't advertise completion scheduler", "[adaptors][split]") {
   static_assert(!ex::__has_completion_scheduler<snd_t, ex::set_stopped_t>);
   (void)snd;
 }
-
-#endif

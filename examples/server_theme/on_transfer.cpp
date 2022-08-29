@@ -32,9 +32,6 @@
  * - show how one can change the execution context
  * - exemplify the use of `on` and `transfer` algorithms
  */
-#if defined(__GNUC__) && !defined(__clang__)
-int main() { return 0; }
-#else
 
 #include <iostream>
 #include <array>
@@ -121,5 +118,3 @@ int main() {
 
   return 0;
 }
-
-#endif

@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#if defined(__GNUC__) && !defined(__clang__)
-#else
-
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -347,5 +344,3 @@ TEST_CASE(
   );
   wait_for_value(std::move(snd), std::string{"first program"});
 }
-
-#endif

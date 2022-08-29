@@ -123,7 +123,7 @@ namespace _P2300::execution {
             class... _As>
             requires __callable<_Tag, const typename _Self::__base_env_t&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as) noexcept
-            -> __call_result_t<_Tag, const typename _Self::__base_env_t&, _As...> {
+            -> __call_result_if_t<same_as<_Self, __env_>, _Tag, const typename _Self::__base_env_t&, _As...> {
             return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
           }
       };
@@ -2707,7 +2707,7 @@ namespace _P2300::execution {
           , __recvr_((_Receiver&&)__rcvr)
           , __shared_state_(move(__shared_state)) {
         }
-        __operation(__operation&&) = delete;
+        _P2300_IMMOVABLE(__operation);
 
         static void __notify(__operation_base* __self) noexcept {
           __operation *__op = static_cast<__operation*>(__self);
@@ -3047,7 +3047,7 @@ namespace _P2300::execution {
               , __rcvr_((_Receiver2&&) __rcvr)
               , __fun_((_Fun&&) __fun)
             {}
-          __operation(__operation&&) = delete;
+          _P2300_IMMOVABLE(__operation);
 
           connect_result_t<_Sender, __receiver_t> __op_state2_;
           _Receiver __rcvr_;
@@ -3224,7 +3224,7 @@ namespace _P2300::execution {
           : __op_state_(connect((_Sender&&) __sndr, __receiver_t{{}, this}))
           , __rcvr_((_Receiver&&) __rcvr)
         {}
-        __operation(__operation&&) = delete;
+        _P2300_IMMOVABLE(__operation);
 
         friend void tag_invoke(start_t, __operation& __self) noexcept {
           start(__self.__op_state_);
@@ -3638,7 +3638,7 @@ namespace _P2300::execution {
           : __sched_(__sched)
           , __rcvr_((decltype(__rcvr)&&) __rcvr)
           , __state1_(connect((_CvrefSender&&) __sndr, __receiver1_t{this})) {}
-        __operation1(__operation1&&) = delete;
+        _P2300_IMMOVABLE(__operation1);
 
         friend void tag_invoke(start_t, __operation1& __op_state) noexcept {
           start(__op_state.__state1_);
@@ -3851,7 +3851,7 @@ namespace _P2300::execution {
             , __scheduler_((_Scheduler&&) __sched)
             , __sndr_((_Sender2&&) __sndr)
             , __rcvr_((_Receiver2&&) __rcvr) {}
-          __operation(__operation&&) = delete;
+          _P2300_IMMOVABLE(__operation);
 
           std::variant<
               connect_result_t<schedule_result_t<_Scheduler>, __receiver_t>,
@@ -4015,7 +4015,7 @@ namespace _P2300::execution {
 
         _Sender __sndr_;
 
-        template <class _Receiver>
+        template <receiver _Receiver>
           requires sender_to<_Sender, __receiver_t<_Receiver>>
         friend auto tag_invoke(connect_t, __sender&& __self, _Receiver&& __rcvr)
           noexcept(__nothrow_connectable<_Sender, __receiver_t<_Receiver>>)
@@ -4218,21 +4218,12 @@ namespace _P2300::execution {
 
               using _Indices = std::index_sequence_for<_SenderIds...>;
 
-              template <std::size_t... _Is>
-                static auto __connect_children(
-                    __operation* __self, _WhenAll&& __when_all, std::index_sequence<_Is...>)
-                    -> std::tuple<__child_op_state<__t<_SenderIds>, _Is>...> {
-                  return std::tuple<__child_op_state<__t<_SenderIds>, _Is>...>{
-                    __conv{[&__when_all, __self]() {
-                      return execution::connect(
-                          std::get<_Is>(((_WhenAll&&) __when_all).__sndrs_),
-                          __receiver<_CvrefReceiverId, _Is>{{}, __self});
-                    }}...
-                  };
-                }
+              template <size_t... _Is>
+                static auto __connect_children_(std::index_sequence<_Is...>)
+                  -> std::tuple<__child_op_state<__t<_SenderIds>, _Is>...>;
 
               using __child_op_states_tuple_t =
-                  decltype(__connect_children(nullptr, __declval<_WhenAll>(), _Indices{}));
+                  decltype((__connect_children_)(_Indices{}));
 
               void __arrive() noexcept {
                 if (0 == --__count_) {
@@ -4285,11 +4276,21 @@ namespace _P2300::execution {
                 }
               }
 
+              template <size_t... _Is>
+                __operation(_WhenAll&& __when_all, _Receiver __rcvr, std::index_sequence<_Is...>)
+                  : __child_states_{
+                      __conv{[&__when_all, this]() {
+                        return execution::connect(
+                            std::get<_Is>(((_WhenAll&&) __when_all).__sndrs_),
+                            __receiver<_CvrefReceiverId, _Is>{{}, this});
+                      }}...
+                    }
+                  , __recvr_((_Receiver&&) __rcvr)
+                {}
               __operation(_WhenAll&& __when_all, _Receiver __rcvr)
-                : __child_states_{__connect_children(this, (_WhenAll&&) __when_all, _Indices{})}
-                , __recvr_((_Receiver&&) __rcvr)
+                : __operation((_WhenAll&&) __when_all, (_Receiver&&) __rcvr, _Indices{})
               {}
-              __operation(__operation&&) = delete;
+              _P2300_IMMOVABLE(__operation);
 
               friend void tag_invoke(start_t, __operation& __self) noexcept {
                 // register stop callback:
