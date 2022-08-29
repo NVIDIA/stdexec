@@ -2510,10 +2510,7 @@ Returns a sender describing the task of invoking the provided function with ever
 by sending values, they are equivalent to those sent by the input sender.
 
 No instance of `function` will begin executing until the returned sender is started. Each invocation of `function` runs in an execution agent whose forward progress guarantees are determined by the scheduler on which they are run. All agents created by a single use
-of `bulk` execute with the same guarantee. This allows, for instance, a scheduler to execute all invocations of the function in parallel.
-
-The `bulk` operation is intended to be used at the point where the number of agents to be created is known and provided to `bulk` via its `shape` parameter. For some parallel computations, the number of agents to be created may be a function of the input data or
-dynamic conditions of the execution environment. In such cases, `bulk` can be combined with additional operations such as `let_value` to deliver dynamic shape information to the `bulk` operation.
+of `bulk` execute with the same guarantee. The number of execution agents used by `bulk` is not specified. This allows a scheduler to execute some invocations of the `function` in parallel. 
 
 In this proposal, only integral types are used to specify the shape of the bulk section. We expect that future papers may wish to explore extensions of the interface to explore additional kinds of shapes, such as multi-dimensional grids, that are commonly used for
 parallel computing tasks.
