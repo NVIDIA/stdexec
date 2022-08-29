@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined(__GNUC__) && !defined(__clang__)
-#else
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
@@ -299,5 +297,3 @@ TEST_CASE("let_value can be customized", "[adaptors][let_value]") {
              | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
   wait_for_value(std::move(snd), std::string{"hallo"});
 }
-
-#endif

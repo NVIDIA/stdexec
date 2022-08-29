@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 #include <exception>
-#if defined(__GNUC__) && !defined(__clang__)
-#else
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
@@ -185,5 +183,3 @@ TEST_CASE("bulk function in not called on stop", "[adaptors][bulk]") {
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
 }
-
-#endif

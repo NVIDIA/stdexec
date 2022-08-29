@@ -121,7 +121,7 @@ struct impulse_scheduler {
 //! Scheduler that executes everything inline, i.e., on the same thread
 struct inline_scheduler {
   template <typename R>
-  struct oper : non_movable {
+  struct oper : immovable {
     R recv_;
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
       ex::set_value((R &&) self.recv_);
@@ -152,7 +152,7 @@ struct inline_scheduler {
 template <typename E = std::exception_ptr>
 struct error_scheduler {
   template <typename R>
-  struct oper : non_movable {
+  struct oper : immovable {
     R recv_;
     E err_;
 
@@ -190,7 +190,7 @@ struct error_scheduler {
 //! Scheduler that returns a sender that always completes with cancellation.
 struct stopped_scheduler {
   template <typename R>
-  struct oper : non_movable {
+  struct oper : immovable {
     R recv_;
     friend void tag_invoke(ex::start_t, oper& self) noexcept { ex::set_stopped((R &&) self.recv_); }
   };

@@ -13,10 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined(__GNUC__) && !defined(__clang__)
-int main() { return 0; }
-#else
-
 #include <iostream>
 
 // Pull in the reference implementation of P2300:
@@ -54,5 +50,3 @@ int main() {
 
   sync_wait(when_all(just(42), get_scheduler(), get_stop_token()));
 }
-
-#endif

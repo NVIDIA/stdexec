@@ -26,11 +26,19 @@ namespace _P2300 {
     __ignore(auto&&) noexcept {}
   };
 
+    // Before gcc-12, gcc really didn't like tuples or variants of immovable types
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+#  define _P2300_IMMOVABLE(_X) _X(_X&&)
+#else
+#  define _P2300_IMMOVABLE(_X) _X(_X&&) = delete
+#endif
+
   struct __none_such {};
 
   struct __immovable {
     __immovable() = default;
-    __immovable(__immovable&&) = delete;
+   private:
+    _P2300_IMMOVABLE(__immovable);
   };
 
   template <class _T>
@@ -54,11 +62,7 @@ namespace _P2300 {
 
   // Some utilities for manipulating lists of types at compile time
   template <class...>
-    struct __types
-#if defined(__GNUC__) && !defined(__clang__)
-  {}  // BUGBUG: GCC does not like this "incomplete type"
-#endif
-  ;
+    struct __types;
 
   template <class _T>
     using __id = _T;

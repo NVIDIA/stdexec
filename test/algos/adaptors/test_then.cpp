@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined(__GNUC__) && !defined(__clang__)
-#else
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
@@ -173,5 +171,3 @@ TEST_CASE("then can be customized", "[adaptors][then]") {
              | ex::then([](std::string x) { return x + ", world"; });
   wait_for_value(std::move(snd), std::string{"hallo"});
 }
-
-#endif

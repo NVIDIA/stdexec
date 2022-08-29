@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined(__GNUC__) && !defined(__clang__)
-#else
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
@@ -251,5 +249,3 @@ TEST_CASE("transfer can be customized with two schedulers", "[adaptors][transfer
   // we are not using impulse_scheduler anymore, so the value should be available
   REQUIRE(res.val_ == 61);
 }
-
-#endif

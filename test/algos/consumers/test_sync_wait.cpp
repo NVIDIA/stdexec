@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#if defined(__GNUC__) && !defined(__clang__)
-#else
-
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -211,5 +208,3 @@ TEST_CASE("sync_wait can be customized without scheduler", "[consumers][sync_wai
   CHECK(res.has_value());
   CHECK(std::get<0>(res.value()) == "ciao");
 }
-
-#endif

@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#if defined(__GNUC__) && !defined(__clang__)
-#else
-
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -112,5 +109,3 @@ TEST_CASE(
   check_sends_stopped<false>( //
       ex::transfer_just(sched3, 3) | ex::stopped_as_optional());
 }
-
-#endif

@@ -22,7 +22,7 @@
 namespace ex = std::execution;
 
 template <typename R>
-struct op_state : non_movable {
+struct op_state : immovable {
   int val_;
   R recv_;
 
