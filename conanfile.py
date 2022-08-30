@@ -14,7 +14,7 @@ class P2300Recipe(ConanFile):
     settings = "compiler"  # Header only - compiler only used for flags
     tool_requires = "catch2/2.13.6"
     exports_sources = "include/*"
-    generators = "cmake"
+    generators = "cmake_find_package"
 
     def validate(self):
         tools.check_min_cppstd(self,"20")
