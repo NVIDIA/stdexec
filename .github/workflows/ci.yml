@@ -10,6 +10,9 @@ jobs:
         with:
           cc: gcc-11
           checks: build test
+          prebuild_command: |
+            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
+            apt update && apt install -y --no-install-recommends git cmake;
   build-clang-12:
     runs-on: ubuntu-latest
     steps:
@@ -18,6 +21,10 @@ jobs:
         with:
           cc: clang-12
           checks: build test
+          cxxflags: -stdlib=libc++
+          prebuild_command: |
+            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
+            apt update && apt install -y --no-install-recommends git cmake;
 #  build-clang-13:
 #    runs-on: ubuntu-latest
 #    steps:
@@ -26,6 +33,11 @@ jobs:
 #        with:
 #          cc: clang-13
 #          checks: build test
+#          cxxflags: -stdlib=libc++
+#          prebuild_command: |
+#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
+#            apt update && apt install -y --no-install-recommends git cmake;
+
 #  static-checks:
 #    runs-on: ubuntu-latest
 #    steps:
@@ -36,6 +48,10 @@ jobs:
 #          checks: cppcheck clang-tidy
 #          clangtidyflags: '-quiet'
 #          cppcheckflags: '--enable=warning,style,performance,portability --inline-suppr'
+#          prebuild_command: |
+#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
+#            apt update && apt install -y --no-install-recommends git cmake;
+
 #  clang-format:
 #    runs-on: ubuntu-latest
 #    steps:
@@ -44,6 +60,10 @@ jobs:
 #        with:
 #          checks: clang-format
 #          clangformatdirs: src test
+#          prebuild_command: |
+#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
+#            apt update && apt install -y --no-install-recommends git cmake;
+
 #  sanitizer:
 #    runs-on: ubuntu-latest
 #    steps:
@@ -51,3 +71,6 @@ jobs:
 #      - uses: docker://lucteo/action-cxx-toolkit.main:latest
 #        with:
 #          checks: sanitize=address sanitize=undefined
+#          prebuild_command: |
+#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
+#            apt update && apt install -y --no-install-recommends git cmake;
