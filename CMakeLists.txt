@@ -205,3 +205,44 @@ def_example(example.retry "examples/retry.cpp")
 def_example(example.then "examples/then.cpp")
 def_example(example.server_theme.let_value "examples/server_theme/let_value.cpp")
 def_example(example.server_theme.on_transfer "examples/server_theme/on_transfer.cpp")
+
+##############################################################################
+# Install targets ------------------------------------------------------------
+
+include(CPack)
+include(GNUInstallDirs)
+
+install(TARGETS p2300
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        EXPORT p2300-exports)
+
+install(
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/include/p2300_version_config.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+##############################################################################
+# Install exports ------------------------------------------------------------
+
+set(code_string "")
+
+# Install side of the export set
+rapids_export(
+  INSTALL p2300
+  EXPORT_SET p2300-exports
+  GLOBAL_TARGETS p2300
+  NAMESPACE P2300::
+  FINAL_CODE_BLOCK code_string
+)
+
+# Build side of the export set so a user can use the build dir as a CMake package root
+rapids_export(
+  BUILD p2300
+  EXPORT_SET p2300-exports
+  GLOBAL_TARGETS p2300
+  NAMESPACE P2300::
+  FINAL_CODE_BLOCK code_string
+)
