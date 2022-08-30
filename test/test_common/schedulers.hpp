@@ -179,7 +179,7 @@ struct error_scheduler {
     }
   };
 
-  E err_;
+  E err_{};
 
   friend my_sender tag_invoke(ex::schedule_t, error_scheduler self) { return {(E &&) self.err_}; }
 
