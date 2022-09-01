@@ -93,7 +93,7 @@ set_target_properties(p2300 PROPERTIES
 # Declare the public include directories
 target_include_directories(p2300 INTERFACE
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-                           $<INSTALL_INTERFACE:include>
+                           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
                            )
 
 target_link_libraries(p2300 INTERFACE Threads::Threads)
