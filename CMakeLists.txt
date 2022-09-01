@@ -28,7 +28,9 @@ include(rapids-cpm)
 # - Project definition -------------------------------------------------------
 
 # Define the project and set the version and languages
-project(P2300 VERSION 0.6.0 LANGUAGES CXX)
+file(STRINGS "std_execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
+string(REGEX REPLACE "Revision: ([0-9]+)" "\\1" STD_EXECUTION_BS_REVISION ${STD_EXECUTION_BS_REVISION_LINE})
+project(P2300 VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
 
 # Print CMake configuration
 message(STATUS "System           : ${CMAKE_SYSTEM}")
