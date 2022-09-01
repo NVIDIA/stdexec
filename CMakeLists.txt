@@ -58,12 +58,6 @@ rapids_cmake_write_version_file(include/p2300_version_config.hpp)
 # Set CMAKE_BUILD_TYPE=Release the default if none provided
 rapids_cmake_build_type(Release)
 
-# Set CMAKE_CXX_STANDARD=20 if none provided
-if(NOT CMAKE_CXX_STANDARD)
-  message(VERBOSE "Setting CXX standard to '20' since none specified.")
-  set(CMAKE_CXX_STANDARD 20 CACHE STRING "Choose the C++ standard." FORCE)
-endif()
-
 ##############################################################################
 # - Dependencies -------------------------------------------------------------
 
