@@ -214,7 +214,8 @@ include(GNUInstallDirs)
 
 install(TARGETS p2300
         DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        EXPORT p2300-exports)
+        EXPORT p2300-exports
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(
   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
