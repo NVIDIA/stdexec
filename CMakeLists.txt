@@ -198,6 +198,7 @@ function(def_example target sourceFile)
     target_link_libraries(${target} PRIVATE P2300::p2300)
 endfunction()
 
+def_example(clangd.helper "examples/_clangd_helper_file.cpp")
 def_example(example.hello_world "examples/hello_world.cpp")
 def_example(example.hello_coro "examples/hello_coro.cpp")
 def_example(example.scope "examples/scope.cpp")
