@@ -28,7 +28,9 @@ include(rapids-cpm)
 # - Project definition -------------------------------------------------------
 
 # Define the project and set the version and languages
-project(P2300 VERSION 0.6.0 LANGUAGES CXX)
+file(STRINGS "std_execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
+string(REGEX REPLACE "Revision: ([0-9]+)" "\\1" STD_EXECUTION_BS_REVISION ${STD_EXECUTION_BS_REVISION_LINE})
+project(P2300 VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
 
 # Print CMake configuration
 message(STATUS "System           : ${CMAKE_SYSTEM}")
@@ -55,12 +57,6 @@ rapids_cmake_write_version_file(include/p2300_version_config.hpp)
 
 # Set CMAKE_BUILD_TYPE=Release the default if none provided
 rapids_cmake_build_type(Release)
-
-# Set CMAKE_CXX_STANDARD=20 if none provided
-if(NOT CMAKE_CXX_STANDARD)
-  message(VERBOSE "Setting CXX standard to '20' since none specified.")
-  set(CMAKE_CXX_STANDARD 20 CACHE STRING "Choose the C++ standard." FORCE)
-endif()
 
 ##############################################################################
 # - Dependencies -------------------------------------------------------------
@@ -97,7 +93,7 @@ set_target_properties(p2300 PROPERTIES
 # Declare the public include directories
 target_include_directories(p2300 INTERFACE
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-                           $<INSTALL_INTERFACE:include>
+                           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
                            )
 
 target_link_libraries(p2300 INTERFACE Threads::Threads)
@@ -105,27 +101,44 @@ target_link_libraries(p2300 INTERFACE Threads::Threads)
 # Use C++20 standard
 target_compile_features(p2300 INTERFACE cxx_std_20)
 
-# Turn all warnings
+# Enable coroutines for GCC
 target_compile_options(p2300 INTERFACE
+                       $<$<CXX_COMPILER_ID:GNU>:-fcoroutines>
+                       )
+
+add_library(P2300::p2300 ALIAS p2300)
+
+# Don't require building everything when installing
+set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY ON)
+
+# Support target for examples and tests
+add_library(p2300_executable_flags INTERFACE)
+
+# Enable warnings
+target_compile_options(p2300_executable_flags INTERFACE
                        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
                        -Wall>
                        $<$<CXX_COMPILER_ID:MSVC>:
                        /W4>)
-# template backtrace limit
-target_compile_options(p2300 INTERFACE
+
+
+# Silence warnings with GCC
+target_compile_options(p2300_executable_flags INTERFACE
+                       $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>
+                       )
+
+# Template backtrace limit
+target_compile_options(p2300_executable_flags INTERFACE
                        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
                        -ftemplate-backtrace-limit=0>
                        )
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_compile_options(-fdiagnostics-color=always)
-    add_compile_options(-Wno-non-template-friend)
-    add_compile_options(-fcoroutines)
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    add_compile_options(-fcolor-diagnostics)
-endif ()
-
-add_library(P2300::p2300 ALIAS p2300)
+# Always enable colored output
+target_compile_options(p2300_executable_flags INTERFACE
+                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
+                       -fcolor-diagnostics>
+                       $<$<CXX_COMPILER_ID:GNU>:-fdiagnostics-color=always>
+                       )
 
 # Now, set up test executable
 enable_testing()
@@ -185,7 +198,7 @@ set(test_sourceFiles
 add_executable(test.P2300 ${test_sourceFiles})
 
 target_include_directories(test.P2300 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(test.P2300 PUBLIC P2300::p2300 Catch2::Catch2)
+target_link_libraries(test.P2300 PUBLIC P2300::p2300 p2300_executable_flags Catch2::Catch2)
 
 # Discover the Catch2 test built by the application
 include(CTest)
@@ -195,7 +208,7 @@ catch_discover_tests(test.P2300)
 # Set up examples
 function(def_example target sourceFile)
     add_executable(${target} ${sourceFile})
-    target_link_libraries(${target} PRIVATE P2300::p2300)
+    target_link_libraries(${target} PRIVATE P2300::p2300 p2300_executable_flags)
 endfunction()
 
 def_example(clangd.helper "examples/_clangd_helper_file.cpp")
