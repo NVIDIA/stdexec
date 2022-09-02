@@ -224,8 +224,8 @@ This example builds an asynchronous computation of an inclusive scan:
 ```c++
 using namespace std::execution;
 
-sender_of<std::size_t> auto async_read(                                       // 1
-    sender_of<std::span<std::byte>> auto buffer,                              // 1
+sender_of<set_value_t(std::size_t)> auto async_read(                          // 1
+    sender_of<set_value_t(std::span<std::byte>)> auto buffer,                 // 1
     auto handle);                                                             // 1
 
 struct dynamic_buffer {                                                       // 3
@@ -233,7 +233,7 @@ struct dynamic_buffer {                                                       //
   std::size_t size;                                                           // 3
 };                                                                            // 3
 
-sender_of<dynamic_buffer> auto async_read_array(auto handle) {                // 2
+sender_of<set_value_t(dynamic_buffer)> auto async_read_array(auto handle) {   // 2
   return just(dynamic_buffer{})                                               // 4
        | let_value([handle] (dynamic_buffer& buf) {                           // 5
            return just(std::as_writeable_bytes(std::span(&buf.size, 1))       // 6
@@ -1078,16 +1078,21 @@ This proposal also draws heavily from our experience with [Thrust](https://githu
 
 The changes since R5 are as follows:
 
-<b>Enhancements:</b>
-
-  * Reorder constraints of the `scheduler` concept to avoid constraint recursion
-    when used in tandem with poorly-constrained, implicitly convertible types.
-
 <b>Fixes:</b>					 
 
   * Fix typo in the specification of `in_place_stop_source` about the relative
     lifetimes of the tokens and the source that produced them.
-					 
+
+<b>Enhancements:</b>
+
+  * Reorder constraints of the `scheduler` concept to avoid constraint recursion
+    when used in tandem with poorly-constrained, implicitly convertible types.
+  * Re-express the `sender_of` concept to be more ergonomic and general.
+  * Make the specification of the alias templates `value_types_of_t` and
+    `error_types_of_t`, and the variable template `sends_done` more concise by
+    expressing them in terms of a new exposition-only alias template
+    <code><i>gather-signatures</i></code>.
+
 ## R5 ## {#r5}
 
 The changes since R4 are as follows:
@@ -3505,7 +3510,7 @@ explicit in_place_stop_callback(in_place_stop_token st, C&& cb)
 </pre>
 
 6. *Effects*: Unregisters the callback from the stop state of the associated `in_place_stop_source` object, if any.
-    The destructor does not block waiting for the execution of another callback registered by an associated stop_­callback.
+    The destructor does not block waiting for the execution of another callback registered by an associated `stop_callback`.
     If `callback_` is concurrently executing on another thread, then the return from the invocation of `callback_` strongly happens before ([intro.races]) `callback_` is destroyed.
     If `callback_` is executing on the current thread, then the destructor does not block ([defns.block]) waiting for the return from the invocation of `callback_`.
 
@@ -3701,7 +3706,7 @@ namespace std::execution {
   template&lt;class S, class R>
     concept sender_to = <i>see-below</i>;
 
-  template&ltclass S, class E = no_env, class... Ts>
+  template&ltclass S, class Sig, class E = no_env>
     concept sender_of = <i>see below</i>;
 
   template&lt;class... Ts>
@@ -3911,12 +3916,12 @@ namespace std::execution {
   template &lt;
     sender Sndr,
     class Env = no_env,
-    <i>valid-completion-signatures&lt;Env></i> AddlSigs = completion_signatures<>,
+    <i>valid-completion-signatures</i>&lt;Env> AddlSigs = completion_signatures<>,
     template &lt;class...> class SetValue = <i>/* see below */</i>,
     template &lt;class> class SetError = <i>/* see below */</i>,
-    <i>valid-completion-signatures&lt;Env></i> SetStopped = completion_signatures&lt;set_stopped_t()>>
+    <i>valid-completion-signatures</i>&lt;Env> SetStopped = completion_signatures&lt;set_stopped_t()>>
       requires sender&lt;Sndr, Env>
-  using make_completion_signatures = completion_signatures<<i>/* see below */</i>>;
+  using make_completion_signatures = completion_signatures&lt;<i>/* see below */</i>>;
 
   // [exec.ctx], execution contexts
   class run_loop;
@@ -4099,7 +4104,7 @@ namespace std::execution {
         copy_constructible&lt;remove_cvref_t&lt;S>>;
     </pre>
 
-2. Let `S` be the type of a scheduler and let `E` be the type of an execution environment for which `sender<schedule_result_t<S>, E>` is `true`. Then `sender_of<schedule_result_t<S>, E>` shall be `true`.
+2. Let `S` be the type of a scheduler and let `E` be the type of an execution environment for which `sender<schedule_result_t<S>, E>` is `true`. Then `sender_of<schedule_result_t<S>, set_value_t(), E>` shall be `true`.
 
 3. None of a scheduler's copy constructor, destructor, equality comparison, or `swap` member functions shall exit via an exception.
 
@@ -4395,17 +4400,49 @@ enum class forward_progress_guarantee {
         };
     </pre>
 
-3. The `sender_of` concept defines the requirements for a sender type that on successful completion sends the specified set of value types.
+3. The `sender_of` concept defines the requirements for a sender type that
+    completes with the completion signature specified for the given completion
+    channel. 
 
     <pre highlight=c++>
-    template&ltclass S, class E = no_env, class... Ts>
+    template &lt;class> struct <i>sender-of-helper</i>; <i>// exposition only</i>
+    template &lt;class R, class... As>
+      struct <i>sender-of-helper</i>&lt;R(As...)> {
+        using <i>tag</i> = R;
+
+        template &lt;class... Bs>
+          using <i>as-sig</i> = R(Bs...);
+      };
+
+    template &lt;class S, class Sig, class E = no_env>
       concept sender_of =
-        sender&ltS, E> &&
-        same_as&lt
-          <i>type-list</i>&ltTs...>,
-          value_types_of_t&ltS, E, <i>type-list</i>, type_identity_t>
-        >;
+        sender&lt;S, E> &&
+        same_as&lt;
+          <i>type-list</i>&lt;Sig>,
+          <i>gather-signatures</i>&lt;  <i>// See [exec.utils.cmplsigs]</i>
+            typename <i>sender-of-helper</i>&lt;Sig>::<i>tag</i>,
+            S, E,
+            <i>sender-of-helper</i>&lt;Sig>::template <i>as-sig</i>, <i>type-list</i>>>;
     </pre>
+
+    1. [*Example:*
+        <pre highlight=c++>
+        auto s1 = execution::just() | execution::then([]{});
+        using S1 = decltype(s1);
+
+        static_assert(execution::sender_of&lt;S1, execution::set_value_t()>);
+        static_assert(execution::sender_of&lt;S1, execution::set_error_t(exception_ptr)>);
+        static_assert(!execution::sender_of&lt;S1, execution::set_stopped_t()>);
+
+        auto s2 = s1 | execution::let_error([](auto) { return execution::just('a'); });
+        using S2 = decltype(s2);
+
+        static_assert(!execution::sender_of&lt;S2, execution::set_value_t()>);
+        static_assert(!execution::sender_of&lt;S2, execution::set_value_t(char)>);
+        static_assert(!execution::sender_of&lt;S2, execution::set_error_t(exception_ptr)>);
+        static_assert(!execution::sender_of&lt;S2, execution::set_stopped_t()>);
+        </pre>
+        -- *end example*]
 
 ### Completion signatures <b>[exec.sndtraits]</b> ### {#spec-exec.sndtraits}
 
@@ -4735,7 +4772,7 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
         values equivalent to `auto(vs)...` to a receiver connected to it, the
         behavior of calling `execution::transfer_just(s, vs...)` is undefined.
 
-        * <i>Mandates:</i>  `execution::sender_of<R, no_env, decltype(auto(vs))...>`, where `R` is the type of the `tag_invoke` expression above.
+        * <i>Mandates:</i>  `execution::sender_of<R, execution::set_value_t(decltype(auto(vs))...)>`, where `R` is the type of the `tag_invoke` expression above.
 
     2. Otherwise, `execution::transfer(execution::just(vs...), s)`.
 
@@ -6336,86 +6373,72 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
      </pre>
      -- <i>end example</i>]
 
-3. This section makes use of the following exposition-only concept:
+3. This section makes use of the following exposition-only entities:
 
     <pre highlight="c++">
-    template &lt;class Fn>
+    template&lt;class Fn>
       concept <i>completion-signature</i> = <i>see below</i>;
     </pre>
 
-    1. A type `Fn` satisfies <code><i>completion-signature</i></code> if it is a function type with one of the following forms:
+    1. A type `Fn` satisfies <code><i>completion-signature</i></code> if and only if it is a function type with one of the following forms:
 
         * <code>set_value_t(<i>Vs</i>...)</code>, where <code><i>Vs</i></code> is an arbitrary parameter pack.
         * <code>set_error_t(<i>E</i>)</code>, where <code><i>E</i></code> is an arbitrary type.
         * `set_stopped_t()`
 
-    2. Otherwise, `Fn` does not satisfy <code><i>completion-signature</i></code>.
+    <pre highlight="c++">
+    template &lt;class Tag,
+              class S,
+              class E,
+              template &lt;class...> class Tuple,
+              template &lt;class...> class Variant>
+        requires sender&lt;S, E>
+      using <i>gather-signatures</i> = <i>see below</i>;
+    </pre>
+
+    2. Let `Fns...` be a template parameter pack of the arguments of the
+        `completion_signatures` instantiation named by
+        `completion_signatures_of_t<S, E>`, let <code><i>TagFns</i></code> be a
+        template parameter pack of the function types in `Fns` whose return types
+        are `Tag`, and let
+        <code><i>Ts<i><sub>n</sub></i></i></code> be a template parameter
+        pack of the function argument types in the <code><i>n</i></code>-th type
+        in <code><i>TagFns</i></code>. Then, given two variadic templates
+        <code><i>Tuple</i></code> and <code><i>Variant</i></code>, the type
+        <code><i>gather-signatures</i>&lt;Tag, S, E, <i>Tuple</i>, <i>Variant</i>></code>
+        names the type
+        <code><i>Variant</i>&lt;<i>Tuple</i>&lt;<i>Ts<i><sub>0</sub></i></i>...>,
+        <i>Tuple</i>&lt;<i>Ts<i><sub>1</sub></i></i>...>, ...
+        <i>Tuple</i>&lt;<i>Ts<i><sub>m-1</sub></i></i>...>></code>, where
+        <code><i>m</i></code> is the size of the parameter pack
+        <code><i>TagFns</i></code>.
 
 4.  <pre highlight="c++">
     template &lt;<i>completion-signature</i>... Fns>
       struct completion_signatures {};
-    </pre>
 
-5.  <pre highlight="c++">
-    template&lt;class S,
-            class E = no_env,
-            template &lt;class...> class Tuple = <i>decayed-tuple</i>,
-            template &lt;class...> class Variant = <i>variant-or-empty</i>>
+    template &lt;class S,
+              class E = no_env,
+              template &lt;class...> class Tuple = <i>decayed-tuple</i>,
+              template &lt;class...> class Variant = <i>variant-or-empty</i>>
         requires sender&lt;S, E>
-      using value_types_of_t = <i>see below</i>;
-    </pre>
+      using value_types_of_t =
+          <i>gather-signatures</i>&lt;set_value_t, S, E, Tuple, Variant>;
 
-    * Let `Fns...` be a template parameter pack of the arguments of the
-        `completion_signatures` instantiation named by
-        `completion_signatures_of_t<S, E>`, let <code><i>ValueFns</i></code> be a
-        template parameter pack of the function types in `Fns` whose return types
-        are `execution::set_value_t`, and let
-        <code><i>Values<i><sub>n</sub></i></i></code> be a template parameter
-        pack of the function argument types in the <code><i>n</i></code>-th type
-        in <code><i>ValueFns</i></code>. Then, given two variadic templates
-        <code><i>Tuple</i></code> and <code><i>Variant</i></code>, the type
-        <code>value_types_of_t&lt;S, E, <i>Tuple</i>, <i>Variant</i>></code>
-        names the type
-        <code><i>Variant</i>&lt;<i>Tuple</i>&lt;<i>Values<i><sub>0</sub></i></i>...>,
-        <i>Tuple</i>&lt;<i>Values<i><sub>1</sub></i></i>...>, ...
-        <i>Tuple</i>&lt;<i>Values<i><sub>m-1</sub></i></i>...>></code>, where
-        <code><i>m</i></code> is the size of the parameter pack
-        <code><i>ValueFns</i></code>.
-
-6.  <pre highlight="c++">
-    template&lt;class S,
-            class E = no_env,
-            template &lt;class...> class Variant = <i>variant-or-empty</i>>
+    template &lt;class S,
+              class E = no_env,
+              template &lt;class...> class Variant = <i>variant-or-empty</i>>
         requires sender&lt;S, E>
-      using error_types_of_t = <i>see below</i>;
-    </pre>
+      using error_types_of_t =
+          <i>gather-signatures</i>&lt;set_error_t, S, E, type_identity_t, Variant>;
 
-    * Let `Fns...` be a template parameter pack of the arguments of the
-        `completion_signatures` instantiation named by
-        `completion_signatures_of_t<S, E>`, let <code><i>ErrorFns</i></code> be a
-        template parameter pack of the function types in `Fns` whose return types
-        are `execution::set_error_t`, and let
-        <code><i>Error<i><sub>n</sub></i></i></code> be the function argument
-        type in the <code><i>n</i></code>-th type in
-        <code><i>ErrorFns</i></code>. Then, given a variadic template
-        <code><i>Variant</i></code>, the type <code>error_types_of_t&lt;S, E,
-        <i>Variant</i>></code> names the type
-        <code><i>Variant</i>&lt;<i>Error<i><sub>0</sub></i></i>,
-        <i>Error<i><sub>1</sub></i></i>, ...
-        <i>Error<i><sub>m-1</sub></i></i>></code>, where <code><i>m</i></code> is
-        the size of the parameter pack <code><i>ErrorFns</i></code>.
-
-7.  <pre highlight="c++">
-    template&lt;class S, class E = no_env>
+    template &lt;class S, class E = no_env>
         requires sender&lt;S, E>
-      inline constexpr bool sends_stopped = <i>see below</i>;
+      inline constexpr bool sends_stopped =
+          !same_as&lt;
+            <i>type-list</i>&lt;>,
+            <i>gather-signatures</i>&lt;set_stopped_t, S, E, <i>type-list</i>, <i>type-list</i>>>;
     </pre>
-
-    * Let `Fns...` be a template parameter pack of the arguments of the
-        `completion_signatures` instantiation named by
-        `completion_signatures_of_t<S, E>`. `sends_stopped<S, E>` is `true` if at
-        least one of the types in `Fns` is `execution::set_stopped_t()`;
-        otherwise, `false`.
 
 ### `execution::make_completion_signatures` <b>[exec.utils.mkcmplsigs]</b> ### {#spec-execution.snd_rec_utils.make_completion_sigs}
 
@@ -6457,14 +6480,14 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
     </pre>
 
 4.  <pre highlight="c++">
-    template &lt;
-      execution::sender Sndr,
-      class Env = execution::no_env,
-      <i>valid-completion-signatures&lt;Env></i> AddlSigs = execution::completion_signatures&lt;>,
-      template &lt;class...> class SetValue = <i>default-set-value</i>,
-      template &lt;class> class SetError = <i>default-set-error</i>,
-      <i>valid-completion-signatures&lt;Env></i> SetStopped =
-          execution::completion_signatures&lt;set_stopped_t()>>
+    template &lt;execution::sender Sndr,
+              class Env = execution::no_env,
+              <i>valid-completion-signatures</i>&lt;Env> AddlSigs =
+                  execution::completion_signatures&lt;>,
+              template &lt;class...> class SetValue = <i>default-set-value</i>,
+              template &lt;class> class SetError = <i>default-set-error</i>,
+              <i>valid-completion-signatures</i>&lt;Env> SetStopped =
+                  execution::completion_signatures&lt;set_stopped_t()>>
         requires sender&lt;Sndr, Env>
     using make_completion_signatures =
       execution::completion_signatures&lt;<i>/* see below */</i>>;
@@ -6571,7 +6594,7 @@ template &lt;class E>  // arguments are not associated entities ([lib.tmpl-heads
   class <i>run-loop-sender</i>;
   </pre>
 
-  1. <code><i>run-loop-sender</i></code> is an implementation defined type that models the `sender_of` concept; <i>i.e.,</i> <code>sender_of&lt;<i>run-loop-sender</i>></code> is `true`. Additionally, the types reported by its `error_types` associated type is `exception_ptr`, and the value of its `sends_stopped` trait is `true`.
+  1. <code><i>run-loop-sender</i></code> is an implementation-defined type such that <code>sender_of&lt;<i>run-loop-sender</i>, set_value_t()></code> is `true`. Additionally, the types reported by its `error_types` associated type is `exception_ptr`, and the value of its `sends_stopped` trait is `true`.
 
   2. An instance of <code><i>run-loop-sender</i></code> remains valid until the end of the lifetime of its associated `execution::run_loop` instance.
 
