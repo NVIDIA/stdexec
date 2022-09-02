@@ -1,2 +1,5 @@
 build/
+.cache
+.vscode
 .gitattributes
+compile_commands.json
