@@ -20,6 +20,9 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
+#include <examples/schedulers/static_thread_pool.hpp>
+
+#include <vector>
 
 namespace ex = std::execution;
 
@@ -183,3 +186,53 @@ TEST_CASE("bulk function in not called on stop", "[adaptors][bulk]") {
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
 }
+
+TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
+  example::static_thread_pool pool{4};
+  ex::scheduler auto sch = pool.get_scheduler();
+
+  SECTION("Without values in the set_value channel") {
+    for (int n = 0; n < 9; n++) {
+      std::vector<int> counter(n, 42);
+
+      auto snd = ex::transfer_just(sch) 
+               | ex::bulk(n, [&counter](int idx) { counter[idx] = 0; })
+               | ex::bulk(n, [&counter](int idx) { counter[idx]++; });
+      _P2300::this_thread::sync_wait(std::move(snd));
+
+      const std::size_t actual = std::count(counter.begin(), counter.end(), 1);
+      const std::size_t expected = n;
+
+      CHECK(expected == actual);
+    }
+  }
+
+  SECTION("With values in the set_value channel") {
+    for (int n = 0; n < 9; n++) {
+      std::vector<int> counter(n, 42);
+
+      auto snd = ex::transfer_just(sch, 42) 
+               | ex::bulk(n, [&counter](int idx, int val) { if (val == 42) { counter[idx] = 0; } })
+               | ex::bulk(n, [&counter](int idx, int val) { if (val == 42) { counter[idx]++; } });
+      auto [val] = _P2300::this_thread::sync_wait(std::move(snd)).value();
+
+      CHECK(val == 42);
+
+      const std::size_t actual = std::count(counter.begin(), counter.end(), 1);
+      const std::size_t expected = n;
+
+      CHECK(expected == actual);
+    }
+  }
+
+  SECTION("With exception") {
+    constexpr int n = 9;
+    auto snd = ex::transfer_just(sch) 
+             | ex::bulk(n, [](int idx) {
+                 throw std::runtime_error("bulk");
+               });
+
+    CHECK_THROWS_AS(_P2300::this_thread::sync_wait(std::move(snd)), std::runtime_error);
+  }
+}
+
