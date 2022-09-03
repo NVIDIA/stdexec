@@ -106,10 +106,15 @@ TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_
   CHECK_FALSE(res.has_value());
 }
 
+template <class T>
+auto always(T t) {
+  return [t](auto&&...) mutable { return std::move(t); };
+}
+
 TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wait]") {
   ex::sender auto snd =
       fallible_just{13} //
-      | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
+      | ex::let_error(always(ex::just(std::string{"err"})));
   check_val_types<type_array<type_array<int>, type_array<std::string>>>(snd);
   static_assert(!std::invocable<decltype(sync_wait), decltype(snd)>);
 }
@@ -117,7 +122,7 @@ TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wa
 TEST_CASE("sync_wait_with_variant accepts multi-variant senders", "[consumers][sync_wait_with_variant]") {
   ex::sender auto snd =
       fallible_just{13}
-      | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
+      | ex::let_error(always(ex::just(std::string{"err"})));
   check_val_types<type_array<type_array<int>, type_array<std::string>>>(snd);
   static_assert(std::invocable<decltype(sync_wait_with_variant), decltype(snd)>);
 
@@ -236,7 +241,7 @@ TEST_CASE("sync_wait can be customized without scheduler", "[consumers][sync_wai
   CHECK(std::get<0>(res.value()) == "ciao");
 }
 
-using multi_value_impl_t = decltype(fallible_just{std::string{}} | ex::let_error([](std::exception_ptr) { return ex::just(0); }));
+using multi_value_impl_t = decltype(fallible_just{std::string{}} | ex::let_error(always(ex::just(0))));
 struct my_multi_value_sender_t {
   std::string str_;
   using completion_signatures = ex::completion_signatures_of_t<multi_value_impl_t>;
