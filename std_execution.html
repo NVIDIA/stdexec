@@ -2727,8 +2727,8 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
    <h4 class="heading settled" data-level="1.3.3" id="example-async-dynamically-sized-read"><span class="secno">1.3.3. </span><span class="content">Asynchronous dynamically-sized read</span><a class="self-link" href="#example-async-dynamically-sized-read"></a></h4>
 <pre class="language-c++ highlight"><c- n>using</c-> <c- n>namespace</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
 
-<c- n>sender_of</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-><c- o>></c-> <c- k>auto</c-> <c- n>async_read</c-><c- p>(</c->                                       <c- c1>// 1</c->
-    <c- n>sender_of</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>span</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>byte</c-><c- o>>></c-> <c- k>auto</c-> <c- n>buffer</c-><c- p>,</c->                              <c- c1>// 1</c->
+<c- n>sender_of</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- b>size_t</c-><c- p>)</c-><c- o>></c-> <c- k>auto</c-> <c- n>async_read</c-><c- p>(</c->                          <c- c1>// 1</c->
+    <c- n>sender_of</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>span</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>byte</c-><c- o>></c-><c- p>)</c-><c- o>></c-> <c- k>auto</c-> <c- n>buffer</c-><c- p>,</c->                 <c- c1>// 1</c->
     <c- k>auto</c-> <c- n>handle</c-><c- p>);</c->                                                             <c- c1>// 1</c->
 
 <c- k>struct</c-> <c- nc>dynamic_buffer</c-> <c- p>{</c->                                                       <c- c1>// 3</c->
@@ -2736,7 +2736,7 @@ We introduced parallel algorithms to the C++ Standard Library in C++17, and whil
   <c- n>std</c-><c- o>::</c-><c- b>size_t</c-> <c- n>size</c-><c- p>;</c->                                                           <c- c1>// 3</c->
 <c- p>};</c->                                                                            <c- c1>// 3</c->
 
-<c- n>sender_of</c-><c- o>&lt;</c-><c- n>dynamic_buffer</c-><c- o>></c-> <c- k>auto</c-> <c- n>async_read_array</c-><c- p>(</c-><c- k>auto</c-> <c- n>handle</c-><c- p>)</c-> <c- p>{</c->                <c- c1>// 2</c->
+<c- n>sender_of</c-><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>(</c-><c- n>dynamic_buffer</c-><c- p>)</c-><c- o>></c-> <c- k>auto</c-> <c- n>async_read_array</c-><c- p>(</c-><c- k>auto</c-> <c- n>handle</c-><c- p>)</c-> <c- p>{</c->   <c- c1>// 2</c->
   <c- k>return</c-> <c- n>just</c-><c- p>(</c-><c- n>dynamic_buffer</c-><c- p>{})</c->                                               <c- c1>// 4</c->
        <c- o>|</c-> <c- n>let_value</c-><c- p>([</c-><c- n>handle</c-><c- p>]</c-> <c- p>(</c-><c- n>dynamic_buffer</c-><c- o>&amp;</c-> <c- n>buf</c-><c- p>)</c-> <c- p>{</c->                           <c- c1>// 5</c->
            <c- k>return</c-> <c- n>just</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>as_writeable_bytes</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>span</c-><c- p>(</c-><c- o>&amp;</c-><c- n>buf</c-><c- p>.</c-><c- n>size</c-><c- p>,</c-> <c- mi>1</c-><c- p>))</c->       <c- c1>// 6</c->
@@ -3566,17 +3566,22 @@ declarative syntax.</p>
    <h2 class="heading settled" data-level="2" id="revisions"><span class="secno">2. </span><span class="content">Revision history</span><a class="self-link" href="#revisions"></a></h2>
    <h3 class="heading settled" data-level="2.1" id="r6"><span class="secno">2.1. </span><span class="content">R6</span><a class="self-link" href="#r6"></a></h3>
    <p>The changes since R5 are as follows:</p>
-   <p><b>Enhancements:</b></p>
-   <ul>
-    <li data-md>
-     <p>Reorder constraints of the <code class="highlight"><c- n>scheduler</c-></code> concept to avoid constraint recursion
-when used in tandem with poorly-constrained, implicitly convertible types.</p>
-   </ul>
    <p><b>Fixes:</b></p>
    <ul>
     <li data-md>
      <p>Fix typo in the specification of <code class="highlight"><c- n>in_place_stop_source</c-></code> about the relative
 lifetimes of the tokens and the source that produced them.</p>
+   </ul>
+   <p><b>Enhancements:</b></p>
+   <ul>
+    <li data-md>
+     <p>Reorder constraints of the <code class="highlight"><c- n>scheduler</c-></code> concept to avoid constraint recursion
+when used in tandem with poorly-constrained, implicitly convertible types.</p>
+    <li data-md>
+     <p>Re-express the <code class="highlight"><c- n>sender_of</c-></code> concept to be more ergonomic and general.</p>
+    <li data-md>
+     <p>Make the specification of the alias templates <code class="highlight"><c- n>value_types_of_t</c-></code> and <code class="highlight"><c- n>error_types_of_t</c-></code>, and the variable template <code class="highlight"><c- n>sends_done</c-></code> more concise by
+expressing them in terms of a new exposition-only alias template <code class="highlight"><i><c- n>gather</c-><c- o>-</c-><c- n>signatures</c-></i></code>.</p>
    </ul>
    <h3 class="heading settled" data-level="2.2" id="r5"><span class="secno">2.2. </span><span class="content">R5</span><a class="self-link" href="#r5"></a></h3>
    <p>The changes since R4 are as follows:</p>
@@ -5606,7 +5611,7 @@ The <code class="highlight"><c- n>in_place_stop_callback</c-></code> object bein
    <ol start="6">
     <li data-md>
      <p><em>Effects</em>: Unregisters the callback from the stop state of the associated <code class="highlight"><c- n>in_place_stop_source</c-></code> object, if any.
-The destructor does not block waiting for the execution of another callback registered by an associated stop_­callback.
+The destructor does not block waiting for the execution of another callback registered by an associated <code class="highlight"><c- n>stop_callback</c-></code>.
 If <code class="highlight"><c- n>callback_</c-></code> is concurrently executing on another thread, then the return from the invocation of <code class="highlight"><c- n>callback_</c-></code> strongly happens before ([intro.races]) <code class="highlight"><c- n>callback_</c-></code> is destroyed.
 If <code class="highlight"><c- n>callback_</c-></code> is executing on the current thread, then the destructor does not block ([defns.block]) waiting for the return from the invocation of <code class="highlight"><c- n>callback_</c-></code>.</p>
     <li data-md>
@@ -5812,7 +5817,7 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>R</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>sender_to</c-> <c- o>=</c-> <i><c- n>see</c-><c- o>-</c-><c- n>below</c-></i><c- p>;</c->
 
-  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
+  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>Sig</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- o>></c->
     <c- k>concept</c-> <c- nc>sender_of</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
 
   <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
@@ -6022,10 +6027,10 @@ If <code class="highlight"><c- n>callback_</c-></code> is executing on the curre
   <c- k>template</c-> <c- o>&lt;</c->
     <c- n>sender</c-> <c- n>Sndr</c-><c- p>,</c->
     <c- k>class</c-> <c- nc>Env</c-> <c- o>=</c-> <c- n>no_env</c-><c- p>,</c->
-    <i><c- n>valid</c-><c- o>-</c-><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-><c- o>&lt;</c-><c- n>Env</c-><c- o>></c-></i> <c- n>AddlSigs</c-> <c- o>=</c-> <c- n>completion_signatures</c-><c- o>&lt;></c-><c- p>,</c->
+    <i><c- n>valid</c-><c- o>-</c-><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-></i><c- o>&lt;</c-><c- n>Env</c-><c- o>></c-> <c- n>AddlSigs</c-> <c- o>=</c-> <c- n>completion_signatures</c-><c- o>&lt;></c-><c- p>,</c->
     <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>SetValue</c-> <c- o>=</c-> <i><c- d>/* see below */</c-></i><c- p>,</c->
     <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- o>></c-> <c- k>class</c-> <c- nc>SetError</c-> <c- o>=</c-> <i><c- d>/* see below */</c-></i><c- p>,</c->
-    <i><c- n>valid</c-><c- o>-</c-><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-><c- o>&lt;</c-><c- n>Env</c-><c- o>></c-></i> <c- n>SetStopped</c-> <c- o>=</c-> <c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_stopped_t</c-><c- p>()</c-><c- o>>></c->
+    <i><c- n>valid</c-><c- o>-</c-><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-></i><c- o>&lt;</c-><c- n>Env</c-><c- o>></c-> <c- n>SetStopped</c-> <c- o>=</c-> <c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_stopped_t</c-><c- p>()</c-><c- o>>></c->
       <c- k>requires</c-> <c- n>sender</c-><c- o>&lt;</c-><c- n>Sndr</c-><c- p>,</c-> <c- n>Env</c-><c- o>></c->
   <c- k>using</c-> <c- n>make_completion_signatures</c-> <c- o>=</c-> <c- n>completion_signatures</c-><c- o>&lt;</c-><i><c- d>/* see below */</c-></i><c- o>></c-><c- p>;</c->
 
@@ -6231,7 +6236,7 @@ are not potentially-throwing and are core constant expressions if <code class="h
     <c- n>copy_constructible</c-><c- o>&lt;</c-><c- n>remove_cvref_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>>></c-><c- p>;</c->
 </pre>
     <li data-md>
-     <p>Let <code class="highlight"><c- n>S</c-></code> be the type of a scheduler and let <code class="highlight"><c- n>E</c-></code> be the type of an execution environment for which <code class="highlight"><c- n>sender</c-><c- o>&lt;</c-><c- n>schedule_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code>. Then <code class="highlight"><c- n>sender_of</c-><c- o>&lt;</c-><c- n>schedule_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> shall be <code class="highlight">true</code>.</p>
+     <p>Let <code class="highlight"><c- n>S</c-></code> be the type of a scheduler and let <code class="highlight"><c- n>E</c-></code> be the type of an execution environment for which <code class="highlight"><c- n>sender</c-><c- o>&lt;</c-><c- n>schedule_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code>. Then <code class="highlight"><c- n>sender_of</c-><c- o>&lt;</c-><c- n>schedule_result_t</c-><c- o>&lt;</c-><c- n>S</c-><c- o>></c-><c- p>,</c-> <c- n>set_value_t</c-><c- p>(),</c-> <c- n>E</c-><c- o>></c-></code> shall be <code class="highlight">true</code>.</p>
     <li data-md>
      <p>None of a scheduler’s copy constructor, destructor, equality comparison, or <code class="highlight"><c- n>swap</c-></code> member functions shall exit via an exception.</p>
     <li data-md>
@@ -6556,15 +6561,48 @@ to successfully return. [<i>Note:</i> this allows for the receiver to manage the
     <c- p>};</c->
 </pre>
     <li data-md>
-     <p>The <code class="highlight"><c- n>sender_of</c-></code> concept defines the requirements for a sender type that on successful completion sends the specified set of value types.</p>
-<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>Ts</c-><c- o>></c->
+     <p>The <code class="highlight"><c- n>sender_of</c-></code> concept defines the requirements for a sender type that
+completes with the completion signature specified for the given completion
+channel.</p>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- o>></c-> <c- k>struct</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>of</c-><c- o>-</c-><c- n>helper</c-></i><c- p>;</c-> <i><c- c1>// exposition only</c-></i>
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>R</c-><c- p>,</c-> <c- k>class</c-><c- p>...</c-> <c- n>As</c-><c- o>></c->
+  <c- k>struct</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>of</c-><c- o>-</c-><c- n>helper</c-></i><c- o>&lt;</c-><c- n>R</c-><c- p>(</c-><c- n>As</c-><c- p>...)</c-><c- o>></c-> <c- p>{</c->
+    <c- k>using</c-> <i><c- n>tag</c-></i> <c- o>=</c-> <c- n>R</c-><c- p>;</c->
+
+    <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-> <c- n>Bs</c-><c- o>></c->
+      <c- k>using</c-> <i><c- n>as</c-><c- o>-</c-><c- n>sig</c-></i> <c- o>=</c-> <c- n>R</c-><c- p>(</c-><c- n>Bs</c-><c- p>...);</c->
+  <c- p>};</c->
+
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>Sig</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- o>></c->
   <c- k>concept</c-> <c- nc>sender_of</c-> <c- o>=</c->
     <c- n>sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-> <c- o>&amp;&amp;</c->
     <c- n>same_as</c-><c- o>&lt;</c->
-      <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>&lt;</c-><c- n>Ts</c-><c- p>...</c-><c- o>></c-><c- p>,</c->
-      <c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- p>,</c-> <c- n>type_identity_t</c-><c- o>></c->
-    <c- o>></c-><c- p>;</c->
+      <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>&lt;</c-><c- n>Sig</c-><c- o>></c-><c- p>,</c->
+      <i><c- n>gather</c-><c- o>-</c-><c- n>signatures</c-></i><c- o>&lt;</c->  <i><c- c1>// See [exec.utils.cmplsigs]</c-></i>
+        <c- k>typename</c-> <i><c- nc>sender</c-><c- o>-</c-><c- n>of</c-><c- o>-</c-><c- n>helper</c-></i><c- o>&lt;</c-><c- n>Sig</c-><c- o>>::</c-><i><c- n>tag</c-></i><c- p>,</c->
+        <c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c->
+        <i><c- n>sender</c-><c- o>-</c-><c- n>of</c-><c- o>-</c-><c- n>helper</c-></i><c- o>&lt;</c-><c- n>Sig</c-><c- o>>::</c-><c- k>template</c-> <i><c- n>as</c-><c- o>-</c-><c- n>sig</c-></i><c- p>,</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>>></c-><c- p>;</c->
 </pre>
+     <ol>
+      <li data-md>
+       <p>[<em>Example:</em></p>
+<pre class="highlight"><c- k>auto</c-> <c- n>s1</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>()</c-> <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>then</c-><c- p>([]{});</c->
+<c- k>using</c-> <c- n>S1</c-> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>s1</c-><c- p>);</c->
+
+<c- k>static_assert</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>S1</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>()</c-><c- o>></c-><c- p>);</c->
+<c- k>static_assert</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>S1</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-><c- p>);</c->
+<c- k>static_assert</c-><c- p>(</c-><c- o>!</c-><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>S1</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>set_stopped_t</c-><c- p>()</c-><c- o>></c-><c- p>);</c->
+
+<c- k>auto</c-> <c- n>s2</c-> <c- o>=</c-> <c- n>s1</c-> <c- o>|</c-> <c- n>execution</c-><c- o>::</c-><c- n>let_error</c-><c- p>([](</c-><c- k>auto</c-><c- p>)</c-> <c- p>{</c-> <c- k>return</c-> <c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- sc>'a'</c-><c- p>);</c-> <c- p>});</c->
+<c- k>using</c-> <c- n>S2</c-> <c- o>=</c-> <c- k>decltype</c-><c- p>(</c-><c- n>s2</c-><c- p>);</c->
+
+<c- k>static_assert</c-><c- p>(</c-><c- o>!</c-><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>S2</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>()</c-><c- o>></c-><c- p>);</c->
+<c- k>static_assert</c-><c- p>(</c-><c- o>!</c-><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>S2</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(</c-><c- b>char</c-><c- p>)</c-><c- o>></c-><c- p>);</c->
+<c- k>static_assert</c-><c- p>(</c-><c- o>!</c-><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>S2</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>exception_ptr</c-><c- p>)</c-><c- o>></c-><c- p>);</c->
+<c- k>static_assert</c-><c- p>(</c-><c- o>!</c-><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>S2</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>set_stopped_t</c-><c- p>()</c-><c- o>></c-><c- p>);</c->
+</pre>
+       <p>-- <em>end example</em>]</p>
+     </ol>
    </ol>
    <h4 class="heading settled" data-level="10.8.1" id="spec-exec.sndtraits"><span class="secno">10.8.1. </span><span class="content">Completion signatures <b>[exec.sndtraits]</b></span><a class="self-link" href="#spec-exec.sndtraits"></a></h4>
    <ol>
@@ -6882,7 +6920,7 @@ values equivalent to <code class="highlight"><c- k>auto</c-><c- p>(</c-><c- n>vs
 behavior of calling <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer_just</c-><c- p>(</c-><c- n>s</c-><c- p>,</c-> <c- n>vs</c-><c- p>...)</c-></code> is undefined.</p>
        <ul>
         <li data-md>
-         <p><i>Mandates:</i> <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>no_env</c-><c- p>,</c-> <c- k>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>(</c-><c- n>vs</c-><c- p>))...</c-><c- o>></c-></code>, where <code class="highlight"><c- n>R</c-></code> is the type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above.</p>
+         <p><i>Mandates:</i> <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>sender_of</c-><c- o>&lt;</c-><c- n>R</c-><c- p>,</c-> <c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-><c- p>(</c-><c- k>decltype</c-><c- p>(</c-><c- k>auto</c-><c- p>(</c-><c- n>vs</c-><c- p>))...)</c-><c- o>></c-></code>, where <code class="highlight"><c- n>R</c-></code> is the type of the <code class="highlight"><c- n>tag_invoke</c-></code> expression above.</p>
        </ul>
       <li data-md>
        <p>Otherwise, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-><c- p>(</c-><c- n>execution</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>vs</c-><c- p>...),</c-> <c- n>s</c-><c- p>)</c-></code>.</p>
@@ -8405,13 +8443,13 @@ to the signatures of the receiver’s completion signals.</p>
 </pre>
      <p>-- <i>end example</i>]</p>
     <li data-md>
-     <p>This section makes use of the following exposition-only concept:</p>
-<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Fn</c-><c- o>></c->
+     <p>This section makes use of the following exposition-only entities:</p>
+<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>Fn</c-><c- o>></c->
   <c- k>concept</c-> <i><c- nc>completion</c-><c- o>-</c-><c- n>signature</c-></i> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
 </pre>
      <ol>
       <li data-md>
-       <p>A type <code class="highlight"><c- n>Fn</c-></code> satisfies <code class="highlight"><i><c- n>completion</c-><c- o>-</c-><c- n>signature</c-></i></code> if it is a function type with one of the following forms:</p>
+       <p>A type <code class="highlight"><c- n>Fn</c-></code> satisfies <code class="highlight"><i><c- n>completion</c-><c- o>-</c-><c- n>signature</c-></i></code> if and only if it is a function type with one of the following forms:</p>
        <ul>
         <li data-md>
          <p><code class="highlight"><c- n>set_value_t</c-><c- p>(</c-><i><c- n>Vs</c-></i><c- p>...)</c-></code>, where <code class="highlight"><i><c- n>Vs</c-></i></code> is an arbitrary parameter pack.</p>
@@ -8420,55 +8458,49 @@ to the signatures of the receiver’s completion signals.</p>
         <li data-md>
          <p><code class="highlight"><c- n>set_stopped_t</c-><c- p>()</c-></code></p>
        </ul>
+     </ol>
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>Tag</c-><c- p>,</c->
+          <c- k>class</c-> <c- nc>S</c-><c- p>,</c->
+          <c- k>class</c-> <c- nc>E</c-><c- p>,</c->
+          <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Tuple</c-><c- p>,</c->
+          <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-><c- o>></c->
+    <c- k>requires</c-> <c- n>sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c->
+  <c- k>using</c-> <i><c- n>gather</c-><c- o>-</c-><c- n>signatures</c-></i> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+</pre>
+     <ol start="2">
       <li data-md>
-       <p>Otherwise, <code class="highlight"><c- n>Fn</c-></code> does not satisfy <code class="highlight"><i><c- n>completion</c-><c- o>-</c-><c- n>signature</c-></i></code>.</p>
+       <p>Let <code class="highlight"><c- n>Fns</c-><c- p>...</c-></code> be a template parameter pack of the arguments of the <code class="highlight"><c- n>completion_signatures</c-></code> instantiation named by <code class="highlight"><c- n>completion_signatures_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code>, let <code class="highlight"><i><c- n>TagFns</c-></i></code> be a
+template parameter pack of the function types in <code class="highlight"><c- n>Fns</c-></code> whose return types
+are <code class="highlight"><c- n>Tag</c-></code>, and let <code class="highlight"><i><c- n>Ts</c-><i><sub><c- n>n</c-></sub></i></i></code> be a template parameter
+pack of the function argument types in the <code class="highlight"><i><c- n>n</c-></i></code>-th type
+in <code class="highlight"><i><c- n>TagFns</c-></i></code>. Then, given two variadic templates <code class="highlight"><i><c- n>Tuple</c-></i></code> and <code class="highlight"><i><c- n>Variant</c-></i></code>, the type <code class="highlight"><i><c- n>gather</c-><c- o>-</c-><c- n>signatures</c-></i><c- o>&lt;</c-><c- n>Tag</c-><c- p>,</c-> <c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>Tuple</c-></i><c- p>,</c-> <i><c- n>Variant</c-></i><c- o>></c-></code> names the type <code class="highlight"><i><c- n>Variant</c-></i><c- o>&lt;</c-><i><c- n>Tuple</c-></i><c- o>&lt;</c-><i><c- n>Ts</c-><i><sub><c- n>0</c-></sub></i></i><c- p>...</c-><c- o>></c-><c- p>,</c-> <i><c- n>Tuple</c-></i><c- o>&lt;</c-><i><c- n>Ts</c-><i><sub><c- n>1</c-></sub></i></i><c- p>...</c-><c- o>></c-><c- p>,</c-> <c- p>...</c-> <i><c- n>Tuple</c-></i><c- o>&lt;</c-><i><c- n>Ts</c-><i><sub><c- n>m</c-><c- mf>-1</c-></sub></i></i><c- mf>.</c-><c- p>..</c-><c- o>>></c-></code>, where <code class="highlight"><i><c- n>m</c-></i></code> is the size of the parameter pack <code class="highlight"><i><c- n>TagFns</c-></i></code>.</p>
      </ol>
     <li data-md>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><i><c- n>completion</c-><c- o>-</c-><c- n>signature</c-></i><c- p>...</c-> <c- n>Fns</c-><c- o>></c->
   <c- k>struct</c-> <c- nc>completion_signatures</c-> <c- p>{};</c->
-</pre>
-    <li data-md>
-<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c->
-        <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- p>,</c->
-        <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Tuple</c-> <c- o>=</c-> <i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- p>,</c->
-        <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-> <c- o>=</c-> <i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-></i><c- o>></c->
+
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c->
+          <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- p>,</c->
+          <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Tuple</c-> <c- o>=</c-> <i><c- n>decayed</c-><c- o>-</c-><c- n>tuple</c-></i><c- p>,</c->
+          <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-> <c- o>=</c-> <i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-></i><c- o>></c->
     <c- k>requires</c-> <c- n>sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c->
-  <c- k>using</c-> <c- n>value_types_of_t</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
-</pre>
-     <ul>
-      <li data-md>
-       <p>Let <code class="highlight"><c- n>Fns</c-><c- p>...</c-></code> be a template parameter pack of the arguments of the <code class="highlight"><c- n>completion_signatures</c-></code> instantiation named by <code class="highlight"><c- n>completion_signatures_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code>, let <code class="highlight"><i><c- n>ValueFns</c-></i></code> be a
-template parameter pack of the function types in <code class="highlight"><c- n>Fns</c-></code> whose return types
-are <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_value_t</c-></code>, and let <code class="highlight"><i><c- n>Values</c-><i><sub><c- n>n</c-></sub></i></i></code> be a template parameter
-pack of the function argument types in the <code class="highlight"><i><c- n>n</c-></i></code>-th type
-in <code class="highlight"><i><c- n>ValueFns</c-></i></code>. Then, given two variadic templates <code class="highlight"><i><c- n>Tuple</c-></i></code> and <code class="highlight"><i><c- n>Variant</c-></i></code>, the type <code class="highlight"><c- n>value_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>Tuple</c-></i><c- p>,</c-> <i><c- n>Variant</c-></i><c- o>></c-></code> names the type <code class="highlight"><i><c- n>Variant</c-></i><c- o>&lt;</c-><i><c- n>Tuple</c-></i><c- o>&lt;</c-><i><c- n>Values</c-><i><sub><c- n>0</c-></sub></i></i><c- p>...</c-><c- o>></c-><c- p>,</c-> <i><c- n>Tuple</c-></i><c- o>&lt;</c-><i><c- n>Values</c-><i><sub><c- n>1</c-></sub></i></i><c- p>...</c-><c- o>></c-><c- p>,</c-> <c- p>...</c-> <i><c- n>Tuple</c-></i><c- o>&lt;</c-><i><c- n>Values</c-><i><sub><c- n>m</c-><c- mf>-1</c-></sub></i></i><c- mf>.</c-><c- p>..</c-><c- o>>></c-></code>, where <code class="highlight"><i><c- n>m</c-></i></code> is the size of the parameter pack <code class="highlight"><i><c- n>ValueFns</c-></i></code>.</p>
-     </ul>
-    <li data-md>
-<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c->
-        <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- p>,</c->
-        <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-> <c- o>=</c-> <i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-></i><c- o>></c->
+  <c- k>using</c-> <c- n>value_types_of_t</c-> <c- o>=</c->
+      <i><c- n>gather</c-><c- o>-</c-><c- n>signatures</c-></i><c- o>&lt;</c-><c- n>set_value_t</c-><c- p>,</c-> <c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <c- n>Tuple</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-><c- p>;</c->
+
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c->
+          <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- p>,</c->
+          <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>Variant</c-> <c- o>=</c-> <i><c- n>variant</c-><c- o>-</c-><c- n>or</c-><c- o>-</c-><c- n>empty</c-></i><c- o>></c->
     <c- k>requires</c-> <c- n>sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c->
-  <c- k>using</c-> <c- n>error_types_of_t</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
-</pre>
-     <ul>
-      <li data-md>
-       <p>Let <code class="highlight"><c- n>Fns</c-><c- p>...</c-></code> be a template parameter pack of the arguments of the <code class="highlight"><c- n>completion_signatures</c-></code> instantiation named by <code class="highlight"><c- n>completion_signatures_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code>, let <code class="highlight"><i><c- n>ErrorFns</c-></i></code> be a
-template parameter pack of the function types in <code class="highlight"><c- n>Fns</c-></code> whose return types
-are <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-></code>, and let <code class="highlight"><i><c- n>Error</c-><i><sub><c- n>n</c-></sub></i></i></code> be the function argument
-type in the <code class="highlight"><i><c- n>n</c-></i></code>-th type in <code class="highlight"><i><c- n>ErrorFns</c-></i></code>. Then, given a variadic template <code class="highlight"><i><c- n>Variant</c-></i></code>, the type <code class="highlight"><c- n>error_types_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>Variant</c-></i><c- o>></c-></code> names the type <code class="highlight"><i><c- n>Variant</c-></i><c- o>&lt;</c-><i><c- n>Error</c-><i><sub><c- n>0</c-></sub></i></i><c- p>,</c-> <i><c- n>Error</c-><i><sub><c- n>1</c-></sub></i></i><c- p>,</c-> <c- p>...</c-> <i><c- n>Error</c-><i><sub><c- n>m</c-><c- mi>-1</c-></sub></i></i><c- o>></c-></code>, where <code class="highlight"><i><c- n>m</c-></i></code> is
-the size of the parameter pack <code class="highlight"><i><c- n>ErrorFns</c-></i></code>.</p>
-     </ul>
-    <li data-md>
-<pre class="highlight"><c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- o>></c->
+  <c- k>using</c-> <c- n>error_types_of_t</c-> <c- o>=</c->
+      <i><c- n>gather</c-><c- o>-</c-><c- n>signatures</c-></i><c- o>&lt;</c-><c- n>set_error_t</c-><c- p>,</c-> <c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <c- n>type_identity_t</c-><c- p>,</c-> <c- n>Variant</c-><c- o>></c-><c- p>;</c->
+
+<c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-> <c- nc>S</c-><c- p>,</c-> <c- k>class</c-> <c- nc>E</c-> <c- o>=</c-> <c- n>no_env</c-><c- o>></c->
     <c- k>requires</c-> <c- n>sender</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c->
-  <c- kr>inline</c-> <c- k>constexpr</c-> <c- b>bool</c-> <c- n>sends_stopped</c-> <c- o>=</c-> <i><c- n>see</c-> <c- n>below</c-></i><c- p>;</c->
+  <c- kr>inline</c-> <c- k>constexpr</c-> <c- b>bool</c-> <c- n>sends_stopped</c-> <c- o>=</c->
+      <c- o>!</c-><c- n>same_as</c-><c- o>&lt;</c->
+        <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>&lt;></c-><c- p>,</c->
+        <i><c- n>gather</c-><c- o>-</c-><c- n>signatures</c-></i><c- o>&lt;</c-><c- n>set_stopped_t</c-><c- p>,</c-> <c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- p>,</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- p>,</c-> <i><c- n>type</c-><c- o>-</c-><c- n>list</c-></i><c- o>>></c-><c- p>;</c->
 </pre>
-     <ul>
-      <li data-md>
-       <p>Let <code class="highlight"><c- n>Fns</c-><c- p>...</c-></code> be a template parameter pack of the arguments of the <code class="highlight"><c- n>completion_signatures</c-></code> instantiation named by <code class="highlight"><c- n>completion_signatures_of_t</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code>. <code class="highlight"><c- n>sends_stopped</c-><c- o>&lt;</c-><c- n>S</c-><c- p>,</c-> <c- n>E</c-><c- o>></c-></code> is <code class="highlight">true</code> if at
-least one of the types in <code class="highlight"><c- n>Fns</c-></code> is <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>set_stopped_t</c-><c- p>()</c-></code>;
-otherwise, <code class="highlight">false</code>.</p>
-     </ul>
    </ol>
    <h4 class="heading settled" data-level="10.10.3" id="spec-execution.snd_rec_utils.make_completion_sigs"><span class="secno">10.10.3. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>make_completion_signatures</c-></code> <b>[exec.utils.mkcmplsigs]</b></span><a class="self-link" href="#spec-execution.snd_rec_utils.make_completion_sigs"></a></h4>
    <ol>
@@ -8506,14 +8538,14 @@ completion signatures to generate a new instantiation of <code class="highlight"
     <c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>set_error_t</c-><c- p>(</c-><c- n>Err</c-><c- p>)</c-><c- o>></c-><c- p>;</c->
 </pre>
     <li data-md>
-<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c->
-  <c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- n>Sndr</c-><c- p>,</c->
-  <c- k>class</c-> <c- nc>Env</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>no_env</c-><c- p>,</c->
-  <i><c- n>valid</c-><c- o>-</c-><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-><c- o>&lt;</c-><c- n>Env</c-><c- o>></c-></i> <c- n>AddlSigs</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;></c-><c- p>,</c->
-  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>SetValue</c-> <c- o>=</c-> <i><c- k>default</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i><c- p>,</c->
-  <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- o>></c-> <c- k>class</c-> <c- nc>SetError</c-> <c- o>=</c-> <i><c- k>default</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>error</c-></i><c- p>,</c->
-  <i><c- n>valid</c-><c- o>-</c-><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-><c- o>&lt;</c-><c- n>Env</c-><c- o>></c-></i> <c- n>SetStopped</c-> <c- o>=</c->
-      <c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_stopped_t</c-><c- p>()</c-><c- o>>></c->
+<pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- n>execution</c-><c- o>::</c-><c- n>sender</c-> <c- n>Sndr</c-><c- p>,</c->
+          <c- k>class</c-> <c- nc>Env</c-> <c- o>=</c-> <c- n>execution</c-><c- o>::</c-><c- n>no_env</c-><c- p>,</c->
+          <i><c- n>valid</c-><c- o>-</c-><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-></i><c- o>&lt;</c-><c- n>Env</c-><c- o>></c-> <c- n>AddlSigs</c-> <c- o>=</c->
+              <c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;></c-><c- p>,</c->
+          <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- p>...</c-><c- o>></c-> <c- k>class</c-> <c- nc>SetValue</c-> <c- o>=</c-> <i><c- k>default</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>value</c-></i><c- p>,</c->
+          <c- k>template</c-> <c- o>&lt;</c-><c- k>class</c-><c- o>></c-> <c- k>class</c-> <c- nc>SetError</c-> <c- o>=</c-> <i><c- k>default</c-><c- o>-</c-><c- n>set</c-><c- o>-</c-><c- n>error</c-></i><c- p>,</c->
+          <i><c- n>valid</c-><c- o>-</c-><c- n>completion</c-><c- o>-</c-><c- n>signatures</c-></i><c- o>&lt;</c-><c- n>Env</c-><c- o>></c-> <c- n>SetStopped</c-> <c- o>=</c->
+              <c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c-><c- n>set_stopped_t</c-><c- p>()</c-><c- o>>></c->
     <c- k>requires</c-> <c- n>sender</c-><c- o>&lt;</c-><c- n>Sndr</c-><c- p>,</c-> <c- n>Env</c-><c- o>></c->
 <c- k>using</c-> <c- n>make_completion_signatures</c-> <c- o>=</c->
   <c- n>execution</c-><c- o>::</c-><c- n>completion_signatures</c-><c- o>&lt;</c-><i><c- d>/* see below */</c-></i><c- o>></c-><c- p>;</c->
@@ -8610,7 +8642,7 @@ of all the <code class="highlight"><c- n>completion_signatures</c-></code> insta
 </pre>
    <ol>
     <li data-md>
-     <p><code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code> is an implementation defined type that models the <code class="highlight"><c- n>sender_of</c-></code> concept; <i>i.e.,</i> <code class="highlight"><c- n>sender_of</c-><c- o>&lt;</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i><c- o>></c-></code> is <code class="highlight">true</code>. Additionally, the types reported by its <code class="highlight"><c- n>error_types</c-></code> associated type is <code class="highlight"><c- n>exception_ptr</c-></code>, and the value of its <code class="highlight"><c- n>sends_stopped</c-></code> trait is <code class="highlight">true</code>.</p>
+     <p><code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code> is an implementation-defined type such that <code class="highlight"><c- n>sender_of</c-><c- o>&lt;</c-><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i><c- p>,</c-> <c- n>set_value_t</c-><c- p>()</c-><c- o>></c-></code> is <code class="highlight">true</code>. Additionally, the types reported by its <code class="highlight"><c- n>error_types</c-></code> associated type is <code class="highlight"><c- n>exception_ptr</c-></code>, and the value of its <code class="highlight"><c- n>sends_stopped</c-></code> trait is <code class="highlight">true</code>.</p>
     <li data-md>
      <p>An instance of <code class="highlight"><i><c- n>run</c-><c- o>-</c-><c- n>loop</c-><c- o>-</c-><c- n>sender</c-></i></code> remains valid until the end of the lifetime of its associated <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>run_loop</c-></code> instance.</p>
     <li data-md>
