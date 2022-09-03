@@ -65,6 +65,10 @@ namespace example {
           return operation<std::__x<std::decay_t<Receiver>>>{pool_, (Receiver &&) r};
         }
 
+        static_thread_pool::scheduler make_scheduler_() const {
+          return static_thread_pool::scheduler{pool_};
+        }
+
         template <class Receiver>
         friend operation<std::__x<std::decay_t<Receiver>>>
         tag_invoke(std::execution::connect_t, sender s, Receiver&& r) {
@@ -74,7 +78,7 @@ namespace example {
         template <class CPO>
         friend static_thread_pool::scheduler
         tag_invoke(std::execution::get_completion_scheduler_t<CPO>, sender s) noexcept {
-          return static_thread_pool::scheduler{s.pool_};
+          return s.make_scheduler_();
         }
 
         friend struct static_thread_pool::scheduler;
@@ -227,6 +231,10 @@ namespace example {
 
           shared_state& shared_state_;
 
+          void enqueue() noexcept {
+            shared_state_.pool_.bulk_enqueue(&shared_state_, shared_state_.num_agents_required());
+          }
+
           template <class... As>
           friend void tag_invoke(std::execution::set_value_t, bulk_receiver&& self, As&&... as) noexcept {
             using tuple_t = std::execution::__decayed_tuple<As...>;
@@ -244,7 +252,7 @@ namespace example {
             }
 
             if (state.shape_) {
-              state.pool_.bulk_enqueue(&state, state.num_agents_required());
+              self.enqueue();
             } else {
               state.apply([&](auto&... args) {
                 std::execution::set_value((Receiver &&) state.receiver_,
@@ -276,9 +284,9 @@ namespace example {
                   std::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
                   std::__q<std::__mand>>>;
 
-          using bulk_receiver = bulk_receiver<SenderId, ReceiverId, Shape, Fun, may_throw>;
+          using bulk_rcvr = bulk_receiver<SenderId, ReceiverId, Shape, Fun, may_throw>;
           using shared_state = bulk_shared_state<SenderId, ReceiverId, Shape, Fun, may_throw>;
-          using inner_op_state = std::execution::connect_result_t<Sender, bulk_receiver>;
+          using inner_op_state = std::execution::connect_result_t<Sender, bulk_rcvr>;
 
           shared_state shared_state_;
 
@@ -290,7 +298,7 @@ namespace example {
 
           bulk_op_state(static_thread_pool &pool, Shape shape, Fun fn, Sender&& sender, Receiver receiver)
             : shared_state_(pool, (Receiver&&)receiver, shape, fn)
-            , inner_op_{std::execution::connect((Sender&&)sender, bulk_receiver{shared_state_})} {
+            , inner_op_{std::execution::connect((Sender&&)sender, bulk_rcvr{shared_state_})} {
           }
         };
 
