@@ -4763,7 +4763,6 @@ namespace _P2300::this_thread {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
-
       template <execution::sender<__impl::__env> _Sender>
         requires
           execution::__tag_invocable_with_completion_scheduler<
@@ -4783,7 +4782,7 @@ namespace _P2300::this_thread {
             sync_wait_with_variant_t,
             execution::__completion_scheduler_for<_Sender, execution::set_value_t>,
             _Sender>,
-          optional<__impl::__sync_wait_with_variant_result_t<_Sender>>>,
+          std::optional<__impl::__sync_wait_with_variant_result_t<_Sender>>>,
           "The type of tag_invoke(execution::sync_wait_with_variant, execution::get_completion_scheduler, S) "
           "must be sync-wait-with-variant-type<S, sync-wait-env>");
 
@@ -4803,7 +4802,7 @@ namespace _P2300::this_thread {
 
         static_assert(std::is_same_v<
           tag_invoke_result_t<sync_wait_with_variant_t, _Sender>,
-          optional<__impl::__sync_wait_with_variant_result_t<_Sender>>>,
+          std::optional<__impl::__sync_wait_with_variant_result_t<_Sender>>>,
           "The type of tag_invoke(execution::sync_wait_with_variant, S) "
           "must be sync-wait-with-variant-type<S, sync-wait-env>");
 
