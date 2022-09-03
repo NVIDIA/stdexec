@@ -1241,12 +1241,22 @@ namespace _P2300::execution {
         connect((_Sender&&) __sndr, (_Receiver&&) __rcvr);
       };
 
-  template<class _Sender, class _Env = no_env, class... _Ts>
+  template <class _Tag, class... _Args>
+    _Tag __tag_of_sig_(_Tag(*)(_Args...));
+  template <class _Sig>
+    using __tag_of_sig_t = decltype((__tag_of_sig_)((_Sig*) nullptr));
+
+  template<class _Sender, class _SetSig, class _Env = no_env>
     concept sender_of =
       sender<_Sender, _Env> &&
       same_as<
-        __types<__types<_Ts...>>,
-        value_types_of_t<_Sender, _Env, __types, __types>>;
+        __types<_SetSig>,
+        __gather_sigs_t<
+          __tag_of_sig_t<_SetSig>,
+          _Sender,
+          _Env,
+          __qf<__tag_of_sig_t<_SetSig>>,
+          __q<__types>>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd_queries], sender queries
