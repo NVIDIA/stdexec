@@ -235,8 +235,6 @@ TEST_CASE("sync_wait can be customized without scheduler", "[consumers][sync_wai
   CHECK(res.has_value());
   CHECK(std::get<0>(res.value()) == "ciao");
 }
-<<<<<<< HEAD
-=======
 
 using multi_value_impl_t = decltype(fallible_just{std::string{}} | ex::let_error([](std::exception_ptr) { return ex::just(0); }));
 struct my_multi_value_sender_t {
