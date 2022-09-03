@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23.1)
+cmake_minimum_required(VERSION 3.22.1)
 
 if(POLICY CMP0135)
   # make the timestamps of ExternalProject_ADD match the download time
