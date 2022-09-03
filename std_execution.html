@@ -2194,7 +2194,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">D2300R6<br><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>execution</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-09-02">2022-09-02</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Draft Proposal, <time class="dt-updated" datetime="2022-09-03">2022-09-03</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt class="editor">Authors:
@@ -4777,9 +4777,7 @@ such as <a href="#design-sender-consumer-start_detached">§ 4.22.1 execution::
    <p>Returns a sender describing the task of invoking the provided function with every index in the provided shape along with the values sent by the input sender. The returned sender completes once all invocations have completed, or an error has occurred. If it completes
 by sending values, they are equivalent to those sent by the input sender.</p>
    <p>No instance of <code class="highlight"><c- n>function</c-></code> will begin executing until the returned sender is started. Each invocation of <code class="highlight"><c- n>function</c-></code> runs in an execution agent whose forward progress guarantees are determined by the scheduler on which they are run. All agents created by a single use
-of <code class="highlight"><c- n>bulk</c-></code> execute with the same guarantee. This allows, for instance, a scheduler to execute all invocations of the function in parallel.</p>
-   <p>The <code class="highlight"><c- n>bulk</c-></code> operation is intended to be used at the point where the number of agents to be created is known and provided to <code class="highlight"><c- n>bulk</c-></code> via its <code class="highlight"><c- n>shape</c-></code> parameter. For some parallel computations, the number of agents to be created may be a function of the input data or
-dynamic conditions of the execution environment. In such cases, <code class="highlight"><c- n>bulk</c-></code> can be combined with additional operations such as <code class="highlight"><c- n>let_value</c-></code> to deliver dynamic shape information to the <code class="highlight"><c- n>bulk</c-></code> operation.</p>
+of <code class="highlight"><c- n>bulk</c-></code> execute with the same guarantee. The number of execution agents used by <code class="highlight"><c- n>bulk</c-></code> is not specified. This allows a scheduler to execute some invocations of the <code class="highlight"><c- n>function</c-></code> in parallel.</p>
    <p>In this proposal, only integral types are used to specify the shape of the bulk section. We expect that future papers may wish to explore extensions of the interface to explore additional kinds of shapes, such as multi-dimensional grids, that are commonly used for
 parallel computing tasks.</p>
    <h4 class="heading settled" data-level="4.21.10" id="design-sender-adaptor-split"><span class="secno">4.21.10. </span><span class="content"><code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code></span><a class="self-link" href="#design-sender-adaptor-split"></a></h4>
