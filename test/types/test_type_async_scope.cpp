@@ -27,8 +27,7 @@
 
 namespace ex = std::execution;
 
-template<class _Scheduler>
-void expect_empty(_Scheduler&, _P2519::execution::async_scope& scope) {
+void expect_empty(_P2519::execution::async_scope& scope) {
   ex::run_loop loop;
   ex::scheduler auto sch = loop.get_scheduler();
   CHECK_FALSE(std::this_thread::execute_may_block_caller(sch));
@@ -41,50 +40,58 @@ void expect_empty(_Scheduler&, _P2519::execution::async_scope& scope) {
 
 TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
   example::static_thread_pool ctx{1};
-  _P2519::execution::async_scope scope;
+
 
   ex::scheduler auto sch = ctx.get_scheduler();
 
   SECTION("after construction") {
-    expect_empty(sch, scope);
+    _P2519::execution::async_scope scope;
+    expect_empty(scope);
   }
 
   SECTION("after spawn") {
+    _P2519::execution::async_scope scope;
     ex::sender auto begin = ex::schedule(sch);
     scope.spawn(begin);
     _P2300::this_thread::sync_wait(scope.empty());
-    expect_empty(sch, scope);
+    expect_empty(scope);
   }
 
   SECTION("after nest result discarded") {
+    _P2519::execution::async_scope scope;
     ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto nst = scope.nest(begin);
-    (void)nst;
-    expect_empty(sch, scope);
+    {ex::sender auto nst = scope.nest(begin); (void)nst;}
+    _P2300::this_thread::sync_wait(scope.empty());
+    expect_empty(scope);
   }
 
   SECTION("after nest result started") {
+    _P2519::execution::async_scope scope;
     ex::sender auto begin = ex::schedule(sch);
     ex::sender auto nst = scope.nest(begin);
     auto op = ex::connect(std::move(nst), expect_void_receiver{});
     ex::start(op);
     _P2300::this_thread::sync_wait(scope.empty());
-    expect_empty(sch, scope);
+    expect_empty(scope);
   }
 
   SECTION("after spawn_future result discarded") {
+    _P2519::execution::async_scope scope;
     ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto ftr = scope.spawn_future(begin);
-    expect_empty(sch, scope);
+    {ex::sender auto ftr = scope.spawn_future(begin); (void)ftr;}
+    _P2300::this_thread::sync_wait(scope.empty());
+    expect_empty(scope);
   }
-
+  
   SECTION("after spawn_future result started") {
+    _P2519::execution::async_scope scope;
     ex::sender auto begin = ex::schedule(sch);
     ex::sender auto ftr = scope.spawn_future(begin);
+    _P2300::this_thread::sync_wait(scope.empty());
     auto op = ex::connect(std::move(ftr), expect_void_receiver{});
     ex::start(op);
     _P2300::this_thread::sync_wait(scope.empty());
-    expect_empty(sch, scope);
+    expect_empty(scope);
   }
 }
 
