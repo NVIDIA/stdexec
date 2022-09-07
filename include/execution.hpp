@@ -360,6 +360,9 @@ namespace _P2300::execution {
             __required_completions) } ->
           __receiver_concepts::__is_valid_completion<remove_cvref_t<_Receiver>>;
       };
+  
+  template<class _Env>
+    using __env_or_void = __if_c<std::is_same_v<_Env, no_env>, void, _Env>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
@@ -378,7 +381,7 @@ namespace _P2300::execution {
       template <class _Sender, class _Env = no_env>
         requires (__with_tag_invoke<_Sender, _Env> ||
                   __with_member_alias<_Sender> ||
-                  __awaitable<_Sender>)
+                  __awaitable<_Sender,__env_or_void<_Env>>)
       constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
@@ -394,7 +397,8 @@ namespace _P2300::execution {
           return _Completions{};
         } else {
           // awaitables go here
-          using _Result = __await_result_t<_Sender>;
+          using _Promise = __env_or_void<_Env>;
+          using _Result = __await_result_t<_Sender, _Promise>;
           if constexpr (std::is_void_v<_Result>) {
             return completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>{};
           } else {
@@ -420,8 +424,9 @@ namespace _P2300::execution {
 
   template <class _Sender, class _Env = no_env>
     concept sender =
-      __sender<_Sender, _Env> &&
-      __sender<_Sender, no_env> &&
+      ((__sender<_Sender, _Env> &&
+      __sender<_Sender, no_env> ) ||
+      __awaitable<_Sender,__env_or_void<_Env>>) &&
       move_constructible<remove_cvref_t<_Sender>> &&
       constructible_from<remove_cvref_t<_Sender>, _Sender>;
 
@@ -438,16 +443,21 @@ namespace _P2300::execution {
   // sender's metadata. If sender<S> and sender<S, Ctx> are both true, then they
   // had better report the same metadata. This completion signatures wrapper
   // enforces that at compile time.
+  // However when env is a promise type, the evaluation will lead to different
+  // results and hence not required.
   template <class _Sender, class _Env>
     struct __checked_completion_signatures {
      private:
       using _WithEnv = __completion_signatures_of_t<_Sender, _Env>;
-      using _WithoutEnv = __completion_signatures_of_t<_Sender, no_env>;
+      using _WithoutEnv = __completion_signatures_of_t<_Sender, 
+                          __if_c<__awaitable<_Sender, __env_or_void<_Env>>,
+                          _Env,no_env>>;
       static_assert(
         __one_of<
           _WithoutEnv,
           _WithEnv,
-          dependent_completion_signatures<no_env>>);
+          dependent_completion_signatures<no_env>> ||
+          __awaitable<_Sender,__env_or_void<_Env>>);
      public:
       using __t = _WithEnv;
     };
