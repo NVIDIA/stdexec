@@ -47,8 +47,6 @@ int main() {
   //                         });
   // std::this_thread::sync_wait(std::move(snd));  
 
-
-
   example::static_thread_pool ctx{8};
   scheduler auto sch = ctx.get_scheduler();                               // 1
 

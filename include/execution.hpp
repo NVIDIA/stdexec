@@ -67,6 +67,12 @@ _PRAGMA_IGNORE("-Wundefined-internal")
 #define _P2300_NON_LEXICAL_FRIENDSHIP 1
 #endif
 
+#ifdef __EDG__
+#pragma diagnostic push
+#pragma diag_suppress 1302
+#pragma diag_suppress 497
+#endif
+
 namespace std::execution {
   enum class forward_progress_guarantee {
     concurrent,
@@ -4541,5 +4547,9 @@ namespace std::execution::extra {
   template <class... _Sigs>
     inline constexpr __create::__create_t<_Sigs...> create {};
 } // namespace std::execution::extra
+
+#ifdef __EDG__
+#pragma diagnostic pop
+#endif
 
 _PRAGMA_POP()
