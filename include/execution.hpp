@@ -456,8 +456,7 @@ namespace _P2300::execution {
         __one_of<
           _WithoutEnv,
           _WithEnv,
-          dependent_completion_signatures<no_env>> ||
-          __awaitable<_Sender,__env_or_void<_Env>>);
+          dependent_completion_signatures<no_env>>);
      public:
       using __t = _WithEnv;
     };
