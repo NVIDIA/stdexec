@@ -25,22 +25,22 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
 using namespace std::execution;
-using namespace std::execution::P2519;
-using std::this_thread::sync_wait;
+using namespace _P2519::execution;
+using _P2300::this_thread::sync_wait;
 
-struct noop_receiver : receiver_adaptor<noop_receiver> {
-        friend receiver_adaptor<noop_receiver>;
-        template <class... _As>
-            // requires constructible_from<__impl::__future_result_t<_Sender2>, _As...>
-          void set_value(_As&&... ) noexcept {
-          }
-        void set_error(std::exception_ptr) noexcept {
-        }
-        void set_stopped() noexcept {
-        }
-        make_env_t<get_stop_token_t, std::never_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(std::never_stop_token{});
-        }
+class noop_receiver : receiver_adaptor<noop_receiver> {
+  friend receiver_adaptor<noop_receiver>;
+  template <class... _As>
+      // requires constructible_from<__impl::__future_result_t<_Sender2>, _As...>
+    void set_value(_As&&... ) noexcept {
+    }
+  void set_error(std::exception_ptr) noexcept {
+  }
+  void set_stopped() noexcept {
+  }
+  auto get_env() const& {
+    return make_env(with(get_stop_token, std::never_stop_token{}));
+  }
 };
 
 int main() {
@@ -51,12 +51,11 @@ int main() {
 
   sender auto begin = schedule(sch);                                      // 2
 
-  sender auto printVoid = then(begin, 
+  sender auto printVoid = then(begin,
     []()noexcept { printf("void\n"); });                                  // 3
 
-  sender auto printEmpty = then(on(sch, scope.empty()), 
+  sender auto printEmpty = then(on(sch, scope.empty()),
     []()noexcept{ printf("scope is empty\n"); });                         // 4
-
 
   printf("\n"
     "spawn void\n"
@@ -65,7 +64,6 @@ int main() {
   scope.spawn(printVoid);                                                 // 5
 
   sync_wait(printEmpty);
-
 
   printf("\n"
     "spawn void and 42\n"
@@ -77,11 +75,11 @@ int main() {
 
   sender auto fortyTwoFuture = scope.spawn_future(fortyTwo);              // 8
 
-  sender auto printFortyTwo = then(std::move(fortyTwoFuture), 
+  sender auto printFortyTwo = then(std::move(fortyTwoFuture),
     [](int fortyTwo)noexcept{ printf("%d\n", fortyTwo); });               // 9
 
   sender auto allDone = then(
-    when_all(printEmpty, std::move(printFortyTwo)), 
+    when_all(printEmpty, std::move(printFortyTwo)),
     [](auto&&...)noexcept{printf("\nall done\n");});                      // 10
 
   sync_wait(std::move(allDone));
@@ -91,7 +89,6 @@ int main() {
     (void)nest;
   }
   sync_wait(scope.empty());
-
 
   {
     sender auto nest = scope.nest(begin);
@@ -104,5 +101,4 @@ int main() {
     sync_wait(std::move(nest));
   }
   sync_wait(scope.empty());
-
 }

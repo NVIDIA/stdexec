@@ -22,24 +22,23 @@
 
 namespace ex = std::execution;
 
-// TODO: implement upon_error
-// TEST_CASE("then returns a sender", "[adaptors][upon_error]") {
-//   auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) {});
-//   static_assert(ex::sender<decltype(snd)>);
-//   (void)snd;
-// }
-// TEST_CASE("then with environment returns a sender", "[adaptors][upon_error]") {
-//   auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) {});
-//   static_assert(ex::sender<decltype(snd), empty_env>);
-//   (void)snd;
-// }
-// TEST_CASE("then simple example", "[adaptors][upon_error]") {
-//   bool called{false};
-//   auto snd = ex::upon_error(
-//       ex::just_error(std::exception_ptr{}), [&](std::exception_ptr) { called = true; });
-//   auto op = ex::connect(std::move(snd), expect_error_receiver{});
-//   ex::start(op);
-//   // The receiver checks that it's called
-//   // we also check that the function was invoked
-//   CHECK(called);
-// }
+TEST_CASE("upon_error returns a sender", "[adaptors][upon_error]") {
+  auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) {});
+  static_assert(ex::sender<decltype(snd)>);
+  (void)snd;
+}
+TEST_CASE("upon_error with environment returns a sender", "[adaptors][upon_error]") {
+  auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) {});
+  static_assert(ex::sender<decltype(snd), empty_env>);
+  (void)snd;
+}
+TEST_CASE("upon_error simple example", "[adaptors][upon_error]") {
+  bool called{false};
+  auto snd = ex::upon_error(
+      ex::just_error(std::exception_ptr{}), [&](std::exception_ptr) { called = true; return 0; });
+  auto op = ex::connect(std::move(snd), expect_value_receiver{0});
+  ex::start(op);
+  // The receiver checks that it's called
+  // we also check that the function was invoked
+  CHECK(called);
+}

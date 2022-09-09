@@ -31,7 +31,7 @@ struct fallible_just {
       ex::set_error_t(std::exception_ptr)>;
 
   template <class Receiver>
-  struct operation : non_movable {
+  struct operation : immovable {
     std::tuple<Values...> values_;
     Receiver rcvr_;
 

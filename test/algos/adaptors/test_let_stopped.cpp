@@ -13,10 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <__config.hpp>
-
-#if _P2300_GCC()
-#else
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
@@ -61,7 +57,7 @@ TEST_CASE("let_stopped can be piped", "[adaptors][let_stopped]") {
 TEST_CASE("let_stopped returning void can we waited on (cancel annihilation)",
     "[adaptors][let_stopped]") {
   ex::sender auto snd = ex::just_stopped() | ex::let_stopped([] { return ex::just(); });
-  std::this_thread::sync_wait(std::move(snd));
+  _P2300::this_thread::sync_wait(std::move(snd));
 }
 
 TEST_CASE(
@@ -163,7 +159,7 @@ TEST_CASE("let_stopped can be used instead of stopped_as_error", "[adaptors][let
   impulse_scheduler sched;
   ex::sender auto in_snd = ex::transfer_just(sched, 11);
   check_val_types<type_array<type_array<int>>>(in_snd);
-  check_err_types<type_array<std::exception_ptr>>(in_snd);
+  check_err_types<type_array<>>(in_snd);
   check_sends_stopped<true>(in_snd);
 
   ex::sender auto snd = std::move(in_snd) | ex::let_stopped([] { return ex::just_error(-1); });
@@ -214,5 +210,3 @@ TEST_CASE("let_stopped can be customized", "[adaptors][let_stopped]") {
              | ex::let_stopped([] { return ex::just(std::string{"stopped"}); });
   wait_for_value(std::move(snd), std::string{"Don't stop me now"});
 }
-
-#endif

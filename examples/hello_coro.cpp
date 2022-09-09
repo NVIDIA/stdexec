@@ -13,16 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined(__GNUC__) && !defined(__clang__)
-int main() { return 0; }
-#else
-
-#include <iostream>
 
 // Pull in the reference implementation of P2300:
 #include <execution.hpp>
 
-#if !_STD_NO_COROUTINES_
+#if _STD_NO_COROUTINES_
+int main() { return 0; }
+#else
+
+#include <iostream>
 #include "./task.hpp"
 
 using namespace std::execution;
@@ -46,10 +45,9 @@ task<std::optional<std::in_place_stop_token>> async_stop_token() {
 
 int main() try {
   // Awaitables are implicitly senders:
-  auto [i] = std::this_thread::sync_wait(async_answer2(just(42), just())).value();
+  auto [i] = _P2300::this_thread::sync_wait(async_answer2(just(42), just())).value();
   std::cout << "The answer is " << i.value() << '\n';
 } catch(std::exception & e) {
   std::cout << e.what() << '\n';
 }
-#endif
 #endif

@@ -20,24 +20,24 @@
 
 namespace ex = std::execution;
 
-struct my_oper : non_movable {
+struct my_oper : immovable {
   bool started_{false};
   friend void tag_invoke(ex::start_t, my_oper& self) { self.started_ = true; }
 };
 
-struct op_value /*: non_movable*/ { // Intentionally movable!
+struct op_value /*: immovable*/ { // Intentionally movable!
   bool* started_;
   friend void tag_invoke(ex::start_t, op_value self) { *self.started_ = true; }
 };
-struct op_rvalref : non_movable {
+struct op_rvalref : immovable {
   bool* started_;
   friend void tag_invoke(ex::start_t, op_rvalref&& self) { *self.started_ = true; }
 };
-struct op_ref : non_movable {
+struct op_ref : immovable {
   bool* started_;
   friend void tag_invoke(ex::start_t, op_ref& self) { *self.started_ = true; }
 };
-struct op_cref : non_movable {
+struct op_cref : immovable {
   bool* started_;
   friend void tag_invoke(ex::start_t, const op_cref& self) { *self.started_ = true; }
 };

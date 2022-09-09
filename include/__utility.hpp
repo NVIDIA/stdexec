@@ -20,7 +20,7 @@
 
 #include <__config.hpp>
 
-namespace std {
+namespace _P2300 {
   struct __ {};
 
   struct __ignore {
@@ -28,40 +28,46 @@ namespace std {
     __ignore(auto&&) noexcept {}
   };
 
+    // Before gcc-12, gcc really didn't like tuples or variants of immovable types
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+#  define _P2300_IMMOVABLE(_X) _X(_X&&)
+#else
+#  define _P2300_IMMOVABLE(_X) _X(_X&&) = delete
+#endif
+
+  struct __none_such {};
+
   template <class...>
     concept __typename = true;
 
   struct __immovable {
     __immovable() = default;
-    __immovable(__immovable&&) = delete;
+   private:
+    _P2300_IMMOVABLE(__immovable);
   };
+
+  template <class _T>
+    using __t = typename _T::__t;
 
   // For hiding a template type parameter from ADL
   template <class _T>
     struct __x_ {
-      struct __t {
-        using type = _T;
+      using __t = struct __t_ {
+        using __t = _T;
       };
     };
   template <class _T>
-    using __x = typename __x_<_T>::__t;
-
-  template <class _T>
-    using __t = typename _T::type;
+    using __x = __t<__x_<_T>>;
 
   template <bool _B>
-    using __bool = bool_constant<_B>;
+    using __bool = std::bool_constant<_B>;
 
-  template <size_t _N>
-    using __index = integral_constant<size_t, _N>;
+  template <std::size_t _N>
+    using __index = std::integral_constant<std::size_t, _N>;
 
   // Some utilities for manipulating lists of types at compile time
   template <class...>
-  struct __types
-#if defined(__GNUC__) && !defined(__clang__)
-  {}  // BUGBUG: GCC does not like this "incomplete type"
-#endif
-  ;
+    struct __types;
 
   template <class _T>
     using __id = _T;
@@ -70,13 +76,13 @@ namespace std {
     inline constexpr auto __v = _T::value;
 
   template <class _T, class _U>
-    inline constexpr bool __v<is_same<_T, _U>> = false;
+    inline constexpr bool __v<std::is_same<_T, _U>> = false;
 
   template <class _T>
-    inline constexpr bool __v<is_same<_T, _T>> = true;
+    inline constexpr bool __v<std::is_same<_T, _T>> = true;
 
   template <class _T, _T _I>
-    inline constexpr _T __v<integral_constant<_T, _I>> = _I;
+    inline constexpr _T __v<std::integral_constant<_T, _I>> = _I;
 
   template <template <class...> class _Fn>
     struct __q {
@@ -123,14 +129,14 @@ namespace std {
   template <class _Fn, class... _Front>
     using __mbind_front = __mbind_front_q<_Fn::template __f, _Front...>;
 
-  template <class _Fn, class... _Back>
-    using __mbind_front1 = __mbind_front_q1<_Fn::template __f, _Back...>;
+  template <class _Fn, class... _Front>
+    using __mbind_front1 = __mbind_front_q1<_Fn::template __f, _Front...>;
 
-  template <class _Fn, class... _Back>
-    using __mbind_front2 = __mbind_front_q2<_Fn::template __f, _Back...>;
+  template <class _Fn, class... _Front>
+    using __mbind_front2 = __mbind_front_q2<_Fn::template __f, _Front...>;
 
-  template <class _Fn, class... _Back>
-    using __mbind_front3 = __mbind_front_q3<_Fn::template __f, _Back...>;
+  template <class _Fn, class... _Front>
+    using __mbind_front3 = __mbind_front_q3<_Fn::template __f, _Front...>;
 
   template <template<class...> class _Fn, class... _Back>
     struct __mbind_back_q {
@@ -215,28 +221,28 @@ namespace std {
     struct __defer {
       template <class... _Args>
           requires __valid<_T, _Args...>
-        struct __f_ { using type = _T<_Args...>; };
+        struct __f_ { using __t = _T<_Args...>; };
       template <class _A>
           requires requires { typename _T<_A>; }
-        struct __f_<_A> { using type = _T<_A>; };
+        struct __f_<_A> { using __t = _T<_A>; };
       template <class _A, class _B>
           requires requires { typename _T<_A, _B>; }
-        struct __f_<_A, _B> { using type = _T<_A, _B>; };
+        struct __f_<_A, _B> { using __t = _T<_A, _B>; };
       template <class _A, class _B, class _C>
           requires requires { typename _T<_A, _B, _C>; }
-        struct __f_<_A, _B, _C> { using type = _T<_A, _B, _C>; };
+        struct __f_<_A, _B, _C> { using __t = _T<_A, _B, _C>; };
       template <class _A, class _B, class _C, class _D>
           requires requires { typename _T<_A, _B, _C, _D>; }
-        struct __f_<_A, _B, _C, _D> { using type = _T<_A, _B, _C, _D>; };
+        struct __f_<_A, _B, _C, _D> { using __t = _T<_A, _B, _C, _D>; };
       template <class _A, class _B, class _C, class _D, class _E>
           requires requires { typename _T<_A, _B, _C, _D, _E>; }
-        struct __f_<_A, _B, _C, _D, _E> { using type = _T<_A, _B, _C, _D, _E>; };
+        struct __f_<_A, _B, _C, _D, _E> { using __t = _T<_A, _B, _C, _D, _E>; };
       template <class... _Args>
         using __f = __t<__f_<_Args...>>;
     };
 
   template <class _T>
-    struct __constant {
+    struct __mconst {
       template <class...>
         using __f = _T;
     };
@@ -248,7 +254,7 @@ namespace std {
     };
 
   template <class _Init, class _Fn>
-    struct __right_fold {
+    struct __fold_right {
       template <class...>
         struct __f_ {};
       template <class _State, class _Head, class... _Tail>
@@ -258,7 +264,7 @@ namespace std {
         {};
       template <class _State>
         struct __f_<_State> {
-          using type = _State;
+          using __t = _State;
         };
       template <class... _Args>
         using __f = __t<__f_<_Init, _Args...>>;
@@ -272,12 +278,12 @@ namespace std {
           requires (sizeof...(_As) == 0) &&
             __minvocable<_Continuation, _As...>
         struct __f_<_As...> {
-          using type = __minvoke<_Continuation, _As...>;
+          using __t = __minvoke<_Continuation, _As...>;
         };
       template <template <class...> class _A, class... _As>
           requires __minvocable<_Continuation, _As...>
         struct __f_<_A<_As...>> {
-          using type = __minvoke<_Continuation, _As...>;
+          using __t = __minvoke<_Continuation, _As...>;
         };
       template <template <class...> class _A, class... _As,
                 template <class...> class _B, class... _Bs,
@@ -336,20 +342,20 @@ namespace std {
 
   struct __mcount {
     template <class... _Ts>
-      using __f = integral_constant<size_t, sizeof...(_Ts)>;
+      using __f = std::integral_constant<std::size_t, sizeof...(_Ts)>;
   };
 
   template <class _Fn>
     struct __mcount_if {
       template <class... _Ts>
         using __f =
-          integral_constant<size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
+          std::integral_constant<std::size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
     };
 
   template <class _T>
     struct __contains {
       template <class... _Args>
-        using __f = __bool<(__v<is_same<_T, _Args>> ||...)>;
+        using __f = __bool<(__v<std::is_same<_T, _Args>> ||...)>;
     };
 
   template <class _Continuation = __q<__types>>
@@ -377,7 +383,7 @@ namespace std {
         using __f =
           __mapply<
             _Continuation,
-            __minvoke<__right_fold<__types<>, __push_back_unique<>>, _Ts...>>;
+            __minvoke<__fold_right<__types<>, __push_back_unique<>>, _Ts...>>;
     };
 
   template <class...>
@@ -403,7 +409,7 @@ namespace std {
     struct __replace {
       template <class... _Args>
         using __f =
-          __minvoke<_Continuation, __if<is_same<_Args, _Old>, _New, _Args>...>;
+          __minvoke<_Continuation, __if<std::is_same<_Args, _Old>, _New, _Args>...>;
     };
 
   template <class _Old, class _Continuation = __q<__types>>
@@ -412,7 +418,7 @@ namespace std {
         using __f =
           __minvoke<
             __concat<_Continuation>,
-            __if<is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
+            __if<std::is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
     };
 
   template <class _Return>
@@ -440,14 +446,11 @@ namespace std {
     struct __front;
   template <class _A, class... _As>
     struct __front<_A, _As...> {
-      using type = _A;
+      using __t = _A;
     };
   template <class... _As>
       requires (sizeof...(_As) == 1)
     using __single_t = __t<__front<_As...>>;
-  template <class... _As>
-      requires (sizeof...(_As) == 1)
-    using __single0_t = __t<__front<_As...>>;
   template <class _Ty>
     struct __single_or {
       template <class... _As>
@@ -482,14 +485,14 @@ namespace std {
 
   // For emplacing non-movable types into optionals:
   template <class _Fn>
-      requires is_nothrow_move_constructible_v<_Fn>
+      requires std::is_nothrow_move_constructible_v<_Fn>
     struct __conv {
       _Fn __fn_;
-      using type = __call_result_t<_Fn>;
-      operator type() && noexcept(__nothrow_callable<_Fn>) {
+      using __t = __call_result_t<_Fn>;
+      operator __t() && noexcept(__nothrow_callable<_Fn>) {
         return ((_Fn&&) __fn_)();
       }
-      type operator()() && noexcept(__nothrow_callable<_Fn>) {
+      __t operator()() && noexcept(__nothrow_callable<_Fn>) {
         return ((_Fn&&) __fn_)();
       }
     };
@@ -497,7 +500,7 @@ namespace std {
     __conv(_Fn) -> __conv<_Fn>;
 
   template <class _T>
-    using __cref_t = const remove_reference_t<_T>&;
+    using __cref_t = const std::remove_reference_t<_T>&;
 
   template <class _Fn, class _Continuation = __q<__types>>
     struct __mzip_with2 {
@@ -509,19 +512,24 @@ namespace std {
             typename __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
           }
         struct __f_<_C<_Cs...>, _D<_Ds...>> {
-          using type = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+          using __t = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
         };
       template <class _C, class _D>
         using __f = __t<__f_<_C, _D>>;
     };
 
-  template <size_t... _Indices>
-    auto __mconvert_indices(index_sequence<_Indices...>)
+  template <std::size_t... _Indices>
+    auto __mconvert_indices(std::index_sequence<_Indices...>)
       -> __types<__index<_Indices>...>;
-  template <size_t _N>
+  template <std::size_t _N>
     using __mmake_index_sequence =
-      decltype(__mconvert_indices(make_index_sequence<_N>{}));
+      decltype(__mconvert_indices(std::make_index_sequence<_N>{}));
   template <class... _Ts>
     using __mindex_sequence_for =
       __mmake_index_sequence<sizeof...(_Ts)>;
+
+  template <class... _Bools>
+    using __mand = __bool<(__v<_Bools> &&...)>;
+  template <class... _Bools>
+    using __mor = __bool<(__v<_Bools> ||...)>;
 }

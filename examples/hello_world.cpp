@@ -13,13 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <__config.hpp>
-
-#if _P2300_GCC()
-int main() { return 0; }
-#else
-
 #include <iostream>
 
 // Pull in the reference implementation of P2300:
@@ -30,23 +23,7 @@ int main() { return 0; }
 using namespace std::execution;
 using std::this_thread::sync_wait;
 
-namespace ex = std::execution;
-
 int main() {
-  // ex::sender auto snd = ex::just() //
-  //                       | ex::then([] {
-  //                           throw std::logic_error{"error description"};
-  //                           return std::string{"ok"};
-  //                         }) //
-  //                       | ex::let_error([](std::exception_ptr eptr) {
-  //                           try {
-  //                             std::rethrow_exception(eptr);
-  //                           } catch (const std::exception& e) {
-  //                             return ex::just(std::string{e.what()});
-  //                           }
-  //                         });
-  // std::this_thread::sync_wait(std::move(snd));  
-
   example::static_thread_pool ctx{8};
   scheduler auto sch = ctx.get_scheduler();                               // 1
 
@@ -69,9 +46,9 @@ int main() {
   auto y = let_value(get_scheduler(), [](auto sched){
     return on(sched, then(just(),[]{std::cout << "from run_loop\n";return 42;}));
   });
-  sync_wait(std::move(y));
+  static_assert(sender<decltype(y), std::this_thread::__sync_wait::__impl::__env>);
+  //sync_wait(std::move(y));
+  //__debug_sender(std::move(y), make_env(with(get_scheduler, sch)));
 
-  sync_wait(when_all(just(42), get_scheduler(), get_stop_token()));
+  // sync_wait(when_all(just(42), get_scheduler(), get_stop_token()));
 }
-
-#endif

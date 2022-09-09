@@ -13,11 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <__config.hpp>
-
-#if _P2300_GCC()
-int main() { return 0; }
-#else
 
 // Pull in the reference implementation of P2300:
 #include <execution.hpp>
@@ -59,8 +54,6 @@ int main() {
   //   fail!
   //   fail!
   //   success!
-  auto [a] = std::this_thread::sync_wait(std::move(x)).value();
+  auto [a] = _P2300::this_thread::sync_wait(std::move(x)).value();
   (void) a;
 }
-
-#endif

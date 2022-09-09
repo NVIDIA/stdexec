@@ -63,11 +63,7 @@ struct impulse_scheduler {
         if (ex::get_stop_token(ex::get_env(self.receiver_)).stop_requested()) {
           ex::set_stopped((R &&) self.receiver_);
         } else {
-          try {
-            ex::set_value((R &&) self.receiver_);
-          } catch (...) {
-            ex::set_error((R &&) self.receiver_, std::current_exception());
-          }
+          ex::set_value((R &&) self.receiver_);
         }
       });
       self.data_->cv_.notify_all();
@@ -77,7 +73,6 @@ struct impulse_scheduler {
   struct my_sender {
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
-        ex::set_error_t(std::exception_ptr),                 //
         ex::set_stopped_t()>;
     data* shared_data_;
 
@@ -126,21 +121,16 @@ struct impulse_scheduler {
 //! Scheduler that executes everything inline, i.e., on the same thread
 struct inline_scheduler {
   template <typename R>
-  struct oper : non_movable {
+  struct oper : immovable {
     R recv_;
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
-      try {
-        ex::set_value((R &&) self.recv_);
-      } catch (...) {
-        ex::set_error((R &&) self.recv_, std::current_exception());
-      }
+      ex::set_value((R &&) self.recv_);
     }
   };
 
   struct my_sender {
-    using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                   //
-        ex::set_error_t(std::exception_ptr)>;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
     template <typename R>
     friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
       return {{}, (R &&) r};
@@ -162,7 +152,7 @@ struct inline_scheduler {
 template <typename E = std::exception_ptr>
 struct error_scheduler {
   template <typename R>
-  struct oper : non_movable {
+  struct oper : immovable {
     R recv_;
     E err_;
 
@@ -189,7 +179,7 @@ struct error_scheduler {
     }
   };
 
-  E err_;
+  E err_{};
 
   friend my_sender tag_invoke(ex::schedule_t, error_scheduler self) { return {(E &&) self.err_}; }
 
@@ -200,7 +190,7 @@ struct error_scheduler {
 //! Scheduler that returns a sender that always completes with cancellation.
 struct stopped_scheduler {
   template <typename R>
-  struct oper : non_movable {
+  struct oper : immovable {
     R recv_;
     friend void tag_invoke(ex::start_t, oper& self) noexcept { ex::set_stopped((R &&) self.recv_); }
   };

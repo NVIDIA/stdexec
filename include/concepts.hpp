@@ -19,10 +19,21 @@
 
 #if __has_include(<concepts>) && __cpp_lib_concepts	>= 202002
 #include <concepts>
+namespace __std_concepts_polyfill {
+  using std::same_as;
+  using std::integral;
+  using std::derived_from;
+  using std::convertible_to;
+  using std::equality_comparable;
+  using std::destructible;
+  using std::constructible_from;
+  using std::move_constructible;
+  using std::copy_constructible;
+}
 #else
 #include <type_traits>
 
-namespace std {
+namespace __std_concepts_polyfill {
   // C++20 concepts
   #if defined(__clang__)
   template<class _A, class _B>
@@ -45,29 +56,35 @@ namespace std {
 
   template<class _A, class _B>
     concept derived_from =
-      is_base_of_v<_B, _A> &&
-      is_convertible_v<const volatile _A*, const volatile _B*>;
+      std::is_base_of_v<_B, _A> &&
+      std::is_convertible_v<const volatile _A*, const volatile _B*>;
 
   template<class _From, class _To>
     concept convertible_to =
-      is_convertible_v<_From, _To> &&
+      std::is_convertible_v<_From, _To> &&
       requires(_From (&__fun)()) {
         static_cast<_To>(__fun());
       };
 
   template<class _T>
     concept equality_comparable =
-      requires(const remove_reference_t<_T>& __t) {
+      requires(const std::remove_reference_t<_T>& __t) {
         { __t == __t } -> convertible_to<bool>;
         { __t != __t } -> convertible_to<bool>;
       };
 
   template<class _T>
-    concept destructible = is_nothrow_destructible_v<_T>;
+    concept destructible = std::is_nothrow_destructible_v<_T>;
 
+#if __has_builtin(__is_constructible)
+  template<class _T, class... _As>
+    concept constructible_from =
+      destructible<_T> && __is_constructible(_T, _As...);
+#else
   template<class _T, class... _As>
     concept constructible_from =
       destructible<_T> && is_constructible_v<_T, _As...>;
+#endif
 
   template<class _T>
     concept move_constructible = constructible_from<_T, _T>;
@@ -76,26 +93,32 @@ namespace std {
     concept copy_constructible =
       move_constructible<_T> &&
       constructible_from<_T, _T const&>;
+} // namespace __std_concepts_polyfill
 
-  template<class _F, class... _As>
-    concept invocable = requires {
-      typename invoke_result_t<_F, _As...>;
-    };
+namespace std {
+  using namespace __std_concepts_polyfill;
 }
 #endif
 
-namespace std {
+namespace _P2300 {
+  using namespace __std_concepts_polyfill;
+  using std::decay_t;
+
   template<class _T, class _U>
     concept __decays_to =
       same_as<decay_t<_T>, _U>;
 
   template <class _C>
     concept __class =
-      is_class_v<_C> && __decays_to<_C, _C>;
+      std::is_class_v<_C> && __decays_to<_C, _C>;
 
   template <class _T, class... _As>
     concept __one_of =
       (same_as<_T, _As> ||...);
+
+  template <class _T, class... _Us>
+    concept __all_of =
+      (same_as<_T, _Us> &&...);
 
   template <class _T, class... _Us>
     concept __none_of =
@@ -123,4 +146,21 @@ namespace std {
     concept __is_instance_of =
       __is_instance_of_<_Ty, _T>;
 
-} // namespace std
+  template <class _Ty, template <class...> class _T>
+    concept __is_not_instance_of =
+      !__is_instance_of<_Ty, _T>;
+
+#if __has_builtin(__is_nothrow_constructible)
+  template<class _T, class... _As>
+    concept __nothrow_constructible_from =
+      constructible_from<_T, _As...> && __is_nothrow_constructible(_T, _As...);
+#else
+  template<class _T, class... _As>
+    concept __nothrow_constructible_from =
+      constructible_from<_T, _As...> && std::is_nothrow_constructible_v<_T, _As...>;
+#endif
+
+  template <class _Ty>
+    concept __nothrow_decay_copyable =
+      __nothrow_constructible_from<decay_t<_Ty>, _Ty>;
+} // namespace _P2300

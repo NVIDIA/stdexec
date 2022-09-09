@@ -65,15 +65,16 @@ class expect_void_receiver {
   bool called_{false};
 
   public:
-  expect_void_receiver(_Env env = _Env{}) : env_(env), called_(false) {}
+  expect_void_receiver() = default;
+  explicit expect_void_receiver(_Env env) : env_(std::move(env)) {}
   ~expect_void_receiver() { CHECK(called_); }
 
   expect_void_receiver(expect_void_receiver&& other)
-      : env_(other.env_)
+      : env_(std::move(other.env_))
       , called_(std::exchange(other.called_, true)) {
   }
   expect_void_receiver& operator=(expect_void_receiver&& other) {
-    env_ = other.env_;
+    env_ = std::move(other.env_);
     called_ = std::exchange(other.called_, true);
     return *this;
   }
@@ -99,7 +100,7 @@ class expect_void_receiver {
 struct expect_void_receiver_ex {
   bool* executed_;
 
-  template <class Ty>
+  template <class... Ty>
   friend void tag_invoke(ex::set_value_t, expect_void_receiver_ex&& self, const Ty&...) noexcept {
     *self.executed_ = true;
   }
@@ -138,7 +139,7 @@ class expect_value_receiver {
     CHECK(val == self.value_);
     self.called_ = true;
   }
-  template <class Ty>
+  template <class... Ty>
   friend void tag_invoke(ex::set_value_t, expect_value_receiver&&, const Ty&...) noexcept
       requires RuntimeCheck {
     FAIL_CHECK("set_value called with wrong value types on expect_value_receiver");
@@ -394,7 +395,7 @@ inline void wait_for_value(S&& snd, Ts&&... val) {
   static_assert(ex::__single_value_variant_sender<S>,
       "Sender passed to sync_wait needs to have one variant for sending set_value");
 
-  std::optional<std::tuple<Ts...>> res = std::this_thread::sync_wait((S &&) snd);
+  std::optional<std::tuple<Ts...>> res = _P2300::this_thread::sync_wait((S &&) snd);
   CHECK(res.has_value());
   std::tuple<Ts...> expected((Ts &&) val...);
   if constexpr (std::tuple_size_v<std::tuple<Ts...>> == 1)

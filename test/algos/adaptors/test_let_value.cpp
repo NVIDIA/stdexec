@@ -13,10 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <__config.hpp>
-
-#if _P2300_GCC()
-#else
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
@@ -61,7 +57,7 @@ TEST_CASE("let_value can be piped", "[adaptors][let_value]") {
 
 TEST_CASE("let_value returning void can we waited on", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just() | ex::let_value([] { return ex::just(); });
-  std::this_thread::sync_wait(std::move(snd));
+  _P2300::this_thread::sync_wait(std::move(snd));
 }
 
 TEST_CASE("let_value can be used to produce values", "[adaptors][let_value]") {
@@ -301,5 +297,3 @@ TEST_CASE("let_value can be customized", "[adaptors][let_value]") {
              | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
   wait_for_value(std::move(snd), std::string{"hallo"});
 }
-
-#endif

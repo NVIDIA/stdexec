@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-#include <__config.hpp>
-
-#if _P2300_GCC()
-#else
-
 #include <catch2/catch.hpp>
 #include <execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -55,6 +50,20 @@ TEST_CASE("let_error simple example", "[adaptors][let_error]") {
   // we also check that the function was invoked
   CHECK(called);
 }
+TEST_CASE("let_error simple example reference", "[adaptors][let_error]") {
+  bool called{false};
+  auto snd = ex::let_error(
+      ex::split(ex::just_error(std::exception_ptr{})), [&](std::exception_ptr) {
+        called = true;
+        return ex::just();
+      });
+  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  ex::start(op);
+  // The receiver checks that it's called
+  // we also check that the function was invoked
+  CHECK(called);
+}
+
 
 TEST_CASE("let_error can be piped", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just() | ex::let_error([](std::exception_ptr) { return ex::just(); });
@@ -65,7 +74,7 @@ TEST_CASE(
     "let_error returning void can be waited on (error annihilation)", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just_error(std::exception_ptr{}) |
                         ex::let_error([](std::exception_ptr) { return ex::just(); });
-  std::this_thread::sync_wait(std::move(snd));
+  _P2300::this_thread::sync_wait(std::move(snd));
 }
 
 //TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
@@ -230,10 +239,9 @@ TEST_CASE("let_error works when changing threads", "[adaptors][let_error]") {
   bool called{false};
   {
     // lunch some work on the thread pool
-    ex::sender auto snd = ex::on(pool.get_scheduler(),
-                              ex::just_error(7))               //
-                          | ex::let_error(int_err_transform{}) //
-                          | ex::then([&](int x) {
+    ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just_error(7)) //
+                          | ex::let_error(int_err_transform{})            //
+                          | ex::then([&](auto x) -> void {
                               CHECK(x == 13);
                               called = true;
                             });
@@ -279,7 +287,7 @@ TEST_CASE("let_error overrides error_types from input sender (and adds std::exce
   error_scheduler<int> sched3{43};
 
   // Returning ex::just_error
-  check_err_types<type_array<std::exception_ptr, std::string>>( //
+  check_err_types<type_array<>>( //
       ex::transfer_just(sched1)                                 //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
   check_err_types<type_array<std::exception_ptr, std::string>>( //
@@ -292,7 +300,7 @@ TEST_CASE("let_error overrides error_types from input sender (and adds std::exce
         }));
 
   // Returning ex::just
-  check_err_types<type_array<std::exception_ptr>>( //
+  check_err_types<type_array<>>( //
       ex::transfer_just(sched1)                    //
       | ex::let_error([](std::exception_ptr) { return ex::just(); }));
   check_err_types<type_array<std::exception_ptr>>( //
@@ -329,5 +337,3 @@ TEST_CASE("let_error can be customized", "[adaptors][let_error]") {
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
   wait_for_value(std::move(snd), std::string{"what error?"});
 }
-
-#endif

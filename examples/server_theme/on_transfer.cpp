@@ -32,34 +32,51 @@
  * - show how one can change the execution context
  * - exemplify the use of `on` and `transfer` algorithms
  */
-#include <__config.hpp>
-
-#if _P2300_GCC()
-int main() { return 0; }
-#else
 
 #include <iostream>
 #include <array>
 #include <string_view>
 #include <cstring>
+#include <mutex>
 
 // Pull in the reference implementation of P2300:
 #include <execution.hpp>
+#include <async_scope.hpp>
 // Use a thread pool
 #include "../schedulers/static_thread_pool.hpp"
 
 namespace ex = std::execution;
 
+struct sync_stream {
+private:
+  static std::mutex s_mtx_;
+
+public:
+  std::ostream& sout_;
+  std::unique_lock<std::mutex> lock_{s_mtx_};
+
+  template <class T>
+  friend sync_stream&& operator<<(sync_stream&& self, const T& value) {
+    self.sout_ << value;
+    return std::move(self);
+  }
+  friend sync_stream&& operator<<(sync_stream&& self, std::ostream& (*manip)(std::ostream&)) {
+    self.sout_ << manip;
+    return std::move(self);
+  }
+};
+std::mutex sync_stream::s_mtx_{};
+
 size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {
   const char fake_data[] = "Hello, world!";
-  size_t sz = sizeof(fake_data);
+  size_t sz = sizeof(fake_data) - 1;
   size_t count = std::min(sz, buffer_len);
-  std::strncpy(buffer, fake_data, count);
+  std::memcpy(buffer, fake_data, count);
   return count;
 }
 
 void process_read_data(const char* read_data, size_t read_len) {
-  std::cout << "Processing '" << std::string_view{read_data, read_len} << "'\n";
+  sync_stream{std::cout} << "Processing '" << std::string_view{read_data, read_len} << "'\n";
 }
 
 int main() {
@@ -71,6 +88,8 @@ int main() {
   ex::scheduler auto io_sched = io_pool.get_scheduler();
 
   std::array<std::byte, 16*1024> buffer;
+
+  _P2519::execution::async_scope scope;
 
   // Fake a couple of requests
   for (int i = 0; i < 10; i++) {
@@ -90,15 +109,11 @@ int main() {
         // done
         ;
 
-
     // execute the whole flow asynchronously
-    ex::start_detached(std::move(snd));
+    scope.spawn(std::move(snd));
   }
 
-  io_pool.request_stop();
-  work_pool.request_stop();
+  (void) _P2300::this_thread::sync_wait(scope.empty());
 
   return 0;
 }
-
-#endif

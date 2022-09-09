@@ -28,7 +28,7 @@
 #include <stop_token>
 #endif
 
-namespace std {
+namespace _P2300 {
   // [stoptoken.inplace], class in_place_stop_token
   class in_place_stop_token;
 
@@ -59,7 +59,7 @@ namespace std {
       __in_place_stop_callback_base* __next_ = nullptr;
       __in_place_stop_callback_base** __prev_ptr_ = nullptr;
       bool* __removed_during_callback_ = nullptr;
-      atomic<bool> __callback_completed_{false};
+      std::atomic<bool> __callback_completed_{false};
     };
 
     struct __spin_wait {
@@ -71,7 +71,7 @@ namespace std {
         } else {
           if (__count_ == 0)
             __count_ = __yield_threshold_;
-          this_thread::yield();
+          std::this_thread::yield();
         }
       }
 
@@ -117,7 +117,7 @@ namespace std {
 
     bool request_stop() noexcept;
     bool stop_requested() const noexcept {
-      return (__state_.load(memory_order_acquire) & __stop_requested_flag_) != 0;
+      return (__state_.load(std::memory_order_acquire) & __stop_requested_flag_) != 0;
     }
 
    private:
@@ -138,9 +138,9 @@ namespace std {
     static constexpr uint8_t __stop_requested_flag_ = 1;
     static constexpr uint8_t __locked_flag_ = 2;
 
-    mutable atomic<uint8_t> __state_{0};
+    mutable std::atomic<uint8_t> __state_{0};
     mutable __detail::__in_place_stop_callback_base* __callbacks_ = nullptr;
-    thread::id __notifying_thread_;
+    std::thread::id __notifying_thread_;
   };
 
   // [stoptoken.inplace], class in_place_stop_token
@@ -199,7 +199,7 @@ namespace std {
       template <class _Fun2>
         requires constructible_from<_Fun, _Fun2>
       explicit in_place_stop_callback(in_place_stop_token __token, _Fun2&& __fun)
-          noexcept(is_nothrow_constructible_v<_Fun, _Fun2>)
+          noexcept(std::is_nothrow_constructible_v<_Fun, _Fun2>)
         : __detail::__in_place_stop_callback_base(__token.__source_, &in_place_stop_callback::__execute_impl_)
         , __fun_((_Fun2&&) __fun) {
         __register_callback_();
@@ -232,7 +232,7 @@ namespace std {
   }
 
   inline in_place_stop_source::~in_place_stop_source() {
-    assert((__state_.load(memory_order_relaxed) & __locked_flag_) == 0);
+    assert((__state_.load(std::memory_order_relaxed) & __locked_flag_) == 0);
     assert(__callbacks_ == nullptr);
   }
 
@@ -240,7 +240,7 @@ namespace std {
     if (!__try_lock_unless_stop_requested_(true))
       return true;
 
-    __notifying_thread_ = this_thread::get_id();
+    __notifying_thread_ = std::this_thread::get_id();
 
     // We are responsible for executing callbacks.
     while (__callbacks_ != nullptr) {
@@ -250,7 +250,7 @@ namespace std {
       if (__callbacks_ != nullptr)
         __callbacks_->__prev_ptr_ = &__callbacks_;
 
-      __state_.store(__stop_requested_flag_, memory_order_release);
+      __state_.store(__stop_requested_flag_, std::memory_order_release);
 
       bool removed_during_callback = false;
       __callbk->__removed_during_callback_ = &removed_during_callback;
@@ -259,41 +259,41 @@ namespace std {
 
       if (!removed_during_callback) {
         __callbk->__removed_during_callback_ = nullptr;
-        __callbk->__callback_completed_.store(true, memory_order_release);
+        __callbk->__callback_completed_.store(true, std::memory_order_release);
       }
 
       __lock_();
     }
 
-    __state_.store(__stop_requested_flag_, memory_order_release);
+    __state_.store(__stop_requested_flag_, std::memory_order_release);
     return false;
   }
 
   inline uint8_t in_place_stop_source::__lock_() const noexcept {
     __detail::__spin_wait __spin;
-    auto __old_state = __state_.load(memory_order_relaxed);
+    auto __old_state = __state_.load(std::memory_order_relaxed);
     do {
       while ((__old_state & __locked_flag_) != 0) {
         __spin.__wait();
-        __old_state = __state_.load(memory_order_relaxed);
+        __old_state = __state_.load(std::memory_order_relaxed);
       }
     } while (!__state_.compare_exchange_weak(
         __old_state,
         __old_state | __locked_flag_,
-        memory_order_acquire,
-        memory_order_relaxed));
+        std::memory_order_acquire,
+        std::memory_order_relaxed));
 
     return __old_state;
   }
 
   inline void in_place_stop_source::__unlock_(uint8_t __old_state) const noexcept {
-    (void)__state_.store(__old_state, memory_order_release);
+    (void)__state_.store(__old_state, std::memory_order_release);
   }
 
   inline bool in_place_stop_source::__try_lock_unless_stop_requested_(
       bool __set_stop_requested) const noexcept {
     __detail::__spin_wait __spin;
-    auto __old_state = __state_.load(memory_order_relaxed);
+    auto __old_state = __state_.load(std::memory_order_relaxed);
     do {
       while (true) {
         if ((__old_state & __stop_requested_flag_) != 0) {
@@ -303,14 +303,14 @@ namespace std {
           break;
         } else {
           __spin.__wait();
-          __old_state = __state_.load(memory_order_relaxed);
+          __old_state = __state_.load(std::memory_order_relaxed);
         }
       }
     } while (!__state_.compare_exchange_weak(
         __old_state,
         __set_stop_requested ? (__locked_flag_ | __stop_requested_flag_) : __locked_flag_,
-        memory_order_acq_rel,
-        memory_order_relaxed));
+        std::memory_order_acq_rel,
+        std::memory_order_relaxed));
 
     // Lock acquired successfully
     return true;
@@ -352,7 +352,7 @@ namespace std {
 
       // Callback has either already been executed or is
       // currently executing on another thread.
-      if (this_thread::get_id() == notifying_thread) {
+      if (std::this_thread::get_id() == notifying_thread) {
         if (__callbk->__removed_during_callback_ != nullptr) {
           *__callbk->__removed_during_callback_ = true;
         }
@@ -360,7 +360,7 @@ namespace std {
         // Concurrently executing on another thread.
         // Wait until the other thread finishes executing the callback.
         __detail::__spin_wait __spin;
-        while (!__callbk->__callback_completed_.load(memory_order_acquire)) {
+        while (!__callbk->__callback_completed_.load(std::memory_order_acquire)) {
           __spin.__wait();
         }
       }
@@ -371,8 +371,8 @@ namespace std {
     concept stoppable_token =
       copy_constructible<_Token> &&
       move_constructible<_Token> &&
-      is_nothrow_copy_constructible_v<_Token> &&
-      is_nothrow_move_constructible_v<_Token> &&
+      std::is_nothrow_copy_constructible_v<_Token> &&
+      std::is_nothrow_move_constructible_v<_Token> &&
       equality_comparable<_Token> &&
       requires (const _Token& __token) {
         { __token.stop_requested() } noexcept -> __boolean_testable_;
@@ -403,4 +403,4 @@ namespace std {
         { _Token::stop_possible() } -> __boolean_testable_;
       } &&
       (!_Token::stop_possible());
-} // std
+} // namespace _P2300

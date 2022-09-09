@@ -13,10 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <__config.hpp>
-
-#if _P2300_GCC()
-#else
 
 #include <catch2/catch.hpp>
 #include <execution.hpp>
@@ -113,5 +109,3 @@ TEST_CASE(
   check_sends_stopped<false>( //
       ex::transfer_just(sched3, 3) | ex::stopped_as_optional());
 }
-
-#endif

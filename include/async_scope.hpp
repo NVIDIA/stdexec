@@ -17,7 +17,9 @@
 
 #include <execution.hpp>
 
-namespace std::execution::P2519 {
+namespace _P2519::execution {
+  using namespace _P2300::execution;
+
   /////////////////////////////////////////////////////////////////////////////
   // async_scope
   namespace __scope {
@@ -39,7 +41,7 @@ namespace std::execution::P2519 {
           using completion_signatures =
             execution::completion_signatures<
               execution::set_value_t(),
-              execution::set_error_t(exception_ptr)>;
+              execution::set_error_t(std::exception_ptr)>;
 
           template <__decays_to<__sender> _Self, receiver _Receiver>
               requires __scheduler_provider<env_of_t<_Receiver>> &&
@@ -85,7 +87,7 @@ namespace std::execution::P2519 {
           }
 
         private:
-          mutable atomic<void*> __state_{};
+          mutable std::atomic<void*> __state_{};
 
           friend struct __op_base;
 
@@ -133,10 +135,12 @@ namespace std::execution::P2519 {
             friend receiver_adaptor<__receiver, _Receiver>;
 
             auto get_env() const&
-              -> make_env_t<get_stop_token_t, never_stop_token, env_of_t<_Receiver>> {
-              return make_env<get_stop_token_t>(
-                never_stop_token{},
-                execution::get_env(this->base()));
+              -> make_env_t<
+                  env_of_t<_Receiver>,
+                  with_t<get_stop_token_t, never_stop_token>> {
+              return make_env(
+                execution::get_env(this->base()),
+                with(get_stop_token, never_stop_token{}));
             }
 
           public:
@@ -150,7 +154,7 @@ namespace std::execution::P2519 {
         template <class _Receiver>
           auto __connect_as_unstoppable(_Receiver&& __rcvr)
             noexcept(
-              __has_nothrow_connect<
+              __nothrow_connectable<
                 schedule_result_t<__scheduler_from_env_of<_Receiver>>,
                 __receiver<__x<_Receiver>>>)
             -> connect_result_t<
@@ -267,7 +271,7 @@ namespace std::execution::P2519 {
           using _Receiver = __t<_ReceiverId>;
 
           friend void tag_invoke(start_t, __nest_operation& __op_state) noexcept {
-            if (!std::exchange(__op_state.__nested_, false)) { terminate(); }
+            if (!std::exchange(__op_state.__nested_, false)) { std::terminate(); }
             __record_start_(__op_state.__scope_);
             __op_state.__start_();
           }
@@ -360,8 +364,9 @@ namespace std::execution::P2519 {
           __record_done_(__scope_);
         }
 
-        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(get_state().__stop_source_.get_token());
+        auto get_env() const&
+          -> make_env_t<with_t<get_stop_token_t, in_place_stop_token>> {
+          return make_env(with(get_stop_token, get_state().__stop_source_.get_token()));
         }
       };
 
@@ -434,7 +439,7 @@ namespace std::execution::P2519 {
         template <class _Op>
           explicit __receiver(_Op* __op, async_scope* __scope) noexcept
             : receiver_adaptor<__receiver>{}, __receiver_base{__op, __scope} {
-            static_assert(same_as<_Op, optional<__operation_t<_Sender>>>);
+            static_assert(same_as<_Op, std::optional<__operation_t<_Sender>>>);
           }
 
         // receivers uniquely own themselves; we don't need any special move-
@@ -449,23 +454,24 @@ namespace std::execution::P2519 {
       private:
         friend receiver_adaptor<__receiver>;
 
-        void set_value() noexcept {
-          set_stopped();
+        void set_value() && noexcept {
+          std::move(*this).set_stopped();
         }
 
-        [[noreturn]] void set_error(exception_ptr) noexcept {
-          terminate();
+        [[noreturn]] void set_error(std::exception_ptr) && noexcept {
+          std::terminate();
         }
 
-        void set_stopped() noexcept {
+        void set_stopped() && noexcept {
           // we're about to delete this, so save the __scope for later
           auto __scope = __scope_;
-          delete static_cast<optional<__operation_t<_Sender>>*>(__op_);
+          delete static_cast<std::optional<__operation_t<_Sender>>*>(__op_);
           __record_done_(__scope);
         }
 
-        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(__get_stop_token_(__scope_));
+        auto get_env() const& noexcept
+          -> make_env_t<with_t<get_stop_token_t, in_place_stop_token>> {
+          return make_env(with(get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
@@ -509,23 +515,23 @@ namespace std::execution::P2519 {
                 },
                 std::move(std::get<1>(__state_->__data_)));
             } else {
-              terminate();
+              std::terminate();
             }
           } catch(...) {
-            set_error((_Receiver&&) __rcvr_, current_exception());
+            set_error((_Receiver&&) __rcvr_, std::current_exception());
           }
 
           void __start_() noexcept;
 
           [[no_unique_address]] _Receiver __rcvr_;
-          unique_ptr<__future_state<_Sender>> __state_;
+          std::unique_ptr<__future_state<_Sender>> __state_;
           [[no_unique_address]] __forward_consumer __forward_consumer_;
 
         public:
           template <class _Receiver2>
-            explicit __operation(_Receiver2&& __rcvr, unique_ptr<__future_state<_Sender>> __state)
+            explicit __operation(_Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender>> __state)
               : __rcvr_((_Receiver2 &&) __rcvr)
-              , __state_(std::move(__state)) 
+              , __state_(std::move(__state))
               , __forward_consumer_(get_stop_token(get_env(__rcvr_)), __forward_stopped{this})
             {}
         };
@@ -571,11 +577,11 @@ namespace std::execution::P2519 {
             state.__data_.template emplace<1>((_As&&) __as...);
             __dispatch_result_();
           } catch(...) {
-            terminate();
+            std::terminate();
           }
 
-        [[noreturn]] void set_error(exception_ptr) noexcept {
-          terminate();
+        [[noreturn]] void set_error(std::exception_ptr) noexcept {
+          std::terminate();
         }
 
         void set_stopped() noexcept {
@@ -592,8 +598,8 @@ namespace std::execution::P2519 {
           __record_done_(__scope_);
         }
 
-        make_env_t<get_stop_token_t, in_place_stop_token> get_env() const& {
-          return make_env<get_stop_token_t>(__get_stop_token_(__scope_));
+        auto get_env() const& {
+          return make_env(with(get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
@@ -619,16 +625,16 @@ namespace std::execution::P2519 {
 
         using __op_t = __future_operation_t<_Sender>;
 
-        optional<__op_t> __op_;
-        optional<in_place_stop_callback<__forward_stopped>> __forward_scope_;
-        variant<monostate, __impl::__future_result_t<_Sender>, execution::set_stopped_t> __data_;
+        std::optional<__op_t> __op_;
+        std::optional<in_place_stop_callback<__forward_stopped>> __forward_scope_;
+        std::variant<std::monostate, __impl::__future_result_t<_Sender>, execution::set_stopped_t> __data_;
         in_place_stop_source __stop_source_;
 
         void __push_back_(__impl::__subscription* __task);
         __impl::__subscription* __pop_front_();
 
-        mutex __mutex_;
-        condition_variable __cv_;
+        std::mutex __mutex_;
+        std::condition_variable __cv_;
         __impl::__subscription* __head_ = nullptr;
         __impl::__subscription* __tail_ = nullptr;
       };
@@ -646,13 +652,13 @@ namespace std::execution::P2519 {
             set_stopped((_Receiver&&) __rcvr_);
           }
         } catch(...) {
-          set_error((_Receiver&&) __rcvr_, current_exception());
+          set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
     } // namespace __impl
 
     template <sender _Sender>
       inline void __future_state<_Sender>::__push_back_(__impl::__subscription* __subscription) {
-        unique_lock __lock{__mutex_};
+        std::unique_lock __lock{__mutex_};
         if (__head_ == nullptr) {
           __head_ = __subscription;
         } else {
@@ -665,7 +671,7 @@ namespace std::execution::P2519 {
 
     template <sender _Sender>
       inline __impl::__subscription* __future_state<_Sender>::__pop_front_() {
-        unique_lock __lock{__mutex_};
+        std::unique_lock __lock{__mutex_};
         if (__head_ == nullptr) {
           return nullptr;
         }
@@ -683,7 +689,7 @@ namespace std::execution::P2519 {
         template <class _Receiver>
           using __completions = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
 
-        explicit __future(unique_ptr<__future_state<_Sender>> __state) noexcept
+        explicit __future(std::unique_ptr<__future_state<_Sender>> __state) noexcept
           : __state_(std::move(__state))
         {}
 
@@ -700,7 +706,7 @@ namespace std::execution::P2519 {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>;
 
-        unique_ptr<__future_state<_Sender>> __state_;
+        std::unique_ptr<__future_state<_Sender>> __state_;
       };
 
     struct async_scope {
@@ -717,16 +723,20 @@ namespace std::execution::P2519 {
 
       // (__op_state_ & 1) is 1 until we've been stopped
       // (__op_state_ >> 1) is the number of outstanding operations
-      atomic<size_t> __op_state_{1};
+      std::atomic<std::size_t> __op_state_{1};
       __async_manual_reset_event __evt_;
 
-      [[nodiscard]] auto __await_and_sync_() const noexcept {
-        return then(__evt_.async_wait(),
-        [this]() noexcept {
+      struct __load_atomic {
+        const std::atomic<std::size_t>& __op_state_;
+        void operator()() noexcept {
           // make sure to synchronize with all the fetch_subs being done while
           // operations complete
           (void) __op_state_.load(std::memory_order_acquire);
-        });
+        }
+      };
+
+      [[nodiscard]] auto __await_and_sync_() const noexcept {
+        return then(__evt_.async_wait(), __load_atomic{__op_state_});
       }
 
     public:
@@ -741,7 +751,7 @@ namespace std::execution::P2519 {
         [[maybe_unused]] auto __state = __op_state_.load(std::memory_order_relaxed);
 
         if (__op_count_(__state) != 0) {
-          terminate();
+          std::terminate();
         }
       }
 
@@ -756,7 +766,7 @@ namespace std::execution::P2519 {
           using __op_t = __operation_t<remove_cvref_t<_Sender>>;
 
           // this could throw; if it does, there's nothing to clean up
-          auto __op_to_start = make_unique<optional<__op_t>>();
+          auto __op_to_start = std::make_unique<std::optional<__op_t>>();
 
           // this could throw; if it does, the only clean-up we need is to
           // deallocate the optional, which is handled by opToStart's
@@ -785,7 +795,7 @@ namespace std::execution::P2519 {
         __future<__x<remove_cvref_t<_Sender>>> spawn_future(_Sender&& __sndr) {
           using __state_t = __future_state<remove_cvref_t<_Sender>>;
           // this could throw; if it does, there's nothing to clean up
-          auto __state = make_unique<__state_t>();
+          auto __state = std::make_unique<__state_t>();
 
           // if this throws, there's nothing to clean up
           __state->__forward_scope_.emplace(
@@ -832,7 +842,7 @@ namespace std::execution::P2519 {
       }
 
     private:
-      static size_t __op_count_(size_t __state) noexcept {
+      static std::size_t __op_count_(std::size_t __state) noexcept {
         return __state >> 1;
       }
 
@@ -875,4 +885,4 @@ namespace std::execution::P2519 {
   } // namespace __scope
 
   using __scope::async_scope;
-} // namespace execution
+} // namespace _P2519::execution
