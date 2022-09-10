@@ -49,9 +49,9 @@ _PRAGMA_IGNORE("-Wundefined-inline")
 _PRAGMA_IGNORE("-Wundefined-internal")
 
 #if _P2300_NVHPC()
-#define _NVCXX_CAPTURE_PACK(_Xs) , class _NVCxxList = std::__types<_Xs...>
+#define _NVCXX_CAPTURE_PACK(_Xs) , class _NVCxxList = _P2300::__types<_Xs...>
 #define _NVCXX_EXPAND_PACK(_Xs, __xs, ...) \
-  [&]<class... _Xs>(std::__types<_Xs...>*, auto*... __ptrs) -> decltype(auto) { \
+  [&]<class... _Xs>(_P2300::__types<_Xs...>*, auto*... __ptrs) -> decltype(auto) { \
     return [&]<class... _Xs>(_Xs&&... __xs) -> decltype(auto) { \
       __VA_ARGS__ \
     }(((_Xs&&) *(std::add_pointer_t<_Xs>) __ptrs)...); \
@@ -104,13 +104,14 @@ namespace _P2300::execution {
           using __value_t = _Value;
           [[no_unique_address]] std::unwrap_reference_t<_Value> __value_;
 
-          friend auto tag_invoke(same_as<_Tag> auto, const __t& __self, auto&&...)
-            #if !_P2300_NVHPC()
-            noexcept(std::is_nothrow_copy_constructible_v<std::unwrap_reference_t<_Value>>)
-            #endif
-            -> std::unwrap_reference_t<_Value> {
-            return __self.__value_;
-          }
+          template <class... _Ts>
+            friend auto tag_invoke(same_as<_Tag> auto, const __t& __self, _Ts&&...)
+              #if !_P2300_NVHPC()
+              noexcept(std::is_nothrow_copy_constructible_v<std::unwrap_reference_t<_Value>>)
+              #endif
+              -> std::unwrap_reference_t<_Value> {
+              return __self.__value_;
+            }
         };
       };
     template <class _Tag>
@@ -119,7 +120,8 @@ namespace _P2300::execution {
           using __tag_t = _Tag;
           using __value_t = __none_such;
 
-          friend void tag_invoke(same_as<_Tag> auto, const __t& __self, auto&&...) = delete;
+          template <class... _Ts>
+            friend void tag_invoke(same_as<_Tag> auto, const __t&, _Ts&&...) = delete;
         };
       };
     template <class _With>
@@ -458,12 +460,11 @@ namespace _P2300::execution {
           return _Completions{};
         } else {
           // awaitables go here
-          using _Result = __await_result_t<_Sender>;
-          if constexpr (std::is_void_v<_Result>) {
-            return completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>{};
-          } else {
-            return completion_signatures<set_value_t(_Result), set_error_t(std::exception_ptr)>{};
-          }
+          return completion_signatures<
+              __minvoke1< // set_value_t() or set_value_t(T)
+                __remove<void, __qf<set_value_t>>,
+                __await_result_t<_Sender>>,
+              set_error_t(std::exception_ptr)>{};
         }
       }
     };
@@ -3057,7 +3058,7 @@ namespace _P2300::execution {
           #if _P2300_NVHPC()
           template <class... _As>
             struct __op_state_for_ {
-              using type = connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
+              using __t = connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
             };
           template <class... _As>
             using __op_state_for_t = __t<__op_state_for_<_As...>>;
@@ -3080,18 +3081,18 @@ namespace _P2300::execution {
         };
 
       template <class _Env, class _Fun, class _Set, class _Sig>
-        struct __tfx_signal {};
+        struct __tfx_signal_impl {};
 
       template <class _Env, class _Fun, class _Set, class _Ret, class... _Args>
           requires (!same_as<_Set, _Ret>)
-        struct __tfx_signal<_Env, _Fun, _Set, _Ret(_Args...)> {
+        struct __tfx_signal_impl<_Env, _Fun, _Set, _Ret(_Args...)> {
           using __t = completion_signatures<_Ret(_Args...)>;
         };
 
       template <class _Env, class _Fun, class _Set, class... _Args>
           requires invocable<_Fun, __decay_ref<_Args>...> &&
             sender<std::invoke_result_t<_Fun, __decay_ref<_Args>...>, _Env>
-        struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
+        struct __tfx_signal_impl<_Env, _Fun, _Set, _Set(_Args...)> {
           using __t =
             make_completion_signatures<
               __result_sender_t<_Fun, _Args...>,
@@ -3118,13 +3119,13 @@ namespace _P2300::execution {
 
           #if _P2300_NVHPC()
           template <class... _As>
-            struct __op_state_for {
-              using type =
+            struct __op_state_for_ {
+              using __t =
                 connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
             };
           template <class... _As>
             using __op_state_for_t =
-              typename __op_state_for<_As...>::type;
+              __t<__op_state_for_<_As...>>;
           #else
           template <class... _As>
             using __op_state_for_t =
@@ -3223,7 +3224,7 @@ namespace _P2300::execution {
                 _Set>;
 
           template <class _Env, class _Sig>
-            using __tfx_signal_t = __t<__tfx_signal<_Env, _Fun, _Set, _Sig>>;
+            using __tfx_signal_t = __t<__tfx_signal_impl<_Env, _Fun, _Set, _Sig>>;
 
           template <class _Env>
             using __tfx_signal = __mbind_front_q1<__tfx_signal_t, _Env>;
@@ -3737,14 +3738,12 @@ namespace _P2300::execution {
             __nothrow_connectable<schedule_result_t<_Scheduler>, __receiver2_t> &&
             (__nothrow_decay_copyable<_Args> &&...);
 
-        template <class _Tag, class... _Args _NVCXX_CAPTURE_PACK(_Args)>
+        template <class _Tag, class... _Args>
         static void __complete_(_Tag __tag, __receiver1&& __self, _Args&&... __args) noexcept(__nothrow_complete_<_Args...>) {
           // Write the tag and the args into the operation state so that
           // we can forward the completion from within the scheduler's
           // execution context.
-          _NVCXX_EXPAND_PACK(_Args, __args,
-            __self.__op_state_->__data_.template emplace<__decayed_tuple<_Tag, _Args...>>(_Tag{}, (_Args&&) __args...);
-          )
+          __self.__op_state_->__data_.template emplace<__decayed_tuple<_Tag, _Args...>>(_Tag{}, (_Args&&) __args...);
           // Schedule the completion to happen on the scheduler's
           // execution context.
           __self.__op_state_->__state2_.emplace(
@@ -3755,15 +3754,17 @@ namespace _P2300::execution {
           start(*__self.__op_state_->__state2_);
         }
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args>
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args _NVCXX_CAPTURE_PACK(_Args)>
           requires __callable<_Tag, _Receiver, _Args...>
         friend void tag_invoke(_Tag __tag, __receiver1&& __self, _Args&&... __args) noexcept {
-          __try_call(
-            (_Receiver&&) __self.__op_state_->__rcvr_,
-            __fun_c<__complete_<_Tag, _Args...>>,
-            (_Tag&&) __tag,
-            (__receiver1&&) __self,
-            (_Args&&) __args...);
+          _NVCXX_EXPAND_PACK(_Args, __args,
+            __try_call(
+              (_Receiver&&) __self.__op_state_->__rcvr_,
+              __fun_c<__complete_<_Tag, _Args...>>,
+              (_Tag&&) __tag,
+              (__receiver1&&) __self,
+              (_Args&&) __args...);
+          )
         }
 
         friend auto tag_invoke(get_env_t, const __receiver1& __self)

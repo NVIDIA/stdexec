@@ -258,10 +258,12 @@ namespace _P2300 {
       template <class...>
         struct __f_ {};
       template <class _State, class _Head, class... _Tail>
+          #if !_P2300_NVHPC()
+          // BUGBUG find better work-around
           requires __minvocable2<_Fn, _State, _Head>
+          #endif
         struct __f_<_State, _Head, _Tail...>
-          : __f_<__minvoke2<_Fn, _State, _Head>, _Tail...>
-        {};
+          : __f_<__minvoke2<_Fn, _State, _Head>, _Tail...> {};
       template <class _State>
         struct __f_<_State> {
           using __t = _State;

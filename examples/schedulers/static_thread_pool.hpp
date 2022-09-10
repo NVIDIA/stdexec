@@ -106,8 +106,8 @@ namespace example {
 
       template <class SenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
         struct bulk_shared_state : task_base {
-          using Sender = std::__t<SenderId>;
-          using Receiver = std::__t<ReceiverId>;
+          using Sender = _P2300::__t<SenderId>;
+          using Receiver = _P2300::__t<ReceiverId>;
 
           using variant_t =
             std::execution::__value_types_of_t<
@@ -224,8 +224,8 @@ namespace example {
 
       template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
         struct bulk_receiver {
-          using Sender = std::__t<SenderId>;
-          using Receiver = std::__t<ReceiverId>;
+          using Sender = _P2300::__t<SenderId>;
+          using Receiver = _P2300::__t<ReceiverId>;
 
           using shared_state = bulk_shared_state<SenderId, ReceiverId, Shape, Fn, MayThrow>;
 
@@ -245,7 +245,7 @@ namespace example {
               try {
                 state.data_.template emplace<tuple_t>((As &&) as...);
               } catch (...) {
-                std::execution::set_error((Receiver&&)state.receiver_, std::current_exception());
+                std::execution::set_error(std::move(state.receiver_), std::current_exception());
               }
             } else {
               state.data_.template emplace<tuple_t>((As &&) as...);
@@ -255,8 +255,7 @@ namespace example {
               self.enqueue();
             } else {
               state.apply([&](auto&... args) {
-                std::execution::set_value((Receiver &&) state.receiver_,
-                                          std::move(args)...);
+                std::execution::set_value(std::move(state.receiver_), std::move(args)...);
               });
             }
           }
@@ -275,8 +274,8 @@ namespace example {
 
       template <class SenderId, class ReceiverId, std::integral Shape, class Fun>
         struct bulk_op_state {
-          using Sender = std::__t<SenderId>;
-          using Receiver = std::__t<ReceiverId>;
+          using Sender = _P2300::__t<SenderId>;
+          using Receiver = _P2300::__t<ReceiverId>;
 
           static constexpr bool may_throw =
               !std::__v<std::execution::__value_types_of_t<
@@ -304,8 +303,8 @@ namespace example {
 
       template <class SenderId, std::integral Shape, class FunId>
         struct bulk_sender {
-          using Sender = std::__t<SenderId>;
-          using Fun = std::__t<FunId>;
+          using Sender = _P2300::__t<SenderId>;
+          using Fun = _P2300::__t<FunId>;
 
           static_thread_pool& pool_;
           Sender sndr_;
@@ -430,7 +429,7 @@ namespace example {
 
   template <typename ReceiverId>
     class operation : task_base {
-      using Receiver = std::__t<ReceiverId>;
+      using Receiver = _P2300::__t<ReceiverId>;
       friend static_thread_pool::scheduler::sender;
 
       static_thread_pool& pool_;

@@ -131,7 +131,7 @@ namespace _P2519::execution {
         template <class _ReceiverId>
           class __receiver
             : private receiver_adaptor<__receiver<_ReceiverId>, __t<_ReceiverId>> {
-            using _Receiver = __t<_ReceiverId>;
+            using _Receiver = _P2300::__t<_ReceiverId>;
             friend receiver_adaptor<__receiver, _Receiver>;
 
             auto get_env() const&
@@ -322,7 +322,7 @@ namespace _P2519::execution {
       struct __nest_receiver
         : private receiver_adaptor<__nest_receiver<_SenderId, _ReceiverId>>
         , __receiver_base {
-        using _Sender = __t<_SenderId>;
+        using _Sender = _P2300::__t<_SenderId>;
 
         template <class _State>
           explicit __nest_receiver(_State* __state, async_scope* __scope) noexcept
@@ -434,7 +434,7 @@ namespace _P2519::execution {
       struct __receiver
         : private receiver_adaptor<__receiver<_SenderId>>
         , __receiver_base {
-        using _Sender = __t<_SenderId>;
+        using _Sender = _P2300::__t<_SenderId>;
 
         template <class _Op>
           explicit __receiver(_Op* __op, async_scope* __scope) noexcept
@@ -549,7 +549,7 @@ namespace _P2519::execution {
       struct __future_receiver
         : private receiver_adaptor<__future_receiver<_SenderId>>
         , __receiver_base {
-        using _Sender = __t<_SenderId>;
+        using _Sender = _P2300::__t<_SenderId>;
 
         template <class _State>
           explicit __future_receiver(_State* __state, async_scope* __scope) noexcept
