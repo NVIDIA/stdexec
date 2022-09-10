@@ -23,7 +23,7 @@ TEST_CASE("async_scope destruction after spawning work into it", "[async_scope][
       scope.spawn(ex::on(sch, ex::just() | ex::then([&] { counter++; })));
 
     // Wait on the work, before calling destructor
-    sync_wait(scope.empty());
+    sync_wait(scope.on_empty());
   }
   // We should have all the work executed
   REQUIRE(counter == 10);

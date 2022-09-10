@@ -14,7 +14,7 @@ TEST_CASE("TODO: empty will complete immediately on an empty async_scope", "[asy
   // TODO: removing this will stop the test from working
   scope.spawn(ex::just());
 
-  ex::sender auto snd = scope.empty() | ex::then([&] { is_empty = true; });
+  ex::sender auto snd = scope.on_empty() | ex::then([&] { is_empty = true; });
   sync_wait(std::move(snd));
   REQUIRE(is_empty);
 }
@@ -25,7 +25,7 @@ TEST_CASE("empty sender can properly connect a void receiver", "[async_scope][em
 
   scope.spawn(ex::just());
 
-  ex::sender auto snd = scope.empty() | ex::then([&] { is_empty = true; });
+  ex::sender auto snd = scope.on_empty() | ex::then([&] { is_empty = true; });
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
   REQUIRE(is_empty);
@@ -38,9 +38,9 @@ TEST_CASE("empty will complete after the work is done", "[async_scope][empty]") 
   // Add some work
   scope.spawn(ex::on(sch, ex::just()));
 
-  // The empty() sender cannot notify now
+  // The on_empty() sender cannot notify now
   bool is_empty{false};
-  ex::sender auto snd = ex::on(sch, scope.empty()) | ex::then([&] { is_empty = true; });
+  ex::sender auto snd = ex::on(sch, scope.on_empty()) | ex::then([&] { is_empty = true; });
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
   REQUIRE_FALSE(is_empty);
@@ -59,9 +59,9 @@ TEST_CASE("TODO: empty can be used multiple times", "[async_scope][empty]") {
   // Add some work
   scope.spawn(ex::on(sch, ex::just()));
 
-  // The empty() sender cannot notify now
+  // The on_empty() sender cannot notify now
   bool is_empty{false};
-  ex::sender auto snd = ex::on(sch, scope.empty()) | ex::then([&] { is_empty = true; });
+  ex::sender auto snd = ex::on(sch, scope.on_empty()) | ex::then([&] { is_empty = true; });
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
   REQUIRE_FALSE(is_empty);
@@ -75,9 +75,9 @@ TEST_CASE("TODO: empty can be used multiple times", "[async_scope][empty]") {
   // Add some work
   scope.spawn(ex::on(sch, ex::just()));
 
-  // The empty() sender cannot notify now
+  // The on_empty() sender cannot notify now
   bool is_empty2{false};
-  ex::sender auto snd2 = ex::on(sch, scope.empty()) | ex::then([&] { is_empty2 = true; });
+  ex::sender auto snd2 = ex::on(sch, scope.on_empty()) | ex::then([&] { is_empty2 = true; });
   auto op2 = ex::connect(std::move(snd2), expect_void_receiver{});
   ex::start(op2);
   REQUIRE_FALSE(is_empty2);
@@ -109,9 +109,9 @@ TEST_CASE("waiting on work that spawns more work", "[async_scope][empty]") {
   // No work is executed until the impulse scheduler dictates
   scope.spawn(ex::on(sch, ex::just() | ex::then(work2)));
 
-  // start an empty() sender
+  // start an on_empty() sender
   bool is_empty{false};
-  ex::sender auto snd = ex::on(inline_scheduler{}, scope.empty()) //
+  ex::sender auto snd = ex::on(inline_scheduler{}, scope.on_empty()) //
                         | ex::then([&] { is_empty = true; });
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
@@ -127,7 +127,7 @@ TEST_CASE("waiting on work that spawns more work", "[async_scope][empty]") {
   REQUIRE_FALSE(is_empty);
 
   // Trigger the execution of work1
-  // This will complete the empty() sender
+  // This will complete the on_empty() sender
   sch.start_next();
   REQUIRE(work1_done);
   REQUIRE(work2_done);
@@ -143,7 +143,7 @@ TEST_CASE("async_scope is empty after adding work when in cancelled state",
   async_scope scope;
 
   bool is_empty1{false};
-  ex::sender auto snd = ex::on(inline_scheduler{}, scope.empty()) //
+  ex::sender auto snd = ex::on(inline_scheduler{}, scope.on_empty()) //
                         | ex::then([&] { is_empty1 = true; });
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
@@ -156,7 +156,7 @@ TEST_CASE("async_scope is empty after adding work when in cancelled state",
   // note that we don't tell impulse sender to start the work
 
   bool is_empty2{false};
-  ex::sender auto snd2 = ex::on(inline_scheduler{}, scope.empty()) //
+  ex::sender auto snd2 = ex::on(inline_scheduler{}, scope.on_empty()) //
                          | ex::then([&] { is_empty2 = true; });
   auto op2 = ex::connect(std::move(snd2), expect_void_receiver{});
   ex::start(op2);

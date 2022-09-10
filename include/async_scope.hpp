@@ -461,7 +461,7 @@ namespace _P2519::execution {
           when_empty(_Constrained&& __c) const {
             return __when_empty::__sender<__x<remove_cvref_t<_Constrained>>>{const_cast<async_scope*>(this), __c};
           }
-        [[nodiscard]] auto empty() const {
+        [[nodiscard]] auto on_empty() const {
           return when_empty(just());
         }
         template<class __ConstrainedId>

@@ -35,7 +35,7 @@ namespace {
     _P2519::execution::async_scope scope_;
 
     ~create_test_fixture() {
-      _P2300::this_thread::sync_wait(scope_.empty());
+      _P2300::this_thread::sync_wait(scope_.on_empty());
     }
 
     void anIntAPI(int a, int b, void* context, void (*completed)(void* context, int result)) {
