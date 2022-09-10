@@ -268,7 +268,11 @@ namespace _P2519::execution {
         ~__future_state() {
           std::unique_lock __guard{__mutex_};
           if (!!__no_future_) {
+            // future was discarded
             __step_from_to_(__guard, __future_state_steps::NoFuture, __future_state_steps::Deleted);
+          } else if (__step_ == __future_state_steps::Created) {
+            // exception during connect() will end up here
+            __step_from_to_(__guard, __future_state_steps::Created, __future_state_steps::Deleted);
           } else {
             __step_from_to_(__guard, __future_state_steps::Future, __future_state_steps::Deleted);
           }
@@ -596,7 +600,7 @@ namespace _P2519::execution {
                 typename __state_t::__forward_stopped{__state.get()});
 
             // this could throw; if it does, the only clean-up we need is to
-            // deallocate the optional, which is handled by __op_to_start's
+            // deallocate the optional, which is handled by __op_'s
             // destructor so we're good
             __state->__op_.emplace(__conv{[&] {
               return connect(
