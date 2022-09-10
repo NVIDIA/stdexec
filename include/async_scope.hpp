@@ -16,6 +16,7 @@
 #pragma once
 
 #include <execution.hpp>
+#include <../examples/detail/intrusive_queue.hpp>
 
 namespace _P2519::execution {
   using namespace _P2300::execution;
@@ -25,227 +26,11 @@ namespace _P2519::execution {
   namespace __scope {
     struct async_scope;
 
-    namespace __impl {
-
-      /////////////////////////////////////////////////////////////////////////////
-      // __async_manual_reset_event
-      namespace __event {
-        struct __op_base;
-
-        template <class _ReceiverId>
-        struct __operation;
-
-        struct __async_manual_reset_event;
-
-        struct __sender {
-          using completion_signatures =
-            execution::completion_signatures<
-              execution::set_value_t(),
-              execution::set_error_t(std::exception_ptr)>;
-
-          template <__decays_to<__sender> _Self, receiver _Receiver>
-              requires __scheduler_provider<env_of_t<_Receiver>> &&
-                receiver_of<_Receiver, completion_signatures>
-            friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-                -> __operation<__x<remove_cvref_t<_Receiver>>> {
-              return __operation<__x<remove_cvref_t<_Receiver>>>{
-                *__self.__evt_,
-                (_Receiver&&) __rcvr};
-            }
-
-          const __async_manual_reset_event* __evt_;
-        };
-
-        struct __async_manual_reset_event {
-          __async_manual_reset_event() noexcept
-            : __async_manual_reset_event(false) {}
-
-          explicit __async_manual_reset_event(bool __start_signalled) noexcept
-            : __state_(__start_signalled ? this : nullptr) {}
-
-          void set() noexcept;
-
-          bool ready() const noexcept {
-            return __state_.load(std::memory_order_acquire) ==
-                static_cast<const void*>(this);
-          }
-
-          void reset() noexcept {
-            // transition from signalled (i.__e. __state_ == this) to not-signalled
-            // (i.__e. __state_ == nullptr).
-            void* __old_state = this;
-
-            // We can ignore the the result.  We're using _strong so it won't fail
-            // spuriously; if it fails, it means it wasn't previously in the signalled
-            // state so resetting is a no-op.
-            (void)__state_.compare_exchange_strong(
-                __old_state, nullptr, std::memory_order_acq_rel);
-          }
-
-          [[nodiscard]] __sender async_wait() const noexcept {
-            return __sender{this};
-          }
-
-        private:
-          mutable std::atomic<void*> __state_{};
-
-          friend struct __op_base;
-
-          // note: this is a static method that takes __evt *second* because the caller
-          //       a member function on __op_base and so will already have op in first
-          //       argument position; making this function a member would require some
-          //       register-juggling code, which would increase binary size
-          static void __start_or_wait_(__op_base& __op, const __async_manual_reset_event& __evt) noexcept;
-        };
-
-        struct __op_base : __immovable {
-          // note: __next_ is intentionally left indeterminate until the operation is
-          //       pushed on the event's stack of waiting operations
-          //
-          // note: __next_ and __set_value_ are the first two members because this ordering
-          //       leads to smaller code than others; on ARM, the first two members can
-          //       be loaded into a pair of registers in one instruction, which turns
-          //       out to be important in both __async_manual_reset_event::set() and
-          //       __start_or_wait_().
-          __op_base* __next_;
-          void (*__set_value_)(__op_base*) noexcept;
-          const __async_manual_reset_event* __evt_;
-
-          // This intentionally leaves __next_ uninitialized
-          explicit __op_base(
-              const __async_manual_reset_event* __evt,
-              void (*__set_value)(__op_base*) noexcept)
-            : __set_value_(__set_value)
-            , __evt_(__evt)
-          {}
-
-          void __set_value() noexcept {
-            __set_value_(this);
-          }
-
-          void __start() noexcept {
-            __async_manual_reset_event::__start_or_wait_(*this, *__evt_);
-          }
-        };
-
-        template <class _ReceiverId>
-          class __receiver
-            : private receiver_adaptor<__receiver<_ReceiverId>, __t<_ReceiverId>> {
-            using _Receiver = __t<_ReceiverId>;
-            friend receiver_adaptor<__receiver, _Receiver>;
-
-            auto get_env() const&
-              -> make_env_t<
-                  env_of_t<_Receiver>,
-                  with_t<get_stop_token_t, never_stop_token>> {
-              return make_env(
-                execution::get_env(this->base()),
-                with(get_stop_token, never_stop_token{}));
-            }
-
-          public:
-            using receiver_adaptor<__receiver, _Receiver>::receiver_adaptor;
-          };
-
-        template <class _Receiver>
-          using __scheduler_from_env_of =
-            __call_result_t<get_scheduler_t, env_of_t<_Receiver>>;
-
-        template <class _Receiver>
-          auto __connect_as_unstoppable(_Receiver&& __rcvr)
-            noexcept(
-              __nothrow_connectable<
-                schedule_result_t<__scheduler_from_env_of<_Receiver>>,
-                __receiver<__x<_Receiver>>>)
-            -> connect_result_t<
-                schedule_result_t<__scheduler_from_env_of<_Receiver>>,
-                __receiver<__x<_Receiver>>> {
-            return connect(
-                schedule(get_scheduler(get_env(__rcvr))),
-                __receiver<__x<_Receiver>>{(_Receiver&&) __rcvr});
-          }
-
-        template <class _ReceiverId>
-          struct __operation : private __op_base {
-            using _Receiver = __t<_ReceiverId>;
-
-            explicit __operation(const __async_manual_reset_event& __evt, _Receiver __rcvr)
-                noexcept(noexcept(__connect_as_unstoppable(std::move(__rcvr))))
-              : __op_base{&__evt, &__set_value_}
-              , __op_(__connect_as_unstoppable(std::move(__rcvr)))
-            {}
-
-          private:
-            friend void tag_invoke(start_t, __operation& __self) noexcept {
-              __self.__start();
-            }
-
-            using __op_t = decltype(__connect_as_unstoppable(__declval<_Receiver>()));
-            __op_t __op_;
-
-            static void __set_value_(__op_base* __base) noexcept {
-              auto* __self = static_cast<__operation*>(__base);
-              execution::start(__self->__op_);
-            }
-          };
-
-        inline void __async_manual_reset_event::set() noexcept {
-          void* const __signalled_state = this;
-
-          // replace the stack of waiting operations with a sentinel indicating we've
-          // been signalled
-          void* __top = __state_.exchange(__signalled_state, std::memory_order_acq_rel);
-
-          if (__top == __signalled_state) {
-            // we were already signalled so there are no waiting operations
-            return;
-          }
-
-          // We are the first thread to set the state to signalled; iteratively pop
-          // the stack and complete each operation.
-          auto* __op = static_cast<__op_base*>(__top);
-          while (__op != nullptr) {
-            std::exchange(__op, __op->__next_)->__set_value();
-          }
-        }
-
-        inline void __async_manual_reset_event::__start_or_wait_(__op_base& __op, const __async_manual_reset_event& __evt) noexcept {
-          // Try to push op onto the stack of waiting ops.
-          const void* const __signalled_state = &__evt;
-
-          void* __top = __evt.__state_.load(std::memory_order_acquire);
-
-          do {
-            if (__top == __signalled_state) {
-              // Already in the signalled state; don't push it.
-              __op.__set_value();
-              return;
-            }
-
-            // note: on the first iteration, this line transitions __op.__next_ from
-            //       indeterminate to a well-defined value
-            __op.__next_ = static_cast<__op_base*>(__top);
-          } while (!__evt.__state_.compare_exchange_weak(
-              __top,
-              static_cast<void*>(&__op),
-              std::memory_order_release,
-              std::memory_order_acquire));
-        }
-      } // namespace __event
-    }  // namespace __impl
-    using __impl::__event::__async_manual_reset_event;
-
     struct __receiver_base {
       void* __op_;
       async_scope* __scope_;
+      __receiver_base* __next_;
     };
-
-    template <class _SenderId, class _ReceiverId>
-      struct __nest_receiver;
-
-    template <class _Sender, class _Receiver>
-      using __nest_operation_t =
-        connect_result_t<_Sender, __nest_receiver<__x<_Sender>, __x<_Receiver>>>;
 
     template <class _SenderId>
       struct __receiver;
@@ -260,175 +45,9 @@ namespace _P2519::execution {
       using __future_operation_t =
         connect_result_t<_Sender, __future_receiver<__x<_Sender>>>;
 
-    void __record_start_(async_scope*) noexcept;
-    void __record_done_(async_scope*) noexcept;
     in_place_stop_token __get_stop_token_(async_scope*) noexcept;
-
-   namespace __impl {
-      template <class _SenderId, class _ReceiverId>
-        class __nest_operation : __immovable {
-          using _Sender = __t<_SenderId>;
-          using _Receiver = __t<_ReceiverId>;
-
-          friend void tag_invoke(start_t, __nest_operation& __op_state) noexcept {
-            if (!std::exchange(__op_state.__nested_, false)) { std::terminate(); }
-            __record_start_(__op_state.__scope_);
-            __op_state.__start_();
-          }
-
-          void __start_() noexcept;
-
-          friend __nest_receiver<_SenderId, _ReceiverId>;
-
-          struct __forward_stopped {
-            __nest_operation* __op_;
-            void operator()() noexcept {
-              __op_->__stop_source_.request_stop();
-            }
-          };
-
-          using __forward_consumer =
-            typename stop_token_of_t<env_of_t<_Receiver>&>::template
-              callback_type<__forward_stopped>;
-
-          [[no_unique_address]] _Receiver __rcvr_;
-          async_scope* __scope_;
-          in_place_stop_source __stop_source_;
-          in_place_stop_callback<__forward_stopped> __forward_scope_;
-          [[no_unique_address]] __forward_consumer __forward_consumer_;
-          __nest_operation_t<_Sender, _Receiver> __op_;
-          bool __nested_;
-
-        public:
-          ~__nest_operation() {
-            if (__nested_) {
-              __record_done_(__scope_);
-            }
-          }
-
-          template <class _Receiver2>
-            explicit __nest_operation(_Receiver2&& __rcvr, _Sender&& __sndr, async_scope* __scope)
-              : __rcvr_((_Receiver2 &&) __rcvr)
-              , __scope_(__scope)
-              , __forward_scope_(__get_stop_token_(this->__scope_), __forward_stopped{this})
-              , __forward_consumer_(get_stop_token(get_env(this->__rcvr_)), __forward_stopped{this})
-              , __op_(connect(std::move(__sndr), __nest_receiver<_SenderId, _ReceiverId>{this, __scope}))
-              , __nested_(true)
-            {}
-        };
-    } // namespace __impl
-
-    template <class _SenderId, class _ReceiverId>
-      struct __nest_receiver
-        : private receiver_adaptor<__nest_receiver<_SenderId, _ReceiverId>>
-        , __receiver_base {
-        using _Sender = __t<_SenderId>;
-
-        template <class _State>
-          explicit __nest_receiver(_State* __state, async_scope* __scope) noexcept
-            : receiver_adaptor<__nest_receiver<_SenderId, _ReceiverId>>{}
-            , __receiver_base{__state, __scope} {
-            static_assert(same_as<_State, __impl::__nest_operation<_SenderId, _ReceiverId>>);
-          }
-
-        // receivers uniquely own themselves; we don't need any special move-
-        // construction behaviour, but we do need to ensure no copies are made
-        __nest_receiver(__nest_receiver&&) noexcept = default;
-
-        ~__nest_receiver() = default;
-
-        // it's just simpler to skip this
-        __nest_receiver& operator=(__nest_receiver&&) = delete;
-
-      private:
-        friend receiver_adaptor<__nest_receiver>;
-
-        __impl::__nest_operation<_SenderId, _ReceiverId>& get_state() const {
-          return *reinterpret_cast<__impl::__nest_operation<_SenderId, _ReceiverId>*>(__op_);
-        }
-
-        template <class... _As>
-          void set_value(_As&&... __as) noexcept {
-            execution::set_value(std::move(get_state().__rcvr_), (_As &&) __as...);
-            __record_done_(__scope_);
-          }
-
-        template <class _Error>
-          [[noreturn]] void set_error(_Error&& __e) noexcept {
-            execution::set_error(std::move(get_state().__rcvr_), (_Error &&) __e);
-            __record_done_(__scope_);
-          }
-
-        void set_stopped() noexcept {
-          execution::set_stopped(std::move(get_state().__rcvr_));
-          __record_done_(__scope_);
-        }
-
-        auto get_env() const&
-          -> make_env_t<with_t<get_stop_token_t, in_place_stop_token>> {
-          return make_env(with(get_stop_token, get_state().__stop_source_.get_token()));
-        }
-      };
-
-    namespace __impl {
-      template <class _SenderId, class _ReceiverId>
-        inline void __nest_operation<_SenderId, _ReceiverId>::__start_() noexcept {
-          start(__op_);
-        }
-    } // namespace __impl
-
-    template <class _SenderId>
-      class __nest {
-        using _Sender = __t<_SenderId>;
-        friend struct async_scope;
-        template <class _Receiver>
-          using __completions = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
-
-        template <class _Sender2>
-          explicit __nest(_Sender2&& __sndr, async_scope* __scope) noexcept
-            : __sndr_((_Sender2 &&) __sndr)
-            , __scope_(__scope) {
-          }
-
-        __nest(const __nest&) noexcept = delete;
-        __nest& operator=(const __nest&) noexcept = delete;
-
-      public:
-
-        __nest(__nest&& __o) noexcept
-          : __sndr_(std::move(__o.__sndr_))
-          , __scope_(std::exchange(__o.__scope_, nullptr)) {
-        }
-
-        __nest& operator=(__nest&& __o) noexcept {
-            __nest expired = std::move(*this);
-            this->~__nest();
-            new(this) __nest{std::move(__o)};
-            return *this;
-        }
-
-      private:
-
-        template <class _Receiver>
-            requires receiver_of<_Receiver, __completions<_Receiver>>
-          friend __impl::__nest_operation<_SenderId, __x<decay_t<_Receiver>>>
-          tag_invoke(connect_t, __nest&& __self, _Receiver&& __rcvr) {
-            try {
-              return __impl::__nest_operation<_SenderId, __x<decay_t<_Receiver>>>{
-                  (_Receiver &&) __rcvr, std::move(__self.__sndr_), __self.__scope_};
-            } catch(...) {
-              __record_done_(__self.__scope_);
-              throw;
-            }
-          }
-
-        template <__decays_to<__nest> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> completion_signatures_of_t<__member_t<_Self, _Sender>, _Env>;
-
-        [[no_unique_address]] _Sender __sndr_;
-        async_scope* __scope_;
-      };
+    template<class T>
+    async_scope* __get__scope_(T* t) noexcept;
 
     template <class _SenderId>
       struct __receiver
@@ -459,23 +78,28 @@ namespace _P2519::execution {
         }
 
         [[noreturn]] void set_error(std::exception_ptr) noexcept {
-          std::terminate();
+              std::terminate();
         }
 
         void set_stopped() noexcept {
-          // we're about to delete this, so save the __scope for later
-          auto __scope = __scope_;
           delete static_cast<std::optional<__operation_t<_Sender>>*>(__op_);
-          __record_done_(__scope);
         }
 
         auto get_env() const& {
-          return make_env(with(get_stop_token, __get_stop_token_(__scope_)));
+          return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
+    enum class __future_state_steps {
+      Invalid = 0,
+      Created,
+      Future,
+      NoFuture,
+      Deleted
+    };
+
     template <sender _Sender>
-      class __future_state;
+      struct __future_state;
 
     namespace __impl {
       struct __subscription : __immovable {
@@ -505,17 +129,29 @@ namespace _P2519::execution {
 
           void __complete_() noexcept final override try {
             static_assert(sender_to<_Sender, _Receiver>);
-            if (__state_->__data_.index() == 2 || get_stop_token(get_env(__rcvr_)).stop_requested()) {
+            auto __state = std::move(__state_);
+            if (!__state) {std::terminate();}
+            std::unique_lock __guard{__state->__mutex_};
+            if (__state->__no_future_ != nullptr || __state->__step_ != __future_state_steps::Future) {
+              std::terminate();
+            } else if (__state->__data_.index() == 2 || get_stop_token(get_env(__rcvr_)).stop_requested()) {
+              __guard.unlock();
               set_stopped((_Receiver&&) __rcvr_);
-            } else if (__state_->__data_.index() == 1) {
+              __guard.lock();
+            } else if (__state->__data_.index() == 1) {
               std::apply(
-                [this](auto&&... __as) {
+                [this, &__guard](auto&&... __as) {
+                  __guard.unlock();
                   set_value((_Receiver&&) __rcvr_, ((decltype(__as)&&) __as)...);
+                  __guard.lock();
                 },
-                std::move(std::get<1>(__state_->__data_)));
+                std::move(std::get<1>(__state->__data_)));
             } else {
               std::terminate();
             }
+            auto __raw_state = __state.get();
+            __raw_state->__no_future_ = std::move(__state);
+            __raw_state->__step_from_to_(__guard, __future_state_steps::Future, __future_state_steps::NoFuture);
           } catch(...) {
             set_error((_Receiver&&) __rcvr_, std::current_exception());
           }
@@ -527,6 +163,14 @@ namespace _P2519::execution {
           [[no_unique_address]] __forward_consumer __forward_consumer_;
 
         public:
+          ~__operation() noexcept {
+            if (__state_ != nullptr) {
+              auto __raw_state = __state_.get();
+              std::unique_lock __guard{__raw_state->__mutex_};
+              __raw_state->__no_future_ = std::move(__state_);
+              __raw_state->__step_from_to_(__guard, __future_state_steps::Future, __future_state_steps::NoFuture);
+            }
+          }
           template <class _Receiver2>
             explicit __operation(_Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender>> __state)
               : __rcvr_((_Receiver2 &&) __rcvr)
@@ -571,34 +215,40 @@ namespace _P2519::execution {
 
         template <class _Sender2 = _Sender, class... _As>
             requires constructible_from<__impl::__future_result_t<_Sender2>, _As...>
-          void set_value(_As&&... __as) noexcept try {
-            auto& state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
-            state.__data_.template emplace<1>((_As&&) __as...);
+          void set_value(_As&&... __as) noexcept {
+            auto& __state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
+            std::unique_lock __guard{__state.__mutex_};
+            __state.__data_.template emplace<1>((_As&&) __as...);
+            __guard.unlock();
             __dispatch_result_();
-          } catch(...) {
-            std::terminate();
           }
 
         [[noreturn]] void set_error(std::exception_ptr) noexcept {
-          std::terminate();
+              std::terminate();
         }
 
         void set_stopped() noexcept {
           auto& __state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
+          std::unique_lock __guard{__state.__mutex_};
           __state.__data_.template emplace<2>(execution::set_stopped);
+          __guard.unlock();
           __dispatch_result_();
         }
 
-        void __dispatch_result_() {
+        void __dispatch_result_() noexcept {
           auto& __state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
-          while(auto* __sub = __state.__pop_front_()) {
+          std::unique_lock __guard{__state.__mutex_};
+          auto __local = std::move(__state.__subscribers_);
+          __state.__forward_scope_ = std::nullopt;
+          __guard.unlock();
+          while(!__local.empty()) {
+            auto* __sub = __local.pop_front();
             __sub->__complete_();
           }
-          __record_done_(__scope_);
         }
 
         auto get_env() const& {
-          return make_env(with(get_stop_token, __get_stop_token_(__scope_)));
+          return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
@@ -606,7 +256,7 @@ namespace _P2519::execution {
       class __future;
 
     template <sender _Sender>
-      class __future_state : std::enable_shared_from_this<__future_state<_Sender>> {
+      struct __future_state {
         template <class, class>
           friend class __impl::__operation;
         template <class>
@@ -614,6 +264,17 @@ namespace _P2519::execution {
         template <class>
           friend class __future;
         friend struct async_scope;
+
+        ~__future_state() {
+          std::unique_lock __guard{__mutex_};
+          if (!!__no_future_) {
+            __step_from_to_(__guard, __future_state_steps::NoFuture, __future_state_steps::Deleted);
+          } else {
+            __step_from_to_(__guard, __future_state_steps::Future, __future_state_steps::Deleted);
+          }
+        }
+
+        __future_state() = default;
 
         struct __forward_stopped {
           __future_state* __op_;
@@ -624,78 +285,69 @@ namespace _P2519::execution {
 
         using __op_t = __future_operation_t<_Sender>;
 
+        void __step_from_to_(std::unique_lock<std::mutex>& __guard, __future_state_steps __from, __future_state_steps __to) {
+          if (!__guard.owns_lock()) { std::terminate(); }
+          auto actual = std::exchange(__step_, __to);
+          if (actual != __from) {
+            std::terminate();
+          }
+        }
+      private:
         std::optional<__op_t> __op_;
-        std::optional<in_place_stop_callback<__forward_stopped>> __forward_scope_;
-        std::variant<std::monostate, __impl::__future_result_t<_Sender>, execution::set_stopped_t> __data_;
         in_place_stop_source __stop_source_;
-
-        void __push_back_(__impl::__subscription* __task);
-        __impl::__subscription* __pop_front_();
+        std::optional<in_place_stop_callback<__forward_stopped>> __forward_scope_;
 
         std::mutex __mutex_;
-        std::condition_variable __cv_;
-        __impl::__subscription* __head_ = nullptr;
-        __impl::__subscription* __tail_ = nullptr;
+        __future_state_steps __step_ = __future_state_steps::Created;
+        std::unique_ptr<__future_state> __no_future_;
+        std::variant<std::monostate, __impl::__future_result_t<_Sender>, execution::set_stopped_t> __data_;
+        example::intrusive_queue<&__impl::__subscription::__next_> __subscribers_;
       };
 
     namespace __impl {
       template <class _SenderId, class _ReceiverId>
         inline void __operation<_SenderId, _ReceiverId>::__start_() noexcept try {
           if (!!__state_) {
+            std::unique_lock __guard{__state_->__mutex_};
             if (__state_->__data_.index() > 0) {
+              __guard.unlock();
               __complete_();
             } else {
-              __state_->__push_back_(this);
+              __state_->__subscribers_.push_back(this);
             }
-          } else {
-            set_stopped((_Receiver&&) __rcvr_);
           }
         } catch(...) {
           set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
     } // namespace __impl
 
-    template <sender _Sender>
-      inline void __future_state<_Sender>::__push_back_(__impl::__subscription* __subscription) {
-        std::unique_lock __lock{__mutex_};
-        if (__head_ == nullptr) {
-          __head_ = __subscription;
-        } else {
-          __tail_->__next_ = __subscription;
-        }
-        __tail_ = __subscription;
-        __subscription->__next_ = nullptr;
-        __cv_.notify_one();
-      }
-
-    template <sender _Sender>
-      inline __impl::__subscription* __future_state<_Sender>::__pop_front_() {
-        std::unique_lock __lock{__mutex_};
-        if (__head_ == nullptr) {
-          return nullptr;
-        }
-        auto* __subscription = __head_;
-        __head_ = __subscription->__next_;
-        if (__head_ == nullptr)
-          __tail_ = nullptr;
-        return __subscription;
-      }
-
     template <class _SenderId>
       class __future {
         using _Sender = __t<_SenderId>;
         friend struct async_scope;
-        template <class _Receiver>
-          using __completions = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
-
+      public:
+        ~__future() noexcept {
+          if (__state_ != nullptr) {
+            auto __raw_state = __state_.get();
+            std::unique_lock __guard{__raw_state->__mutex_};
+            __raw_state->__no_future_ = std::move(__state_);
+            __raw_state->__step_from_to_(__guard, __future_state_steps::Future, __future_state_steps::NoFuture);
+          }
+        }
+        __future(__future&&) = default;
+        __future& operator=(__future&&) = default;
+      private:
         explicit __future(std::unique_ptr<__future_state<_Sender>> __state) noexcept
           : __state_(std::move(__state))
-        {}
+        {
+            std::unique_lock __guard{__state_->__mutex_};
+            __state_->__step_from_to_(__guard, __future_state_steps::Created, __future_state_steps::Future);
+        }
 
-        template <class _Receiver>
-            requires receiver_of<_Receiver, __completions<_Receiver>>
+        template <__decays_to<__future> _Self, class _Receiver>
+            // requires receiver_of<_Receiver, __completions<_Receiver>>
           friend __impl::__operation<_SenderId, __x<decay_t<_Receiver>>>
-          tag_invoke(connect_t, __future&& __self, _Receiver&& __rcvr) {
+          tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
             return __impl::__operation<_SenderId, __x<decay_t<_Receiver>>>{
                 (_Receiver &&) __rcvr,
                 std::move(__self.__state_)};
@@ -708,180 +360,283 @@ namespace _P2519::execution {
         std::unique_ptr<__future_state<_Sender>> __state_;
       };
 
-    struct async_scope {
-    private:
-      struct __end_of_scope_callback {
-          async_scope* __async_scope_;
-          void operator()() {
-            __async_scope_->__end_of_scope_(); // enter stop state
+    struct async_scope : __immovable {
+        ~async_scope() noexcept {
+            std::unique_lock __guard{__lock_};
+            if (__active_ != 0) { 
+              std::terminate();
+            }
+            if (!__waiters_.empty()) { 
+              std::terminate();
+            }
+        }
+        async_scope() 
+        : __active_(0) {}
+
+        struct __op_base : __immovable {
+            explicit __op_base(async_scope* __scope) : __scope_(__scope), __next_(nullptr) {}
+            async_scope* __scope_;
+            __op_base* __next_;
+        protected:
+            virtual void notify_waiter() noexcept =0;
+            friend void __empty_sender_notify_waiter(__op_base& __self) {
+                __self.notify_waiter();
+            }
+        };
+        // a constraint that starts a supplied sender when there are no active senders
+        struct __when_empty {
+        template<class __ConstrainedId>
+          struct __sender {
+            using __Constrained = __t<__ConstrainedId>;
+
+            template<class __ReceiverId>
+              struct __op : __op_base {
+                using __Receiver = __t<__ReceiverId>;
+                    struct __receiver : private receiver_adaptor<__receiver> {
+                        __op* __op_;
+                        template <class _Op>
+                          explicit __receiver(_Op* _op) noexcept
+                            : receiver_adaptor<__receiver>{}, __op_(_op) {
+                            static_assert(same_as<_Op, __op>);
+                          }
+                    private:
+                        friend receiver_adaptor<__receiver>;
+                        template<class... __An>
+                        void set_value(__An&&... an) noexcept {
+                            _P2300::execution::set_value(std::move(__op_->__rcvr_), an...);
+                        }
+                        template<class __Err>
+                        void set_error(__Err&& __e) noexcept {
+                            _P2300::execution::set_error(std::move(__op_->__rcvr_), __e);
+                        }
+                        void set_stopped() noexcept {
+                            _P2300::execution::set_stopped(std::move(__op_->__rcvr_));
+                        }
+                        auto get_env() const& {
+                          return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__get__scope_(__op_))));
+                        }
+                    };
+                    [[no_unique_address]] __Receiver __rcvr_;
+                    [[no_unique_address]] connect_result_t<__Constrained, __receiver> __op_;
+                    template<class _Constrained, class _Receiver>
+                      explicit __op(async_scope* __scope, _Constrained&& __c, _Receiver&& __r) 
+                      : __op_base(__scope)
+                      , __rcvr_((_Receiver&&)__r)
+                      , __op_(connect((_Constrained&&)__c, __receiver{this})) {}
+                private:
+                    void notify_waiter() noexcept override {
+                        start(__op_);
+                    }
+
+                    friend void tag_invoke(start_t, __op& __self) noexcept {
+                        std::unique_lock __guard{__self.__scope_->__lock_};
+                        auto& __active = __self.__scope_->__active_;
+                        auto& __waiters = __self.__scope_->__waiters_;
+                        if (__active != 0) {
+                            __waiters.push_back(&__self);
+                            return;
+                        }
+                        __guard.unlock();
+                        start(__self.__op_);
+                    }
+                };
+                async_scope* __scope_;
+                [[no_unique_address]] __Constrained __c_;
+            private:
+                template <__decays_to<__sender> _Self, class _Receiver>
+                  [[nodiscard]] friend __op<__x<remove_cvref_t<_Receiver>>> tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
+                    return __op<__x<remove_cvref_t<_Receiver>>>{__self.__scope_, ((_Self&&) __self).__c_, (_Receiver&&)__rcvr};
+                  }
+                template <__decays_to<__sender> _Self, class _Env>
+                  friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+                    -> completion_signatures_of_t<__member_t<_Self, __Constrained>, _Env>;
+            };
+        };
+        template<class _Constrained>
+        [[nodiscard]] __when_empty::__sender<__x<remove_cvref_t<_Constrained>>> 
+          when_empty(_Constrained&& __c) const {
+            return __when_empty::__sender<__x<remove_cvref_t<_Constrained>>>{const_cast<async_scope*>(this), __c};
           }
-      };
-
-      in_place_stop_source __stop_source_;
-      in_place_stop_callback<__end_of_scope_callback> __end_of_scope_callback_;
-
-      // (__op_state_ & 1) is 1 until we've been stopped
-      // (__op_state_ >> 1) is the number of outstanding operations
-      std::atomic<std::size_t> __op_state_{1};
-      __async_manual_reset_event __evt_;
-
-      struct __load_atomic {
-        const std::atomic<std::size_t>& __op_state_;
-        void operator()() noexcept {
-          // make sure to synchronize with all the fetch_subs being done while
-          // operations complete
-          (void) __op_state_.load(std::memory_order_acquire);
+        [[nodiscard]] auto empty() const {
+          return when_empty(just());
         }
-      };
+        template<class __ConstrainedId>
+        struct __sender {
+            using __Constrained = __t<__ConstrainedId>;
 
-      [[nodiscard]] auto __await_and_sync_() const noexcept {
-        return then(__evt_.async_wait(), __load_atomic{__op_state_});
-      }
+            template<class __ReceiverId>
+            struct __op : __immovable {
+                using __Receiver = __t<__ReceiverId>;
+                struct __receiver : private receiver_adaptor<__receiver> {
+                    __op* __op_;
+                    template <class _Op>
+                      explicit __receiver(_Op* _op) noexcept
+                        : receiver_adaptor<__receiver>{}, __op_(_op) {
+                        static_assert(same_as<_Op, __op>);
+                      }
+                private:
+                    static void __complete(async_scope* __scope) noexcept {
+                        std::unique_lock __guard{__scope->__lock_};
+                        auto& __active = __scope->__active_;
+                        if (--__active == 0) {
+                            auto __local = std::move(__scope->__waiters_);
+                            __guard.unlock();
+                            __scope = nullptr;
+                            // do not access __scope
+                            while (!__local.empty()) {
+                                auto __next = __local.pop_front();
+                                __empty_sender_notify_waiter(*__next);
+                                // __scope must be considered deleted
+                            }
+                        }
+                    }
+                    friend receiver_adaptor<__receiver>;
+                    template<class... __An>
+                    void set_value(__An&&... an) noexcept {
+                        auto __scope = __op_->__scope_;
+                        _P2300::execution::set_value(std::move(__op_->__rcvr_), (__An&&)an...);
+                        // do not access __op_ 
+                        // do not access this
+                        __complete(__scope);
+                    }
+                    template<class __Err>
+                    void set_error(__Err&& __e) noexcept {
+                        auto __scope = __op_->__scope_;
+                        _P2300::execution::set_error(std::move(__op_->__rcvr_), (__Err&&)__e);
+                        // do not access __op_ 
+                        // do not access this
+                        __complete(__scope);
+                    }
+                    void set_stopped() noexcept {
+                        auto __scope = __op_->__scope_;
+                        _P2300::execution::set_stopped(std::move(__op_->__rcvr_));
+                        // do not access __op_ 
+                        // do not access this
+                        __complete(__scope);
+                    }
+                    auto get_env() const& {
+                      return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__get__scope_(__op_))));
+                    }
+                };
+                async_scope* __scope_;
+                [[no_unique_address]] __Receiver __rcvr_;
+                [[no_unique_address]] connect_result_t<__Constrained, __receiver> __op_;
+                template<class _Constrained, class _Receiver>
+                  explicit __op(async_scope* __scope, _Constrained&& __c, _Receiver&& __r) 
+                  : __scope_(__scope)
+                  , __rcvr_((_Receiver&&)__r)
+                  , __op_(connect((_Constrained&&)__c, __receiver{this})) {}
+            private:
+                friend void tag_invoke(start_t, __op& __self) noexcept {
+                    std::unique_lock __guard{__self.__scope_->__lock_};
+                    auto& __active = __self.__scope_->__active_;
+                    ++__active;
+                    __guard.unlock();
+                    start(__self.__op_);
+                }
+            };
+            async_scope* __scope_;
+            [[no_unique_address]] __Constrained __c_;
+        private:
+            template <__decays_to<__sender> _Self, class _Receiver>
+              requires sender_to<__Constrained, typename __op<__x<remove_cvref_t<_Receiver>>>::__receiver>
+              [[nodiscard]] friend __op<__x<remove_cvref_t<_Receiver>>> tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
+                return __op<__x<remove_cvref_t<_Receiver>>>{__self.__scope_, ((_Self&&) __self).__c_, (_Receiver&&)__rcvr};
+              }
+            template <__decays_to<__sender> _Self, class _Env>
+              friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+                -> completion_signatures_of_t<__member_t<_Self, __Constrained>, _Env>;
+        };
+        template<class _Constrained>
+          using nest_result_t = __sender<__x<remove_cvref_t<_Constrained>>>;
+        template<sender _Constrained>
+            // requires sender_to<
+            //   _Constrained, 
+            //   nest_result_t::__op_<??>::__receiver<__x<remove_cvref_t<_Constrained>>>>
+          [[nodiscard]] nest_result_t<_Constrained> nest(_Constrained&& __c) {
+            return nest_result_t<_Constrained>{this, (_Constrained&&)__c};
+          }
+        template <sender _Sender>
+            requires sender_to<
+              nest_result_t<_Sender>, 
+              __receiver<__x<nest_result_t<_Sender>>>>
+          void spawn(_Sender&& __sndr) {
+            using __op_t = connect_result_t<
+              nest_result_t<_Sender>, 
+              __receiver<__x<nest_result_t<_Sender>>>>;
 
-    public:
-      async_scope() noexcept
-        : __end_of_scope_callback_(__stop_source_.get_token(), __end_of_scope_callback{this})
-        , __evt_(true)
-      {}
+            // this could throw; if it does, there's nothing to clean up
+            auto __op_to_start = std::make_unique<std::optional<__op_t>>();
 
-      ~async_scope() {
-        __end_of_scope_(); // enter stop state
+            // this could throw; if it does, the only clean-up we need is to
+            // deallocate the optional, which is handled by opToStart's
+            // destructor so we're good
+            __op_to_start->emplace(__conv{[&] {
+              return connect(
+                  this->nest((_Sender&&) __sndr),
+                  __receiver<__x<nest_result_t<_Sender>>>{__op_to_start.get(), this});
+            }});
 
-        [[maybe_unused]] auto __state = __op_state_.load(std::memory_order_relaxed);
+            // start is noexcept so we can assume that the operation will complete
+            // after this, which means we can rely on its self-ownership to ensure
+            // that it is eventually deleted
+            execution::start(**__op_to_start.release());
+          }
 
-        if (__op_count_(__state) != 0) {
-          std::terminate();
+        template <sender _Sender>
+            requires sender_to<nest_result_t<_Sender>, __future_receiver<__x<nest_result_t<_Sender>>>>
+          __future<__x<nest_result_t<_Sender>>> spawn_future(_Sender&& __sndr) {
+            using __state_t = __future_state<nest_result_t<_Sender>>;
+            // this could throw; if it does, there's nothing to clean up
+            auto __state = std::make_unique<__state_t>();
+
+            // if this throws, there's nothing to clean up
+            __state->__forward_scope_.emplace(
+                __stop_source_.get_token(),
+                typename __state_t::__forward_stopped{__state.get()});
+
+            // this could throw; if it does, the only clean-up we need is to
+            // deallocate the optional, which is handled by __op_to_start's
+            // destructor so we're good
+            __state->__op_.emplace(__conv{[&] {
+              return connect(
+                  this->nest((_Sender&&) __sndr),
+                  __future_receiver<__x<nest_result_t<_Sender>>>{__state.get(), this});
+            }});
+
+            // start is noexcept so we can assume that the operation will complete
+            // after this, which means we can rely on its self-ownership to ensure
+            // that it is eventually deleted
+            execution::start(*__state->__op_);
+            return __future<__x<nest_result_t<_Sender>>>{std::move(__state)};
+          }
+
+        in_place_stop_source& get_stop_source() noexcept {
+          return __stop_source_;
         }
-      }
 
-      template <class _Sender>
-        __nest<__x<remove_cvref_t<_Sender>>> nest(_Sender&& __sndr) {
-          return __nest<__x<remove_cvref_t<_Sender>>>{(_Sender &&) __sndr, this};
+        in_place_stop_token get_stop_token() const noexcept {
+          return __stop_source_.get_token();
         }
 
-      template <class _Sender>
-          requires sender_to<_Sender, __receiver<__x<remove_cvref_t<_Sender>>>>
-        void spawn(_Sender&& __sndr) {
-          using __op_t = __operation_t<remove_cvref_t<_Sender>>;
-
-          // this could throw; if it does, there's nothing to clean up
-          auto __op_to_start = std::make_unique<std::optional<__op_t>>();
-
-          // this could throw; if it does, the only clean-up we need is to
-          // deallocate the optional, which is handled by opToStart's
-          // destructor so we're good
-          __op_to_start->emplace(__conv{[&] {
-            return connect(
-                (_Sender&&) __sndr,
-                __receiver<__x<remove_cvref_t<_Sender>>>{__op_to_start.get(), this});
-          }});
-
-          // At this point, the rest of the function is noexcept, but __op_to_start's
-          // destructor is no longer enough to properly clean up because it won't
-          // invoke destruct(). We need to ensure that we either call destruct()
-          // ourselves or complete the operation so *it* can call destruct().
-
-          __record_start_(this);
-
-          // start is noexcept so we can assume that the operation will complete
-          // after this, which means we can rely on its self-ownership to ensure
-          // that it is eventually deleted
-          execution::start(**__op_to_start.release());
+        bool request_stop() noexcept {
+          return __stop_source_.request_stop();
         }
-
-      template <class _Sender>
-          requires sender_to<_Sender, __future_receiver<__x<remove_cvref_t<_Sender>>>>
-        __future<__x<remove_cvref_t<_Sender>>> spawn_future(_Sender&& __sndr) {
-          using __state_t = __future_state<remove_cvref_t<_Sender>>;
-          // this could throw; if it does, there's nothing to clean up
-          auto __state = std::make_unique<__state_t>();
-
-          // if this throws, there's nothing to clean up
-          __state->__forward_scope_.emplace(
-              __stop_source_.get_token(),
-              typename __state_t::__forward_stopped{__state.get()});
-
-          // this could throw; if it does, the only clean-up we need is to
-          // deallocate the optional, which is handled by __op_to_start's
-          // destructor so we're good
-          __state->__op_.emplace(__conv{[&] {
-            return connect(
-                (_Sender&&) __sndr,
-                __future_receiver<__x<remove_cvref_t<_Sender>>>{__state.get(), this});
-          }});
-
-          // At this point, the rest of the function is noexcept, but __op_to_start's
-          // destructor is no longer enough to properly clean up because it won't
-          // invoke destruct().  We need to ensure that we either call destruct()
-          // ourselves or complete the operation so *it* can call destruct().
-
-          __record_start_(this);
-
-          // start is noexcept so we can assume that the operation will complete
-          // after this, which means we can rely on its self-ownership to ensure
-          // that it is eventually deleted
-          execution::start(*__state->__op_);
-          return __future<__x<remove_cvref_t<_Sender>>>{std::move(__state)};
+        friend in_place_stop_token __get_stop_token_(async_scope* __scope) noexcept {
+          return __scope->__stop_source_.get_token();
         }
-
-      [[nodiscard]] auto empty() const noexcept {
-        return __await_and_sync_();
-      }
-
-      in_place_stop_source& get_stop_source() noexcept {
-        return __stop_source_;
-      }
-
-      in_place_stop_token get_stop_token() const noexcept {
-        return __stop_source_.get_token();
-      }
-
-      bool request_stop() noexcept {
-        return __stop_source_.request_stop();
-      }
-
     private:
-      static std::size_t __op_count_(std::size_t __state) noexcept {
-        return __state >> 1;
-      }
-
-      friend void __record_start_(async_scope* __scope) noexcept {
-        auto __op_state = __scope->__op_state_.load(std::memory_order_relaxed);
-
-        do {
-          assert(__op_state + 2 > __op_state);
-        } while (!__scope->__op_state_.compare_exchange_weak(
-            __op_state,
-            __op_state + 2,
-            std::memory_order_relaxed));
-
-        __scope->__evt_.reset();
-      }
-
-      friend void __record_done_(async_scope* __scope) noexcept {
-        auto __old_state = __scope->__op_state_.fetch_sub(2, std::memory_order_release);
-
-        if (__op_count_(__old_state) == 1) {
-          // the last op to finish
-          __scope->__evt_.set();
-        }
-      }
-
-      friend in_place_stop_token __get_stop_token_(async_scope* __scope) noexcept {
-        return __scope->__stop_source_.get_token();
-      }
-
-      void __end_of_scope_() noexcept {
-        // stop adding work
-        auto __old_state = __op_state_.fetch_and(0, std::memory_order_release);
-
-        if (__op_count_(__old_state) == 0) {
-          // there are no outstanding operations to wait for
-          __evt_.set();
-        }
-      }
+      in_place_stop_source __stop_source_;
+      std::mutex __lock_;
+      std::ptrdiff_t __active_;
+      example::intrusive_queue<&__op_base::__next_> __waiters_;
     };
-  } // namespace __scope
 
+    template<class T>
+    async_scope* __get__scope_(T* t) noexcept {
+      return t->__scope_;
+    }
+
+  } // namespace __scope
   using __scope::async_scope;
 } // namespace _P2519::execution
