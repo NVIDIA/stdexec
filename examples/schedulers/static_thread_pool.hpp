@@ -43,7 +43,7 @@ namespace example {
    public:
     static_thread_pool();
     static_thread_pool(std::uint32_t threadCount);
-    ~static_thread_pool();
+    ~static_thread_pool() noexcept;
 
     struct scheduler {
       bool operator==(const scheduler&) const = default;
@@ -483,7 +483,7 @@ namespace example {
     }
   }
 
-  inline static_thread_pool::~static_thread_pool() {
+  inline static_thread_pool::~static_thread_pool() noexcept {
     request_stop();
     join();
   }

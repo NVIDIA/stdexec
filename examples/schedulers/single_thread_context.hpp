@@ -28,10 +28,10 @@ namespace example {
   public:
     single_thread_context()
       : loop_()
-      , thread_([this] { loop_.run(); })
+      , thread_([this] noexcept { loop_.run(); })
     {}
 
-    ~single_thread_context() {
+    ~single_thread_context() noexcept {
       loop_.finish();
       thread_.join();
     }

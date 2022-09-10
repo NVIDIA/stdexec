@@ -3730,17 +3730,17 @@ namespace _P2300::execution {
 
         run_loop* __loop_;
       };
-      __scheduler get_scheduler() {
+      __scheduler get_scheduler() noexcept {
         return __scheduler{this};
       }
 
-      void run();
+      void run() noexcept;
 
-      void finish();
+      void finish() noexcept;
 
      private:
-      void __push_back_(__impl::__task* __task);
-      __impl::__task* __pop_front_();
+      void __push_back_(__impl::__task* __task) noexcept;
+      __impl::__task* __pop_front_() noexcept;
 
       std::mutex __mutex_;
       std::condition_variable __cv_;
@@ -3757,26 +3757,26 @@ namespace _P2300::execution {
       }
     }
 
-    inline void run_loop::run() {
+    inline void run_loop::run() noexcept {
       for (__impl::__task* __task; (__task = __pop_front_()) != &__head_;) {
         __task->__execute();
       }
     }
 
-    inline void run_loop::finish() {
+    inline void run_loop::finish() noexcept {
       std::unique_lock __lock{__mutex_};
       __stop_ = true;
       __cv_.notify_all();
     }
 
-    inline void run_loop::__push_back_(__impl::__task* __task) {
+    inline void run_loop::__push_back_(__impl::__task* __task) noexcept {
       std::unique_lock __lock{__mutex_};
       __task->__next_ = &__head_;
       __head_.__tail_ = __head_.__tail_->__next_ = __task;
       __cv_.notify_one();
     }
 
-    inline __impl::__task* run_loop::__pop_front_() {
+    inline __impl::__task* run_loop::__pop_front_() noexcept {
       std::unique_lock __lock{__mutex_};
       __cv_.wait(__lock, [this]{ return __head_.__next_ != &__head_ || __stop_; });
       if (__head_.__tail_ == __head_.__next_)
