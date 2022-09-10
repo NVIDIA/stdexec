@@ -76,18 +76,22 @@ TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
   }
 
   SECTION("after spawn_future result discarded") {
+    example::static_thread_pool ctx{1};
     _P2519::execution::async_scope scope;
+    std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
-    {ex::sender auto ftr = scope.spawn_future(begin); (void)ftr;}
-    _P2300::this_thread::sync_wait(scope.empty());
+    {ex::sender auto ftr = scope.spawn_future(begin | _P2300::execution::then([&](){produced = true;})); (void)ftr;}
+    _P2300::this_thread::sync_wait(scope.empty() | _P2300::execution::then([&](){if(!produced.load()){std::terminate();}}));
     expect_empty(scope);
   }
   
   SECTION("after spawn_future result started") {
+    example::static_thread_pool ctx{1};
     _P2519::execution::async_scope scope;
+    std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto ftr = scope.spawn_future(begin);
-    _P2300::this_thread::sync_wait(scope.empty());
+    ex::sender auto ftr = scope.spawn_future(begin | _P2300::execution::then([&](){produced = true;}));
+    _P2300::this_thread::sync_wait(scope.empty() | _P2300::execution::then([&](){if(!produced.load()){std::terminate();}}));
     auto op = ex::connect(std::move(ftr), expect_void_receiver{});
     ex::start(op);
     _P2300::this_thread::sync_wait(scope.empty());
