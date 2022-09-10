@@ -93,6 +93,7 @@ int main() {
   {
     sender auto nest = scope.nest(begin);
     auto op = connect(std::move(nest), noop_receiver{});
+    (void)op;
   }
   sync_wait(scope.empty());
 
