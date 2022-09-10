@@ -79,18 +79,17 @@ TEST_CASE("spawn_future sender will complete after the given sender completes",
   wait_for_value(std::move(snd2));
 }
 
-TEST_CASE("TODO: spawn_future returned sender can be dropped", "[async_scope][spawn_future]") {
+TEST_CASE("spawn_future returned sender can be dropped", "[async_scope][spawn_future]") {
   impulse_scheduler sch;
-  // bool executed{false};
+  std::atomic_bool executed{false};
   async_scope scope;
 
-  // TODO: this doesn't work
-  // // Non-blocking call; simply ignore the returned sender
-  // scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed = true; })));
-  // REQUIRE_FALSE(executed);
-  // // Execute the given work
-  // sch.start_next();
-  // REQUIRE(executed);
+  // Non-blocking call; simply ignore the returned sender
+  (void)scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed = true; })));
+  REQUIRE_FALSE(executed.load());
+  // Execute the given work
+  sch.start_next();
+  REQUIRE(executed.load());
 }
 
 TEST_CASE(
@@ -326,7 +325,7 @@ TEST_CASE("TODO: spawn_future works with senders that complete with stopped sign
   // REQUIRE(P2519::__scope::empty(scope));
 }
 
-TEST_CASE("TODO: spawn_future forwards value to returned sender", "[async_scope][spawn_future]") {
+TEST_CASE("spawn_future forwards value to returned sender", "[async_scope][spawn_future]") {
   impulse_scheduler sch;
   async_scope scope;
 
