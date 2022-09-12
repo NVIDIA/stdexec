@@ -365,7 +365,7 @@ namespace _P2300::execution {
             __required_completions) } ->
           __receiver_concepts::__is_valid_completion<remove_cvref_t<_Receiver>>;
       };
-  
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
   namespace __get_completion_signatures {
@@ -427,9 +427,8 @@ namespace _P2300::execution {
 
   template <class _Sender, class _Env = no_env>
     concept sender =
-      ((__sender<_Sender, _Env> &&
-      __sender<_Sender, no_env> ) ||
-      __awaitable<_Sender, _Env>) &&
+      __sender<_Sender, _Env> &&
+      __sender<_Sender, no_env> &&
       move_constructible<remove_cvref_t<_Sender>> &&
       constructible_from<remove_cvref_t<_Sender>, _Sender>;
 
