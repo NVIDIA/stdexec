@@ -254,7 +254,12 @@ namespace _P2300::execution {
     template <class, class = void>
       __types<> __test(...);
 
-    struct __dependent {};
+    // BUGBUG not to spec!
+    struct __dependent {
+      bool await_ready();
+      void await_suspend(const __coro::coroutine_handle<no_env>&);
+      __dependent await_resume();
+    };
   } // namespace __completion_signatures
 
   template <same_as<no_env>>
@@ -361,9 +366,6 @@ namespace _P2300::execution {
           __receiver_concepts::__is_valid_completion<remove_cvref_t<_Receiver>>;
       };
   
-  template<class _Env>
-    using __env_or_void = __if_c<std::is_same_v<_Env, no_env>, void, _Env>;
-
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
   namespace __get_completion_signatures {
@@ -381,7 +383,7 @@ namespace _P2300::execution {
       template <class _Sender, class _Env = no_env>
         requires (__with_tag_invoke<_Sender, _Env> ||
                   __with_member_alias<_Sender> ||
-                  __awaitable<_Sender,__env_or_void<_Env>>)
+                  __awaitable<_Sender, _Env>)
       constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
@@ -397,9 +399,10 @@ namespace _P2300::execution {
           return _Completions{};
         } else {
           // awaitables go here
-          using _Promise = __env_or_void<_Env>;
-          using _Result = __await_result_t<_Sender, _Promise>;
-          if constexpr (std::is_void_v<_Result>) {
+          using _Result = __await_result_t<_Sender, _Env>;
+          if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
+            return dependent_completion_signatures<no_env>{};
+          } else if constexpr (same_as<_Result, void>) {
             return completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>{};
           } else {
             return completion_signatures<set_value_t(_Result), set_error_t(std::exception_ptr)>{};
@@ -426,7 +429,7 @@ namespace _P2300::execution {
     concept sender =
       ((__sender<_Sender, _Env> &&
       __sender<_Sender, no_env> ) ||
-      __awaitable<_Sender,__env_or_void<_Env>>) &&
+      __awaitable<_Sender, _Env>) &&
       move_constructible<remove_cvref_t<_Sender>> &&
       constructible_from<remove_cvref_t<_Sender>, _Sender>;
 
@@ -449,9 +452,7 @@ namespace _P2300::execution {
     struct __checked_completion_signatures {
      private:
       using _WithEnv = __completion_signatures_of_t<_Sender, _Env>;
-      using _WithoutEnv = __completion_signatures_of_t<_Sender, 
-                          __if_c<__awaitable<_Sender, __env_or_void<_Env>>,
-                          _Env,no_env>>;
+      using _WithoutEnv = __completion_signatures_of_t<_Sender, no_env>;
       static_assert(
         __one_of<
           _WithoutEnv,
