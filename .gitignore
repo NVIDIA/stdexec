@@ -1,5 +1,9 @@
-build/
+build*/
 .cache
 .vscode
 .gitattributes
 compile_commands.json
+/std_execution.html
+/*.cpp
+/*.patch
+/*.diff
