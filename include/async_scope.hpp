@@ -427,16 +427,19 @@ namespace _P2519::execution {
                       start(__op_);
                   }
 
-                  friend void tag_invoke(start_t, __op& __self) noexcept {
-                      std::unique_lock __guard{__self.__scope_->__lock_};
-                      auto& __active = __self.__scope_->__active_;
-                      auto& __waiters = __self.__scope_->__waiters_;
+                  void __start_impl() noexcept {
+                      std::unique_lock __guard{this->__scope_->__lock_};
+                      auto& __active = this->__scope_->__active_;
+                      auto& __waiters = this->__scope_->__waiters_;
                       if (__active != 0) {
-                          __waiters.push_back(&__self);
+                          __waiters.push_back(this);
                           return;
                       }
                       __guard.unlock();
-                      start(__self.__op_);
+                      start(this->__op_);
+                  }
+                  friend void tag_invoke(start_t, __op& __self) noexcept {
+                      return __self.__start_impl();
                   }
                 };
                 async_scope* __scope_;
@@ -529,12 +532,15 @@ namespace _P2519::execution {
                     , __rcvr_((_Receiver&&)__r)
                     , __op_(connect((_Constrained&&)__c, __receiver{this})) {}
             private:
-                friend void tag_invoke(start_t, __op& __self) noexcept {
-                    std::unique_lock __guard{__self.__scope_->__lock_};
-                    auto& __active = __self.__scope_->__active_;
+                void __start_impl() noexcept {
+                    std::unique_lock __guard{this->__scope_->__lock_};
+                    auto& __active = this->__scope_->__active_;
                     ++__active;
                     __guard.unlock();
-                    start(__self.__op_);
+                    start(this->__op_);
+                }
+                friend void tag_invoke(start_t, __op& __self) noexcept {
+                  return __self.__start_impl();
                 }
             };
             async_scope* __scope_;
