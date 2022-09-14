@@ -2958,24 +2958,30 @@ namespace _P2300::execution {
         };
 
       template <class _Env, class _Fun, class _Set, class _Sig>
-        struct __tfx_signal;
+        struct __tfx_signal_ {};
 
       template <class _Env, class _Fun, class _Set, class _Ret, class... _Args>
           requires (!same_as<_Set, _Ret>)
-        struct __tfx_signal<_Env, _Fun, _Set, _Ret(_Args...)> {
+        struct __tfx_signal_<_Env, _Fun, _Set, _Ret(_Args...)> {
           using __t = completion_signatures<_Ret(_Args...)>;
         };
 
       template <class _Env, class _Fun, class _Set, class... _Args>
           requires invocable<_Fun, __decay_ref<_Args>...> &&
             sender<std::invoke_result_t<_Fun, __decay_ref<_Args>...>, _Env>
-        struct __tfx_signal<_Env, _Fun, _Set, _Set(_Args...)> {
+        struct __tfx_signal_<_Env, _Fun, _Set, _Set(_Args...)> {
           using __t =
             make_completion_signatures<
               __result_sender_t<_Fun, _Args...>,
               _Env,
               // because we don't know if connect-ing the result sender will throw:
               completion_signatures<set_error_t(std::exception_ptr)>>;
+        };
+
+      template <class _Env, class _Fun, class _Set>
+        struct __tfx_signal {
+          template <class _Sig>
+            using __f = __t<__tfx_signal_<_Env, _Fun, _Set, _Sig>>;
         };
 
       template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
@@ -3085,12 +3091,6 @@ namespace _P2300::execution {
                 _FunId,
                 _Set>;
 
-          template <class _Env, class _Sig>
-            using __tfx_signal_t = __t<__tfx_signal<_Env, _Fun, _Set, _Sig>>;
-
-          template <class _Env>
-            using __tfx_signal = __mbind_front_q1<__tfx_signal_t, _Env>;
-
           template <class _Sender, class _Env>
             using __with_error =
               __if_c<
@@ -3102,7 +3102,7 @@ namespace _P2300::execution {
             using __completions =
               __mapply<
                 __transform<
-                  __tfx_signal<_Env>,
+                  __tfx_signal<_Env, _Fun, _Set>,
                   __mbind_front_q<__concat_completion_signatures_t, __with_error<_Sender, _Env>>>,
                 completion_signatures_of_t<_Sender, _Env>>;
 
