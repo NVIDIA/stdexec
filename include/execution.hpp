@@ -48,6 +48,31 @@ _PRAGMA_PUSH()
 _PRAGMA_IGNORE("-Wundefined-inline")
 _PRAGMA_IGNORE("-Wundefined-internal")
 
+namespace _P2300::this_thread {
+  // [execution.schedulers.queries], scheduler queries
+  namespace __scheduler_queries {
+    template <class _Ty>
+      const _Ty& __cref_fn(const _Ty&);
+    template <class _Ty>
+      using __cref_t = decltype((__cref_fn)(__declval<_Ty>()));
+
+    struct execute_may_block_caller_t {
+      template <class _T>
+        requires tag_invocable<execute_may_block_caller_t, __cref_t<_T>>
+      constexpr auto operator()(_T&& __t) const
+        noexcept(nothrow_tag_invocable<execute_may_block_caller_t, __cref_t<_T>>)
+        -> tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_T>> {
+        return tag_invoke(execute_may_block_caller_t{}, std::as_const(__t));
+      }
+      constexpr bool operator()(auto&&) const noexcept {
+        return true;
+      }
+    };
+  } // namespace __scheduler_queries
+  using __scheduler_queries::execute_may_block_caller_t;
+  inline constexpr execute_may_block_caller_t execute_may_block_caller{};
+} // _P2300::this_thread
+
 namespace _P2300::execution {
   using namespace _P2300;
   using std::remove_cvref_t;
