@@ -59,9 +59,9 @@ namespace _P2300::this_thread {
     struct execute_may_block_caller_t {
       template <class _T>
         requires tag_invocable<execute_may_block_caller_t, __cref_t<_T>>
-      constexpr auto operator()(_T&& __t) const
-        noexcept(nothrow_tag_invocable<execute_may_block_caller_t, __cref_t<_T>>)
-        -> tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_T>> {
+      constexpr bool operator()(_T&& __t) const noexcept {
+        static_assert(same_as<bool, tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_T>>>);
+        static_assert(nothrow_tag_invocable<execute_may_block_caller_t, __cref_t<_T>>);
         return tag_invoke(execute_may_block_caller_t{}, std::as_const(__t));
       }
       constexpr bool operator()(auto&&) const noexcept {
