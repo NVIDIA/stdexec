@@ -3457,6 +3457,12 @@ namespace _P2300::execution {
           return execution::forward_progress_guarantee::parallel;
         }
 
+        // BUGBUG NOT TO SPEC
+        friend bool tag_invoke(
+            this_thread::execute_may_block_caller_t, const __scheduler&) noexcept {
+          return false;
+        }
+
         bool operator==(const __scheduler&) const noexcept = default;
 
        private:

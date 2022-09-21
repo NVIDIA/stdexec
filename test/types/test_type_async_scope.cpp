@@ -31,6 +31,7 @@ template<class _Scheduler>
 void expect_empty(_Scheduler&, _P2519::execution::async_scope& scope) {
   ex::run_loop loop;
   ex::scheduler auto sch = loop.get_scheduler();
+  CHECK_FALSE(std::this_thread::execute_may_block_caller(sch));
   auto op = ex::connect(
     ex::then(scope.empty(), [&](){  loop.finish(); }),
     expect_void_receiver{ex::make_env(ex::with(ex::get_scheduler, sch))});
