@@ -269,9 +269,8 @@ private:
     std::optional<awaiter_context_t<_promise, ParentPromise>> context_{};
 
     ~_task_awaitable() {
-        if (_coro) {
-            _coro.destroy();
-        }
+      if (coro_)
+        coro_.destroy();
     }
 
     static std::false_type await_ready() noexcept {
