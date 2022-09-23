@@ -268,6 +268,11 @@ private:
     __coro::coroutine_handle<_promise> coro_;
     std::optional<awaiter_context_t<_promise, ParentPromise>> context_{};
 
+    ~_task_awaitable() {
+      if (coro_)
+        coro_.destroy();
+    }
+
     static std::false_type await_ready() noexcept {
       return {};
     }
