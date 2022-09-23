@@ -211,28 +211,29 @@ namespace _P2300 {
   template <class _Fn, class _First, class _Second, class _Third>
     concept __minvocable3 = __valid3<_Fn::template __f, _First, _Second, _Third>;
 
+  template <template <class...> class _T, class... _Args>
+      requires __valid<_T, _Args...>
+    struct __defer_ { using __t = _T<_Args...>; };
+  template <template <class...> class _T, class _A>
+      requires requires { typename _T<_A>; }
+    struct __defer_<_T, _A> { using __t = _T<_A>; };
+  template <template <class...> class _T, class _A, class _B>
+      requires requires { typename _T<_A, _B>; }
+    struct __defer_<_T, _A, _B> { using __t = _T<_A, _B>; };
+  template <template <class...> class _T, class _A, class _B, class _C>
+      requires requires { typename _T<_A, _B, _C>; }
+    struct __defer_<_T, _A, _B, _C> { using __t = _T<_A, _B, _C>; };
+  template <template <class...> class _T, class _A, class _B, class _C, class _D>
+      requires requires { typename _T<_A, _B, _C, _D>; }
+    struct __defer_<_T, _A, _B, _C, _D> { using __t = _T<_A, _B, _C, _D>; };
+  template <template <class...> class _T, class _A, class _B, class _C, class _D, class _E>
+      requires requires { typename _T<_A, _B, _C, _D, _E>; }
+    struct __defer_<_T, _A, _B, _C, _D, _E> { using __t = _T<_A, _B, _C, _D, _E>; };
+
   template <template <class...> class _T>
     struct __defer {
       template <class... _Args>
-          requires __valid<_T, _Args...>
-        struct __f_ { using __t = _T<_Args...>; };
-      template <class _A>
-          requires requires { typename _T<_A>; }
-        struct __f_<_A> { using __t = _T<_A>; };
-      template <class _A, class _B>
-          requires requires { typename _T<_A, _B>; }
-        struct __f_<_A, _B> { using __t = _T<_A, _B>; };
-      template <class _A, class _B, class _C>
-          requires requires { typename _T<_A, _B, _C>; }
-        struct __f_<_A, _B, _C> { using __t = _T<_A, _B, _C>; };
-      template <class _A, class _B, class _C, class _D>
-          requires requires { typename _T<_A, _B, _C, _D>; }
-        struct __f_<_A, _B, _C, _D> { using __t = _T<_A, _B, _C, _D>; };
-      template <class _A, class _B, class _C, class _D, class _E>
-          requires requires { typename _T<_A, _B, _C, _D, _E>; }
-        struct __f_<_A, _B, _C, _D, _E> { using __t = _T<_A, _B, _C, _D, _E>; };
-      template <class... _Args>
-        using __f = __t<__f_<_Args...>>;
+        using __f = __t<__defer_<_T, _Args...>>;
     };
 
   template <class _T>
@@ -247,58 +248,62 @@ namespace _P2300 {
         using __f = __minvoke<_Continuation, __minvoke1<_Fn, _Args>...>;
     };
 
+    template <class _Fn, class...>
+      struct __fold_right_ {};
+    template <class _Fn, class _State, class _Head, class... _Tail>
+        requires __minvocable2<_Fn, _State, _Head>
+      struct __fold_right_<_Fn, _State, _Head, _Tail...>
+        : __fold_right_<_Fn, __minvoke2<_Fn, _State, _Head>, _Tail...> {};
+    template <class _Fn, class _State>
+      struct __fold_right_<_Fn, _State> {
+        using __t = _State;
+      };
+
   template <class _Init, class _Fn>
     struct __fold_right {
-      template <class...>
-        struct __f_ {};
-      template <class _State, class _Head, class... _Tail>
-          requires __minvocable2<_Fn, _State, _Head>
-        struct __f_<_State, _Head, _Tail...>
-          : __f_<__minvoke2<_Fn, _State, _Head>, _Tail...>
-        {};
-      template <class _State>
-        struct __f_<_State> {
-          using __t = _State;
-        };
       template <class... _Args>
-        using __f = __t<__f_<_Init, _Args...>>;
+        using __f = __t<__fold_right_<_Fn, _Init, _Args...>>;
     };
+
+  template <class _Continuation, class...>
+    struct __concat_ {};
+  template <class _Continuation, class... _As>
+      requires (sizeof...(_As) == 0) &&
+        __minvocable<_Continuation, _As...>
+    struct __concat_<_Continuation, _As...> {
+      using __t = __minvoke<_Continuation, _As...>;
+    };
+  template <class _Continuation, template <class...> class _A, class... _As>
+      requires __minvocable<_Continuation, _As...>
+    struct __concat_<_Continuation, _A<_As...>> {
+      using __t = __minvoke<_Continuation, _As...>;
+    };
+  template <class _Continuation,
+            template <class...> class _A, class... _As,
+            template <class...> class _B, class... _Bs,
+            class... _Tail>
+    struct __concat_<_Continuation, _A<_As...>, _B<_Bs...>, _Tail...>
+      : __concat_<_Continuation, __types<_As..., _Bs...>, _Tail...> {};
+  template <class _Continuation,
+            template <class...> class _A, class... _As,
+            template <class...> class _B, class... _Bs,
+            template <class...> class _C, class... _Cs,
+            class... _Tail>
+    struct __concat_<_Continuation, _A<_As...>, _B<_Bs...>, _C<_Cs...>, _Tail...>
+      : __concat_<_Continuation, __types<_As..., _Bs..., _Cs...>, _Tail...> {};
+  template <class _Continuation,
+            template <class...> class _A, class... _As,
+            template <class...> class _B, class... _Bs,
+            template <class...> class _C, class... _Cs,
+            template <class...> class _D, class... _Ds,
+            class... _Tail>
+    struct __concat_<_Continuation, _A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
+      : __concat_<_Continuation, __types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
 
   template <class _Continuation = __q<__types>>
     struct __concat {
-      template <class...>
-        struct __f_ {};
-      template <class... _As>
-          requires (sizeof...(_As) == 0) &&
-            __minvocable<_Continuation, _As...>
-        struct __f_<_As...> {
-          using __t = __minvoke<_Continuation>;
-        };
-      template <template <class...> class _A, class... _As>
-          requires __minvocable<_Continuation, _As...>
-        struct __f_<_A<_As...>> {
-          using __t = __minvoke<_Continuation, _As...>;
-        };
-      template <template <class...> class _A, class... _As,
-                template <class...> class _B, class... _Bs,
-                class... _Tail>
-        struct __f_<_A<_As...>, _B<_Bs...>, _Tail...>
-          : __f_<__types<_As..., _Bs...>, _Tail...> {};
-      template <template <class...> class _A, class... _As,
-                template <class...> class _B, class... _Bs,
-                template <class...> class _C, class... _Cs,
-                class... _Tail>
-        struct __f_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _Tail...>
-          : __f_<__types<_As..., _Bs..., _Cs...>, _Tail...> {};
-      template <template <class...> class _A, class... _As,
-                template <class...> class _B, class... _Bs,
-                template <class...> class _C, class... _Cs,
-                template <class...> class _D, class... _Ds,
-                class... _Tail>
-        struct __f_<_A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
-          : __f_<__types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
       template <class... _Args>
-        using __f = __t<__f_<_Args...>>;
+        using __f = __t<__concat_<_Continuation, _Args...>>;
     };
 
   template <bool>
@@ -491,20 +496,22 @@ namespace _P2300 {
   template <class _T>
     using __cref_t = const std::remove_reference_t<_T>&;
 
+    template <class, class, class, class>
+      struct __mzip_with2_;
+    template <class _Fn, class _Continuation,
+              template <class...> class _C, class... _Cs,
+              template <class...> class _D, class... _Ds>
+        requires requires {
+          typename __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+        }
+      struct __mzip_with2_<_Fn, _Continuation, _C<_Cs...>, _D<_Ds...>> {
+        using __t = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+      };
+
   template <class _Fn, class _Continuation = __q<__types>>
     struct __mzip_with2 {
-      template <class, class>
-        struct __f_;
-      template <template <class...> class _C, class... _Cs,
-                template <class...> class _D, class... _Ds>
-          requires requires {
-            typename __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
-          }
-        struct __f_<_C<_Cs...>, _D<_Ds...>> {
-          using __t = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
-        };
       template <class _C, class _D>
-        using __f = __t<__f_<_C, _D>>;
+        using __f = __t<__mzip_with2_<_Fn, _Continuation, _C, _D>>;
     };
 
   template <std::size_t... _Indices>
