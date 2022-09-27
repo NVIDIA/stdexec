@@ -19,7 +19,7 @@
 #include <utility>
 
 #ifdef _P2300_ASSERT
-#error Hammer says, ya can't touch this
+#error "Hammer says, ya can't touch this"
 #endif
 
 #define _P2300_ASSERT(_X) \
