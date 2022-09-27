@@ -27,6 +27,7 @@
 #include <type_traits>
 #include <variant>
 
+#include <__memory.hpp>
 #include <__utility.hpp>
 #include <functional.hpp>
 #include <concepts.hpp>
@@ -2877,19 +2878,20 @@ namespace _P2300::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.ensure_started]
   namespace __ensure_started {
+    using __env = make_env_t<with_t<get_stop_token_t, in_place_stop_token>>;
 
     template <class _SharedState>
       class __receiver {
-        _SharedState& __shared_state_;
+        __intrusive_ptr<_SharedState> __shared_state_;
 
       public:
-        explicit __receiver(_SharedState &__shared_state) noexcept
-          : __shared_state_(__shared_state) {
+        explicit __receiver(_SharedState& __shared_state) noexcept
+          : __shared_state_(__shared_state.__intrusive_from_this()) {
         }
 
         template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
         friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
-          _SharedState& __state = __self.__shared_state_;
+          _SharedState& __state = *__self.__shared_state_;
 
           try {
             using __tuple_t = __decayed_tuple<_Tag, _As...>;
@@ -2900,11 +2902,12 @@ namespace _P2300::execution {
           }
 
           __state.__notify();
+          __self.__shared_state_.reset();
         }
 
-        friend auto tag_invoke(get_env_t, const __receiver& __self)
-          -> make_env_t<with_t<get_stop_token_t, in_place_stop_token>> {
-          return make_env(with(get_stop_token, __self.__shared_state_.__stop_source_.get_token()));
+        friend __env tag_invoke(get_env_t, const __receiver& __self) {
+          auto __stok = __self.__shared_state_->__stop_source_.get_token();
+          return make_env(with(get_stop_token, std::move(__stok)));
         }
       };
 
@@ -2914,7 +2917,7 @@ namespace _P2300::execution {
     };
 
     template <class _SenderId>
-      struct __sh_state {
+      struct __sh_state : __enable_intrusive_from_this<__sh_state<_SenderId>> {
         using _Sender = __t<_SenderId>;
 
         template <class... _Ts>
@@ -2928,30 +2931,29 @@ namespace _P2300::execution {
         using __bound_values_t =
           __value_types_of_t<
             _Sender,
-            make_env_t<with_t<get_stop_token_t, in_place_stop_token>>,
+            __env,
             __mbind_front_q<__decayed_tuple, set_value_t>,
             __q<__bind_tuples>>;
 
         using __variant_t =
           __error_types_of_t<
             _Sender,
-            make_env_t<with_t<get_stop_token_t, in_place_stop_token>>,
+            __env,
             __transform<
               __mbind_front_q<__decayed_tuple, set_error_t>,
               __bound_values_t>>;
 
-        using __receiver = __receiver<__sh_state>;
+        using __receiver_t = __receiver<__sh_state>;
 
         __variant_t __data_;
         in_place_stop_source __stop_source_{};
 
         std::atomic<void*> __op_state1_;
-        connect_result_t<_Sender, __receiver> __op_state2_;
+        connect_result_t<_Sender, __receiver_t> __op_state2_;
 
         explicit __sh_state(_Sender& __sndr)
           : __op_state1_{nullptr}
-          , __op_state2_(connect((_Sender&&) __sndr, __receiver{*this}))
-        {
+          , __op_state2_(connect((_Sender&&) __sndr, __receiver_t{*this})) {
           start(__op_state2_);
         }
 
@@ -2961,10 +2963,10 @@ namespace _P2300::execution {
           bool const changed = __op_state1_.compare_exchange_weak(
             __old, __completion_state,
             std::memory_order_release,
-            std::memory_order_acquire
-          );
-          if(changed && __old != nullptr) {
-            static_cast<__operation_base*>(__old)->__notify_(static_cast<__operation_base*>(__old));
+            std::memory_order_acquire);
+          if (changed && __old != nullptr) {
+            auto* __op = static_cast<__operation_base*>(__old);
+            __op->__notify_(__op);
           }
         }
       };
@@ -2983,17 +2985,17 @@ namespace _P2300::execution {
         using __on_stop = std::optional<typename stop_token_of_t<
             env_of_t<_Receiver> &>::template callback_type<__on_stop_requested>>;
 
-        _Receiver __recvr_;
+        _Receiver __rcvr_;
         __on_stop __on_stop_{};
-        std::shared_ptr<__sh_state<_SenderId>> __shared_state_;
+        __intrusive_ptr<__sh_state<_SenderId>> __shared_state_;
 
       public:
-        __operation(_Receiver&& __rcvr,
-                    std::shared_ptr<__sh_state<_SenderId>> __shared_state)
+        __operation(_Receiver __rcvr,
+                    __intrusive_ptr<__sh_state<_SenderId>> __shared_state)
             noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           : __operation_base{__notify}
-          , __recvr_((_Receiver&&)__rcvr)
-          , __shared_state_(move(__shared_state)) {
+          , __rcvr_((_Receiver&&) __rcvr)
+          , __shared_state_(std::move(__shared_state)) {
         }
         _P2300_IMMOVABLE(__operation);
 
@@ -3001,9 +3003,9 @@ namespace _P2300::execution {
           __operation *__op = static_cast<__operation*>(__self);
           __op->__on_stop_.reset();
 
-          std::visit([&](const auto& __tupl) noexcept -> void {
-            std::apply([&](auto __tag, const auto&... __args) noexcept -> void {
-              __tag((_Receiver&&) __op->__recvr_, __args...);
+          std::visit([&](auto& __tupl) noexcept -> void {
+            std::apply([&](auto __tag, auto&... __args) noexcept -> void {
+              __tag((_Receiver&&) __op->__rcvr_, std::move(__args)...);
             }, __tupl);
           }, __op->__shared_state_->__data_);
         }
@@ -3018,17 +3020,26 @@ namespace _P2300::execution {
           } else {
               // register stop callback:
             __self.__on_stop_.emplace(
-                get_stop_token(get_env(__self.__recvr_)),
+                get_stop_token(get_env(__self.__rcvr_)),
                 __on_stop_requested{__shared_state->__stop_source_});
             // Check if the stop_source has requested cancellation
             if (__shared_state->__stop_source_.stop_requested()) {
               // Stop has already been requested. Don't bother starting
               // the child operations.
-              execution::set_stopped((_Receiver&&) __self.__recvr_);
+              execution::set_stopped((_Receiver&&) __self.__rcvr_);
             } else {
               // Otherwise, the inner source hasn't notified completion.
               // Set this operation as the __op_state1 so it's notified.
-              __op_state1.store(&__self, std::memory_order_release);
+              void* __old = nullptr;
+              if (!__op_state1.compare_exchange_weak(
+                __old, &__self,
+                std::memory_order_release,
+                std::memory_order_acquire)) {
+                // We get here when the task completed during the execution
+                // of this function. Complete the operation synchronously.
+                assert(__old == __completion_state);
+                __self.__notify(&__self);
+              }
             }
           }
         }
@@ -3042,16 +3053,16 @@ namespace _P2300::execution {
           using __operation = __operation<_SenderId, __x<remove_cvref_t<_Receiver>>>;
 
         _Sender __sndr_;
-        std::shared_ptr<__sh_state_> __shared_state_;
+        __intrusive_ptr<__sh_state_> __shared_state_;
 
       public:
-        template <__decays_to<__sender> _Self, receiver _Receiver>
+        template <same_as<__sender> _Self, receiver _Receiver>
             requires receiver_of<_Receiver, completion_signatures_of_t<_Self, __empty_env>>
-          friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __recvr)
+          friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
             noexcept(std::is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
             -> __operation<_Receiver> {
-            return __operation<_Receiver>{(_Receiver &&) __recvr,
-                                          __self.__shared_state_};
+            return __operation<_Receiver>{(_Receiver &&) __rcvr,
+                                          std::move(__self).__shared_state_};
           }
 
         template <tag_category<forwarding_sender_query> _Tag, class... _As>
@@ -3064,23 +3075,23 @@ namespace _P2300::execution {
           }
 
         template <class... _Tys>
-        using __set_value_t = completion_signatures<set_value_t(const decay_t<_Tys>&...)>;
+        using __set_value_t = completion_signatures<set_value_t(decay_t<_Tys>&&...)>;
 
         template <class _Ty>
-        using __set_error_t = completion_signatures<set_error_t(const decay_t<_Ty>&)>;
+        using __set_error_t = completion_signatures<set_error_t(decay_t<_Ty>&&)>;
 
-        template <__decays_to<__sender> _Self, class _Env>
+        template <same_as<__sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
             make_completion_signatures<
               _Sender,
-              make_env_t<with_t<get_stop_token_t, in_place_stop_token>>,
-              completion_signatures<set_error_t(const std::exception_ptr&)>,
+              __env,
+              completion_signatures<set_error_t(std::exception_ptr&&)>,
               __set_value_t,
               __set_error_t>;
 
         explicit __sender(_Sender __sndr)
-            : __sndr_((_Sender&&) __sndr)
-            , __shared_state_{std::make_shared<__sh_state_>(__sndr_)}
+          : __sndr_((_Sender&&) __sndr)
+          , __shared_state_{__make_intrusive_ptr<__sh_state_>(__sndr_)}
         {}
       };
 

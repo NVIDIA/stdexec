@@ -26,7 +26,6 @@
 namespace ex = std::execution;
 using _P2519::execution::async_scope;
 
-// TODO: implement ensure_started
 TEST_CASE("ensure_started returns a sender", "[adaptors][ensure_started]") {
   auto snd = ex::ensure_started(ex::just(19));
   static_assert(ex::sender<decltype(snd)>);
