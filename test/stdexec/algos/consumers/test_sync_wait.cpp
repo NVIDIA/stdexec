@@ -297,3 +297,13 @@ TEST_CASE("sync_wait_with_variant can be customized without scheduler", "[consum
   CHECK(res.has_value());
   CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(std::string{"ciao_multi"}));
 }
+
+template <class... Ts>
+using decayed_tuple = std::tuple<std::decay_t<Ts>...>;
+
+TEST_CASE("sync_wait spec's return type defined in terms of value_types_of_t", "[consumers][sync_wait]") {
+  static_assert(std::is_same_v<
+      std::tuple<>,
+      ex::value_types_of_t<decltype(ex::just()), ex::no_env, decayed_tuple, std::type_identity_t>>
+  );
+}
