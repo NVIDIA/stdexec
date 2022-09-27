@@ -3001,6 +3001,13 @@ namespace _P2300::execution {
           , __rcvr_((_Receiver&&) __rcvr)
           , __shared_state_(std::move(__shared_state)) {
         }
+        ~__operation() {
+          // Check to see if this operation was ever started. If not,
+          // detach the (potentially still running) operation:
+          if (nullptr == __shared_state_->__op_state1_.load(std::memory_order_acquire)) {
+            __shared_state_->__detach();
+          }
+        }
         _P2300_IMMOVABLE(__operation);
 
         static void __notify(__operation_base* __self) noexcept {
