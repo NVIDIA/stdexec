@@ -2969,6 +2969,10 @@ namespace _P2300::execution {
             __op->__notify_(__op);
           }
         }
+
+        void __detach() noexcept {
+          __stop_source_.request_stop();
+        }
       };
 
     template <class _SenderId, class _ReceiverId>
@@ -3055,7 +3059,6 @@ namespace _P2300::execution {
         _Sender __sndr_;
         __intrusive_ptr<__sh_state_> __shared_state_;
 
-      public:
         template <same_as<__sender> _Self, receiver _Receiver>
             requires receiver_of<_Receiver, completion_signatures_of_t<_Self, __empty_env>>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
@@ -3089,10 +3092,19 @@ namespace _P2300::execution {
               __set_value_t,
               __set_error_t>;
 
+       public:
         explicit __sender(_Sender __sndr)
           : __sndr_((_Sender&&) __sndr)
           , __shared_state_{__make_intrusive_ptr<__sh_state_>(__sndr_)}
         {}
+        ~__sender() {
+          if (nullptr != __shared_state_) {
+            // We're detaching a potentially running operation. Request cancellation.
+            __shared_state_->__detach();
+          }
+        }
+        // Move-only:
+        __sender(__sender&&) = default;
       };
 
     struct ensure_started_t {

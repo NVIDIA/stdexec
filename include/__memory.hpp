@@ -79,7 +79,6 @@ namespace _P2300 {
 
        public:
         __intrusive_ptr() = default;
-        bool operator==(const __intrusive_ptr&) const = default;
 
         __intrusive_ptr(__intrusive_ptr&& __that) noexcept
           : __data_(std::exchange(__that.__data_, nullptr)) {}
@@ -119,6 +118,19 @@ namespace _P2300 {
 
         _Ty& operator*() const noexcept {
           return __data_->__value();
+        }
+
+        explicit operator bool() const noexcept {
+          return __data_ != nullptr;
+        }
+
+        bool operator!() const noexcept {
+          return __data_ == nullptr;
+        }
+
+        bool operator==(const __intrusive_ptr&) const = default;
+        bool operator==(std::nullptr_t) const noexcept {
+          return __data_ == nullptr;
         }
       };
 
