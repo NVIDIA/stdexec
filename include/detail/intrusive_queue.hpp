@@ -20,7 +20,7 @@
 #include <tuple>
 #include <utility>
 
-namespace example {
+namespace _P2300::execution::detail {
 
 template <auto Next>
   class intrusive_queue;
@@ -124,4 +124,4 @@ template <class Item, Item* Item::*Next>
     Item* tail_ = nullptr;
   };
 
-} // namespace example
+} // namespace detail

@@ -31,7 +31,7 @@ namespace example {
       , thread_([this] noexcept { loop_.run(); })
     {}
 
-    ~single_thread_context() noexcept {
+    ~single_thread_context() {
       loop_.finish();
       thread_.join();
     }

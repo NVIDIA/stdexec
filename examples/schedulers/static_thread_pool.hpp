@@ -17,7 +17,7 @@
 #pragma once
 
 #include <execution.hpp>
-#include "../detail/intrusive_queue.hpp"
+#include "../../include/detail/intrusive_queue.hpp"
 #include "__utility.hpp"
 
 #include <atomic>
@@ -29,6 +29,8 @@
 #include <vector>
 
 namespace example {
+  using _P2300::execution::detail::intrusive_queue;
+
   struct task_base {
     task_base* next;
     void (*__execute)(task_base*, std::uint32_t tid) noexcept;
@@ -43,7 +45,7 @@ namespace example {
    public:
     static_thread_pool();
     static_thread_pool(std::uint32_t threadCount);
-    ~static_thread_pool() noexcept;
+    ~static_thread_pool();
 
     struct scheduler {
       bool operator==(const scheduler&) const = default;
@@ -483,7 +485,7 @@ namespace example {
     }
   }
 
-  inline static_thread_pool::~static_thread_pool() noexcept {
+  inline static_thread_pool::~static_thread_pool() {
     request_stop();
     join();
   }

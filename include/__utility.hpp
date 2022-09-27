@@ -18,7 +18,24 @@
 #include <type_traits>
 #include <utility>
 
+#ifdef _P2300_ASSERT
+#error Hammer says, ya can't touch this
+#endif
+
+#define _P2300_ASSERT(_X) \
+  do { \
+    static_assert(noexcept(_X)); \
+    STDEXEC_ASSERT(_X); \
+  } while(false)
+
+#ifndef STDEXEC_ASSERT
+#define STDEXEC_ASSERT _P2300::__stdexec_assert
+#endif
+
 namespace _P2300 {
+
+  inline constexpr void __stdexec_assert(bool valid) {if (!valid) {std::terminate();}}
+
   struct __ {};
 
   struct __ignore {

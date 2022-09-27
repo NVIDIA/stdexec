@@ -16,7 +16,7 @@
 #pragma once
 
 #include <execution.hpp>
-#include <../examples/detail/intrusive_queue.hpp>
+#include <detail/intrusive_queue.hpp>
 
 namespace _P2519::execution {
   using namespace _P2300::execution;
@@ -90,12 +90,12 @@ namespace _P2519::execution {
         }
       };
 
-    enum class __future_state_steps {
-      Invalid = 0,
-      Created,
-      Future,
-      NoFuture,
-      Deleted
+    enum class __future_state_steps_t {
+      __invalid = 0,
+      __created,
+      __future,
+      __no_future,
+      __deleted
     };
 
     template <sender _Sender>
@@ -130,9 +130,9 @@ namespace _P2519::execution {
           void __complete_() noexcept final override try {
             static_assert(sender_to<_Sender, _Receiver>);
             auto __state = std::move(__state_);
-            if (!__state) {std::terminate();}
+            _P2300_ASSERT(__state != nullptr);
             std::unique_lock __guard{__state->__mutex_};
-            if (__state->__no_future_ != nullptr || __state->__step_ != __future_state_steps::Future) {
+            if (__state->__no_future_ != nullptr || __state->__step_ != __future_state_steps_t::__future) {
               std::terminate();
             } else if (__state->__data_.index() == 2 || get_stop_token(get_env(__rcvr_)).stop_requested()) {
               __guard.unlock();
@@ -151,7 +151,7 @@ namespace _P2519::execution {
             }
             auto __raw_state = __state.get();
             __raw_state->__no_future_ = std::move(__state);
-            __raw_state->__step_from_to_(__guard, __future_state_steps::Future, __future_state_steps::NoFuture);
+            __raw_state->__step_from_to_(__guard, __future_state_steps_t::__future, __future_state_steps_t::__no_future);
           } catch(...) {
             set_error((_Receiver&&) __rcvr_, std::current_exception());
           }
@@ -168,7 +168,7 @@ namespace _P2519::execution {
               auto __raw_state = __state_.get();
               std::unique_lock __guard{__raw_state->__mutex_};
               __raw_state->__no_future_ = std::move(__state_);
-              __raw_state->__step_from_to_(__guard, __future_state_steps::Future, __future_state_steps::NoFuture);
+              __raw_state->__step_from_to_(__guard, __future_state_steps_t::__future, __future_state_steps_t::__no_future);
             }
           }
           template <class _Receiver2>
@@ -216,7 +216,7 @@ namespace _P2519::execution {
         template <class _Sender2 = _Sender, class... _As>
             requires constructible_from<__impl::__future_result_t<_Sender2>, _As...>
           void set_value(_As&&... __as) noexcept {
-            auto& __state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
+            auto& __state = *static_cast<__future_state<_Sender>*>(__op_);
             std::unique_lock __guard{__state.__mutex_};
             __state.__data_.template emplace<1>((_As&&) __as...);
             __guard.unlock();
@@ -228,7 +228,7 @@ namespace _P2519::execution {
         }
 
         void set_stopped() noexcept {
-          auto& __state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
+          auto& __state = *static_cast<__future_state<_Sender>*>(__op_);
           std::unique_lock __guard{__state.__mutex_};
           __state.__data_.template emplace<2>(execution::set_stopped);
           __guard.unlock();
@@ -236,7 +236,7 @@ namespace _P2519::execution {
         }
 
         void __dispatch_result_() noexcept {
-          auto& __state = *reinterpret_cast<__future_state<_Sender>*>(__op_);
+          auto& __state = *static_cast<__future_state<_Sender>*>(__op_);
           std::unique_lock __guard{__state.__mutex_};
           auto __local = std::move(__state.__subscribers_);
           __state.__forward_scope_ = std::nullopt;
@@ -269,12 +269,12 @@ namespace _P2519::execution {
           std::unique_lock __guard{__mutex_};
           if (!!__no_future_) {
             // future was discarded
-            __step_from_to_(__guard, __future_state_steps::NoFuture, __future_state_steps::Deleted);
-          } else if (__step_ == __future_state_steps::Created) {
+            __step_from_to_(__guard, __future_state_steps_t::__no_future, __future_state_steps_t::__deleted);
+          } else if (__step_ == __future_state_steps_t::__created) {
             // exception during connect() will end up here
-            __step_from_to_(__guard, __future_state_steps::Created, __future_state_steps::Deleted);
+            __step_from_to_(__guard, __future_state_steps_t::__created, __future_state_steps_t::__deleted);
           } else {
-            __step_from_to_(__guard, __future_state_steps::Future, __future_state_steps::Deleted);
+            __step_from_to_(__guard, __future_state_steps_t::__future, __future_state_steps_t::__deleted);
           }
         }
 
@@ -289,12 +289,10 @@ namespace _P2519::execution {
 
         using __op_t = __future_operation_t<_Sender>;
 
-        void __step_from_to_(std::unique_lock<std::mutex>& __guard, __future_state_steps __from, __future_state_steps __to) {
-          if (!__guard.owns_lock()) { std::terminate(); }
+        void __step_from_to_(std::unique_lock<std::mutex>& __guard, __future_state_steps_t __from, __future_state_steps_t __to) {
+          _P2300_ASSERT(__guard.owns_lock());
           auto actual = std::exchange(__step_, __to);
-          if (actual != __from) {
-            std::terminate();
-          }
+          _P2300_ASSERT(actual == __from);
         }
       private:
         std::optional<__op_t> __op_;
@@ -302,10 +300,10 @@ namespace _P2519::execution {
         std::optional<in_place_stop_callback<__forward_stopped>> __forward_scope_;
 
         std::mutex __mutex_;
-        __future_state_steps __step_ = __future_state_steps::Created;
+        __future_state_steps_t __step_ = __future_state_steps_t::__created;
         std::unique_ptr<__future_state> __no_future_;
         std::variant<std::monostate, __impl::__future_result_t<_Sender>, execution::set_stopped_t> __data_;
-        example::intrusive_queue<&__impl::__subscription::__next_> __subscribers_;
+        detail::intrusive_queue<&__impl::__subscription::__next_> __subscribers_;
       };
 
     namespace __impl {
@@ -335,7 +333,7 @@ namespace _P2519::execution {
             auto __raw_state = __state_.get();
             std::unique_lock __guard{__raw_state->__mutex_};
             __raw_state->__no_future_ = std::move(__state_);
-            __raw_state->__step_from_to_(__guard, __future_state_steps::Future, __future_state_steps::NoFuture);
+            __raw_state->__step_from_to_(__guard, __future_state_steps_t::__future, __future_state_steps_t::__no_future);
           }
         }
         __future(__future&&) = default;
@@ -345,7 +343,7 @@ namespace _P2519::execution {
           : __state_(std::move(__state))
         {
             std::unique_lock __guard{__state_->__mutex_};
-            __state_->__step_from_to_(__guard, __future_state_steps::Created, __future_state_steps::Future);
+            __state_->__step_from_to_(__guard, __future_state_steps_t::__created, __future_state_steps_t::__future);
         }
 
         template <__decays_to<__future> _Self, class _Receiver>
@@ -367,15 +365,11 @@ namespace _P2519::execution {
     struct async_scope : __immovable {
         ~async_scope() noexcept {
             std::unique_lock __guard{__lock_};
-            if (__active_ != 0) { 
-              std::terminate();
-            }
-            if (!__waiters_.empty()) { 
-              std::terminate();
-            }
+            _P2300_ASSERT(__active_ == 0);
+            _P2300_ASSERT(__waiters_.empty());
         }
         async_scope() 
-        : __active_(0) {}
+          : __active_(0) {}
 
         struct __op_base : __immovable {
             explicit __op_base(async_scope* __scope) : __scope_(__scope), __next_(nullptr) {}
@@ -389,60 +383,61 @@ namespace _P2519::execution {
         };
         // a constraint that starts a supplied sender when there are no active senders
         struct __when_empty {
-        template<class __ConstrainedId>
-          struct __sender {
-            using __Constrained = __t<__ConstrainedId>;
+          template<class _ConstrainedId>
+            struct __sender {
+              using __Constrained = __t<_ConstrainedId>;
 
-            template<class __ReceiverId>
-              struct __op : __op_base {
-                using __Receiver = __t<__ReceiverId>;
-                    struct __receiver : private receiver_adaptor<__receiver> {
-                        __op* __op_;
-                        template <class _Op>
-                          explicit __receiver(_Op* _op) noexcept
-                            : receiver_adaptor<__receiver>{}, __op_(_op) {
-                            static_assert(same_as<_Op, __op>);
-                          }
-                    private:
-                        friend receiver_adaptor<__receiver>;
-                        template<class... __An>
-                        void set_value(__An&&... an) noexcept {
-                            _P2300::execution::set_value(std::move(__op_->__rcvr_), an...);
+              template<class _ReceiverId>
+                struct __op : __op_base {
+                  using __Receiver = __t<_ReceiverId>;
+                  struct __receiver : private receiver_adaptor<__receiver> {
+                      __op* __op_;
+                      template <class _Op>
+                        explicit __receiver(_Op* _op) noexcept
+                          : receiver_adaptor<__receiver>{}, __op_(_op) 
+                        {
+                          static_assert(same_as<_Op, __op>);
                         }
-                        template<class __Err>
-                        void set_error(__Err&& __e) noexcept {
-                            _P2300::execution::set_error(std::move(__op_->__rcvr_), __e);
-                        }
-                        void set_stopped() noexcept {
-                            _P2300::execution::set_stopped(std::move(__op_->__rcvr_));
-                        }
-                        auto get_env() const& {
-                          return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__get__scope_(__op_))));
-                        }
-                    };
-                    [[no_unique_address]] __Receiver __rcvr_;
-                    [[no_unique_address]] connect_result_t<__Constrained, __receiver> __op_;
-                    template<class _Constrained, class _Receiver>
-                      explicit __op(async_scope* __scope, _Constrained&& __c, _Receiver&& __r) 
+                  private:
+                      friend receiver_adaptor<__receiver>;
+                      template<class... _An>
+                      void set_value(_An&&... __an) noexcept {
+                          _P2300::execution::set_value(std::move(__op_->__rcvr_), (_An&&)__an...);
+                      }
+                      template<class _Err>
+                      void set_error(_Err&& __e) noexcept {
+                          _P2300::execution::set_error(std::move(__op_->__rcvr_), __e);
+                      }
+                      void set_stopped() noexcept {
+                          _P2300::execution::set_stopped(std::move(__op_->__rcvr_));
+                      }
+                      auto get_env() const& {
+                        return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__get__scope_(__op_))));
+                      }
+                  };
+                  [[no_unique_address]] __Receiver __rcvr_;
+                  [[no_unique_address]] connect_result_t<__Constrained, __receiver> __op_;
+                  template<class _Constrained, class _Receiver>
+                    explicit __op(async_scope* __scope, _Constrained&& __c, _Receiver&& __r) 
                       : __op_base(__scope)
                       , __rcvr_((_Receiver&&)__r)
                       , __op_(connect((_Constrained&&)__c, __receiver{this})) {}
                 private:
-                    void notify_waiter() noexcept override {
-                        start(__op_);
-                    }
+                  void notify_waiter() noexcept override {
+                      start(__op_);
+                  }
 
-                    friend void tag_invoke(start_t, __op& __self) noexcept {
-                        std::unique_lock __guard{__self.__scope_->__lock_};
-                        auto& __active = __self.__scope_->__active_;
-                        auto& __waiters = __self.__scope_->__waiters_;
-                        if (__active != 0) {
-                            __waiters.push_back(&__self);
-                            return;
-                        }
-                        __guard.unlock();
-                        start(__self.__op_);
-                    }
+                  friend void tag_invoke(start_t, __op& __self) noexcept {
+                      std::unique_lock __guard{__self.__scope_->__lock_};
+                      auto& __active = __self.__scope_->__active_;
+                      auto& __waiters = __self.__scope_->__waiters_;
+                      if (__active != 0) {
+                          __waiters.push_back(&__self);
+                          return;
+                      }
+                      __guard.unlock();
+                      start(__self.__op_);
+                  }
                 };
                 async_scope* __scope_;
                 [[no_unique_address]] __Constrained __c_;
@@ -464,18 +459,19 @@ namespace _P2519::execution {
         [[nodiscard]] auto on_empty() const {
           return when_empty(just());
         }
-        template<class __ConstrainedId>
+        template<class _ConstrainedId>
         struct __sender {
-            using __Constrained = __t<__ConstrainedId>;
+            using __Constrained = __t<_ConstrainedId>;
 
-            template<class __ReceiverId>
+            template<class _ReceiverId>
             struct __op : __immovable {
-                using __Receiver = __t<__ReceiverId>;
+                using __Receiver = __t<_ReceiverId>;
                 struct __receiver : private receiver_adaptor<__receiver> {
                     __op* __op_;
                     template <class _Op>
                       explicit __receiver(_Op* _op) noexcept
-                        : receiver_adaptor<__receiver>{}, __op_(_op) {
+                        : receiver_adaptor<__receiver>{}, __op_(_op) 
+                      {
                         static_assert(same_as<_Op, __op>);
                       }
                 private:
@@ -495,18 +491,18 @@ namespace _P2519::execution {
                         }
                     }
                     friend receiver_adaptor<__receiver>;
-                    template<class... __An>
-                    void set_value(__An&&... an) noexcept {
+                    template<class... _An>
+                    void set_value(_An&&... an) noexcept {
                         auto __scope = __op_->__scope_;
-                        _P2300::execution::set_value(std::move(__op_->__rcvr_), (__An&&)an...);
+                        _P2300::execution::set_value(std::move(__op_->__rcvr_), (_An&&)an...);
                         // do not access __op_ 
                         // do not access this
                         __complete(__scope);
                     }
-                    template<class __Err>
-                    void set_error(__Err&& __e) noexcept {
+                    template<class _Err>
+                    void set_error(_Err&& __e) noexcept {
                         auto __scope = __op_->__scope_;
-                        _P2300::execution::set_error(std::move(__op_->__rcvr_), (__Err&&)__e);
+                        _P2300::execution::set_error(std::move(__op_->__rcvr_), (_Err&&)__e);
                         // do not access __op_ 
                         // do not access this
                         __complete(__scope);
@@ -527,9 +523,9 @@ namespace _P2519::execution {
                 [[no_unique_address]] connect_result_t<__Constrained, __receiver> __op_;
                 template<class _Constrained, class _Receiver>
                   explicit __op(async_scope* __scope, _Constrained&& __c, _Receiver&& __r) 
-                  : __scope_(__scope)
-                  , __rcvr_((_Receiver&&)__r)
-                  , __op_(connect((_Constrained&&)__c, __receiver{this})) {}
+                    : __scope_(__scope)
+                    , __rcvr_((_Receiver&&)__r)
+                    , __op_(connect((_Constrained&&)__c, __receiver{this})) {}
             private:
                 friend void tag_invoke(start_t, __op& __self) noexcept {
                     std::unique_lock __guard{__self.__scope_->__lock_};
@@ -633,12 +629,12 @@ namespace _P2519::execution {
       in_place_stop_source __stop_source_;
       std::mutex __lock_;
       std::ptrdiff_t __active_;
-      example::intrusive_queue<&__op_base::__next_> __waiters_;
+      detail::intrusive_queue<&__op_base::__next_> __waiters_;
     };
 
-    template<class T>
-    async_scope* __get__scope_(T* t) noexcept {
-      return t->__scope_;
+    template<class _T>
+    async_scope* __get__scope_(_T* __t) noexcept {
+      return __t->__scope_;
     }
 
   } // namespace __scope
