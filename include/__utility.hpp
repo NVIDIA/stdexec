@@ -50,6 +50,15 @@ namespace _P2300 {
 #  define _P2300_IMMOVABLE(_X) _X(_X&&) = delete
 #endif
 
+    // BUG (gcc PR93711): copy elision fails when initializing a
+    // [[no_unique_address]] field from a function returning an object
+    // of class type by value
+#if defined(__GNUC__) && !defined(__clang__)
+#  define _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS
+#else
+#  define _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#endif
+
   struct __none_such {};
 
   struct __immovable {

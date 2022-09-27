@@ -347,7 +347,7 @@ namespace _P2519::execution {
         }
 
         template <__decays_to<__future> _Self, class _Receiver>
-            // requires receiver_of<_Receiver, __completions<_Receiver>>
+            requires receiver_of<_Receiver, completion_signatures_of_t<_Sender, __empty_env>>
           friend __impl::__operation<_SenderId, __x<decay_t<_Receiver>>>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
             return __impl::__operation<_SenderId, __x<decay_t<_Receiver>>>{
@@ -416,7 +416,7 @@ namespace _P2519::execution {
                       }
                   };
                   [[no_unique_address]] __Receiver __rcvr_;
-                  [[no_unique_address]] connect_result_t<__Constrained, __receiver> __op_;
+                  _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<__Constrained, __receiver> __op_;
                   template<class _Constrained, class _Receiver>
                     explicit __op(async_scope* __scope, _Constrained&& __c, _Receiver&& __r) 
                       : __op_base(__scope)
@@ -443,7 +443,9 @@ namespace _P2519::execution {
                 [[no_unique_address]] __Constrained __c_;
             private:
                 template <__decays_to<__sender> _Self, class _Receiver>
-                  [[nodiscard]] friend __op<__x<remove_cvref_t<_Receiver>>> tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
+                    requires receiver_of<_Receiver, completion_signatures<set_value_t()>>
+                  [[nodiscard]] friend __op<__x<remove_cvref_t<_Receiver>>> 
+                  tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
                     return __op<__x<remove_cvref_t<_Receiver>>>{__self.__scope_, ((_Self&&) __self).__c_, (_Receiver&&)__rcvr};
                   }
                 template <__decays_to<__sender> _Self, class _Env>
@@ -451,7 +453,7 @@ namespace _P2519::execution {
                     -> completion_signatures_of_t<__member_t<_Self, __Constrained>, _Env>;
             };
         };
-        template<class _Constrained>
+        template<sender _Constrained>
         [[nodiscard]] __when_empty::__sender<__x<remove_cvref_t<_Constrained>>> 
           when_empty(_Constrained&& __c) const {
             return __when_empty::__sender<__x<remove_cvref_t<_Constrained>>>{const_cast<async_scope*>(this), __c};
@@ -520,7 +522,7 @@ namespace _P2519::execution {
                 };
                 async_scope* __scope_;
                 [[no_unique_address]] __Receiver __rcvr_;
-                [[no_unique_address]] connect_result_t<__Constrained, __receiver> __op_;
+                _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<__Constrained, __receiver> __op_;
                 template<class _Constrained, class _Receiver>
                   explicit __op(async_scope* __scope, _Constrained&& __c, _Receiver&& __r) 
                     : __scope_(__scope)
@@ -539,21 +541,20 @@ namespace _P2519::execution {
             [[no_unique_address]] __Constrained __c_;
         private:
             template <__decays_to<__sender> _Self, class _Receiver>
-              requires sender_to<__Constrained, typename __op<__x<remove_cvref_t<_Receiver>>>::__receiver>
-              [[nodiscard]] friend __op<__x<remove_cvref_t<_Receiver>>> tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
+              requires receiver_of<_Receiver, completion_signatures_of_t<__Constrained, __empty_env>>
+              [[nodiscard]] friend __op<__x<remove_cvref_t<_Receiver>>> 
+              tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
                 return __op<__x<remove_cvref_t<_Receiver>>>{__self.__scope_, ((_Self&&) __self).__c_, (_Receiver&&)__rcvr};
               }
             template <__decays_to<__sender> _Self, class _Env>
               friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
                 -> completion_signatures_of_t<__member_t<_Self, __Constrained>, _Env>;
         };
-        template<class _Constrained>
+        template<sender _Constrained>
           using nest_result_t = __sender<__x<remove_cvref_t<_Constrained>>>;
         template<sender _Constrained>
-            // requires sender_to<
-            //   _Constrained, 
-            //   nest_result_t::__op_<??>::__receiver<__x<remove_cvref_t<_Constrained>>>>
-          [[nodiscard]] nest_result_t<_Constrained> nest(_Constrained&& __c) {
+          [[nodiscard]] nest_result_t<_Constrained> 
+          nest(_Constrained&& __c) {
             return nest_result_t<_Constrained>{this, (_Constrained&&)__c};
           }
         template <sender _Sender>
@@ -585,7 +586,8 @@ namespace _P2519::execution {
 
         template <sender _Sender>
             requires sender_to<nest_result_t<_Sender>, __future_receiver<__x<nest_result_t<_Sender>>>>
-          __future<__x<nest_result_t<_Sender>>> spawn_future(_Sender&& __sndr) {
+          __future<__x<nest_result_t<_Sender>>> 
+          spawn_future(_Sender&& __sndr) {
             using __state_t = __future_state<nest_result_t<_Sender>>;
             // this could throw; if it does, there's nothing to clean up
             auto __state = std::make_unique<__state_t>();
