@@ -16,6 +16,7 @@
 #pragma once
 
 #include <__utility.hpp>
+#include <concepts.hpp>
 
 #include <atomic>
 #include <memory>
@@ -143,7 +144,7 @@ namespace _P2300 {
     template <class _Ty>
       struct __make_intrusive_ptr_t {
         template <class... _Us>
-            requires std::constructible_from<_Ty, _Us...>
+            requires constructible_from<_Ty, _Us...>
           __intrusive_ptr<_Ty> operator()(_Us&&... __us) const {
             using _UncvTy = std::remove_cv_t<_Ty>;
             return __intrusive_ptr<_Ty>{::new __control_block<_UncvTy>{(_Us&&) __us...}};
