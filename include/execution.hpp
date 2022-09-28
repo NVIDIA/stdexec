@@ -3095,7 +3095,7 @@ namespace _P2300::execution {
             make_completion_signatures<
               _Sender,
               __env,
-              completion_signatures<set_error_t(std::exception_ptr&&)
+              completion_signatures<set_error_t(std::exception_ptr&&),
                                     set_stopped_t()>,
               __set_value_t,
               __set_error_t>;
