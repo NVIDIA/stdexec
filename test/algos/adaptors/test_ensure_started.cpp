@@ -63,3 +63,31 @@ TEST_CASE("stopping ensure_started before the source completes calls set_stopped
   sch.start_next();
   CHECK(called);
 }
+
+TEST_CASE("Dropping the sender without connecting it calls set_stopped", "[adaptors][ensure_started]") {
+  impulse_scheduler sch;
+  bool called = false;
+  {
+    auto snd =
+        ex::on(sch, ex::just())
+      | ex::upon_stopped([&] { called = true; })
+      | ex::ensure_started();
+  }
+  // make the source yield the value
+  sch.start_next();
+  CHECK(called);
+}
+
+TEST_CASE("Dropping the opstate without starting it calls set_stopped", "[adaptors][ensure_started]") {
+  impulse_scheduler sch;
+  bool called = false;
+  {
+    auto snd =
+        ex::on(sch, ex::just())
+      | ex::upon_stopped([&] { called = true; })
+      | ex::ensure_started();
+  }
+  // make the source yield the value
+  sch.start_next();
+  CHECK(called);
+}

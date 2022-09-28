@@ -71,7 +71,7 @@ namespace _P2300 {
         }
 
         void __release_() noexcept {
-          if (__data_ && (1u == __data_->__refcount_.fetch_sub(1, std::memory_order_release))) {
+          if (__data_ && 1u == __data_->__refcount_.fetch_sub(1, std::memory_order_release)) {
             std::atomic_thread_fence(std::memory_order_acquire);
             delete __data_;
           }
@@ -89,14 +89,13 @@ namespace _P2300 {
         }
 
         __intrusive_ptr& operator=(__intrusive_ptr&& __that) noexcept {
-          __release_();
-          __data_ = std::exchange(__that.__data_, nullptr);
+          [[maybe_unused]] __intrusive_ptr __old{
+            std::exchange(__data_, std::exchange(__that.__data_, nullptr))};
+          return *this;
         }
 
         __intrusive_ptr& operator=(const __intrusive_ptr& __that) noexcept {
-          __release_();
-          __data_ = __that.__data_;
-          __addref_();
+          return operator=(__intrusive_ptr(__that));
         }
 
         ~__intrusive_ptr() {
@@ -104,8 +103,11 @@ namespace _P2300 {
         }
 
         void reset() noexcept {
-          __release_();
-          __data_ = nullptr;
+          operator=({});
+        }
+
+        void swap(__intrusive_ptr& __that) noexcept {
+          std::swap(__data_, __that.__data_);
         }
 
         _Ty* get() const noexcept {

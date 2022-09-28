@@ -4134,8 +4134,7 @@ namespace _P2300::execution {
             , __sndr_((_Sender2&&) __sndr)
             , __rcvr_((_Receiver2&&) __rcvr)
             , __data_{std::in_place_index<0>, __conv{[&, this]{
-                return connect(schedule(__sched),
-                                __receiver_t{{}, this});
+                return connect(schedule(__sched), __receiver_t{{}, this});
               }}} {}
           _P2300_IMMOVABLE(__operation);
 
