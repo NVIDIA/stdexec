@@ -2695,13 +2695,12 @@ namespace _P2300::execution {
         using __receiver_ = __receiver<__sh_state>;
 
         in_place_stop_source __stop_source_{};
-        connect_result_t<_Sender, __receiver_> __op_state2_;
         __variant_t __data_;
-        std::atomic<void*> __head_;
+        std::atomic<void*> __head_{nullptr};
+        connect_result_t<_Sender, __receiver_> __op_state2_;
 
         explicit __sh_state(_Sender& __sndr)
           : __op_state2_(connect((_Sender&&) __sndr, __receiver_{*this}))
-          , __head_{nullptr}
         {}
 
         void __notify() noexcept {
@@ -3331,16 +3330,15 @@ namespace _P2300::execution {
 
           template <class _Receiver2>
             __operation(_Sender&& __sndr, _Receiver2&& __rcvr, _Fun __fun)
-              : __op_state2_(connect((_Sender&&) __sndr, __receiver_t{this}))
-              , __rcvr_((_Receiver2&&) __rcvr)
+              : __rcvr_((_Receiver2&&) __rcvr)
               , __fun_((_Fun&&) __fun)
-            {}
+              , __op_state2_(connect((_Sender&&) __sndr, __receiver_t{this})) {}
           _P2300_IMMOVABLE(__operation);
 
-          connect_result_t<_Sender, __receiver_t> __op_state2_;
           _Receiver __rcvr_;
           _Fun __fun_;
           [[no_unique_address]] __storage<_Sender, _Receiver, _Fun, _Let> __storage_;
+          connect_result_t<_Sender, __receiver_t> __op_state2_;
         };
 
       template <class _SenderId, class _FunId, class _SetId>
@@ -3503,8 +3501,8 @@ namespace _P2300::execution {
         using __receiver_t = __receiver<_SenderId, _ReceiverId>;
 
         __operation(_Sender&& __sndr, _Receiver&& __rcvr)
-          : __op_state_(connect((_Sender&&) __sndr, __receiver_t{{}, this}))
-          , __rcvr_((_Receiver&&) __rcvr)
+          : __rcvr_((_Receiver&&) __rcvr)
+          , __op_state_(connect((_Sender&&) __sndr, __receiver_t{{}, this}))
         {}
         _P2300_IMMOVABLE(__operation);
 
@@ -3512,8 +3510,8 @@ namespace _P2300::execution {
           start(__self.__op_state_);
         }
 
-        connect_result_t<_Sender, __receiver_t> __op_state_;
         _Receiver __rcvr_;
+        connect_result_t<_Sender, __receiver_t> __op_state_;
       };
 
     template <class _SenderId>
@@ -3919,8 +3917,8 @@ namespace _P2300::execution {
         _Scheduler __sched_;
         _Receiver __rcvr_;
         __variant_t __data_;
-        connect_result_t<_CvrefSender, __receiver1_t> __state1_;
         std::optional<connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t>> __state2_;
+        connect_result_t<_CvrefSender, __receiver1_t> __state1_;
 
         __operation1(_Scheduler __sched, _CvrefSender&& __sndr, __decays_to<_Receiver> auto&& __rcvr)
           : __sched_(__sched)
@@ -4132,21 +4130,21 @@ namespace _P2300::execution {
 
           template <class _Sender2, class _Receiver2>
           __operation(_Scheduler __sched, _Sender2&& __sndr, _Receiver2&& __rcvr)
-            : __data_{std::in_place_index<0>, __conv{[&, this]{
+            : __scheduler_((_Scheduler&&) __sched)
+            , __sndr_((_Sender2&&) __sndr)
+            , __rcvr_((_Receiver2&&) __rcvr)
+            , __data_{std::in_place_index<0>, __conv{[&, this]{
                 return connect(schedule(__sched),
                                 __receiver_t{{}, this});
-              }}}
-            , __scheduler_((_Scheduler&&) __sched)
-            , __sndr_((_Sender2&&) __sndr)
-            , __rcvr_((_Receiver2&&) __rcvr) {}
+              }}} {}
           _P2300_IMMOVABLE(__operation);
 
-          std::variant<
-              connect_result_t<schedule_result_t<_Scheduler>, __receiver_t>,
-              connect_result_t<_Sender, __receiver_ref_t>> __data_;
           _Scheduler __scheduler_;
           _Sender __sndr_;
           _Receiver __rcvr_;
+          std::variant<
+              connect_result_t<schedule_result_t<_Scheduler>, __receiver_t>,
+              connect_result_t<_Sender, __receiver_ref_t>> __data_;
         };
 
       template <class _SchedulerId, class _SenderId>
