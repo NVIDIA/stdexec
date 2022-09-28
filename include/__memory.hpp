@@ -83,7 +83,7 @@ namespace _P2300 {
         __intrusive_ptr(__intrusive_ptr&& __that) noexcept
           : __data_(std::exchange(__that.__data_, nullptr)) {}
 
-        __intrusive_ptr(const __intrusive_ptr&& __that) noexcept
+        __intrusive_ptr(const __intrusive_ptr& __that) noexcept
           : __data_(__that.__data_) {
           __addref_();
         }
@@ -93,7 +93,7 @@ namespace _P2300 {
           __data_ = std::exchange(__that.__data_, nullptr);
         }
 
-        __intrusive_ptr& operator=(const __intrusive_ptr&& __that) noexcept {
+        __intrusive_ptr& operator=(const __intrusive_ptr& __that) noexcept {
           __release_();
           __data_ = __that.__data_;
           __addref_();
