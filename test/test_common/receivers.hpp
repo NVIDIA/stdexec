@@ -213,8 +213,11 @@ class expect_stopped_receiver {
 };
 
 struct expect_stopped_receiver_ex {
-  bool* executed_;
+  explicit expect_stopped_receiver_ex(bool& executed)
+    : executed_(&executed)
+  {}
 
+private:
   template <typename... Ts>
   friend void tag_invoke(ex::set_value_t, expect_stopped_receiver_ex&&, Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_stopped_receiver_ex");
@@ -229,6 +232,7 @@ struct expect_stopped_receiver_ex {
   friend empty_env tag_invoke(ex::get_env_t, const expect_stopped_receiver_ex&) noexcept {
     return {};
   }
+  bool* executed_;
 };
 
 template <class T>

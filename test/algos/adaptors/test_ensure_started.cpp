@@ -49,13 +49,17 @@ TEST_CASE("ensure_started simple example", "[adaptors][ensure_started]") {
 }
 
 TEST_CASE("stopping ensure_started before the source completes calls set_stopped", "[adaptors][ensure_started]") {
-  async_scope scope;
+  ex::in_place_stop_source stop_source;
   impulse_scheduler sch;
-  auto snd = ex::on(sch, ex::just(19)) | ex::ensure_started();
-  auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{});
+  bool called{false};
+  auto snd = ex::on(sch, ex::just(19))
+           | ex::write(ex::with(ex::get_stop_token, stop_source.get_token()))
+           | ex::ensure_started();
+  auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
   ex::start(op);
   // request stop before the source yields a value
-  scope.get_stop_source().request_stop();
+  stop_source.request_stop();
   // make the source yield the value
   sch.start_next();
+  CHECK(called);
 }

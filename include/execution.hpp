@@ -2958,13 +2958,10 @@ namespace _P2300::execution {
         }
 
         void __notify() noexcept {
-          void* __old{nullptr};
           void* const __completion_state = static_cast<void*>(this);
-          bool const changed = __op_state1_.compare_exchange_weak(
-            __old, __completion_state,
-            std::memory_order_release,
-            std::memory_order_acquire);
-          if (changed && __old != nullptr) {
+          void* const __old =
+            __op_state1_.exchange(__completion_state, std::memory_order_acq_rel);
+          if (__old != nullptr) {
             auto* __op = static_cast<__operation_base*>(__old);
             __op->__notify_(__op);
           }
