@@ -35,7 +35,7 @@ TEST_CASE("stopped_as_error with environment returns a sender", "[adaptors][stop
 TEST_CASE("stopped_as_error simple example", "[adaptors][stopped_as_error]") {
   stopped_scheduler sched;
   auto snd = ex::stopped_as_error(ex::transfer_just(sched, 11), -1);
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{-1});
   ex::start(op);
 }
 
@@ -48,7 +48,7 @@ TEST_CASE("stopped_as_error can we piped", "[adaptors][stopped_as_error]") {
 
 TEST_CASE("stopped_as_error can work with `just_stopped`", "[adaptors][stopped_as_error]") {
   ex::sender auto snd = ex::just_stopped() | ex::stopped_as_error(-1);
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{-1});
   ex::start(op);
 }
 
@@ -74,13 +74,14 @@ TEST_CASE("stopped_as_error using error_code error type", "[adaptors][stopped_as
 TEST_CASE("stopped_as_error using error_code error type, for stopped signal",
     "[adaptors][stopped_as_error]") {
   stopped_scheduler sched;
+  std::error_code errcode(1, std::generic_category());
   ex::sender auto snd = ex::transfer_just(sched, 11) |
-                        ex::stopped_as_error(std::error_code(1, std::generic_category()));
+                        ex::stopped_as_error(errcode);
   check_val_types<type_array<type_array<int>>>(snd);
   check_err_types<type_array<std::exception_ptr, std::error_code>>(snd);
   check_sends_stopped<false>(snd);
 
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{errcode});
   ex::start(op);
 }
 

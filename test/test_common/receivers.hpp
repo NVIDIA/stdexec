@@ -19,6 +19,7 @@
 #include <catch2/catch.hpp>
 #include <test_common/type_helpers.hpp>
 #include <execution.hpp>
+#include <tuple>
 
 namespace ex = std::execution;
 
@@ -98,6 +99,11 @@ class expect_void_receiver {
 };
 
 struct expect_void_receiver_ex {
+  expect_void_receiver_ex(bool& executed)
+    : executed_(&executed)
+  {}
+
+private:
   bool* executed_;
 
   friend void tag_invoke(ex::set_value_t, expect_void_receiver_ex&& self, const auto&...) noexcept {
@@ -114,51 +120,61 @@ struct expect_void_receiver_ex {
   }
 };
 
-template <typename T, bool RuntimeCheck = true>
-class expect_value_receiver {
+template <bool RuntimeCheck /*= true*/, typename... Ts>
+class basic_expect_value_receiver {
   bool called_{false};
-  T value_;
+  std::tuple<Ts...> values_;
 
-  public:
-  explicit expect_value_receiver(T val)
-      : value_(std::move(val)) {}
-  ~expect_value_receiver() { CHECK(called_); }
+public:
+  explicit basic_expect_value_receiver(Ts... vals)
+      : values_(std::move(vals)...) {}
+  ~basic_expect_value_receiver() { CHECK(called_); }
 
-  expect_value_receiver(expect_value_receiver&& other)
+  basic_expect_value_receiver(basic_expect_value_receiver&& other)
       : called_(std::exchange(other.called_, true))
-      , value_(std::move(other.value_))
+      , values_(std::move(other.values_))
   {}
-  expect_value_receiver& operator=(expect_value_receiver&& other) {
+  basic_expect_value_receiver& operator=(basic_expect_value_receiver&& other) {
     called_ = std::exchange(other.called_, true);
-    value_ = std::move(other.value_);
+    values_ = std::move(other.values_);
     return *this;
   }
 
-  friend void tag_invoke(ex::set_value_t, expect_value_receiver&& self, const T& val) noexcept {
-    CHECK(val == self.value_);
+  friend void tag_invoke(ex::set_value_t, basic_expect_value_receiver&& self, const Ts&... vals) noexcept {
+    CHECK(self.values_ == std::tie(vals...));
     self.called_ = true;
   }
-  friend void tag_invoke(ex::set_value_t, expect_value_receiver&&, const auto&...) noexcept
+  template<typename... Us>
+  friend void tag_invoke(ex::set_value_t, basic_expect_value_receiver&&, const Us&...) noexcept
       requires RuntimeCheck {
-    FAIL_CHECK("set_value called with wrong value types on expect_value_receiver");
+    FAIL_CHECK("set_value called with wrong value types on basic_expect_value_receiver");
   }
-  friend void tag_invoke(ex::set_stopped_t, expect_value_receiver&& self) noexcept {
-    FAIL_CHECK("set_stopped called on expect_value_receiver");
+  friend void tag_invoke(ex::set_stopped_t, basic_expect_value_receiver&& self) noexcept {
+    FAIL_CHECK("set_stopped called on basic_expect_value_receiver");
   }
   template <typename E>
-  friend void tag_invoke(ex::set_error_t, expect_value_receiver&&, E) noexcept {
-    FAIL_CHECK("set_error called on expect_value_receiver");
+  friend void tag_invoke(ex::set_error_t, basic_expect_value_receiver&&, E) noexcept {
+    FAIL_CHECK("set_error called on basic_expect_value_receiver");
   }
-  friend empty_env tag_invoke(ex::get_env_t, const expect_value_receiver&) noexcept {
+  friend empty_env tag_invoke(ex::get_env_t, const basic_expect_value_receiver&) noexcept {
     return {};
   }
 };
+
+template <typename... Ts>
+struct expect_value_receiver
+  : public basic_expect_value_receiver<true, Ts...> {
+  using basic_expect_value_receiver<true, Ts...>::basic_expect_value_receiver;
+};
+
+template <typename... Ts>
+expect_value_receiver(Ts...) -> expect_value_receiver<Ts...>;
 
 template <typename T>
 class expect_value_receiver_ex {
   T* dest_;
 
-  public:
+public:
   explicit expect_value_receiver_ex(T* dest)
       : dest_(dest) {}
 
@@ -173,7 +189,7 @@ class expect_value_receiver_ex {
     FAIL_CHECK("set_stopped called on expect_value_receiver_ex");
   }
   friend void tag_invoke(ex::set_error_t, expect_value_receiver_ex, std::exception_ptr) noexcept {
-    FAIL_CHECK("set_error called on expect_value_receiver");
+    FAIL_CHECK("set_error called on expect_value_receiver_ex");
   }
   friend empty_env tag_invoke(ex::get_env_t, const expect_value_receiver_ex&) noexcept {
     return {};
@@ -235,46 +251,66 @@ private:
   bool* executed_;
 };
 
-template <class T>
-class expect_error_receiver_t {
-  bool called_{false};
+inline std::pair<const std::type_info&, std::string> to_comparable(std::exception_ptr eptr) try {
+  std::rethrow_exception(eptr);
+} catch(const std::exception& e) {
+  return {typeid(e), e.what()};
+} catch(...) {
+  return {typeid(void), "<unknown>"};
+}
 
-  public:
-  expect_error_receiver_t() = default;
-  ~expect_error_receiver_t() { CHECK(called_); }
+template <typename T>
+inline T to_comparable(T value) {
+  return value;
+}
 
-  expect_error_receiver_t(expect_error_receiver_t&& other)
-      : called_(other.called_) {
-    other.called_ = true;
-  }
-  expect_error_receiver_t& operator=(expect_error_receiver_t&& other) {
-    called_ = other.called_;
-    other.called_ = true;
+template <class T = std::exception_ptr>
+struct expect_error_receiver {
+  expect_error_receiver() = default;
+  expect_error_receiver(T error)
+    : error_(std::move(error))
+  {}
+  ~expect_error_receiver() { CHECK(called_); }
+
+  expect_error_receiver(expect_error_receiver&& other) noexcept
+      : called_(std::exchange(other.called_, true))
+  {}
+  expect_error_receiver& operator=(expect_error_receiver&& other) noexcept {
+    called_ = std::exchange(other.called_, true);
     return *this;
   }
 
+private:
+  std::optional<T> error_;
+  bool called_{false};
+
   template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, expect_error_receiver_t&&, Ts...) noexcept {
+  friend void tag_invoke(ex::set_value_t, expect_error_receiver&&, Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_error_receiver");
   }
-  friend void tag_invoke(ex::set_stopped_t, expect_error_receiver_t&& self) noexcept {
+  friend void tag_invoke(ex::set_stopped_t, expect_error_receiver&& self) noexcept {
     FAIL_CHECK("set_stopped called on expect_error_receiver");
   }
-  friend void tag_invoke(ex::set_error_t, expect_error_receiver_t&& self, T) noexcept {
+  friend void tag_invoke(ex::set_error_t, expect_error_receiver&& self, T err) noexcept {
     self.called_ = true;
+    if (self.error_) {
+      CHECK(to_comparable(err) == to_comparable(*self.error_));
+    }
   }
   template <typename E>
-  friend void tag_invoke(ex::set_error_t, expect_error_receiver_t&& self, E) noexcept {
-    self.called_ = true;
+  friend void tag_invoke(ex::set_error_t, expect_error_receiver&& self, E) noexcept {
+    FAIL_CHECK("set_error called on expect_error_receiver with wrong error type");
   }
-  friend empty_env tag_invoke(ex::get_env_t, const expect_error_receiver_t&) noexcept {
+  friend empty_env tag_invoke(ex::get_env_t, const expect_error_receiver&) noexcept {
     return {};
   }
 };
 
-using expect_error_receiver = expect_error_receiver_t<std::exception_ptr>;
-
 struct expect_error_receiver_ex {
+  expect_error_receiver_ex(bool& executed)
+    : executed_(&executed)
+  {}
+private:
   bool* executed_;
 
   template <typename... Ts>
@@ -294,12 +330,18 @@ struct expect_error_receiver_ex {
 };
 
 struct logging_receiver {
+  logging_receiver(int& state)
+    : state_(&state)
+  {}
+private:
   int* state_;
   template<typename... Args>
   friend void tag_invoke(ex::set_value_t, logging_receiver&& self, Args...) noexcept {
     *self.state_ = 0;
   }
-  friend void tag_invoke(ex::set_stopped_t, logging_receiver&& self) noexcept { *self.state_ = 1; }
+  friend void tag_invoke(ex::set_stopped_t, logging_receiver&& self) noexcept {
+    *self.state_ = 1;
+  }
   template <typename E>
   friend void tag_invoke(ex::set_error_t, logging_receiver&& self, E) noexcept {
     *self.state_ = 2;
@@ -358,12 +400,6 @@ struct fun_receiver {
     std::move(self.f_)((Ts &&) vals...);
   } catch(...) {
     ex::set_error(std::move(self), std::current_exception());
-  }
-  template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, const fun_receiver& self, Ts... vals) noexcept try {
-    self.f_((Ts &&) vals...);
-  } catch(...) {
-    ex::set_error(self, std::current_exception());
   }
 
   friend void tag_invoke(ex::set_stopped_t, fun_receiver) noexcept { FAIL("Done called"); }

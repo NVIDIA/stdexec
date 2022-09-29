@@ -80,7 +80,7 @@ TEST_CASE("let_stopped can throw, calling set_error", "[adaptors][let_stopped]")
 TEST_CASE("let_stopped can be used with just_error", "[adaptors][let_stopped]") {
   ex::sender auto snd = ex::just_error(1) //
                         | ex::let_stopped([] { return ex::just(17); });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{1});
   ex::start(op);
 }
 
@@ -98,13 +98,13 @@ TEST_CASE("let_stopped function is not called on regular flow", "[adaptors][let_
 }
 TEST_CASE("let_stopped function is not called on error flow", "[adaptors][let_stopped]") {
   bool called{false};
-  error_scheduler<int> sched;
+  error_scheduler<int> sched{42};
   ex::sender auto snd = ex::transfer_just(sched, 13) //
                         | ex::let_stopped([&] {
                             called = true;
                             return ex::just(0);
                           });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{42});
   ex::start(op);
   CHECK_FALSE(called);
 }

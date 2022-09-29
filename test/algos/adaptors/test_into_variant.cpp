@@ -70,7 +70,7 @@ TEST_CASE("into_variant with senders that have multiple alternatives", "[adaptor
 TEST_CASE("into_variant can be used with just_error", "[adaptors][into_variant]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::into_variant();
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
   ex::start(op);
 }
 TEST_CASE("into_variant can be used with just_stopped", "[adaptors][into_variant]") {

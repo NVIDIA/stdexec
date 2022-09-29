@@ -52,7 +52,7 @@ TEST_CASE("spawn_future sender will complete", "[async_scope][spawn_future]") {
   // Non-blocking call
   ex::sender auto snd =
       scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed1 = true; })));
-  auto op = ex::connect(std::move(snd), expect_void_receiver_ex{&executed2});
+  auto op = ex::connect(std::move(snd), expect_void_receiver_ex{executed2});
   ex::start(op);
   REQUIRE_FALSE(executed1);
   REQUIRE_FALSE(executed2);
@@ -119,7 +119,7 @@ TEST_CASE("spawn_future returned sender can be connected but not started",
   // Non-blocking call; simply ignore the returned sender
   ex::sender auto snd =
       scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed = true; })));
-  auto op = ex::connect(std::move(snd), expect_void_receiver_ex{&executed2});
+  auto op = ex::connect(std::move(snd), expect_void_receiver_ex{executed2});
   REQUIRE_FALSE(executed);
   REQUIRE_FALSE(executed2);
   // Execute the given work
@@ -153,7 +153,7 @@ TEST_CASE("spawn_future returned sender can be started after given sender comple
   sch.start_next();
   REQUIRE_FALSE(executed2);
   // Now connect the returned sender
-  auto op = ex::connect(std::move(snd), expect_void_receiver_ex{&executed2});
+  auto op = ex::connect(std::move(snd), expect_void_receiver_ex{executed2});
   ex::start(op);
   REQUIRE(executed2);
 }

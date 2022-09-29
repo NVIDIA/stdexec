@@ -3092,7 +3092,7 @@ namespace _P2300::execution {
               _Sender,
               __env,
               completion_signatures<set_error_t(std::exception_ptr&&),
-                                    set_stopped_t()>,
+                                    set_stopped_t()>, // BUGBUG NOT TO SPEC
               __set_value_t,
               __set_error_t>;
 
@@ -3104,7 +3104,7 @@ namespace _P2300::execution {
         ~__sender() {
           if (nullptr != __shared_state_) {
             // We're detaching a potentially running operation. Request cancellation.
-            __shared_state_->__detach();
+            __shared_state_->__detach(); // BUGBUG NOT TO SPEC
           }
         }
         // Move-only:

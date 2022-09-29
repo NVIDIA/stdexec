@@ -77,7 +77,7 @@ TEST_CASE("let_value can be used with multiple parameters", "[adaptors][let_valu
 
 TEST_CASE("let_value can be used to change the sender", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just(13) | ex::let_value([](int& x) { return ex::just_error(x + 4); });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{13 + 4});
   ex::start(op);
 }
 
@@ -135,7 +135,7 @@ TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_v
 TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::let_value([]() { return ex::just(17); });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
   ex::start(op);
 }
 TEST_CASE("let_value can be used with just_stopped", "[adaptors][let_value]") {

@@ -114,7 +114,7 @@ TEST_CASE("let_error can throw, and yield a different error type", "[adaptors][l
                    throw std::logic_error{"err"};
                  return ex::just_error(x);
                });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{13});
   ex::start(op);
 }
 

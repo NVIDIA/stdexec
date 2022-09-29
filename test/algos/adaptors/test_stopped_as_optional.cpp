@@ -49,7 +49,7 @@ TEST_CASE("stopped_as_optional can we waited on", "[adaptors][stopped_as_optiona
 TEST_CASE("stopped_as_optional shall not work with multi-value senders",
     "[adaptors][stopped_as_optional]") {
   auto snd = ex::just(3, 0.1415) | ex::stopped_as_optional();
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
+  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver<>>);
 }
 
 TEST_CASE("stopped_as_optional shall not work with senders that have multiple alternatives",
@@ -59,7 +59,7 @@ TEST_CASE("stopped_as_optional shall not work with senders that have multiple al
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
   check_val_types<type_array<type_array<int>, type_array<std::string>>>(in_snd);
   auto snd = std::move(in_snd) | ex::stopped_as_optional();
-  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver>);
+  static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver<>>);
 }
 
 TEST_CASE("stopped_as_optional forwards errors", "[adaptors][stopped_as_optional]") {

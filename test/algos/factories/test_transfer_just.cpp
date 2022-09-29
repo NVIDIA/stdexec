@@ -91,7 +91,7 @@ TEST_CASE("transfer_just forwards set_error calls", "[factories][transfer_just]"
 TEST_CASE("transfer_just forwards set_error calls of other types", "[factories][transfer_just]") {
   error_scheduler<std::string> sched{std::string{"error"}};
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"error"}});
   ex::start(op);
   // The receiver checks if we receive an error
 }
