@@ -3135,6 +3135,12 @@ namespace _P2300::execution {
       __sender<_Sender> operator()(_Sender&& __sndr) const {
         return __sender<_Sender>{(_Sender&&) __sndr};
       }
+      template <sender _Sender>
+        requires (!__tag_invocable_with_completion_scheduler<ensure_started_t, set_value_t, __sender<_Sender>>) &&
+          (!tag_invocable<ensure_started_t, __sender<_Sender>>)
+      __sender<_Sender> operator()(__sender<_Sender> __sndr) const {
+        return __sndr;
+      }
       __binder_back<ensure_started_t> operator()() const {
         return {{}, {}, {}};
       }
