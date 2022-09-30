@@ -470,8 +470,6 @@ namespace _P2300::execution {
   // sender's metadata. If sender<S> and sender<S, Ctx> are both true, then they
   // had better report the same metadata. This completion signatures wrapper
   // enforces that at compile time.
-  // However when env is a promise type, the evaluation will lead to different
-  // results and hence not required.
   template <class _Sender, class _Env>
     struct __checked_completion_signatures {
      private:
