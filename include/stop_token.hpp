@@ -1,6 +1,6 @@
 /*
- * Copyright (c) Facebook
- * Copyright (c) NVIDIA
+ * Copyright (c) 2021-2022 Facebook, Inc. and its affiliates
+ * Copyright (c) 2021-2022 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with

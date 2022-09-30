@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Lucian Radu Teodorescu
+ * Copyright (c) 2022 Lucian Radu Teodorescu
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -130,7 +130,7 @@ TEST_CASE("bulk forwards values", "[adaptors][bulk]") {
   int counter[n]{0};
 
   auto snd = ex::just(magic_number)
-           | ex::bulk(n, [&](int i, int val) { 
+           | ex::bulk(n, [&](int i, int val) {
                if (val == magic_number) {
                  counter[i]++;
                }
@@ -147,7 +147,7 @@ TEST_CASE("bulk cannot be used to change the value type", "[adaptors][bulk]") {
   constexpr int magic_number = 42;
   constexpr int n = 2;
 
-  auto snd = ex::just(magic_number) 
+  auto snd = ex::just(magic_number)
            | ex::bulk(n, [](int i, int) {
                return function_object_t<int>{nullptr};
              });
@@ -171,7 +171,7 @@ TEST_CASE("bulk function is not called on error", "[adaptors][bulk]") {
   constexpr int n = 2;
   int called{};
 
-  auto snd = ex::just_error(std::string{"err"}) 
+  auto snd = ex::just_error(std::string{"err"})
            | ex::bulk(n, [&called](int) { called++; });
   auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
   ex::start(op);
@@ -181,7 +181,7 @@ TEST_CASE("bulk function in not called on stop", "[adaptors][bulk]") {
   constexpr int n = 2;
   int called{};
 
-  auto snd = ex::just_stopped() 
+  auto snd = ex::just_stopped()
            | ex::bulk(n, [&called](int) { called++; });
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
@@ -195,7 +195,7 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
     for (int n = 0; n < 9; n++) {
       std::vector<int> counter(n, 42);
 
-      auto snd = ex::transfer_just(sch) 
+      auto snd = ex::transfer_just(sch)
                | ex::bulk(n, [&counter](int idx) { counter[idx] = 0; })
                | ex::bulk(n, [&counter](int idx) { counter[idx]++; });
       _P2300::this_thread::sync_wait(std::move(snd));
@@ -211,7 +211,7 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
     for (int n = 0; n < 9; n++) {
       std::vector<int> counter(n, 42);
 
-      auto snd = ex::transfer_just(sch, 42) 
+      auto snd = ex::transfer_just(sch, 42)
                | ex::bulk(n, [&counter](int idx, int val) { if (val == 42) { counter[idx] = 0; } })
                | ex::bulk(n, [&counter](int idx, int val) { if (val == 42) { counter[idx]++; } });
       auto [val] = _P2300::this_thread::sync_wait(std::move(snd)).value();
@@ -227,7 +227,7 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
 
   SECTION("With exception") {
     constexpr int n = 9;
-    auto snd = ex::transfer_just(sch) 
+    auto snd = ex::transfer_just(sch)
              | ex::bulk(n, [](int idx) {
                  throw std::runtime_error("bulk");
                });

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
- * Copyright (c) NVIDIA
+ * Copyright (c) 2021-2022 Facebook, Inc. and its affiliates.
+ * Copyright (c) 2021-2022 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -135,7 +135,7 @@ namespace example {
           // even_share(     11,      1,         3); // -> [4,  8) -> 4 items
           // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
           // ```
-          static std::pair<Shape, Shape> 
+          static std::pair<Shape, Shape>
           even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
             const auto avg_per_thread = n / size;
             const auto n_big_share = avg_per_thread + 1;
@@ -164,7 +164,7 @@ namespace example {
 
           bulk_shared_state(
               static_thread_pool& pool,
-              Receiver receiver, Shape shape, Fun fn) 
+              Receiver receiver, Shape shape, Fun fn)
             : pool_(pool)
             , receiver_{(Receiver&&)receiver}
             , shape_{shape}
@@ -193,7 +193,7 @@ namespace example {
                   std::uint32_t expected = total_threads;
 
                   if (self.thread_with_exception_.compare_exchange_strong(
-                          expected, tid, 
+                          expected, tid,
                           std::memory_order_relaxed,
                           std::memory_order_relaxed)) {
                     self.exception_ = std::current_exception();
@@ -324,7 +324,7 @@ namespace example {
                 std::execution::__with_exception_ptr>;
 
           template <class... Tys>
-          using set_value_t = 
+          using set_value_t =
             std::execution::completion_signatures<
               std::execution::set_value_t(std::decay_t<Tys>...)>;
 
@@ -337,9 +337,9 @@ namespace example {
                 std::__q<set_value_t>>;
 
           template <class Self, class Receiver>
-            using bulk_op_state_t = 
+            using bulk_op_state_t =
               bulk_op_state<
-                std::__x<std::__member_t<Self, Sender>>, 
+                std::__x<std::__member_t<Self, Sender>>,
                 std::__x<std::remove_cvref_t<Receiver>>, Shape, Fun>;
 
           template <std::__decays_to<bulk_sender> Self, std::execution::receiver Receiver>
