@@ -2263,6 +2263,8 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <ol class="toc">
         <li><a href="#example-server-let"><span class="secno">1.7.1</span> <span class="content">Composability with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code></span></a>
         <li><a href="#example-server-on"><span class="secno">1.7.2</span> <span class="content">Moving between execution contexts with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code></span></a>
+        <li><a href="#example-server-then-upon"><span class="secno">1.7.3</span> <span class="content">Single-threaded chaining with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span></a>
+        <li><a href="#example-server-split"><span class="secno">1.7.4</span> <span class="content">Using multiple threads with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span></a>
        </ol>
       <li><a href="#intro-is-not"><span class="secno">1.8</span> <span class="content">What this proposal is <strong>not</strong></span></a>
       <li><a href="#intro-compare"><span class="secno">1.9</span> <span class="content">Design changes from P0443</span></a>
@@ -3418,6 +3420,160 @@ The rest of the processing (in our case, the last call to <code class="highlight
    <p>The reader should notice the difference between <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code>.
 The <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>on</c-></code> algorithm will ensure that the given sender will start in the specified context, and doesn’t care where the completion signal for that sender is sent.
 The <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>transfer</c-></code> algorithm will not care where the given sender is going to be started, but will ensure that the completion signal of will be transferred to the given context.</p>
+   <h4 class="heading settled" data-level="1.7.3" id="example-server-then-upon"><span class="secno">1.7.3. </span><span class="content">Single-threaded chaining with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code></span><a class="self-link" href="#example-server-then-upon"></a></h4>
+   <p>Example context:</p>
+   <ul>
+    <li data-md>
+     <p>we are looking at the flow of handling a "classify" request type</p>
+    <li data-md>
+     <p>show how a single-threaded process can be broken into multiple steps with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>then</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>upon_</c-><c- o>*</c-></code> functions</p>
+    <li data-md>
+     <p>handle errors and cancellations that might occur during the processing</p>
+    <li data-md>
+     <p>at the end of the flow, we always end up with an HTTP response</p>
+   </ul>
+   <p>Goals:</p>
+   <ul>
+    <li data-md>
+     <p>show how one can compose single-threaded steps to form a more complex flow</p>
+    <li data-md>
+     <p>exemplify the use of <code class="highlight"><c- n>then</c-></code>, <code class="highlight"><c- n>upon_error</c-></code> and <code class="highlight"><c- n>upon_stopped</c-></code> algorithms</p>
+   </ul>
+<pre class="language-c++ highlight"><c- n>namespace</c-> <c- n>ex</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
+
+<c- c1>// Extract the image from the HTTP request</c->
+<c- n>image</c-> <c- nf>extract_image</c-><c- p>(</c-><c- n>http_request</c-> <c- n>req</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Classify the image received</c->
+<c- n>classification_result</c-> <c- nf>do_classify</c-><c- p>(</c-><c- n>image</c-> <c- n>img</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Check for errors and transform them into classification result</c->
+<c- n>classification_result</c-> <c- nf>on_classification_error</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception_ptr</c-> <c- n>ex</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Check for cancellation and transform it into classification result</c->
+<c- n>classification_result</c-> <c- nf>on_classification_cancelled</c-><c- p>()</c-> <c- p>{...}</c->
+<c- c1>// Convert the classification result into an HTTP response</c->
+<c- n>http_response</c-> <c- nf>to_response</c-><c- p>(</c-><c- n>classification_result</c-> <c- n>res</c-><c- p>)</c-> <c- p>{</c->
+
+<c- c1>// Handler for the "classify" request type</c->
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>handle_classify_request</c-><c- p>(</c-><c- k>const</c-> <c- n>http_request</c-><c- o>&amp;</c-> <c- n>req</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>return</c->
+      <c- c1>// start with the input buffer</c->
+      <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>req</c-><c- p>)</c->
+      <c- c1>// extract the image from the input request</c->
+      <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>extract_image</c-><c- p>)</c->
+      <c- c1>// analyze the content of the image and classify it</c->
+      <c- c1>// we are doing the processing on the same thread</c->
+      <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>do_classify</c-><c- p>)</c->
+      <c- c1>// handle errors</c->
+      <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>upon_error</c-><c- p>(</c-><c- n>on_classification_error</c-><c- p>)</c->
+      <c- c1>// handle cancellation</c->
+      <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>upon_stopped</c-><c- p>(</c-><c- n>on_classification_cancelled</c-><c- p>)</c->
+      <c- c1>// transform this into a response</c->
+      <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>to_response</c-><c- p>)</c->
+      <c- c1>// done</c->
+      <c- p>;</c->
+<c- p>}</c->
+</pre>
+   <p>The example shows how one (simple) request can be implemented, without using multiple execution contexts.
+One can structure the code such that it’s functionally decoupled, and still use senders for properly handling success/error/cancellation flows.</p>
+   <p>This is similar to the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_</c-><c- o>*</c-></code> example, but all the execution flow is assumed to be on a single thread.
+In this simplified case, one can simplify the signature of the functions to not return senders, but the actual computed values.</p>
+   <p>At the end of the flow we always transform a <code class="highlight"><c- n>classification_result</c-></code> into an <code class="highlight"><c- n>http_response</c-></code> object.
+With these constraints, errors and cancellations are handled as if the flow is linear.</p>
+   <h4 class="heading settled" data-level="1.7.4" id="example-server-split"><span class="secno">1.7.4. </span><span class="content">Using multiple threads with <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code>, <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></span><a class="self-link" href="#example-server-split"></a></h4>
+   <p>Example context:</p>
+   <ul>
+    <li data-md>
+     <p>implement the handler for applying 3 edge detection algorithms on one image</p>
+    <li data-md>
+     <p>implement the handler for applying a blur filter over the given set of images</p>
+    <li data-md>
+     <p>we show one can use multiple threads to execute a more complex work</p>
+    <li data-md>
+     <p>we show how to use <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> / <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code> and <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code></p>
+    <li data-md>
+     <p>error and cancellation handling is performed outside the handler</p>
+   </ul>
+   <p>Goals:</p>
+   <ul>
+    <li data-md>
+     <p>show how one can create work to fill up multiple threads</p>
+    <li data-md>
+     <p>exemplify the use of <code class="highlight"><c- n>then</c-></code>, <code class="highlight"><c- n>split</c-></code>, <code class="highlight"><c- n>when_all</c-></code>, <code class="highlight"><c- n>bulk</c-></code> and <code class="highlight"><c- n>let_value</c-></code> algorithms</p>
+   </ul>
+<pre class="language-c++ highlight"><c- n>namespace</c-> <c- n>ex</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>execution</c-><c- p>;</c->
+
+<c- c1>// Extract the image from the HTTP request</c->
+<c- n>image</c-> <c- nf>extract_image</c-><c- p>(</c-><c- n>http_request</c-> <c- n>req</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Extract multiple images from the HTTP request</c->
+<c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- n>image</c-><c- o>></c-> <c- n>extract_images</c-><c- p>(</c-><c- n>http_request</c-> <c- n>req</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Convert the given set of images into the corresponding HTTP response</c->
+<c- n>http_response</c-> <c- n>img3_to_response</c-><c- p>(</c-><c- k>const</c-> <c- n>image</c-><c- o>&amp;</c-> <c- n>img1</c-><c- p>,</c-> <c- k>const</c-> <c- n>image</c-><c- o>&amp;</c-> <c- n>img2</c-><c- p>,</c-> <c- k>const</c-> <c- n>image</c-><c- o>&amp;</c-> <c- n>img3</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Convert the given set of images into the corresponding HTTP response</c->
+<c- n>http_response</c-> <c- n>imgvec_to_response</c-><c- p>(</c-><c- k>const</c-> <c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- n>image</c-><c- o>>&amp;</c-> <c- n>imgs</c-><c- p>)</c-> <c- p>{...}</c->
+
+<c- c1>// Apply the Canny edge detector on the given image</c->
+<c- n>image</c-> <c- n>apply_canny</c-><c- p>(</c-><c- k>const</c-> <c- n>image</c-><c- o>&amp;</c-> <c- n>img</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Apply the Sobel edge detector on the given image</c->
+<c- n>image</c-> <c- n>apply_sobel</c-><c- p>(</c-><c- k>const</c-> <c- n>image</c-><c- o>&amp;</c-> <c- n>img</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Apply the Prewitt edge detector on the given image</c->
+<c- n>image</c-> <c- n>apply_prewitt</c-><c- p>(</c-><c- k>const</c-> <c- n>image</c-><c- o>&amp;</c-> <c- n>img</c-><c- p>)</c-> <c- p>{...}</c->
+<c- c1>// Apply blur filter on the given image</c->
+<c- n>image</c-> <c- n>apply_blur</c-><c- p>(</c-><c- k>const</c-> <c- n>image</c-><c- o>&amp;</c-> <c- n>img</c-><c- p>)</c-> <c- p>{...}</c->
+
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>handle_edge_detection_request</c-><c- p>(</c-><c- k>const</c-> <c- n>http_request</c-><c- o>&amp;</c-> <c- n>req</c-><c- p>)</c-> <c- p>{</c->
+  <c- c1>// extract the input image from the request</c->
+  <c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>in_img_sender</c-> <c- o>=</c-> <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>req</c-><c- p>)</c-> <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>extract_image</c-><c- p>);</c->
+
+  <c- c1>// Prepare for using multiple parallel flows on the same input sender</c->
+  <c- c1>// ex::sender auto multi_shot_img = ex::split(in_img_sender);</c->
+  <c- k>auto</c-><c- o>&amp;</c-> <c- n>multi_shot_img</c-> <c- o>=</c-> <c- n>in_img_sender</c-><c- p>;</c->
+
+  <c- c1>// Apply the three methods of edge detection on the same input image, in parallel.</c->
+  <c- c1>// Then, join the results and generate the HTTP response</c->
+  <c- k>return</c-> <c- n>ex</c-><c- o>::</c-><c- n>when_all</c-><c- p>(</c->                                <c- c1>//</c->
+             <c- n>multi_shot_img</c-> <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>apply_canny</c-><c- p>),</c->  <c- c1>//</c->
+             <c- n>multi_shot_img</c-> <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>apply_sobel</c-><c- p>),</c->  <c- c1>//</c->
+             <c- n>multi_shot_img</c-> <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>apply_prewitt</c-><c- p>)</c-> <c- c1>//</c->
+             <c- p>)</c-> <c- o>|</c->
+         <c- c1>// transform the resulting 3 images into an HTTP response</c->
+         <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>img3_to_response</c-><c- p>);</c->
+  <c- c1>// error and cancellation handling is performed outside</c->
+<c- p>}</c->
+
+<c- n>ex</c-><c- o>::</c-><c- n>sender</c-> <c- k>auto</c-> <c- n>handle_multi_blur_request</c-><c- p>(</c-><c- k>const</c-> <c- n>http_request</c-><c- o>&amp;</c-> <c- n>req</c-><c- p>)</c-> <c- p>{</c->
+  <c- k>return</c->
+      <c- c1>// extract the input images from the request</c->
+      <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>req</c-><c- p>)</c-> <c- o>|</c->
+      <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>extract_images</c-><c- p>)</c->
+      <c- c1>// process images in parallel with bulk.</c->
+      <c- c1>// use let_value to access the image count before calling bulk.</c->
+      <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>let_value</c-><c- p>([](</c-><c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- n>image</c-><c- o>></c-> <c- n>imgs</c-><c- p>)</c-> <c- p>{</c->
+          <c- c1>// get the image count</c->
+          <c- b>size_t</c-> <c- n>img_count</c-> <c- o>=</c-> <c- n>imgs</c-><c- p>.</c-><c- n>size</c-><c- p>();</c->
+          <c- c1>// return a sender that bulk-processes the image in parallel</c->
+          <c- k>return</c-> <c- n>ex</c-><c- o>::</c-><c- n>just</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>move</c-><c- p>(</c-><c- n>imgs</c-><c- p>))</c-> <c- o>|</c->
+                 <c- n>ex</c-><c- o>::</c-><c- n>bulk</c-><c- p>(</c-><c- n>img_count</c-><c- p>,</c->
+                     <c- p>[](</c-><c- b>size_t</c-> <c- n>i</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>vector</c-><c- o>&lt;</c-><c- n>image</c-><c- o>>&amp;</c-> <c- n>imgs</c-><c- p>)</c-> <c- p>{</c->
+                        <c- n>imgs</c-><c- p>[</c-><c- n>i</c-><c- p>]</c-> <c- o>=</c-> <c- n>apply_blur</c-><c- p>(</c-><c- n>imgs</c-><c- p>[</c-><c- n>i</c-><c- p>]);</c->
+                 <c- p>});</c->
+        <c- p>})</c->
+      <c- c1>// transform the resulting 3 images into an HTTP response</c->
+      <c- o>|</c-> <c- n>ex</c-><c- o>::</c-><c- n>then</c-><c- p>(</c-><c- n>imgvec_to_response</c-><c- p>)</c->
+      <c- c1>// done; error and cancellation handling is performed outside</c->
+      <c- p>;</c->
+<c- p>}</c->
+</pre>
+   <p>The example shows how one can use multiple threads when handling a request.
+We show two handlers that processes multiple things in parallel: one that applies 3 edge detection filters, and one that applies a blur filter to multiple images.</p>
+   <p>In the first example we know upfront the maximum level of parallelism for the request: as we are computing 3 filters, we have 3 top-level independent processing units that can happen in parallel.
+We use <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>split</c-></code> to ensure that the sender that gives the input image can be used multiple times.
+After applying the filter to a copy of the image, we join all 3 processing paths using <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>when_all</c-></code>; this will return a sender that completes whenever all given senders complete.</p>
+   <p>For the second request type, we have a dynamic number of images, so we don’t know upfront how to divide the independent top-level work.
+To process all images in parallel we use <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code>.
+We need to pass the number of work items that can be executed in parallel, and for that we need to query the value that is being issued through the sender.
+For this inspection we use the <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>let_value</c-></code> sender algorithm; this allows us to access the value being passed to the sender before retuning an appropriate sender.
+In our case, we get the size of the vector of images, and then we return a sender that, given the set of images will apply <code class="highlight"><c- n>execution</c-><c- o>::</c-><c- n>bulk</c-></code> for that size and the set of images.</p>
+   <p>In our example we assume that that error handling is done outside our handlers.
+See previous examples on how error handling can be implemented.</p>
    <h3 class="heading settled" data-level="1.8" id="intro-is-not"><span class="secno">1.8. </span><span class="content">What this proposal is <strong>not</strong></span><a class="self-link" href="#intro-is-not"></a></h3>
    <p>This paper is not a patch on top of <a data-link-type="biblio" href="https://wg21.link/p0443r14"><cite>A Unified Executors Proposal for C++</cite></a>; we are not asking to update the existing paper, we are asking to retire it in favor of this paper, which is already self-contained; any example code within this paper can be written in Standard C++, without the need
 to standardize any further facilities.</p>
