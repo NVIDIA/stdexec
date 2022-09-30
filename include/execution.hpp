@@ -280,7 +280,12 @@ namespace _P2300::execution {
     template <class, class = void>
       __types<> __test(...);
 
-    struct __dependent {};
+    // BUGBUG not to spec!
+    struct __dependent {
+      bool await_ready();
+      void await_suspend(const __coro::coroutine_handle<no_env>&);
+      __dependent await_resume();
+    };
   } // namespace __completion_signatures
 
   template <same_as<no_env>>
@@ -404,7 +409,7 @@ namespace _P2300::execution {
       template <class _Sender, class _Env = no_env>
         requires (__with_tag_invoke<_Sender, _Env> ||
                   __with_member_alias<_Sender> ||
-                  __awaitable<_Sender>)
+                  __awaitable<_Sender, _Env>)
       constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
@@ -420,8 +425,10 @@ namespace _P2300::execution {
           return _Completions{};
         } else {
           // awaitables go here
-          using _Result = __await_result_t<_Sender>;
-          if constexpr (std::is_void_v<_Result>) {
+          using _Result = __await_result_t<_Sender, _Env>;
+          if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
+            return dependent_completion_signatures<no_env>{};
+          } else if constexpr (same_as<_Result, void>) {
             return completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>{};
           } else {
             return completion_signatures<set_value_t(_Result), set_error_t(std::exception_ptr)>{};
