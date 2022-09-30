@@ -1,5 +1,5 @@
 /*
- * Copyright (c) ETH Zurich
+ * Copyright (c) 2022 ETH Zurich
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
