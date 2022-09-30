@@ -92,7 +92,7 @@ TEST_CASE("can call set_error on a receiver", "[cpo][cpo_receiver]") {
 
 TEST_CASE("can call set_error with an error code on a receiver", "[cpo][cpo_receiver]") {
   std::error_code errCode{100, std::generic_category()};
-  ex::set_error(expect_error_receiver{}, errCode);
+  ex::set_error(expect_error_receiver{errCode}, errCode);
 }
 
 TEST_CASE("set_value with a value passes the value to the receiver", "[cpo][cpo_receiver]") {

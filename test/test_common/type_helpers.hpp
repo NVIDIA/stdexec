@@ -27,6 +27,17 @@ struct immovable {
   _P2300_IMMOVABLE(immovable);
 };
 
+//! A move-only type
+struct movable {
+  movable(int value)
+    : value_(value)
+  {}
+  movable(movable&&) = default;
+  bool operator==(const movable&) const noexcept = default;
+private:
+  int value_;
+};
+
 //! Used for debugging, to generate errors to the console
 template <typename T>
 struct type_printer;

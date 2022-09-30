@@ -167,13 +167,13 @@ TEST_CASE("bulk can throw, and set_error will be called", "[adaptors][bulk]") {
   ex::start(op);
 }
 
-TEST_CASE("bulk function in not called on error", "[adaptors][bulk]") {
+TEST_CASE("bulk function is not called on error", "[adaptors][bulk]") {
   constexpr int n = 2;
   int called{};
 
   auto snd = ex::just_error(std::string{"err"}) 
            | ex::bulk(n, [&called](int) { called++; });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
   ex::start(op);
 }
 

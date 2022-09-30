@@ -80,7 +80,7 @@ TEST_CASE("then can throw, and set_error will be called", "[adaptors][then]") {
 TEST_CASE("then can be used with just_error", "[adaptors][then]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
                         | ex::then([]() -> int { return 17; });
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
+  auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
   ex::start(op);
 }
 TEST_CASE("then can be used with just_stopped", "[adaptors][then]") {

@@ -104,7 +104,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
     using error_t = ex::error_types_of_t<split_t, ex::__empty_env, std::variant>;
     static_assert(std::is_same_v<error_t, std::variant<const std::exception_ptr&, const int&>>);
 
-    auto op = ex::connect(split, expect_error_receiver_t<int>{});
+    auto op = ex::connect(split, expect_error_receiver<int>{});
     ex::start(op);
   }
 }

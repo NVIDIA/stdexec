@@ -27,6 +27,7 @@
 #include <type_traits>
 #include <variant>
 
+#include <__memory.hpp>
 #include <__utility.hpp>
 #include <functional.hpp>
 #include <concepts.hpp>
@@ -2501,7 +2502,7 @@ namespace _P2300::execution {
         [[no_unique_address]] _Fun __f_;
 
         template <class... _As>
-        void set_value(_As&&... __as) && noexcept 
+        void set_value(_As&&... __as) && noexcept
           requires __nothrow_callable<_Fun, _Shape, _As&...> {
           for (_Shape __i{}; __i != __shape_; ++__i) {
             __f_(__i, __as...);
@@ -2510,7 +2511,7 @@ namespace _P2300::execution {
         }
 
         template <class... _As>
-        void set_value(_As&&... __as) && noexcept 
+        void set_value(_As&&... __as) && noexcept
           requires __callable<_Fun, _Shape, _As&...> {
           try {
             for (_Shape __i{}; __i != __shape_; ++__i) {
@@ -2567,8 +2568,8 @@ namespace _P2300::execution {
           return execution::connect(
               ((_Self&&) __self).__sndr_,
               __receiver<_Receiver>{
-                (_Receiver&&) __rcvr, 
-                __self.__shape_, 
+                (_Receiver&&) __rcvr,
+                __self.__shape_,
                 ((_Self&&) __self).__fun_});
         }
 
@@ -2876,7 +2877,244 @@ namespace _P2300::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.ensure_started]
   namespace __ensure_started {
+    using __env = make_env_t<with_t<get_stop_token_t, in_place_stop_token>>;
+
+    template <class _SharedState>
+      class __receiver {
+        __intrusive_ptr<_SharedState> __shared_state_;
+
+      public:
+        explicit __receiver(_SharedState& __shared_state) noexcept
+          : __shared_state_(__shared_state.__intrusive_from_this()) {
+        }
+
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+        friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
+          _SharedState& __state = *__self.__shared_state_;
+
+          try {
+            using __tuple_t = __decayed_tuple<_Tag, _As...>;
+            __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
+          } catch (...) {
+            using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
+            __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
+          }
+
+          __state.__notify();
+          __self.__shared_state_.reset();
+        }
+
+        friend __env tag_invoke(get_env_t, const __receiver& __self) {
+          auto __stok = __self.__shared_state_->__stop_source_.get_token();
+          return make_env(with(get_stop_token, std::move(__stok)));
+        }
+      };
+
+    struct __operation_base {
+      using __notify_fn = void(__operation_base*) noexcept;
+      __notify_fn* __notify_{};
+    };
+
+    template <class _SenderId>
+      struct __sh_state : __enable_intrusive_from_this<__sh_state<_SenderId>> {
+        using _Sender = __t<_SenderId>;
+
+        template <class... _Ts>
+          using __bind_tuples =
+            __mbind_front_q<
+              __variant,
+              std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
+              std::tuple<set_error_t, std::exception_ptr>,
+              _Ts...>;
+
+        using __bound_values_t =
+          __value_types_of_t<
+            _Sender,
+            __env,
+            __mbind_front_q<__decayed_tuple, set_value_t>,
+            __q<__bind_tuples>>;
+
+        using __variant_t =
+          __error_types_of_t<
+            _Sender,
+            __env,
+            __transform<
+              __mbind_front_q<__decayed_tuple, set_error_t>,
+              __bound_values_t>>;
+
+        using __receiver_t = __receiver<__sh_state>;
+
+        __variant_t __data_;
+        in_place_stop_source __stop_source_{};
+
+        std::atomic<void*> __op_state1_;
+        connect_result_t<_Sender, __receiver_t> __op_state2_;
+
+        explicit __sh_state(_Sender& __sndr)
+          : __op_state1_{nullptr}
+          , __op_state2_(connect((_Sender&&) __sndr, __receiver_t{*this})) {
+          start(__op_state2_);
+        }
+
+        void __notify() noexcept {
+          void* const __completion_state = static_cast<void*>(this);
+          void* const __old =
+            __op_state1_.exchange(__completion_state, std::memory_order_acq_rel);
+          if (__old != nullptr) {
+            auto* __op = static_cast<__operation_base*>(__old);
+            __op->__notify_(__op);
+          }
+        }
+
+        void __detach() noexcept {
+          __stop_source_.request_stop();
+        }
+      };
+
+    template <class _SenderId, class _ReceiverId>
+      class __operation : public __operation_base {
+        using _Sender = __t<_SenderId>;
+        using _Receiver = __t<_ReceiverId>;
+
+        struct __on_stop_requested {
+          in_place_stop_source& __stop_source_;
+          void operator()() noexcept {
+            __stop_source_.request_stop();
+          }
+        };
+        using __on_stop = std::optional<typename stop_token_of_t<
+            env_of_t<_Receiver> &>::template callback_type<__on_stop_requested>>;
+
+        _Receiver __rcvr_;
+        __on_stop __on_stop_{};
+        __intrusive_ptr<__sh_state<_SenderId>> __shared_state_;
+
+      public:
+        __operation(_Receiver __rcvr,
+                    __intrusive_ptr<__sh_state<_SenderId>> __shared_state)
+            noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
+          : __operation_base{__notify}
+          , __rcvr_((_Receiver&&) __rcvr)
+          , __shared_state_(std::move(__shared_state)) {
+        }
+        ~__operation() {
+          // Check to see if this operation was ever started. If not,
+          // detach the (potentially still running) operation:
+          if (nullptr == __shared_state_->__op_state1_.load(std::memory_order_acquire)) {
+            __shared_state_->__detach();
+          }
+        }
+        _P2300_IMMOVABLE(__operation);
+
+        static void __notify(__operation_base* __self) noexcept {
+          __operation *__op = static_cast<__operation*>(__self);
+          __op->__on_stop_.reset();
+
+          std::visit([&](auto& __tupl) noexcept -> void {
+            std::apply([&](auto __tag, auto&... __args) noexcept -> void {
+              __tag((_Receiver&&) __op->__rcvr_, std::move(__args)...);
+            }, __tupl);
+          }, __op->__shared_state_->__data_);
+        }
+
+        friend void tag_invoke(start_t, __operation& __self) noexcept {
+          __sh_state<_SenderId>* __shared_state = __self.__shared_state_.get();
+          std::atomic<void*>& __op_state1 = __shared_state->__op_state1_;
+          void* const __completion_state = static_cast<void*>(__shared_state);
+          void* const __old = __op_state1.load(std::memory_order_acquire);
+          if (__old == __completion_state) {
+            __self.__notify(&__self);
+          } else {
+              // register stop callback:
+            __self.__on_stop_.emplace(
+                get_stop_token(get_env(__self.__rcvr_)),
+                __on_stop_requested{__shared_state->__stop_source_});
+            // Check if the stop_source has requested cancellation
+            if (__shared_state->__stop_source_.stop_requested()) {
+              // Stop has already been requested. Don't bother starting
+              // the child operations.
+              execution::set_stopped((_Receiver&&) __self.__rcvr_);
+            } else {
+              // Otherwise, the inner source hasn't notified completion.
+              // Set this operation as the __op_state1 so it's notified.
+              void* __old = nullptr;
+              if (!__op_state1.compare_exchange_weak(
+                __old, &__self,
+                std::memory_order_release,
+                std::memory_order_acquire)) {
+                // We get here when the task completed during the execution
+                // of this function. Complete the operation synchronously.
+                assert(__old == __completion_state);
+                __self.__notify(&__self);
+              }
+            }
+          }
+        }
+      };
+
+    template <class _SenderId>
+      class __sender {
+        using _Sender = __t<_SenderId>;
+        using __sh_state_ = __sh_state<_SenderId>;
+        template <class _Receiver>
+          using __operation = __operation<_SenderId, __x<remove_cvref_t<_Receiver>>>;
+
+        _Sender __sndr_;
+        __intrusive_ptr<__sh_state_> __shared_state_;
+
+        template <same_as<__sender> _Self, receiver _Receiver>
+            requires receiver_of<_Receiver, completion_signatures_of_t<_Self, __empty_env>>
+          friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+            noexcept(std::is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
+            -> __operation<_Receiver> {
+            return __operation<_Receiver>{(_Receiver &&) __rcvr,
+                                          std::move(__self).__shared_state_};
+          }
+
+        template <tag_category<forwarding_sender_query> _Tag, class... _As>
+            requires (!__is_instance_of<_Tag, get_completion_scheduler_t>) &&
+              __callable<_Tag, const _Sender&, _As...>
+          friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
+            noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
+            -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+          }
+
+        template <class... _Tys>
+        using __set_value_t = completion_signatures<set_value_t(decay_t<_Tys>&&...)>;
+
+        template <class _Ty>
+        using __set_error_t = completion_signatures<set_error_t(decay_t<_Ty>&&)>;
+
+        template <same_as<__sender> _Self, class _Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
+            make_completion_signatures<
+              _Sender,
+              __env,
+              completion_signatures<set_error_t(std::exception_ptr&&),
+                                    set_stopped_t()>, // BUGBUG NOT TO SPEC
+              __set_value_t,
+              __set_error_t>;
+
+       public:
+        explicit __sender(_Sender __sndr)
+          : __sndr_((_Sender&&) __sndr)
+          , __shared_state_{__make_intrusive_ptr<__sh_state_>(__sndr_)}
+        {}
+        ~__sender() {
+          if (nullptr != __shared_state_) {
+            // We're detaching a potentially running operation. Request cancellation.
+            __shared_state_->__detach(); // BUGBUG NOT TO SPEC
+          }
+        }
+        // Move-only:
+        __sender(__sender&&) = default;
+      };
+
     struct ensure_started_t {
+      template <class _Sender>
+        using __sender = __sender<__x<remove_cvref_t<_Sender>>>;
+
       template <sender _Sender>
         requires __tag_invocable_with_completion_scheduler<ensure_started_t, set_value_t, _Sender>
       sender auto operator()(_Sender&& __sndr) const
@@ -2890,6 +3128,21 @@ namespace _P2300::execution {
       sender auto operator()(_Sender&& __sndr) const
         noexcept(nothrow_tag_invocable<ensure_started_t, _Sender>) {
         return tag_invoke(ensure_started_t{}, (_Sender&&) __sndr);
+      }
+      template <sender _Sender>
+        requires (!__tag_invocable_with_completion_scheduler<ensure_started_t, set_value_t, _Sender>) &&
+          (!tag_invocable<ensure_started_t, _Sender>)
+      __sender<_Sender> operator()(_Sender&& __sndr) const {
+        return __sender<_Sender>{(_Sender&&) __sndr};
+      }
+      template <sender _Sender>
+        requires (!__tag_invocable_with_completion_scheduler<ensure_started_t, set_value_t, __sender<_Sender>>) &&
+          (!tag_invocable<ensure_started_t, __sender<_Sender>>)
+      __sender<_Sender> operator()(__sender<_Sender> __sndr) const {
+        return __sndr;
+      }
+      __binder_back<ensure_started_t> operator()() const {
+        return {{}, {}, {}};
       }
     };
   }
@@ -3887,8 +4140,7 @@ namespace _P2300::execution {
             , __sndr_((_Sender2&&) __sndr)
             , __rcvr_((_Receiver2&&) __rcvr)
             , __data_{std::in_place_index<0>, __conv{[&, this]{
-                return connect(schedule(__sched),
-                                __receiver_t{{}, this});
+                return connect(schedule(__sched), __receiver_t{{}, this});
               }}} {}
           _P2300_IMMOVABLE(__operation);
 
