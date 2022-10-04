@@ -17,7 +17,7 @@
 #pragma once
 
 #include <execution.hpp>
-#include "../../include/detail/intrusive_queue.hpp"
+#include "__detail/__intrusive_queue.hpp"
 #include "__utility.hpp"
 
 #include <atomic>
@@ -29,7 +29,7 @@
 #include <vector>
 
 namespace example {
-  using _P2300::execution::detail::__intrusive_queue;
+  using _P2300::execution::__detail::__intrusive_queue;
 
   struct task_base {
     task_base* next;
