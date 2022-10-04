@@ -27,6 +27,7 @@
 
 namespace ex = std::execution;
 
+namespace {
 void expect_empty(_P2519::execution::async_scope& scope) {
   ex::run_loop loop;
   ex::scheduler auto sch = loop.get_scheduler();
@@ -36,6 +37,7 @@ void expect_empty(_P2519::execution::async_scope& scope) {
     expect_void_receiver{ex::make_env(ex::with(ex::get_scheduler, sch))});
   ex::start(op);
   loop.run();
+}
 }
 
 TEST_CASE("async_scope will complete", "[types][type_async_scope]") {

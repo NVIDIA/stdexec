@@ -7,6 +7,19 @@ namespace ex = std::execution;
 using _P2519::execution::async_scope;
 using _P2300::this_thread::sync_wait;
 
+namespace {
+void expect_empty(_P2519::execution::async_scope& scope) {
+  ex::run_loop loop;
+  ex::scheduler auto sch = loop.get_scheduler();
+  CHECK_FALSE(std::this_thread::execute_may_block_caller(sch));
+  auto op = ex::connect(
+    ex::then(scope.on_empty(), [&](){  loop.finish(); }),
+    expect_void_receiver{ex::make_env(ex::with(ex::get_scheduler, sch))});
+  ex::start(op);
+  loop.run();
+}
+}
+
 //! Sender that throws exception when connected
 struct throwing_sender {
   using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
@@ -34,13 +47,14 @@ TEST_CASE("spawn_future will execute its work", "[async_scope][spawn_future]") {
   async_scope scope;
 
   // Non-blocking call
-  ex::sender auto snd =
-      scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed = true; })));
+  {ex::sender auto snd =
+      scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed = true; }))); (void)snd;}
   REQUIRE_FALSE(executed);
   // Run the operation on the scheduler
   sch.start_next();
   // Now the spawn work should be completed
   REQUIRE(executed);
+  expect_empty(scope);
 }
 
 TEST_CASE("spawn_future sender will complete", "[async_scope][spawn_future]") {
@@ -61,6 +75,7 @@ TEST_CASE("spawn_future sender will complete", "[async_scope][spawn_future]") {
   // Now the work from `snd` should be completed
   REQUIRE(executed1);
   REQUIRE(executed2);
+  expect_empty(scope);
 }
 
 TEST_CASE("spawn_future sender will complete after the given sender completes",
@@ -77,6 +92,7 @@ TEST_CASE("spawn_future sender will complete after the given sender completes",
   sch.start_next();
   // Ensure `snd2` is complete
   wait_for_value(std::move(snd2));
+  expect_empty(scope);
 }
 
 TEST_CASE("spawn_future returned sender can be dropped", "[async_scope][spawn_future]") {
@@ -90,6 +106,7 @@ TEST_CASE("spawn_future returned sender can be dropped", "[async_scope][spawn_fu
   // Execute the given work
   sch.start_next();
   REQUIRE(executed.load());
+  expect_empty(scope);
 }
 
 TEST_CASE(
@@ -99,13 +116,13 @@ TEST_CASE(
   async_scope scope;
 
   // Non-blocking call; simply ignore the returned sender
-  ex::sender auto snd =
-      scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed = true; })));
-  (void)snd;
+  {ex::sender auto snd =
+      scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed = true; }))); (void)snd;}
   REQUIRE_FALSE(executed);
   // Execute the given work
   sch.start_next();
   REQUIRE(executed);
+  expect_empty(scope);
 }
 
 TEST_CASE("spawn_future returned sender can be connected but not started",
@@ -126,6 +143,7 @@ TEST_CASE("spawn_future returned sender can be connected but not started",
   REQUIRE(executed);
   // Our final receiver will not be notified (as `op` was not started)
   REQUIRE_FALSE(executed2);
+  expect_empty(scope);
 }
 
 TEST_CASE("spawn_future will start sender before returning", "[async_scope][spawn_future]") {
@@ -133,9 +151,9 @@ TEST_CASE("spawn_future will start sender before returning", "[async_scope][spaw
   async_scope scope;
 
   // This will be a blocking call
-  ex::sender auto snd = scope.spawn_future(ex::just() | ex::then([&] { executed = true; }));
-  (void)snd;
+  {ex::sender auto snd = scope.spawn_future(ex::just() | ex::then([&] { executed = true; })); (void)snd;}
   REQUIRE(executed);
+  expect_empty(scope);
 }
 
 TEST_CASE("spawn_future returned sender can be started after given sender completed",
@@ -155,6 +173,7 @@ TEST_CASE("spawn_future returned sender can be started after given sender comple
   auto op = ex::connect(std::move(snd), expect_void_receiver_ex{executed2});
   ex::start(op);
   REQUIRE(executed2);
+  expect_empty(scope);
 }
 
 #if !NO_TESTS_WITH_EXCEPTIONS
@@ -171,6 +190,7 @@ TEST_CASE("spawn_future will propagate exceptions encountered during op creation
   } catch (...) {
     FAIL("invalid exception caught");
   }
+  expect_empty(scope);
 }
 #endif
 
@@ -185,9 +205,8 @@ TEST_CASE("TODO: spawn_future will keep the scope non-empty until the work is ex
   // REQUIRE(P2519::__scope::empty(scope));
 
   // Non-blocking call
-  ex::sender auto snd =
-      scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed = true; })));
-  (void)snd;
+  {ex::sender auto snd =
+      scope.spawn_future(ex::on(sch, ex::just() | ex::then([&] { executed = true; }))); (void)snd;}
   REQUIRE_FALSE(executed);
 
   // The scope is now non-empty
@@ -235,6 +254,8 @@ TEST_CASE("TODO: spawn_future will keep track on how many operations are in flig
   // // The scope is empty after all the operations are executed
   // REQUIRE(P2519::__scope::empty(scope));
   // REQUIRE(num_executed == num_oper);
+
+  expect_empty(scope);
 }
 
 TEST_CASE("TODO: spawn_future work can be cancelled by cancelling the scope",
@@ -245,6 +266,7 @@ TEST_CASE("TODO: spawn_future work can be cancelled by cancelling the scope",
   bool cancelled1{false};
   bool cancelled2{false};
 
+  {
   ex::sender auto snd1 = scope.spawn_future(ex::on(sch, ex::just() | ex::let_stopped([&] {
     cancelled1 = true;
     return ex::just();
@@ -255,6 +277,7 @@ TEST_CASE("TODO: spawn_future work can be cancelled by cancelling the scope",
   })));
   (void)snd1;
   (void)snd2;
+  }
 
   // TODO: reenable this
   // REQUIRE(P2519::__scope::op_count(scope) == 2);
@@ -278,6 +301,7 @@ TEST_CASE("TODO: spawn_future work can be cancelled by cancelling the scope",
 
   // TODO: reenable this
   // REQUIRE(P2519::__scope::empty(scope));
+  expect_empty(scope);
 }
 
 template <typename S>
@@ -323,6 +347,8 @@ TEST_CASE("TODO: spawn_future works with senders that complete with stopped sign
   //
   // // Now the scope should again be empty
   // REQUIRE(P2519::__scope::empty(scope));
+
+  expect_empty(scope);
 }
 
 TEST_CASE("spawn_future forwards value to returned sender", "[async_scope][spawn_future]") {
@@ -335,6 +361,7 @@ TEST_CASE("spawn_future forwards value to returned sender", "[async_scope][spawn
   ex::sender auto snd = scope.spawn_future(ex::on(sch, ex::just(13)));
   sch.start_next();
   wait_for_value(std::move(snd), 13);
+  expect_empty(scope);
 }
 
 TEST_CASE("TODO: spawn_future forwards error to returned sender", "[async_scope][spawn_future]") {
@@ -356,6 +383,7 @@ TEST_CASE("TODO: spawn_future forwards error to returned sender", "[async_scope]
   // {
   //     REQUIRE(error == -1);
   // }
+  expect_empty(scope);
 }
 
 TEST_CASE("TODO: spawn_future forwards stopped signal to returned sender",
@@ -371,4 +399,5 @@ TEST_CASE("TODO: spawn_future forwards stopped signal to returned sender",
   // sch.start_next();
   // auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   // ex::start(op);
+  expect_empty(scope);
 }
