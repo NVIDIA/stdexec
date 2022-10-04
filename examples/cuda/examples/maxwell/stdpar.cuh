@@ -1,0 +1,73 @@
+/*
+ * Copyright (c) 2022 NVIDIA Corporation
+ *
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *   https://llvm.org/LICENSE.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma once
+
+#include "common.cuh"
+#include "schedulers/detail/common.cuh"
+
+#include <ranges>
+#include <algorithm>
+#include <execution>
+
+#include <thrust/iterator/counting_iterator.h>
+
+template <class Policy>
+bool is_gpu_policy(Policy&& policy) {
+  bool* flag{};
+  THROW_ON_CUDA_ERROR(cudaMallocHost(&flag, sizeof(bool)));
+  std::for_each(policy, flag, flag + 1, [](bool& f) {
+    f = example::cuda::is_on_gpu();
+  });
+
+  bool h_flag = *flag;
+  THROW_ON_CUDA_ERROR(cudaFreeHost(flag));
+
+  return h_flag;
+}
+
+#ifdef _NVHPC_CUDA
+template <class Policy>
+void run_stdpar(float dt, bool write_vtk, std::size_t n_inner_iterations,
+                std::size_t n_outer_iterations, grid_t &grid,
+                Policy&& policy,
+                std::string_view method) {
+  fields_accessor accessor = grid.accessor();
+  time_storage_t time{is_gpu_policy(policy)};
+
+  auto begin = thrust::make_counting_iterator(std::size_t{0});
+  auto end = thrust::make_counting_iterator(accessor.cells);
+
+  std::for_each(policy, begin, end, grid_initializer(dt, accessor));
+
+  report_performance(grid.cells, n_inner_iterations * n_outer_iterations, method,
+                     [&]() {
+                       std::size_t report_step = 0;
+                       auto writer = dump_vtk(write_vtk, report_step, accessor);
+                       for (; report_step < n_outer_iterations; report_step++) {
+                         for (std::size_t compute_step = 0;
+                              compute_step < n_inner_iterations;
+                              compute_step++) {
+
+                           std::for_each(policy, begin, end, update_h(accessor));
+                           std::for_each(policy, begin, end, update_e(time.get(), dt, accessor));
+                         }
+
+                         writer(false);
+                       }
+                     });
+}
+#endif
+
