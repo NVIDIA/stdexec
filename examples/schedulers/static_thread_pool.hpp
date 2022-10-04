@@ -17,7 +17,7 @@
 #pragma once
 
 #include <execution.hpp>
-#include "../detail/intrusive_queue.hpp"
+#include "__detail/__intrusive_queue.hpp"
 #include "__utility.hpp"
 
 #include <atomic>
@@ -29,6 +29,8 @@
 #include <vector>
 
 namespace example {
+  using _P2300::execution::__detail::__intrusive_queue;
+
   struct task_base {
     task_base* next;
     void (*__execute)(task_base*, std::uint32_t tid) noexcept;
@@ -412,7 +414,7 @@ namespace example {
      private:
       std::mutex mut_;
       std::condition_variable cv_;
-      intrusive_queue<&task_base::next> queue_;
+      __intrusive_queue<&task_base::next> queue_;
       bool stopRequested_ = false;
     };
 

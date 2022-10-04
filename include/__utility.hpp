@@ -18,7 +18,24 @@
 #include <type_traits>
 #include <utility>
 
+#ifdef _P2300_ASSERT
+#error "Hammer says, ya can't touch this"
+#endif
+
+#define _P2300_ASSERT(_X) \
+  do { \
+    static_assert(noexcept(_X)); \
+    STDEXEC_ASSERT(_X); \
+  } while(false)
+
+#ifndef STDEXEC_ASSERT
+#define STDEXEC_ASSERT _P2300::__stdexec_assert
+#endif
+
 namespace _P2300 {
+
+  inline constexpr void __stdexec_assert(bool valid) {if (!valid) {std::terminate();}}
+
   struct __ {};
 
   struct __ignore {
@@ -31,6 +48,15 @@ namespace _P2300 {
 #  define _P2300_IMMOVABLE(_X) _X(_X&&)
 #else
 #  define _P2300_IMMOVABLE(_X) _X(_X&&) = delete
+#endif
+
+    // BUG (gcc PR93711): copy elision fails when initializing a
+    // [[no_unique_address]] field from a function returning an object
+    // of class type by value
+#if defined(__GNUC__) && !defined(__clang__)
+#  define _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS
+#else
+#  define _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
   struct __none_such {};

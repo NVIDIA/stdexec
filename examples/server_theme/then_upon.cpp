@@ -199,6 +199,6 @@ int main() {
     scope.spawn(ex::on(sched, std::move(action)));
   }
 
-  std::this_thread::sync_wait(scope.empty());
+  std::this_thread::sync_wait(scope.on_empty());
   pool.request_stop();
 }

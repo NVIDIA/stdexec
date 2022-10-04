@@ -54,7 +54,7 @@ int main() {
   sender auto printVoid = then(begin,
     []()noexcept { printf("void\n"); });                                  // 3
 
-  sender auto printEmpty = then(on(sch, scope.empty()),
+  sender auto printEmpty = then(on(sch, scope.on_empty()),
     []()noexcept{ printf("scope is empty\n"); });                         // 4
 
   printf("\n"
@@ -88,17 +88,18 @@ int main() {
     sender auto nest = scope.nest(begin);
     (void)nest;
   }
-  sync_wait(scope.empty());
+  sync_wait(scope.on_empty());
 
   {
     sender auto nest = scope.nest(begin);
     auto op = connect(std::move(nest), noop_receiver{});
+    (void)op;
   }
-  sync_wait(scope.empty());
+  sync_wait(scope.on_empty());
 
   {
     sender auto nest = scope.nest(begin);
     sync_wait(std::move(nest));
   }
-  sync_wait(scope.empty());
+  sync_wait(scope.on_empty());
 }

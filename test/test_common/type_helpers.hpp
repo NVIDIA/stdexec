@@ -34,6 +34,7 @@ struct movable {
   {}
   movable(movable&&) = default;
   bool operator==(const movable&) const noexcept = default;
+  int value() {return value_;} // silence warning of unused private field
 private:
   int value_;
 };

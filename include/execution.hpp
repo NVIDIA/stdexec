@@ -3730,7 +3730,7 @@ namespace _P2300::execution {
 
         run_loop* __loop_;
       };
-      __scheduler get_scheduler() {
+      __scheduler get_scheduler() noexcept {
         return __scheduler{this};
       }
 
