@@ -7,12 +7,9 @@ namespace ex = std::execution;
 using _P2519::execution::async_scope;
 using _P2300::this_thread::sync_wait;
 
-TEST_CASE("TODO: empty will complete immediately on an empty async_scope", "[async_scope][empty]") {
+TEST_CASE("empty will complete immediately on an empty async_scope", "[async_scope][empty]") {
   async_scope scope;
   bool is_empty{false};
-
-  // TODO: removing this will stop the test from working
-  scope.spawn(ex::just());
 
   ex::sender auto snd = scope.on_empty() | ex::then([&] { is_empty = true; });
   sync_wait(std::move(snd));
@@ -152,7 +149,8 @@ TEST_CASE("async_scope is empty after adding work when in cancelled state",
   // cancel & add work
   scope.request_stop();
   bool work_executed{false};
-  scope.spawn(ex::on(sch, ex::just() | ex::then([&] { work_executed = true;printf(".\n");})));
+  scope.spawn(ex::on(sch, ex::just())
+            | ex::upon_stopped([&] { work_executed = true; printf(".\n");}));
   // note that we don't tell impulse sender to start the work
 
   bool is_empty2{false};
@@ -164,8 +162,7 @@ TEST_CASE("async_scope is empty after adding work when in cancelled state",
 
   REQUIRE_FALSE(work_executed);
   sch.start_next();
-  // TODO: why does this fail?
-  // REQUIRE(work_executed);
+  REQUIRE(work_executed);
   REQUIRE(is_empty2);
 }
 #endif
