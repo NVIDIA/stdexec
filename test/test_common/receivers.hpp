@@ -251,6 +251,16 @@ struct expect_error_receiver : base_expect_receiver {
     : error_(std::move(error))
   {}
 
+  // these do not move error_ and cannot be defaulted
+  expect_error_receiver(expect_error_receiver&& other)
+      : base_expect_receiver(std::move(other))
+      , error_()
+  {}
+  expect_error_receiver& operator=(expect_error_receiver&& other) noexcept {
+    base_expect_receiver::operator=(std::move(other));
+    error_.reset();
+    return *this;
+  }
 private:
   std::optional<T> error_;
 
