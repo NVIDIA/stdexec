@@ -27,7 +27,7 @@
 #include <type_traits>
 #include <variant>
 
-#include <__memory.hpp>
+#include <__detail/__intrusive_ptr.hpp>
 #include <__detail/__meta.hpp>
 #include <functional.hpp>
 #include <concepts.hpp>
@@ -3221,7 +3221,7 @@ namespace _P2300::execution {
        public:
         explicit __sender(_Sender __sndr)
           : __sndr_((_Sender&&) __sndr)
-          , __shared_state_{__make_intrusive_ptr<__sh_state_>(__sndr_)}
+          , __shared_state_{__make_intrusive<__sh_state_>(__sndr_)}
         {}
         ~__sender() {
           if (nullptr != __shared_state_) {

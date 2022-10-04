@@ -25,7 +25,7 @@
 namespace _P2300 {
   namespace __ptr {
     template <class _Ty>
-      struct __make_intrusive_ptr_t;
+      struct __make_intrusive_t;
 
     template <class _Ty>
       struct __enable_intrusive_from_this;
@@ -56,7 +56,7 @@ namespace _P2300 {
     template <class _Ty>
       class __intrusive_ptr {
         using _UncvTy = std::remove_cv_t<_Ty>;
-        friend struct __make_intrusive_ptr_t<_Ty>;
+        friend struct __make_intrusive_t<_Ty>;
         friend struct __enable_intrusive_from_this<_UncvTy>;
 
         __control_block<_UncvTy>* __data_{nullptr};
@@ -156,7 +156,7 @@ namespace _P2300 {
       };
 
     template <class _Ty>
-      struct __make_intrusive_ptr_t {
+      struct __make_intrusive_t {
         template <class... _Us>
             requires constructible_from<_Ty, _Us...>
           __intrusive_ptr<_Ty> operator()(_Us&&... __us) const {
@@ -169,6 +169,6 @@ namespace _P2300 {
   using __ptr::__intrusive_ptr;
   using __ptr::__enable_intrusive_from_this;
   template <class _Ty>
-    inline constexpr __ptr::__make_intrusive_ptr_t<_Ty> __make_intrusive_ptr {};
+    inline constexpr __ptr::__make_intrusive_t<_Ty> __make_intrusive {};
 
 } // namespace _P2300
