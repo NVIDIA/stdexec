@@ -150,9 +150,6 @@ namespace _P2300 {
     concept __is_not_instance_of =
       !__is_instance_of<_Ty, _T>;
 
-  template <class...>
-    concept __typename = true;
-
 #if __has_builtin(__is_nothrow_constructible)
   template<class _T, class... _As>
     concept __nothrow_constructible_from =

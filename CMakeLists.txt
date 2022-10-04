@@ -125,10 +125,19 @@ target_compile_options(p2300_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:MSVC>:
                        /W4>)
 
+# Increase the error limit with NVC++
+target_compile_options(p2300_executable_flags INTERFACE
+                       $<$<CXX_COMPILER_ID:NVHPC>:-e1000>
+                       )
 
 # Silence warnings with GCC
 target_compile_options(p2300_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>
+                       )
+
+# Silence warnings with NVHPC
+target_compile_options(p2300_executable_flags INTERFACE
+                       $<$<CXX_COMPILER_ID:NVHPC>:--diag_suppress177,550,111,497,554>
                        )
 
 # Template backtrace limit
@@ -214,12 +223,13 @@ catch_discover_tests(test.P2300)
 function(def_example target sourceFile)
     add_executable(${target} ${sourceFile})
     target_link_libraries(${target} PRIVATE P2300::p2300 p2300_executable_flags)
+    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()
 
 def_example(clangd.helper "examples/_clangd_helper_file.cpp")
 def_example(example.hello_world "examples/hello_world.cpp")
 def_example(example.hello_coro "examples/hello_coro.cpp")
-def_example(example.scope "examples/scope.cpp")
+# def_example(example.scope "examples/scope.cpp")
 def_example(example.retry "examples/retry.cpp")
 def_example(example.then "examples/then.cpp")
 def_example(example.server_theme.let_value "examples/server_theme/let_value.cpp")
@@ -267,3 +277,5 @@ rapids_export(
   NAMESPACE P2300::
   FINAL_CODE_BLOCK code_string
 )
+
+add_subdirectory(examples/cuda)

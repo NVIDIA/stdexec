@@ -21,6 +21,8 @@
 #include <tuple>
 #include <variant>
 
+#if !_STD_NO_COROUTINES_
+
 namespace ex = std::execution;
 
 template <typename Awaiter>
@@ -138,3 +140,5 @@ TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]")
       std::exception_ptr(),
       ex::__await_result_t<awaitable_sender_3, promise<awaiter>>()));
 }
+
+#endif // !_STD_NO_COROUTINES_

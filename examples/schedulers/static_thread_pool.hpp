@@ -247,7 +247,7 @@ namespace example {
               try {
                 state.data_.template emplace<tuple_t>((As &&) as...);
               } catch (...) {
-                std::execution::set_error((Receiver&&)state.receiver_, std::current_exception());
+                std::execution::set_error(std::move(state.receiver_), std::current_exception());
               }
             } else {
               state.data_.template emplace<tuple_t>((As &&) as...);
@@ -257,8 +257,7 @@ namespace example {
               self.enqueue();
             } else {
               state.apply([&](auto&... args) {
-                std::execution::set_value((Receiver &&) state.receiver_,
-                                          std::move(args)...);
+                std::execution::set_value(std::move(state.receiver_), std::move(args)...);
               });
             }
           }

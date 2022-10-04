@@ -18,7 +18,7 @@ If:
 CompileFlags:
   Add:
     # Allow variadic CUDA functions
-    - -fcuda-allow-variadic-functions
+    - "-Xclang -fcuda-allow-variadic-functions"
 
 ---
 
@@ -28,9 +28,12 @@ CompileFlags:
   Add:
     # report all errors
     - "-ferror-limit=0"
+    - "-D_P2300_NVHPC()=1"
   Remove:
     # strip CUDA fatbin args
     - "-Xfatbin*"
+    - "-gpu=*"
+    - "--diag_suppress*"
     # strip CUDA arch flags
     - "-gencode*"
     - "--generate-code*"

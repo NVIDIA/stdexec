@@ -237,7 +237,7 @@ TEST_CASE("make_completion_signatures can transform error types signatures",
       ex::completion_signatures<                        //
           ex::set_error_t(error_code)                   //
           >,                                            //
-      ex::__completion_signatures::__default_set_value,  //
+      ex::__compl_sigs::__default_set_value,            //
       optional_set_error_sig>;
 
   // will transform the original "exception_ptr" into optional<exception_ptr>
