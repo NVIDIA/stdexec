@@ -313,7 +313,7 @@ namespace _P2519::execution {
         __future_state_steps_t __step_ = __future_state_steps_t::__created;
         std::unique_ptr<__future_state> __no_future_;
         std::variant<std::monostate, __impl::__future_result_t<_Sender>, execution::set_stopped_t> __data_;
-        detail::intrusive_queue<&__impl::__subscription::__next_> __subscribers_;
+        detail::__intrusive_queue<&__impl::__subscription::__next_> __subscribers_;
       };
 
     namespace __impl {
@@ -652,7 +652,7 @@ namespace _P2519::execution {
       in_place_stop_source __stop_source_;
       std::mutex __lock_;
       std::ptrdiff_t __active_;
-      detail::intrusive_queue<&__op_base::__next_> __waiters_;
+      detail::__intrusive_queue<&__op_base::__next_> __waiters_;
     };
 
     template<class _T>

@@ -23,28 +23,28 @@
 namespace _P2300::execution::detail {
 
 template <auto Next>
-  class intrusive_queue;
+  class __intrusive_queue;
 
 template <class Item, Item* Item::*Next>
-  class intrusive_queue<Next> {
+  class __intrusive_queue<Next> {
    public:
-    intrusive_queue() noexcept = default;
+    __intrusive_queue() noexcept = default;
 
-    intrusive_queue(intrusive_queue&& other) noexcept
+    __intrusive_queue(__intrusive_queue&& other) noexcept
       : head_(std::exchange(other.head_, nullptr))
       , tail_(std::exchange(other.tail_, nullptr)) {}
 
-    intrusive_queue& operator=(intrusive_queue other) noexcept {
+    __intrusive_queue& operator=(__intrusive_queue other) noexcept {
       std::swap(head_, other.head_);
       std::swap(tail_, other.tail_);
       return *this;
     }
 
-    ~intrusive_queue() {
+    ~__intrusive_queue() {
       assert(empty());
     }
 
-    static intrusive_queue make_reversed(Item* list) noexcept {
+    static __intrusive_queue make_reversed(Item* list) noexcept {
       Item* newHead = nullptr;
       Item* newTail = list;
       while (list != nullptr) {
@@ -54,7 +54,7 @@ template <class Item, Item* Item::*Next>
         list = next;
       }
 
-      intrusive_queue result;
+      __intrusive_queue result;
       result.head_ = newHead;
       result.tail_ = newTail;
       return result;
@@ -93,7 +93,7 @@ template <class Item, Item* Item::*Next>
       tail_ = item;
     }
 
-    void append(intrusive_queue other) noexcept {
+    void append(__intrusive_queue other) noexcept {
       if (other.empty())
         return;
       auto* otherHead = std::exchange(other.head_, nullptr);
@@ -105,7 +105,7 @@ template <class Item, Item* Item::*Next>
       tail_ = std::exchange(other.tail_, nullptr);
     }
 
-    void prepend(intrusive_queue other) noexcept {
+    void prepend(__intrusive_queue other) noexcept {
       if (other.empty())
         return;
 

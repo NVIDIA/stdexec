@@ -29,7 +29,7 @@
 #include <vector>
 
 namespace example {
-  using _P2300::execution::detail::intrusive_queue;
+  using _P2300::execution::detail::__intrusive_queue;
 
   struct task_base {
     task_base* next;
@@ -414,7 +414,7 @@ namespace example {
      private:
       std::mutex mut_;
       std::condition_variable cv_;
-      intrusive_queue<&task_base::next> queue_;
+      __intrusive_queue<&task_base::next> queue_;
       bool stopRequested_ = false;
     };
 
