@@ -18,7 +18,7 @@
 
 #include <execution.hpp>
 #include "__detail/__intrusive_queue.hpp"
-#include "__utility.hpp"
+#include "__detail/__meta.hpp"
 
 #include <atomic>
 #include <condition_variable>
