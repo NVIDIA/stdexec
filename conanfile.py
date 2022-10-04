@@ -9,8 +9,8 @@ class P2300Recipe(ConanFile):
     description = "std::execution"
     author = "Michał Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach"
     topics = ("WG21", "concurrency")
-    homepage = "https://github.com/brycelelbach/wg21_p2300_std_execution"
-    url = "https://github.com/brycelelbach/wg21_p2300_std_execution"
+    homepage = "https://github.com/NVIDIA/stdexec"
+    url = "https://github.com/NVIDIA/stdexec"
     license = "Apache 2.0"
     settings = "compiler"  # Header only - compiler only used for flags
     tool_requires = "catch2/2.13.6"
