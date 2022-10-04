@@ -25,10 +25,11 @@ namespace __coro = std;
 #include <experimental/coroutine>
 namespace __coro = std::experimental;
 #else
-#error No coroutine support found
+#define _STD_NO_COROUTINES_ 1
 #endif
 
 namespace _P2300 {
+#if !_STD_NO_COROUTINES_
   // Defined some concepts and utilities for working with awaitables
   template <class _Promise, class _Awaiter>
   decltype(auto) __await_suspend(_Awaiter& __await) {
@@ -85,4 +86,15 @@ namespace _P2300 {
       requires __awaitable<_Awaitable, _Promise>
     using __await_result_t = decltype((__as_lvalue)(
         (__get_awaiter)(std::declval<_Awaitable>(), (_Promise*) nullptr)).await_resume());
-}
+
+#else
+
+  template <class _Awaitable, class _Promise = void>
+    concept __awaitable = false;
+
+  template <class _Awaitable, class _Promise = void>
+      requires __awaitable<_Awaitable, _Promise>
+    using __await_result_t = void;
+
+#endif
+} // namespace _P2300

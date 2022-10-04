@@ -17,6 +17,7 @@
 
 #include <type_traits>
 #include <utility>
+#include <__detail/__config.hpp>
 
 #ifdef _P2300_ASSERT
 #error "Hammer says, ya can't touch this"
@@ -60,6 +61,9 @@ namespace _P2300 {
 #endif
 
   struct __none_such {};
+
+  template <class...>
+    concept __typename = true;
 
   struct __immovable {
     __immovable() = default;
@@ -226,7 +230,8 @@ namespace _P2300 {
     concept __valid3 = requires { typename _T<_First, _Second, _Third>; };
 
   template <class _Fn, class... _Args>
-    concept __minvocable = __valid<_Fn::template __f, _Args...>;
+    concept __minvocable =
+      __valid<_Fn::template __f, _Args...>;
 
   template <class _Fn, class _First>
     concept __minvocable1 = __valid1<_Fn::template __f, _First>;
@@ -274,16 +279,19 @@ namespace _P2300 {
         using __f = __minvoke<_Continuation, __minvoke1<_Fn, _Args>...>;
     };
 
-    template <class _Fn, class...>
-      struct __fold_right_ {};
-    template <class _Fn, class _State, class _Head, class... _Tail>
-        requires __minvocable2<_Fn, _State, _Head>
-      struct __fold_right_<_Fn, _State, _Head, _Tail...>
-        : __fold_right_<_Fn, __minvoke2<_Fn, _State, _Head>, _Tail...> {};
-    template <class _Fn, class _State>
-      struct __fold_right_<_Fn, _State> {
-        using __t = _State;
-      };
+  template <class _Fn, class...>
+    struct __fold_right_ {};
+  template <class _Fn, class _State, class _Head, class... _Tail>
+      #if !_P2300_NVHPC()
+      // BUGBUG find better work-around
+      requires __minvocable2<_Fn, _State, _Head>
+      #endif
+    struct __fold_right_<_Fn, _State, _Head, _Tail...>
+      : __fold_right_<_Fn, __minvoke2<_Fn, _State, _Head>, _Tail...> {};
+  template <class _Fn, class _State>
+    struct __fold_right_<_Fn, _State> {
+      using __t = _State;
+    };
 
   template <class _Init, class _Fn>
     struct __fold_right {
@@ -342,8 +350,13 @@ namespace _P2300 {
       template <class, class _False>
         using __f = _False;
     };
+  #if _P2300_NVHPC()
+  template <class _Pred, class _True, class _False>
+    using __if = __minvoke2<__if_<_Pred::value>, _True, _False>;
+  #else
   template <class _Pred, class _True, class _False>
     using __if = __minvoke2<__if_<__v<_Pred>>, _True, _False>;
+  #endif
   template <bool _Pred, class _True, class _False>
     using __if_c = __minvoke2<__if_<_Pred>, _True, _False>;
 
@@ -522,17 +535,17 @@ namespace _P2300 {
   template <class _T>
     using __cref_t = const std::remove_reference_t<_T>&;
 
-    template <class, class, class, class>
-      struct __mzip_with2_;
-    template <class _Fn, class _Continuation,
-              template <class...> class _C, class... _Cs,
-              template <class...> class _D, class... _Ds>
-        requires requires {
-          typename __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
-        }
-      struct __mzip_with2_<_Fn, _Continuation, _C<_Cs...>, _D<_Ds...>> {
-        using __t = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
-      };
+  template <class, class, class, class>
+    struct __mzip_with2_;
+  template <class _Fn, class _Continuation,
+            template <class...> class _C, class... _Cs,
+            template <class...> class _D, class... _Ds>
+      requires requires {
+        typename __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+      }
+    struct __mzip_with2_<_Fn, _Continuation, _C<_Cs...>, _D<_Ds...>> {
+      using __t = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+    };
 
   template <class _Fn, class _Continuation = __q<__types>>
     struct __mzip_with2 {

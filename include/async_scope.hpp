@@ -53,7 +53,7 @@ namespace _P2519::execution {
       struct __receiver
         : private receiver_adaptor<__receiver<_SenderId>>
         , __receiver_base {
-        using _Sender = __t<_SenderId>;
+        using _Sender = _P2300::__t<_SenderId>;
 
         template <class _Op>
           explicit __receiver(_Op* __op, async_scope* __scope) noexcept
@@ -196,7 +196,7 @@ namespace _P2519::execution {
       struct __future_receiver
         : private receiver_adaptor<__future_receiver<_SenderId>>
         , __receiver_base {
-        using _Sender = __t<_SenderId>;
+        using _Sender = _P2300::__t<_SenderId>;
 
         template <class _State>
           explicit __future_receiver(_State* __state, async_scope* __scope) noexcept

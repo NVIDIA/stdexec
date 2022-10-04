@@ -34,7 +34,7 @@
 #include <coroutine.hpp>
 #include <stop_token.hpp>
 
-#if defined(__clang__)
+#if _P2300_CLANG()
 #define _STRINGIZE(__arg) #__arg
 #define _PRAGMA_PUSH() _Pragma("GCC diagnostic push")
 #define _PRAGMA_POP() _Pragma("GCC diagnostic pop")
@@ -43,6 +43,31 @@
 #define _PRAGMA_PUSH()
 #define _PRAGMA_POP()
 #define _PRAGMA_IGNORE(__arg)
+#endif
+
+#if _P2300_NVHPC()
+#define _NVCXX_CAPTURE_PACK(_Xs) , class _NVCxxList = _P2300::__types<_Xs...>
+#define _NVCXX_EXPAND_PACK(_Xs, __xs, ...) \
+  [&]<class... _Xs>(_P2300::__types<_Xs...>*, auto*... __ptrs) -> decltype(auto) { \
+    return [&]<class... _Xs>(_Xs&&... __xs) -> decltype(auto) { \
+      __VA_ARGS__ \
+    }(((_Xs&&) *(std::add_pointer_t<_Xs>) __ptrs)...); \
+  }((_NVCxxList*) nullptr, &__xs...);
+#define _NVCXX_EXPAND_PACK_RETURN return _NVCXX_EXPAND_PACK
+#else
+#define _NVCXX_CAPTURE_PACK(_Xs)
+#define _NVCXX_EXPAND_PACK(_Xs, __xs, ...) __VA_ARGS__
+#define _NVCXX_EXPAND_PACK_RETURN(_Xs, __xs, ...) __VA_ARGS__
+#endif
+
+#if _P2300_NVHPC() || _P2300_GCC()
+#define _P2300_NON_LEXICAL_FRIENDSHIP 1
+#endif
+
+#ifdef __EDG__
+#pragma diagnostic push
+#pragma diag_suppress 1302
+#pragma diag_suppress 497
 #endif
 
 _PRAGMA_PUSH()
@@ -105,11 +130,14 @@ namespace _P2300::execution {
           using __value_t = _Value;
           [[no_unique_address]] std::unwrap_reference_t<_Value> __value_;
 
-          friend auto tag_invoke(same_as<_Tag> auto, const __t& __self, auto&&...)
-            noexcept(std::is_nothrow_copy_constructible_v<std::unwrap_reference_t<_Value>>)
-            -> std::unwrap_reference_t<_Value> {
-            return __self.__value_;
-          }
+          template <class... _Ts>
+            friend auto tag_invoke(same_as<_Tag> auto, const __t& __self, _Ts&&...)
+              #if !_P2300_NVHPC()
+              noexcept(std::is_nothrow_copy_constructible_v<std::unwrap_reference_t<_Value>>)
+              #endif
+              -> std::unwrap_reference_t<_Value> {
+              return __self.__value_;
+            }
         };
       };
     template <class _Tag>
@@ -118,7 +146,8 @@ namespace _P2300::execution {
           using __tag_t = _Tag;
           using __value_t = __none_such;
 
-          friend void tag_invoke(same_as<_Tag> auto, const __t& __self, auto&&...) = delete;
+          template <class... _Ts>
+            friend void tag_invoke(same_as<_Tag> auto, const __t&, _Ts&&...) = delete;
         };
       };
     template <class _With>
@@ -146,11 +175,13 @@ namespace _P2300::execution {
         template <
             __none_of<typename _Withs::__tag_t..., get_completion_signatures_t> _Tag,
             same_as<__env_> _Self,
-            class... _As>
+            class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, const typename _Self::__base_env_t&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as) noexcept
             -> __call_result_if_t<same_as<_Self, __env_>, _Tag, const typename _Self::__base_env_t&, _As...> {
-            return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
+            )
           }
       };
     template <class _BaseEnv, class... _Withs>
@@ -270,7 +301,27 @@ namespace _P2300::execution {
 
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
-  namespace __completion_signatures {
+  namespace __compl_sigs {
+    #if _P2300_NVHPC()
+    template <class _Ty = __q<__types>, class... _Args>
+      __types<__minvoke<_Ty, _Args...>> __test(set_value_t(*)(_Args...), set_value_t = {}, _Ty = {});
+    template <class _Ty = __q<__types>, class _Error>
+      __types<__minvoke1<_Ty, _Error>> __test(set_error_t(*)(_Error), set_error_t = {}, _Ty = {});
+    template <class _Ty = __q<__types>>
+      __types<__minvoke<_Ty>> __test(set_stopped_t(*)(), set_stopped_t = {}, _Ty = {});
+    __types<> __test(__ignore, __ignore, __ignore = {});
+
+    template <class _Sig>
+      inline constexpr bool __is_compl_sig = false;
+    template <class... _Args>
+      inline constexpr bool __is_compl_sig<set_value_t(_Args...)> = true;
+    template <class _Error>
+      inline constexpr bool __is_compl_sig<set_error_t(_Error)> = true;
+    template <>
+      inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
+
+    #else
+
     template <same_as<set_value_t> _Tag, class _Ty = __q<__types>, class... _Args>
       __types<__minvoke<_Ty, _Args...>> __test(_Tag(*)(_Args...));
     template <same_as<set_error_t> _Tag, class _Ty = __q<__types>, class _Error>
@@ -279,29 +330,42 @@ namespace _P2300::execution {
       __types<__minvoke<_Ty>> __test(_Tag(*)());
     template <class, class = void>
       __types<> __test(...);
+    #endif
 
     // BUGBUG not to spec!
     struct __dependent {
+#if !_STD_NO_COROUTINES_
       bool await_ready();
       void await_suspend(const __coro::coroutine_handle<no_env>&);
       __dependent await_resume();
+#endif
     };
-  } // namespace __completion_signatures
+  } // namespace __compl_sigs
 
   template <same_as<no_env>>
     using dependent_completion_signatures =
-      __completion_signatures::__dependent;
+      __compl_sigs::__dependent;
 
+#if _P2300_NVHPC()
   template <class _Sig>
     concept __completion_signature =
-      __typename<decltype(__completion_signatures::__test((_Sig*) nullptr))>;
+      __compl_sigs::__is_compl_sig<_Sig>;
+
+  template <class _Sig, class _Tag, class _Ty = __q<__types>>
+    using __signal_args_t =
+      decltype(__compl_sigs::__test((_Sig*) nullptr, _Tag{}, _Ty{}));
+#else
+  template <class _Sig>
+    concept __completion_signature =
+      __typename<decltype(__compl_sigs::__test((_Sig*) nullptr))>;
+
+  template <class _Sig, class _Tag, class _Ty = __q<__types>>
+    using __signal_args_t =
+      decltype(__compl_sigs::__test<_Tag, _Ty>((_Sig*) nullptr));
+#endif
 
   template <__completion_signature... _Sigs>
     struct completion_signatures {
-      template <class _Sig, class _Tag, class _Ty = __q<__types>>
-        using __signal_args_t =
-          decltype(__completion_signatures::__test<_Tag, _Ty>((_Sig*) nullptr));
-
       template <class _Tag, class _Tuple, class _Variant>
         using __gather_sigs =
           __minvoke<
@@ -309,12 +373,16 @@ namespace _P2300::execution {
             __signal_args_t<_Sigs, _Tag, _Tuple>...>;
     };
 
+  template <class _Ty>
+    concept __is_completion_signatures =
+      __is_instance_of<_Ty, completion_signatures>;
+
   template <class...>
     struct __concat_completion_signatures {
       using __t = dependent_completion_signatures<no_env>;
     };
 
-  template <__is_instance_of<completion_signatures>... _Completions>
+  template <__is_completion_signatures... _Completions>
     struct __concat_completion_signatures<_Completions...> {
       using __t =
         __minvoke<
@@ -428,10 +496,11 @@ namespace _P2300::execution {
           using _Result = __await_result_t<_Sender, _Env>;
           if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
             return dependent_completion_signatures<no_env>{};
-          } else if constexpr (same_as<_Result, void>) {
-            return completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>{};
           } else {
-            return completion_signatures<set_value_t(_Result), set_error_t(std::exception_ptr)>{};
+            return completion_signatures<
+                // set_value_t() or set_value_t(T)
+                __minvoke1<__remove<void, __qf<set_value_t>>, _Result>,
+                set_error_t(std::exception_ptr)>{};
           }
         }
       }
@@ -489,12 +558,6 @@ namespace _P2300::execution {
       requires sender<_Sender, _Env>
     using completion_signatures_of_t =
       __t<__checked_completion_signatures<_Sender, _Env>>;
-
-  template <class _Receiver, class _Sender>
-    concept __receiver_from =
-      receiver_of<
-        _Receiver,
-        completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
 
   struct __not_a_variant {
     __not_a_variant() = delete;
@@ -569,13 +632,13 @@ namespace _P2300::execution {
       __value_types_of_t<_Sender, _Env, __single_or<void>, __q<__single_t>>;
 
   template <class _Sender, class _Env = no_env>
+    using __single_value_variant_sender_t =
+      value_types_of_t<_Sender, _Env, __types, __single_t>;
+
+  template <class _Sender, class _Env = no_env>
     concept __single_typed_sender =
       sender<_Sender, _Env> &&
       __valid<__single_sender_value_t, _Sender, _Env>;
-
-  template <class _Sender, class _Env = no_env>
-    using __single_value_variant_sender_t =
-      value_types_of_t<_Sender, _Env, __types, __single_t>;
 
   template <class _Sender, class _Env = no_env>
     concept __single_value_variant_sender =
@@ -591,14 +654,14 @@ namespace _P2300::execution {
       (__v<error_types_of_t<_Sender, _Env, __nofail>>);
 
   /////////////////////////////////////////////////////////////////////////////
-  namespace __completion_signatures {
+  namespace __compl_sigs {
     template <class... _Args>
       using __default_set_value = completion_signatures<set_value_t(_Args...)>;
 
     template <class _Error>
       using __default_set_error = completion_signatures<set_error_t(_Error)>;
 
-    template <__is_instance_of<completion_signatures>... _Sigs>
+    template <__is_completion_signatures... _Sigs>
       using __ensure_concat = __minvoke<__concat<__q<completion_signatures>>, _Sigs...>;
 
     template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, class _SetStopped>
@@ -627,9 +690,9 @@ namespace _P2300::execution {
         requires sender<_Sender, _Env>
     using __make_completion_signatures =
       decltype(__make<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>(0));
-  } // namespace __completion_signatures
+  } // namespace __compl_sigs
 
-  using __completion_signatures::__make_completion_signatures;
+  using __compl_sigs::__make_completion_signatures;
 
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC
@@ -702,9 +765,9 @@ namespace _P2300::execution {
     __valid_completion_signatures<_Env> _Sigs =
       completion_signatures<>,
     template <class...> class _SetValue =
-      __completion_signatures::__default_set_value,
+      __compl_sigs::__default_set_value,
     template <class> class _SetError =
-      __completion_signatures::__default_set_error,
+      __compl_sigs::__default_set_error,
     __valid_completion_signatures<_Env> _SetStopped =
       completion_signatures<set_stopped_t()>>
       requires sender<_Sender, _Env>
@@ -769,9 +832,9 @@ namespace _P2300::execution {
     struct get_forward_progress_guarantee_t {
       template <class _T>
         requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>
-      constexpr tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> operator()(
-          _T&& __t) const
-        noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>) {
+      constexpr auto operator()(_T&& __t) const
+        noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>)
+        -> tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> {
         return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t));
       }
       constexpr execution::forward_progress_guarantee operator()(auto&&) const noexcept {
@@ -900,10 +963,11 @@ namespace _P2300::execution {
     concept operation_state =
       destructible<_O> &&
       std::is_object_v<_O> &&
-      requires (_O& o) {
-        {start(o)} noexcept;
+      requires (_O& __o) {
+        { start(__o) } noexcept;
       };
 
+#if !_STD_NO_COROUTINES_
   namespace __as_awaitable {
     struct as_awaitable_t;
   }
@@ -1076,6 +1140,9 @@ namespace _P2300::execution {
     };
   } // namespace __connect_awaitable_
   using __connect_awaitable_::__connect_awaitable_t;
+#else
+  struct __connect_awaitable_t {};
+#endif
   inline constexpr __connect_awaitable_t __connect_awaitable{};
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1097,9 +1164,7 @@ namespace _P2300::execution {
   using __sender_queries::forwarding_sender_query_t;
   inline constexpr forwarding_sender_query_t forwarding_sender_query{};
 
-  /////////////////////////////////////////////////////////////////////////////
-  // [exe.connect]
-  namespace __connect {
+  namespace __debug {
     struct __is_debug_env_t {
       template <class _Env>
           requires tag_invocable<__is_debug_env_t, _Env>
@@ -1139,7 +1204,25 @@ namespace _P2300::execution {
         friend void tag_invoke(set_stopped_t, __any_debug_receiver&&) noexcept;
         friend __debug_env_t<_Env> tag_invoke(get_env_t, __any_debug_receiver) noexcept;
       };
+  } // namespace __debug
 
+  using __debug::__is_debug_env_t;
+  using __debug::__debug_env_t;
+
+  // BUGBUG maybe instead of the disjunction here we want to make
+  // get_completion_signatures recognize debug environments and return
+  // an empty list of completions when no tag_invoke overload can be
+  // found. https://github.com/brycelelbach/wg21_p2300_std_execution/issues/603
+  template <class _Receiver, class _Sender>
+    concept __receiver_from =
+      // tag_invocable<__is_debug_env_t, env_of_t<_Receiver>> ||
+      receiver_of<
+        _Receiver,
+        completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.connect]
+  namespace __connect {
     struct connect_t;
 
     template <class _Sender, class _Receiver>
@@ -1185,54 +1268,66 @@ namespace _P2300::execution {
         return false;
       }
     };
+  } // namespace __connect
 
-    ////////////////////////////////////////////////////////////////////////////
-    // `__debug_sender`
-    // ===============
-    //
-    // Understanding why a particular sender doesn't connect to a particular
-    // receiver is nigh impossible in the current design due to limitations in
-    // how the compiler reports overload resolution failure in the presence of
-    // constraints. `__debug_sender` is a utility to assist with the process. It
-    // gives you the deep template instantiation backtrace that you need to
-    // understand where in a chain of senders the problem is occurring.
-    //
-    // ```c++
-    // template <class _Sigs, class _Env = __empty_env, class _Sender>
-    //   void __debug_sender(_Sender&& __sndr, _Env = {});
-    //
-    // template <class _Sender>
-    //   void __debug_sender(_Sender&& __sndr);
-    //
-    // template <class _Env, class _Sender>
-    //   void __debug_sender(_Sender&& __sndr, _Env);
-    // ```
-    //
-    // **Usage:**
-    //
-    // To find out where in a chain of senders, a sender is failing to connect
-    // to a receiver, pass it to `__debug_sender`, optionally with an
-    // environment argument; e.g. `__debug_sender(sndr [, env])`
-    //
-    // To find out why a sender will not connect to a receiver of a particular
-    // signature, specify the error and value types as an explicit template
-    // argument that names an instantiation of `completion_signatures`; e.g.:
-    // `__debug_sender<completion_signatures<set_value_t(int)>>(sndr [, env])`.
-    //
-    // **How it works:**
-    //
-    // The `__debug_sender` function `connect`'s the sender to a
-    // `__debug_receiver`, whose environment is augmented with a special
-    // `__is_debug_env_t` query. An additional fall-back overload is added to
-    // the `connect` CPO that recognizes receivers whose environments respond to
-    // that query and lets them through. Then in a non-immediate context, it
-    // looks for a `tag_invoke(connect_t...)` overload for the input sender and
-    // receiver. This will recurse until it hits the `tag_invoke` call that is
-    // causing the failure.
-    //
-    // At least with clang, this gives me a nice backtrace, at the bottom of
-    // which is the faulty `tag_invoke` overload with a mention of the
-    // constraint that failed.
+  using __connect::connect_t;
+  inline constexpr __connect::connect_t connect {};
+
+  template <class _Sender, class _Receiver>
+    using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
+
+  template <class _Sender, class _Receiver>
+    concept __nothrow_connectable =
+      noexcept(connect(__declval<_Sender>(), __declval<_Receiver>()));
+
+  ////////////////////////////////////////////////////////////////////////////
+  // `__debug_sender`
+  // ===============
+  //
+  // Understanding why a particular sender doesn't connect to a particular
+  // receiver is nigh impossible in the current design due to limitations in
+  // how the compiler reports overload resolution failure in the presence of
+  // constraints. `__debug_sender` is a utility to assist with the process. It
+  // gives you the deep template instantiation backtrace that you need to
+  // understand where in a chain of senders the problem is occurring.
+  //
+  // ```c++
+  // template <class _Sigs, class _Env = __empty_env, class _Sender>
+  //   void __debug_sender(_Sender&& __sndr, _Env = {});
+  //
+  // template <class _Sender>
+  //   void __debug_sender(_Sender&& __sndr);
+  //
+  // template <class _Env, class _Sender>
+  //   void __debug_sender(_Sender&& __sndr, _Env);
+  // ```
+  //
+  // **Usage:**
+  //
+  // To find out where in a chain of senders, a sender is failing to connect
+  // to a receiver, pass it to `__debug_sender`, optionally with an
+  // environment argument; e.g. `__debug_sender(sndr [, env])`
+  //
+  // To find out why a sender will not connect to a receiver of a particular
+  // signature, specify the error and value types as an explicit template
+  // argument that names an instantiation of `completion_signatures`; e.g.:
+  // `__debug_sender<completion_signatures<set_value_t(int)>>(sndr [, env])`.
+  //
+  // **How it works:**
+  //
+  // The `__debug_sender` function `connect`'s the sender to a
+  // `__debug_receiver`, whose environment is augmented with a special
+  // `__is_debug_env_t` query. An additional fall-back overload is added to
+  // the `connect` CPO that recognizes receivers whose environments respond to
+  // that query and lets them through. Then in a non-immediate context, it
+  // looks for a `tag_invoke(connect_t...)` overload for the input sender and
+  // receiver. This will recurse until it hits the `tag_invoke` call that is
+  // causing the failure.
+  //
+  // At least with clang, this gives me a nice backtrace, at the bottom of
+  // which is the faulty `tag_invoke` overload with a mention of the
+  // constraint that failed.
+  namespace __debug {
     template <class _Sigs, class _Env = __empty_env, class _Sender>
       void __debug_sender(_Sender&& __sndr, _Env = {}) {
         using _Receiver = __debug_receiver<_Env, _Sigs>;
@@ -1250,19 +1345,9 @@ namespace _P2300::execution {
         using _Receiver = __any_debug_receiver<_Env>;
         (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
       }
-  } // namespace __connect
+  } // namespace __debug
 
-  using __connect::connect_t;
-  inline constexpr __connect::connect_t connect {};
-
-  template <class _Sender, class _Receiver>
-    using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
-
-  template <class _Sender, class _Receiver>
-    concept __nothrow_connectable =
-      noexcept(connect(__declval<_Sender>(), __declval<_Receiver>()));
-
-  using __connect::__debug_sender;
+  using __debug::__debug_sender;
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
@@ -1332,6 +1417,7 @@ namespace _P2300::execution {
       __has_completion_scheduler<_Sender, _CPO> &&
       tag_invocable<_Fun, __completion_scheduler_for<_Sender, _CPO>, _Sender, _As...>;
 
+#if !_STD_NO_COROUTINES_
   /////////////////////////////////////////////////////////////////////////////
   // execution::as_awaitable [execution.coro_utils.as_awaitable]
   namespace __as_awaitable {
@@ -1546,6 +1632,7 @@ namespace _P2300::execution {
     };
   }
   using __with_awaitable_senders::with_awaitable_senders;
+#endif
 
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC: __submit
@@ -1558,13 +1645,15 @@ namespace _P2300::execution {
           struct __receiver {
             __operation* __op_state_;
             // Forward all the receiver ops, and delete the operation state.
-            template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+            template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
               requires __callable<_Tag, _Receiver, _As...>
             friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as)
                 noexcept(__nothrow_callable<_Tag, _Receiver, _As...>) {
               // Delete the state as cleanup:
-              std::unique_ptr<__operation> __g{__self.__op_state_};
-              return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
+              _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+                std::unique_ptr<__operation> __g{__self.__op_state_};
+                return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
+              )
             }
             // Forward all receiever queries.
             friend auto tag_invoke(get_env_t, const __receiver& __self)
@@ -1639,6 +1728,7 @@ namespace _P2300::execution {
         std::tuple<_Ts...> __vals_;
 
         using completion_signatures = __completion_signatures_<_CPO, _Ts...>;
+
         template <class _ReceiverId>
           struct __operation : __immovable {
             using _Receiver = __t<_ReceiverId>;
@@ -1653,7 +1743,7 @@ namespace _P2300::execution {
             }
           };
 
-        template <class _Receiver>
+        template <receiver_of<completion_signatures> _Receiver>
           requires (copy_constructible<_Ts> &&...)
         friend auto tag_invoke(connect_t, const __sender& __sndr, _Receiver&& __rcvr)
           noexcept((std::is_nothrow_copy_constructible_v<_Ts> &&...))
@@ -1661,7 +1751,7 @@ namespace _P2300::execution {
           return {{}, __sndr.__vals_, (_Receiver&&) __rcvr};
         }
 
-        template <class _Receiver>
+        template <receiver_of<completion_signatures> _Receiver>
         friend auto tag_invoke(connect_t, __sender&& __sndr, _Receiver&& __rcvr)
           noexcept((std::is_nothrow_move_constructible_v<_Ts> &&...))
           -> __operation<__x<remove_cvref_t<_Receiver>>> {
@@ -1712,7 +1802,9 @@ namespace _P2300::execution {
             std::terminate();
           }
           friend void tag_invoke(set_stopped_t, __as_receiver&&) noexcept {}
-          friend __empty_env tag_invoke(get_env_t, const __as_receiver&) noexcept { return {}; };
+          friend __empty_env tag_invoke(get_env_t, const __as_receiver&) {
+            return {};
+          }
         };
     }
 
@@ -1858,26 +1950,26 @@ namespace _P2300::execution {
     // but 'int(type::existing_member_function)' is an error (as desired).
     #define _DISPATCH_MEMBER(_TAG) \
       template <class _Self, class... _Ts> \
-      static auto __call_ ## _TAG(_Self&& __self, _Ts&&... __ts) \
-        noexcept(noexcept(((_Self&&) __self)._TAG((_Ts&&) __ts...))) -> \
-        decltype(((_Self&&) __self)._TAG((_Ts&&) __ts...)) { \
-        return ((_Self&&) __self)._TAG((_Ts&&) __ts...); \
-      } \
+        static auto __call_ ## _TAG(_Self&& __self, _Ts&&... __ts) \
+          noexcept(noexcept(((_Self&&) __self)._TAG((_Ts&&) __ts...))) -> \
+          decltype(((_Self&&) __self)._TAG((_Ts&&) __ts...)) { \
+          return ((_Self&&) __self)._TAG((_Ts&&) __ts...); \
+        } \
       /**/
     #define _CALL_MEMBER(_TAG, ...) __call_ ## _TAG(__VA_ARGS__)
 
-    #if defined(__clang__)
+    #if _P2300_CLANG()
     // Only clang gets this right.
     #define _MISSING_MEMBER(_D, _TAG) requires { typename _D::_TAG; }
     #define _DEFINE_MEMBER(_TAG) _DISPATCH_MEMBER(_TAG) using _TAG = void
     #else
     #define _MISSING_MEMBER(_D, _TAG) (__missing_ ## _TAG<_D>())
     #define _DEFINE_MEMBER(_TAG) \
-      _DISPATCH_MEMBER(_TAG) \
       template<class _D> \
-      static constexpr bool __missing_ ## _TAG() noexcept { \
-        return requires { requires bool(int(_D::_TAG)); }; \
-      }\
+        static constexpr bool __missing_ ## _TAG() noexcept { \
+          return requires { requires bool(int(_D::_TAG)); }; \
+        }\
+      _DISPATCH_MEMBER(_TAG) \
       static constexpr int _TAG = 1 \
       /**/
     #endif
@@ -1890,7 +1982,8 @@ namespace _P2300::execution {
           template <same_as<connect_t> _Connect, __decays_to<_Derived> _Self, receiver _Receiver>
           friend auto tag_invoke(_Connect, _Self&& __self, _Receiver&& __rcvr)
             noexcept(noexcept(_CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr)))
-            -> decltype(_CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr)) {
+            -> decltype(_CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr))
+          {
             return _CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr);
           }
 
@@ -1903,12 +1996,14 @@ namespace _P2300::execution {
             return execution::connect(((__t&&) __self).base(), (_Receiver&&) __rcvr);
           }
 
-          template <tag_category<forwarding_sender_query> _Tag, class... _As>
+          template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Base&, _As...> {
-            return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
+            )
           }
 
          protected:
@@ -1952,18 +2047,22 @@ namespace _P2300::execution {
               }
             }
 
-          template <same_as<set_value_t> _SetValue, class... _As>
+          template <same_as<set_value_t> _SetValue, class... _As _NVCXX_CAPTURE_PACK(_As)>
           friend auto tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept
-            -> decltype(_CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...)) {
-            static_assert(noexcept(_CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...)));
-            _CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...);
+            -> decltype(_CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...)) {
+            _NVCXX_EXPAND_PACK(_As, __as,
+              static_assert(noexcept(_CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...)));
+              _CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...);
+            )
           }
 
-          template <same_as<set_value_t> _SetValue, class _D = _Derived, class... _As>
+          template <same_as<set_value_t> _SetValue, class _D = _Derived, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires _MISSING_MEMBER(_D, set_value) &&
               tag_invocable<set_value_t, __base_t<_D>, _As...>
           friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
-            execution::set_value(__get_base((_Derived&&) __self), (_As&&) __as...);
+            _NVCXX_EXPAND_PACK(_As, __as,
+              execution::set_value(__get_base((_D&&) __self), (_As&&) __as...);
+            )
           }
 
           template <same_as<set_error_t> _SetError, class _Error>
@@ -2003,7 +2102,8 @@ namespace _P2300::execution {
 
           template <same_as<get_env_t> _GetEnv, class _D = _Derived>
             requires _MISSING_MEMBER(_D, get_env)
-          friend auto tag_invoke(_GetEnv, const _Derived& __self) {
+          friend auto tag_invoke(_GetEnv, const _Derived& __self)
+            -> __call_result_t<get_env_t, __base_t<const _D&>> {
             return execution::get_env(__get_base(__self));
           }
 
@@ -2031,12 +2131,14 @@ namespace _P2300::execution {
             execution::start(__c_cast<__t>(__self).base());
           }
 
-          template <__none_of<start_t> _Tag, class... _As>
+          template <__none_of<start_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
             -> __call_result_if_t<__none_of<_Tag, start_t>, _Tag, const _Base&, _As...> {
-            return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
+            )
           }
 
          protected:
@@ -2069,12 +2171,14 @@ namespace _P2300::execution {
             return execution::schedule(__c_cast<__t>((_Self&&) __self).base());
           }
 
-          template <tag_category<forwarding_scheduler_query> _Tag, same_as<_Derived> _Self, class... _As>
+          template <tag_category<forwarding_scheduler_query> _Tag, same_as<_Derived> _Self, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_scheduler_query>, _Tag, const _Base&, _As...> {
-            return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
+            )
           }
 
          protected:
@@ -2171,6 +2275,9 @@ namespace _P2300::execution {
     template <class _ReceiverId, class _FunId>
       class __receiver
         : receiver_adaptor<__receiver<_ReceiverId, _FunId>, __t<_ReceiverId>> {
+      #if _P2300_NON_LEXICAL_FRIENDSHIP
+      public:
+      #endif
         using _Receiver = __t<_ReceiverId>;
         using _Fun = __t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
@@ -2214,9 +2321,12 @@ namespace _P2300::execution {
               __mbind_front_q<__set_value_invoke_t, _Fun>>;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
+          // BUGBUG
           requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+          // BUGBUG
           noexcept(__nothrow_connectable<__member_t<_Self, _Sender>, __receiver<_Receiver>>)
+          // BUGBUG
           -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
           return execution::connect(
               ((_Self&&) __self).__sndr_,
@@ -2322,7 +2432,7 @@ namespace _P2300::execution {
               __member_t<_Self, _Sender>,
               _Env,
               __with_error_invoke_t<set_error_t, _Fun, __member_t<_Self, _Sender>, _Env>,
-              __q<__completion_signatures::__default_set_value>,
+              __q<__compl_sigs::__default_set_value>,
               __mbind_front_q<__set_value_invoke_t, _Fun>>;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
@@ -2428,8 +2538,8 @@ namespace _P2300::execution {
               __member_t<_Self, _Sender>,
               _Env,
               __with_error_invoke_t<set_stopped_t, _Fun, __member_t<_Self, _Sender>, _Env>,
-              __q<__completion_signatures::__default_set_value>,
-              __q1<__completion_signatures::__default_set_error>,
+              __q<__compl_sigs::__default_set_value>,
+              __q1<__compl_sigs::__default_set_error>,
               __set_value_invoke_t<_Fun>>;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
@@ -2640,18 +2750,19 @@ namespace _P2300::execution {
         _SharedState &__sh_state_;
 
       public:
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
         friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
           _SharedState &__state = __self.__sh_state_;
 
-          try {
-            using __tuple_t = __decayed_tuple<_Tag, _As...>;
-            __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
-          } catch (...) {
-            using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
-            __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
-          }
-
+          _NVCXX_EXPAND_PACK(_As, __as,
+            try {
+              using __tuple_t = __decayed_tuple<_Tag, _As...>;
+              __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
+            } catch (...) {
+              using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
+              __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
+            }
+          )
           __state.__notify();
         }
 
@@ -2819,13 +2930,15 @@ namespace _P2300::execution {
                                           __self.__shared_state_};
           }
 
-        template <tag_category<forwarding_sender_query> _Tag, class... _As>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires (!__is_instance_of<_Tag, get_completion_scheduler_t>) &&
               __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            )
           }
 
         template <class... _Tys>
@@ -2895,13 +3008,15 @@ namespace _P2300::execution {
           : __shared_state_(__shared_state.__intrusive_from_this()) {
         }
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
         friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
           _SharedState& __state = *__self.__shared_state_;
 
           try {
-            using __tuple_t = __decayed_tuple<_Tag, _As...>;
-            __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
+            _NVCXX_EXPAND_PACK(_As, __as,
+              using __tuple_t = __decayed_tuple<_Tag, _As...>;
+              __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
+            )
           } catch (...) {
             using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
             __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
@@ -3198,7 +3313,8 @@ namespace _P2300::execution {
 
       template <class _Fun>
         struct __applyable_fn {
-          __ operator()(auto&&...) const;
+          template <class... _As>
+            __ operator()(_As&&...) const;
           template <class... _As>
               requires invocable<_Fun, _As...>
             std::invoke_result_t<_Fun, _As...> operator()(_As&&...) const {
@@ -3225,9 +3341,15 @@ namespace _P2300::execution {
       template <class _Sender, class _Receiver, class _Fun, class _SetTag>
           requires sender<_Sender, env_of_t<_Receiver>>
         struct __storage {
+          #if _P2300_NVHPC()
+          template <class... _As>
+            using __op_state_for_t =
+              __minvoke2<__q2<connect_result_t>, __result_sender_t<_Fun, _As...>, _Receiver>;
+          #else
           template <class... _As>
             using __op_state_for_t =
               connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
+          #endif
 
           // Compute a variant of tuples to hold all the values of the input
           // sender:
@@ -3284,9 +3406,15 @@ namespace _P2300::execution {
             using __which_tuple_t =
               __call_result_t<__which_tuple<_Sender, _Env, _Let>, _As...>;
 
+          #if _P2300_NVHPC()
+          template <class... _As>
+            using __op_state_for_t =
+              __minvoke2<__q2<connect_result_t>, __result_sender_t<_Fun, _As...>, _Receiver>;
+          #else
           template <class... _As>
             using __op_state_for_t =
               connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
+          #endif
 
           // handle the case when let_error is used with an input sender that
           // never completes with set_error(exception_ptr)
@@ -3297,29 +3425,33 @@ namespace _P2300::execution {
               set_error(std::move(__self).base(), (_Error&&) __err);
             }
 
-          template <__one_of<_Let> _Tag, class... _As>
+          template <__one_of<_Let> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
               requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
                 sender_to<__apply_result_t<_Fun, __which_tuple_t<_As...>&>, _Receiver>
             friend void tag_invoke(_Tag, __receiver&& __self, _As&&... __as) noexcept try {
-              using __tuple_t = __which_tuple_t<_As...>;
-              using __op_state_t = __mapply<__q<__op_state_for_t>, __tuple_t>;
-              auto& __args =
-                __self.__op_state_->__storage_.__args_.template emplace<__tuple_t>((_As&&) __as...);
-              auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
-                __conv{[&] {
-                  return connect(std::apply(std::move(__self.__op_state_->__fun_), __args), std::move(__self).base());
-                }}
-              );
-              start(__op);
+              _NVCXX_EXPAND_PACK(_As, __as,
+                using __tuple_t = __which_tuple_t<_As...>;
+                using __op_state_t = __mapply<__q<__op_state_for_t>, __tuple_t>;
+                auto& __args =
+                  __self.__op_state_->__storage_.__args_.template emplace<__tuple_t>((_As&&) __as...);
+                auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
+                  __conv{[&] {
+                    return connect(std::apply(std::move(__self.__op_state_->__fun_), __args), std::move(__self).base());
+                  }}
+                );
+                start(__op);
+              )
             } catch(...) {
               set_error(std::move(__self).base(), std::current_exception());
             }
 
-          template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+          template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
               requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
             friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
-              static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
-              __tag(std::move(__self).base(), (_As&&) __as...);
+              _NVCXX_EXPAND_PACK(_As, __as,
+                static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
+                __tag(std::move(__self).base(), (_As&&) __as...);
+              )
             }
 
           friend auto tag_invoke(get_env_t, const __receiver& __self)
@@ -3401,12 +3533,14 @@ namespace _P2300::execution {
               };
             }
 
-          template <tag_category<forwarding_sender_query> _Tag, class... _As>
+          template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
               requires __callable<_Tag, const _Sender&, _As...>
             friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
               noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+              _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+                return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+              )
             }
 
           template <__decays_to<__sender> _Self, class _Env>
@@ -3545,12 +3679,14 @@ namespace _P2300::execution {
             return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
           }
 
-        template <tag_category<forwarding_sender_query> _Tag, class... _As>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            )
           }
 
         template <class... _Tys>
@@ -3785,6 +3921,7 @@ namespace _P2300::execution {
     }
   } // namespace __loop
 
+  // NOT TO SPEC
   using run_loop = __loop::run_loop;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -3819,7 +3956,9 @@ namespace _P2300::execution {
       using __variant_for_t =
         __minvoke<
           __minvoke<
-            __fold_right<__nullable_variant_t, __mbind_front_q2<__bind_completions_t, _Sender, _Env>>,
+            __fold_right<
+              __nullable_variant_t,
+              __mbind_front_q2<__bind_completions_t, _Sender, _Env>>,
             set_value_t,
             set_error_t,
             set_stopped_t>>;
@@ -3849,10 +3988,12 @@ namespace _P2300::execution {
           __self.__op_state_->__complete();
         }
 
-        template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Args>
-          requires __callable<_Tag, _Receiver, _Args...>
-        friend void tag_invoke(_Tag, __receiver2&& __self, _Args&&... __args) noexcept {
-          _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_, (_Args&&) __args...);
+        template <__one_of<set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          requires __callable<_Tag, _Receiver, _As...>
+        friend void tag_invoke(_Tag, __receiver2&& __self, _As&&... __as) noexcept {
+          _NVCXX_EXPAND_PACK(_As, __as,
+            _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
+          )
         }
 
         friend auto tag_invoke(get_env_t, const __receiver2& __self)
@@ -3898,15 +4039,17 @@ namespace _P2300::execution {
           start(*__self.__op_state_->__state2_);
         }
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args>
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args _NVCXX_CAPTURE_PACK(_Args)>
           requires __callable<_Tag, _Receiver, _Args...>
         friend void tag_invoke(_Tag __tag, __receiver1&& __self, _Args&&... __args) noexcept {
-          __try_call(
-            (_Receiver&&) __self.__op_state_->__rcvr_,
-            __fun_c<__complete_<_Tag, _Args...>>,
-            (_Tag&&) __tag,
-            (__receiver1&&) __self,
-            (_Args&&) __args...);
+          _NVCXX_EXPAND_PACK(_Args, __args,
+            __try_call(
+              (_Receiver&&) __self.__op_state_->__rcvr_,
+              __fun_c<__complete_<_Tag, _Args...>>,
+              (_Tag&&) __tag,
+              (__receiver1&&) __self,
+              (_Args&&) __args...);
+          )
         }
 
         friend auto tag_invoke(get_env_t, const __receiver1& __self)
@@ -3977,12 +4120,14 @@ namespace _P2300::execution {
           return __self.__sched_;
         }
 
-        template <tag_category<forwarding_sender_query> _Tag, class... _As>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
           requires __callable<_Tag, const _Sender&, _As...>
         friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
           noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
           -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-          return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+          _NVCXX_EXPAND_PACK_RETURN(_As, _as,
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+          )
         }
 
         template <class... _Errs>
@@ -4188,12 +4333,14 @@ namespace _P2300::execution {
                     (_Receiver&&) __rcvr};
           }
 
-          template <tag_category<forwarding_sender_query> _Tag, class... _As>
+          template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            )
           }
 
           template <class...>
@@ -4267,6 +4414,9 @@ namespace _P2300::execution {
     template <class _SenderId, class _ReceiverId>
       class __receiver
         : receiver_adaptor<__receiver<_SenderId, _ReceiverId>, __t<_ReceiverId>> {
+      #if _P2300_NON_LEXICAL_FRIENDSHIP
+      public:
+      #endif
         using _Sender = __t<_SenderId>;
         using _Receiver = __t<_ReceiverId>;
         friend receiver_adaptor<__receiver, _Receiver>;
@@ -4302,7 +4452,7 @@ namespace _P2300::execution {
           using __value_t = completion_signatures<>;
 
         template <class _Env>
-          using __completion_signatures =
+          using __compl_sigs =
             make_completion_signatures<
               _Sender,
               _Env,
@@ -4323,17 +4473,19 @@ namespace _P2300::execution {
               __receiver_t<_Receiver>{(_Receiver&&) __rcvr});
         }
 
-        template <tag_category<forwarding_sender_query> _Tag, class... _As>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            )
           }
 
         template <class _Env>
           friend auto tag_invoke(get_completion_signatures_t, __sender&&, _Env) ->
-            __completion_signatures<_Env>;
+            __compl_sigs<_Env>;
 
        public:
         explicit __sender(__decays_to<_Sender> auto&& __sndr)
@@ -4358,299 +4510,296 @@ namespace _P2300::execution {
   // [execution.senders.adaptors.when_all]
   // [execution.senders.adaptors.when_all_with_variant]
   namespace __when_all {
-    enum __state_t { __started, __error, __stopped };
+    namespace __impl {
+      enum __state_t { __started, __error, __stopped };
 
-    struct __on_stop_requested {
-      in_place_stop_source& __stop_source_;
-      void operator()() noexcept {
-        __stop_source_.request_stop();
-      }
-    };
-
-    template <class _Env>
-      using __env_t =
-        make_env_t<_Env, with_t<get_stop_token_t, in_place_stop_token>>;
-
-    template <class...>
-      using __swallow_values = completion_signatures<>;
-
-    template <class _Env, class... _Senders>
-      struct __traits {
-        using __t = dependent_completion_signatures<_Env>;
+      struct __on_stop_requested {
+        in_place_stop_source& __stop_source_;
+        void operator()() noexcept {
+          __stop_source_.request_stop();
+        }
       };
 
-    template <class _Env, class... _Senders>
-        requires ((__v<__count_of<set_value_t, _Senders, _Env>> <= 1) &&...)
-      struct __traits<_Env, _Senders...> {
-        using __non_values =
-          __concat_completion_signatures_t<
-            completion_signatures<
-              set_error_t(std::exception_ptr),
-              set_stopped_t()>,
-            make_completion_signatures<
-              _Senders,
-              _Env,
-              completion_signatures<>,
-              __swallow_values>...>;
-        using __values =
-          __minvoke<
-            __concat<__qf<set_value_t>>,
-            __value_types_of_t<
-              _Senders,
-              _Env,
-              __q<__types>,
-              __single_or<__types<>>>...>;
-        using __t =
-          __if_c<
-            (__sends<set_value_t, _Senders, _Env> &&...),
-            __minvoke2<
-              __push_back<__q<completion_signatures>>, __non_values, __values>,
-            __non_values>;
-      };
+      template <class _Env>
+        using __env_t =
+          make_env_t<_Env, with_t<get_stop_token_t, in_place_stop_token>>;
 
-    template <class _CvrefEnv, class... _Senders>
-      using __completion_sigs =
-        __t<__traits<
-          __env_t<remove_cvref_t<_CvrefEnv>>,
-          __member_t<_CvrefEnv, _Senders>...>>;
+      template <class...>
+        using __swallow_values = completion_signatures<>;
 
-    template <class _Traits>
-      using __sends_values =
-        __bool<__v<typename _Traits::template
-          __gather_sigs<set_value_t, __mconst<int>, __mcount>> != 0>;
+      template <class _Env, class... _Senders>
+        struct __traits {
+          using __t = dependent_completion_signatures<_Env>;
+        };
 
-    template <class... _SenderIds>
-      struct __sender;
+      template <class _Env, class... _Senders>
+          requires ((__v<__count_of<set_value_t, _Senders, _Env>> <= 1) &&...)
+        struct __traits<_Env, _Senders...> {
+          using __non_values =
+            __concat_completion_signatures_t<
+              completion_signatures<
+                set_error_t(std::exception_ptr),
+                set_stopped_t()>,
+              make_completion_signatures<
+                _Senders,
+                _Env,
+                completion_signatures<>,
+                __swallow_values>...>;
+          using __values =
+            __minvoke<
+              __concat<__qf<set_value_t>>,
+              __value_types_of_t<
+                _Senders,
+                _Env,
+                __q<__types>,
+                __single_or<__types<>>>...>;
+          using __t =
+            __if_c<
+              (__sends<set_value_t, _Senders, _Env> &&...),
+              __minvoke2<
+                __push_back<__q<completion_signatures>>, __non_values, __values>,
+              __non_values>;
+        };
 
-    template <class _CvrefReceiverId, class... _SenderIds>
-      struct __operation;
+      template <class... _SenderIds>
+        struct __sender {
+          template <class... _Sndrs>
+            explicit __sender(_Sndrs&&... __sndrs)
+              : __sndrs_((_Sndrs&&) __sndrs...)
+            {}
 
-    template <class _CvrefReceiverId, std::size_t _Index, class... _SenderIds>
-      struct __receiver : receiver_adaptor<__receiver<_CvrefReceiverId, _Index, _SenderIds...>> {
-        using _Receiver = __t<decay_t<_CvrefReceiverId>>;
-        using _Traits =
-          __completion_sigs<
-            __member_t<_CvrefReceiverId, env_of_t<_Receiver>>, __t<_SenderIds>...>;
+         private:
+          template <class _CvrefEnv>
+            using __completion_sigs =
+              __t<__traits<
+                __env_t<remove_cvref_t<_CvrefEnv>>,
+                __member_t<_CvrefEnv, __t<_SenderIds>>...>>;
 
-        _Receiver&& base() && noexcept {
-          return (_Receiver&&) __op_state_->__recvr_;
-        }
-        const _Receiver& base() const & noexcept {
-          return __op_state_->__recvr_;
-        }
-        template <class _Error>
-          void __set_error(_Error&& __err, __state_t __expected) noexcept {
-            // TODO: _What memory orderings are actually needed here?
-            if (__op_state_->__state_.compare_exchange_strong(__expected, __error)) {
-              __op_state_->__stop_source_.request_stop();
-              // We won the race, free to write the error into the operation
-              // state without worry.
-              try {
-                __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
-              } catch(...) {
-                __op_state_->__errors_.template emplace<std::exception_ptr>(std::current_exception());
+          template <class _Traits>
+            using __sends_values =
+              __bool<__v<typename _Traits::template
+                __gather_sigs<set_value_t, __mconst<int>, __mcount>> != 0>;
+
+          template <class _CvrefReceiverId>
+            struct __operation;
+
+          template <class _CvrefReceiverId, std::size_t _Index>
+            struct __receiver : receiver_adaptor<__receiver<_CvrefReceiverId, _Index>> {
+              using _WhenAll = __member_t<_CvrefReceiverId, __sender>;
+              using _Receiver = __t<decay_t<_CvrefReceiverId>>;
+              using _Traits =
+                __completion_sigs<
+                  __member_t<_CvrefReceiverId, env_of_t<_Receiver>>>;
+
+              _Receiver&& base() && noexcept {
+                return (_Receiver&&) __op_state_->__recvr_;
               }
-            }
-            __op_state_->__arrive();
-          }
-        template <class... _Values>
-          void set_value(_Values&&... __vals) && noexcept {
-            if constexpr (__sends_values<_Traits>::value) {
-              // We only need to bother recording the completion values
-              // if we're not already in the "error" or "stopped" state.
-              if (__op_state_->__state_ == __started) {
-                try {
-                  std::get<_Index>(__op_state_->__values_).emplace(
-                      (_Values&&) __vals...);
-                } catch(...) {
-                  __set_error(std::current_exception(), __started);
+              const _Receiver& base() const & noexcept {
+                return __op_state_->__recvr_;
+              }
+              template <class _Error>
+                void __set_error(_Error&& __err, __state_t __expected) noexcept {
+                  // TODO: _What memory orderings are actually needed here?
+                  if (__op_state_->__state_.compare_exchange_strong(__expected, __error)) {
+                    __op_state_->__stop_source_.request_stop();
+                    // We won the race, free to write the error into the operation
+                    // state without worry.
+                    try {
+                      __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
+                    } catch(...) {
+                      __op_state_->__errors_.template emplace<std::exception_ptr>(std::current_exception());
+                    }
+                  }
+                  __op_state_->__arrive();
+                }
+              template <class... _Values>
+                void set_value(_Values&&... __vals) && noexcept {
+                  if constexpr (__sends_values<_Traits>::value) {
+                    // We only need to bother recording the completion values
+                    // if we're not already in the "error" or "stopped" state.
+                    if (__op_state_->__state_ == __started) {
+                      try {
+                        std::get<_Index>(__op_state_->__values_).emplace(
+                            (_Values&&) __vals...);
+                      } catch(...) {
+                        __set_error(std::current_exception(), __started);
+                      }
+                    }
+                  }
+                  __op_state_->__arrive();
+                }
+              template <class _Error>
+                  requires tag_invocable<set_error_t, _Receiver, _Error>
+                void set_error(_Error&& __err) && noexcept {
+                  __set_error((_Error&&) __err, __started);
+                }
+              void set_stopped() && noexcept {
+                __state_t __expected = __started;
+                // Transition to the "stopped" state if and only if we're in the
+                // "started" state. (If this fails, it's because we're in an
+                // error state, which trumps cancellation.)
+                if (__op_state_->__state_.compare_exchange_strong(__expected, __stopped)) {
+                  __op_state_->__stop_source_.request_stop();
+                }
+                __op_state_->__arrive();
+              }
+              auto get_env() const
+                -> make_env_t<env_of_t<_Receiver>, with_t<get_stop_token_t, in_place_stop_token>> {
+                return make_env(
+                  execution::get_env(base()),
+                  with(get_stop_token, __op_state_->__stop_source_.get_token()));
+              }
+              __operation<_CvrefReceiverId>* __op_state_;
+            };
+
+          template <class _CvrefReceiverId>
+            struct __operation {
+              using _WhenAll = __member_t<_CvrefReceiverId, __sender>;
+              using _Receiver = __t<decay_t<_CvrefReceiverId>>;
+              using _Env = env_of_t<_Receiver>;
+              using _CvrefEnv = __member_t<_CvrefReceiverId, _Env>;
+              using _Traits = __completion_sigs<_CvrefEnv>;
+
+              template <class _Sender, class _Index>
+                using __child_op_state_t =
+                  connect_result_t<
+                    __member_t<_WhenAll, _Sender>,
+                    __receiver<_CvrefReceiverId, __v<_Index>>>;
+
+              using _Indices = std::index_sequence_for<_SenderIds...>;
+
+              template <size_t... _Is>
+                static auto __connect_children_(std::index_sequence<_Is...>)
+                  -> std::tuple<__child_op_state_t<__t<_SenderIds>, __index<_Is>>...>;
+
+              using __child_op_states_tuple_t =
+                  decltype((__connect_children_)(_Indices{}));
+
+              void __arrive() noexcept {
+                if (0 == --__count_) {
+                  __complete();
                 }
               }
-            }
-            __op_state_->__arrive();
-          }
-        template <class _Error>
-            requires tag_invocable<set_error_t, _Receiver, _Error>
-          void set_error(_Error&& __err) && noexcept {
-            __set_error((_Error&&) __err, __started);
-          }
-        void set_stopped() && noexcept {
-          __state_t __expected = __started;
-          // Transition to the "stopped" state if and only if we're in the
-          // "started" state. (If this fails, it's because we're in an
-          // error state, which trumps cancellation.)
-          if (__op_state_->__state_.compare_exchange_strong(__expected, __stopped)) {
-            __op_state_->__stop_source_.request_stop();
-          }
-          __op_state_->__arrive();
-        }
-        auto get_env() const
-          -> make_env_t<env_of_t<_Receiver>, with_t<get_stop_token_t, in_place_stop_token>> {
-          return make_env(
-            execution::get_env(base()),
-            with(get_stop_token, __op_state_->__stop_source_.get_token()));
-        }
-        __operation<_CvrefReceiverId, _SenderIds...>* __op_state_;
-      };
 
-    template <class _CvrefReceiverId, class... _SenderIds>
-      struct __operation {
-        using _WhenAll = __member_t<_CvrefReceiverId, __sender<_SenderIds...>>;
-        using _Receiver = __t<decay_t<_CvrefReceiverId>>;
-        using _Env = env_of_t<_Receiver>;
-        using _CvrefEnv = __member_t<_CvrefReceiverId, _Env>;
-        using _Traits = __completion_sigs<_CvrefEnv, __t<_SenderIds>...>;
-
-        template <class _Sender, std::size_t _Index>
-          using __child_op_state =
-            connect_result_t<
-              __member_t<_WhenAll, _Sender>,
-              __receiver<_CvrefReceiverId, _Index, _SenderIds...>>;
-
-        using _Indices = std::index_sequence_for<_SenderIds...>;
-
-        template <size_t... _Is>
-          static auto __connect_children_(std::index_sequence<_Is...>)
-            -> std::tuple<__child_op_state<__t<_SenderIds>, _Is>...>;
-
-        using __child_op_states_tuple_t =
-            decltype((__connect_children_)(_Indices{}));
-
-        void __arrive() noexcept {
-          if (0 == --__count_) {
-            __complete();
-          }
-        }
-
-        void __complete() noexcept {
-          // Stop callback is no longer needed. Destroy it.
-          __on_stop_.reset();
-          // All child operations have completed and arrived at the barrier.
-          switch(__state_.load(std::memory_order_relaxed)) {
-          case __started:
-            if constexpr (__sends_values<_Traits>::value) {
-              // All child operations completed successfully:
-              std::apply(
-                [this](auto&... __opt_vals) -> void {
-                  std::apply(
-                    [this](auto&... __all_vals) -> void {
-                      try {
-                        execution::set_value(
-                            (_Receiver&&) __recvr_, std::move(__all_vals)...);
-                      } catch(...) {
-                        execution::set_error(
-                            (_Receiver&&) __recvr_, std::current_exception());
-                      }
-                    },
-                    std::tuple_cat(
-                      std::apply(
-                        [](auto&... __vals) { return std::tie(__vals...); },
-                        *__opt_vals
-                      )...
-                    )
-                  );
-                },
-                __values_
-              );
-            }
-            break;
-          case __error:
-            std::visit([this](auto& __err) noexcept {
-              execution::set_error((_Receiver&&) __recvr_, std::move(__err));
-            }, __errors_);
-            break;
-          case __stopped:
-            execution::set_stopped((_Receiver&&) __recvr_);
-            break;
-          default:
-            ;
-          }
-        }
-
-        template <size_t... _Is>
-          __operation(_WhenAll&& __when_all, _Receiver __rcvr, std::index_sequence<_Is...>)
-            : __child_states_{
-                __conv{[&__when_all, this]() {
-                  return execution::connect(
-                      std::get<_Is>(((_WhenAll&&) __when_all).__sndrs_),
-                      __receiver<_CvrefReceiverId, _Is, _SenderIds...>{{}, this});
-                }}...
+              void __complete() noexcept {
+                // Stop callback is no longer needed. Destroy it.
+                __on_stop_.reset();
+                // All child operations have completed and arrived at the barrier.
+                switch(__state_.load(std::memory_order_relaxed)) {
+                case __started:
+                  if constexpr (__sends_values<_Traits>::value) {
+                    // All child operations completed successfully:
+                    std::apply(
+                      [this](auto&... __opt_vals) -> void {
+                        std::apply(
+                          [this](auto&... __all_vals) -> void {
+                            try {
+                              execution::set_value(
+                                  (_Receiver&&) __recvr_, std::move(__all_vals)...);
+                            } catch(...) {
+                              execution::set_error(
+                                  (_Receiver&&) __recvr_, std::current_exception());
+                            }
+                          },
+                          std::tuple_cat(
+                            std::apply(
+                              [](auto&... __vals) { return std::tie(__vals...); },
+                              *__opt_vals
+                            )...
+                          )
+                        );
+                      },
+                      __values_
+                    );
+                  }
+                  break;
+                case __error:
+                  std::visit([this](auto& __err) noexcept {
+                    execution::set_error((_Receiver&&) __recvr_, std::move(__err));
+                  }, __errors_);
+                  break;
+                case __stopped:
+                  execution::set_stopped((_Receiver&&) __recvr_);
+                  break;
+                default:
+                  ;
+                }
               }
-            , __recvr_((_Receiver&&) __rcvr)
-          {}
-        __operation(_WhenAll&& __when_all, _Receiver __rcvr)
-          : __operation((_WhenAll&&) __when_all, (_Receiver&&) __rcvr, _Indices{})
-        {}
-        _P2300_IMMOVABLE(__operation);
 
-        friend void tag_invoke(start_t, __operation& __self) noexcept {
-          // register stop callback:
-          __self.__on_stop_.emplace(
-              get_stop_token(get_env(__self.__recvr_)),
-              __on_stop_requested{__self.__stop_source_});
-          if (__self.__stop_source_.stop_requested()) {
-            // Stop has already been requested. Don't bother starting
-            // the child operations.
-            execution::set_stopped((_Receiver&&) __self.__recvr_);
-          } else {
-            apply([](auto&&... __child_ops) noexcept -> void {
-              (execution::start(__child_ops), ...);
-            }, __self.__child_states_);
-          }
-        }
+              template <size_t... _Is>
+                __operation(_WhenAll&& __when_all, _Receiver __rcvr, std::index_sequence<_Is...>)
+                  : __child_states_{
+                      __conv{[&__when_all, this]() {
+                        return execution::connect(
+                            std::get<_Is>(((_WhenAll&&) __when_all).__sndrs_),
+                            __receiver<_CvrefReceiverId, _Is>{{}, this});
+                      }}...
+                    }
+                  , __recvr_((_Receiver&&) __rcvr)
+                {}
+              __operation(_WhenAll&& __when_all, _Receiver __rcvr)
+                : __operation((_WhenAll&&) __when_all, (_Receiver&&) __rcvr, _Indices{})
+              {}
+              _P2300_IMMOVABLE(__operation);
 
-        // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
-        using __child_values_tuple_t =
-          __if<
-            __sends_values<_Traits>,
-            __minvoke<
-              __q<std::tuple>,
-              __value_types_of_t<
-                __t<_SenderIds>,
-                __env_t<_Env>,
-                __mcompose<__q1<std::optional>, __q<__decayed_tuple>>,
-                __single_or<void>>...>,
-            __>;
+              friend void tag_invoke(start_t, __operation& __self) noexcept {
+                // register stop callback:
+                __self.__on_stop_.emplace(
+                    get_stop_token(get_env(__self.__recvr_)),
+                    __on_stop_requested{__self.__stop_source_});
+                if (__self.__stop_source_.stop_requested()) {
+                  // Stop has already been requested. Don't bother starting
+                  // the child operations.
+                  execution::set_stopped((_Receiver&&) __self.__recvr_);
+                } else {
+                  apply([](auto&&... __child_ops) noexcept -> void {
+                    (execution::start(__child_ops), ...);
+                  }, __self.__child_states_);
+                }
+              }
 
-        __child_op_states_tuple_t __child_states_;
-        _Receiver __recvr_;
-        std::atomic<std::size_t> __count_{sizeof...(_SenderIds)};
-        // Could be non-atomic here and atomic_ref everywhere except __completion_fn
-        std::atomic<__state_t> __state_{__started};
-        error_types_of_t<__sender<_SenderIds...>, __env_t<_Env>, __variant> __errors_{};
-        [[no_unique_address]] __child_values_tuple_t __values_{};
-        in_place_stop_source __stop_source_{};
-        std::optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template
-            callback_type<__on_stop_requested>> __on_stop_{};
-      };
+              // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
+              using __child_values_tuple_t =
+                __if<
+                  __sends_values<_Traits>,
+                  __minvoke<
+                    __q<std::tuple>,
+                    __value_types_of_t<
+                      __t<_SenderIds>,
+                      __env_t<_Env>,
+                      __mcompose<__q1<std::optional>, __q<__decayed_tuple>>,
+                      __single_or<void>>...>,
+                  __>;
 
-    template <class... _SenderIds>
-      struct __sender {
-        template <class, class...>
-          friend struct __operation;
+              __child_op_states_tuple_t __child_states_;
+              _Receiver __recvr_;
+              std::atomic<std::size_t> __count_{sizeof...(_SenderIds)};
+              // Could be non-atomic here and atomic_ref everywhere except __completion_fn
+              std::atomic<__state_t> __state_{__started};
+              error_types_of_t<__sender, __env_t<_Env>, __variant> __errors_{};
+              [[no_unique_address]] __child_values_tuple_t __values_{};
+              in_place_stop_source __stop_source_{};
+              std::optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template
+                  callback_type<__on_stop_requested>> __on_stop_{};
+            };
 
-        template <class... _Sndrs>
-          explicit __sender(_Sndrs&&... __sndrs)
-            : __sndrs_((_Sndrs&&) __sndrs...)
-          {}
+          template <__decays_to<__sender> _Self, receiver _Receiver>
+            friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+              -> __operation<__member_t<_Self, __x<decay_t<_Receiver>>>> {
+              return {(_Self&&) __self, (_Receiver&&) __rcvr};
+            }
 
-        private:
-        template <__decays_to<__sender> _Self, receiver _Receiver>
-          friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-            -> __operation<__member_t<_Self, __x<decay_t<_Receiver>>>, _SenderIds...> {
-            return {(_Self&&) __self, (_Receiver&&) __rcvr};
-          }
+          template <__decays_to<__sender> _Self, class _Env>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+              -> __completion_sigs<__member_t<_Self, _Env>>;
 
-        template <__decays_to<__sender> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> __completion_sigs<__member_t<_Self, _Env>, __t<_SenderIds>...>;
+          std::tuple<__t<_SenderIds>...> __sndrs_;
+        };
 
-        std::tuple<__t<_SenderIds>...> __sndrs_;
-      };
-
-    template <class _Sender>
-      using __into_variant_result_t =
-        decltype(into_variant(__declval<_Sender>()));
+      template <class _Sender>
+        using __into_variant_result_t =
+          decltype(into_variant(__declval<_Sender>()));
+    } // namespce __impl
 
     struct when_all_t {
       template <sender... _Senders>
@@ -4667,8 +4816,8 @@ namespace _P2300::execution {
           requires (!tag_invocable<when_all_t, _Senders...>) &&
             (sizeof...(_Senders) > 0)
       auto operator()(_Senders&&... __sndrs) const
-        -> __sender<__x<decay_t<_Senders>>...> {
-        return __sender<__x<decay_t<_Senders>>...>{
+        -> __impl::__sender<__x<decay_t<_Senders>>...> {
+        return __impl::__sender<__x<decay_t<_Senders>>...>{
             (_Senders&&) __sndrs...};
       }
     };
@@ -4953,24 +5102,29 @@ namespace _P2300::this_thread {
           using _Sender = __t<_SenderId>;
           __state<_SenderId>* __state_;
           execution::run_loop* __loop_;
-          template <class _Sender2 = _Sender, class... _As>
+          template <class _Error>
+          void __set_error(_Error __err) noexcept {
+            if constexpr (__decays_to<_Error, std::exception_ptr>)
+              __state_->__data_.template emplace<2>((_Error&&) __err);
+            else if constexpr (__decays_to<_Error, std::error_code>)
+              __state_->__data_.template emplace<2>(std::make_exception_ptr(std::system_error(__err)));
+            else
+              __state_->__data_.template emplace<2>(std::make_exception_ptr((_Error&&) __err));
+            __loop_->finish();
+          }
+          template <class _Sender2 = _Sender, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires constructible_from<__sync_wait_result_t<_Sender2>, _As...>
           friend void tag_invoke(execution::set_value_t, __receiver&& __rcvr, _As&&... __as) noexcept try {
-            __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
+            _NVCXX_EXPAND_PACK(_As, __as,
+              __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
+            )
             __rcvr.__loop_->finish();
           } catch(...) {
-            execution::set_error((__receiver&&) __rcvr, std::current_exception());
+            __rcvr.__set_error(std::current_exception());
           }
           template <class _Error>
           friend void tag_invoke(execution::set_error_t, __receiver&& __rcvr, _Error __err) noexcept {
-            std::exception_ptr eptr;
-            if constexpr (__decays_to<_Error, std::exception_ptr>)
-              __rcvr.__state_->__data_.template emplace<2>((_Error&&) __err);
-            else if constexpr (__decays_to<_Error, std::error_code>)
-              __rcvr.__state_->__data_.template emplace<2>(std::make_exception_ptr(std::system_error(__err)));
-            else
-              __rcvr.__state_->__data_.template emplace<2>(std::make_exception_ptr((_Error&&) __err));
-            __rcvr.__loop_->finish();
+            __rcvr.__set_error((_Error &&) __err);
           }
           friend void tag_invoke(execution::set_stopped_t __d, __receiver&& __rcvr) noexcept {
             __rcvr.__state_->__data_.template emplace<3>(__d);
@@ -5212,5 +5366,9 @@ namespace std {
     using namespace _P2300::this_thread;
   }
 }
+
+#ifdef __EDG__
+#pragma diagnostic pop
+#endif
 
 _PRAGMA_POP()

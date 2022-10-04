@@ -128,7 +128,7 @@ TEST_CASE("split forwards external stop signal (1)", "[adaptors][split]") {
         split,
         [&]{ ++counter; return 42; }),
       ex::with(ex::get_stop_token, ssource.get_token()));
-  auto op1 = ex::connect(sndr, expect_value_receiver{42});
+  auto op1 = ex::connect(std::move(sndr), expect_value_receiver{42});
   auto op2 = ex::connect(sndr, expect_value_receiver{42});
   ssource.request_stop();
   REQUIRE( counter == 0 );
