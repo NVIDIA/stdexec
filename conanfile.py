@@ -1,4 +1,5 @@
 from conans import ConanFile, CMake, tools
+import requests
 import re
 from os import path
 
@@ -8,8 +9,8 @@ class P2300Recipe(ConanFile):
     description = "std::execution"
     author = "Michał Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach"
     topics = ("WG21", "concurrency")
-    homepage = "https://github.com/brycelelbach/wg21_p2300_std_execution"
-    url = "https://github.com/brycelelbach/wg21_p2300_std_execution"
+    homepage = "https://github.com/NVIDIA/stdexec"
+    url = "https://github.com/NVIDIA/stdexec"
     license = "Apache 2.0"
     settings = "compiler"  # Header only - compiler only used for flags
     tool_requires = "catch2/2.13.6"
@@ -21,8 +22,8 @@ class P2300Recipe(ConanFile):
 
     def set_version(self):
         # Get the version from the spec file
-        content = tools.load(path.join(self.recipe_folder, "std_execution.bs"))
-        rev = re.search(r"Revision: (\d+)", content).group(1).strip()
+        response = requests.get("https://raw.githubusercontent.com/brycelelbach/wg21_p2300_execution/main/execution.bs")
+        rev = re.search(r"Revision: (\d+)", response.text).group(1).strip()
         self.version = f"0.{rev}.0"
 
     def package(self):

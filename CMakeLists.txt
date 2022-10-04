@@ -28,7 +28,11 @@ include(rapids-cpm)
 # - Project definition -------------------------------------------------------
 
 # Define the project and set the version and languages
-file(STRINGS "std_execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
+if(NOT EXISTS ${CMAKE_BINARY_DIR}/execution.bs)
+  file(DOWNLOAD "https://raw.githubusercontent.com/brycelelbach/wg21_p2300_execution/main/execution.bs"
+      ${CMAKE_BINARY_DIR}/execution.bs)
+endif()
+file(STRINGS "${CMAKE_BINARY_DIR}/execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
 string(REGEX REPLACE "Revision: ([0-9]+)" "\\1" STD_EXECUTION_BS_REVISION ${STD_EXECUTION_BS_REVISION_LINE})
 project(P2300 VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
 
