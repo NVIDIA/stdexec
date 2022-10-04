@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.17.0)
 project(CUDAExample CXX)
 
+option(P2300_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" NO)
 find_package(CUDAToolkit)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC" OR P2300_ENABLE_CUDA)
   if(CUDAToolkit_FOUND)
       file(GLOB_RECURSE SCHED_SOURCES schedulers/*.cuh)
       add_library(CUDASchedulers INTERFACE ${SCHED_SOURCES})
