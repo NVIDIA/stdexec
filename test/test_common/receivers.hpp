@@ -85,16 +85,6 @@ class expect_void_receiver : base_expect_receiver {
   public:
   expect_void_receiver(_Env env = _Env{}) : env_(std::move(env)) {}
 
-  expect_void_receiver(expect_void_receiver&& other)
-      : base_expect_receiver(std::move(other))
-      , env_(std::move(other.env_)) {
-  }
-  expect_void_receiver& operator=(expect_void_receiver&& other) {
-    env_ = std::move(other.env_);
-    base_expect_receiver::operator=(std::move(other));
-    return *this;
-  }
-
   friend void tag_invoke(ex::set_value_t, expect_void_receiver&& self) noexcept {
     self.set_called();
   }
@@ -142,17 +132,6 @@ class basic_expect_value_receiver  : base_expect_receiver {
 public:
   explicit basic_expect_value_receiver(Ts... vals)
       : values_(std::move(vals)...) {}
-  ~basic_expect_value_receiver() { CHECK(called_); }
-
-  basic_expect_value_receiver(basic_expect_value_receiver&& other)
-      : called_(std::exchange(other.called_, true))
-      , values_(std::move(other.values_))
-  {}
-  basic_expect_value_receiver& operator=(basic_expect_value_receiver&& other) {
-    called_ = std::exchange(other.called_, true);
-    values_ = std::move(other.values_);
-    return *this;
-  }
 
   friend void tag_invoke(ex::set_value_t, basic_expect_value_receiver&& self, const Ts&... vals) noexcept {
     CHECK(self.values_ == std::tie(vals...));
@@ -271,15 +250,6 @@ struct expect_error_receiver : base_expect_receiver {
   expect_error_receiver(T error)
     : error_(std::move(error))
   {}
-  ~expect_error_receiver() { CHECK(called_); }
-
-  expect_error_receiver(expect_error_receiver&& other) noexcept
-      : called_(std::exchange(other.called_, true))
-  {}
-  expect_error_receiver& operator=(expect_error_receiver&& other) noexcept {
-    called_ = std::exchange(other.called_, true);
-    return *this;
-  }
 
 private:
   std::optional<T> error_;
