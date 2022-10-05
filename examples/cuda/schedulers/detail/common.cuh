@@ -76,8 +76,8 @@ namespace example::cuda::stream {
 
     template <class EnvId, class VariantId>
       class enqueue_receiver_t : public receiver_base_t {
-        using Env = _P2300::__t<EnvId>;
-        using Variant = _P2300::__t<VariantId>;
+        using Env = stdexec::__t<EnvId>;
+        using Variant = stdexec::__t<VariantId>;
 
         Env env_;
         Variant* variant_;
@@ -85,7 +85,7 @@ namespace example::cuda::stream {
         queue::producer_t producer_;
 
       public:
-        template <_P2300::__one_of<std::execution::set_value_t,
+        template <stdexec::__one_of<std::execution::set_value_t,
                                 std::execution::set_error_t,
                                 std::execution::set_stopped_t> Tag,
                   class... As _NVCXX_CAPTURE_PACK(As)>
@@ -153,7 +153,7 @@ namespace example::cuda::stream {
 
   template <class OuterReceiverId>
     struct operation_state_base_t : detail::op_state_base_t {
-      using outer_receiver_t = _P2300::__t<OuterReceiverId>;
+      using outer_receiver_t = stdexec::__t<OuterReceiverId>;
 
       bool owner_{false};
       cudaStream_t stream_{0};
@@ -204,7 +204,7 @@ namespace example::cuda::stream {
     struct propagate_receiver_t : receiver_base_t {
       operation_state_base_t<ReceiverId>& operation_state_;
 
-      template <_P2300::__one_of<std::execution::set_value_t,
+      template <stdexec::__one_of<std::execution::set_value_t,
                               std::execution::set_error_t,
                               std::execution::set_stopped_t> Tag,
                 class... As  _NVCXX_CAPTURE_PACK(As)>
@@ -214,7 +214,7 @@ namespace example::cuda::stream {
         );
       }
 
-      friend std::execution::env_of_t<_P2300::__t<ReceiverId>>
+      friend std::execution::env_of_t<stdexec::__t<ReceiverId>>
       tag_invoke(std::execution::get_env_t, const propagate_receiver_t& self) {
         return std::execution::get_env(self.operation_state_.receiver_);
       }
@@ -223,47 +223,47 @@ namespace example::cuda::stream {
   namespace detail {
     template <class SenderId, class InnerReceiverId, class OuterReceiverId>
       struct operation_state_t : operation_state_base_t<OuterReceiverId> {
-        using sender_t = _P2300::__t<SenderId>;
-        using inner_receiver_t = _P2300::__t<InnerReceiverId>;
-        using outer_receiver_t = _P2300::__t<OuterReceiverId>;
+        using sender_t = stdexec::__t<SenderId>;
+        using inner_receiver_t = stdexec::__t<InnerReceiverId>;
+        using outer_receiver_t = stdexec::__t<OuterReceiverId>;
         using env_t = std::execution::env_of_t<outer_receiver_t>;
 
         template <class... _Ts>
           using variant =
-            _P2300::__minvoke<
-              _P2300::__if_c<
+            stdexec::__minvoke<
+              stdexec::__if_c<
                 sizeof...(_Ts) != 0,
-                _P2300::__transform<_P2300::__q1<std::decay_t>, _P2300::__munique<_P2300::__q<variant_t>>>,
-                _P2300::__mconst<_P2300::execution::__not_a_variant>>,
+                stdexec::__transform<stdexec::__q1<std::decay_t>, stdexec::__munique<stdexec::__q<variant_t>>>,
+                stdexec::__mconst<stdexec::__not_a_variant>>,
               _Ts...>;
 
         template <class... _Ts>
           using bind_tuples =
-            _P2300::__mbind_front_q<
+            stdexec::__mbind_front_q<
               variant,
               tuple_t<std::execution::set_error_t, cudaError_t>,
               _Ts...>;
 
         using bound_values_t =
-          _P2300::execution::__value_types_of_t<
+          stdexec::__value_types_of_t<
             sender_t,
             env_t,
-            _P2300::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
-            _P2300::__q<bind_tuples>>;
+            stdexec::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
+            stdexec::__q<bind_tuples>>;
 
         using variant_t =
-          _P2300::execution::__error_types_of_t<
+          stdexec::__error_types_of_t<
             sender_t,
             env_t,
-            _P2300::__transform<
-              _P2300::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
+            stdexec::__transform<
+              stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
               bound_values_t>>;
 
         using task_t = detail::continuation_task_t<inner_receiver_t, variant_t>;
-        using intermediate_receiver = _P2300::__t<std::conditional_t<
+        using intermediate_receiver = stdexec::__t<std::conditional_t<
           stream_sender<sender_t>,
-          _P2300::__x<inner_receiver_t>,
-          _P2300::__x<detail::enqueue_receiver_t<_P2300::__x<env_t>, _P2300::__x<variant_t>>>>>;
+          stdexec::__x<inner_receiver_t>,
+          stdexec::__x<detail::enqueue_receiver_t<stdexec::__x<env_t>, stdexec::__x<variant_t>>>>>;
         using inner_op_state_t = std::execution::connect_result_t<sender_t, intermediate_receiver>;
 
         friend void tag_invoke(std::execution::start_t, operation_state_t& op) noexcept {
@@ -302,14 +302,14 @@ namespace example::cuda::stream {
           return stream;
         }
 
-        template <_P2300::__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
+        template <stdexec::__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
           requires stream_sender<sender_t>
         operation_state_t(sender_t&& sender, queue::task_hub_t*, OutR&& out_receiver, ReceiverProvider receiver_provider)
           : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver)
           , inner_op_{std::execution::connect((sender_t&&)sender, receiver_provider(*this))}
         {}
 
-        template <_P2300::__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
+        template <stdexec::__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
           requires (!stream_sender<sender_t>)
         operation_state_t(sender_t&& sender, queue::task_hub_t* hub, OutR&& out_receiver, ReceiverProvider receiver_provider)
           : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver)
@@ -318,7 +318,7 @@ namespace example::cuda::stream {
           , task_(queue::make_host<task_t>(this->status_, receiver_provider(*this), storage_.get()))
           , inner_op_{
               std::execution::connect((sender_t&&)sender,
-              detail::enqueue_receiver_t<_P2300::__x<env_t>, _P2300::__x<variant_t>>{
+              detail::enqueue_receiver_t<stdexec::__x<env_t>, stdexec::__x<variant_t>>{
                 std::execution::get_env(out_receiver), storage_.get(), task_.get(), hub_->producer()})} {
           if (this->status_ == cudaSuccess) {
             this->status_ = task_->status_;
@@ -341,18 +341,18 @@ namespace example::cuda::stream {
           scheduler_t>;
 
   template <class Sender, class InnerReceiver, class OuterReceiver>
-    using stream_op_state_t = detail::operation_state_t<_P2300::__x<Sender>,
-                                                        _P2300::__x<InnerReceiver>,
-                                                        _P2300::__x<OuterReceiver>>;
+    using stream_op_state_t = detail::operation_state_t<stdexec::__x<Sender>,
+                                                        stdexec::__x<InnerReceiver>,
+                                                        stdexec::__x<OuterReceiver>>;
 
   template <stream_completing_sender Sender, class OuterReceiver, class ReceiverProvider>
-    stream_op_state_t<Sender, std::invoke_result_t<ReceiverProvider, operation_state_base_t<_P2300::__x<OuterReceiver>>&>, OuterReceiver>
+    stream_op_state_t<Sender, std::invoke_result_t<ReceiverProvider, operation_state_base_t<stdexec::__x<OuterReceiver>>&>, OuterReceiver>
     stream_op_state(Sender&& sndr, OuterReceiver&& out_receiver, ReceiverProvider receiver_provider) {
       detail::queue::task_hub_t* hub = std::execution::get_completion_scheduler<std::execution::set_value_t>(sndr).hub_;
 
       return stream_op_state_t<
         Sender,
-        std::invoke_result_t<ReceiverProvider, operation_state_base_t<_P2300::__x<OuterReceiver>>&>,
+        std::invoke_result_t<ReceiverProvider, operation_state_base_t<stdexec::__x<OuterReceiver>>&>,
         OuterReceiver>(
           (Sender&&)sndr,
           hub,
@@ -360,11 +360,11 @@ namespace example::cuda::stream {
     }
 
   template <class Sender, class OuterReceiver, class ReceiverProvider>
-    stream_op_state_t<Sender, std::invoke_result_t<ReceiverProvider, operation_state_base_t<_P2300::__x<OuterReceiver>>&>, OuterReceiver>
+    stream_op_state_t<Sender, std::invoke_result_t<ReceiverProvider, operation_state_base_t<stdexec::__x<OuterReceiver>>&>, OuterReceiver>
     stream_op_state(detail::queue::task_hub_t* hub, Sender&& sndr, OuterReceiver&& out_receiver, ReceiverProvider receiver_provider) {
       return stream_op_state_t<
         Sender,
-        std::invoke_result_t<ReceiverProvider, operation_state_base_t<_P2300::__x<OuterReceiver>>&>,
+        std::invoke_result_t<ReceiverProvider, operation_state_base_t<stdexec::__x<OuterReceiver>>&>,
         OuterReceiver>(
           (Sender&&)sndr,
           hub,

@@ -136,7 +136,7 @@ struct inline_scheduler {
       return {{}, (R &&) r};
     }
 
-    template <_P2300::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
+    template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
     friend inline_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) noexcept {
       return {};
     }

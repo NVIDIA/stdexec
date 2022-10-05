@@ -4,7 +4,7 @@
 #include "schedulers/stream.cuh"
 #include "common.cuh"
 
-#if _P2300_NVHPC() 
+#if STDEXEC_NVHPC() 
 
 namespace ex = std::execution;
 namespace stream = example::cuda::stream;

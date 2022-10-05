@@ -138,7 +138,7 @@ template <indirect_stop_token_provider ParentPromise>
 // If the parent coroutine's stop token is unstoppable, there's no point
 // forwarding stop tokens or stop requests at all.
 template <indirect_stop_token_provider ParentPromise>
-    requires _P2300::unstoppable_token<
+    requires stdexec::unstoppable_token<
         std::execution::stop_token_of_t<std::execution::env_of_t<ParentPromise>>>
   struct default_task_context_impl::awaiter_context<ParentPromise> {
     explicit awaiter_context(
@@ -243,7 +243,7 @@ private:
 
   struct _promise
     : _promise_base<T>
-    , _P2300::execution::with_awaitable_senders<_promise> {
+    , stdexec::with_awaitable_senders<_promise> {
     basic_task get_return_object() noexcept {
       return basic_task(__coro::coroutine_handle<_promise>::from_promise(*this));
     }
@@ -280,7 +280,7 @@ private:
     template <class ParentPromise2>
     __coro::coroutine_handle<>
     await_suspend(__coro::coroutine_handle<ParentPromise2> parent) noexcept {
-      static_assert(_P2300::__one_of<ParentPromise, ParentPromise2, void>);
+      static_assert(stdexec::__one_of<ParentPromise, ParentPromise2, void>);
       coro_.promise().set_continuation(parent);
       context_.emplace(coro_.promise().context_, parent.promise());
       if constexpr (requires { coro_.promise().stop_requested() ? 0 : 1; }) {

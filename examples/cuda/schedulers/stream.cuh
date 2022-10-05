@@ -39,47 +39,47 @@
 namespace example::cuda::stream {
 
   template <std::execution::sender Sender, std::integral Shape, class Fun>
-    using bulk_sender_th = bulk_sender_t<_P2300::__x<std::remove_cvref_t<Sender>>, Shape, _P2300::__x<std::remove_cvref_t<Fun>>>;
+    using bulk_sender_th = bulk_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, Shape, stdexec::__x<std::remove_cvref_t<Fun>>>;
 
   template <std::execution::sender Sender>
-    using split_sender_th = split_sender_t<_P2300::__x<std::remove_cvref_t<Sender>>>;
+    using split_sender_th = split_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>>;
 
   template <std::execution::sender Sender, class Fun>
-    using then_sender_th = then_sender_t<_P2300::__x<std::remove_cvref_t<Sender>>, _P2300::__x<std::remove_cvref_t<Fun>>>;
+    using then_sender_th = then_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, stdexec::__x<std::remove_cvref_t<Fun>>>;
 
   template <class Scheduler, std::execution::sender... Senders>
-    using when_all_sender_th = when_all_sender_t<false, Scheduler, _P2300::__x<std::decay_t<Senders>>...>;
+    using when_all_sender_th = when_all_sender_t<false, Scheduler, stdexec::__x<std::decay_t<Senders>>...>;
 
   template <class Scheduler, std::execution::sender... Senders>
-    using transfer_when_all_sender_th = when_all_sender_t<true, Scheduler, _P2300::__x<std::decay_t<Senders>>...>;
+    using transfer_when_all_sender_th = when_all_sender_t<true, Scheduler, stdexec::__x<std::decay_t<Senders>>...>;
 
   template <std::execution::sender Sender, class Fun>
-    using upon_error_sender_th = upon_error_sender_t<_P2300::__x<std::remove_cvref_t<Sender>>, _P2300::__x<std::remove_cvref_t<Fun>>>;
+    using upon_error_sender_th = upon_error_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, stdexec::__x<std::remove_cvref_t<Fun>>>;
 
   template <std::execution::sender Sender, class Fun>
-    using upon_stopped_sender_th = upon_stopped_sender_t<_P2300::__x<std::remove_cvref_t<Sender>>, _P2300::__x<std::remove_cvref_t<Fun>>>;
+    using upon_stopped_sender_th = upon_stopped_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, stdexec::__x<std::remove_cvref_t<Fun>>>;
 
   template <class Let, std::execution::sender Sender, class Fun>
-    using let_xxx_th = let_sender_t<_P2300::__x<std::remove_cvref_t<Sender>>, _P2300::__x<std::remove_cvref_t<Fun>>, Let>;
+    using let_xxx_th = let_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, stdexec::__x<std::remove_cvref_t<Fun>>, Let>;
 
   template <std::execution::sender Sender>
-    using transfer_sender_th = transfer_sender_t<_P2300::__x<Sender>>;
+    using transfer_sender_th = transfer_sender_t<stdexec::__x<Sender>>;
 
   struct scheduler_t {
     friend context_t;
 
     template <std::execution::sender Sender>
-      using schedule_from_sender_th = schedule_from_sender_t<scheduler_t, _P2300::__x<std::remove_cvref_t<Sender>>>;
+      using schedule_from_sender_th = schedule_from_sender_t<scheduler_t, stdexec::__x<std::remove_cvref_t<Sender>>>;
 
     template <class RId>
       struct operation_state_t : detail::op_state_base_t {
-        using R = _P2300::__t<RId>;
+        using R = stdexec::__t<RId>;
 
         R rec_;
         cudaStream_t stream_{0};
         cudaError_t status_{cudaSuccess};
 
-        template <_P2300::__decays_to<R> Receiver>
+        template <stdexec::__decays_to<R> Receiver>
           operation_state_t(Receiver&& rec) : rec_((Receiver&&)rec) {
             status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
           }
@@ -122,8 +122,8 @@ namespace example::cuda::stream {
       template <class R>
         friend auto tag_invoke(std::execution::connect_t, sender_t, R&& rec)
           noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-          -> operation_state_t<_P2300::__x<std::remove_cvref_t<R>>> {
-          return operation_state_t<_P2300::__x<std::remove_cvref_t<R>>>((R&&) rec);
+          -> operation_state_t<stdexec::__x<std::remove_cvref_t<R>>> {
+          return operation_state_t<stdexec::__x<std::remove_cvref_t<R>>>((R&&) rec);
         }
 
       scheduler_t make_scheduler() const {
@@ -160,7 +160,7 @@ namespace example::cuda::stream {
         return then_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&)fun};
       }
 
-    template <_P2300::__one_of<
+    template <stdexec::__one_of<
                 std::execution::let_value_t, 
                 std::execution::let_stopped_t, 
                 std::execution::let_error_t> Let, 

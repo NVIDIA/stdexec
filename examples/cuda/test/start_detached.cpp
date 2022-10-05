@@ -3,7 +3,7 @@
 #include <execution.hpp>
 
 // clang doesn't get along with libcu++
-#if _P2300_NVHPC()
+#if STDEXEC_NVHPC()
 
 #include <cuda/atomic>
 

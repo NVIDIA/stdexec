@@ -37,7 +37,7 @@ struct on_stop_requested {
 
 template <class Env>
   using env_t =
-    _P2300::execution::make_env_t<Env, _P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>;
+    stdexec::make_env_t<Env, stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>;
 
 template <class...>
   using swallow_values = std::execution::completion_signatures<>;
@@ -54,10 +54,10 @@ __global__ void copy_kernel(TupleT* tpl, As&&... as) {
 }
 
 template <class Env, class... Senders>
-    requires ((_P2300::__v<_P2300::execution::__count_of<std::execution::set_value_t, Senders, Env>> <= 1) &&...)
+    requires ((stdexec::__v<stdexec::__count_of<std::execution::set_value_t, Senders, Env>> <= 1) &&...)
   struct traits<Env, Senders...> {
     using non_values =
-      _P2300::execution::__concat_completion_signatures_t<
+      stdexec::__concat_completion_signatures_t<
         std::execution::completion_signatures<
           std::execution::set_error_t(cudaError_t),
           std::execution::set_stopped_t()>,
@@ -67,18 +67,18 @@ template <class Env, class... Senders>
           std::execution::completion_signatures<>,
           swallow_values>...>;
     using values =
-      _P2300::__minvoke<
-        _P2300::__concat<_P2300::__qf<std::execution::set_value_t>>,
-        _P2300::execution::__value_types_of_t<
+      stdexec::__minvoke<
+        stdexec::__concat<stdexec::__qf<std::execution::set_value_t>>,
+        stdexec::__value_types_of_t<
           Senders,
           Env,
-          _P2300::__q<_P2300::__types>,
-          _P2300::__single_or<_P2300::__types<>>>...>;
+          stdexec::__q<stdexec::__types>,
+          stdexec::__single_or<stdexec::__types<>>>...>;
     using __t =
-      _P2300::__if_c<
-        (_P2300::execution::__sends<std::execution::set_value_t, Senders, Env> &&...),
-        _P2300::__minvoke2<
-          _P2300::__push_back<_P2300::__q<std::execution::completion_signatures>>, non_values, values>,
+      stdexec::__if_c<
+        (stdexec::__sends<std::execution::set_value_t, Senders, Env> &&...),
+        stdexec::__minvoke2<
+          stdexec::__push_back<stdexec::__q<std::execution::completion_signatures>>, non_values, values>,
         non_values>;
   };
 }
@@ -96,14 +96,14 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
     template <class CvrefEnv>
       using completion_sigs =
-        _P2300::__t<when_all::traits<
+        stdexec::__t<when_all::traits<
           when_all::env_t<std::remove_cvref_t<CvrefEnv>>,
-          _P2300::__member_t<CvrefEnv, _P2300::__t<SenderIds>>...>>;
+          stdexec::__member_t<CvrefEnv, stdexec::__t<SenderIds>>...>>;
 
     template <class Traits>
       using sends_values =
-        _P2300::__bool<_P2300::__v<typename Traits::template
-          __gather_sigs<std::execution::set_value_t, _P2300::__mconst<int>, _P2300::__mcount>> != 0>;
+        stdexec::__bool<stdexec::__v<typename Traits::template
+          __gather_sigs<std::execution::set_value_t, stdexec::__mconst<int>, stdexec::__mcount>> != 0>;
 
     template <class CvrefReceiverId>
       struct operation_t;
@@ -111,12 +111,12 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
     template <class CvrefReceiverId, std::size_t Index>
       struct receiver_t : std::execution::receiver_adaptor<receiver_t<CvrefReceiverId, Index>>
                         , receiver_base_t {
-        using WhenAll = _P2300::__member_t<CvrefReceiverId, when_all_sender_t>;
-        using Receiver = _P2300::__t<std::decay_t<CvrefReceiverId>>;
+        using WhenAll = stdexec::__member_t<CvrefReceiverId, when_all_sender_t>;
+        using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
         using SenderId = example::cuda::detail::nth_type<Index, SenderIds...>;
         using Traits =
           completion_sigs<
-            _P2300::__member_t<CvrefReceiverId, std::execution::env_of_t<Receiver>>>;
+            stdexec::__member_t<CvrefReceiverId, std::execution::env_of_t<Receiver>>>;
 
         Receiver&& base() && noexcept {
           return (Receiver&&) op_state_->recvr_;
@@ -178,10 +178,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         }
 
         auto get_env() const
-          -> _P2300::execution::make_env_t<std::execution::env_of_t<Receiver>, _P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
-          return _P2300::execution::make_env(
+          -> stdexec::make_env_t<std::execution::env_of_t<Receiver>, stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
+          return stdexec::make_env(
             std::execution::get_env(base()),
-            _P2300::execution::with(std::execution::get_stop_token, op_state_->stop_source_.get_token()));
+            stdexec::with(std::execution::get_stop_token, op_state_->stop_source_.get_token()));
         }
 
         operation_t<CvrefReceiverId>* op_state_;
@@ -189,10 +189,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
     template <class CvrefReceiverId>
       struct operation_t : detail::op_state_base_t {
-        using WhenAll = _P2300::__member_t<CvrefReceiverId, when_all_sender_t>;
-        using Receiver = _P2300::__t<std::decay_t<CvrefReceiverId>>;
+        using WhenAll = stdexec::__member_t<CvrefReceiverId, when_all_sender_t>;
+        using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
         using Env = std::execution::env_of_t<Receiver>;
-        using CvrefEnv = _P2300::__member_t<CvrefReceiverId, Env>;
+        using CvrefEnv = stdexec::__member_t<CvrefReceiverId, Env>;
         using Traits = completion_sigs<CvrefEnv>;
 
         cudaStream_t stream_{0};
@@ -208,14 +208,14 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         template <class Sender, std::size_t Index>
           using child_op_state =
             std::execution::connect_result_t<
-              _P2300::__member_t<WhenAll, Sender>,
+              stdexec::__member_t<WhenAll, Sender>,
               receiver_t<CvrefReceiverId, Index>>;
 
         using Indices = std::index_sequence_for<SenderIds...>;
 
         template <size_t... Is>
           static auto connect_children_(std::index_sequence<Is...>)
-            -> std::tuple<child_op_state<_P2300::__t<SenderIds>, Is>...>;
+            -> std::tuple<child_op_state<stdexec::__t<SenderIds>, Is>...>;
 
         using child_op_states_tuple_t =
             decltype((connect_children_)(Indices{}));
@@ -297,7 +297,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         template <size_t... Is>
           operation_t(WhenAll&& when_all, Receiver rcvr, std::index_sequence<Is...>)
             : child_states_{
-              _P2300::execution::__conv{[&when_all, this]() {
+              stdexec::__conv{[&when_all, this]() {
                   return std::execution::connect(
                       std::get<Is>(((WhenAll&&) when_all).sndrs_),
                       receiver_t<CvrefReceiverId, Is>{{}, {}, this});
@@ -328,7 +328,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
           }
         }
 
-        _P2300_IMMOVABLE(operation_t);
+        STDEXEC_IMMOVABLE(operation_t);
 
         friend void tag_invoke(std::execution::start_t, operation_t& self) noexcept {
           (void)self.get_stream();
@@ -350,16 +350,16 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
         // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
         using child_values_tuple_t =
-          _P2300::__if<
+          stdexec::__if<
             sends_values<Traits>,
-            _P2300::__minvoke<
-              _P2300::__q<tuple_t>,
-              _P2300::execution::__value_types_of_t<
-                _P2300::__t<SenderIds>,
+            stdexec::__minvoke<
+              stdexec::__q<tuple_t>,
+              stdexec::__value_types_of_t<
+                stdexec::__t<SenderIds>,
                 when_all::env_t<Env>,
-                _P2300::__q<decayed_tuple>,
-                _P2300::__single_or<void>>...>,
-            _P2300::__>;
+                stdexec::__q<decayed_tuple>,
+                stdexec::__single_or<void>>...>,
+            stdexec::__>;
 
         child_op_states_tuple_t child_states_;
         Receiver recvr_;
@@ -367,30 +367,30 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         std::array<cudaEvent_t, sizeof...(SenderIds)> events_;
         // Could be non-atomic here and atomic_ref everywhere except __completion_fn
         std::atomic<when_all::state_t> state_{when_all::started};
-        std::execution::error_types_of_t<when_all_sender_t, when_all::env_t<Env>, _P2300::execution::__variant> errors_{};
+        std::execution::error_types_of_t<when_all_sender_t, when_all::env_t<Env>, stdexec::__variant> errors_{};
         child_values_tuple_t* values_{};
         std::in_place_stop_source stop_source_{};
         std::optional<typename std::execution::stop_token_of_t<std::execution::env_of_t<Receiver>&>::template
             callback_type<when_all::on_stop_requested>> on_stop_{};
       };
 
-    template <_P2300::__decays_to<when_all_sender_t> Self, std::execution::receiver Receiver>
+    template <stdexec::__decays_to<when_all_sender_t> Self, std::execution::receiver Receiver>
       friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
-        -> operation_t<_P2300::__member_t<Self, _P2300::__x<std::decay_t<Receiver>>>> {
+        -> operation_t<stdexec::__member_t<Self, stdexec::__x<std::decay_t<Receiver>>>> {
         return {(Self&&) self, (Receiver&&) rcvr};
       }
 
-    template <_P2300::__decays_to<when_all_sender_t> Self, class Env>
+    template <stdexec::__decays_to<when_all_sender_t> Self, class Env>
       friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
-        -> completion_sigs<_P2300::__member_t<Self, Env>>;
+        -> completion_sigs<stdexec::__member_t<Self, Env>>;
 
-    template <_P2300::__one_of<std::execution::set_value_t, std::execution::set_stopped_t> _Tag>
+    template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_stopped_t> _Tag>
       requires WithCompletionScheduler
     friend Scheduler tag_invoke(std::execution::get_completion_scheduler_t<_Tag>, const when_all_sender_t& __self) noexcept {
       return Scheduler(__self.hub_);
     }
 
-    std::tuple<_P2300::__t<SenderIds>...> sndrs_;
+    std::tuple<stdexec::__t<SenderIds>...> sndrs_;
   };
 }
 

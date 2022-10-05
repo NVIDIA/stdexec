@@ -25,12 +25,12 @@ namespace example::cuda::stream {
   namespace split {
     template <class _SenderId, class _SharedState>
       class __receiver : public receiver_base_t {
-        using Sender = _P2300::__t<_SenderId>;
+        using Sender = stdexec::__t<_SenderId>;
 
         _SharedState &__sh_state_;
 
       public:
-        template <_P2300::__one_of<std::execution::set_value_t, std::execution::set_error_t, std::execution::set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+        template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_error_t, std::execution::set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
         friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
           _SharedState &__state = __self.__sh_state_;
           cudaStream_t stream = __state.__op_state2_.stream_;
@@ -49,8 +49,8 @@ namespace example::cuda::stream {
         }
 
         friend auto tag_invoke(std::execution::get_env_t, const __receiver& __self)
-          -> _P2300::execution::make_env_t<_P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
-          return _P2300::execution::make_env(_P2300::execution::with(std::execution::get_stop_token, __self.__sh_state_.__stop_source_.get_token()));
+          -> stdexec::make_env_t<stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
+          return stdexec::make_env(stdexec::with(std::execution::get_stop_token, __self.__sh_state_.__stop_source_.get_token()));
         }
 
         explicit __receiver(_SharedState &__sh_state) noexcept
@@ -67,29 +67,29 @@ namespace example::cuda::stream {
 
     template <class _SenderId>
       struct __sh_state {
-        using _Sender = _P2300::__t<_SenderId>;
+        using _Sender = stdexec::__t<_SenderId>;
 
         template <class... _Ts>
           using __bind_tuples =
-            _P2300::__mbind_front_q<
+            stdexec::__mbind_front_q<
               variant_t,
               tuple_t<std::execution::set_stopped_t>, // Initial state of the variant is set_stopped
               tuple_t<std::execution::set_error_t, cudaError_t>,
               _Ts...>;
 
         using __bound_values_t =
-          _P2300::execution::__value_types_of_t<
+          stdexec::__value_types_of_t<
             _Sender,
-            _P2300::execution::make_env_t<_P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
-            _P2300::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
-            _P2300::__q<__bind_tuples>>;
+            stdexec::make_env_t<stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
+            stdexec::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
+            stdexec::__q<__bind_tuples>>;
 
         using __variant_t =
-          _P2300::execution::__error_types_of_t<
+          stdexec::__error_types_of_t<
             _Sender,
-            _P2300::execution::make_env_t<_P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
-            _P2300::__transform<
-              _P2300::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
+            stdexec::make_env_t<stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
+            stdexec::__transform<
+              stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
               __bound_values_t>>;
 
         using __receiver_ = __receiver<_SenderId, __sh_state>;
@@ -132,8 +132,8 @@ namespace example::cuda::stream {
     // TODO Stream operation
     template <class _SenderId, class _ReceiverId>
       class __operation : public __operation_base {
-        using _Sender = _P2300::__t<_SenderId>;
-        using _Receiver = _P2300::__t<_ReceiverId>;
+        using _Sender = stdexec::__t<_SenderId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
 
         struct __on_stop_requested {
           std::in_place_stop_source& __stop_source_;
@@ -156,7 +156,7 @@ namespace example::cuda::stream {
           , __recvr_((_Receiver&&)__rcvr)
           , __shared_state_(move(__shared_state)) {
         }
-        _P2300_IMMOVABLE(__operation);
+        STDEXEC_IMMOVABLE(__operation);
 
         static void __notify(__operation_base* __self) noexcept {
           __operation *__op = static_cast<__operation*>(__self);
@@ -214,17 +214,17 @@ namespace example::cuda::stream {
 
   template <class _SenderId>
     class split_sender_t : sender_base_t {
-      using _Sender = _P2300::__t<_SenderId>;
+      using _Sender = stdexec::__t<_SenderId>;
       using __sh_state_ = split::__sh_state<_SenderId>;
       template <class _Receiver>
-        using __operation = split::__operation<_SenderId, _P2300::__x<std::remove_cvref_t<_Receiver>>>;
+        using __operation = split::__operation<_SenderId, stdexec::__x<std::remove_cvref_t<_Receiver>>>;
 
       _Sender __sndr_;
       std::shared_ptr<__sh_state_> __shared_state_;
 
     public:
-      template <_P2300::__decays_to<split_sender_t> _Self, std::execution::receiver _Receiver>
-          requires std::execution::receiver_of<_Receiver, std::execution::completion_signatures_of_t<_Self, _P2300::execution::__empty_env>>
+      template <stdexec::__decays_to<split_sender_t> _Self, std::execution::receiver _Receiver>
+          requires std::execution::receiver_of<_Receiver, std::execution::completion_signatures_of_t<_Self, stdexec::__empty_env>>
         friend auto tag_invoke(std::execution::connect_t, _Self&& __self, _Receiver&& __recvr)
           noexcept(std::is_nothrow_constructible_v<std::decay_t<_Receiver>, _Receiver>)
           -> __operation<_Receiver> {
@@ -232,12 +232,12 @@ namespace example::cuda::stream {
                                         __self.__shared_state_};
         }
 
-      template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
-          requires (!_P2300::__is_instance_of<_Tag, std::execution::get_completion_scheduler_t>) &&
-            _P2300::__callable<_Tag, const _Sender&, _As...>
+      template <stdexec::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          requires (!stdexec::__is_instance_of<_Tag, std::execution::get_completion_scheduler_t>) &&
+            stdexec::__callable<_Tag, const _Sender&, _As...>
         friend auto tag_invoke(_Tag __tag, const split_sender_t& __self, _As&&... __as)
-          noexcept(_P2300::__nothrow_callable<_Tag, const _Sender&, _As...>)
-          -> _P2300::__call_result_if_t<_P2300::execution::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
+          noexcept(stdexec::__nothrow_callable<_Tag, const _Sender&, _As...>)
+          -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
           _NVCXX_EXPAND_PACK_RETURN(_As, __as,
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           )
@@ -249,11 +249,11 @@ namespace example::cuda::stream {
       template <class _Ty>
       using __set_error_t = std::execution::completion_signatures<std::execution::set_error_t(const std::decay_t<_Ty>&)>;
 
-      template <_P2300::__decays_to<split_sender_t> _Self, class _Env>
+      template <stdexec::__decays_to<split_sender_t> _Self, class _Env>
         friend auto tag_invoke(std::execution::get_completion_signatures_t, _Self&&, _Env) ->
           std::execution::make_completion_signatures<
             _Sender,
-            _P2300::execution::make_env_t<_P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
+            stdexec::execution::make_env_t<stdexec::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
             std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>,
             __set_value_t,
             __set_error_t>;

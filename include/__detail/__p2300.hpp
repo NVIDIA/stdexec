@@ -19,192 +19,192 @@
 
 namespace std {
   // <functional>
-  using _P2300::tag_invoke;
-  using _P2300::tag_invoke_result;
-  using _P2300::tag_invoke_result_t;
-  using _P2300::tag_invocable;
-  using _P2300::nothrow_tag_invocable;
-  using _P2300::tag_t;
+  using stdexec::tag_invoke;
+  using stdexec::tag_invoke_result;
+  using stdexec::tag_invoke_result_t;
+  using stdexec::tag_invocable;
+  using stdexec::nothrow_tag_invocable;
+  using stdexec::tag_t;
 
   // <stop_token>
-  using _P2300::stoppable_token;
-  using _P2300::stoppable_token_for;
-  using _P2300::unstoppable_token;
-  using _P2300::never_stop_token;
-  using _P2300::in_place_stop_token;
-  using _P2300::in_place_stop_source;
-  using _P2300::in_place_stop_callback;
+  using stdexec::stoppable_token;
+  using stdexec::stoppable_token_for;
+  using stdexec::unstoppable_token;
+  using stdexec::never_stop_token;
+  using stdexec::in_place_stop_token;
+  using stdexec::in_place_stop_source;
+  using stdexec::in_place_stop_callback;
 
   namespace execution {
     // [exec.queries], general queries
-    using _P2300::execution::get_scheduler_t;
-    using _P2300::execution::get_delegatee_scheduler_t;
-    using _P2300::execution::get_allocator_t;
-    using _P2300::execution::get_stop_token_t;
-    using _P2300::execution::get_scheduler;
-    using _P2300::execution::get_delegatee_scheduler;
-    using _P2300::execution::get_allocator;
-    using _P2300::execution::get_stop_token;
+    using stdexec::get_scheduler_t;
+    using stdexec::get_delegatee_scheduler_t;
+    using stdexec::get_allocator_t;
+    using stdexec::get_stop_token_t;
+    using stdexec::get_scheduler;
+    using stdexec::get_delegatee_scheduler;
+    using stdexec::get_allocator;
+    using stdexec::get_stop_token;
 
-    using _P2300::execution::stop_token_of_t;
+    using stdexec::stop_token_of_t;
 
     // [exec.env], execution environments
-    using _P2300::execution::no_env;
-    using _P2300::execution::get_env_t;
-    //using _P2300::execution::forwarding_env_query_t; // BUGBUG
-    using _P2300::execution::get_env;
-    //using _P2300::execution::forwarding_env_query; // BUGBUG
+    using stdexec::no_env;
+    using stdexec::get_env_t;
+    //using stdexec::forwarding_env_query_t; // BUGBUG
+    using stdexec::get_env;
+    //using stdexec::forwarding_env_query; // BUGBUG
 
-    using _P2300::execution::env_of_t;
+    using stdexec::env_of_t;
 
     // [exec.sched], schedulers
-    using _P2300::execution::scheduler;
+    using stdexec::scheduler;
 
     // [exec.sched_queries], scheduler queries
-    using _P2300::execution::forward_progress_guarantee;
-    using _P2300::execution::forwarding_scheduler_query_t;
-    using _P2300::execution::get_forward_progress_guarantee_t;
-    using _P2300::execution::forwarding_scheduler_query;
-    using _P2300::execution::get_forward_progress_guarantee;
+    using stdexec::forward_progress_guarantee;
+    using stdexec::forwarding_scheduler_query_t;
+    using stdexec::get_forward_progress_guarantee_t;
+    using stdexec::forwarding_scheduler_query;
+    using stdexec::get_forward_progress_guarantee;
 
     // [exec.recv], receivers
-    using _P2300::execution::receiver;
+    using stdexec::receiver;
 
-    using _P2300::execution::receiver_of;
+    using stdexec::receiver_of;
 
-    using _P2300::execution::set_value_t;
-    using _P2300::execution::set_error_t;
-    using _P2300::execution::set_stopped_t;
-    using _P2300::execution::set_value;
-    using _P2300::execution::set_error;
-    using _P2300::execution::set_stopped;
+    using stdexec::set_value_t;
+    using stdexec::set_error_t;
+    using stdexec::set_stopped_t;
+    using stdexec::set_value;
+    using stdexec::set_error;
+    using stdexec::set_stopped;
 
     // [exec.recv_queries], receiver queries
-    // using _P2300::execution::forwarding_receiver_query_t; // BUGBUG
-    // using _P2300::execution::forwarding_receiver_query; // BUGBUG
+    // using stdexec::forwarding_receiver_query_t; // BUGBUG
+    // using stdexec::forwarding_receiver_query; // BUGBUG
 
     // [exec.op_state], operation states
-    using _P2300::execution::operation_state;
+    using stdexec::operation_state;
 
-    using _P2300::execution::start_t;
-    using _P2300::execution::start;
+    using stdexec::start_t;
+    using stdexec::start;
 
     // [exec.snd], senders
-    using _P2300::execution::sender;
-    using _P2300::execution::sender_to;
-    using _P2300::execution::sender_of;
+    using stdexec::sender;
+    using stdexec::sender_to;
+    using stdexec::sender_of;
 
     // [exec.sndtraits], completion signatures
-    using _P2300::execution::get_completion_signatures_t;
-    using _P2300::execution::get_completion_signatures;
-    using _P2300::execution::completion_signatures_of_t;
+    using stdexec::get_completion_signatures_t;
+    using stdexec::get_completion_signatures;
+    using stdexec::completion_signatures_of_t;
 
-    using _P2300::execution::dependent_completion_signatures;
+    using stdexec::dependent_completion_signatures;
 
-    using _P2300::execution::value_types_of_t;
-    using _P2300::execution::error_types_of_t;
-    using _P2300::execution::sends_stopped;
+    using stdexec::value_types_of_t;
+    using stdexec::error_types_of_t;
+    using stdexec::sends_stopped;
 
     // [exec.connect], the connect sender algorithm
-    using _P2300::execution::connect_t;
-    using _P2300::execution::connect;
+    using stdexec::connect_t;
+    using stdexec::connect;
 
-    using _P2300::execution::connect_result_t;
+    using stdexec::connect_result_t;
 
     // [exec.snd_queries], sender queries
-    using _P2300::execution::forwarding_sender_query_t;
-    using _P2300::execution::get_completion_scheduler_t;
-    using _P2300::execution::forwarding_sender_query;
+    using stdexec::forwarding_sender_query_t;
+    using stdexec::get_completion_scheduler_t;
+    using stdexec::forwarding_sender_query;
 
-    using _P2300::execution::get_completion_scheduler;
+    using stdexec::get_completion_scheduler;
 
     // [exec.factories], sender factories
-    using _P2300::execution::just;
-    using _P2300::execution::just_error;
-    using _P2300::execution::just_stopped;
-    using _P2300::execution::schedule_t;
-    using _P2300::execution::transfer_just_t;
-    using _P2300::execution::schedule;
-    using _P2300::execution::transfer_just;
-    using _P2300::execution::read;
+    using stdexec::just;
+    using stdexec::just_error;
+    using stdexec::just_stopped;
+    using stdexec::schedule_t;
+    using stdexec::transfer_just_t;
+    using stdexec::schedule;
+    using stdexec::transfer_just;
+    using stdexec::read;
 
-    using _P2300::execution::schedule_result_t;
+    using stdexec::schedule_result_t;
 
     // [exec.adapt], sender adaptors
-    using _P2300::execution::sender_adaptor_closure;
+    using stdexec::sender_adaptor_closure;
 
-    using _P2300::execution::on_t;
-    using _P2300::execution::transfer_t;
-    using _P2300::execution::schedule_from_t;
-    using _P2300::execution::then_t;
-    using _P2300::execution::upon_error_t;
-    using _P2300::execution::upon_stopped_t;
-    using _P2300::execution::let_value_t;
-    using _P2300::execution::let_error_t;
-    using _P2300::execution::let_stopped_t;
-    using _P2300::execution::bulk_t;
-    using _P2300::execution::split_t;
-    using _P2300::execution::when_all_t;
-    using _P2300::execution::when_all_with_variant_t;
-    using _P2300::execution::transfer_when_all_t;
-    using _P2300::execution::transfer_when_all_with_variant_t;
-    using _P2300::execution::into_variant_t;
-    using _P2300::execution::stopped_as_optional_t;
-    using _P2300::execution::stopped_as_error_t;
-    using _P2300::execution::ensure_started_t;
+    using stdexec::on_t;
+    using stdexec::transfer_t;
+    using stdexec::schedule_from_t;
+    using stdexec::then_t;
+    using stdexec::upon_error_t;
+    using stdexec::upon_stopped_t;
+    using stdexec::let_value_t;
+    using stdexec::let_error_t;
+    using stdexec::let_stopped_t;
+    using stdexec::bulk_t;
+    using stdexec::split_t;
+    using stdexec::when_all_t;
+    using stdexec::when_all_with_variant_t;
+    using stdexec::transfer_when_all_t;
+    using stdexec::transfer_when_all_with_variant_t;
+    using stdexec::into_variant_t;
+    using stdexec::stopped_as_optional_t;
+    using stdexec::stopped_as_error_t;
+    using stdexec::ensure_started_t;
 
-    using _P2300::execution::on;
-    using _P2300::execution::transfer;
-    using _P2300::execution::schedule_from;
+    using stdexec::on;
+    using stdexec::transfer;
+    using stdexec::schedule_from;
 
-    using _P2300::execution::then;
-    using _P2300::execution::upon_error;
-    using _P2300::execution::upon_stopped;
+    using stdexec::then;
+    using stdexec::upon_error;
+    using stdexec::upon_stopped;
 
-    using _P2300::execution::let_value;
-    using _P2300::execution::let_error;
-    using _P2300::execution::let_stopped;
+    using stdexec::let_value;
+    using stdexec::let_error;
+    using stdexec::let_stopped;
 
-    using _P2300::execution::bulk;
+    using stdexec::bulk;
 
-    using _P2300::execution::split;
-    using _P2300::execution::when_all;
-    using _P2300::execution::when_all_with_variant;
-    using _P2300::execution::transfer_when_all;
-    using _P2300::execution::transfer_when_all_with_variant;
+    using stdexec::split;
+    using stdexec::when_all;
+    using stdexec::when_all_with_variant;
+    using stdexec::transfer_when_all;
+    using stdexec::transfer_when_all_with_variant;
 
-    using _P2300::execution::into_variant;
+    using stdexec::into_variant;
 
-    using _P2300::execution::stopped_as_optional;
-    using _P2300::execution::stopped_as_error;
+    using stdexec::stopped_as_optional;
+    using stdexec::stopped_as_error;
 
-    using _P2300::execution::ensure_started;
+    using stdexec::ensure_started;
 
     // [exec.consumers], sender consumers
-    using _P2300::execution::start_detached_t;
-    using _P2300::execution::start_detached;
+    using stdexec::start_detached_t;
+    using stdexec::start_detached;
 
     // [exec.utils], sender and receiver utilities
     // [exec.utils.rcvr_adptr]
-    using _P2300::execution::receiver_adaptor;
+    using stdexec::receiver_adaptor;
 
     // [exec.utils.cmplsigs]
-    using _P2300::execution::completion_signatures;
+    using stdexec::completion_signatures;
 
     // [exec.utils.mkcmplsigs]
-    using _P2300::execution::make_completion_signatures;
+    using stdexec::make_completion_signatures;
 
     // [exec.ctx], execution contexts
-    using _P2300::execution::run_loop;
+    using stdexec::run_loop;
 
     // [exec.execute], execute
-    using _P2300::execution::execute_t;
-    using _P2300::execution::execute;
+    using stdexec::execute_t;
+    using stdexec::execute;
 
     #if !_STD_NO_COROUTINES_
     // [exec.as_awaitable]
-    using _P2300::execution::as_awaitable_t;
-    using _P2300::execution::as_awaitable;
+    using stdexec::as_awaitable_t;
+    using stdexec::as_awaitable;
 
     // [exec.with_awaitable_senders]
     struct with_awaitable_senders;
@@ -212,11 +212,11 @@ namespace std {
   } // namespace execution
 
   namespace this_thread {
-    using _P2300::this_thread::execute_may_block_caller_t;
-    using _P2300::this_thread::execute_may_block_caller;
-    using _P2300::this_thread::sync_wait_t;
-    using _P2300::this_thread::sync_wait_with_variant_t;
-    using _P2300::this_thread::sync_wait;
-    using _P2300::this_thread::sync_wait_with_variant;
+    using stdexec::execute_may_block_caller_t;
+    using stdexec::execute_may_block_caller;
+    using stdexec::sync_wait_t;
+    using stdexec::sync_wait_with_variant_t;
+    using stdexec::sync_wait;
+    using stdexec::sync_wait_with_variant;
   } // namespace this_thread
 } // namespace std

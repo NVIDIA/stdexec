@@ -19,7 +19,7 @@
 #include <__detail/__intrusive_queue.hpp>
 
 namespace _P2519::execution {
-  using namespace _P2300::execution;
+  using namespace stdexec;
 
   /////////////////////////////////////////////////////////////////////////////
   // async_scope
@@ -53,7 +53,7 @@ namespace _P2519::execution {
       struct __receiver
         : private receiver_adaptor<__receiver<_SenderId>>
         , __receiver_base {
-        using _Sender = _P2300::__t<_SenderId>;
+        using _Sender = stdexec::__t<_SenderId>;
 
         template <class _Op>
           explicit __receiver(_Op* __op, async_scope* __scope) noexcept
@@ -130,7 +130,7 @@ namespace _P2519::execution {
           void __complete_() noexcept final override try {
             static_assert(sender_to<_Sender, _Receiver>);
             auto __state = std::move(__state_);
-            _P2300_ASSERT(__state != nullptr);
+            STDEXEC_ASSERT(__state != nullptr);
             std::unique_lock __guard{__state->__mutex_};
             // either the future is still in use or it has passed ownership to __state->__no_future_
             if (__state->__no_future_ != nullptr || __state->__step_ != __future_state_steps_t::__future) {
@@ -196,7 +196,7 @@ namespace _P2519::execution {
       struct __future_receiver
         : private receiver_adaptor<__future_receiver<_SenderId>>
         , __receiver_base {
-        using _Sender = _P2300::__t<_SenderId>;
+        using _Sender = stdexec::__t<_SenderId>;
 
         template <class _State>
           explicit __future_receiver(_State* __state, async_scope* __scope) noexcept
@@ -300,9 +300,9 @@ namespace _P2519::execution {
         using __op_t = __future_operation_t<_Sender>;
 
         void __step_from_to_(std::unique_lock<std::mutex>& __guard, __future_state_steps_t __from, __future_state_steps_t __to) {
-          _P2300_ASSERT(__guard.owns_lock());
+          STDEXEC_ASSERT(__guard.owns_lock());
           auto actual = std::exchange(__step_, __to);
-          _P2300_ASSERT(actual == __from);
+          STDEXEC_ASSERT(actual == __from);
         }
       private:
         std::optional<__op_t> __op_;
@@ -380,8 +380,8 @@ namespace _P2519::execution {
     struct async_scope : __immovable {
         ~async_scope() noexcept {
             std::unique_lock __guard{__lock_};
-            _P2300_ASSERT(__active_ == 0);
-            _P2300_ASSERT(__waiters_.empty());
+            STDEXEC_ASSERT(__active_ == 0);
+            STDEXEC_ASSERT(__waiters_.empty());
         }
         async_scope()
           : __active_(0) {}
@@ -430,7 +430,7 @@ namespace _P2519::execution {
                       }
                   };
                   [[no_unique_address]] __Receiver __rcvr_;
-                  _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, __receiver> __op_;
+                  STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, __receiver> __op_;
                   template<class _Constrained, class _Receiver>
                     explicit __operation(async_scope* __scope, _Constrained&& __c, _Receiver&& __r)
                       : __op_base(__scope)
@@ -538,7 +538,7 @@ namespace _P2519::execution {
                 };
                 async_scope* __scope_;
                 [[no_unique_address]] __Receiver __rcvr_;
-                _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, __receiver> __op_;
+                STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, __receiver> __op_;
                 template<class _Constrained, class _Receiver>
                   explicit __operation(async_scope* __scope, _Constrained&& __c, _Receiver&& __r)
                     : __scope_(__scope)

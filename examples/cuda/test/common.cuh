@@ -103,8 +103,8 @@ public:
 namespace detail {
   template <class SenderId, class ReceiverId>
     struct operation_state_t {
-      using Sender = _P2300::__t<SenderId>;
-      using Receiver = _P2300::__t<ReceiverId>;
+      using Sender = stdexec::__t<SenderId>;
+      using Receiver = stdexec::__t<ReceiverId>;
       using inner_op_state_t = std::execution::connect_result_t<Sender, Receiver>;
 
       inner_op_state_t inner_op_;
@@ -119,15 +119,15 @@ namespace detail {
     };
 
   template <class ReceiverId, class Fun>
-    class receiver_t : std::execution::receiver_adaptor<receiver_t<ReceiverId, Fun>, _P2300::__t<ReceiverId>> {
-      using Receiver = _P2300::__t<ReceiverId>;
+    class receiver_t : std::execution::receiver_adaptor<receiver_t<ReceiverId, Fun>, stdexec::__t<ReceiverId>> {
+      using Receiver = stdexec::__t<ReceiverId>;
       friend std::execution::receiver_adaptor<receiver_t, Receiver>;
 
       Fun f_;
 
       template <class... As>
       void set_value(As&&... as) && noexcept
-        requires _P2300::__callable<Fun, As&&...> {
+        requires stdexec::__callable<Fun, As&&...> {
         using result_t = std::invoke_result_t<Fun, As&&...>;
 
         if constexpr (std::is_same_v<void, result_t>) {
@@ -147,52 +147,52 @@ namespace detail {
 
   template <class SenderId, class FunId>
     struct sender_t {
-      using Sender = _P2300::__t<SenderId>;
-      using Fun = _P2300::__t<FunId>;
+      using Sender = stdexec::__t<SenderId>;
+      using Fun = stdexec::__t<FunId>;
 
       Sender sndr_;
       Fun fun_;
 
       template <class Receiver>
-        using receiver_th = receiver_t<_P2300::__x<Receiver>, Fun>;
+        using receiver_th = receiver_t<stdexec::__x<Receiver>, Fun>;
 
       template <class Self, class Receiver>
         using op_t = operation_state_t<
-          _P2300::__x<_P2300::__member_t<Self, Sender>>,
-          _P2300::__x<receiver_th<Receiver>>>;
+          stdexec::__x<stdexec::__member_t<Self, Sender>>,
+          stdexec::__x<receiver_th<Receiver>>>;
 
       template <class Self, class Env>
         using completion_signatures =
-          _P2300::execution::__make_completion_signatures<
-            _P2300::__member_t<Self, Sender>,
+          stdexec::__make_completion_signatures<
+            stdexec::__member_t<Self, Sender>,
             Env,
-            _P2300::execution::__with_error_invoke_t<
+            stdexec::__with_error_invoke_t<
               std::execution::set_value_t,
               Fun,
-              _P2300::__member_t<Self, Sender>,
+              stdexec::__member_t<Self, Sender>,
               Env>,
-            _P2300::__mbind_front_q<_P2300::execution::__set_value_invoke_t, Fun>>;
+            stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>>;
 
-      template <_P2300::__decays_to<sender_t> Self, std::execution::receiver Receiver>
+      template <stdexec::__decays_to<sender_t> Self, std::execution::receiver Receiver>
         requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>
       friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
         -> op_t<Self, Receiver> {
         return op_t<Self, Receiver>(((Self&&)self).sndr_, receiver_th<Receiver>((Receiver&&)rcvr, self.fun_));
       }
 
-      template <_P2300::__decays_to<sender_t> Self, class Env>
+      template <stdexec::__decays_to<sender_t> Self, class Env>
       friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
         -> std::execution::dependent_completion_signatures<Env>;
 
-      template <_P2300::__decays_to<sender_t> Self, class Env>
+      template <stdexec::__decays_to<sender_t> Self, class Env>
       friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
         -> completion_signatures<Self, Env> requires true;
 
-      template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
-        requires _P2300::__callable<Tag, const Sender&, As...>
+      template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+        requires stdexec::__callable<Tag, const Sender&, As...>
       friend auto tag_invoke(Tag tag, const sender_t& self, As&&... as)
-        noexcept(_P2300::__nothrow_callable<Tag, const Sender&, As...>)
-        -> _P2300::__call_result_if_t<_P2300::execution::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
         return ((Tag&&) tag)(self.sndr_, (As&&) as...);
       }
     };
@@ -201,8 +201,8 @@ namespace detail {
 struct a_sender_t {
   template <class _Sender, class _Fun>
     using sender_th = detail::sender_t<
-      _P2300::__x<std::remove_cvref_t<_Sender>>,
-      _P2300::__x<std::remove_cvref_t<_Fun>>>;
+      stdexec::__x<std::remove_cvref_t<_Sender>>,
+      stdexec::__x<std::remove_cvref_t<_Fun>>>;
 
   template <std::execution::sender _Sender, class _Fun>
     requires std::execution::sender<sender_th<_Sender, _Fun>>
@@ -211,7 +211,7 @@ struct a_sender_t {
   }
 
   template <class _Fun>
-  _P2300::execution::__binder_back<a_sender_t, _Fun> operator()(_Fun __fun) const {
+  stdexec::__binder_back<a_sender_t, _Fun> operator()(_Fun __fun) const {
     return {{}, {}, {(_Fun&&) __fun}};
   }
 };

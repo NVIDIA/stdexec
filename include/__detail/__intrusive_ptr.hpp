@@ -22,7 +22,7 @@
 #include <memory>
 #include <new>
 
-namespace _P2300 {
+namespace stdexec {
   namespace __ptr {
     template <class _Ty>
       struct __make_intrusive_t;
@@ -171,4 +171,4 @@ namespace _P2300 {
   template <class _Ty>
     inline constexpr __ptr::__make_intrusive_t<_Ty> __make_intrusive {};
 
-} // namespace _P2300
+} // namespace stdexec

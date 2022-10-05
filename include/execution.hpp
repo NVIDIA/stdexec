@@ -34,7 +34,7 @@
 #include <coroutine.hpp>
 #include <stop_token.hpp>
 
-#if _P2300_CLANG()
+#if STDEXEC_CLANG()
 #define _STRINGIZE(__arg) #__arg
 #define _PRAGMA_PUSH() _Pragma("GCC diagnostic push")
 #define _PRAGMA_POP() _Pragma("GCC diagnostic pop")
@@ -45,10 +45,10 @@
 #define _PRAGMA_IGNORE(__arg)
 #endif
 
-#if _P2300_NVHPC()
-#define _NVCXX_CAPTURE_PACK(_Xs) , class _NVCxxList = _P2300::__types<_Xs...>
+#if STDEXEC_NVHPC()
+#define _NVCXX_CAPTURE_PACK(_Xs) , class _NVCxxList = stdexec::__types<_Xs...>
 #define _NVCXX_EXPAND_PACK(_Xs, __xs, ...) \
-  [&]<class... _Xs>(_P2300::__types<_Xs...>*, auto*... __ptrs) -> decltype(auto) { \
+  [&]<class... _Xs>(stdexec::__types<_Xs...>*, auto*... __ptrs) -> decltype(auto) { \
     return [&]<class... _Xs>(_Xs&&... __xs) -> decltype(auto) { \
       __VA_ARGS__ \
     }(((_Xs&&) *(std::add_pointer_t<_Xs>) __ptrs)...); \
@@ -60,8 +60,8 @@
 #define _NVCXX_EXPAND_PACK_RETURN(_Xs, __xs, ...) __VA_ARGS__
 #endif
 
-#if _P2300_NVHPC() || _P2300_GCC()
-#define _P2300_NON_LEXICAL_FRIENDSHIP 1
+#if STDEXEC_NVHPC() || STDEXEC_GCC()
+#define STDEXEC_NON_LEXICAL_FRIENDSHIP 1
 #endif
 
 #ifdef __EDG__
@@ -74,7 +74,13 @@ _PRAGMA_PUSH()
 _PRAGMA_IGNORE("-Wundefined-inline")
 _PRAGMA_IGNORE("-Wundefined-internal")
 
-namespace _P2300::this_thread {
+namespace stdexec {
+  // BUGBUG
+  namespace execution = stdexec;
+  namespace this_thread = stdexec;
+
+  using std::remove_cvref_t;
+
   // [execution.schedulers.queries], scheduler queries
   namespace __scheduler_queries {
     template <class _Ty>
@@ -97,11 +103,6 @@ namespace _P2300::this_thread {
   } // namespace __scheduler_queries
   using __scheduler_queries::execute_may_block_caller_t;
   inline constexpr execute_may_block_caller_t execute_may_block_caller{};
-} // _P2300::this_thread
-
-namespace _P2300::execution {
-  using namespace _P2300;
-  using std::remove_cvref_t;
 
   enum class forward_progress_guarantee {
     concurrent,
@@ -132,7 +133,7 @@ namespace _P2300::execution {
 
           template <class... _Ts>
             friend auto tag_invoke(same_as<_Tag> auto, const __t& __self, _Ts&&...)
-              #if !_P2300_NVHPC()
+              #if !STDEXEC_NVHPC()
               noexcept(std::is_nothrow_copy_constructible_v<std::unwrap_reference_t<_Value>>)
               #endif
               -> std::unwrap_reference_t<_Value> {
@@ -167,7 +168,7 @@ namespace _P2300::execution {
 
     template <class _BaseEnvId, class... _Withs>
       struct __env_ : _Withs... {
-        using _BaseEnv = __t<_BaseEnvId>;
+        using _BaseEnv = stdexec::__t<_BaseEnvId>;
         using __base_env_t = _BaseEnv;
         [[no_unique_address]] _BaseEnv __base_env_{};
 
@@ -302,7 +303,7 @@ namespace _P2300::execution {
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   namespace __compl_sigs {
-    #if _P2300_NVHPC()
+    #if STDEXEC_NVHPC()
     template <class _Ty = __q<__types>, class... _Args>
       __types<__minvoke<_Ty, _Args...>> __test(set_value_t(*)(_Args...), set_value_t = {}, _Ty = {});
     template <class _Ty = __q<__types>, class _Error>
@@ -346,7 +347,7 @@ namespace _P2300::execution {
     using dependent_completion_signatures =
       __compl_sigs::__dependent;
 
-#if _P2300_NVHPC()
+#if STDEXEC_NVHPC()
   template <class _Sig>
     concept __completion_signature =
       __compl_sigs::__is_compl_sig<_Sig>;
@@ -1958,7 +1959,7 @@ namespace _P2300::execution {
       /**/
     #define _CALL_MEMBER(_TAG, ...) __call_ ## _TAG(__VA_ARGS__)
 
-    #if _P2300_CLANG()
+    #if STDEXEC_CLANG()
     // Only clang gets this right.
     #define _MISSING_MEMBER(_D, _TAG) requires { typename _D::_TAG; }
     #define _DEFINE_MEMBER(_TAG) _DISPATCH_MEMBER(_TAG) using _TAG = void
@@ -2275,11 +2276,11 @@ namespace _P2300::execution {
     template <class _ReceiverId, class _FunId>
       class __receiver
         : receiver_adaptor<__receiver<_ReceiverId, _FunId>, __t<_ReceiverId>> {
-      #if _P2300_NON_LEXICAL_FRIENDSHIP
+      #if STDEXEC_NON_LEXICAL_FRIENDSHIP
       public:
       #endif
-        using _Receiver = __t<_ReceiverId>;
-        using _Fun = __t<_FunId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        using _Fun = stdexec::__t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
         [[no_unique_address]] _Fun __f_;
 
@@ -2392,8 +2393,8 @@ namespace _P2300::execution {
     template <class _ReceiverId, class _FunId>
       class __receiver
         : receiver_adaptor<__receiver<_ReceiverId, _FunId>, __t<_ReceiverId>> {
-        using _Receiver = __t<_ReceiverId>;
-        using _Fun = __t<_FunId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        using _Fun = stdexec::__t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
         [[no_unique_address]] _Fun __f_;
 
@@ -2502,8 +2503,8 @@ namespace _P2300::execution {
     template <class _ReceiverId, class _FunId>
       class __receiver
         : receiver_adaptor<__receiver<_ReceiverId, _FunId>, __t<_ReceiverId>> {
-        using _Receiver = __t<_ReceiverId>;
-        using _Fun = __t<_FunId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        using _Fun = stdexec::__t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
         [[no_unique_address]] _Fun __f_;
 
@@ -2611,8 +2612,8 @@ namespace _P2300::execution {
     template <class _ReceiverId, integral _Shape, class _FunId>
       class __receiver
         : receiver_adaptor<__receiver<_ReceiverId, _Shape, _FunId>, __t<_ReceiverId>> {
-        using _Receiver = __t<_ReceiverId>;
-        using _Fun = __t<_FunId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        using _Fun = stdexec::__t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
 
         [[no_unique_address]] _Shape __shape_;
@@ -2860,7 +2861,7 @@ namespace _P2300::execution {
           , __recvr_((_Receiver&&)__rcvr)
           , __shared_state_(move(__shared_state)) {
         }
-        _P2300_IMMOVABLE(__operation);
+        STDEXEC_IMMOVABLE(__operation);
 
         static void __notify(__operation_base* __self) noexcept {
           __operation *__op = static_cast<__operation*>(__self);
@@ -3126,7 +3127,7 @@ namespace _P2300::execution {
             __shared_state_->__detach();
           }
         }
-        _P2300_IMMOVABLE(__operation);
+        STDEXEC_IMMOVABLE(__operation);
 
         static void __notify(__operation_base* __self) noexcept {
           __operation *__op = static_cast<__operation*>(__self);
@@ -3341,7 +3342,7 @@ namespace _P2300::execution {
       template <class _Sender, class _Receiver, class _Fun, class _SetTag>
           requires sender<_Sender, env_of_t<_Receiver>>
         struct __storage {
-          #if _P2300_NVHPC()
+          #if STDEXEC_NVHPC()
           template <class... _As>
             using __op_state_for_t =
               __minvoke2<__q2<connect_result_t>, __result_sender_t<_Fun, _As...>, _Receiver>;
@@ -3406,7 +3407,7 @@ namespace _P2300::execution {
             using __which_tuple_t =
               __call_result_t<__which_tuple<_Sender, _Env, _Let>, _As...>;
 
-          #if _P2300_NVHPC()
+          #if STDEXEC_NVHPC()
           template <class... _As>
             using __op_state_for_t =
               __minvoke2<__q2<connect_result_t>, __result_sender_t<_Fun, _As...>, _Receiver>;
@@ -3478,7 +3479,7 @@ namespace _P2300::execution {
               : __rcvr_((_Receiver2&&) __rcvr)
               , __fun_((_Fun&&) __fun)
               , __op_state2_(connect((_Sender&&) __sndr, __receiver_t{this})) {}
-          _P2300_IMMOVABLE(__operation);
+          STDEXEC_IMMOVABLE(__operation);
 
           _Receiver __rcvr_;
           _Fun __fun_;
@@ -3616,8 +3617,8 @@ namespace _P2300::execution {
 
     template <class _SenderId, class _ReceiverId>
       struct __receiver : receiver_adaptor<__receiver<_SenderId, _ReceiverId>> {
-        using _Sender = __t<_SenderId>;
-        using _Receiver = __t<_ReceiverId>;
+        using _Sender = stdexec::__t<_SenderId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
         _Receiver&& base() && noexcept { return (_Receiver&&) __op_->__rcvr_; }
         const _Receiver& base() const & noexcept { return __op_->__rcvr_; }
 
@@ -3651,7 +3652,7 @@ namespace _P2300::execution {
           : __rcvr_((_Receiver&&) __rcvr)
           , __op_state_(connect((_Sender&&) __sndr, __receiver_t{{}, this}))
         {}
-        _P2300_IMMOVABLE(__operation);
+        STDEXEC_IMMOVABLE(__operation);
 
         friend void tag_invoke(start_t, __operation& __self) noexcept {
           start(__self.__op_state_);
@@ -4080,7 +4081,7 @@ namespace _P2300::execution {
           : __sched_(__sched)
           , __rcvr_((decltype(__rcvr)&&) __rcvr)
           , __state1_(connect((_CvrefSender&&) __sndr, __receiver1_t{this})) {}
-        _P2300_IMMOVABLE(__operation1);
+        STDEXEC_IMMOVABLE(__operation1);
 
         friend void tag_invoke(start_t, __operation1& __op_state) noexcept {
           start(__op_state.__state1_);
@@ -4222,9 +4223,9 @@ namespace _P2300::execution {
       template <class _SchedulerId, class _SenderId, class _ReceiverId>
         struct __receiver_ref
           : receiver_adaptor<__receiver_ref<_SchedulerId, _SenderId, _ReceiverId>> {
-          using _Scheduler = __t<_SchedulerId>;
-          using _Sender = __t<_SenderId>;
-          using _Receiver = __t<_ReceiverId>;
+          using _Scheduler = stdexec::__t<_SchedulerId>;
+          using _Sender = stdexec::__t<_SenderId>;
+          using _Receiver = stdexec::__t<_ReceiverId>;
           __operation<_SchedulerId, _SenderId, _ReceiverId>* __op_state_;
           _Receiver&& base() && noexcept {
             return (_Receiver&&) __op_state_->__rcvr_;
@@ -4243,9 +4244,9 @@ namespace _P2300::execution {
       template <class _SchedulerId, class _SenderId, class _ReceiverId>
         struct __receiver
           : receiver_adaptor<__receiver<_SchedulerId, _SenderId, _ReceiverId>> {
-          using _Scheduler = __t<_SchedulerId>;
-          using _Sender = __t<_SenderId>;
-          using _Receiver = __t<_ReceiverId>;
+          using _Scheduler = stdexec::__t<_SchedulerId>;
+          using _Sender = stdexec::__t<_SenderId>;
+          using _Receiver = stdexec::__t<_ReceiverId>;
           using __receiver_ref_t =
             __receiver_ref<_SchedulerId, _SenderId, _ReceiverId>;
           __operation<_SchedulerId, _SenderId, _ReceiverId>* __op_state_;
@@ -4294,7 +4295,7 @@ namespace _P2300::execution {
             , __data_{std::in_place_index<0>, __conv{[&, this]{
                 return connect(schedule(__sched), __receiver_t{{}, this});
               }}} {}
-          _P2300_IMMOVABLE(__operation);
+          STDEXEC_IMMOVABLE(__operation);
 
           _Scheduler __scheduler_;
           _Sender __sndr_;
@@ -4414,11 +4415,11 @@ namespace _P2300::execution {
     template <class _SenderId, class _ReceiverId>
       class __receiver
         : receiver_adaptor<__receiver<_SenderId, _ReceiverId>, __t<_ReceiverId>> {
-      #if _P2300_NON_LEXICAL_FRIENDSHIP
+      #if STDEXEC_NON_LEXICAL_FRIENDSHIP
       public:
       #endif
-        using _Sender = __t<_SenderId>;
-        using _Receiver = __t<_ReceiverId>;
+        using _Sender = stdexec::__t<_SenderId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
         friend receiver_adaptor<__receiver, _Receiver>;
 
         // Customize set_value by building a variant and passing the result
@@ -4586,7 +4587,7 @@ namespace _P2300::execution {
           template <class _CvrefReceiverId, std::size_t _Index>
             struct __receiver : receiver_adaptor<__receiver<_CvrefReceiverId, _Index>> {
               using _WhenAll = __member_t<_CvrefReceiverId, __sender>;
-              using _Receiver = __t<decay_t<_CvrefReceiverId>>;
+              using _Receiver = stdexec::__t<decay_t<_CvrefReceiverId>>;
               using _Traits =
                 __completion_sigs<
                   __member_t<_CvrefReceiverId, env_of_t<_Receiver>>>;
@@ -4740,7 +4741,7 @@ namespace _P2300::execution {
               __operation(_WhenAll&& __when_all, _Receiver __rcvr)
                 : __operation((_WhenAll&&) __when_all, (_Receiver&&) __rcvr, _Indices{})
               {}
-              _P2300_IMMOVABLE(__operation);
+              STDEXEC_IMMOVABLE(__operation);
 
               friend void tag_invoke(start_t, __operation& __self) noexcept {
                 // register stop callback:
@@ -4946,7 +4947,7 @@ namespace _P2300::execution {
     template <class _ReceiverId, class... _Withs>
       struct __receiver
         : receiver_adaptor<__receiver<_ReceiverId, _Withs...>> {
-        using _Receiver = __t<_ReceiverId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
 
         _Receiver&& base() && noexcept {
           return (_Receiver&&) __op_->__rcvr_;
@@ -5054,9 +5055,7 @@ namespace _P2300::execution {
       return read(get_stop_token);
     }
   }
-} // namespace _P2300::execution
 
-namespace _P2300::this_thread {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumers.sync_wait]
   // [execution.senders.consumers.sync_wait_with_variant]
@@ -5279,11 +5278,6 @@ namespace _P2300::this_thread {
   inline constexpr sync_wait_t sync_wait{};
   using __sync_wait::sync_wait_with_variant_t;
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
-} // namespace std::this_thread
-
-// Things that are not yet part of a proposal:
-namespace _PXXXX::execution {
-  using namespace _P2300::execution;
 
   namespace __create {
     struct __void {
@@ -5355,7 +5349,7 @@ namespace _PXXXX::execution {
 
   template <__completion_signature... _Sigs>
     inline constexpr __create::__create_t<_Sigs...> create {};
-} // namespace _PXXXX::execution
+} // namespace stdexec
 
 #include <__detail/__p2300.hpp>
 

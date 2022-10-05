@@ -24,15 +24,15 @@ namespace example::cuda::stream::submit {
 
 template <class SenderId, class ReceiverId>
 struct op_state_t {
-  using Sender = _P2300::__t<SenderId>;
-  using Receiver = _P2300::__t<ReceiverId>;
+  using Sender = stdexec::__t<SenderId>;
+  using Receiver = stdexec::__t<ReceiverId>;
   struct receiver_t : receiver_base_t {
     op_state_t* op_state_;
 
-    template <_P2300::__one_of<std::execution::set_value_t, std::execution::set_error_t, std::execution::set_stopped_t> Tag, class... As>
-      requires _P2300::__callable<Tag, Receiver, As...>
+    template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_error_t, std::execution::set_stopped_t> Tag, class... As>
+      requires stdexec::__callable<Tag, Receiver, As...>
     friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as)
-        noexcept(_P2300::__nothrow_callable<Tag, Receiver, As...>) {
+        noexcept(stdexec::__nothrow_callable<Tag, Receiver, As...>) {
       // Delete the state as cleanup:
       std::unique_ptr<op_state_t> g{self.op_state_};
       return tag((Receiver&&) self.op_state_->rcvr_, (As&&) as...);
@@ -46,7 +46,7 @@ struct op_state_t {
   Receiver rcvr_;
   std::execution::connect_result_t<Sender, receiver_t> op_state_;
 
-  op_state_t(Sender&& sndr, _P2300::__decays_to<Receiver> auto&& rcvr)
+  op_state_t(Sender&& sndr, stdexec::__decays_to<Receiver> auto&& rcvr)
     : rcvr_((decltype(rcvr)&&) rcvr)
     , op_state_(std::execution::connect((Sender&&) sndr, receiver_t{{}, this}))
   {}
@@ -55,7 +55,7 @@ struct op_state_t {
 struct submit_t {
   template <std::execution::receiver Receiver, std::execution::sender_to<Receiver> Sender>
   void operator()(Sender&& sndr, Receiver&& rcvr) const noexcept(false) {
-    std::execution::start((new op_state_t<_P2300::__x<Sender>, _P2300::__x<std::decay_t<Receiver>>>{
+    std::execution::start((new op_state_t<stdexec::__x<Sender>, stdexec::__x<std::decay_t<Receiver>>>{
         (Sender&&) sndr, (Receiver&&) rcvr})->op_state_);
   }
 };

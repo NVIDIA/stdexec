@@ -34,7 +34,7 @@ void expect_empty(_P2519::execution::async_scope& scope) {
   CHECK_FALSE(std::this_thread::execute_may_block_caller(sch));
   auto op = ex::connect(
     ex::then(scope.on_empty(), [&](){  loop.finish(); }),
-    expect_void_receiver{_P2300::execution::make_env(_P2300::execution::with(ex::get_scheduler, sch))});
+    expect_void_receiver{stdexec::make_env(stdexec::with(ex::get_scheduler, sch))});
   ex::start(op);
   loop.run();
 }
@@ -83,7 +83,7 @@ TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
     std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
     {ex::sender auto ftr = scope.spawn_future(begin | std::execution::then([&](){produced = true;})); (void)ftr;}
-    std::this_thread::sync_wait(scope.on_empty() | std::execution::then([&](){_P2300_ASSERT(produced.load());}));
+    std::this_thread::sync_wait(scope.on_empty() | std::execution::then([&](){STDEXEC_ASSERT(produced.load());}));
     expect_empty(scope);
   }
   
@@ -93,7 +93,7 @@ TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
     std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
     ex::sender auto ftr = scope.spawn_future(begin | std::execution::then([&](){produced = true;}));
-    std::this_thread::sync_wait(scope.on_empty() | std::execution::then([&](){_P2300_ASSERT(produced.load());}));
+    std::this_thread::sync_wait(scope.on_empty() | std::execution::then([&](){STDEXEC_ASSERT(produced.load());}));
     auto op = ex::connect(std::move(ftr), expect_void_receiver{});
     ex::start(op);
     std::this_thread::sync_wait(scope.on_empty());

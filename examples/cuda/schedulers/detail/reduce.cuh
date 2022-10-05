@@ -47,12 +47,12 @@ namespace reduce_ {
 
   template <class SenderId, class ReceiverId, class Fun>
     class receiver_t : public receiver_base_t {
-      using Sender = _P2300::__t<SenderId>;
-      using Receiver = _P2300::__t<ReceiverId>;
+      using Sender = stdexec::__t<SenderId>;
+      using Receiver = stdexec::__t<ReceiverId>;
 
       template <class... Range>
         struct result_size_for {
-          using __t = _P2300::__index<
+          using __t = stdexec::__index<
             sizeof(
               ::cuda::std::decay_t<
                 ::cuda::std::invoke_result_t<
@@ -65,21 +65,21 @@ namespace reduce_ {
 
       template <class... Sizes>
         struct max_in_pack {
-          static constexpr std::size_t value = std::max({std::size_t{}, _P2300::__v<Sizes>...});
+          static constexpr std::size_t value = std::max({std::size_t{}, stdexec::__v<Sizes>...});
         };
 
       struct max_result_size {
         template <class... _As>
-          using result_size_for_t = _P2300::__t<result_size_for<_As...>>;
+          using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
         static constexpr std::size_t value =
-          _P2300::__v<
-            _P2300::execution::__gather_sigs_t<
+          stdexec::__v<
+            stdexec::__gather_sigs_t<
               std::execution::set_value_t, 
               Sender,  
               std::execution::env_of_t<Receiver>, 
-              _P2300::__q<result_size_for_t>, 
-              _P2300::__q<max_in_pack>>>;
+              stdexec::__q<result_size_for_t>, 
+              stdexec::__q<max_in_pack>>>;
       };
 
       Fun f_;
@@ -141,7 +141,7 @@ namespace reduce_ {
         }
       }
 
-      template <_P2300::__one_of<std::execution::set_error_t,
+      template <stdexec::__one_of<std::execution::set_error_t,
                               std::execution::set_stopped_t> Tag,
                 class... As _NVCXX_CAPTURE_PACK(As)>
         friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
@@ -163,8 +163,8 @@ namespace reduce_ {
 
 template <class SenderId, class FunId>
   struct reduce_sender_t : sender_base_t {
-    using Sender = _P2300::__t<SenderId>;
-    using Fun = _P2300::__t<FunId>;
+    using Sender = stdexec::__t<SenderId>;
+    using Fun = stdexec::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;
@@ -172,7 +172,7 @@ template <class SenderId, class FunId>
     template <class Receiver>
       using receiver_t = reduce_::receiver_t<
           SenderId, 
-          _P2300::__x<Receiver>, 
+          stdexec::__x<Receiver>, 
           Fun>;
 
     template <class... Range>
@@ -189,37 +189,37 @@ template <class SenderId, class FunId>
     template <class Self, class Env>
       using completion_signatures =
         std::execution::make_completion_signatures<
-          _P2300::__member_t<Self, Sender>,
+          stdexec::__member_t<Self, Sender>,
           Env,
           std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>,
           set_value_t
           >;
 
-    template <_P2300::__decays_to<reduce_sender_t> Self, std::execution::receiver Receiver>
+    template <stdexec::__decays_to<reduce_sender_t> Self, std::execution::receiver Receiver>
       requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>
     friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
-      -> stream_op_state_t<_P2300::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<_P2300::__member_t<Self, Sender>>(
+      -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+        return stream_op_state<stdexec::__member_t<Self, Sender>>(
           ((Self&&)self).sndr_,
           (Receiver&&)rcvr,
-          [&](operation_state_base_t<_P2300::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
+          [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
             return receiver_t<Receiver>(self.fun_, stream_provider);
           });
     }
 
-    template <_P2300::__decays_to<reduce_sender_t> Self, class Env>
+    template <stdexec::__decays_to<reduce_sender_t> Self, class Env>
     friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
       -> std::execution::dependent_completion_signatures<Env>;
 
-    template <_P2300::__decays_to<reduce_sender_t> Self, class Env>
+    template <stdexec::__decays_to<reduce_sender_t> Self, class Env>
     friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
       -> completion_signatures<Self, Env> requires true;
 
-    template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
-      requires _P2300::__callable<Tag, const Sender&, As...>
+    template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+      requires stdexec::__callable<Tag, const Sender&, As...>
     friend auto tag_invoke(Tag tag, const reduce_sender_t& self, As&&... as)
-      noexcept(_P2300::__nothrow_callable<Tag, const Sender&, As...>)
-      -> _P2300::__call_result_if_t<_P2300::execution::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+      noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
       return ((Tag&&) tag)(self.sndr_, (As&&) as...);
     }
   };
@@ -228,16 +228,16 @@ struct reduce_t {
   template <class Sender, class Fun>
     using __sender =
       reduce_sender_t<
-        _P2300::__x<std::remove_cvref_t<Sender>>,
-        _P2300::__x<std::remove_cvref_t<Fun>>>;
+        stdexec::__x<std::remove_cvref_t<Sender>>,
+        stdexec::__x<std::remove_cvref_t<Fun>>>;
 
-  template <std::execution::sender Sender, _P2300::execution::__movable_value Fun>
+  template <std::execution::sender Sender, stdexec::__movable_value Fun>
     __sender<Sender, Fun> operator()(Sender&& __sndr, Fun __fun) const {
       return __sender<Sender, Fun>{{}, (Sender&&) __sndr, (Fun&&) __fun};
     }
 
   template <class Fun = cub::Sum>
-    _P2300::execution::__binder_back<reduce_t, Fun> operator()(Fun __fun={}) const {
+    stdexec::__binder_back<reduce_t, Fun> operator()(Fun __fun={}) const {
       return {{}, {}, {(Fun&&) __fun}};
     }
 };

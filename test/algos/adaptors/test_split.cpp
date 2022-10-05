@@ -68,7 +68,7 @@ TEST_CASE("split executes predecessor sender once", "[adaptors][split]") {
 TEST_CASE("split passes lvalue references", "[adaptors][split]") {
   auto split = ex::split(ex::just(42));
   using split_t = decltype(split);
-  using value_t = ex::value_types_of_t<split_t, _P2300::execution::__empty_env, std::tuple>;
+  using value_t = ex::value_types_of_t<split_t, stdexec::__empty_env, std::tuple>;
   static_assert(std::is_same_v<value_t, std::variant<std::tuple<const int&>>>);
 
   auto then = split | ex::then([] (const int &cval) {
@@ -89,7 +89,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
   {
     auto split = ex::split(ex::just_error(std::exception_ptr{}));
     using split_t = decltype(split);
-    using error_t = ex::error_types_of_t<split_t, _P2300::execution::__empty_env, std::variant>;
+    using error_t = ex::error_types_of_t<split_t, stdexec::__empty_env, std::variant>;
     static_assert(std::is_same_v<error_t, std::variant<const std::exception_ptr&>>);
 
     auto op = ex::connect(split, expect_error_receiver{});
@@ -101,7 +101,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
   {
     auto split = ex::split(ex::just_error(42));
     using split_t = decltype(split);
-    using error_t = ex::error_types_of_t<split_t, _P2300::execution::__empty_env, std::variant>;
+    using error_t = ex::error_types_of_t<split_t, stdexec::__empty_env, std::variant>;
     static_assert(std::is_same_v<error_t, std::variant<const std::exception_ptr&, const int&>>);
 
     auto op = ex::connect(split, expect_error_receiver<int>{});
@@ -111,7 +111,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
 TEST_CASE("split forwards stop signal", "[adaptors][split]") {
   auto split = ex::split(ex::just_stopped());
   using split_t = decltype(split);
-  static_assert(ex::sends_stopped<split_t, _P2300::execution::__empty_env>);
+  static_assert(ex::sends_stopped<split_t, stdexec::__empty_env>);
 
   auto op = ex::connect(split, expect_stopped_receiver{});
   ex::start(op);
@@ -123,11 +123,11 @@ TEST_CASE("split forwards external stop signal (1)", "[adaptors][split]") {
   int counter{};
   auto split = ex::split(ex::just() | ex::then([&]{ called = true; }));
   auto sndr =
-    _P2300::execution::write(
+    stdexec::write(
       ex::upon_stopped(
         split,
         [&]{ ++counter; return 42; }),
-      _P2300::execution::with(ex::get_stop_token, ssource.get_token()));
+      stdexec::with(ex::get_stop_token, ssource.get_token()));
   auto op1 = ex::connect(std::move(sndr), expect_value_receiver{42});
   auto op2 = ex::connect(sndr, expect_value_receiver{42});
   ssource.request_stop();
@@ -144,11 +144,11 @@ TEST_CASE("split forwards external stop signal (2)", "[adaptors][split]") {
   int counter{};
   auto split = ex::split(ex::just() | ex::then([&]{ called = true; return 7; }));
   auto sndr =
-    _P2300::execution::write(
+    stdexec::write(
       ex::upon_stopped(
         split,
         [&]{ ++counter; return 42; }),
-      _P2300::execution::with(ex::get_stop_token, ssource.get_token()));
+      stdexec::with(ex::get_stop_token, ssource.get_token()));
   auto op1 = ex::connect(sndr, expect_value_receiver{7});
   auto op2 = ex::connect(sndr, expect_value_receiver{7});
   REQUIRE( counter == 0 );
@@ -170,11 +170,11 @@ TEST_CASE("split forwards external stop signal (3)", "[adaptors][split]") {
         sched,
         ex::just() | ex::then([&]{ called = true; return 7; })));
   auto sndr =
-    _P2300::execution::write(
+    stdexec::write(
       ex::upon_stopped(
         split,
         [&]{ ++counter; return 42; }),
-      _P2300::execution::with(ex::get_stop_token, ssource.get_token()));
+      stdexec::with(ex::get_stop_token, ssource.get_token()));
   auto op1 = ex::connect(sndr, expect_value_receiver{42});
   auto op2 = ex::connect(sndr, expect_value_receiver{42});
   REQUIRE( counter == 0 );
@@ -203,18 +203,18 @@ TEST_CASE("split forwards external stop signal (4)", "[adaptors][split]") {
     ex::on(
       sched,
       ex::upon_stopped(
-        _P2300::execution::write(
+        stdexec::write(
           split,
-          _P2300::execution::with(ex::get_stop_token, ssource.get_token())),
+          stdexec::with(ex::get_stop_token, ssource.get_token())),
         [&]{ ++counter; return 42; }));
   auto sndr2 =
-    _P2300::execution::write(
+    stdexec::write(
       ex::on(
         sched,
         ex::upon_stopped(
           split,
           [&]{ ++counter; return 42; })),
-      _P2300::execution::with(ex::get_stop_token, ssource.get_token()));
+      stdexec::with(ex::get_stop_token, ssource.get_token()));
   auto op1 = ex::connect(sndr1, expect_value_receiver{7});
   auto op2 = ex::connect(sndr2, expect_stopped_receiver{});
   REQUIRE( counter == 0 );
@@ -321,8 +321,8 @@ TEST_CASE("split doesn't advertise completion scheduler", "[adaptors][split]") {
 
   auto snd = ex::transfer_just(sched, 42) | ex::split();
   using snd_t = decltype(snd);
-  static_assert(!_P2300::execution::__has_completion_scheduler<snd_t, ex::set_value_t>);
-  static_assert(!_P2300::execution::__has_completion_scheduler<snd_t, ex::set_error_t>);
-  static_assert(!_P2300::execution::__has_completion_scheduler<snd_t, ex::set_stopped_t>);
+  static_assert(!stdexec::__has_completion_scheduler<snd_t, ex::set_value_t>);
+  static_assert(!stdexec::__has_completion_scheduler<snd_t, ex::set_error_t>);
+  static_assert(!stdexec::__has_completion_scheduler<snd_t, ex::set_stopped_t>);
   (void)snd;
 }

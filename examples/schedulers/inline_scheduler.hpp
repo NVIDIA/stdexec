@@ -25,7 +25,7 @@ namespace example {
   struct inline_scheduler {
     template <class R_>
       struct __op {
-        using R = _P2300::__t<R_>;
+        using R = stdexec::__t<R_>;
         [[no_unique_address]] R rec_;
         friend void tag_invoke(std::execution::start_t, __op& op) noexcept try {
           std::execution::set_value((R&&) op.rec_);
@@ -43,7 +43,7 @@ namespace example {
       template <class R>
         friend auto tag_invoke(std::execution::connect_t, __sender, R&& rec)
           noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-          -> __op<_P2300::__x<std::remove_cvref_t<R>>> {
+          -> __op<stdexec::__x<std::remove_cvref_t<R>>> {
           return {(R&&) rec};
         }
 

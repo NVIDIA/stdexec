@@ -36,25 +36,21 @@ template <class Fun, class ResultT>
     new (result) ResultT(fn());
   }
 
+template <class T>
+  inline constexpr std::size_t size_of_ = sizeof(T);
+
+template <>
+  inline constexpr std::size_t size_of_<void> = 0;
+
 template <class ReceiverId, class Fun>
   class receiver_t : public receiver_base_t {
     using result_t = std::decay_t<std::invoke_result_t<Fun>>;
-
-    template <class T, int = 0>
-      struct size_of_ {
-        static constexpr std::size_t value = sizeof(T);
-      };
-
-    template <int W>
-      struct size_of_<void, W> {
-        static constexpr std::size_t value = 0;
-      };
 
     Fun f_;
     operation_state_base_t<ReceiverId> &op_state_;
 
   public:
-    constexpr static std::size_t memory_allocation_size = _P2300::__v<size_of_<result_t>>;
+    constexpr static std::size_t memory_allocation_size = size_of_<result_t>;
 
     friend void tag_invoke(std::execution::set_stopped_t, receiver_t&& self) noexcept {
       constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
@@ -78,7 +74,7 @@ template <class ReceiverId, class Fun>
       }
     }
 
-    template <_P2300::__one_of<std::execution::set_value_t,
+    template <stdexec::__one_of<std::execution::set_value_t,
                                std::execution::set_error_t> Tag, 
               class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
@@ -87,7 +83,7 @@ template <class ReceiverId, class Fun>
         );
       }
 
-    friend std::execution::env_of_t<_P2300::__t<ReceiverId>>
+    friend std::execution::env_of_t<stdexec::__t<ReceiverId>>
     tag_invoke(std::execution::get_env_t, const receiver_t& self) {
       return std::execution::get_env(self.op_state_.receiver_);
     }
@@ -102,8 +98,8 @@ template <class ReceiverId, class Fun>
 
 template <class SenderId, class FunId>
   struct upon_stopped_sender_t : sender_base_t {
-    using Sender = _P2300::__t<SenderId>;
-    using Fun = _P2300::__t<FunId>;
+    using Sender = stdexec::__t<SenderId>;
+    using Fun = stdexec::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;
@@ -113,47 +109,47 @@ template <class SenderId, class FunId>
         std::execution::set_error_t(std::exception_ptr)>;
 
     template <class Receiver>
-      using receiver_t = upon_stopped::receiver_t<_P2300::__x<Receiver>, Fun>;
+      using receiver_t = upon_stopped::receiver_t<stdexec::__x<Receiver>, Fun>;
 
     template <class Self, class Env>
       using completion_signatures =
-        _P2300::execution::__make_completion_signatures<
-          _P2300::__member_t<Self, Sender>,
+        stdexec::__make_completion_signatures<
+          stdexec::__member_t<Self, Sender>,
           Env,
-          _P2300::execution::__with_error_invoke_t<
+          stdexec::__with_error_invoke_t<
             std::execution::set_stopped_t,
             Fun,
-            _P2300::__member_t<Self, Sender>,
+            stdexec::__member_t<Self, Sender>,
             Env>,
-          _P2300::__q<_P2300::execution::__compl_sigs::__default_set_value>,
-          _P2300::__q1<_P2300::execution::__compl_sigs::__default_set_error>,
-          _P2300::execution::__set_value_invoke_t<Fun>>;
+          stdexec::__q<stdexec::__compl_sigs::__default_set_value>,
+          stdexec::__q1<stdexec::__compl_sigs::__default_set_error>,
+          stdexec::__set_value_invoke_t<Fun>>;
 
-    template <_P2300::__decays_to<upon_stopped_sender_t> Self, std::execution::receiver Receiver>
+    template <stdexec::__decays_to<upon_stopped_sender_t> Self, std::execution::receiver Receiver>
       requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>
     friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
-      -> stream_op_state_t<_P2300::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<_P2300::__member_t<Self, Sender>>(
+      -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+        return stream_op_state<stdexec::__member_t<Self, Sender>>(
             ((Self&&)self).sndr_,
             (Receiver&&)rcvr,
-            [&](operation_state_base_t<_P2300::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
+            [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
               return receiver_t<Receiver>(self.fun_, stream_provider);
             });
     }
 
-    template <_P2300::__decays_to<upon_stopped_sender_t> Self, class Env>
+    template <stdexec::__decays_to<upon_stopped_sender_t> Self, class Env>
     friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
       -> std::execution::dependent_completion_signatures<Env>;
 
-    template <_P2300::__decays_to<upon_stopped_sender_t> Self, class Env>
+    template <stdexec::__decays_to<upon_stopped_sender_t> Self, class Env>
     friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
       -> completion_signatures<Self, Env> requires true;
 
-    template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
-      requires _P2300::__callable<Tag, const Sender&, As...>
+    template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+      requires stdexec::__callable<Tag, const Sender&, As...>
     friend auto tag_invoke(Tag tag, const upon_stopped_sender_t& self, As&&... as)
-      noexcept(_P2300::__nothrow_callable<Tag, const Sender&, As...>)
-      -> _P2300::__call_result_if_t<_P2300::execution::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+      noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
       return ((Tag&&) tag)(self.sndr_, (As&&) as...);
     }
   };

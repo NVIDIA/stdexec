@@ -20,7 +20,7 @@
 #include <tuple>
 #include <utility>
 
-namespace _P2300::__detail {
+namespace stdexec::__detail {
 
 template <auto _Next>
   class __intrusive_queue;
@@ -124,4 +124,4 @@ template <class _Item, _Item* _Item::*_Next>
     _Item* __tail_ = nullptr;
   };
 
-} // namespace _P2300::__detail
+} // namespace stdexec::__detail

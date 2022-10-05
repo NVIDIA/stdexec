@@ -22,7 +22,7 @@
 #include <optional>
 
 using namespace std;
-namespace exec = _P2300::execution;
+namespace ex = stdexec;
 
 namespace {
   struct immovable {
@@ -42,9 +42,9 @@ namespace {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
       scope_.spawn(
-        exec::on(
+        ex::on(
           pool_.get_scheduler(),
-          exec::then(exec::just(), [=]() noexcept {
+          ex::then(ex::just(), [=]() noexcept {
             auto result = a + b;
             completed(context, result);
           })
@@ -56,9 +56,9 @@ namespace {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
       scope_.spawn(
-        exec::on(
+        ex::on(
           pool_.get_scheduler(),
-          exec::then(exec::just(), [=]() noexcept {
+          ex::then(ex::just(), [=]() noexcept {
             completed(context);
           })
         )
@@ -69,10 +69,10 @@ namespace {
 
 TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result", "[detail][create]") {
   auto snd = [this](int a, int b) {
-    return _PXXXX::execution::create<exec::set_value_t(int)>(
+    return stdexec::create<ex::set_value_t(int)>(
       [a, b, this]<class Context>(Context& ctx) noexcept {
         anIntAPI(a, b, &ctx, [](void* pv, int result) {
-          exec::set_value(std::move(static_cast<Context*>(pv)->receiver), result);
+          ex::set_value(std::move(static_cast<Context*>(pv)->receiver), result);
         });
       }
     );
@@ -87,12 +87,12 @@ TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result"
 TEST_CASE_METHOD(create_test_fixture, "wrap an async API that doesn't compute a result", "[detail][create]") {
   bool called = false;
   auto snd = [&called, this]() {
-    return _PXXXX::execution::create<exec::set_value_t()>(
+    return stdexec::create<ex::set_value_t()>(
       [this]<class Context>(Context& ctx) noexcept {
         aVoidAPI(&ctx, [](void* pv) {
           Context& ctx = *static_cast<Context*>(pv);
           *std::get<0>(ctx.args) = true;
-          exec::set_value(std::move(ctx.receiver));
+          ex::set_value(std::move(ctx.receiver));
         });
       },
       &called

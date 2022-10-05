@@ -46,8 +46,8 @@ namespace example::cuda::stream {
           std::execution::value_types_of_t<
             Sender,
             __env,
-            _P2300::execution::__decayed_tuple,
-            _P2300::__single_t>;
+            stdexec::__decayed_tuple,
+            stdexec::__single_t>;
 
       template <class SenderId>
         struct state_t;
@@ -61,7 +61,7 @@ namespace example::cuda::stream {
           }
         friend void tag_invoke(std::execution::set_stopped_t __d, sink_receiver_t&& rcvr) noexcept {
         }
-        friend _P2300::execution::__empty_env
+        friend stdexec::__empty_env
         tag_invoke(std::execution::get_env_t, const sink_receiver_t& rcvr) noexcept {
           return {};
         }
@@ -69,17 +69,17 @@ namespace example::cuda::stream {
 
       template <class SenderId>
         struct receiver_t : receiver_base_t {
-          using Sender = _P2300::__t<SenderId>;
+          using Sender = stdexec::__t<SenderId>;
 
           state_t<SenderId>* state_;
           std::execution::run_loop* loop_;
-          operation_state_base_t<_P2300::__x<sink_receiver_t>>& op_state_;
+          operation_state_base_t<stdexec::__x<sink_receiver_t>>& op_state_;
 
           template <class Error>
             void set_error(Error err) noexcept {
-              if constexpr (_P2300::__decays_to<Error, std::exception_ptr>)
+              if constexpr (stdexec::__decays_to<Error, std::exception_ptr>)
                 state_->data_.template emplace<2>((Error&&) err);
-              else if constexpr (_P2300::__decays_to<Error, std::error_code>)
+              else if constexpr (stdexec::__decays_to<Error, std::error_code>)
                 state_->data_.template emplace<2>(std::make_exception_ptr(std::system_error(err)));
               else
                 state_->data_.template emplace<2>(std::make_exception_ptr((Error&&) err));
@@ -104,7 +104,7 @@ namespace example::cuda::stream {
             rcvr.state_->data_.template emplace<3>(__d);
             rcvr.loop_->finish();
           }
-          friend _P2300::execution::__empty_env
+          friend stdexec::__empty_env
           tag_invoke(std::execution::get_env_t, const receiver_t& rcvr) noexcept {
             return {};
           }
@@ -112,25 +112,25 @@ namespace example::cuda::stream {
 
       template <class SenderId>
         struct state_t {
-          using _Tuple = sync_wait_result_t<_P2300::__t<SenderId>>;
+          using _Tuple = sync_wait_result_t<stdexec::__t<SenderId>>;
           std::variant<std::monostate, _Tuple, std::exception_ptr, std::execution::set_stopped_t> data_{};
         };
 
       template <std::execution::sender Sender>
-        using transfer_sender_th = transfer_sender_t<_P2300::__x<Sender>>;
+        using transfer_sender_th = transfer_sender_t<stdexec::__x<Sender>>;
     } // namespace __impl
 
     struct sync_wait_t {
-      template <_P2300::execution::__single_value_variant_sender<__impl::__env> Sender>
+      template <stdexec::__single_value_variant_sender<__impl::__env> Sender>
         requires
-          (!_P2300::execution::__tag_invocable_with_completion_scheduler<
+          (!stdexec::__tag_invocable_with_completion_scheduler<
             sync_wait_t, std::execution::set_value_t, Sender>) &&
           (!std::tag_invocable<sync_wait_t, Sender>) &&
           std::execution::sender<Sender, __impl::__env> &&
-          std::execution::sender_to<Sender, __impl::receiver_t<_P2300::__x<Sender>>>
+          std::execution::sender_to<Sender, __impl::receiver_t<stdexec::__x<Sender>>>
       auto operator()(detail::queue::task_hub_t* hub, Sender&& __sndr) const
         -> std::optional<__impl::sync_wait_result_t<Sender>> {
-        using state_t = __impl::state_t<_P2300::__x<Sender>>;
+        using state_t = __impl::state_t<stdexec::__x<Sender>>;
         state_t state {};
         std::execution::run_loop loop;
 
@@ -142,8 +142,8 @@ namespace example::cuda::stream {
             hub,
             __impl::transfer_sender_th<Sender>(hub, (Sender&&)__sndr),
             __impl::sink_receiver_t{},
-            [&](operation_state_base_t<_P2300::__x<__impl::sink_receiver_t>>& stream_provider) -> __impl::receiver_t<_P2300::__x<Sender>> {
-              return __impl::receiver_t<_P2300::__x<Sender>>{{}, &state, &loop, stream_provider};
+            [&](operation_state_base_t<stdexec::__x<__impl::sink_receiver_t>>& stream_provider) -> __impl::receiver_t<stdexec::__x<Sender>> {
+              return __impl::receiver_t<stdexec::__x<Sender>>{{}, &state, &loop, stream_provider};
             });
         std::execution::start(__op_state);
 

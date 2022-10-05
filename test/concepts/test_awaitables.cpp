@@ -69,10 +69,10 @@ private:
 template <typename Signatures, typename Awaiter>
 void test_awaitable_sender1(Signatures&&, Awaiter&&) {
   static_assert(ex::sender<awaitable_sender_1<Awaiter>>);
-  static_assert(_P2300::execution::__awaitable<awaitable_sender_1<Awaiter>>);
+  static_assert(stdexec::__awaitable<awaitable_sender_1<Awaiter>>);
 
   static_assert(
-    !_P2300::execution::__get_completion_signatures::__with_member_alias<awaitable_sender_1<Awaiter>>);
+    !stdexec::__get_completion_signatures::__with_member_alias<awaitable_sender_1<Awaiter>>);
   static_assert(
       std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_1<Awaiter>>, Signatures>);
 }
@@ -82,11 +82,11 @@ void test_awaitable_sender2(Signatures) {
   static_assert(ex::sender<awaitable_sender_2>);
   static_assert(ex::sender<awaitable_sender_2, promise<__coro::suspend_always>>);
 
-  static_assert(_P2300::execution::__awaitable<awaitable_sender_2>);
-  static_assert(_P2300::execution::__awaitable<awaitable_sender_2, promise<__coro::suspend_always>>);
+  static_assert(stdexec::__awaitable<awaitable_sender_2>);
+  static_assert(stdexec::__awaitable<awaitable_sender_2, promise<__coro::suspend_always>>);
 
   static_assert(
-    !_P2300::execution::__get_completion_signatures::__with_member_alias<awaitable_sender_2>);
+    !stdexec::__get_completion_signatures::__with_member_alias<awaitable_sender_2>);
 
   static_assert(std::is_same_v<
       ex::completion_signatures_of_t<awaitable_sender_2>,
@@ -101,12 +101,12 @@ void test_awaitable_sender3(Signatures) {
   static_assert(ex::sender<awaitable_sender_3>);
   static_assert(ex::sender<awaitable_sender_3, promise<awaiter>>);
 
-  static_assert(_P2300::execution::__awaiter<awaiter>);
-  static_assert(_P2300::execution::__awaitable<awaitable_sender_3>);
-  static_assert(_P2300::execution::__awaitable<awaitable_sender_3, promise<awaiter>>);
+  static_assert(stdexec::__awaiter<awaiter>);
+  static_assert(stdexec::__awaitable<awaitable_sender_3>);
+  static_assert(stdexec::__awaitable<awaitable_sender_3, promise<awaiter>>);
 
   static_assert(
-    !_P2300::execution::__get_completion_signatures::__with_member_alias<awaitable_sender_3>);
+    !stdexec::__get_completion_signatures::__with_member_alias<awaitable_sender_3>);
 
   static_assert(std::is_same_v<
       ex::completion_signatures_of_t<awaitable_sender_3>,
@@ -128,7 +128,7 @@ TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]")
   test_awaitable_sender1(
     signature_error_values(
       std::exception_ptr(),
-      _P2300::execution::__await_result_t<awaitable_sender_1<awaiter>>()),
+      stdexec::__await_result_t<awaitable_sender_1<awaiter>>()),
     awaiter{});
 
   test_awaitable_sender2(
@@ -138,7 +138,7 @@ TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]")
   test_awaitable_sender3(
     signature_error_values(
       std::exception_ptr(),
-      _P2300::execution::__await_result_t<awaitable_sender_3, promise<awaiter>>()));
+      stdexec::__await_result_t<awaitable_sender_3, promise<awaiter>>()));
 }
 
 #endif // !_STD_NO_COROUTINES_

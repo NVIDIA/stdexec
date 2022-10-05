@@ -28,7 +28,7 @@
 #include <stop_token>
 #endif
 
-namespace _P2300 {
+namespace stdexec {
   // [stoptoken.inplace], class in_place_stop_token
   class in_place_stop_token;
 
@@ -403,4 +403,4 @@ namespace _P2300 {
         { _Token::stop_possible() } -> __boolean_testable_;
       } &&
       (!_Token::stop_possible());
-} // namespace _P2300
+} // namespace stdexec

@@ -40,7 +40,7 @@ namespace std {
   using namespace __std_concepts_polyfill;
 }
 
-namespace _P2300 {
+namespace stdexec {
   template <class _F, class... _As>
     concept __nothrow_invocable =
       invocable<_F, _As...> &&
@@ -116,4 +116,4 @@ namespace _P2300 {
   using __tag_invoke::nothrow_tag_invocable;
   using __tag_invoke::tag_invoke_result_t;
   using __tag_invoke::tag_invoke_result;
-} // namespace _P2300
+} // namespace stdexec

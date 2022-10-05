@@ -29,7 +29,7 @@
 #include <vector>
 
 namespace example {
-  using _P2300::execution::__detail::__intrusive_queue;
+  using stdexec::__detail::__intrusive_queue;
 
   struct task_base {
     task_base* next;
@@ -62,9 +62,9 @@ namespace example {
             std::execution::set_stopped_t()>;
        private:
         template <typename Receiver>
-        operation<_P2300::__x<std::decay_t<Receiver>>>
+        operation<stdexec::__x<std::decay_t<Receiver>>>
         make_operation_(Receiver&& r) const {
-          return operation<_P2300::__x<std::decay_t<Receiver>>>{pool_, (Receiver &&) r};
+          return operation<stdexec::__x<std::decay_t<Receiver>>>{pool_, (Receiver &&) r};
         }
 
         static_thread_pool::scheduler make_scheduler_() const {
@@ -72,7 +72,7 @@ namespace example {
         }
 
         template <class Receiver>
-        friend operation<_P2300::__x<std::decay_t<Receiver>>>
+        friend operation<stdexec::__x<std::decay_t<Receiver>>>
         tag_invoke(std::execution::connect_t, sender s, Receiver&& r) {
           return s.make_operation_((Receiver &&) r);
         }
@@ -96,27 +96,27 @@ namespace example {
       }
 
       template <class Fun, class Shape, class... Args>
-          requires _P2300::__callable<Fun, Shape, Args...>
+          requires stdexec::__callable<Fun, Shape, Args...>
         using bulk_non_throwing =
-          _P2300::execution::__bool<
+          stdexec::__bool<
             // If function invocation doesn't throw
-            _P2300::__nothrow_callable<Fun, Shape, Args...> &&
+            stdexec::__nothrow_callable<Fun, Shape, Args...> &&
             // and emplacing a tuple doesn't throw
-            noexcept(_P2300::execution::__decayed_tuple<Args...>(std::declval<Args>()...))
+            noexcept(stdexec::__decayed_tuple<Args...>(std::declval<Args>()...))
             // there's no need to advertise completion with `exception_ptr`
           >;
 
       template <class SenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
         struct bulk_shared_state : task_base {
-          using Sender = _P2300::__t<SenderId>;
-          using Receiver = _P2300::__t<ReceiverId>;
+          using Sender = stdexec::__t<SenderId>;
+          using Receiver = stdexec::__t<ReceiverId>;
 
           using variant_t =
-            _P2300::execution::__value_types_of_t<
+            stdexec::__value_types_of_t<
               Sender,
               std::execution::env_of_t<Receiver>,
-              _P2300::__q<_P2300::execution::__decayed_tuple>,
-              _P2300::__q<_P2300::execution::__variant>>;
+              stdexec::__q<stdexec::__decayed_tuple>,
+              stdexec::__q<stdexec::__variant>>;
 
           variant_t data_;
           static_thread_pool& pool_;
@@ -226,8 +226,8 @@ namespace example {
 
       template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
         struct bulk_receiver {
-          using Sender = _P2300::__t<SenderId>;
-          using Receiver = _P2300::__t<ReceiverId>;
+          using Sender = stdexec::__t<SenderId>;
+          using Receiver = stdexec::__t<ReceiverId>;
 
           using shared_state = bulk_shared_state<SenderId, ReceiverId, Shape, Fn, MayThrow>;
 
@@ -239,7 +239,7 @@ namespace example {
 
           template <class... As>
           friend void tag_invoke(std::execution::set_value_t, bulk_receiver&& self, As&&... as) noexcept {
-            using tuple_t = _P2300::execution::__decayed_tuple<As...>;
+            using tuple_t = stdexec::__decayed_tuple<As...>;
 
             shared_state& state = self.shared_state_;
 
@@ -262,7 +262,7 @@ namespace example {
             }
           }
 
-          template <_P2300::__one_of<std::execution::set_error_t, std::execution::set_stopped_t> Tag, class... As>
+          template <stdexec::__one_of<std::execution::set_error_t, std::execution::set_stopped_t> Tag, class... As>
           friend void tag_invoke(Tag tag, bulk_receiver&& self, As&&... as) noexcept {
             shared_state& state = self.shared_state_;
             tag((Receiver&&)state.receiver_, (As&&)as...);
@@ -276,14 +276,14 @@ namespace example {
 
       template <class SenderId, class ReceiverId, std::integral Shape, class Fun>
         struct bulk_op_state {
-          using Sender = _P2300::__t<SenderId>;
-          using Receiver = _P2300::__t<ReceiverId>;
+          using Sender = stdexec::__t<SenderId>;
+          using Receiver = stdexec::__t<ReceiverId>;
 
           static constexpr bool may_throw =
-              !_P2300::__v<_P2300::execution::__value_types_of_t<
+              !stdexec::__v<stdexec::__value_types_of_t<
                   Sender, std::execution::env_of_t<Receiver>,
-                  _P2300::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
-                  _P2300::__q<_P2300::__mand>>>;
+                  stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
+                  stdexec::__q<stdexec::__mand>>>;
 
           using bulk_rcvr = bulk_receiver<SenderId, ReceiverId, Shape, Fun, may_throw>;
           using shared_state = bulk_shared_state<SenderId, ReceiverId, Shape, Fun, may_throw>;
@@ -305,8 +305,8 @@ namespace example {
 
       template <class SenderId, std::integral Shape, class FunId>
         struct bulk_sender {
-          using Sender = _P2300::__t<SenderId>;
-          using Fun = _P2300::__t<FunId>;
+          using Sender = stdexec::__t<SenderId>;
+          using Fun = stdexec::__t<FunId>;
 
           static_thread_pool& pool_;
           Sender sndr_;
@@ -315,14 +315,14 @@ namespace example {
 
           template <class Fun, class Sender, class Env>
             using with_error_invoke_t =
-              _P2300::__if_c<
-                _P2300::__v<_P2300::execution::__value_types_of_t<
+              stdexec::__if_c<
+                stdexec::__v<stdexec::__value_types_of_t<
                   Sender,
                   Env,
-                  _P2300::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
-                  _P2300::__q<_P2300::__mand>>>,
+                  stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
+                  stdexec::__q<stdexec::__mand>>>,
                 std::execution::completion_signatures<>,
-                _P2300::execution::__with_exception_ptr>;
+                stdexec::__with_exception_ptr>;
 
           template <class... Tys>
           using set_value_t =
@@ -331,19 +331,19 @@ namespace example {
 
           template <class Self, class Env>
             using completion_signatures =
-              _P2300::execution::__make_completion_signatures<
-                _P2300::__member_t<Self, Sender>,
+              stdexec::__make_completion_signatures<
+                stdexec::__member_t<Self, Sender>,
                 Env,
-                with_error_invoke_t<Fun, _P2300::__member_t<Self, Sender>, Env>,
-                _P2300::__q<set_value_t>>;
+                with_error_invoke_t<Fun, stdexec::__member_t<Self, Sender>, Env>,
+                stdexec::__q<set_value_t>>;
 
           template <class Self, class Receiver>
             using bulk_op_state_t =
               bulk_op_state<
-                _P2300::__x<_P2300::__member_t<Self, Sender>>,
-                _P2300::__x<std::remove_cvref_t<Receiver>>, Shape, Fun>;
+                stdexec::__x<stdexec::__member_t<Self, Sender>>,
+                stdexec::__x<std::remove_cvref_t<Receiver>>, Shape, Fun>;
 
-          template <_P2300::__decays_to<bulk_sender> Self, std::execution::receiver Receiver>
+          template <stdexec::__decays_to<bulk_sender> Self, std::execution::receiver Receiver>
             requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>
           friend bulk_op_state_t<Self, Receiver> tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
             noexcept(std::is_nothrow_constructible_v<bulk_op_state_t<Self, Receiver>, static_thread_pool&, Shape, Fun, Sender, Receiver>) {
@@ -352,19 +352,19 @@ namespace example {
             };
           }
 
-          template <_P2300::__decays_to<bulk_sender> Self, class Env>
+          template <stdexec::__decays_to<bulk_sender> Self, class Env>
           friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
             -> std::execution::dependent_completion_signatures<Env>;
 
-          template <_P2300::__decays_to<bulk_sender> Self, class Env>
+          template <stdexec::__decays_to<bulk_sender> Self, class Env>
           friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
             -> completion_signatures<Self, Env> requires true;
 
-          template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
-            requires _P2300::__callable<Tag, const Sender&, As...>
+          template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+            requires stdexec::__callable<Tag, const Sender&, As...>
           friend auto tag_invoke(Tag tag, const bulk_sender& self, As&&... as)
-            noexcept(_P2300::__nothrow_callable<Tag, const Sender&, As...>)
-            -> _P2300::__call_result_if_t<_P2300::execution::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+            noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+            -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
             return ((Tag&&) tag)(self.sndr_, (As&&) as...);
           }
         };
@@ -375,7 +375,7 @@ namespace example {
       }
 
       template <std::execution::sender Sender, std::integral Shape, class Fun>
-        using bulk_sender_t = bulk_sender<_P2300::__x<std::remove_cvref_t<Sender>>, Shape, _P2300::__x<std::remove_cvref_t<Fun>>>;
+        using bulk_sender_t = bulk_sender<stdexec::__x<std::remove_cvref_t<Sender>>, Shape, stdexec::__x<std::remove_cvref_t<Fun>>>;
 
       template <std::execution::sender S, std::integral Shape, class Fn>
       friend bulk_sender_t<S, Shape, Fn>
@@ -431,7 +431,7 @@ namespace example {
 
   template <typename ReceiverId>
     class operation : task_base {
-      using Receiver = _P2300::__t<ReceiverId>;
+      using Receiver = stdexec::__t<ReceiverId>;
       friend static_thread_pool::scheduler::sender;
 
       static_thread_pool& pool_;

@@ -100,7 +100,7 @@ namespace std {
 }
 #endif
 
-namespace _P2300 {
+namespace stdexec {
   using namespace __std_concepts_polyfill;
   using std::decay_t;
 
@@ -163,4 +163,4 @@ namespace _P2300 {
   template <class _Ty>
     concept __nothrow_decay_copyable =
       __nothrow_constructible_from<decay_t<_Ty>, _Ty>;
-} // namespace _P2300
+} // namespace stdexec

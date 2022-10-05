@@ -28,7 +28,7 @@ namespace __coro = std::experimental;
 #define _STD_NO_COROUTINES_ 1
 #endif
 
-namespace _P2300 {
+namespace stdexec {
 #if !_STD_NO_COROUTINES_
   // Defined some concepts and utilities for working with awaitables
   template <class _Promise, class _Awaiter>
@@ -97,4 +97,4 @@ namespace _P2300 {
     using __await_result_t = void;
 
 #endif
-} // namespace _P2300
+} // namespace stdexec

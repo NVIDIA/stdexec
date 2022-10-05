@@ -19,21 +19,21 @@
 #include <utility>
 #include <__detail/__config.hpp>
 
-#ifdef _P2300_ASSERT
-#error "Hammer says, ya can't touch this"
+#ifdef STDEXEC_ASSERT
+#error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif
 
-#define _P2300_ASSERT(_X) \
+#define STDEXEC_ASSERT(_X) \
   do { \
     static_assert(noexcept(_X)); \
-    STDEXEC_ASSERT(_X); \
+    STDEXEC_ASSERT_FN(_X); \
   } while(false)
 
-#ifndef STDEXEC_ASSERT
-#define STDEXEC_ASSERT _P2300::__stdexec_assert
+#ifndef STDEXEC_ASSERT_FN
+#define STDEXEC_ASSERT_FN stdexec::__stdexec_assert
 #endif
 
-namespace _P2300 {
+namespace stdexec {
 
   inline constexpr void __stdexec_assert(bool valid) {if (!valid) {std::terminate();}}
 
@@ -46,18 +46,18 @@ namespace _P2300 {
 
     // Before gcc-12, gcc really didn't like tuples or variants of immovable types
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
-#  define _P2300_IMMOVABLE(_X) _X(_X&&)
+#  define STDEXEC_IMMOVABLE(_X) _X(_X&&)
 #else
-#  define _P2300_IMMOVABLE(_X) _X(_X&&) = delete
+#  define STDEXEC_IMMOVABLE(_X) _X(_X&&) = delete
 #endif
 
     // BUG (gcc PR93711): copy elision fails when initializing a
     // [[no_unique_address]] field from a function returning an object
     // of class type by value
 #if defined(__GNUC__) && !defined(__clang__)
-#  define _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #else
-#  define _P2300_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
   struct __none_such {};
@@ -68,7 +68,7 @@ namespace _P2300 {
   struct __immovable {
     __immovable() = default;
    private:
-    _P2300_IMMOVABLE(__immovable);
+    STDEXEC_IMMOVABLE(__immovable);
   };
 
   template <class _T>
@@ -282,7 +282,7 @@ namespace _P2300 {
   template <class _Fn, class...>
     struct __fold_right_ {};
   template <class _Fn, class _State, class _Head, class... _Tail>
-      #if !_P2300_NVHPC()
+      #if !STDEXEC_NVHPC()
       // BUGBUG find better work-around
       requires __minvocable2<_Fn, _State, _Head>
       #endif
@@ -350,7 +350,7 @@ namespace _P2300 {
       template <class, class _False>
         using __f = _False;
     };
-  #if _P2300_NVHPC()
+  #if STDEXEC_NVHPC()
   template <class _Pred, class _True, class _False>
     using __if = __minvoke2<__if_<_Pred::value>, _True, _False>;
   #else

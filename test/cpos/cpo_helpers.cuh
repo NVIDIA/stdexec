@@ -51,7 +51,7 @@ struct scheduler_t {
         ex::set_error_t(std::exception_ptr),                 //
         ex::set_stopped_t()>;
 
-    template <_P2300::__one_of<ex::set_value_t, CompletionSignals...> Tag>
+    template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
     friend scheduler_t tag_invoke(
         ex::get_completion_scheduler_t<Tag>, const sender_t&) noexcept {
       return {};

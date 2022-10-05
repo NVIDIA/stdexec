@@ -35,7 +35,7 @@ namespace bulk {
 
   template <class ReceiverId, std::integral Shape, class Fun>
     class receiver_t : public receiver_base_t {
-      using Receiver = _P2300::__t<ReceiverId>;
+      using Receiver = stdexec::__t<ReceiverId>;
 
       Shape shape_;
       Fun f_;
@@ -45,7 +45,7 @@ namespace bulk {
     public:
       template <class... As _NVCXX_CAPTURE_PACK(As)>
         friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, As&&... as)
-          noexcept requires _P2300::__callable<Fun, Shape, As...> {
+          noexcept requires stdexec::__callable<Fun, Shape, As...> {
           operation_state_base_t<ReceiverId> &op_state = self.op_state_;
 
           _NVCXX_EXPAND_PACK(As, as,
@@ -67,7 +67,7 @@ namespace bulk {
           );
         }
 
-      template <_P2300::__one_of<std::execution::set_error_t,
+      template <stdexec::__one_of<std::execution::set_error_t,
                               std::execution::set_stopped_t> Tag, class... As>
         friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
           self.op_state_.propagate_completion_signal(tag, (As&&)as...);
@@ -87,8 +87,8 @@ namespace bulk {
 
 template <class SenderId, std::integral Shape, class FunId>
   struct bulk_sender_t : sender_base_t {
-    using Sender = _P2300::__t<SenderId>;
-    using Fun = _P2300::__t<FunId>;
+    using Sender = stdexec::__t<SenderId>;
+    using Fun = stdexec::__t<FunId>;
 
     Sender sndr_;
     Shape shape_;
@@ -99,7 +99,7 @@ template <class SenderId, std::integral Shape, class FunId>
         std::execution::set_error_t(cudaError_t)>;
 
     template <class Receiver>
-      using receiver_t = bulk::receiver_t<_P2300::__x<Receiver>, Shape, Fun>;
+      using receiver_t = bulk::receiver_t<stdexec::__x<Receiver>, Shape, Fun>;
 
     template <class... Tys>
     using set_value_t =
@@ -108,37 +108,37 @@ template <class SenderId, std::integral Shape, class FunId>
 
     template <class Self, class Env>
       using completion_signatures =
-        _P2300::execution::__make_completion_signatures<
-          _P2300::__member_t<Self, Sender>,
+        stdexec::__make_completion_signatures<
+          stdexec::__member_t<Self, Sender>,
           Env,
           set_error_t,
-          _P2300::__q<set_value_t>>;
+          stdexec::__q<set_value_t>>;
 
-    template <_P2300::__decays_to<bulk_sender_t> Self, std::execution::receiver Receiver>
+    template <stdexec::__decays_to<bulk_sender_t> Self, std::execution::receiver Receiver>
       requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>
     friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
-      -> stream_op_state_t<_P2300::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<_P2300::__member_t<Self, Sender>>(
+      -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+        return stream_op_state<stdexec::__member_t<Self, Sender>>(
             ((Self&&)self).sndr_,
             (Receiver&&)rcvr,
-            [&](operation_state_base_t<_P2300::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
+            [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
               return receiver_t<Receiver>(self.shape_, self.fun_, stream_provider);
             });
       }
 
-    template <_P2300::__decays_to<bulk_sender_t> Self, class Env>
+    template <stdexec::__decays_to<bulk_sender_t> Self, class Env>
     friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
       -> std::execution::dependent_completion_signatures<Env>;
 
-    template <_P2300::__decays_to<bulk_sender_t> Self, class Env>
+    template <stdexec::__decays_to<bulk_sender_t> Self, class Env>
     friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
       -> completion_signatures<Self, Env> requires true;
 
-    template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
-      requires _P2300::__callable<Tag, const Sender&, As...>
+    template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+      requires stdexec::__callable<Tag, const Sender&, As...>
     friend auto tag_invoke(Tag tag, const bulk_sender_t& self, As&&... as)
-      noexcept(_P2300::__nothrow_callable<Tag, const Sender&, As...>)
-      -> _P2300::__call_result_if_t<_P2300::execution::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+      noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
       return ((Tag&&) tag)(self.sndr_, (As&&) as...);
     }
   };
