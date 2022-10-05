@@ -29,7 +29,7 @@
 #include <vector>
 
 namespace example {
-  using stdexec::__detail::__intrusive_queue;
+  using stdexec::__intrusive_queue;
 
   struct task_base {
     task_base* next;

@@ -39,7 +39,7 @@ namespace stdexec {
   template <class _Callback>
     class in_place_stop_callback;
 
-  namespace __detail {
+  namespace __stok {
     struct __in_place_stop_callback_base {
       void __execute() noexcept {
         this->__execute_(this);
@@ -122,7 +122,7 @@ namespace stdexec {
 
    private:
     friend in_place_stop_token;
-    friend __detail::__in_place_stop_callback_base;
+    friend __stok::__in_place_stop_callback_base;
     template <class>
       friend class in_place_stop_callback;
 
@@ -131,15 +131,15 @@ namespace stdexec {
 
     bool __try_lock_unless_stop_requested_(bool) const noexcept;
 
-    bool __try_add_callback_(__detail::__in_place_stop_callback_base*) const noexcept;
+    bool __try_add_callback_(__stok::__in_place_stop_callback_base*) const noexcept;
 
-    void __remove_callback_(__detail::__in_place_stop_callback_base*) const noexcept;
+    void __remove_callback_(__stok::__in_place_stop_callback_base*) const noexcept;
 
     static constexpr uint8_t __stop_requested_flag_ = 1;
     static constexpr uint8_t __locked_flag_ = 2;
 
     mutable std::atomic<uint8_t> __state_{0};
-    mutable __detail::__in_place_stop_callback_base* __callbacks_ = nullptr;
+    mutable __stok::__in_place_stop_callback_base* __callbacks_ = nullptr;
     std::thread::id __notifying_thread_;
   };
 
@@ -194,13 +194,13 @@ namespace stdexec {
 
   // [stopcallback.inplace], class template in_place_stop_callback
   template <class _Fun>
-    class in_place_stop_callback : __detail::__in_place_stop_callback_base {
+    class in_place_stop_callback : __stok::__in_place_stop_callback_base {
      public:
       template <class _Fun2>
         requires constructible_from<_Fun, _Fun2>
       explicit in_place_stop_callback(in_place_stop_token __token, _Fun2&& __fun)
           noexcept(std::is_nothrow_constructible_v<_Fun, _Fun2>)
-        : __detail::__in_place_stop_callback_base(__token.__source_, &in_place_stop_callback::__execute_impl_)
+        : __stok::__in_place_stop_callback_base(__token.__source_, &in_place_stop_callback::__execute_impl_)
         , __fun_((_Fun2&&) __fun) {
         __register_callback_();
       }
@@ -211,14 +211,14 @@ namespace stdexec {
       }
 
      private:
-      static void __execute_impl_(__detail::__in_place_stop_callback_base* cb) noexcept {
+      static void __execute_impl_(__stok::__in_place_stop_callback_base* cb) noexcept {
         std::move(static_cast<in_place_stop_callback*>(cb)->__fun_)();
       }
 
       [[no_unique_address]] _Fun __fun_;
     };
 
-  namespace __detail {
+  namespace __stok {
     inline void __in_place_stop_callback_base::__register_callback_() noexcept {
       if (__source_ != nullptr) {
         if (!__source_->__try_add_callback_(this)) {
@@ -270,7 +270,7 @@ namespace stdexec {
   }
 
   inline uint8_t in_place_stop_source::__lock_() const noexcept {
-    __detail::__spin_wait __spin;
+    __stok::__spin_wait __spin;
     auto __old_state = __state_.load(std::memory_order_relaxed);
     do {
       while ((__old_state & __locked_flag_) != 0) {
@@ -292,7 +292,7 @@ namespace stdexec {
 
   inline bool in_place_stop_source::__try_lock_unless_stop_requested_(
       bool __set_stop_requested) const noexcept {
-    __detail::__spin_wait __spin;
+    __stok::__spin_wait __spin;
     auto __old_state = __state_.load(std::memory_order_relaxed);
     do {
       while (true) {
@@ -317,7 +317,7 @@ namespace stdexec {
   }
 
   inline bool in_place_stop_source::__try_add_callback_(
-      __detail::__in_place_stop_callback_base* __callbk) const noexcept {
+      __stok::__in_place_stop_callback_base* __callbk) const noexcept {
     if (!__try_lock_unless_stop_requested_(false)) {
       return false;
     }
@@ -335,7 +335,7 @@ namespace stdexec {
   }
 
   inline void in_place_stop_source::__remove_callback_(
-      __detail::__in_place_stop_callback_base* __callbk) const noexcept {
+      __stok::__in_place_stop_callback_base* __callbk) const noexcept {
   auto __old_state = __lock_();
 
     if (__callbk->__prev_ptr_ != nullptr) {
@@ -359,7 +359,7 @@ namespace stdexec {
       } else {
         // Concurrently executing on another thread.
         // Wait until the other thread finishes executing the callback.
-        __detail::__spin_wait __spin;
+        __stok::__spin_wait __spin;
         while (!__callbk->__callback_completed_.load(std::memory_order_acquire)) {
           __spin.__wait();
         }
@@ -379,7 +379,7 @@ namespace stdexec {
         { __token.stop_possible() } noexcept -> __boolean_testable_;
         // workaround ICE in appleclang 13.1
 #if !defined(__clang__)
-        typename __detail::__check_type_alias_exists<_Token::template callback_type>;
+        typename __stok::__check_type_alias_exists<_Token::template callback_type>;
 #endif
       };
 
