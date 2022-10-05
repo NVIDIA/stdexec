@@ -5,7 +5,7 @@
 
 namespace ex = std::execution;
 using _P2519::execution::async_scope;
-using _P2300::this_thread::sync_wait;
+using std::this_thread::sync_wait;
 
 //! Sender that throws exception when connected
 struct throwing_sender {

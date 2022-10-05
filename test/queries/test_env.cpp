@@ -39,18 +39,18 @@ constexpr struct Bar {
 }
 
 TEST_CASE("Test make_env works", "[env]") {
-  auto e = ex::make_env(ex::with(foo, 42));
+  auto e = _P2300::execution::make_env(_P2300::execution::with(foo, 42));
   CHECK(foo(e) == 42);
 
-  auto e2 = ex::make_env(e, ex::with(bar, 43));
+  auto e2 = _P2300::execution::make_env(e, _P2300::execution::with(bar, 43));
   CHECK(foo(e2) == 42);
   CHECK(bar(e2) == 43);
 
-  auto e3 = ex::make_env(e2, ex::with(foo, 44));
+  auto e3 = _P2300::execution::make_env(e2, _P2300::execution::with(foo, 44));
   CHECK(foo(e3) == 44);
   CHECK(bar(e3) == 43);
 
-  auto e4 = ex::make_env(e3, ex::with(foo));
+  auto e4 = _P2300::execution::make_env(e3, _P2300::execution::with(foo));
   STATIC_REQUIRE(!std::invocable<Foo, decltype(e4)>);
   CHECK(bar(e4) == 43);
 }

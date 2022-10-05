@@ -46,7 +46,7 @@ namespace example::cuda::stream {
           std::execution::value_types_of_t<
             Sender,
             __env,
-            std::execution::__decayed_tuple,
+            _P2300::execution::__decayed_tuple,
             _P2300::__single_t>;
 
       template <class SenderId>
@@ -61,7 +61,7 @@ namespace example::cuda::stream {
           }
         friend void tag_invoke(std::execution::set_stopped_t __d, sink_receiver_t&& rcvr) noexcept {
         }
-        friend std::execution::__empty_env
+        friend _P2300::execution::__empty_env
         tag_invoke(std::execution::get_env_t, const sink_receiver_t& rcvr) noexcept {
           return {};
         }
@@ -104,7 +104,7 @@ namespace example::cuda::stream {
             rcvr.state_->data_.template emplace<3>(__d);
             rcvr.loop_->finish();
           }
-          friend std::execution::__empty_env
+          friend _P2300::execution::__empty_env
           tag_invoke(std::execution::get_env_t, const receiver_t& rcvr) noexcept {
             return {};
           }
@@ -121,9 +121,9 @@ namespace example::cuda::stream {
     } // namespace __impl
 
     struct sync_wait_t {
-      template <std::execution::__single_value_variant_sender<__impl::__env> Sender>
+      template <_P2300::execution::__single_value_variant_sender<__impl::__env> Sender>
         requires
-          (!std::execution::__tag_invocable_with_completion_scheduler<
+          (!_P2300::execution::__tag_invocable_with_completion_scheduler<
             sync_wait_t, std::execution::set_value_t, Sender>) &&
           (!std::tag_invocable<sync_wait_t, Sender>) &&
           std::execution::sender<Sender, __impl::__env> &&

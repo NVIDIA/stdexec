@@ -86,7 +86,7 @@ namespace _P2519::execution {
         }
 
         auto get_env() const& {
-          return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__scope_)));
+          return make_env(with(std::execution::get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
@@ -260,7 +260,7 @@ namespace _P2519::execution {
         }
 
         auto get_env() const& {
-          return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__scope_)));
+          return make_env(with(std::execution::get_stop_token, __get_stop_token_(__scope_)));
         }
       };
 
@@ -416,17 +416,17 @@ namespace _P2519::execution {
                       friend receiver_adaptor<__receiver>;
                       template<class... _An>
                       void set_value(_An&&... __an) noexcept {
-                          _P2300::execution::set_value(std::move(__op_->__rcvr_), (_An&&)__an...);
+                          std::execution::set_value(std::move(__op_->__rcvr_), (_An&&)__an...);
                       }
                       template<class _Err>
                       void set_error(_Err&& __e) noexcept {
-                          _P2300::execution::set_error(std::move(__op_->__rcvr_), __e);
+                          std::execution::set_error(std::move(__op_->__rcvr_), __e);
                       }
                       void set_stopped() noexcept {
-                          _P2300::execution::set_stopped(std::move(__op_->__rcvr_));
+                          std::execution::set_stopped(std::move(__op_->__rcvr_));
                       }
                       auto get_env() const& {
-                        return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__get_scope_(__op_))));
+                        return make_env(with(std::execution::get_stop_token, __get_stop_token_(__get_scope_(__op_))));
                       }
                   };
                   [[no_unique_address]] __Receiver __rcvr_;
@@ -512,7 +512,7 @@ namespace _P2519::execution {
                     template<class... _An>
                     void set_value(_An&&... an) noexcept {
                         auto __scope = __op_->__scope_;
-                        _P2300::execution::set_value(std::move(__op_->__rcvr_), (_An&&)an...);
+                        std::execution::set_value(std::move(__op_->__rcvr_), (_An&&)an...);
                         // do not access __op_
                         // do not access this
                         __complete(__scope);
@@ -520,20 +520,20 @@ namespace _P2519::execution {
                     template<class _Err>
                     void set_error(_Err&& __e) noexcept {
                         auto __scope = __op_->__scope_;
-                        _P2300::execution::set_error(std::move(__op_->__rcvr_), (_Err&&)__e);
+                        std::execution::set_error(std::move(__op_->__rcvr_), (_Err&&)__e);
                         // do not access __op_
                         // do not access this
                         __complete(__scope);
                     }
                     void set_stopped() noexcept {
                         auto __scope = __op_->__scope_;
-                        _P2300::execution::set_stopped(std::move(__op_->__rcvr_));
+                        std::execution::set_stopped(std::move(__op_->__rcvr_));
                         // do not access __op_
                         // do not access this
                         __complete(__scope);
                     }
                     auto get_env() const& {
-                      return make_env(with(_P2300::execution::get_stop_token, __get_stop_token_(__get_scope_(__op_))));
+                      return make_env(with(std::execution::get_stop_token, __get_stop_token_(__get_scope_(__op_))));
                     }
                 };
                 async_scope* __scope_;

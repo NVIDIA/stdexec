@@ -37,7 +37,7 @@ struct on_stop_requested {
 
 template <class Env>
   using env_t =
-    std::execution::make_env_t<Env, std::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>;
+    _P2300::execution::make_env_t<Env, _P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>;
 
 template <class...>
   using swallow_values = std::execution::completion_signatures<>;
@@ -54,10 +54,10 @@ __global__ void copy_kernel(TupleT* tpl, As&&... as) {
 }
 
 template <class Env, class... Senders>
-    requires ((_P2300::__v<std::execution::__count_of<std::execution::set_value_t, Senders, Env>> <= 1) &&...)
+    requires ((_P2300::__v<_P2300::execution::__count_of<std::execution::set_value_t, Senders, Env>> <= 1) &&...)
   struct traits<Env, Senders...> {
     using non_values =
-      std::execution::__concat_completion_signatures_t<
+      _P2300::execution::__concat_completion_signatures_t<
         std::execution::completion_signatures<
           std::execution::set_error_t(cudaError_t),
           std::execution::set_stopped_t()>,
@@ -69,14 +69,14 @@ template <class Env, class... Senders>
     using values =
       _P2300::__minvoke<
         _P2300::__concat<_P2300::__qf<std::execution::set_value_t>>,
-        std::execution::__value_types_of_t<
+        _P2300::execution::__value_types_of_t<
           Senders,
           Env,
           _P2300::__q<_P2300::__types>,
           _P2300::__single_or<_P2300::__types<>>>...>;
     using __t =
       _P2300::__if_c<
-        (std::execution::__sends<std::execution::set_value_t, Senders, Env> &&...),
+        (_P2300::execution::__sends<std::execution::set_value_t, Senders, Env> &&...),
         _P2300::__minvoke2<
           _P2300::__push_back<_P2300::__q<std::execution::completion_signatures>>, non_values, values>,
         non_values>;
@@ -178,10 +178,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         }
 
         auto get_env() const
-          -> std::execution::make_env_t<std::execution::env_of_t<Receiver>, std::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
-          return std::execution::make_env(
+          -> _P2300::execution::make_env_t<std::execution::env_of_t<Receiver>, _P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
+          return _P2300::execution::make_env(
             std::execution::get_env(base()),
-            std::execution::with(std::execution::get_stop_token, op_state_->stop_source_.get_token()));
+            _P2300::execution::with(std::execution::get_stop_token, op_state_->stop_source_.get_token()));
         }
 
         operation_t<CvrefReceiverId>* op_state_;
@@ -297,7 +297,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         template <size_t... Is>
           operation_t(WhenAll&& when_all, Receiver rcvr, std::index_sequence<Is...>)
             : child_states_{
-              std::execution::__conv{[&when_all, this]() {
+              _P2300::execution::__conv{[&when_all, this]() {
                   return std::execution::connect(
                       std::get<Is>(((WhenAll&&) when_all).sndrs_),
                       receiver_t<CvrefReceiverId, Is>{{}, {}, this});
@@ -354,7 +354,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
             sends_values<Traits>,
             _P2300::__minvoke<
               _P2300::__q<tuple_t>,
-              std::execution::__value_types_of_t<
+              _P2300::execution::__value_types_of_t<
                 _P2300::__t<SenderIds>,
                 when_all::env_t<Env>,
                 _P2300::__q<decayed_tuple>,
@@ -367,7 +367,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         std::array<cudaEvent_t, sizeof...(SenderIds)> events_;
         // Could be non-atomic here and atomic_ref everywhere except __completion_fn
         std::atomic<when_all::state_t> state_{when_all::started};
-        std::execution::error_types_of_t<when_all_sender_t, when_all::env_t<Env>, std::execution::__variant> errors_{};
+        std::execution::error_types_of_t<when_all_sender_t, when_all::env_t<Env>, _P2300::execution::__variant> errors_{};
         child_values_tuple_t* values_{};
         std::in_place_stop_source stop_source_{};
         std::optional<typename std::execution::stop_token_of_t<std::execution::env_of_t<Receiver>&>::template

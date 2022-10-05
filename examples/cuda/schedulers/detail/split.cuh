@@ -49,8 +49,8 @@ namespace example::cuda::stream {
         }
 
         friend auto tag_invoke(std::execution::get_env_t, const __receiver& __self)
-          -> std::execution::make_env_t<std::execution::with_t<std::execution::get_stop_token_t, std::execution::in_place_stop_token>> {
-          return std::execution::make_env(std::execution::with(std::execution::get_stop_token, __self.__sh_state_.__stop_source_.get_token()));
+          -> _P2300::execution::make_env_t<_P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
+          return _P2300::execution::make_env(_P2300::execution::with(std::execution::get_stop_token, __self.__sh_state_.__stop_source_.get_token()));
         }
 
         explicit __receiver(_SharedState &__sh_state) noexcept
@@ -78,16 +78,16 @@ namespace example::cuda::stream {
               _Ts...>;
 
         using __bound_values_t =
-          std::execution::__value_types_of_t<
+          _P2300::execution::__value_types_of_t<
             _Sender,
-            std::execution::make_env_t<std::execution::with_t<std::execution::get_stop_token_t, std::execution::in_place_stop_token>>,
+            _P2300::execution::make_env_t<_P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
             _P2300::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
             _P2300::__q<__bind_tuples>>;
 
         using __variant_t =
-          std::execution::__error_types_of_t<
+          _P2300::execution::__error_types_of_t<
             _Sender,
-            std::execution::make_env_t<std::execution::with_t<std::execution::get_stop_token_t, std::execution::in_place_stop_token>>,
+            _P2300::execution::make_env_t<_P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
             _P2300::__transform<
               _P2300::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
               __bound_values_t>>;
@@ -95,7 +95,7 @@ namespace example::cuda::stream {
         using __receiver_ = __receiver<_SenderId, __sh_state>;
         using inner_op_state_t = std::execution::connect_result_t<_Sender, __receiver_>;
 
-        std::execution::in_place_stop_source __stop_source_{};
+        std::in_place_stop_source __stop_source_{};
         inner_op_state_t __op_state2_;
         std::atomic<void*> __head_;
         __variant_t *__data_{nullptr};
@@ -136,7 +136,7 @@ namespace example::cuda::stream {
         using _Receiver = _P2300::__t<_ReceiverId>;
 
         struct __on_stop_requested {
-          std::execution::in_place_stop_source& __stop_source_;
+          std::in_place_stop_source& __stop_source_;
           void operator()() noexcept {
             __stop_source_.request_stop();
           }
@@ -224,7 +224,7 @@ namespace example::cuda::stream {
 
     public:
       template <_P2300::__decays_to<split_sender_t> _Self, std::execution::receiver _Receiver>
-          requires std::execution::receiver_of<_Receiver, std::execution::completion_signatures_of_t<_Self, std::execution::__empty_env>>
+          requires std::execution::receiver_of<_Receiver, std::execution::completion_signatures_of_t<_Self, _P2300::execution::__empty_env>>
         friend auto tag_invoke(std::execution::connect_t, _Self&& __self, _Receiver&& __recvr)
           noexcept(std::is_nothrow_constructible_v<std::decay_t<_Receiver>, _Receiver>)
           -> __operation<_Receiver> {
@@ -232,12 +232,12 @@ namespace example::cuda::stream {
                                         __self.__shared_state_};
         }
 
-      template <std::execution::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+      template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
           requires (!_P2300::__is_instance_of<_Tag, std::execution::get_completion_scheduler_t>) &&
             _P2300::__callable<_Tag, const _Sender&, _As...>
         friend auto tag_invoke(_Tag __tag, const split_sender_t& __self, _As&&... __as)
           noexcept(_P2300::__nothrow_callable<_Tag, const _Sender&, _As...>)
-          -> _P2300::__call_result_if_t<std::execution::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
+          -> _P2300::__call_result_if_t<_P2300::execution::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
           _NVCXX_EXPAND_PACK_RETURN(_As, __as,
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           )

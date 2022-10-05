@@ -113,7 +113,7 @@ int main() {
     scope.spawn(std::move(snd));
   }
 
-  (void) _P2300::this_thread::sync_wait(scope.on_empty());
+  (void) std::this_thread::sync_wait(scope.on_empty());
 
   return 0;
 }

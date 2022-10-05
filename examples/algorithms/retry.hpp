@@ -20,7 +20,7 @@
 #include <execution.hpp>
 
 template <class From, class To>
-using _copy_cvref_t = std::__member_t<From, To>;
+using _copy_cvref_t = _P2300::__member_t<From, To>;
 
 template <class From, class To>
 concept _decays_to = std::same_as<std::decay_t<From>, To>;

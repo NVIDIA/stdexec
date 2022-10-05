@@ -6,7 +6,7 @@
 
 namespace ex = std::execution;
 using _P2519::execution::async_scope;
-using _P2300::this_thread::sync_wait;
+using std::this_thread::sync_wait;
 
 TEST_CASE("calling request_stop will be visible in stop_source", "[async_scope][stop]") {
   async_scope scope;

@@ -33,7 +33,7 @@ namespace repeat_n_detail {
     friend void tag_invoke(ex::set_value_t, sink_receiver &&, auto&&...) noexcept {}
     friend void tag_invoke(ex::set_error_t, sink_receiver &&, auto&&) noexcept {}
     friend void tag_invoke(ex::set_stopped_t, sink_receiver &&) noexcept {}
-    friend ex::__empty_env tag_invoke(ex::get_env_t, sink_receiver) noexcept {
+    friend _P2300::execution::__empty_env tag_invoke(ex::get_env_t, sink_receiver) noexcept {
       return {};
     }
   };

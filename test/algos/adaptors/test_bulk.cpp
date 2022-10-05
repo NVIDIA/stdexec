@@ -198,7 +198,7 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
       auto snd = ex::transfer_just(sch)
                | ex::bulk(n, [&counter](int idx) { counter[idx] = 0; })
                | ex::bulk(n, [&counter](int idx) { counter[idx]++; });
-      _P2300::this_thread::sync_wait(std::move(snd));
+      std::this_thread::sync_wait(std::move(snd));
 
       const std::size_t actual = std::count(counter.begin(), counter.end(), 1);
       const std::size_t expected = n;
@@ -214,7 +214,7 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
       auto snd = ex::transfer_just(sch, 42)
                | ex::bulk(n, [&counter](int idx, int val) { if (val == 42) { counter[idx] = 0; } })
                | ex::bulk(n, [&counter](int idx, int val) { if (val == 42) { counter[idx]++; } });
-      auto [val] = _P2300::this_thread::sync_wait(std::move(snd)).value();
+      auto [val] = std::this_thread::sync_wait(std::move(snd)).value();
 
       CHECK(val == 42);
 
@@ -232,7 +232,7 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
                  throw std::runtime_error("bulk");
                });
 
-    CHECK_THROWS_AS(_P2300::this_thread::sync_wait(std::move(snd)), std::runtime_error);
+    CHECK_THROWS_AS(std::this_thread::sync_wait(std::move(snd)), std::runtime_error);
   }
 }
 

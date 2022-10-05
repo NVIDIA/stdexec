@@ -35,7 +35,7 @@ namespace {
     _P2519::execution::async_scope scope_;
 
     ~create_test_fixture() {
-      _P2300::this_thread::sync_wait(scope_.on_empty());
+      std::this_thread::sync_wait(scope_.on_empty());
     }
 
     void anIntAPI(int a, int b, void* context, void (*completed)(void* context, int result)) {
@@ -79,7 +79,7 @@ TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result"
   }(1, 2);
 
   REQUIRE_NOTHROW([&] {
-    auto [res] = _P2300::this_thread::sync_wait(std::move(snd)).value();
+    auto [res] = std::this_thread::sync_wait(std::move(snd)).value();
     CHECK(res == 3);
   }());
 }
@@ -99,7 +99,7 @@ TEST_CASE_METHOD(create_test_fixture, "wrap an async API that doesn't compute a 
     );
   }();
 
-  std::optional<std::tuple<>> res = _P2300::this_thread::sync_wait(std::move(snd));
+  std::optional<std::tuple<>> res = std::this_thread::sync_wait(std::move(snd));
   CHECK(res.has_value());
   CHECK(called);
 }

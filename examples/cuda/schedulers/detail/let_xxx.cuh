@@ -30,7 +30,7 @@ namespace example::cuda::stream {
 
     template <class... _Ts>
       struct __as_tuple {
-        std::execution::__decayed_tuple<_Ts...> operator()(_Ts...) const;
+        _P2300::execution::__decayed_tuple<_Ts...> operator()(_Ts...) const;
       };
 
     template <class... Sizes>
@@ -48,7 +48,7 @@ namespace example::cuda::stream {
 
     struct __which_tuple_base {
       template <class... _Ts>
-        std::execution::__decayed_tuple<_Ts...> operator()(_Ts&&...) const;
+        _P2300::execution::__decayed_tuple<_Ts...> operator()(_Ts&&...) const;
     };
 
     template <std::execution::sender, class, class>
@@ -62,7 +62,7 @@ namespace example::cuda::stream {
     template <class _Sender, class _Env>
         requires std::execution::sender<_Sender, _Env>
       struct __which_tuple<_Sender, _Env, std::execution::set_error_t>
-        : std::execution::__error_types_of_t<
+        : _P2300::execution::__error_types_of_t<
             _Sender,
             _Env,
             _P2300::__transform<_P2300::__q<__as_tuple>, _P2300::__q<__which_tuple_>>> {};
@@ -111,11 +111,11 @@ namespace example::cuda::stream {
         // Compute a variant of tuples to hold all the values of the input
         // sender:
         using __args_t =
-          std::execution::__gather_sigs_t<_SetTag, _Sender, std::execution::env_of_t<_Receiver>, _P2300::__q<std::execution::__decayed_tuple>, std::execution::__nullable_variant_t>;
+          _P2300::execution::__gather_sigs_t<_SetTag, _Sender, std::execution::env_of_t<_Receiver>, _P2300::__q<_P2300::execution::__decayed_tuple>, _P2300::execution::__nullable_variant_t>;
 
         // Compute a variant of operation states:
         using __op_state3_t =
-          std::execution::__gather_sigs_t<_SetTag, _Sender, std::execution::env_of_t<_Receiver>, _P2300::__q<__op_state_for_t>, std::execution::__nullable_variant_t>;
+          _P2300::execution::__gather_sigs_t<_SetTag, _Sender, std::execution::env_of_t<_Receiver>, _P2300::__q<__op_state_for_t>, _P2300::execution::__nullable_variant_t>;
         __op_state3_t __op_state3_;
       };
 
@@ -130,7 +130,7 @@ namespace example::cuda::stream {
           using __sender_size_for_t = _P2300::__t<__sender_size_for_<_As...>>;
 
         static constexpr std::size_t value =
-          _P2300::__v<std::execution::__gather_sigs_t<_SetTag, _Sender, std::execution::env_of_t<_Receiver>, _P2300::__q<__sender_size_for_t>, _P2300::__q<max_in_pack>>>;
+          _P2300::__v<_P2300::execution::__gather_sigs_t<_SetTag, _Sender, std::execution::env_of_t<_Receiver>, _P2300::__q<__sender_size_for_t>, _P2300::__q<max_in_pack>>>;
       };
 
     template <class _Env, class _Fun, class _Set, class _Sig>
@@ -179,7 +179,7 @@ namespace example::cuda::stream {
         // never completes with set_error(exception_ptr)
         template <_P2300::__decays_to<std::exception_ptr> _Error>
             requires std::same_as<_Let, std::execution::set_error_t> &&
-              (!_P2300::__v<std::execution::__error_types_of_t<_Sender, _Env, _P2300::__transform<_P2300::__q1<std::decay_t>, _P2300::__contains<std::exception_ptr>>>>)
+              (!_P2300::__v<_P2300::execution::__error_types_of_t<_Sender, _Env, _P2300::__transform<_P2300::__q1<std::decay_t>, _P2300::__contains<std::exception_ptr>>>>)
           friend void tag_invoke(std::execution::set_error_t, __receiver&& __self, _Error&& __err) noexcept {
             __self.__op_state_->propagate_completion_signal(std::execution::set_error, (_Error&&) __err);
           }
@@ -304,7 +304,7 @@ namespace example::cuda::stream {
           _P2300::__mapply<
             _P2300::__transform<
               __tfx_signal<_Env>,
-              _P2300::__mbind_front_q<std::execution::__concat_completion_signatures_t, __with_error<_Sender, _Env>>>,
+              _P2300::__mbind_front_q<_P2300::execution::__concat_completion_signatures_t, __with_error<_Sender, _Env>>>,
             std::execution::completion_signatures_of_t<_Sender, _Env>>;
 
       template <_P2300::__decays_to<let_sender_t> _Self, std::execution::receiver _Receiver>
@@ -319,11 +319,11 @@ namespace example::cuda::stream {
           };
         }
 
-      template <std::execution::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+      template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
           requires _P2300::__callable<_Tag, const _Sender&, _As...>
         friend auto tag_invoke(_Tag __tag, const let_sender_t& __self, _As&&... __as)
           noexcept(_P2300::__nothrow_callable<_Tag, const _Sender&, _As...>)
-          -> std::execution::__call_result_if_t<std::execution::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
+          -> _P2300::execution::__call_result_if_t<_P2300::execution::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
           _NVCXX_EXPAND_PACK_RETURN(_As, __as,
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           )

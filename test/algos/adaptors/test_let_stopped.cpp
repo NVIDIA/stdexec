@@ -57,7 +57,7 @@ TEST_CASE("let_stopped can be piped", "[adaptors][let_stopped]") {
 TEST_CASE("let_stopped returning void can we waited on (cancel annihilation)",
     "[adaptors][let_stopped]") {
   ex::sender auto snd = ex::just_stopped() | ex::let_stopped([] { return ex::just(); });
-  _P2300::this_thread::sync_wait(std::move(snd));
+  std::this_thread::sync_wait(std::move(snd));
 }
 
 TEST_CASE(

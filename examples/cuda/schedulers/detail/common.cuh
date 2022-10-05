@@ -234,7 +234,7 @@ namespace example::cuda::stream {
               _P2300::__if_c<
                 sizeof...(_Ts) != 0,
                 _P2300::__transform<_P2300::__q1<std::decay_t>, _P2300::__munique<_P2300::__q<variant_t>>>,
-                _P2300::__mconst<std::execution::__not_a_variant>>,
+                _P2300::__mconst<_P2300::execution::__not_a_variant>>,
               _Ts...>;
 
         template <class... _Ts>
@@ -245,14 +245,14 @@ namespace example::cuda::stream {
               _Ts...>;
 
         using bound_values_t =
-          std::execution::__value_types_of_t<
+          _P2300::execution::__value_types_of_t<
             sender_t,
             env_t,
             _P2300::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
             _P2300::__q<bind_tuples>>;
 
         using variant_t =
-          std::execution::__error_types_of_t<
+          _P2300::execution::__error_types_of_t<
             sender_t,
             env_t,
             _P2300::__transform<

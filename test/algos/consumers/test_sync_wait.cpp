@@ -28,8 +28,8 @@
 namespace ex = std::execution;
 using std::optional;
 using std::tuple;
-using _P2300::this_thread::sync_wait;
-using _P2300::this_thread::sync_wait_with_variant;
+using std::this_thread::sync_wait;
+using std::this_thread::sync_wait_with_variant;
 
 using namespace std::chrono_literals;
 

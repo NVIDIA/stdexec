@@ -134,7 +134,7 @@ template <class SenderId, class FunId>
 
         static constexpr std::size_t value =
           _P2300::__v<
-            std::execution::__gather_sigs_t<
+            _P2300::execution::__gather_sigs_t<
               std::execution::set_value_t, 
               Sender,  
               std::execution::env_of_t<Receiver>, 
@@ -154,10 +154,10 @@ template <class SenderId, class FunId>
 
     template <class Self, class Env>
       using completion_signatures =
-        std::execution::__make_completion_signatures<
+        _P2300::execution::__make_completion_signatures<
           _P2300::__member_t<Self, Sender>,
           Env,
-          std::execution::__with_error_invoke_t<
+          _P2300::execution::__with_error_invoke_t<
             std::execution::set_value_t,
             Fun,
             _P2300::__member_t<Self, Sender>,
@@ -185,11 +185,11 @@ template <class SenderId, class FunId>
     friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
       -> completion_signatures<Self, Env> requires true;
 
-    template <std::execution::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+    template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
       requires _P2300::__callable<Tag, const Sender&, As...>
     friend auto tag_invoke(Tag tag, const then_sender_t& self, As&&... as)
       noexcept(_P2300::__nothrow_callable<Tag, const Sender&, As...>)
-      -> _P2300::__call_result_if_t<std::execution::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+      -> _P2300::__call_result_if_t<_P2300::execution::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
       return ((Tag&&) tag)(self.sndr_, (As&&) as...);
     }
   };

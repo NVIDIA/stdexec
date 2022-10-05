@@ -3711,18 +3711,18 @@ namespace _P2300::execution {
         _Sender __sndr_;
       };
 
-    struct __stopped_as_optional_t {
+    struct stopped_as_optional_t {
       template <sender _Sender>
         auto operator()(_Sender&& __sndr) const
           -> __sender<__x<decay_t<_Sender>>> {
           return {(_Sender&&) __sndr};
         }
-      __binder_back<__stopped_as_optional_t> operator()() const noexcept {
+      __binder_back<stopped_as_optional_t> operator()() const noexcept {
         return {};
       }
     };
 
-    struct __stopped_as_error_t {
+    struct stopped_as_error_t {
       template <sender _Sender, __movable_value _Error>
         auto operator()(_Sender&& __sndr, _Error __err) const {
           return (_Sender&&) __sndr
@@ -3732,15 +3732,15 @@ namespace _P2300::execution {
         }
       template <__movable_value _Error>
         auto operator()(_Error __err) const
-          -> __binder_back<__stopped_as_error_t, _Error> {
+          -> __binder_back<stopped_as_error_t, _Error> {
           return {{}, {}, {(_Error&&) __err}};
         }
     };
   } // namespace __stopped_as_xxx
-  using __stopped_as_xxx::__stopped_as_optional_t;
-  inline constexpr __stopped_as_optional_t stopped_as_optional{};
-  using __stopped_as_xxx::__stopped_as_error_t;
-  inline constexpr __stopped_as_error_t stopped_as_error{};
+  using __stopped_as_xxx::stopped_as_optional_t;
+  inline constexpr stopped_as_optional_t stopped_as_optional{};
+  using __stopped_as_xxx::stopped_as_error_t;
+  inline constexpr stopped_as_error_t stopped_as_error{};
 
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
@@ -4492,19 +4492,19 @@ namespace _P2300::execution {
           : __sndr_((decltype(__sndr)) __sndr) {}
       };
 
-    struct __into_variant_t {
+    struct into_variant_t {
       template <sender _Sender>
         auto operator()(_Sender&& __sndr) const
           -> __sender<__x<remove_cvref_t<_Sender>>> {
           return __sender<__x<remove_cvref_t<_Sender>>>{(_Sender&&) __sndr};
         }
       auto operator()() const noexcept {
-        return __binder_back<__into_variant_t>{};
+        return __binder_back<into_variant_t>{};
       }
     };
   } // namespace __into_variant
-  using __into_variant::__into_variant_t;
-  inline constexpr __into_variant_t into_variant{};
+  using __into_variant::into_variant_t;
+  inline constexpr into_variant_t into_variant{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.when_all]
@@ -4834,7 +4834,7 @@ namespace _P2300::execution {
 
       template <sender... _Senders>
         requires (!tag_invocable<when_all_with_variant_t, _Senders...>) &&
-          (__callable<__into_variant_t, _Senders> &&...)
+          (__callable<into_variant_t, _Senders> &&...)
       auto operator()(_Senders&&... __sndrs) const {
           return when_all_t{}(into_variant((_Senders&&) __sndrs)...);
       }
@@ -4870,7 +4870,7 @@ namespace _P2300::execution {
 
       template <scheduler _Sched, sender... _Senders>
         requires (!tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>) &&
-          (__callable<__into_variant_t, _Senders> &&...)
+          (__callable<into_variant_t, _Senders> &&...)
       auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
         return transfer_when_all_t{}((_Sched&&) __sched, into_variant((_Senders&&) __sndrs)...);
       }
@@ -5355,17 +5355,9 @@ namespace _PXXXX::execution {
 
   template <__completion_signature... _Sigs>
     inline constexpr __create::__create_t<_Sigs...> create {};
-} // namespace _P2300::execution::extra
+} // namespace _PXXXX::execution
 
-namespace std {
-  using namespace _P2300;
-  namespace execution {
-    using namespace _P2300::execution;
-  }
-  namespace this_thread {
-    using namespace _P2300::this_thread;
-  }
-}
+#include <__detail/__p2300.hpp>
 
 #ifdef __EDG__
 #pragma diagnostic pop

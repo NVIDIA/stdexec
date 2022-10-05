@@ -37,7 +37,7 @@ namespace schedule_from {
             _P2300::__if_c<
               sizeof...(_Ts) != 0,
               _P2300::__transform<_P2300::__q1<std::decay_t>, _P2300::__munique<_P2300::__q<variant_t>>>,
-              _P2300::__mconst<std::execution::__not_a_variant>>,
+              _P2300::__mconst<_P2300::execution::__not_a_variant>>,
             _Ts...>;
 
       template <class... _Ts>
@@ -48,14 +48,14 @@ namespace schedule_from {
             _Ts...>;
 
       using bound_values_t =
-        std::execution::__value_types_of_t<
+        _P2300::execution::__value_types_of_t<
           Sender,
           std::execution::env_of_t<Receiver>,
           _P2300::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
           _P2300::__q<bind_tuples>>;
 
       using storage_t =
-        std::execution::__error_types_of_t<
+        _P2300::execution::__error_types_of_t<
           Sender,
           std::execution::env_of_t<Receiver>,
           _P2300::__transform<
@@ -98,11 +98,11 @@ namespace schedule_from {
           return std::execution::connect(((Self&&)self).sender_, (Receiver&&)rcvr);
         }
 
-      template <std::execution::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+      template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
         requires _P2300::__callable<_Tag, const Sender&, _As...>
       friend auto tag_invoke(_Tag __tag, const source_sender_t& __self, _As&&... __as)
         noexcept(_P2300::__nothrow_callable<_Tag, const Sender&, _As...>)
-        -> _P2300::__call_result_if_t<std::execution::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const Sender&, _As...> {
+        -> _P2300::__call_result_if_t<_P2300::execution::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const Sender&, _As...> {
         _NVCXX_EXPAND_PACK_RETURN(_As, _as,
           return ((_Tag&&) __tag)(__self.sender_, (_As&&) __as...);
         )
@@ -149,11 +149,11 @@ template <class Scheduler, class SenderId>
       return {__self.hub_};
     }
 
-    template <std::execution::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+    template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
       requires _P2300::__callable<_Tag, const Sender&, _As...>
     friend auto tag_invoke(_Tag __tag, const schedule_from_sender_t& __self, _As&&... __as)
       noexcept(_P2300::__nothrow_callable<_Tag, const Sender&, _As...>)
-      -> _P2300::__call_result_if_t<std::execution::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const Sender&, _As...> {
+      -> _P2300::__call_result_if_t<_P2300::execution::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const Sender&, _As...> {
       _NVCXX_EXPAND_PACK_RETURN(_As, _as,
         return ((_Tag&&) __tag)(__self.sndr_, (_As&&) __as...);
       )

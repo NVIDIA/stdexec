@@ -74,7 +74,7 @@ TEST_CASE(
     "let_error returning void can be waited on (error annihilation)", "[adaptors][let_error]") {
   ex::sender auto snd = ex::just_error(std::exception_ptr{}) |
                         ex::let_error([](std::exception_ptr) { return ex::just(); });
-  _P2300::this_thread::sync_wait(std::move(snd));
+  std::this_thread::sync_wait(std::move(snd));
 }
 
 TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
@@ -294,7 +294,7 @@ TEST_CASE("let_error overrides error_types from input sender (and adds std::exce
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
   check_err_types<type_array<std::exception_ptr, std::string>>( //
       ex::transfer_just(sched3)                                 //
-      | ex::let_error([](std::__one_of<int, std::exception_ptr> auto) {
+      | ex::let_error([](_P2300::__one_of<int, std::exception_ptr> auto) {
           return ex::just_error(std::string{"err"});
         }));
 
@@ -307,7 +307,7 @@ TEST_CASE("let_error overrides error_types from input sender (and adds std::exce
       | ex::let_error([](std::exception_ptr) { return ex::just(); }));
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched3)                    //
-      | ex::let_error([](std::__one_of<int, std::exception_ptr> auto) { return ex::just(); }));
+      | ex::let_error([](_P2300::__one_of<int, std::exception_ptr> auto) { return ex::just(); }));
 }
 
 TEST_CASE("let_error keeps sends_stopped from input sender", "[adaptors][let_error]") {

@@ -5,7 +5,7 @@
 
 namespace ex = std::execution;
 using _P2519::execution::async_scope;
-using _P2300::this_thread::sync_wait;
+using std::this_thread::sync_wait;
 
 namespace {
 void expect_empty(_P2519::execution::async_scope& scope) {
@@ -14,7 +14,7 @@ void expect_empty(_P2519::execution::async_scope& scope) {
   CHECK_FALSE(std::this_thread::execute_may_block_caller(sch));
   auto op = ex::connect(
     ex::then(scope.on_empty(), [&](){  loop.finish(); }),
-    expect_void_receiver{ex::make_env(ex::with(ex::get_scheduler, sch))});
+    expect_void_receiver{_P2300::execution::make_env(_P2300::execution::with(ex::get_scheduler, sch))});
   ex::start(op);
   loop.run();
 }

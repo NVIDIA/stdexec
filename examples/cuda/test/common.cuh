@@ -163,15 +163,15 @@ namespace detail {
 
       template <class Self, class Env>
         using completion_signatures =
-          std::execution::__make_completion_signatures<
+          _P2300::execution::__make_completion_signatures<
             _P2300::__member_t<Self, Sender>,
             Env,
-            std::execution::__with_error_invoke_t<
+            _P2300::execution::__with_error_invoke_t<
               std::execution::set_value_t,
               Fun,
               _P2300::__member_t<Self, Sender>,
               Env>,
-            _P2300::__mbind_front_q<std::execution::__set_value_invoke_t, Fun>>;
+            _P2300::__mbind_front_q<_P2300::execution::__set_value_invoke_t, Fun>>;
 
       template <_P2300::__decays_to<sender_t> Self, std::execution::receiver Receiver>
         requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>
@@ -188,11 +188,11 @@ namespace detail {
       friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
         -> completion_signatures<Self, Env> requires true;
 
-      template <std::execution::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+      template <_P2300::execution::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
         requires _P2300::__callable<Tag, const Sender&, As...>
       friend auto tag_invoke(Tag tag, const sender_t& self, As&&... as)
         noexcept(_P2300::__nothrow_callable<Tag, const Sender&, As...>)
-        -> _P2300::__call_result_if_t<std::execution::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+        -> _P2300::__call_result_if_t<_P2300::execution::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
         return ((Tag&&) tag)(self.sndr_, (As&&) as...);
       }
     };
@@ -211,7 +211,7 @@ struct a_sender_t {
   }
 
   template <class _Fun>
-  std::execution::__binder_back<a_sender_t, _Fun> operator()(_Fun __fun) const {
+  _P2300::execution::__binder_back<a_sender_t, _Fun> operator()(_Fun __fun) const {
     return {{}, {}, {(_Fun&&) __fun}};
   }
 };
