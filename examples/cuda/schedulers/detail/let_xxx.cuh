@@ -93,7 +93,7 @@ namespace example::cuda::stream {
       using __decay_ref = std::decay_t<_T>&;
 
     template <class _Fun, class... _As>
-      using __result_sender_t = _P2300::__call_result_t<_Fun, __decay_ref<_As>...>;
+      using __result_sender_t = std::decay_t<stdexec::__call_result_t<_Fun, __decay_ref<_As>...>>;
 
     template <class _Sender, class _Receiver, class _Fun, class _SetTag>
         requires std::execution::sender<_Sender, std::execution::env_of_t<_Receiver>>
@@ -164,6 +164,9 @@ namespace example::cuda::stream {
         using _Fun = _P2300::__t<_FunId>;
         using _Env = std::execution::env_of_t<_Receiver>;
 
+        constexpr static std::size_t memory_allocation_size = 
+          stdexec::__v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
+
         template <class... _As>
           using __which_tuple_t =
             _P2300::__call_result_t<__which_tuple<_Sender, _Env, _Let>, _As...>;
@@ -184,33 +187,34 @@ namespace example::cuda::stream {
         template <_P2300::__one_of<_Let> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
               std::execution::sender_to<__apply_result_t<_Fun, __which_tuple_t<_As...>&>, _Receiver>
-          friend void tag_invoke(_Tag, __receiver&& __self, _As&&... __as) noexcept try {
+          friend void tag_invoke(_Tag, __receiver&& __self, _As&&... __as) noexcept {
             _NVCXX_EXPAND_PACK(_As, __as,
               using __tuple_t = __which_tuple_t<_As...>;
-              using __op_state_t = _P2300::__mapply<_P2300::__q<__op_state_for_t>, __tuple_t>;
-
+              using __op_state_t = stdexec::__mapply<stdexec::__q<__op_state_for_t>, __tuple_t>;
               using result_sender_t = __result_sender_t<_Fun, _As...>;
 
               cudaStream_t stream = __self.__op_state_->stream_;
 
-              auto result_sender = reinterpret_cast<result_sender_t *>(__self.__op_state_->__sender_memory_.get());
+              result_sender_t* result_sender = reinterpret_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
               kernel_with_result<<<1, 1, 0, stream>>>(__self.__op_state_->__fun_, result_sender, (_As&&)__as...);
-              THROW_ON_CUDA_ERROR(cudaStreamSynchronize(stream));
 
-              auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
-                _P2300::__conv{[&] {
-                  return std::execution::connect(
-                      *result_sender,
-                      propagate_receiver_t<_ReceiverId>{
-                        {},
-                        static_cast<operation_state_base_t<_ReceiverId>&>(
-                            *__self.__op_state_)});
-                }}
-              );
-              std::execution::start(__op);
+              if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status == cudaSuccess) {
+                auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
+                  stdexec::__conv{[&] {
+                    return std::execution::connect(
+                        *result_sender,
+                        propagate_receiver_t<_ReceiverId>{
+                          {},
+                          static_cast<operation_state_base_t<_ReceiverId>&>(
+                              *__self.__op_state_)});
+                  }}
+                );
+                std::execution::start(__op);
+              } else {
+                __self.__op_state_->propagate_completion_signal(
+                    std::execution::set_error, std::move(status));
+              }
             )
-          } catch(...) {
-            __self.__op_state_->propagate_completion_signal(std::execution::set_error_t{}, std::current_exception());
           }
 
         template <_P2300::__one_of<std::execution::set_value_t, std::execution::set_error_t, std::execution::set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
@@ -230,12 +234,6 @@ namespace example::cuda::stream {
         __operation<_SenderId, _ReceiverId, _FunId, _Let>* __op_state_;
       };
 
-    inline void cuda_deleter(std::uint8_t *ptr) {
-      if (ptr) {
-        THROW_ON_CUDA_ERROR(cudaFree(ptr));
-      }
-    }
-
     template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
       using __operation_base =
         detail::operation_state_t<
@@ -250,14 +248,6 @@ namespace example::cuda::stream {
         using _Fun = _P2300::__t<_FunId>;
         using __receiver_t = __receiver<_SenderId, _ReceiverId, _FunId, _Let>;
 
-        friend void tag_invoke(std::execution::start_t, __operation& __self) noexcept {
-          std::uint8_t *sender_memory{};
-          THROW_ON_CUDA_ERROR(cudaMallocManaged(&sender_memory, _P2300::__v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>));
-          __self.__sender_memory_.reset(sender_memory);
-
-          std::execution::start(__self.inner_op_);
-        }
-
         template <class _Receiver2>
           __operation(_Sender&& __sndr, _Receiver2&& __rcvr, _Fun __fun)
             : __operation_base<_SenderId, _ReceiverId, _FunId, _Let>(
@@ -268,13 +258,11 @@ namespace example::cuda::stream {
                   return __receiver_t{{}, this};
                 })
             , __fun_((_Fun&&) __fun)
-            , __sender_memory_(nullptr, cuda_deleter)
           {}
         _P2300_IMMOVABLE(__operation);
 
         _Fun __fun_;
         __storage<_Sender, _Receiver, _Fun, _Let> __storage_;
-        std::unique_ptr<std::uint8_t[], void(*)(std::uint8_t*)> __sender_memory_;
       };
   } // namespace let_xxx
 
@@ -306,9 +294,9 @@ namespace example::cuda::stream {
 
       template <class _Sender, class _Env>
         using __with_error =
-          _P2300::__if_c<
-            std::execution::__sends<_Set, _Sender, _Env>,
-            std::execution::__with_exception_ptr,
+          stdexec::__if_c<
+            stdexec::__sends<_Set, _Sender, _Env>,
+            stdexec::completion_signatures<std::execution::set_error_t(cudaError_t)>,
             std::execution::completion_signatures<>>;
 
       template <class _Sender, class _Env>

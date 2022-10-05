@@ -17,7 +17,32 @@
 
 #include <algorithm>
 #include <execution.hpp>
+#include <stdexcept>
 #include <cstdio>
+
+namespace example::cuda {
+
+  inline void throw_on_cuda_error(cudaError_t error, char const* file_name, int line) {
+    // Clear the global CUDA error state which may have been set by the last
+    // call. Otherwise, errors may "leak" to unrelated calls.
+    cudaGetLastError();
+
+    if (error != cudaSuccess) {
+      throw std::runtime_error(std::string("CUDA Error: ")
+                             + file_name
+                             + ":"
+                             + std::to_string(line)
+                             + ": "
+                             + cudaGetErrorName(error)
+                             + ": "
+                             + cudaGetErrorString(error));
+    }
+  }
+
+  #define THROW_ON_CUDA_ERROR(...)                     \
+    ::example::cuda::throw_on_cuda_error(__VA_ARGS__, __FILE__, __LINE__); \
+    /**/
+}
 
 template <int N = 1>
   requires (N > 0)

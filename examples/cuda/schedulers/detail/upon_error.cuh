@@ -33,40 +33,50 @@ template <class Fun, class... As>
 template <class Fun, class ResultT, class... As>
   __launch_bounds__(1)
   __global__ void kernel_with_result(Fun fn, ResultT* result, As... as) {
-    *result = fn(as...);
+    new (result) ResultT(fn(as...));
   }
 
-template <class ReceiverId, class Fun>
+template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
   class receiver_t : public receiver_base_t {
 
     Fun f_;
     operation_state_base_t<ReceiverId> &op_state_;
 
   public:
+    constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
     template <class Error>
-      friend void tag_invoke(std::execution::set_error_t, receiver_t&& self, Error&& error) noexcept
-        requires _P2300::__callable<Fun, Error> {
-      using result_t = std::decay_t<std::invoke_result_t<Fun, std::decay_t<Error>>>;
+      friend void tag_invoke(std::execution::set_error_t, receiver_t&& self, Error&& error) 
+          noexcept requires std::invocable<Fun, Error> {
+        using result_t = std::decay_t<std::invoke_result_t<Fun, std::decay_t<Error>>>;
+        constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
+        cudaStream_t stream = self.op_state_.stream_;
 
-      cudaStream_t stream = self.op_state_.stream_;
-
-      if constexpr (std::is_same_v<void, result_t>) {
-        kernel<Fun, Error><<<1, 1, 0, stream>>>(self.f_, (Error&&)error);
-        self.op_state_.propagate_completion_signal(std::execution::set_value);
-      } else {
-        result_t *d_result{};
-        THROW_ON_CUDA_ERROR(cudaMallocAsync(&d_result, sizeof(result_t), stream));
-        kernel_with_result<Fun, Error><<<1, 1, 0, stream>>>(self.f_, d_result, error);
-        self.op_state_.propagate_completion_signal(std::execution::set_value, *d_result);
-        THROW_ON_CUDA_ERROR(cudaFreeAsync(d_result, stream));
+        if constexpr (does_not_return_a_value) {
+          kernel<Fun, Error><<<1, 1, 0, stream>>>(self.f_, (Error&&)error);
+          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+            self.op_state_.propagate_completion_signal(std::execution::set_value);
+          } else {
+            self.op_state_.propagate_completion_signal(std::execution::set_error, std::move(status));
+          }
+        } else {
+          result_t *d_result = reinterpret_cast<result_t*>(self.op_state_.temp_storage_);
+          kernel_with_result<Fun, Error><<<1, 1, 0, stream>>>(self.f_, d_result, error);
+          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+            self.op_state_.propagate_completion_signal(std::execution::set_value, *d_result);
+          } else {
+            self.op_state_.propagate_completion_signal(std::execution::set_error, std::move(status));
+          }
+        }
       }
-    }
 
-    template <_P2300::__one_of<std::execution::set_value_t,
-                            std::execution::set_stopped_t> Tag, class... As>
+    template <stdexec::__one_of<std::execution::set_value_t,
+                                std::execution::set_stopped_t> Tag, 
+              class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-        self.op_state_.propagate_completion_signal(tag, (As&&)as...);
+        _NVCXX_EXPAND_PACK(As, as,
+          self.op_state_.propagate_completion_signal(tag, (As&&)as...);
+        );
       }
 
     friend std::execution::env_of_t<_P2300::__t<ReceiverId>>
@@ -82,19 +92,55 @@ template <class ReceiverId, class Fun>
 }
 
 template <class SenderId, class FunId>
-  struct upon_error_sender_t : gpu_sender_base_t {
-    using Sender = _P2300::__t<SenderId>;
-    using Fun = _P2300::__t<FunId>;
+  struct upon_error_sender_t : sender_base_t {
+    using Sender = stdexec::__t<SenderId>;
+    using Fun = stdexec::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;
 
-    using set_error_t =
-      std::execution::completion_signatures<
-        std::execution::set_error_t(std::exception_ptr)>;
+    template <class T, int = 0>
+      struct size_of_ {
+        using __t = stdexec::__index<sizeof(T)>;
+      };
+
+    template <int W>
+      struct size_of_<void, W> {
+        using __t = stdexec::__index<0>;
+      };
+    
+    template <class... As>
+      struct result_size_for {
+        using __t = typename size_of_<stdexec::__call_result_t<Fun, As...>>::__t;
+      };
+
+    template <class... Sizes>
+      struct max_in_pack {
+        static constexpr std::size_t value = std::max({std::size_t{}, stdexec::__v<Sizes>...});
+      };
 
     template <class Receiver>
-      using receiver_t = upon_error::receiver_t<_P2300::__x<Receiver>, Fun>;
+        requires std::execution::sender<Sender, std::execution::env_of_t<Receiver>>
+      struct max_result_size {
+        template <class... _As>
+          using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
+
+        static constexpr std::size_t value =
+          stdexec::__v<
+            stdexec::__gather_sigs_t<
+              std::execution::set_error_t, 
+              Sender,  
+              std::execution::env_of_t<Receiver>, 
+              stdexec::__q<result_size_for_t>, 
+              stdexec::__q<max_in_pack>>>;
+      };
+
+    template <class Receiver>
+      using receiver_t = 
+        upon_error::receiver_t<
+          max_result_size<Receiver>::value, 
+          stdexec::__x<Receiver>, 
+          Fun>;
 
     template <class Self, class Env>
       using completion_signatures =

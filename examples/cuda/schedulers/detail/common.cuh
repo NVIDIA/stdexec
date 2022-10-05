@@ -54,7 +54,6 @@ namespace example::cuda::stream {
   struct context_t;
   struct scheduler_t;
   struct sender_base_t {};
-  struct gpu_sender_base_t : sender_base_t {};
   struct receiver_base_t {
     constexpr static std::size_t memory_allocation_size = 0;
   };
@@ -67,11 +66,6 @@ namespace example::cuda::stream {
       std::execution::sender<S> &&
       std::is_base_of_v<sender_base_t, std::decay_t<S>>;
 
-  template <class S>
-    concept gpu_stream_sender =
-      std::execution::sender<S> &&
-      std::is_base_of_v<gpu_sender_base_t, std::decay_t<S>>;
-
   template <class R>
     concept stream_receiver =
       std::execution::receiver<R> &&
@@ -79,41 +73,6 @@ namespace example::cuda::stream {
 
   namespace detail {
     struct op_state_base_t{};
-
-    namespace h2d {
-      template <bool Async, std::size_t I, class T>
-        void fetch(cudaStream_t stream, T&) {
-          if constexpr (!Async) {
-            THROW_ON_CUDA_ERROR(cudaStreamSynchronize(stream));
-          }
-        }
-
-      template <bool Async, std::size_t I, class T, class Head, class... As>
-        void fetch(cudaStream_t stream, T& tpl, Head&& head, As&&... as) {
-          THROW_ON_CUDA_ERROR(cudaMemcpyAsync(&std::get<I>(tpl),
-                                              &head,
-                                              sizeof(std::decay_t<Head>),
-                                              cudaMemcpyDeviceToHost,
-                                              stream));
-          fetch<Async, I + 1>(stream, tpl, (As&&)as...);
-        }
-
-      template <bool Async, class SenderId, class Fn, class... As>
-        void propagate(cudaStream_t stream, Fn fn, As&&... as) {
-          using Sender = _P2300::__t<SenderId>;
-
-          if constexpr (gpu_stream_sender<Sender>) {
-            std::tuple<std::decay_t<As>...> h_as;
-            fetch<Async, 0>(stream, h_as, (As&&)as...);
-            std::apply([&](auto&&... tas) { fn(tas...); }, h_as);
-          } else {
-            if constexpr (!Async) {
-              THROW_ON_CUDA_ERROR(cudaStreamSynchronize(stream));
-            }
-            fn((As&&)as...);
-          }
-        }
-    }
 
     template <class EnvId, class VariantId>
       class enqueue_receiver_t : public receiver_base_t {
@@ -137,13 +96,6 @@ namespace example::cuda::stream {
             self.producer_(self.task_);
           }
 
-        /*
-        friend void tag_invoke(std::execution::set_error_t, enqueue_receiver_t&& self, const std::exception_ptr&) noexcept {
-          self.variant_->template emplace<decayed_tuple<std::execution::set_error_t, cudaError_t>>(
-              std::execution::set_error, cudaErrorUnknown);
-          self.producer_(self.task_);
-        }
-        */
 
         friend Env tag_invoke(std::execution::get_env_t, const enqueue_receiver_t& self) {
           return self.env_;
@@ -169,27 +121,32 @@ namespace example::cuda::stream {
       struct continuation_task_t : queue::task_base_t {
         Receiver receiver_;
         Variant* variant_;
+        cudaError_t status_{cudaSuccess};
 
-        continuation_task_t (Receiver receiver, Variant* variant)
+        continuation_task_t (Receiver receiver, Variant* variant) noexcept 
           : receiver_{receiver}
           , variant_{variant} {
           this->execute_ = [](task_base_t* t) noexcept {
             continuation_task_t &self = *reinterpret_cast<continuation_task_t*>(t);
 
-            visit([&self](auto& tpl) {
-                apply([&self](auto tag, auto... as) {
+            visit([&self](auto& tpl) noexcept {
+                apply([&self](auto tag, auto... as) noexcept {
                   tag(std::move(self.receiver_), decltype(as)(as)...);
                 }, tpl);
             }, *self.variant_);
           };
           this->next_ = nullptr;
 
-          THROW_ON_CUDA_ERROR(cudaMalloc(&this->atom_next_, sizeof(task_base_t*)));
-          THROW_ON_CUDA_ERROR(cudaMemset(this->atom_next_, 0, sizeof(task_base_t*)));
+          constexpr std::size_t ptr_size = sizeof(this->atom_next_);
+          status_ = STDEXEC_DBG_ERR(cudaMalloc(&this->atom_next_, ptr_size));
+
+          if (status_ == cudaSuccess) {
+            status_ = STDEXEC_DBG_ERR(cudaMemset(this->atom_next_, 0, ptr_size));
+          }
         }
 
         ~continuation_task_t() {
-          THROW_ON_CUDA_ERROR(cudaFree(this->atom_next_));
+          STDEXEC_DBG_ERR(cudaFree(this->atom_next_));
         }
       };
   }
@@ -202,6 +159,7 @@ namespace example::cuda::stream {
       cudaStream_t stream_{0};
       void *temp_storage_{nullptr};
       outer_receiver_t receiver_;
+      cudaError_t status_{cudaSuccess};
 
       operation_state_base_t(outer_receiver_t receiver)
         : receiver_(receiver) {}
@@ -212,7 +170,10 @@ namespace example::cuda::stream {
           if constexpr (stream_receiver<outer_receiver_t>) {
             tag((outer_receiver_t&&)receiver_, (As&&)as...);
           } else {
-            detail::continuation_kernel<std::decay_t<outer_receiver_t>, Tag, As...><<<1, 1>>>(receiver_, tag, (As&&)as...);
+            detail::continuation_kernel
+              <std::decay_t<outer_receiver_t>, Tag, As...>
+              <<<1, 1, 0, stream_>>>(
+                receiver_, tag, (As&&)as...);
           }
         );
       }
@@ -220,7 +181,7 @@ namespace example::cuda::stream {
       cudaStream_t allocate() {
         if (stream_ == 0) {
           owner_ = true;
-          THROW_ON_CUDA_ERROR(cudaStreamCreate(&stream_));
+          status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
         }
 
         return stream_;
@@ -228,13 +189,13 @@ namespace example::cuda::stream {
 
       ~operation_state_base_t() {
         if (owner_) {
-          THROW_ON_CUDA_ERROR(cudaStreamDestroy(stream_));
+          STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
           stream_ = 0;
           owner_ = false;
         }
 
         if (temp_storage_) {
-          THROW_ON_CUDA_ERROR(cudaFree(temp_storage_));
+          STDEXEC_DBG_ERR(cudaFree(temp_storage_));
         }
       }
     };
@@ -280,8 +241,7 @@ namespace example::cuda::stream {
           using bind_tuples =
             _P2300::__mbind_front_q<
               variant,
-              // tuple_t<std::execution::set_stopped_t>,
-              // tuple_t<std::execution::set_error_t, cudaError_t>,
+              tuple_t<std::execution::set_error_t, cudaError_t>,
               _Ts...>;
 
         using bound_values_t =
@@ -295,9 +255,8 @@ namespace example::cuda::stream {
           std::execution::__error_types_of_t<
             sender_t,
             env_t,
-            _P2300::__transform<
-              // _P2300::__mbind_front<_P2300::__replace<std::exception_ptr, cudaError_t, _P2300::__q<decayed_tuple>>, std::execution::set_error_t>,
-              _P2300::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
+            stdexec::__transform<
+              stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
               bound_values_t>>;
 
         using task_t = detail::continuation_task_t<inner_receiver_t, variant_t>;
@@ -307,17 +266,24 @@ namespace example::cuda::stream {
           _P2300::__x<detail::enqueue_receiver_t<_P2300::__x<env_t>, _P2300::__x<variant_t>>>>>;
         using inner_op_state_t = std::execution::connect_result_t<sender_t, intermediate_receiver>;
 
-        queue::task_hub_t* hub_;
-        queue::host_ptr<variant_t> storage_;
-        queue::host_ptr<task_t> task_;
-        inner_op_state_t inner_op_;
-
         friend void tag_invoke(std::execution::start_t, operation_state_t& op) noexcept {
           op.stream_ = op.get_stream();
 
+          if (op.status_ != cudaSuccess) {
+            // Couldn't allocate memory for operation state, complete with error
+            op.propagate_completion_signal(std::execution::set_error, std::move(op.status_));
+            return;
+          }
+
           if constexpr (stream_receiver<inner_receiver_t>) {
             if (inner_receiver_t::memory_allocation_size) {
-              THROW_ON_CUDA_ERROR(cudaMallocManaged(&op.temp_storage_, inner_receiver_t::memory_allocation_size));
+              if (cudaError_t status = 
+                    STDEXEC_DBG_ERR(cudaMallocManaged(&op.temp_storage_, inner_receiver_t::memory_allocation_size)); 
+                    status != cudaSuccess) {
+                // Couldn't allocate memory for intermediate receiver, complete with error
+                op.propagate_completion_signal(std::execution::set_error, std::move(status));
+                return;
+              }
             }
           }
 
@@ -348,13 +314,21 @@ namespace example::cuda::stream {
         operation_state_t(sender_t&& sender, queue::task_hub_t* hub, OutR&& out_receiver, ReceiverProvider receiver_provider)
           : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver)
           , hub_(hub)
-          , storage_(queue::make_host<variant_t>())
-          , task_(queue::make_host<task_t>(receiver_provider(*this), storage_.get()))
+          , storage_(queue::make_host<variant_t>(this->status_))
+          , task_(queue::make_host<task_t>(this->status_, receiver_provider(*this), storage_.get()))
           , inner_op_{
               std::execution::connect((sender_t&&)sender,
-              detail::enqueue_receiver_t<_P2300::__x<env_t>, _P2300::__x<variant_t>>{
-                std::execution::get_env(out_receiver), storage_.get(), task_.get(), hub_->producer()})}
-        {}
+              detail::enqueue_receiver_t<stdexec::__x<env_t>, stdexec::__x<variant_t>>{
+                std::execution::get_env(out_receiver), storage_.get(), task_.get(), hub_->producer()})} {
+          if (this->status_ == cudaSuccess) {
+            this->status_ = task_->status_;
+          }
+        }
+
+        queue::task_hub_t* hub_;
+        queue::host_ptr<variant_t> storage_;
+        queue::host_ptr<task_t> task_;
+        inner_op_state_t inner_op_;
       };
   }
 

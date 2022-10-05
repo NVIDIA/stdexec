@@ -20,6 +20,7 @@
 #include "schedulers/detail/throw_on_cuda_error.cuh"
 #include "schedulers/detail/variant.cuh"
 #include "schedulers/detail/tuple.cuh"
+#include "common.cuh"
 
 using example::cuda::variant_t;
 using example::cuda::tuple_t;

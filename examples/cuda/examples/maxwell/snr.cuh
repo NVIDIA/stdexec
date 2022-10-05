@@ -16,6 +16,7 @@
 #pragma once
 
 #include "common.cuh"
+#include "schedulers/detail/throw_on_cuda_error.cuh"
 
 #include <schedulers/stream.cuh>
 #include <schedulers/inline_scheduler.hpp>
@@ -54,7 +55,7 @@ namespace repeat_n_detail {
           for (std::size_t i = 0; i < self.n_; i++) {
             ex::start(op_state);
           }
-          THROW_ON_CUDA_ERROR(cudaStreamSynchronize(op_state.stream_));
+          STDEXEC_DBG_ERR(cudaStreamSynchronize(op_state.stream_));
         } else {
           for (std::size_t i = 0; i < self.n_; i++) {
             std::this_thread::sync_wait((Sender&&)self.sender_);

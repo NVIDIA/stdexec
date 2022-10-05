@@ -25,6 +25,7 @@
 #include <vector>
 #include <string.h>
 
+#define STDEXEC_STDERR
 #include "schedulers/detail/throw_on_cuda_error.cuh"
 
 struct deleter_t {
@@ -33,7 +34,7 @@ struct deleter_t {
   template <class T>
   void operator()(T *ptr) {
     if (on_gpu) {
-      THROW_ON_CUDA_ERROR(cudaFree(ptr));
+      STDEXEC_DBG_ERR(cudaFree(ptr));
     }
     else {
       free(ptr);
@@ -47,7 +48,7 @@ allocate_on(bool gpu, std::size_t elements = 1) {
   T *ptr{};
 
   if (gpu) {
-    THROW_ON_CUDA_ERROR(cudaMalloc(&ptr, elements * sizeof(T)));
+    STDEXEC_DBG_ERR(cudaMalloc(&ptr, elements * sizeof(T)));
   } else {
     ptr = reinterpret_cast<T *>(malloc(elements * sizeof(T)));
   }
@@ -274,7 +275,7 @@ update_e(float *time, float dt, fields_accessor accessor) {
 bool inline
 is_cpu_pointer(const void *ptr) {
   cudaPointerAttributes attributes{};
-  THROW_ON_CUDA_ERROR(cudaPointerGetAttributes(&attributes, ptr));
+  STDEXEC_DBG_ERR(cudaPointerGetAttributes(&attributes, ptr));
 
   return attributes.type == cudaMemoryTypeHost ||
          attributes.type == cudaMemoryTypeUnregistered;
@@ -297,10 +298,10 @@ class result_dumper_t {
 
     if (fetch_results_from_gpu_) {
       h_ez = std::make_unique<float[]>(accessor_.cells);
-      THROW_ON_CUDA_ERROR(cudaMemcpy(h_ez.get(),
-                                     accessor_.get(field_id::ez),
-                                     sizeof(float) * (accessor_.cells),
-                                     cudaMemcpyDefault));
+      STDEXEC_DBG_ERR(cudaMemcpy(h_ez.get(),
+                                 accessor_.get(field_id::ez),
+                                 sizeof(float) * (accessor_.cells),
+                                 cudaMemcpyDefault));
       ez = h_ez.get();
     }
 
@@ -415,7 +416,7 @@ copy_to_host(void *to, const void *from, std::size_t bytes) {
   if (is_cpu_pointer(from)) {
     memcpy(to, from, bytes);
   } else {
-    THROW_ON_CUDA_ERROR(cudaMemcpy(to, from, bytes, cudaMemcpyDeviceToHost));
+    STDEXEC_DBG_ERR(cudaMemcpy(to, from, bytes, cudaMemcpyDeviceToHost));
   }
 }
 
@@ -445,7 +446,7 @@ store_results(fields_accessor accessor) {
     bin.write(reinterpret_cast<const char *>(ez), n_bytes);
   } else {
     std::unique_ptr<char[]> h_ez = std::make_unique<char[]>(n_bytes);
-    THROW_ON_CUDA_ERROR(cudaMemcpy(h_ez.get(), ez, n_bytes, cudaMemcpyDeviceToHost));
+    STDEXEC_DBG_ERR(cudaMemcpy(h_ez.get(), ez, n_bytes, cudaMemcpyDeviceToHost));
     bin.write(h_ez.get(), n_bytes);
   }
 }

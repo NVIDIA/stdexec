@@ -18,29 +18,32 @@
 #include <execution.hpp>
 
 #include <stdexcept>
+#include <cstdio>
 
 namespace example::cuda {
+  namespace detail {
+    inline cudaError_t debug_cuda_error(cudaError_t error, char const* file_name, int line) {
+      // Clear the global CUDA error state which may have been set by the last
+      // call. Otherwise, errors may "leak" to unrelated calls.
+      cudaGetLastError();
 
-  inline void throw_on_cuda_error(cudaError_t error, char const* file_name, int line)
-  {
-    // Clear the global CUDA error state which may have been set by the last
-    // call. Otherwise, errors may "leak" to unrelated calls.
-    cudaGetLastError();
+#if defined(STDEXEC_STDERR)
+      if (error != cudaSuccess) {
+        std::printf("CUDA error %s [%s:%d]: %s\n", 
+                    cudaGetErrorName(error),
+                    file_name, line, 
+                    cudaGetErrorString(error));
+      }
+#else
+      (void)file_name;
+      (void)line;
+#endif
 
-    if (error != cudaSuccess) {
-      throw std::runtime_error(std::string("CUDA Error: ")
-                             + file_name
-                             + ":"
-                             + std::to_string(line)
-                             + ": "
-                             + cudaGetErrorName(error)
-                             + ": "
-                             + cudaGetErrorString(error));
+      return error;
     }
   }
 
-  #define THROW_ON_CUDA_ERROR(...)                     \
-    ::example::cuda::throw_on_cuda_error(__VA_ARGS__, __FILE__, __LINE__); \
+  #define STDEXEC_DBG_ERR(E)                                         \
+    ::example::cuda::detail::debug_cuda_error(E, __FILE__, __LINE__) \
     /**/
-
 }

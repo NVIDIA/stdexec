@@ -59,7 +59,7 @@ template <class Env, class... Senders>
     using non_values =
       std::execution::__concat_completion_signatures_t<
         std::execution::completion_signatures<
-          std::execution::set_error_t(std::exception_ptr),
+          std::execution::set_error_t(cudaError_t),
           std::execution::set_stopped_t()>,
         std::execution::make_completion_signatures<
           Senders,
@@ -109,11 +109,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
       struct operation_t;
 
     template <class CvrefReceiverId, std::size_t Index>
-      struct receiver_t
-        : std::execution::receiver_adaptor<receiver_t<CvrefReceiverId, Index>>
-        , receiver_base_t {
-        using WhenAll = _P2300::__member_t<CvrefReceiverId, when_all_sender_t>;
-        using Receiver = _P2300::__t<std::decay_t<CvrefReceiverId>>;
+      struct receiver_t : std::execution::receiver_adaptor<receiver_t<CvrefReceiverId, Index>>
+                        , receiver_base_t {
+        using WhenAll = stdexec::__member_t<CvrefReceiverId, when_all_sender_t>;
+        using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
         using SenderId = example::cuda::detail::nth_type<Index, SenderIds...>;
         using Traits =
           completion_sigs<
@@ -122,9 +121,11 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         Receiver&& base() && noexcept {
           return (Receiver&&) op_state_->recvr_;
         }
+
         const Receiver& base() const & noexcept {
           return op_state_->recvr_;
         }
+
         template <class Error>
           void set_error(Error&& err, when_all::state_t expected) noexcept {
             // TODO: _What memory orderings are actually needed here?
@@ -132,14 +133,11 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
               op_state_->stop_source_.request_stop();
               // We won the race, free to write the error into the operation
               // state without worry.
-              try {
-                op_state_->errors_.template emplace<std::decay_t<Error>>((Error&&) err);
-              } catch(...) {
-                op_state_->errors_.template emplace<std::exception_ptr>(std::current_exception());
-              }
+              op_state_->errors_.template emplace<std::decay_t<Error>>((Error&&) err);
             }
             op_state_->arrive();
           }
+
         template <class... Values>
           void set_value(Values&&... vals) && noexcept {
             if constexpr (sends_values<Traits>::value) {
@@ -152,17 +150,22 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
                 }
 
                 if constexpr (stream_receiver<Receiver>) {
-                  THROW_ON_CUDA_ERROR(cudaEventRecord(op_state_->events_[Index], stream));
+                  if (op_state_->status_ == cudaSuccess) {
+                    op_state_->status_ = 
+                      STDEXEC_DBG_ERR(cudaEventRecord(op_state_->events_[Index], stream));
+                  }
                 }
               }
             }
             op_state_->arrive();
           }
+
         template <class Error>
             requires std::tag_invocable<std::execution::set_error_t, Receiver, Error>
           void set_error(Error&& err) && noexcept {
             set_error((Error&&) err, when_all::started);
           }
+
         void set_stopped() && noexcept {
           when_all::state_t expected = when_all::started;
           // Transition to the "stopped" state if and only if we're in the
@@ -173,12 +176,14 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
           }
           op_state_->arrive();
         }
+
         auto get_env() const
           -> std::execution::make_env_t<std::execution::env_of_t<Receiver>, std::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
           return std::execution::make_env(
             std::execution::get_env(base()),
             std::execution::with(std::execution::get_stop_token, op_state_->stop_source_.get_token()));
         }
+
         operation_t<CvrefReceiverId>* op_state_;
       };
 
@@ -191,10 +196,11 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         using Traits = completion_sigs<CvrefEnv>;
 
         cudaStream_t stream_{0};
+        cudaError_t status_{cudaSuccess};
 
         cudaStream_t get_stream() {
           if (!stream_) {
-            THROW_ON_CUDA_ERROR(cudaStreamCreate(&stream_));
+            status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
           }
           return stream_;
         }
@@ -223,9 +229,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         template <class OpT>
         static void sync(OpT& op) noexcept {
           if constexpr (std::is_base_of_v<detail::op_state_base_t, OpT>) {
-            // TODO Unknown sender
             if (op.stream_) {
-              THROW_ON_CUDA_ERROR(cudaStreamSynchronize(op.stream_));
+              if (op.status_ == cudaSuccess) {
+                op.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.stream_));
+              }
             }
           }
         }
@@ -235,53 +242,55 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
           on_stop_.reset();
 
           // Synchronize streams
-          if constexpr (stream_receiver<Receiver>) {
-            for (int i = 0; i < sizeof...(SenderIds); i++) {
-              THROW_ON_CUDA_ERROR(cudaStreamWaitEvent(stream_, events_[i]));
+          if (status_ == cudaSuccess) {
+            if constexpr (stream_receiver<Receiver>) {
+              for (int i = 0; i < sizeof...(SenderIds); i++) {
+                if (status_ == cudaSuccess) {
+                  status_ = STDEXEC_DBG_ERR(cudaStreamWaitEvent(stream_, events_[i]));
+                }
+              }
+            } else {
+              std::apply([this](auto&... ops) { (sync(ops), ...); }, child_states_);
             }
-          } else {
-            std::apply([this](auto&... ops) { (sync(ops), ...); }, child_states_);
           }
 
-          // All child operations have completed and arrived at the barrier.
-          switch(state_.load(std::memory_order_relaxed)) {
-          case when_all::started:
-            if constexpr (sends_values<Traits>::value) {
-              // All child operations completed successfully:
-              apply(
-                [this](auto&... opt_vals) -> void {
-                  std::apply(
-                    [this](auto&... all_vals) -> void {
-                      try {
-                      std::execution::set_value(
-                            (Receiver&&) recvr_, all_vals...);
-                      } catch(...) {
-                      std::execution::set_error(
-                            (Receiver&&) recvr_, std::current_exception());
-                      }
-                    },
-                    std::tuple_cat(
-                      apply(
-                        [](auto&... vals) { return std::tie(vals...); },
-                        opt_vals
-                      )...
-                    )
-                  );
-                },
-                *values_
-              );
+          if (status_ == cudaSuccess) {
+            // All child operations have completed and arrived at the barrier.
+            switch(state_.load(std::memory_order_relaxed)) {
+            case when_all::started:
+              if constexpr (sends_values<Traits>::value) {
+                // All child operations completed successfully:
+                apply(
+                  [this](auto&... opt_vals) -> void {
+                    std::apply(
+                      [this](auto&... all_vals) -> void {
+                        std::execution::set_value((Receiver&&) recvr_, all_vals...);
+                      },
+                      std::tuple_cat(
+                        apply(
+                          [](auto&... vals) { return std::tie(vals...); },
+                          opt_vals
+                        )...
+                      )
+                    );
+                  },
+                  *values_
+                );
+              }
+              break;
+            case when_all::error:
+              std::visit([this](auto& err) noexcept {
+                  std::execution::set_error((Receiver&&) recvr_, std::move(err));
+              }, errors_);
+              break;
+            case when_all::stopped:
+              std::execution::set_stopped((Receiver&&) recvr_);
+              break;
+            default:
+              ;
             }
-            break;
-          case when_all::error:
-            std::visit([this](auto& err) noexcept {
-                std::execution::set_error((Receiver&&) recvr_, std::move(err));
-            }, errors_);
-            break;
-          case when_all::stopped:
-            std::execution::set_stopped((Receiver&&) recvr_);
-            break;
-          default:
-            ;
+          } else {
+            std::execution::set_error((Receiver&&)recvr_, std::move(status_));
           }
         }
 
@@ -295,25 +304,27 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
                 }}...
               }
             , recvr_((Receiver&&) rcvr) {
-            THROW_ON_CUDA_ERROR(cudaMallocManaged(&values_, sizeof(child_values_tuple_t)));
+            status_ = STDEXEC_DBG_ERR(cudaMallocManaged(&values_, sizeof(child_values_tuple_t)));
           }
         operation_t(WhenAll&& when_all, Receiver rcvr)
           : operation_t((WhenAll&&) when_all, (Receiver&&) rcvr, Indices{})
         {
           for (int i = 0; i < sizeof...(SenderIds); i++) {
-            THROW_ON_CUDA_ERROR(cudaEventCreate(&events_[i]));
+            if (status_ == cudaSuccess) {
+              status_ = STDEXEC_DBG_ERR(cudaEventCreate(&events_[i]));
+            }
           }
         }
 
         ~operation_t() {
-          THROW_ON_CUDA_ERROR(cudaFree(values_));
+          STDEXEC_DBG_ERR(cudaFree(values_));
 
           if (stream_) {
-            THROW_ON_CUDA_ERROR(cudaStreamDestroy(stream_));
+            STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
           }
 
           for (int i = 0; i < sizeof...(SenderIds); i++) {
-            THROW_ON_CUDA_ERROR(cudaEventDestroy(events_[i]));
+            STDEXEC_DBG_ERR(cudaEventDestroy(events_[i]));
           }
         }
 

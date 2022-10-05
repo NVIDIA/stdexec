@@ -48,20 +48,31 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
 
     template <class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, As&&... as)
-        noexcept requires _P2300::__callable<Fun, As...> {
+        noexcept requires std::invocable<Fun, As...> {
 
         _NVCXX_EXPAND_PACK(As, as,
           using result_t = std::decay_t<std::invoke_result_t<Fun, As...>>;
+          constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
+          operation_state_base_t<ReceiverId> &op_state = self.op_state_;
+          cudaStream_t stream = op_state.stream_;
 
-          cudaStream_t stream = self.op_state_.stream_;
-
-          if constexpr (std::is_same_v<void, result_t>) {
+          if constexpr (does_not_return_a_value) {
             kernel<std::decay_t<Fun>, As...><<<1, 1, 0, stream>>>(self.f_, (As&&)as...);
-            self.op_state_.propagate_completion_signal(std::execution::set_value);
+
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+              op_state.propagate_completion_signal(std::execution::set_value);
+            } else {
+              op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
+            }
           } else {
-            result_t *d_result = reinterpret_cast<result_t*>(self.op_state_.temp_storage_);
+            result_t *d_result = reinterpret_cast<result_t*>(op_state.temp_storage_);
             kernel_with_result<std::decay_t<Fun>, result_t, As...><<<1, 1, 0, stream>>>(self.f_, d_result, (As&&)as...);
-            self.op_state_.propagate_completion_signal(std::execution::set_value, *d_result);
+
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+              op_state.propagate_completion_signal(std::execution::set_value, *d_result);
+            } else {
+              op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
+            }
           }
         );
       }
@@ -88,9 +99,9 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
 }
 
 template <class SenderId, class FunId>
-  struct then_sender_t : gpu_sender_base_t {
-    using Sender = _P2300::__t<SenderId>;
-    using Fun = _P2300::__t<FunId>;
+  struct then_sender_t : sender_base_t {
+    using Sender = stdexec::__t<SenderId>;
+    using Fun = stdexec::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;
@@ -137,13 +148,9 @@ template <class SenderId, class FunId>
           max_result_size<Receiver>::value, 
           _P2300::__x<Receiver>, Fun>;
 
-    template <class Fun, class... Args>
-        requires std::invocable<Fun, Args...>
-      using set_value_invoke_t =
-        std::execution::completion_signatures<
-          _P2300::__minvoke1<
-            _P2300::__remove<void, _P2300::__qf<std::execution::set_value_t>>,
-            std::add_lvalue_reference_t<std::invoke_result_t<Fun, Args...>>>>;
+    template <class _Error>
+      using set_error = 
+        std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>;
 
     template <class Self, class Env>
       using completion_signatures =
@@ -155,7 +162,8 @@ template <class SenderId, class FunId>
             Fun,
             _P2300::__member_t<Self, Sender>,
             Env>,
-          _P2300::__mbind_front_q<std::execution::__set_value_invoke_t, Fun>>;
+          stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>,
+          stdexec::__q<set_error>>;
 
     template <_P2300::__decays_to<then_sender_t> Self, std::execution::receiver Receiver>
       requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>

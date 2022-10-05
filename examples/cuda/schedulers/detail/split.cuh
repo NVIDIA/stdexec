@@ -34,12 +34,17 @@ namespace example::cuda::stream {
         friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
           _SharedState &__state = __self.__sh_state_;
           cudaStream_t stream = __state.__op_state2_.stream_;
-          THROW_ON_CUDA_ERROR(cudaStreamSynchronize(stream));
 
-          _NVCXX_EXPAND_PACK(_As, __as,
-            using __tuple_t = decayed_tuple<_Tag, _As...>;
-            __state.__data_->template emplace<__tuple_t>(_Tag{}, __as...);
-          )
+          if (__self.__sh_state_.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); 
+              __self.__sh_state_.status_ == cudaSuccess) {
+            _NVCXX_EXPAND_PACK(_As, __as,
+              using __tuple_t = decayed_tuple<_Tag, _As...>;
+              __state.__data_->template emplace<__tuple_t>(_Tag{}, __as...);
+            )
+          } else {
+            using __tuple_t = decayed_tuple<std::execution::set_error_t, cudaError_t>;
+            __state.__data_->template emplace<__tuple_t>(std::execution::set_error, __self.__sh_state_.status_);
+          }
           __state.__notify();
         }
 
@@ -69,8 +74,7 @@ namespace example::cuda::stream {
             _P2300::__mbind_front_q<
               variant_t,
               tuple_t<std::execution::set_stopped_t>, // Initial state of the variant is set_stopped
-              // tuple_t<std::execution::set_error_t, cudaError_t>,
-              // tuple_t<std::execution::set_error_t, std::exception_ptr>,
+              tuple_t<std::execution::set_error_t, cudaError_t>,
               _Ts...>;
 
         using __bound_values_t =
@@ -93,18 +97,23 @@ namespace example::cuda::stream {
 
         std::execution::in_place_stop_source __stop_source_{};
         inner_op_state_t __op_state2_;
-        __variant_t *__data_;
         std::atomic<void*> __head_;
+        __variant_t *__data_{nullptr};
+        cudaError_t status_{cudaSuccess};
 
         explicit __sh_state(_Sender& __sndr)
           : __op_state2_(std::execution::connect((_Sender&&) __sndr, __receiver_{*this}))
           , __head_{nullptr} {
-          THROW_ON_CUDA_ERROR(cudaMallocManaged(&__data_, sizeof(__variant_t)));
-          new (__data_) __variant_t();
+          status_ = STDEXEC_DBG_ERR(cudaMallocManaged(&__data_, sizeof(__variant_t)));
+          if (status_ == cudaSuccess) {
+            new (__data_) __variant_t();
+          }
         }
 
         ~__sh_state() {
-          THROW_ON_CUDA_ERROR(cudaFree(__data_));
+          if (__data_) {
+            STDEXEC_DBG_ERR(cudaFree(__data_));
+          }
         }
 
         void __notify() noexcept {
@@ -153,11 +162,16 @@ namespace example::cuda::stream {
           __operation *__op = static_cast<__operation*>(__self);
           __op->__on_stop_.reset();
 
-          visit([&](auto& __tupl) noexcept -> void {
-            apply([&](auto __tag, auto&&... __args) noexcept -> void {
-              __tag((_Receiver&&) __op->__recvr_, __args...);
-            }, __tupl);
-          }, *__op->__shared_state_->__data_);
+          cudaError_t status = __op->__shared_state_->status_;
+          if (status == cudaSuccess) {
+            visit([&](auto& __tupl) noexcept -> void {
+              apply([&](auto __tag, auto&&... __args) noexcept -> void {
+                __tag((_Receiver&&) __op->__recvr_, __args...);
+              }, __tupl);
+            }, *__op->__shared_state_->__data_);
+          } else {
+            std::execution::set_error((_Receiver&&)__op->__recvr_, std::move(status));
+          }
         }
 
         friend void tag_invoke(std::execution::start_t, __operation& __self) noexcept {
@@ -239,8 +253,8 @@ namespace example::cuda::stream {
         friend auto tag_invoke(std::execution::get_completion_signatures_t, _Self&&, _Env) ->
           std::execution::make_completion_signatures<
             _Sender,
-            std::execution::make_env_t<std::execution::with_t<std::execution::get_stop_token_t, std::execution::in_place_stop_token>>,
-            std::execution::completion_signatures<std::execution::set_error_t(const std::exception_ptr&)>,
+            stdexec::make_env_t<stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
+            std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>,
             __set_value_t,
             __set_error_t>;
 

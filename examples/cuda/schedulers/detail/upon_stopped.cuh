@@ -24,47 +24,67 @@ namespace example::cuda::stream {
 
 namespace upon_stopped {
 
-template <class Fun, class... As>
+template <class Fun>
   __launch_bounds__(1)
-  __global__ void kernel(Fun fn, As... as) {
-    fn(as...);
+  __global__ void kernel(Fun fn) {
+    fn();
   }
 
-template <class Fun, class ResultT, class... As>
+template <class Fun, class ResultT>
   __launch_bounds__(1)
-  __global__ void kernel_with_result(Fun fn, ResultT* result, As... as) {
-    *result = fn(as...);
+  __global__ void kernel_with_result(Fun fn, ResultT* result) {
+    new (result) ResultT(fn());
   }
 
 template <class ReceiverId, class Fun>
   class receiver_t : public receiver_base_t {
+    using result_t = std::decay_t<std::invoke_result_t<Fun>>;
+
+    template <class T, int = 0>
+      struct size_of_ {
+        static constexpr std::size_t value = sizeof(T);
+      };
+
+    template <int W>
+      struct size_of_<void, W> {
+        static constexpr std::size_t value = 0;
+      };
 
     Fun f_;
     operation_state_base_t<ReceiverId> &op_state_;
 
   public:
+    constexpr static std::size_t memory_allocation_size = stdexec::__v<size_of_<result_t>>;
 
     friend void tag_invoke(std::execution::set_stopped_t, receiver_t&& self) noexcept {
-      using result_t = std::decay_t<std::invoke_result_t<Fun>>;
-
+      constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
       cudaStream_t stream = self.op_state_.stream_;
 
-      if constexpr (std::is_same_v<void, result_t>) {
+      if constexpr (does_not_return_a_value) {
         kernel<Fun><<<1, 1, 0, stream>>>(self.f_);
-        self.op_state_.propagate_completion_signal(std::execution::set_value);
+        if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+          self.op_state_.propagate_completion_signal(std::execution::set_value);
+        } else {
+          self.op_state_.propagate_completion_signal(std::execution::set_error, std::move(status));
+        }
       } else {
-        result_t *d_result{};
-        THROW_ON_CUDA_ERROR(cudaMallocAsync(&d_result, sizeof(result_t), stream));
+        result_t *d_result = reinterpret_cast<result_t*>(self.op_state_.temp_storage_);
         kernel_with_result<Fun><<<1, 1, 0, stream>>>(self.f_, d_result);
-        self.op_state_.propagate_completion_signal(std::execution::set_value, *d_result);
-        THROW_ON_CUDA_ERROR(cudaFreeAsync(d_result, stream));
+        if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+          self.op_state_.propagate_completion_signal(std::execution::set_value, *d_result);
+        } else {
+          self.op_state_.propagate_completion_signal(std::execution::set_error, std::move(status));
+        }
       }
     }
 
-    template <_P2300::__one_of<std::execution::set_value_t,
-                            std::execution::set_error_t> Tag, class... As>
+    template <stdexec::__one_of<std::execution::set_value_t,
+                                std::execution::set_error_t> Tag, 
+              class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-        self.op_state_.propagate_completion_signal(tag, (As&&)as...);
+        _NVCXX_EXPAND_PACK(As, as,
+          self.op_state_.propagate_completion_signal(tag, (As&&)as...);
+        );
       }
 
     friend std::execution::env_of_t<_P2300::__t<ReceiverId>>
@@ -81,9 +101,9 @@ template <class ReceiverId, class Fun>
 }
 
 template <class SenderId, class FunId>
-  struct upon_stopped_sender_t : gpu_sender_base_t {
-    using Sender = _P2300::__t<SenderId>;
-    using Fun = _P2300::__t<FunId>;
+  struct upon_stopped_sender_t : sender_base_t {
+    using Sender = stdexec::__t<SenderId>;
+    using Fun = stdexec::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;

@@ -25,7 +25,7 @@ namespace example::cuda::stream {
 namespace bulk {
   template <int BlockThreads, std::integral Shape, class Fun, class... As>
     __launch_bounds__(BlockThreads)
-    __global__ void kernel(Shape shape, Fun fn, As&&... as) {
+    __global__ void kernel(Shape shape, Fun fn, As... as) {
       const int tid = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (tid < static_cast<int>(shape)) {
@@ -45,15 +45,25 @@ namespace bulk {
     public:
       template <class... As _NVCXX_CAPTURE_PACK(As)>
         friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, As&&... as)
-          noexcept requires _P2300::__callable<Fun, Shape, As...> {
-          _NVCXX_EXPAND_PACK(As, as,
-            constexpr int block_threads = 256;
-            const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1) / block_threads;
-            kernel<block_threads, Shape, Fun, As...>
-                    <<<grid_blocks, block_threads, 0, self.op_state_.stream_>>>(
-                      self.shape_, self.f_, (As&&)as...);
+          noexcept requires stdexec::__callable<Fun, Shape, As...> {
+          operation_state_base_t<ReceiverId> &op_state = self.op_state_;
 
-            self.op_state_.propagate_completion_signal(std::execution::set_value, (As&&)as...);
+          _NVCXX_EXPAND_PACK(As, as,
+            if (self.shape_) {
+              cudaStream_t stream = op_state.stream_;
+              constexpr int block_threads = 256;
+              const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1) / block_threads;
+              kernel
+                <block_threads, Shape, Fun, As...>
+                  <<<grid_blocks, block_threads, 0, stream>>>(
+                    self.shape_, self.f_, (As&&)as...);
+            }
+
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+              op_state.propagate_completion_signal(std::execution::set_value, (As&&)as...);
+            } else {
+              op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
+            }
           );
         }
 
@@ -76,9 +86,9 @@ namespace bulk {
 }
 
 template <class SenderId, std::integral Shape, class FunId>
-  struct bulk_sender_t : gpu_sender_base_t {
-    using Sender = _P2300::__t<SenderId>;
-    using Fun = _P2300::__t<FunId>;
+  struct bulk_sender_t : sender_base_t {
+    using Sender = stdexec::__t<SenderId>;
+    using Fun = stdexec::__t<FunId>;
 
     Sender sndr_;
     Shape shape_;

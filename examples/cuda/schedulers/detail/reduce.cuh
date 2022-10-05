@@ -23,6 +23,7 @@
 #include <cub/device/device_reduce.cuh>
 
 #include "common.cuh"
+#include "schedulers/detail/throw_on_cuda_error.cuh"
 
 namespace example::cuda::stream {
 
@@ -108,17 +109,36 @@ namespace reduce_ {
 
         std::size_t num_items = std::distance(first, last);
 
-        THROW_ON_CUDA_ERROR(cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_size, first,
-                                                      d_out, num_items, self.f_, value_t{},
-                                                      stream));
-        THROW_ON_CUDA_ERROR(cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
+        cudaError_t status;
 
-        THROW_ON_CUDA_ERROR(cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_size, first,
-                                                      d_out, num_items, self.f_, value_t{},
-                                                      stream));
-        THROW_ON_CUDA_ERROR(cudaFreeAsync(d_temp_storage, stream));
+        do {
+          if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+                  d_temp_storage, temp_storage_size, first, d_out, num_items,
+                  self.f_, value_t{}, stream));
+              status != cudaSuccess) {
+            break;
+          }
 
-        self.op_state_.propagate_completion_signal(std::execution::set_value, *d_out);
+          if (status = STDEXEC_DBG_ERR(cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
+              status != cudaSuccess) {
+            break;
+          }
+
+          if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+                  d_temp_storage, temp_storage_size, first, d_out, num_items,
+                  self.f_, value_t{}, stream));
+              status != cudaSuccess) {
+            break;
+          }
+
+          status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
+        } while(false);
+
+        if (status == cudaSuccess) {
+          self.op_state_.propagate_completion_signal(std::execution::set_value, *d_out);
+        } else {
+          self.op_state_.propagate_completion_signal(std::execution::set_error, std::move(status));
+        }
       }
 
       template <_P2300::__one_of<std::execution::set_error_t,
@@ -142,9 +162,9 @@ namespace reduce_ {
 }
 
 template <class SenderId, class FunId>
-  struct reduce_sender_t : gpu_sender_base_t {
-    using Sender = _P2300::__t<SenderId>;
-    using Fun = _P2300::__t<FunId>;
+  struct reduce_sender_t : sender_base_t {
+    using Sender = stdexec::__t<SenderId>;
+    using Fun = stdexec::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;
