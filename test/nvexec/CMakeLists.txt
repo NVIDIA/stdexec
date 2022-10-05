@@ -39,6 +39,6 @@ endif()
 add_executable(test.nvexec ${nvexec_test_sources})
 
 target_include_directories(test.nvexec PRIVATE ${CMAKE_CURRENT_LIST_DIR}/..)
-target_link_libraries(test.nvexec STDEXEC::nvexec stdexec_executable_flags Catch2::Catch2)
+target_link_libraries(test.nvexec STDEXEC::nvexec stdexec_executable_flags Catch2::Catch2 range-v3::range-v3)
 
 catch_discover_tests(test.nvexec)

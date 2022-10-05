@@ -87,6 +87,7 @@ function(def_cpu_example example)
                 stdpar_multicore
                 STDEXEC::stdexec
                 stdexec_executable_flags
+                range-v3::range-v3
     )
     set_source_files_properties(${source} PROPERTIES LANGUAGE ${_lang_cxx})
 endfunction()
@@ -114,6 +115,7 @@ function(def_gpu_example example)
         PRIVATE nvexec_example
                 STDEXEC::nvexec
                 stdexec_executable_flags
+                range-v3::range-v3
     )
     set_source_files_properties(${source} PROPERTIES LANGUAGE ${_lang_gpu})
 endfunction()

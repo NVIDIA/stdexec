@@ -92,6 +92,17 @@ rapids_cpm_find(Catch2 ${Catch2_VERSION}
     URL https://github.com/catchorg/Catch2/archive/refs/tags/v${Catch2_VERSION}.zip
 )
 
+# Add range-v3
+set(range-v3_VERSION 0.12.0)
+# Always download it, don't attempt to do `find_package(range-v3)` first
+set(CPM_DOWNLOAD_range-v3 TRUE)
+rapids_cpm_find(range-v3 ${range-v3_VERSION}
+  GLOBAL_TARGETS range-v3::range-v3
+  BUILD_EXPORT_SET stdexec-exports
+  CPM_ARGS
+    URL https://github.com/ericniebler/range-v3/archive/refs/tags/${range-v3_VERSION}.zip
+)
+
 # Ensure that we link with the threading library
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 rapids_find_package(Threads REQUIRED

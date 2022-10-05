@@ -1,40 +1,25 @@
-#include <nvexec/stream_context.cuh>
-#include <stdexec/execution.hpp>
+#include <range/v3/range/concepts.hpp>
+#include <range/v3/view/subrange.hpp>
 
 #include <thrust/device_vector.h>
 
-#include <cstdio>
-
-template <class Iterator>
-struct simple_range {
-  Iterator first;
-  Iterator last;
-};
-
-template <class Iterator>
-auto begin(simple_range<Iterator>& rng) {
-  return rng.first;
-}
-
-template <class Iterator>
-auto end(simple_range<Iterator>& rng) {
-  return rng.last;
-}
+#include <nvexec/stream_context.cuh>
+#include <stdexec/execution.hpp>
 
 namespace ex = stdexec;
 
 int main() {
   const int n = 2 * 1024;
-  thrust::device_vector<float> input(n, 1);
-  float* first = thrust::raw_pointer_cast(input.data());
-  float* last = thrust::raw_pointer_cast(input.data()) + input.size();
+  thrust::device_vector<int> input(n, 1);
+  auto rng = ranges::subrange(thrust::raw_pointer_cast(input.data()),
+                              thrust::raw_pointer_cast(input.data()) + input.size());
 
-  nvexec::stream_context stream_ctx{};
+  nvexec::stream_context stream{};
 
-  auto snd = ex::transfer_just(stream_ctx.get_scheduler(), simple_range<float*>{first, last})
+  auto snd = ex::transfer_just(stream.get_scheduler(), rng)
            | nvexec::reduce();
 
-  auto [result] = stdexec::sync_wait(std::move(snd)).value();
+  auto [result] = ex::sync_wait(std::move(snd)).value();
 
   std::cout << "result: " << result << std::endl;
 }
