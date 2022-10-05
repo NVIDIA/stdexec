@@ -58,8 +58,8 @@ namespace schedule_from {
         std::execution::__error_types_of_t<
           Sender,
           std::execution::env_of_t<Receiver>,
-          stdexec::__transform<
-            stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
+          _P2300::__transform<
+            _P2300::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
             bound_values_t>>;
 
       constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
@@ -120,7 +120,7 @@ namespace schedule_from {
 
 template <class Scheduler, class SenderId>
   struct schedule_from_sender_t : sender_base_t {
-    using Sender = stdexec::__t<SenderId>;
+    using Sender = _P2300::__t<SenderId>;
     using source_sender_th = schedule_from::source_sender_t<Sender>;
 
     detail::queue::task_hub_t* hub_;
@@ -162,7 +162,7 @@ template <class Scheduler, class SenderId>
     template <_P2300::__decays_to<schedule_from_sender_t> _Self, class _Env>
       friend auto tag_invoke(std::execution::get_completion_signatures_t, _Self&&, _Env) ->
         std::execution::make_completion_signatures<
-          stdexec::__member_t<_Self, Sender>,
+          _P2300::__member_t<_Self, Sender>,
           _Env,
           std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>>;
 

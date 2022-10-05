@@ -70,8 +70,8 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
         }
       }
 
-    template <stdexec::__one_of<std::execution::set_value_t,
-                                std::execution::set_stopped_t> Tag, 
+    template <_P2300::__one_of<std::execution::set_value_t,
+                               std::execution::set_stopped_t> Tag, 
               class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
         _NVCXX_EXPAND_PACK(As, as,
@@ -93,53 +93,53 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
 
 template <class SenderId, class FunId>
   struct upon_error_sender_t : sender_base_t {
-    using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
+    using Sender = _P2300::__t<SenderId>;
+    using Fun = _P2300::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;
 
     template <class T, int = 0>
       struct size_of_ {
-        using __t = stdexec::__index<sizeof(T)>;
+        using __t = _P2300::__index<sizeof(T)>;
       };
 
     template <int W>
       struct size_of_<void, W> {
-        using __t = stdexec::__index<0>;
+        using __t = _P2300::__index<0>;
       };
     
     template <class... As>
       struct result_size_for {
-        using __t = typename size_of_<stdexec::__call_result_t<Fun, As...>>::__t;
+        using __t = typename size_of_<_P2300::__call_result_t<Fun, As...>>::__t;
       };
 
     template <class... Sizes>
       struct max_in_pack {
-        static constexpr std::size_t value = std::max({std::size_t{}, stdexec::__v<Sizes>...});
+        static constexpr std::size_t value = std::max({std::size_t{}, _P2300::__v<Sizes>...});
       };
 
     template <class Receiver>
         requires std::execution::sender<Sender, std::execution::env_of_t<Receiver>>
       struct max_result_size {
         template <class... _As>
-          using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
+          using result_size_for_t = _P2300::__t<result_size_for<_As...>>;
 
         static constexpr std::size_t value =
-          stdexec::__v<
-            stdexec::__gather_sigs_t<
+          _P2300::__v<
+            _P2300::execution::__gather_sigs_t<
               std::execution::set_error_t, 
               Sender,  
               std::execution::env_of_t<Receiver>, 
-              stdexec::__q<result_size_for_t>, 
-              stdexec::__q<max_in_pack>>>;
+              _P2300::__q<result_size_for_t>, 
+              _P2300::__q<max_in_pack>>>;
       };
 
     template <class Receiver>
       using receiver_t = 
         upon_error::receiver_t<
           max_result_size<Receiver>::value, 
-          stdexec::__x<Receiver>, 
+          _P2300::__x<Receiver>, 
           Fun>;
 
     template <class Self, class Env>

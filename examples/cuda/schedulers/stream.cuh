@@ -73,13 +73,13 @@ namespace example::cuda::stream {
 
     template <class RId>
       struct operation_state_t : detail::op_state_base_t {
-        using R = stdexec::__t<RId>;
+        using R = _P2300::__t<RId>;
 
         R rec_;
         cudaStream_t stream_{0};
         cudaError_t status_{cudaSuccess};
 
-        template <stdexec::__decays_to<R> Receiver>
+        template <_P2300::__decays_to<R> Receiver>
           operation_state_t(Receiver&& rec) : rec_((Receiver&&)rec) {
             status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
           }
@@ -122,8 +122,8 @@ namespace example::cuda::stream {
       template <class R>
         friend auto tag_invoke(std::execution::connect_t, sender_t, R&& rec)
           noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-          -> operation_state_t<stdexec::__x<std::remove_cvref_t<R>>> {
-          return operation_state_t<stdexec::__x<std::remove_cvref_t<R>>>((R&&) rec);
+          -> operation_state_t<_P2300::__x<std::remove_cvref_t<R>>> {
+          return operation_state_t<_P2300::__x<std::remove_cvref_t<R>>>((R&&) rec);
         }
 
       scheduler_t make_scheduler() const {
@@ -160,7 +160,7 @@ namespace example::cuda::stream {
         return then_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&)fun};
       }
 
-    template <stdexec::__one_of<
+    template <_P2300::__one_of<
                 std::execution::let_value_t, 
                 std::execution::let_stopped_t, 
                 std::execution::let_error_t> Let, 
@@ -256,9 +256,9 @@ namespace example::cuda::stream {
     }
 
   template <stream_completing_sender... Senders>
-    when_all_sender_th<scheduler_t, std::tag_invoke_result_t<std::execution::into_variant_t, Senders>...>
+    when_all_sender_th<scheduler_t, std::tag_invoke_result_t<std::execution::__into_variant_t, Senders>...>
     tag_invoke(std::execution::when_all_with_variant_t, Senders&&... sndrs) noexcept {
-      return when_all_sender_th<scheduler_t, std::tag_invoke_result_t<std::execution::into_variant_t, Senders>...>{
+      return when_all_sender_th<scheduler_t, std::tag_invoke_result_t<std::execution::__into_variant_t, Senders>...>{
         nullptr, 
         std::execution::into_variant((Senders&&)sndrs)...
       };

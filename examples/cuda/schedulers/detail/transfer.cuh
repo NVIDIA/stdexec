@@ -18,7 +18,6 @@
 #include <execution.hpp>
 #include <type_traits>
 
-#include "__detail/__p2300.hpp"
 #include "common.cuh"
 
 namespace example::cuda::stream {
@@ -43,9 +42,9 @@ namespace transfer {
       using Sender = _P2300::__t<SenderId>;
       operation_state_base_t<ReceiverId>& operation_state_;
 
-      template <stdexec::__one_of<std::execution::set_value_t,
-                                  std::execution::set_error_t,
-                                  std::execution::set_stopped_t> Tag,
+      template <_P2300::__one_of<std::execution::set_value_t,
+                                 std::execution::set_error_t,
+                                 std::execution::set_stopped_t> Tag,
                 class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, bypass_receiver_t&& self, As&&... as) noexcept {
         auto stream = self.operation_state_.stream_;
@@ -95,7 +94,7 @@ template <class SenderId>
     template <_P2300::__decays_to<transfer_sender_t> _Self, class _Env>
       friend auto tag_invoke(std::execution::get_completion_signatures_t, _Self&&, _Env) ->
         std::execution::make_completion_signatures<
-          stdexec::__member_t<_Self, Sender>,
+          _P2300::__member_t<_Self, Sender>,
           _Env,
           std::execution::completion_signatures<
             std::execution::set_error_t(cudaError_t)

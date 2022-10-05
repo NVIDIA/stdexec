@@ -111,8 +111,8 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
     template <class CvrefReceiverId, std::size_t Index>
       struct receiver_t : std::execution::receiver_adaptor<receiver_t<CvrefReceiverId, Index>>
                         , receiver_base_t {
-        using WhenAll = stdexec::__member_t<CvrefReceiverId, when_all_sender_t>;
-        using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
+        using WhenAll = _P2300::__member_t<CvrefReceiverId, when_all_sender_t>;
+        using Receiver = _P2300::__t<std::decay_t<CvrefReceiverId>>;
         using SenderId = example::cuda::detail::nth_type<Index, SenderIds...>;
         using Traits =
           completion_sigs<

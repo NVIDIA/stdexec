@@ -163,8 +163,8 @@ namespace reduce_ {
 
 template <class SenderId, class FunId>
   struct reduce_sender_t : sender_base_t {
-    using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
+    using Sender = _P2300::__t<SenderId>;
+    using Fun = _P2300::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;

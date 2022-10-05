@@ -255,8 +255,8 @@ namespace example::cuda::stream {
           std::execution::__error_types_of_t<
             sender_t,
             env_t,
-            stdexec::__transform<
-              stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
+            _P2300::__transform<
+              _P2300::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
               bound_values_t>>;
 
         using task_t = detail::continuation_task_t<inner_receiver_t, variant_t>;
@@ -318,7 +318,7 @@ namespace example::cuda::stream {
           , task_(queue::make_host<task_t>(this->status_, receiver_provider(*this), storage_.get()))
           , inner_op_{
               std::execution::connect((sender_t&&)sender,
-              detail::enqueue_receiver_t<stdexec::__x<env_t>, stdexec::__x<variant_t>>{
+              detail::enqueue_receiver_t<_P2300::__x<env_t>, _P2300::__x<variant_t>>{
                 std::execution::get_env(out_receiver), storage_.get(), task_.get(), hub_->producer()})} {
           if (this->status_ == cudaSuccess) {
             this->status_ = task_->status_;

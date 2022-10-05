@@ -45,7 +45,7 @@ namespace bulk {
     public:
       template <class... As _NVCXX_CAPTURE_PACK(As)>
         friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, As&&... as)
-          noexcept requires stdexec::__callable<Fun, Shape, As...> {
+          noexcept requires _P2300::__callable<Fun, Shape, As...> {
           operation_state_base_t<ReceiverId> &op_state = self.op_state_;
 
           _NVCXX_EXPAND_PACK(As, as,
@@ -87,8 +87,8 @@ namespace bulk {
 
 template <class SenderId, std::integral Shape, class FunId>
   struct bulk_sender_t : sender_base_t {
-    using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
+    using Sender = _P2300::__t<SenderId>;
+    using Fun = _P2300::__t<FunId>;
 
     Sender sndr_;
     Shape shape_;

@@ -253,7 +253,7 @@ namespace example::cuda::stream {
         friend auto tag_invoke(std::execution::get_completion_signatures_t, _Self&&, _Env) ->
           std::execution::make_completion_signatures<
             _Sender,
-            stdexec::make_env_t<stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
+            _P2300::execution::make_env_t<_P2300::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
             std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>,
             __set_value_t,
             __set_error_t>;

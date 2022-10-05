@@ -54,7 +54,7 @@ template <class ReceiverId, class Fun>
     operation_state_base_t<ReceiverId> &op_state_;
 
   public:
-    constexpr static std::size_t memory_allocation_size = stdexec::__v<size_of_<result_t>>;
+    constexpr static std::size_t memory_allocation_size = _P2300::__v<size_of_<result_t>>;
 
     friend void tag_invoke(std::execution::set_stopped_t, receiver_t&& self) noexcept {
       constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
@@ -78,8 +78,8 @@ template <class ReceiverId, class Fun>
       }
     }
 
-    template <stdexec::__one_of<std::execution::set_value_t,
-                                std::execution::set_error_t> Tag, 
+    template <_P2300::__one_of<std::execution::set_value_t,
+                               std::execution::set_error_t> Tag, 
               class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
         _NVCXX_EXPAND_PACK(As, as,
@@ -102,8 +102,8 @@ template <class ReceiverId, class Fun>
 
 template <class SenderId, class FunId>
   struct upon_stopped_sender_t : sender_base_t {
-    using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
+    using Sender = _P2300::__t<SenderId>;
+    using Fun = _P2300::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;

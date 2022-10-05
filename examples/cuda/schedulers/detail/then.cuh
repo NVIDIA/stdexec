@@ -100,8 +100,8 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
 
 template <class SenderId, class FunId>
   struct then_sender_t : sender_base_t {
-    using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
+    using Sender = _P2300::__t<SenderId>;
+    using Fun = _P2300::__t<FunId>;
 
     Sender sndr_;
     Fun fun_;
@@ -162,8 +162,8 @@ template <class SenderId, class FunId>
             Fun,
             _P2300::__member_t<Self, Sender>,
             Env>,
-          stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>,
-          stdexec::__q<set_error>>;
+          _P2300::__mbind_front_q<_P2300::execution::__set_value_invoke_t, Fun>,
+          _P2300::__q<set_error>>;
 
     template <_P2300::__decays_to<then_sender_t> Self, std::execution::receiver Receiver>
       requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>

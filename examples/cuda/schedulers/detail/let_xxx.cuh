@@ -93,7 +93,7 @@ namespace example::cuda::stream {
       using __decay_ref = std::decay_t<_T>&;
 
     template <class _Fun, class... _As>
-      using __result_sender_t = std::decay_t<stdexec::__call_result_t<_Fun, __decay_ref<_As>...>>;
+      using __result_sender_t = std::decay_t<_P2300::__call_result_t<_Fun, __decay_ref<_As>...>>;
 
     template <class _Sender, class _Receiver, class _Fun, class _SetTag>
         requires std::execution::sender<_Sender, std::execution::env_of_t<_Receiver>>
@@ -165,7 +165,7 @@ namespace example::cuda::stream {
         using _Env = std::execution::env_of_t<_Receiver>;
 
         constexpr static std::size_t memory_allocation_size = 
-          stdexec::__v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
+          _P2300::__v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
 
         template <class... _As>
           using __which_tuple_t =
@@ -190,7 +190,7 @@ namespace example::cuda::stream {
           friend void tag_invoke(_Tag, __receiver&& __self, _As&&... __as) noexcept {
             _NVCXX_EXPAND_PACK(_As, __as,
               using __tuple_t = __which_tuple_t<_As...>;
-              using __op_state_t = stdexec::__mapply<stdexec::__q<__op_state_for_t>, __tuple_t>;
+              using __op_state_t = _P2300::__mapply<_P2300::__q<__op_state_for_t>, __tuple_t>;
               using result_sender_t = __result_sender_t<_Fun, _As...>;
 
               cudaStream_t stream = __self.__op_state_->stream_;
@@ -200,7 +200,7 @@ namespace example::cuda::stream {
 
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status == cudaSuccess) {
                 auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
-                  stdexec::__conv{[&] {
+                  _P2300::__conv{[&] {
                     return std::execution::connect(
                         *result_sender,
                         propagate_receiver_t<_ReceiverId>{
@@ -294,9 +294,9 @@ namespace example::cuda::stream {
 
       template <class _Sender, class _Env>
         using __with_error =
-          stdexec::__if_c<
-            stdexec::__sends<_Set, _Sender, _Env>,
-            stdexec::completion_signatures<std::execution::set_error_t(cudaError_t)>,
+          _P2300::__if_c<
+            _P2300::execution::__sends<_Set, _Sender, _Env>,
+            _P2300::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>,
             std::execution::completion_signatures<>>;
 
       template <class _Sender, class _Env>
