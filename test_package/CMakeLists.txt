@@ -5,5 +5,5 @@ find_package(Threads REQUIRED)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
-add_executable(test_p2300 test.cpp)
-target_link_libraries(test_p2300 ${CONAN_LIBS} Threads::Threads)
+add_executable(test_stdexec test.cpp)
+target_link_libraries(test_stdexec ${CONAN_LIBS} Threads::Threads)
