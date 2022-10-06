@@ -40,10 +40,10 @@
 #include <mutex>
 
 // Pull in the reference implementation of P2300:
-#include <execution.hpp>
-#include <async_scope.hpp>
+#include <stdexec/execution.hpp>
+#include <exec/async_scope.hpp>
 // Use a thread pool
-#include "../schedulers/static_thread_pool.hpp"
+#include "exec/static_thread_pool.hpp"
 
 namespace ex = std::execution;
 
@@ -81,15 +81,15 @@ void process_read_data(const char* read_data, size_t read_len) {
 
 int main() {
   // Create a thread pool and get a scheduler from it
-  example::static_thread_pool work_pool{8};
+  exec::static_thread_pool work_pool{8};
   ex::scheduler auto work_sched = work_pool.get_scheduler();
 
-  example::static_thread_pool io_pool{1};
+  exec::static_thread_pool io_pool{1};
   ex::scheduler auto io_sched = io_pool.get_scheduler();
 
   std::array<std::byte, 16*1024> buffer;
 
-  _P2519::execution::async_scope scope;
+  exec::async_scope scope;
 
   // Fake a couple of requests
   for (int i = 0; i < 10; i++) {
@@ -113,7 +113,7 @@ int main() {
     scope.spawn(std::move(snd));
   }
 
-  (void) _P2300::this_thread::sync_wait(scope.on_empty());
+  (void) std::this_thread::sync_wait(scope.on_empty());
 
   return 0;
 }

@@ -15,23 +15,21 @@
  */
 
 // Pull in the reference implementation of P2300:
-#include <execution.hpp>
-#include <async_scope.hpp>
+#include <stdexec/execution.hpp>
+#include <exec/async_scope.hpp>
 
-#include "./schedulers/static_thread_pool.hpp"
+#include "exec/static_thread_pool.hpp"
 
 #include <cstdio>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
 using namespace std::execution;
-using namespace _P2519::execution;
-using _P2300::this_thread::sync_wait;
+using std::this_thread::sync_wait;
 
 class noop_receiver : receiver_adaptor<noop_receiver> {
   friend receiver_adaptor<noop_receiver>;
   template <class... _As>
-      // requires constructible_from<__impl::__future_result_t<_Sender2>, _As...>
     void set_value(_As&&... ) noexcept {
     }
   void set_error(std::exception_ptr) noexcept {
@@ -39,13 +37,13 @@ class noop_receiver : receiver_adaptor<noop_receiver> {
   void set_stopped() noexcept {
   }
   auto get_env() const& {
-    return make_env(with(get_stop_token, std::never_stop_token{}));
+    return stdexec::make_env(with(get_stop_token, std::never_stop_token{}));
   }
 };
 
 int main() {
-  example::static_thread_pool ctx{1};
-  async_scope scope;
+  exec::static_thread_pool ctx{1};
+  exec::async_scope scope;
 
   scheduler auto sch = ctx.get_scheduler();                               // 1
 

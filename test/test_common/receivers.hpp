@@ -18,7 +18,7 @@
 
 #include <catch2/catch.hpp>
 #include <test_common/type_helpers.hpp>
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 #include <tuple>
 
 namespace ex = std::execution;
@@ -409,10 +409,10 @@ template <ex::sender S, typename... Ts>
 inline void wait_for_value(S&& snd, Ts&&... val) {
   // Ensure that the given sender type has only one variant for set_value calls
   // If not, sync_wait will not work
-  static_assert(ex::__single_value_variant_sender<S>,
+  static_assert(stdexec::__single_value_variant_sender<S>,
       "Sender passed to sync_wait needs to have one variant for sending set_value");
 
-  std::optional<std::tuple<Ts...>> res = _P2300::this_thread::sync_wait((S &&) snd);
+  std::optional<std::tuple<Ts...>> res = std::this_thread::sync_wait((S &&) snd);
   CHECK(res.has_value());
   std::tuple<Ts...> expected((Ts &&) val...);
   if constexpr (std::tuple_size_v<std::tuple<Ts...>> == 1)

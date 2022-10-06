@@ -15,7 +15,7 @@
  */
 
 // Pull in the reference implementation of P2300:
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 #include "./algorithms/retry.hpp"
 
 #include <cstdio>
@@ -54,6 +54,6 @@ int main() {
   //   fail!
   //   fail!
   //   success!
-  auto [a] = _P2300::this_thread::sync_wait(std::move(x)).value();
+  auto [a] = std::this_thread::sync_wait(std::move(x)).value();
   (void) a;
 }

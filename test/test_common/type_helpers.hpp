@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 
 namespace ex = std::execution;
 
@@ -24,7 +24,7 @@ namespace ex = std::execution;
 struct immovable {
   immovable() = default;
  private:
-  _P2300_IMMOVABLE(immovable);
+  STDEXEC_IMMOVABLE(immovable);
 };
 
 //! A move-only type

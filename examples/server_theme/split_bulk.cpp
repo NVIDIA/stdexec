@@ -41,11 +41,11 @@
 #include <sstream>
 
 // Pull in the reference implementation of P2300:
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 // Keep track of spawned work in an async_scope:
-#include <async_scope.hpp>
+#include <exec/async_scope.hpp>
 // Use a thread pool
-#include "../schedulers/static_thread_pool.hpp"
+#include "exec/static_thread_pool.hpp"
 
 namespace ex = std::execution;
 
@@ -151,8 +151,8 @@ ex::sender auto handle_multi_blur_request(const http_request& req) {
 
 int main() {
   // Create a thread pool and get a scheduler from it
-  example::static_thread_pool pool{8};
-  _P2519::execution::async_scope scope;
+  exec::static_thread_pool pool{8};
+  exec::async_scope scope;
   ex::scheduler auto sched = pool.get_scheduler();
 
   // Fake a couple of edge_detect requests
