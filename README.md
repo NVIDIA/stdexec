@@ -9,10 +9,59 @@
 
 ## Disclaimer
 
-`stdexec`is experimental in nature and subject to change without warning. 
+`stdexec` is experimental in nature and subject to change without warning. 
 The authors and NVIDIA do not guarantee that this code is fit for any purpose whatsoever.
 
 [![CI](https://github.com/NVIDIA/stdexec/workflows/CI/badge.svg)](https://github.com/NVIDIA/stdexec/actions)
+
+## Example
+
+Below is a simple program that parallelizes some compute intensive work by executing it on a thread pool.
+
+```c++
+#include <stdexec/execution.hpp>
+#include <exec/static_thread_pool.hpp>
+#include <vector>
+#include <print> // from C++23
+
+extern int compute(int);
+
+int main() {
+{
+    // Declare a pool of 8 worker threads:
+    exec::static_thread_pool pool(8);
+
+    // Get a handle to the thread pool:
+    auto sched = pool.get_scheduler();
+
+    // Describe some work:
+    auto fun = [](int i) { return compute(i); };
+    auto work = stdexec::when_all(
+        stdexec::on(sched, stdexec::just(0) | stdexec::then(fun)),
+        stdexec::on(sched, stdexec::just(1) | stdexec::then(fun)),
+        stdexec::on(sched, stdexec::just(2) | stdexec::then(fun))
+    );
+
+    // Launch the work and wait for the result:
+    auto [i, j, k] = stdexec::sync_wait(std::move(work)).value();
+
+    // Print the results:
+    std::print("{}, {}, {}", i, j, k);
+}
+```
+
+## Structure
+
+This library is header-only, so all the source code can be found in the `include/` directory. The physical and logical structure of the code can be summarized by the following table:
+
+| Kind | Path | Namespace |
+|------|------|-----------|
+| Things approved for the C++ standard | `<stdexec/...>` | `::stdexec` |
+| Generic additions and extensions | `<exec/...>` | `::exec` |
+| Vendor-specific extensions and customizations | <code>&lt;<i>(vendor)</i>exec/...&gt;</code> | <code>::<i>(vendor)</i>exec</code> |
+| | |
+
+
 
 ## Building
 
