@@ -23,24 +23,24 @@ int main() { return 0; }
 #include <stdexec/execution.hpp>
 
 #if !_STD_NO_COROUTINES_
-#include "./task.hpp"
+#include <exec/task.hpp>
 
 using namespace std::execution;
 
 template <sender S1, sender S2>
-task<int> async_answer(S1 s1, S2 s2) {
+exec::task<int> async_answer(S1 s1, S2 s2) {
   // Senders are implicitly awaitable (in this coroutine type):
   co_await (S2&&) s2;
   co_return co_await (S1&&) s1;
 }
 
 template <sender S1, sender S2>
-task<std::optional<int>> async_answer2(S1 s1, S2 s2) {
+exec::task<std::optional<int>> async_answer2(S1 s1, S2 s2) {
   co_return co_await stopped_as_optional(async_answer(s1, s2));
 }
 
 // tasks have an associated stop token
-task<std::optional<std::in_place_stop_token>> async_stop_token() {
+exec::task<std::optional<std::in_place_stop_token>> async_stop_token() {
   co_return co_await stopped_as_optional(get_stop_token());
 }
 
