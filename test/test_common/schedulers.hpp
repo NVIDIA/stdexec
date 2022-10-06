@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 #include <test_common/type_helpers.hpp>
 
 #include <functional>

@@ -15,7 +15,7 @@
  */
 
 // Pull in the reference implementation of P2300:
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 #include "./algorithms/then.hpp"
 
 #include <cstdio>

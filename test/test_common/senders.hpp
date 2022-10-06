@@ -18,7 +18,7 @@
 
 #include <catch2/catch.hpp>
 #include <test_common/type_helpers.hpp>
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 
 namespace ex = std::execution;
 

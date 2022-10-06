@@ -48,9 +48,9 @@
 #include <vector>
 
 // Pull in the reference implementation of P2300:
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 // Use a thread pool
-#include "../schedulers/static_thread_pool.hpp"
+#include "exec/static_thread_pool.hpp"
 
 namespace ex = std::execution;
 
@@ -121,7 +121,7 @@ ex::sender auto stopped_to_response() {
 
 int main() {
   // Create a thread pool and get a scheduler from it
-  example::static_thread_pool pool{8};
+  exec::static_thread_pool pool{8};
   ex::scheduler auto sched = pool.get_scheduler();
 
   // Fake a couple of requests

@@ -17,7 +17,7 @@
 #pragma once
 
 // Pull in the reference implementation of P2300:
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 
 template <class From, class To>
 using _copy_cvref_t = stdexec::__member_t<From, To>;

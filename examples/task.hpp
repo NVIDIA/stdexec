@@ -21,8 +21,8 @@
 #include <utility>
 #include <variant>
 
-#include <coroutine.hpp>
-#include <execution.hpp>
+#include <stdexec/coroutine.hpp>
+#include <stdexec/execution.hpp>
 
 _PRAGMA_PUSH()
 _PRAGMA_IGNORE("-Wundefined-inline")

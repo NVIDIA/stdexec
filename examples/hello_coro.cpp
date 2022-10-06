@@ -20,7 +20,7 @@ int main() { return 0; }
 #include <iostream>
 
 // Pull in the reference implementation of P2300:
-#include <execution.hpp>
+#include <stdexec/execution.hpp>
 
 #if !_STD_NO_COROUTINES_
 #include "./task.hpp"

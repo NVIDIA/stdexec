@@ -153,60 +153,87 @@ target_compile_options(p2300_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:GNU>:-fdiagnostics-color=always>
                        )
 
+# Set up CUDASchedulers library
+option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" NO)
+find_package(CUDAToolkit)
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC" OR STDEXEC_ENABLE_CUDA)
+  if(CUDAToolkit_FOUND)
+      file(GLOB_RECURSE SCHED_SOURCES include/nvexec/*.cuh)
+      add_library(CUDASchedulers INTERFACE ${SCHED_SOURCES})
+      target_link_libraries(CUDASchedulers INTERFACE p2300 p2300_executable_flags CUDA::cudart)
+      target_include_directories(CUDASchedulers INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+      target_compile_features(CUDASchedulers INTERFACE cxx_std_20)
+
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(CUDASchedulers INTERFACE -x cu -Wno-unknown-cuda-version)
+        foreach(arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
+          target_compile_options(CUDASchedulers INTERFACE --cuda-gpu-arch=sm_${arch})
+        endforeach()
+      elseif (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
+        target_compile_options(CUDASchedulers INTERFACE -stdpar -gpu=nomanaged)
+        target_link_options(CUDASchedulers INTERFACE -stdpar -gpu=nomanaged)
+        foreach(arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
+          target_compile_options(CUDASchedulers INTERFACE -gpu=cc${arch})
+        endforeach()
+      endif()
+  endif()
+endif()
+
 # Now, set up test executable
 enable_testing()
 
 set(test_sourceFiles
     test/test_main.cpp
-    test/cpos/test_cpo_bulk.cpp
-    test/cpos/test_cpo_ensure_started.cpp
-    test/cpos/test_cpo_receiver.cpp
-    test/cpos/test_cpo_start.cpp
-    test/cpos/test_cpo_connect.cpp
-    test/cpos/test_cpo_schedule.cpp
-    test/cpos/test_cpo_split.cpp
-    test/cpos/test_cpo_upon_error.cpp
-    test/cpos/test_cpo_upon_stopped.cpp
-    test/concepts/test_concept_scheduler.cpp
-    test/concepts/test_concepts_receiver.cpp
-    test/concepts/test_concept_operation_state.cpp
-    test/concepts/test_concepts_sender.cpp
-    test/concepts/test_awaitables.cpp
-    test/types/test_type_async_scope.cpp
-    test/algos/factories/test_just.cpp
-    test/algos/factories/test_transfer_just.cpp
-    test/algos/factories/test_just_error.cpp
-    test/algos/factories/test_just_stopped.cpp
-    test/algos/adaptors/test_on.cpp
-    test/algos/adaptors/test_transfer.cpp
-    test/algos/adaptors/test_schedule_from.cpp
-    test/algos/adaptors/test_then.cpp
-    test/algos/adaptors/test_upon_error.cpp
-    test/algos/adaptors/test_upon_stopped.cpp
-    test/algos/adaptors/test_let_value.cpp
-    test/algos/adaptors/test_let_error.cpp
-    test/algos/adaptors/test_let_stopped.cpp
-    test/algos/adaptors/test_bulk.cpp
-    test/algos/adaptors/test_split.cpp
-    test/algos/adaptors/test_when_all.cpp
-    test/algos/adaptors/test_transfer_when_all.cpp
-    test/algos/adaptors/test_into_variant.cpp
-    test/algos/adaptors/test_stopped_as_optional.cpp
-    test/algos/adaptors/test_stopped_as_error.cpp
-    test/algos/adaptors/test_ensure_started.cpp
-    test/algos/consumers/test_start_detached.cpp
-    test/algos/consumers/test_sync_wait.cpp
-    test/algos/other/test_execute.cpp
-    test/detail/test_completion_signatures.cpp
-    test/detail/test_create.cpp
-    test/detail/test_utility.cpp
-    test/queries/test_env.cpp
-    test/queries/test_get_forward_progress_guarantee.cpp
-    test/async_scope/test_dtor.cpp
-    test/async_scope/test_spawn.cpp
-    test/async_scope/test_spawn_future.cpp
-    test/async_scope/test_empty.cpp
-    test/async_scope/test_stop.cpp
+    test/stdexec/cpos/test_cpo_bulk.cpp
+    test/stdexec/cpos/test_cpo_ensure_started.cpp
+    test/stdexec/cpos/test_cpo_receiver.cpp
+    test/stdexec/cpos/test_cpo_start.cpp
+    test/stdexec/cpos/test_cpo_connect.cpp
+    test/stdexec/cpos/test_cpo_schedule.cpp
+    test/stdexec/cpos/test_cpo_split.cpp
+    test/stdexec/cpos/test_cpo_upon_error.cpp
+    test/stdexec/cpos/test_cpo_upon_stopped.cpp
+    test/stdexec/concepts/test_concept_scheduler.cpp
+    test/stdexec/concepts/test_concepts_receiver.cpp
+    test/stdexec/concepts/test_concept_operation_state.cpp
+    test/stdexec/concepts/test_concepts_sender.cpp
+    test/stdexec/concepts/test_awaitables.cpp
+    test/stdexec/algos/factories/test_just.cpp
+    test/stdexec/algos/factories/test_transfer_just.cpp
+    test/stdexec/algos/factories/test_just_error.cpp
+    test/stdexec/algos/factories/test_just_stopped.cpp
+    test/stdexec/algos/adaptors/test_on.cpp
+    test/stdexec/algos/adaptors/test_transfer.cpp
+    test/stdexec/algos/adaptors/test_schedule_from.cpp
+    test/stdexec/algos/adaptors/test_then.cpp
+    test/stdexec/algos/adaptors/test_upon_error.cpp
+    test/stdexec/algos/adaptors/test_upon_stopped.cpp
+    test/stdexec/algos/adaptors/test_let_value.cpp
+    test/stdexec/algos/adaptors/test_let_error.cpp
+    test/stdexec/algos/adaptors/test_let_stopped.cpp
+    test/stdexec/algos/adaptors/test_bulk.cpp
+    test/stdexec/algos/adaptors/test_split.cpp
+    test/stdexec/algos/adaptors/test_when_all.cpp
+    test/stdexec/algos/adaptors/test_transfer_when_all.cpp
+    test/stdexec/algos/adaptors/test_into_variant.cpp
+    test/stdexec/algos/adaptors/test_stopped_as_optional.cpp
+    test/stdexec/algos/adaptors/test_stopped_as_error.cpp
+    test/stdexec/algos/adaptors/test_ensure_started.cpp
+    test/stdexec/algos/consumers/test_start_detached.cpp
+    test/stdexec/algos/consumers/test_sync_wait.cpp
+    test/stdexec/algos/other/test_execute.cpp
+    test/stdexec/detail/test_completion_signatures.cpp
+    test/stdexec/detail/test_create.cpp
+    test/stdexec/detail/test_utility.cpp
+    test/stdexec/queries/test_env.cpp
+    test/stdexec/queries/test_get_forward_progress_guarantee.cpp
+    test/exec/test_type_async_scope.cpp
+    test/exec/async_scope/test_dtor.cpp
+    test/exec/async_scope/test_spawn.cpp
+    test/exec/async_scope/test_spawn_future.cpp
+    test/exec/async_scope/test_empty.cpp
+    test/exec/async_scope/test_stop.cpp
     )
 
 add_executable(test.P2300 ${test_sourceFiles})
@@ -229,7 +256,7 @@ endfunction()
 def_example(clangd.helper "examples/_clangd_helper_file.cpp")
 def_example(example.hello_world "examples/hello_world.cpp")
 def_example(example.hello_coro "examples/hello_coro.cpp")
-# def_example(example.scope "examples/scope.cpp")
+def_example(example.scope "examples/scope.cpp")
 def_example(example.retry "examples/retry.cpp")
 def_example(example.then "examples/then.cpp")
 def_example(example.server_theme.let_value "examples/server_theme/let_value.cpp")
@@ -278,4 +305,6 @@ rapids_export(
   FINAL_CODE_BLOCK code_string
 )
 
-add_subdirectory(examples/cuda)
+# TODO
+add_subdirectory(examples/nvexec)
+add_subdirectory(test/nvexec)
