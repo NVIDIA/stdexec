@@ -30,7 +30,7 @@ bool is_gpu_policy(Policy&& policy) {
   bool* flag{};
   STDEXEC_DBG_ERR(cudaMallocHost(&flag, sizeof(bool)));
   std::for_each(policy, flag, flag + 1, [](bool& f) {
-    f = example::cuda::is_on_gpu();
+    f = nvexec::is_on_gpu();
   });
 
   bool h_flag = *flag;

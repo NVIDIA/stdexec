@@ -26,7 +26,7 @@
 #include "nvexec/detail/variant.cuh"
 #include "nvexec/detail/tuple.cuh"
 
-namespace example::cuda {
+namespace nvexec {
 
   enum class device_type {
     host,
@@ -49,12 +49,12 @@ namespace example::cuda {
   }
 }
 
-namespace example::cuda::stream {
+namespace nvexec {
 
-  struct context_t;
-  struct scheduler_t;
-  struct sender_base_t {};
-  struct receiver_base_t {
+  struct stream_context;
+  struct stream_scheduler;
+  struct stream_sender_base {};
+  struct stream_receiver_base {
     constexpr static std::size_t memory_allocation_size = 0;
   };
 
@@ -64,18 +64,18 @@ namespace example::cuda::stream {
   template <class S>
     concept stream_sender =
       std::execution::sender<S> &&
-      std::is_base_of_v<sender_base_t, std::decay_t<S>>;
+      std::is_base_of_v<stream_sender_base, std::decay_t<S>>;
 
   template <class R>
     concept stream_receiver =
       std::execution::receiver<R> &&
-      std::is_base_of_v<receiver_base_t, std::decay_t<R>>;
+      std::is_base_of_v<stream_receiver_base, std::decay_t<R>>;
 
   namespace detail {
-    struct op_state_base_t{};
+    struct stream_op_state_base{};
 
     template <class EnvId, class VariantId>
-      class enqueue_receiver_t : public receiver_base_t {
+      class stream_enqueue_receiver : public stream_receiver_base {
         using Env = stdexec::__t<EnvId>;
         using Variant = stdexec::__t<VariantId>;
 
@@ -89,7 +89,7 @@ namespace example::cuda::stream {
                                 std::execution::set_error_t,
                                 std::execution::set_stopped_t> Tag,
                   class... As _NVCXX_CAPTURE_PACK(As)>
-          friend void tag_invoke(Tag tag, enqueue_receiver_t&& self, As&&... as) noexcept {
+          friend void tag_invoke(Tag tag, stream_enqueue_receiver&& self, As&&... as) noexcept {
             _NVCXX_EXPAND_PACK(As, as,
               self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
             );
@@ -97,11 +97,11 @@ namespace example::cuda::stream {
           }
 
 
-        friend Env tag_invoke(std::execution::get_env_t, const enqueue_receiver_t& self) {
+        friend Env tag_invoke(std::execution::get_env_t, const stream_enqueue_receiver& self) {
           return self.env_;
         }
 
-        enqueue_receiver_t(
+        stream_enqueue_receiver(
             Env env,
             Variant* variant,
             queue::task_base_t* task,
@@ -152,7 +152,7 @@ namespace example::cuda::stream {
   }
 
   template <class OuterReceiverId>
-    struct operation_state_base_t : detail::op_state_base_t {
+    struct operation_state_base_t : detail::stream_op_state_base {
       using outer_receiver_t = stdexec::__t<OuterReceiverId>;
 
       bool owner_{false};
@@ -201,7 +201,7 @@ namespace example::cuda::stream {
     };
 
   template <class ReceiverId>
-    struct propagate_receiver_t : receiver_base_t {
+    struct propagate_receiver_t : stream_receiver_base {
       operation_state_base_t<ReceiverId>& operation_state_;
 
       template <stdexec::__one_of<std::execution::set_value_t,
@@ -263,7 +263,7 @@ namespace example::cuda::stream {
         using intermediate_receiver = stdexec::__t<std::conditional_t<
           stream_sender<sender_t>,
           stdexec::__x<inner_receiver_t>,
-          stdexec::__x<detail::enqueue_receiver_t<stdexec::__x<env_t>, stdexec::__x<variant_t>>>>>;
+          stdexec::__x<detail::stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>>>;
         using inner_op_state_t = std::execution::connect_result_t<sender_t, intermediate_receiver>;
 
         friend void tag_invoke(std::execution::start_t, operation_state_t& op) noexcept {
@@ -293,7 +293,7 @@ namespace example::cuda::stream {
         cudaStream_t get_stream() {
           cudaStream_t stream{};
 
-          if constexpr (std::is_base_of_v<detail::op_state_base_t, inner_op_state_t>) {
+          if constexpr (std::is_base_of_v<detail::stream_op_state_base, inner_op_state_t>) {
             stream = inner_op_.get_stream();
           } else {
             stream = this->allocate();
@@ -318,7 +318,7 @@ namespace example::cuda::stream {
           , task_(queue::make_host<task_t>(this->status_, receiver_provider(*this), storage_.get()))
           , inner_op_{
               std::execution::connect((sender_t&&)sender,
-              detail::enqueue_receiver_t<stdexec::__x<env_t>, stdexec::__x<variant_t>>{
+              detail::stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>{
                 std::execution::get_env(out_receiver), storage_.get(), task_.get(), hub_->producer()})} {
           if (this->status_ == cudaSuccess) {
             this->status_ = task_->status_;
@@ -338,7 +338,7 @@ namespace example::cuda::stream {
       std::is_same_v<
           std::tag_invoke_result_t<
             std::execution::get_completion_scheduler_t<std::execution::set_value_t>, S>,
-          scheduler_t>;
+          stream_scheduler>;
 
   template <class Sender, class InnerReceiver, class OuterReceiver>
     using stream_op_state_t = detail::operation_state_t<stdexec::__x<Sender>,

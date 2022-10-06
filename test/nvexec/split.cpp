@@ -1,25 +1,24 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream.cuh"
+#include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
 namespace ex = std::execution;
-namespace stream = example::cuda::stream;
 
-using example::cuda::is_on_gpu;
+using nvexec::is_on_gpu;
 
 TEST_CASE("split returns a sender", "[cuda][stream][adaptors][split]") {
-  stream::context_t stream_context{};
-  auto snd = ex::split(ex::schedule(stream_context.get_scheduler()));
+  nvexec::stream_context stream_ctx{};
+  auto snd = ex::split(ex::schedule(stream_ctx.get_scheduler()));
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
   (void)snd;
 }
 
 TEST_CASE("split works", "[cuda][stream][adaptors][split]") {
-  stream::context_t stream_context{};
+  nvexec::stream_context stream_ctx{};
 
-  auto fork = ex::schedule(stream_context.get_scheduler()) //
+  auto fork = ex::schedule(stream_ctx.get_scheduler()) //
             | ex::then([=] {
                 return is_on_gpu(); 
               })

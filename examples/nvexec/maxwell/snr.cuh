@@ -18,18 +18,15 @@
 #include "common.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-#include <nvexec/stream.cuh>
+#include <nvexec/stream_context.cuh>
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 
 namespace ex = std::execution;
-namespace stream = example::cuda::stream;
-
-using example::cuda::is_on_gpu;
 
 namespace repeat_n_detail {
 
-  struct sink_receiver : stream::receiver_base_t {
+  struct sink_receiver : nvexec::stream_receiver_base {
     friend void tag_invoke(ex::set_value_t, sink_receiver &&, auto&&...) noexcept {}
     friend void tag_invoke(ex::set_error_t, sink_receiver &&, auto&&) noexcept {}
     friend void tag_invoke(ex::set_stopped_t, sink_receiver &&) noexcept {}
@@ -50,7 +47,7 @@ namespace repeat_n_detail {
       friend void
       tag_invoke(std::execution::start_t, operation_state_t &self) noexcept {
         using inner_op_state_t = ex::connect_result_t<Sender, sink_receiver>;
-        if constexpr (std::is_base_of_v<stream::detail::op_state_base_t, inner_op_state_t>) {
+        if constexpr (std::is_base_of_v<nvexec::detail::stream_op_state_base, inner_op_state_t>) {
           inner_op_state_t op_state = ex::connect((Sender&&)self.sender_, sink_receiver{});
           for (std::size_t i = 0; i < self.n_; i++) {
             ex::start(op_state);
@@ -72,7 +69,7 @@ namespace repeat_n_detail {
     };
 
   template <class SenderId>
-    struct repeat_n_sender_t : stream::sender_base_t {
+    struct repeat_n_sender_t : nvexec::stream_sender_base {
       using Sender = stdexec::__t<SenderId>;
 
       using completion_signatures = std::execution::completion_signatures<
@@ -111,7 +108,7 @@ inline constexpr repeat_n_detail::repeat_n_t repeat_n{};
 
 template <class SchedulerT>
 [[nodiscard]] bool is_gpu_scheduler(SchedulerT &&scheduler) {
-  auto snd = ex::schedule(scheduler) | ex::then([] { return is_on_gpu(); });
+  auto snd = ex::schedule(scheduler) | ex::then([] { return nvexec::is_on_gpu(); });
   auto [on_gpu] = std::this_thread::sync_wait(std::move(snd)).value();
   return on_gpu;
 }

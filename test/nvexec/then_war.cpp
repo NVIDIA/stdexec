@@ -1,19 +1,18 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream.cuh"
+#include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
 namespace ex = std::execution;
-namespace stream = example::cuda::stream;
 
-using example::cuda::is_on_gpu;
+using nvexec::is_on_gpu;
 
 // nvbug/3810154
 TEST_CASE("then can preceed a sender with values", "[cuda][stream][adaptors][then]") {
-  stream::context_t stream_context{};
+  nvexec::stream_context stream_ctx{};
 
-  auto snd = ex::schedule(stream_context.get_scheduler()) 
+  auto snd = ex::schedule(stream_ctx.get_scheduler()) 
            | ex::then([]() -> bool { return is_on_gpu(); })
            | a_sender([](bool then_was_on_gpu) -> bool {
                return then_was_on_gpu * is_on_gpu(); // nvbug/3810019

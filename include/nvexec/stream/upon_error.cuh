@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
 
 namespace upon_error {
 
@@ -37,7 +37,7 @@ template <class Fun, class ResultT, class... As>
   }
 
 template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
-  class receiver_t : public receiver_base_t {
+  class receiver_t : public stream_receiver_base {
 
     Fun f_;
     operation_state_base_t<ReceiverId> &op_state_;
@@ -92,7 +92,7 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
 }
 
 template <class SenderId, class FunId>
-  struct upon_error_sender_t : sender_base_t {
+  struct upon_error_sender_t : stream_sender_base {
     using Sender = stdexec::__t<SenderId>;
     using Fun = stdexec::__t<FunId>;
 

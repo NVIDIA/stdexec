@@ -1,4 +1,4 @@
-#include <nvexec/stream.cuh>
+#include <nvexec/stream_context.cuh>
 #include <stdexec/execution.hpp>
 
 #include <thrust/device_vector.h>
@@ -22,7 +22,6 @@ auto end(simple_range<Iterator>& rng) {
 }
 
 namespace ex = std::execution;
-namespace stream = example::cuda::stream;
 
 int main() {
   const int n = 2 * 1024;
@@ -30,10 +29,10 @@ int main() {
   int* first = thrust::raw_pointer_cast(input.data());
   int* last  = thrust::raw_pointer_cast(input.data()) + input.size();
 
-  stream::context_t stream_context{};
+  nvexec::stream_context stream_ctx{};
 
-  auto snd = ex::transfer_just(stream_context.get_scheduler(), simple_range{first, last})
-           | stream::reduce();
+  auto snd = ex::transfer_just(stream_ctx.get_scheduler(), simple_range{first, last})
+           | nvexec::reduce();
 
   auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
 

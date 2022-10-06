@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
   namespace let_xxx {
     template <class Fun, class ResultSenderT, class... As>
       __launch_bounds__(1)
@@ -158,7 +158,7 @@ namespace example::cuda::stream {
       struct __operation;
 
     template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
-      struct __receiver : public receiver_base_t {
+      struct __receiver : public stream_receiver_base {
         using _Sender = stdexec::__t<_SenderId>;
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Fun = stdexec::__t<_FunId>;
@@ -267,7 +267,7 @@ namespace example::cuda::stream {
   } // namespace let_xxx
 
   template <class _SenderId, class _FunId, class _SetId>
-    struct let_sender_t : sender_base_t {
+    struct let_sender_t : stream_sender_base {
       using _Sender = stdexec::__t<_SenderId>;
       using _Fun = stdexec::__t<_FunId>;
       using _Set = stdexec::__t<_SetId>;

@@ -22,12 +22,12 @@
 #include "nvexec/detail/tuple.cuh"
 #include "nvexec/detail/variant.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
 
 namespace schedule_from {
 
   template <class SenderId, class ReceiverId>
-    struct receiver_t : receiver_base_t {
+    struct receiver_t : stream_receiver_base {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
 
@@ -91,7 +91,7 @@ namespace schedule_from {
     };
 
   template <class Sender>
-    struct source_sender_t : sender_base_t {
+    struct source_sender_t : stream_sender_base {
       template <stdexec::__decays_to<source_sender_t> Self, std::execution::receiver Receiver>
       friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
         -> std::execution::connect_result_t<stdexec::__member_t<Self, Sender>, Receiver> {
@@ -119,7 +119,7 @@ namespace schedule_from {
 }
 
 template <class Scheduler, class SenderId>
-  struct schedule_from_sender_t : sender_base_t {
+  struct schedule_from_sender_t : stream_sender_base {
     using Sender = stdexec::__t<SenderId>;
     using source_sender_th = schedule_from::source_sender_t<Sender>;
 

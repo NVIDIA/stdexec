@@ -19,7 +19,7 @@
 #include <type_traits>
 #include <stdexec/concepts.hpp>
 
-namespace example::cuda {
+namespace nvexec {
   namespace detail {
     template <std::size_t I, class... Ts>
       struct tuple_impl_t;

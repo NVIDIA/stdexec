@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
 
 namespace then {
 
@@ -37,7 +37,7 @@ template <class Fun, class ResultT, class... As>
   }
 
 template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
-  class receiver_t : receiver_base_t {
+  class receiver_t : stream_receiver_base {
     using Receiver = stdexec::__t<ReceiverId>;
 
     Fun f_;
@@ -99,7 +99,7 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
 }
 
 template <class SenderId, class FunId>
-  struct then_sender_t : sender_base_t {
+  struct then_sender_t : stream_sender_base {
     using Sender = stdexec::__t<SenderId>;
     using Fun = stdexec::__t<FunId>;
 

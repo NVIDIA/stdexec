@@ -1,16 +1,15 @@
-#include <nvexec/stream.cuh>
+#include <nvexec/stream_context.cuh>
 #include <stdexec/execution.hpp>
 
 #include <cstdio>
 
 namespace ex = std::execution;
-namespace stream = example::cuda::stream;
 
 int main() {
-  using example::cuda::is_on_gpu;
+  using nvexec::is_on_gpu;
 
-  stream::context_t stream_context{};
-  ex::scheduler auto sch = stream_context.get_scheduler();
+  nvexec::stream_context stream_ctx{};
+  ex::scheduler auto sch = stream_ctx.get_scheduler();
 
   auto bulk_fn = [](int lbl) {
     return [=](int i) { 

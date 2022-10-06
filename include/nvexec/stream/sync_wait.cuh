@@ -22,7 +22,7 @@
 #include "nvexec/detail/queue.cuh"
 #include "nvexec/stream/transfer.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
   namespace sync_wait {
     namespace __impl {
       struct __env {
@@ -52,7 +52,7 @@ namespace example::cuda::stream {
       template <class SenderId>
         struct state_t;
 
-      struct sink_receiver_t : receiver_base_t {
+      struct sink_receiver_t : stream_receiver_base {
         template <class... As>
           friend void tag_invoke(std::execution::set_value_t, sink_receiver_t&& rcvr, As&&... as) noexcept {
           }
@@ -68,7 +68,7 @@ namespace example::cuda::stream {
       };
 
       template <class SenderId>
-        struct receiver_t : receiver_base_t {
+        struct receiver_t : stream_receiver_base {
           using Sender = stdexec::__t<SenderId>;
 
           state_t<SenderId>* state_;

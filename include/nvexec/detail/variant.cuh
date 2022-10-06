@@ -19,7 +19,7 @@
 #include <type_traits>
 #include <stdexec/concepts.hpp>
 
-namespace example::cuda {
+namespace nvexec {
 
   namespace detail {
     template <class T, class... As>

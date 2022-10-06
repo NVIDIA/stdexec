@@ -20,12 +20,12 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
 
 namespace transfer {
 
   template <class ReceiverId>
-  struct sink_receiver_t : receiver_base_t {
+  struct sink_receiver_t : stream_receiver_base {
     using Receiver = stdexec::__t<ReceiverId>;
     Receiver receiver_;
 
@@ -38,7 +38,7 @@ namespace transfer {
   };
 
   template <class SenderId, class ReceiverId>
-    struct bypass_receiver_t : receiver_base_t {
+    struct bypass_receiver_t : stream_receiver_base {
       using Sender = stdexec::__t<SenderId>;
       operation_state_base_t<ReceiverId>& operation_state_;
 
@@ -65,7 +65,7 @@ namespace transfer {
 }
 
 template <class SenderId>
-  struct transfer_sender_t : sender_base_t {
+  struct transfer_sender_t : stream_sender_base {
     using Sender = stdexec::__t<SenderId>;
 
     detail::queue::task_hub_t* hub_;

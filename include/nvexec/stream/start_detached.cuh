@@ -20,9 +20,9 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace example::cuda::stream::start_detached {
+namespace nvexec::start_detached {
 
-struct detached_receiver_t : receiver_base_t {
+struct detached_receiver_t : stream_receiver_base {
   friend void tag_invoke(std::execution::set_value_t, detached_receiver_t&&, auto&&...) noexcept {}
 
   [[noreturn]]

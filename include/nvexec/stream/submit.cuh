@@ -20,13 +20,13 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace example::cuda::stream::submit {
+namespace nvexec::submit {
 
 template <class SenderId, class ReceiverId>
 struct op_state_t {
   using Sender = stdexec::__t<SenderId>;
   using Receiver = stdexec::__t<ReceiverId>;
-  struct receiver_t : receiver_base_t {
+  struct receiver_t : stream_receiver_base {
     op_state_t* op_state_;
 
     template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_error_t, std::execution::set_stopped_t> Tag, class... As>

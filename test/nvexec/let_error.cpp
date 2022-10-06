@@ -1,34 +1,33 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream.cuh"
+#include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
 #if STDEXEC_NVHPC() 
 
 namespace ex = std::execution;
-namespace stream = example::cuda::stream;
 
-using example::cuda::is_on_gpu;
+using nvexec::is_on_gpu;
 
 TEST_CASE("let_error returns a sender", "[cuda][stream][adaptors][let_error]") {
-  stream::context_t stream_context{};
+  nvexec::stream_context stream_ctx{};
 
   auto snd = ex::just_error(42) | //
-             ex::transfer(stream_context.get_scheduler()) | //
+             ex::transfer(stream_ctx.get_scheduler()) | //
              ex::let_error([](int) { return ex::just(); });
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
   (void)snd;
 }
 
 TEST_CASE("let_error executes on GPU", "[cuda][stream][adaptors][let_error]") {
-  stream::context_t stream_context{};
+  nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
   auto flags = flags_storage.get();
 
   auto snd = ex::just_error(42) | //
-             ex::transfer(stream_context.get_scheduler()) | //
+             ex::transfer(stream_ctx.get_scheduler()) | //
              ex::let_error([=](int err) { 
                if (is_on_gpu() && err == 42) {
                  flags.set();

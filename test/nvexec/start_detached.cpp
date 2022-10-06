@@ -8,16 +8,15 @@
 #include <cuda/atomic>
 
 #include "nvexec/stream/common.cuh"
-#include "nvexec/stream.cuh"
+#include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
 namespace ex = std::execution;
-namespace stream = example::cuda::stream;
 
-using example::cuda::is_on_gpu;
+using nvexec::is_on_gpu;
 
 TEST_CASE("start_detached doesn't block", "[cuda][stream][consumers][start_detached]") {
-  stream::context_t stream_context{};
+  nvexec::stream_context stream_ctx{};
 
   int *host_flag{};
   int *device_flag{};
@@ -25,7 +24,7 @@ TEST_CASE("start_detached doesn't block", "[cuda][stream][consumers][start_detac
   THROW_ON_CUDA_ERROR(cudaMallocHost(&device_flag, sizeof(int)));
   *host_flag = *device_flag = 0;
 
-  auto snd = ex::schedule(stream_context.get_scheduler()) //
+  auto snd = ex::schedule(stream_ctx.get_scheduler()) //
            | ex::then([=] {
                if (is_on_gpu()) {
                  cuda::atomic_ref<int, cuda::thread_scope_system> host_flag_ref(*host_flag);

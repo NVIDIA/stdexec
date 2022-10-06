@@ -36,7 +36,7 @@
 #include "nvexec/detail/queue.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
 
   template <std::execution::sender Sender, std::integral Shape, class Fun>
     using bulk_sender_th = bulk_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, Shape, stdexec::__x<std::remove_cvref_t<Fun>>>;
@@ -65,14 +65,14 @@ namespace example::cuda::stream {
   template <std::execution::sender Sender>
     using transfer_sender_th = transfer_sender_t<stdexec::__x<Sender>>;
 
-  struct scheduler_t {
-    friend context_t;
+  struct stream_scheduler {
+    friend stream_context;
 
     template <std::execution::sender Sender>
-      using schedule_from_sender_th = schedule_from_sender_t<scheduler_t, stdexec::__x<std::remove_cvref_t<Sender>>>;
+      using schedule_from_sender_th = schedule_from_sender_t<stream_scheduler, stdexec::__x<std::remove_cvref_t<Sender>>>;
 
     template <class RId>
-      struct operation_state_t : detail::op_state_base_t {
+      struct operation_state_t : detail::stream_op_state_base {
         using R = stdexec::__t<RId>;
 
         R rec_;
@@ -113,7 +113,7 @@ namespace example::cuda::stream {
         }
       };
 
-    struct sender_t : sender_base_t {
+    struct sender_t : stream_sender_base {
       using completion_signatures =
         std::execution::completion_signatures<
           std::execution::set_value_t(),
@@ -126,12 +126,12 @@ namespace example::cuda::stream {
           return operation_state_t<stdexec::__x<std::remove_cvref_t<R>>>((R&&) rec);
         }
 
-      scheduler_t make_scheduler() const {
-        return scheduler_t{hub_};
+      stream_scheduler make_scheduler() const {
+        return stream_scheduler{hub_};
       }
 
       template <class CPO>
-      friend scheduler_t
+      friend stream_scheduler
       tag_invoke(std::execution::get_completion_scheduler_t<CPO>, sender_t self) noexcept {
         return self.make_scheduler();
       }
@@ -144,19 +144,19 @@ namespace example::cuda::stream {
 
     template <std::execution::sender S>
       friend schedule_from_sender_th<S>
-      tag_invoke(std::execution::schedule_from_t, const scheduler_t& sch, S&& sndr) noexcept {
+      tag_invoke(std::execution::schedule_from_t, const stream_scheduler& sch, S&& sndr) noexcept {
         return schedule_from_sender_th<S>(sch.hub_, (S&&) sndr);
       }
 
     template <std::execution::sender S, std::integral Shape, class Fn>
       friend bulk_sender_th<S, Shape, Fn>
-      tag_invoke(std::execution::bulk_t, const scheduler_t& sch, S&& sndr, Shape shape, Fn fun) noexcept {
+      tag_invoke(std::execution::bulk_t, const stream_scheduler& sch, S&& sndr, Shape shape, Fn fun) noexcept {
         return bulk_sender_th<S, Shape, Fn>{{}, (S&&) sndr, shape, (Fn&&)fun};
       }
 
     template <std::execution::sender S, class Fn>
       friend then_sender_th<S, Fn>
-      tag_invoke(std::execution::then_t, const scheduler_t& sch, S&& sndr, Fn fun) noexcept {
+      tag_invoke(std::execution::then_t, const stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
         return then_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&)fun};
       }
 
@@ -167,68 +167,68 @@ namespace example::cuda::stream {
               std::execution::sender S, 
               class Fn>
       friend let_xxx_th<Let, S, Fn>
-      tag_invoke(Let, const scheduler_t& sch, S&& sndr, Fn fun) noexcept {
+      tag_invoke(Let, const stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
         return let_xxx_th<Let, S, Fn>{{}, (S &&) sndr, (Fn &&) fun};
       }
 
     template <std::execution::sender S, class Fn>
       friend upon_error_sender_th<S, Fn>
-      tag_invoke(std::execution::upon_error_t, const scheduler_t& sch, S&& sndr, Fn fun) noexcept {
+      tag_invoke(std::execution::upon_error_t, const stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
         return upon_error_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&)fun};
       }
 
     template <std::execution::sender S, class Fn>
       friend upon_stopped_sender_th<S, Fn>
-      tag_invoke(std::execution::upon_stopped_t, const scheduler_t& sch, S&& sndr, Fn fun) noexcept {
+      tag_invoke(std::execution::upon_stopped_t, const stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
         return upon_stopped_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&)fun};
       }
 
     template <std::execution::sender... Senders>
       friend auto
-      tag_invoke(std::execution::transfer_when_all_t, const scheduler_t& sch, Senders&&... sndrs) noexcept {
-        return transfer_when_all_sender_th<scheduler_t, Senders...>(sch.hub_, (Senders&&)sndrs...);
+      tag_invoke(std::execution::transfer_when_all_t, const stream_scheduler& sch, Senders&&... sndrs) noexcept {
+        return transfer_when_all_sender_th<stream_scheduler, Senders...>(sch.hub_, (Senders&&)sndrs...);
       }
 
     template <std::execution::sender... Senders>
       friend auto
-      tag_invoke(std::execution::transfer_when_all_with_variant_t, const scheduler_t& sch, Senders&&... sndrs) noexcept {
+      tag_invoke(std::execution::transfer_when_all_with_variant_t, const stream_scheduler& sch, Senders&&... sndrs) noexcept {
         return 
-          transfer_when_all_sender_th<scheduler_t, std::tag_invoke_result_t<std::execution::into_variant_t, Senders>...>(
+          transfer_when_all_sender_th<stream_scheduler, std::tag_invoke_result_t<std::execution::into_variant_t, Senders>...>(
               sch.hub_, 
               std::execution::into_variant((Senders&&)sndrs)...);
       }
 
     template <std::execution::sender S, std::execution::scheduler Sch>
       friend auto
-      tag_invoke(std::execution::transfer_t, const scheduler_t& sch, S&& sndr, Sch&& scheduler) noexcept {
+      tag_invoke(std::execution::transfer_t, const stream_scheduler& sch, S&& sndr, Sch&& scheduler) noexcept {
         return std::execution::schedule_from((Sch&&)scheduler, transfer_sender_th<S>(sch.hub_, (S&&)sndr));
       }
 
     template <std::execution::sender S>
       friend split_sender_th<S>
-      tag_invoke(std::execution::split_t, const scheduler_t& sch, S&& sndr) noexcept {
+      tag_invoke(std::execution::split_t, const stream_scheduler& sch, S&& sndr) noexcept {
         return split_sender_th<S>((S&&)sndr);
       }
 
-    friend sender_t tag_invoke(std::execution::schedule_t, const scheduler_t& self) noexcept {
+    friend sender_t tag_invoke(std::execution::schedule_t, const stream_scheduler& self) noexcept {
       return {self.hub_};
     }
 
     template <std::execution::sender S>
       friend auto
-      tag_invoke(std::this_thread::sync_wait_t, const scheduler_t& self, S&& sndr) {
+      tag_invoke(std::this_thread::sync_wait_t, const stream_scheduler& self, S&& sndr) {
         return sync_wait::sync_wait_t{}(self.hub_, (S&&)sndr);
       }
 
     friend std::execution::forward_progress_guarantee tag_invoke(
         std::execution::get_forward_progress_guarantee_t,
-        const scheduler_t&) noexcept {
+        const stream_scheduler&) noexcept {
       return std::execution::forward_progress_guarantee::weakly_parallel;
     }
 
-    bool operator==(const scheduler_t&) const noexcept = default;
+    bool operator==(const stream_scheduler&) const noexcept = default;
 
-    scheduler_t(const detail::queue::task_hub_t* hub)
+    stream_scheduler(const detail::queue::task_hub_t* hub)
       : hub_(const_cast<detail::queue::task_hub_t*>(hub)) {
     }
 
@@ -236,10 +236,10 @@ namespace example::cuda::stream {
     detail::queue::task_hub_t* hub_{};
   };
 
-  struct context_t {
+  struct stream_context {
     detail::queue::task_hub_t hub{};
 
-    scheduler_t get_scheduler() {
+    stream_scheduler get_scheduler() {
       return {&hub};
     }
   };
@@ -250,15 +250,15 @@ namespace example::cuda::stream {
     }
 
   template <stream_completing_sender... Senders>
-    when_all_sender_th<scheduler_t, Senders...>
+    when_all_sender_th<stream_scheduler, Senders...>
     tag_invoke(std::execution::when_all_t, Senders&&... sndrs) noexcept {
-      return when_all_sender_th<scheduler_t, Senders...>{nullptr, (Senders&&)sndrs...};
+      return when_all_sender_th<stream_scheduler, Senders...>{nullptr, (Senders&&)sndrs...};
     }
 
   template <stream_completing_sender... Senders>
-    when_all_sender_th<scheduler_t, std::tag_invoke_result_t<std::execution::into_variant_t, Senders>...>
+    when_all_sender_th<stream_scheduler, std::tag_invoke_result_t<std::execution::into_variant_t, Senders>...>
     tag_invoke(std::execution::when_all_with_variant_t, Senders&&... sndrs) noexcept {
-      return when_all_sender_th<scheduler_t, std::tag_invoke_result_t<std::execution::into_variant_t, Senders>...>{
+      return when_all_sender_th<stream_scheduler, std::tag_invoke_result_t<std::execution::into_variant_t, Senders>...>{
         nullptr, 
         std::execution::into_variant((Senders&&)sndrs)...
       };

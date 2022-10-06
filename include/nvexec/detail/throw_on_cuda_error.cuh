@@ -20,7 +20,7 @@
 #include <stdexcept>
 #include <cstdio>
 
-namespace example::cuda {
+namespace nvexec {
   namespace detail {
     inline cudaError_t debug_cuda_error(cudaError_t error, char const* file_name, int line) {
       // Clear the global CUDA error state which may have been set by the last
@@ -44,6 +44,6 @@ namespace example::cuda {
   }
 
   #define STDEXEC_DBG_ERR(E)                                         \
-    ::example::cuda::detail::debug_cuda_error(E, __FILE__, __LINE__) \
+    ::nvexec::detail::debug_cuda_error(E, __FILE__, __LINE__) \
     /**/
 }

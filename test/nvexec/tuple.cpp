@@ -21,8 +21,8 @@
 #include "nvexec/detail/tuple.cuh"
 #include "common.cuh"
 
-using example::cuda::tuple_t;
-using example::cuda::apply;
+using nvexec::tuple_t;
+using nvexec::apply;
 
 TEST_CASE("tuple size is correct", "[cuda][stream][containers][tuple]") {
   STATIC_REQUIRE(tuple_t<double>::size == 1);

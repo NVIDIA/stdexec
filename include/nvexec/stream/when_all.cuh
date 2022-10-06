@@ -22,7 +22,7 @@
 #include "nvexec/detail/queue.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
 
 namespace when_all {
 
@@ -84,7 +84,7 @@ template <class Env, class... Senders>
 }
 
 template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
-  struct when_all_sender_t : sender_base_t {
+  struct when_all_sender_t : stream_sender_base {
     template <class... Sndrs>
       explicit when_all_sender_t(detail::queue::task_hub_t* hub, Sndrs&&... __sndrs)
         : hub_(hub)
@@ -110,10 +110,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
     template <class CvrefReceiverId, std::size_t Index>
       struct receiver_t : std::execution::receiver_adaptor<receiver_t<CvrefReceiverId, Index>>
-                        , receiver_base_t {
+                        , stream_receiver_base {
         using WhenAll = stdexec::__member_t<CvrefReceiverId, when_all_sender_t>;
         using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
-        using SenderId = example::cuda::detail::nth_type<Index, SenderIds...>;
+        using SenderId = nvexec::detail::nth_type<Index, SenderIds...>;
         using Traits =
           completion_sigs<
             stdexec::__member_t<CvrefReceiverId, std::execution::env_of_t<Receiver>>>;
@@ -188,7 +188,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
       };
 
     template <class CvrefReceiverId>
-      struct operation_t : detail::op_state_base_t {
+      struct operation_t : detail::stream_op_state_base {
         using WhenAll = stdexec::__member_t<CvrefReceiverId, when_all_sender_t>;
         using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
         using Env = std::execution::env_of_t<Receiver>;
@@ -228,7 +228,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
         template <class OpT>
         static void sync(OpT& op) noexcept {
-          if constexpr (std::is_base_of_v<detail::op_state_base_t, OpT>) {
+          if constexpr (std::is_base_of_v<detail::stream_op_state_base, OpT>) {
             if (op.stream_) {
               if (op.status_ == cudaSuccess) {
                 op.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.stream_));

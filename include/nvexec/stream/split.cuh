@@ -21,10 +21,10 @@
 #include "nvexec/stream/common.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
   namespace split {
     template <class _SenderId, class _SharedState>
-      class __receiver : public receiver_base_t {
+      class __receiver : public stream_receiver_base {
         using Sender = stdexec::__t<_SenderId>;
 
         _SharedState &__sh_state_;
@@ -213,7 +213,7 @@ namespace example::cuda::stream {
   } // namespace split
 
   template <class _SenderId>
-    class split_sender_t : sender_base_t {
+    class split_sender_t : stream_sender_base {
       using _Sender = stdexec::__t<_SenderId>;
       using __sh_state_ = split::__sh_state<_SenderId>;
       template <class _Receiver>

@@ -25,7 +25,7 @@
 #include "nvexec/stream/common.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
 
 template <typename Range>
   auto __begin(Range&& range) {
@@ -46,7 +46,7 @@ namespace reduce_ {
 
 
   template <class SenderId, class ReceiverId, class Fun>
-    class receiver_t : public receiver_base_t {
+    class receiver_t : public stream_receiver_base {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
 
@@ -162,7 +162,7 @@ namespace reduce_ {
 }
 
 template <class SenderId, class FunId>
-  struct reduce_sender_t : sender_base_t {
+  struct reduce_sender_t : stream_sender_base {
     using Sender = stdexec::__t<SenderId>;
     using Fun = stdexec::__t<FunId>;
 

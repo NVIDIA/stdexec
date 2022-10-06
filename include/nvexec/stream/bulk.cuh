@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
 
 namespace bulk {
   template <int BlockThreads, std::integral Shape, class Fun, class... As>
@@ -34,7 +34,7 @@ namespace bulk {
     }
 
   template <class ReceiverId, std::integral Shape, class Fun>
-    class receiver_t : public receiver_base_t {
+    class receiver_t : public stream_receiver_base {
       using Receiver = stdexec::__t<ReceiverId>;
 
       Shape shape_;
@@ -86,7 +86,7 @@ namespace bulk {
 }
 
 template <class SenderId, std::integral Shape, class FunId>
-  struct bulk_sender_t : sender_base_t {
+  struct bulk_sender_t : stream_sender_base {
     using Sender = stdexec::__t<SenderId>;
     using Fun = stdexec::__t<FunId>;
 

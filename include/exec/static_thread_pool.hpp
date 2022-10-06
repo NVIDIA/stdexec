@@ -602,4 +602,4 @@ namespace exec {
     stopRequested_ = true;
     cv_.notify_one();
   }
-} // namespace example
+} // namespace exec

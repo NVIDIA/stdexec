@@ -22,10 +22,10 @@
 #include "nvexec/detail/tuple.cuh"
 #include "common.cuh"
 
-using example::cuda::variant_t;
-using example::cuda::tuple_t;
-using example::cuda::visit;
-using example::cuda::apply;
+using nvexec::variant_t;
+using nvexec::tuple_t;
+using nvexec::visit;
+using nvexec::apply;
 
 TEST_CASE("variant max size is correct", "[cuda][stream][containers][variant]") {
   STATIC_REQUIRE(variant_t<double>::max_size == sizeof(double));

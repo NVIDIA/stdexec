@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace example::cuda::stream {
+namespace nvexec {
 
 namespace upon_stopped {
 
@@ -43,7 +43,7 @@ template <>
   inline constexpr std::size_t size_of_<void> = 0;
 
 template <class ReceiverId, class Fun>
-  class receiver_t : public receiver_base_t {
+  class receiver_t : public stream_receiver_base {
     using result_t = std::decay_t<std::invoke_result_t<Fun>>;
 
     Fun f_;
@@ -97,7 +97,7 @@ template <class ReceiverId, class Fun>
 }
 
 template <class SenderId, class FunId>
-  struct upon_stopped_sender_t : sender_base_t {
+  struct upon_stopped_sender_t : stream_sender_base {
     using Sender = stdexec::__t<SenderId>;
     using Fun = stdexec::__t<FunId>;
 
