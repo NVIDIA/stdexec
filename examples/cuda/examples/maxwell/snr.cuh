@@ -72,7 +72,7 @@ namespace repeat_n_detail {
     };
 
   template <class SenderId>
-    struct repeat_n_sender_t {
+    struct repeat_n_sender_t : stream::sender_base_t {
       using Sender = _P2300::__t<SenderId>;
 
       using completion_signatures = std::execution::completion_signatures<
@@ -102,7 +102,7 @@ namespace repeat_n_detail {
   struct repeat_n_t {
     template <class Sender>
     repeat_n_sender_t<_P2300::__x<Sender>> operator()(std::size_t n, Sender &&__sndr) const noexcept {
-      return repeat_n_sender_t<_P2300::__x<Sender>>{std::forward<Sender>(__sndr), n};
+      return repeat_n_sender_t<_P2300::__x<Sender>>{{}, std::forward<Sender>(__sndr), n};
     }
   };
 
