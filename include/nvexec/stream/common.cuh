@@ -32,6 +32,11 @@
 
 namespace nvexec {
 
+  struct unbound {};
+
+  template <typename T>
+    constexpr bool is_bound = !std::same_as<T, unbound>;
+
   enum class stream_priority {
     high,
     normal,

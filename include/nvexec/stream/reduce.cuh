@@ -35,28 +35,86 @@ namespace STDEXEC_STREAM_DETAIL_NS {
 
 namespace reduce_ {
 
-template <class Fun, ranges::range Range, class... Tail>
-    requires (sizeof...(Tail) == 0)
-  using reduce_result_t = ::cuda::std::decay_t<
-    ::cuda::std::invoke_result_t<Fun,
-                                 ranges::range_value_t<Range>,
-                                 ranges::range_value_t<Range>>
-  >;
+template <class BoundRange, class BoundFun, class... As>
+  struct reduce_result_;
 
-template <class SenderId, class ReceiverId, class Fun>
+// Range and function are bound.
+template <ranges::range BoundRange, std::execution::__movable_value BoundFun, class... Tail>
+    requires ((sizeof...(Tail) == 0) && is_bound<BoundRange> && is_bound<BoundFun>)
+  struct reduce_result_<BoundRange, BoundFun, Tail...> {
+    using __t = ::cuda::std::decay_t<
+      ::cuda::std::invoke_result_t<BoundFun,
+                                   ranges::range_value_t<BoundRange>,
+                                   ranges::range_value_t<BoundRange>>
+    >;
+  };
+
+// Range is bound, function is the default.
+template <ranges::range BoundRange, class... Tail>
+    requires ((sizeof...(Tail) == 0) && is_bound<BoundRange>)
+  struct reduce_result_<BoundRange, unbound, Tail...> {
+    using __t = ::cuda::std::decay_t<
+      ::cuda::std::invoke_result_t<cub::Sum,
+                                   ranges::range_value_t<BoundRange>,
+                                   ranges::range_value_t<BoundRange>>
+    >;
+  };
+
+// Range is bound, predecessor sends function.
+template <ranges::range BoundRange, std::execution::__movable_value Fun, class... Tail>
+    requires ((sizeof...(Tail) == 0) && is_bound<BoundRange>)
+  struct reduce_result_<BoundRange, unbound, Fun, Tail...> {
+    using __t = ::cuda::std::decay_t<
+      ::cuda::std::invoke_result_t<Fun,
+                                   ranges::range_value_t<BoundRange>,
+                                   ranges::range_value_t<BoundRange>>
+    >;
+  };
+
+// Predecessor sends range, function is bound.
+template <std::execution::__movable_value BoundFun, ranges::range Range, class... Tail>
+    requires ((sizeof...(Tail) == 0) && is_bound<BoundFun>)
+  struct reduce_result_<unbound, BoundFun, Range, Tail...> {
+    using __t = ::cuda::std::decay_t<
+      ::cuda::std::invoke_result_t<BoundFun,
+                                   ranges::range_value_t<Range>,
+                                   ranges::range_value_t<Range>>
+    >;
+  };
+
+// Predecessor sends range, function is the default.
+template <ranges::range Range, class... Tail>
+    requires (sizeof...(Tail) == 0)
+  struct reduce_result_<unbound, unbound, Range, Tail...> {
+    using __t = ::cuda::std::decay_t<
+      ::cuda::std::invoke_result_t<cub::Sum,
+                                   ranges::range_value_t<Range>,
+                                   ranges::range_value_t<Range>>
+    >;
+  };
+
+// Predecessor sends range and function.
+template <ranges::range Range, std::execution::__movable_value Fun, class... Tail>
+    requires (sizeof...(Tail) == 0)
+  struct reduce_result_<unbound, unbound, Range, Fun, Tail...> {
+    using __t = ::cuda::std::decay_t<
+      ::cuda::std::invoke_result_t<Fun,
+                                   ranges::range_value_t<Range>,
+                                   ranges::range_value_t<Range>>
+    >;
+  };
+
+template <class BoundRange, class BoundFun, class... As>
+  using reduce_result_t = std::__t<reduce_result_<BoundRange, BoundFun, As...>>;
+
+template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
+    requires ((ranges::range<BoundRange> || !is_bound<BoundRange>) && std::execution::__movable_value<BoundFun>)
   class receiver_t : public receiver_base_t {
     using Sender = std::__t<SenderId>;
     using Receiver = std::__t<ReceiverId>;
 
-    template <ranges::range... Range>
-        requires (sizeof...(Range) == 1)
-      struct result_size_for {
-        using __t = std::__index<sizeof(reduce_result_t<Fun, Range...>)>;
-      };
-
-    template <ranges::range... Range>
-        requires (sizeof...(Range) == 1)
-      using result_size_for_t = std::__t<result_size_for<Range...>>;
+    template <class... As>
+      using result_size_for_t = std::__index<sizeof(reduce_result_t<BoundRange, BoundFun, As...>)>;
 
     template <class... Sizes>
       struct max_in_pack {
@@ -74,40 +132,84 @@ template <class SenderId, class ReceiverId, class Fun>
             std::__q<max_in_pack>>>;
     };
 
-    Fun f_;
-    operation_state_base_t<ReceiverId> &op_state_;
+    [[no_unique_address]] BoundRange rng_;
+    [[no_unique_address]] BoundFun fun_;
+    operation_state_base_t<ReceiverId>& op_state_;
 
   public:
 
     constexpr static std::size_t memory_allocation_size = max_result_size::value;
 
+    // Range and function are bound.
+    friend void tag_invoke(std::execution::set_value_t, receiver_t&& self) noexcept
+      requires (is_bound<BoundRange> && is_bound<BoundFun>) {
+        self.launch(self.rng_, self.fun_);
+      }
+
+    // Range is bound, function is the default.
+    friend void tag_invoke(std::execution::set_value_t, receiver_t&& self) noexcept
+      requires (is_bound<BoundRange> && !is_bound<BoundFun>) {
+        self.launch(self.rng_, cub::Sum{});
+      }
+
+    // Range is bound, predecessor sends function.
+    template <std::execution::__movable_value Fun>
+        requires (is_bound<BoundRange>)
+      friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, Fun&& fun) noexcept {
+        static_assert(!is_bound<BoundFun>);
+        self.launch((Range&&) rng, (Fun&&) fun);
+      }
+
+    // Predecessor sends range, function is bound.
     template <ranges::range Range>
-    friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, Range&& rng) noexcept {
-      cudaStream_t stream = self.op_state_.stream_;
+        requires (is_bound<BoundFun>)
+      friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, Range&& rng) noexcept {
+        static_assert(!is_bound<BoundRange>);
+        self.launch((Range&&) rng, self.fun_);
+      }
 
-      using value_t = reduce_result_t<Fun, Range>;
-      value_t *d_out = reinterpret_cast<value_t*>(self.op_state_.temp_storage_);
+    // Predecessor sends range, function is the default.
+    template <ranges::range Range>
+        requires (!is_bound<BoundFun>)
+      friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, Range&& rng) noexcept {
+        static_assert(!is_bound<BoundRange>);
+        self.launch((Range&&) rng, cub::Sum{});
+      }
 
-      void *d_temp_storage{};
-      std::size_t temp_storage_size{};
+    // Predecessor sends range and function.
+    template <ranges::range Range, std::execution::__movable_value Fun>
+      friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, Range&& rng, Fun&& fun) noexcept {
+        static_assert(!is_bound<BoundRange> && !is_bound<BoundFun>);
+        self.launch((Range&&) rng, (Fun&&) fun);
+      }
 
-      auto first = ranges::begin(rng);
-      auto last = ranges::end(rng);
+    template <ranges::range Range, std::execution::__movable_value Fun = cub::Sum>
+      void launch(Range&& rng, Fun&& fun = {}) noexcept {
+        cudaStream_t stream = op_state_.stream_;
 
-      std::size_t num_items = ranges::size(rng);
+        using value_t = reduce_result_t<BoundRange, BoundFun, Range, Fun>;
+        value_t *d_out = reinterpret_cast<value_t*>(op_state_.temp_storage_);
 
-      THROW_ON_CUDA_ERROR(cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_size, first,
-                                                    d_out, num_items, self.f_, value_t{},
-                                                    stream));
-      THROW_ON_CUDA_ERROR(cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
+        void *d_temp_storage{};
+        std::size_t temp_storage_size{};
 
-      THROW_ON_CUDA_ERROR(cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_size, first,
-                                                    d_out, num_items, self.f_, value_t{},
-                                                    stream));
-      THROW_ON_CUDA_ERROR(cudaFreeAsync(d_temp_storage, stream));
+        auto first = ranges::begin(rng);
+        auto last = ranges::end(rng);
 
-      self.op_state_.propagate_completion_signal(std::execution::set_value, *d_out);
-    }
+        std::size_t num_items = ranges::size(rng);
+
+        THROW_ON_CUDA_ERROR(cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_size, first,
+                                                      d_out, num_items, fun, value_t{},
+                                                      stream));
+        THROW_ON_CUDA_ERROR(cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
+
+        THROW_ON_CUDA_ERROR(cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_size, first,
+                                                      d_out, num_items, fun, value_t{},
+                                                      stream));
+        THROW_ON_CUDA_ERROR(cudaFreeAsync(d_temp_storage, stream));
+
+        op_state_.propagate_completion_signal(std::execution::set_value, *d_out);
+      }
 
     template <std::__one_of<std::execution::set_error_t,
                             std::execution::set_stopped_t> Tag,
@@ -122,35 +224,34 @@ template <class SenderId, class ReceiverId, class Fun>
       return std::execution::get_env(self.op_state_.receiver_);
     }
 
-    receiver_t(Fun fun, operation_state_base_t<ReceiverId> &op_state)
-      : f_((Fun&&) fun)
+    receiver_t(operation_state_base_t<ReceiverId>& op_state, BoundRange rng, BoundFun fun)
+      : rng_((BoundRange&&) rng)
+      , fun_((BoundFun&&) fun)
       , op_state_(op_state)
     {}
   };
 
 } // namespace reduce_
 
-template <class SenderId, class FunId>
+template <class SenderId, class BoundRangeId, class BoundFunId>
   struct reduce_sender_t : gpu_sender_base_t {
     using Sender = std::__t<SenderId>;
-    using Fun = std::__t<FunId>;
+    using BoundRange = std::__t<BoundRangeId>;
+    using BoundFun = std::__t<BoundFunId>;
 
     Sender sndr_;
-    Fun fun_;
+    [[no_unique_address]] BoundRange rng_;
+    [[no_unique_address]] BoundFun fun_;
 
     template <class Receiver>
-      using receiver_t = reduce_::receiver_t<
-          SenderId,
-          std::__x<Receiver>,
-          Fun>;
+      using receiver_t = reduce_::receiver_t<SenderId, std::__x<Receiver>, BoundRange, BoundFun>;
 
-    template <ranges::range... Range>
-        requires (sizeof...(Range) == 1)
+    template <class... As>
       using set_value_t =
         std::execution::completion_signatures<std::execution::set_value_t(
           std::add_lvalue_reference_t<
-            reduce_::reduce_result_t<Fun, Range>
-          >...
+            reduce_::reduce_result_t<BoundRange, BoundFun, As...>
+          >
         )>;
 
     template <class Self, class Env>
@@ -170,7 +271,7 @@ template <class SenderId, class FunId>
           ((Self&&)self).sndr_,
           (Receiver&&)rcvr,
           [&](operation_state_base_t<std::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.fun_, stream_provider);
+            return receiver_t<Receiver>(stream_provider, self.rng_, self.fun_);
           });
     }
 
@@ -192,21 +293,63 @@ template <class SenderId, class FunId>
   };
 
 struct reduce_t {
-  template <class Sender, class Fun>
-    using __sender =
-      reduce_sender_t<
-        std::__x<std::remove_cvref_t<Sender>>,
-        std::__x<std::remove_cvref_t<Fun>>>;
+  template <class Sender, class BoundRange, class BoundFun>
+    using sender_t = reduce_sender_t<
+      std::__x<::cuda::std::remove_cvref_t<Sender>>,
+      std::__x<::cuda::std::remove_cvref_t<BoundRange>>,
+      std::__x<::cuda::std::remove_cvref_t<BoundFun>>
+    >;
 
-  template <std::execution::sender Sender, std::execution::__movable_value Fun>
-    __sender<Sender, Fun> operator()(Sender&& __sndr, Fun __fun) const {
-      return __sender<Sender, Fun>{{}, (Sender&&) __sndr, (Fun&&) __fun};
+  // Range and function are bound.
+  template <std::execution::sender Sender, ranges::range Range, std::execution::__movable_value Fun>
+    sender_t<Sender, Range, Fun> operator()(Sender&& sndr, Range&& rng, Fun&& fun) const {
+      return {{}, (Sender&&) sndr, (Range&&) rng, (Fun&&) fun};
     }
 
-  template <class Fun = cub::Sum>
-    std::execution::__binder_back<reduce_t, Fun> operator()(Fun __fun={}) const {
-      return {{}, {}, {(Fun&&) __fun}};
+  // Range is bound, predecessor sends function or it's the default.
+  template <std::execution::sender Sender, ranges::range Range>
+    sender_t<Sender, Range, unbound> operator()(Sender&& sndr, Range&& rng) const {
+      return {{}, (Sender&&) sndr, (Range&&) rng, {}};
     }
+
+  // Predecessor sends range, function is bound.
+  // FIXME: How do we constrain `Fun` without making this overload ambiguous
+  // with the above range is bound, function is not overload?
+  template <std::execution::sender Sender, class Fun>
+    sender_t<Sender, unbound, Fun> operator()(Sender&& sndr, Fun&& fun) const {
+      return {{}, (Sender&&) sndr, (Fun&&) fun};
+    }
+
+  // Predecessor sends range, predecessor sends function or it's the default.
+  template <std::execution::sender Sender>
+    sender_t<Sender, unbound, unbound> operator()(Sender&& sndr) const {
+      return {{}, (Sender&&) sndr, {}, {}};
+    }
+
+  // Range and function are bound.
+  template <ranges::range Range, std::execution::__movable_value Fun>
+    std::execution::__binder_back<reduce_t, Range, Fun> operator()(Range&& rng, Fun&& fun) const {
+      return {{}, {}, (Range&&) rng, (Fun&&) fun};
+    }
+
+  // Range is bound, predecessor sends function or it's the default.
+  template <ranges::range Range>
+    std::execution::__binder_back<reduce_t, Range> operator()(Range&& rng) const {
+      return {{}, {}, (Range&&) rng};
+    }
+
+  // Predecessor sends range, function is bound.
+  // FIXME: How do we constrain `Fun` without making this overload ambiguous
+  // with the above range is bound, function is not overload?
+  template <class Fun>
+    std::execution::__binder_back<reduce_t, Fun> operator()(Fun&& fun) const {
+      return {{}, {}, (Fun&&) fun};
+    }
+
+  // Predecessor sends range, predecessor sends function or it's the default.
+  std::execution::__binder_back<reduce_t> operator()() const {
+    return {{}, {}};
+  }
 };
 
 } // namespace STDEXEC_STREAM_DETAIL_NS
