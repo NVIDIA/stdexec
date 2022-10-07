@@ -45,7 +45,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
           storage->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&) as...);
 
-          visit(
+          ::nvexec::visit(
             [&](auto& tpl) noexcept {
               ::cuda::std::apply(
                 [&](auto tag, auto&... tas) noexcept {
