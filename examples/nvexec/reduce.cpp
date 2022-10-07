@@ -1,22 +1,12 @@
-#include <range/v3/range/concepts.hpp>
-#include <range/v3/view/subrange.hpp>
-
-#include <thrust/device_vector.h>
-
 #include <nvexec/stream_context.cuh>
 #include <stdexec/execution.hpp>
 
 namespace ex = stdexec;
 
 int main() {
-  const int n = 2 * 1024;
-  thrust::device_vector<int> input(n, 1);
-  auto rng = ranges::subrange(thrust::raw_pointer_cast(input.data()),
-                              thrust::raw_pointer_cast(input.data()) + input.size());
+  std::vector<int> input(2048, 1);
 
-  nvexec::stream_context stream{};
-
-  auto snd = ex::transfer_just(stream.get_scheduler(), rng)
+  auto snd = ex::transfer_just(nvexec::stream_context{}.get_scheduler(), input)
            | nvexec::reduce();
 
   auto [result] = ex::sync_wait(std::move(snd)).value();
