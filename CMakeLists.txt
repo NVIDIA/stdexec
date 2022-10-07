@@ -161,6 +161,16 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:NVHPC>:-e1000>
                        )
 
+# Print out full source location info with NVC++
+target_compile_options(stdexec_executable_flags INTERFACE
+                       $<$<CXX_COMPILER_ID:NVHPC>:--no_brief_diagnostics>
+                       )
+
+# Show error numbers with NVC++
+target_compile_options(stdexec_executable_flags INTERFACE
+                       $<$<CXX_COMPILER_ID:NVHPC>:--display_error_number>
+                       )
+
 # Silence warnings with GCC
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>
