@@ -30,6 +30,7 @@ set(nvexec_test_sources
     let_value.cpp
     let_error.cpp
     upon_error.cpp
+    reduce.cpp
 )
 
 if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))

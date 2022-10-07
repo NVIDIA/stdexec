@@ -143,13 +143,15 @@ template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
     // Range and function are bound.
     friend void tag_invoke(std::execution::set_value_t, receiver_t&& self) noexcept
       requires (is_bound<BoundRange> && is_bound<BoundFun>) {
-        self.launch(self.rng_, self.fun_);
+        using Result = reduce_result_t<BoundRange, BoundFun>;
+        self.launch<Result>(self.rng_, self.fun_);
       }
 
     // Range is bound, function is the default.
     friend void tag_invoke(std::execution::set_value_t, receiver_t&& self) noexcept
       requires (is_bound<BoundRange> && !is_bound<BoundFun>) {
-        self.launch(self.rng_, cub::Sum{});
+        using Result = reduce_result_t<BoundRange, BoundFun>;
+        self.launch<Result>(self.rng_, cub::Sum{});
       }
 
     // Range is bound, predecessor sends function.
@@ -157,7 +159,8 @@ template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
         requires (is_bound<BoundRange>)
       friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, Fun&& fun) noexcept {
         static_assert(!is_bound<BoundFun>);
-        self.launch((Range&&) rng, (Fun&&) fun);
+        using Result = reduce_result_t<BoundRange, BoundFun, Fun>;
+        self.launch<Result>(self.rng_, (Fun&&) fun);
       }
 
     // Predecessor sends range, function is bound.
@@ -165,7 +168,8 @@ template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
         requires (is_bound<BoundFun>)
       friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, Range&& rng) noexcept {
         static_assert(!is_bound<BoundRange>);
-        self.launch((Range&&) rng, self.fun_);
+        using Result = reduce_result_t<BoundRange, BoundFun, Range>;
+        self.launch<Result>((Range&&) rng, self.fun_);
       }
 
     // Predecessor sends range, function is the default.
@@ -173,22 +177,23 @@ template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
         requires (!is_bound<BoundFun>)
       friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, Range&& rng) noexcept {
         static_assert(!is_bound<BoundRange>);
-        self.launch((Range&&) rng, cub::Sum{});
+        using Result = reduce_result_t<BoundRange, BoundFun, Range>;
+        self.launch<Result>((Range&&) rng, cub::Sum{});
       }
 
     // Predecessor sends range and function.
     template <ranges::range Range, std::execution::__movable_value Fun>
       friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, Range&& rng, Fun&& fun) noexcept {
         static_assert(!is_bound<BoundRange> && !is_bound<BoundFun>);
-        self.launch((Range&&) rng, (Fun&&) fun);
+        using Result = reduce_result_t<BoundRange, BoundFun, Range, Fun>;
+        self.launch<Result>((Range&&) rng, (Fun&&) fun);
       }
 
-    template <ranges::range Range, std::execution::__movable_value Fun = cub::Sum>
+    template <class Result, ranges::range Range, std::execution::__movable_value Fun = cub::Sum>
       void launch(Range&& rng, Fun&& fun = {}) noexcept {
         cudaStream_t stream = op_state_.stream_;
 
-        using value_t = reduce_result_t<BoundRange, BoundFun, Range, Fun>;
-        value_t *d_out = reinterpret_cast<value_t*>(op_state_.temp_storage_);
+        Result *d_out = reinterpret_cast<Result*>(op_state_.temp_storage_);
 
         void *d_temp_storage{};
         std::size_t temp_storage_size{};
@@ -199,12 +204,12 @@ template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
         std::size_t num_items = ranges::size(rng);
 
         THROW_ON_CUDA_ERROR(cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_size, first,
-                                                      d_out, num_items, fun, value_t{},
+                                                      d_out, num_items, fun, Result{},
                                                       stream));
         THROW_ON_CUDA_ERROR(cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
 
         THROW_ON_CUDA_ERROR(cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_size, first,
-                                                      d_out, num_items, fun, value_t{},
+                                                      d_out, num_items, fun, Result{},
                                                       stream));
         THROW_ON_CUDA_ERROR(cudaFreeAsync(d_temp_storage, stream));
 
@@ -317,7 +322,7 @@ struct reduce_t {
   // with the above range is bound, function is not overload?
   template <std::execution::sender Sender, class Fun>
     sender_t<Sender, unbound, Fun> operator()(Sender&& sndr, Fun&& fun) const {
-      return {{}, (Sender&&) sndr, (Fun&&) fun};
+      return {{}, (Sender&&) sndr, {}, (Fun&&) fun};
     }
 
   // Predecessor sends range, predecessor sends function or it's the default.
@@ -329,7 +334,7 @@ struct reduce_t {
   // Range and function are bound.
   template <ranges::range Range, std::execution::__movable_value Fun>
     std::execution::__binder_back<reduce_t, Range, Fun> operator()(Range&& rng, Fun&& fun) const {
-      return {{}, {}, (Range&&) rng, (Fun&&) fun};
+      return {{}, {}, {(Range&&) rng, (Fun&&) fun}};
     }
 
   // Range is bound, predecessor sends function or it's the default.
