@@ -48,7 +48,7 @@ allocate_on(bool gpu, std::size_t elements = 1) {
   T *ptr{};
 
   if (gpu) {
-    STDEXEC_DBG_ERR(cudaMalloc(&ptr, elements * sizeof(T)));
+    STDEXEC_DBG_ERR(cudaMallocManaged(&ptr, elements * sizeof(T)));
   } else {
     ptr = reinterpret_cast<T *>(malloc(elements * sizeof(T)));
   }
@@ -272,38 +272,17 @@ update_e(float *time, float dt, fields_accessor accessor) {
   return {dt, time, accessor, source_position};
 }
 
-bool inline
-is_cpu_pointer(const void *ptr) {
-  cudaPointerAttributes attributes{};
-  STDEXEC_DBG_ERR(cudaPointerGetAttributes(&attributes, ptr));
-
-  return attributes.type == cudaMemoryTypeHost ||
-         attributes.type == cudaMemoryTypeUnregistered;
-}
-
 class result_dumper_t {
   bool write_results_{};
   std::size_t &report_step_;
   fields_accessor accessor_;
-
-  bool fetch_results_from_gpu_{};
 
   void write_vtk(const std::string &filename) const {
     if (!write_results_) {
       return;
     }
 
-    std::unique_ptr<float[]> h_ez;
     float *ez = accessor_.get(field_id::ez);
-
-    if (fetch_results_from_gpu_) {
-      h_ez = std::make_unique<float[]>(accessor_.cells);
-      STDEXEC_DBG_ERR(cudaMemcpy(h_ez.get(),
-                                 accessor_.get(field_id::ez),
-                                 sizeof(float) * (accessor_.cells),
-                                 cudaMemcpyDefault));
-      ez = h_ez.get();
-    }
 
     int rank_ = 0;
     if (rank_ == 0) {
@@ -373,9 +352,7 @@ public:
                   fields_accessor accessor)
     : write_results_(write_results)
     , report_step_(report_step)
-    , accessor_(accessor)
-    , fetch_results_from_gpu_(!is_cpu_pointer(accessor.get(field_id::ez))) {
-  }
+    , accessor_(accessor) {}
 
   void operator()(bool update_time = true) const {
     int rank_ = 0;
@@ -412,15 +389,6 @@ std::string bin_name(int node_id) {
 }
 
 inline void
-copy_to_host(void *to, const void *from, std::size_t bytes) {
-  if (is_cpu_pointer(from)) {
-    memcpy(to, from, bytes);
-  } else {
-    STDEXEC_DBG_ERR(cudaMemcpy(to, from, bytes, cudaMemcpyDeviceToHost));
-  }
-}
-
-inline void
 store_results(fields_accessor accessor) {
   const int node_id = 0;
   const int n_nodes = 1;
@@ -441,14 +409,7 @@ store_results(fields_accessor accessor) {
 
   float *ez = accessor.get(field_id::ez);
   std::size_t n_bytes = accessor.cells * sizeof(float);
-
-  if (is_cpu_pointer(ez)) {
-    bin.write(reinterpret_cast<const char *>(ez), n_bytes);
-  } else {
-    std::unique_ptr<char[]> h_ez = std::make_unique<char[]>(n_bytes);
-    STDEXEC_DBG_ERR(cudaMemcpy(h_ez.get(), ez, n_bytes, cudaMemcpyDeviceToHost));
-    bin.write(h_ez.get(), n_bytes);
-  }
+  bin.write(reinterpret_cast<const char *>(ez), n_bytes);
 }
 
 inline void

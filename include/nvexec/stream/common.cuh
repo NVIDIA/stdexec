@@ -324,6 +324,7 @@ namespace nvexec {
             this->status_ = task_->status_;
           }
         }
+        STDEXEC_IMMOVABLE(operation_state_t);
 
         queue::task_hub_t* hub_;
         queue::host_ptr<variant_t> storage_;
@@ -335,10 +336,10 @@ namespace nvexec {
   template <class S>
     concept stream_completing_sender =
       std::execution::sender<S> &&
-      std::is_same_v<
-          std::tag_invoke_result_t<
-            std::execution::get_completion_scheduler_t<std::execution::set_value_t>, S>,
-          stream_scheduler>;
+      requires (const S& sndr) {
+        { std::execution::get_completion_scheduler<std::execution::set_value_t>(sndr).hub_ } -> 
+            std::same_as<detail::queue::task_hub_t*>;
+      };
 
   template <class Sender, class InnerReceiver, class OuterReceiver>
     using stream_op_state_t = detail::operation_state_t<stdexec::__x<Sender>,

@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
               << "\t--run-inline-scheduler\n"
               << "\t--run-thread-pool-scheduler\n"
               << "\t--run-stream-scheduler\n"
+              << "\t--run-multi-gpu-scheduler\n"
               << "\t--N\n"
               << std::endl;
     return 0;
@@ -88,6 +89,11 @@ int main(int argc, char *argv[]) {
   if (value(params, "run-stream-scheduler")) {
     nvexec::stream_context stream_ctx{};
     run_snr_on("GPU (snr cuda stream)", stream_ctx.get_scheduler());
+  }
+
+  if (value(params, "run-multi-gpu-scheduler")) {
+    nvexec::multi_gpu_stream_context stream_context{};
+    run_snr_on("GPU (multi-GPU)", stream_context.get_scheduler());
   }
 
   // Naive

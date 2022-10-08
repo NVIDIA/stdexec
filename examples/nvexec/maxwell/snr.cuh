@@ -19,6 +19,7 @@
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
 #include <nvexec/stream_context.cuh>
+#include <nvexec/multi_gpu_context.cuh>
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 
