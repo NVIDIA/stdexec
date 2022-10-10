@@ -44,7 +44,7 @@ namespace nvexec {
   }
 #endif
 
-  inline __host__ __device__ bool is_on_gpu() {
+  inline bool is_on_gpu() {
     return get_device_type() == device_type::device;
   }
 }

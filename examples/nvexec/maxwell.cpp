@@ -18,7 +18,10 @@
 #include "maxwell/std.cuh"
 #include "maxwell/stdpar.cuh"
 #include "maxwell/cpp.cuh"
+
+#ifdef _NVHPC_CUDA
 #include "maxwell/cuda.cuh"
+#endif
 
 int main(int argc, char *argv[]) {
   auto params = parse_cmd(argc, argv);
@@ -73,6 +76,7 @@ int main(int argc, char *argv[]) {
     run_snr_on("CPU (snr thread pool)", pool.get_scheduler());
   }
 
+#ifdef _NVHPC_CUDA
   if (value(params, "run-cuda")) {
     grid_t grid{N, true /* gpu */};
 
@@ -95,6 +99,7 @@ int main(int argc, char *argv[]) {
     nvexec::multi_gpu_stream_context stream_context{};
     run_snr_on("GPU (multi-GPU)", stream_context.get_scheduler());
   }
+  #endif
 
   // Naive
   if (value(params, "run-std")) {
@@ -110,7 +115,6 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  #ifdef _NVHPC_CUDA
   if (value(params, "run-stdpar")) {
     const bool gpu = is_gpu_policy(std::execution::par_unseq);
     std::string_view method = gpu ? "GPU (stdpar)" : "CPU (stdpar)";
@@ -125,7 +129,6 @@ int main(int argc, char *argv[]) {
       store_results(accessor);
     }
   }
-  #endif
 
   if (value(params, "run-cpp")) {
     grid_t grid{N, false /* !gpu */};

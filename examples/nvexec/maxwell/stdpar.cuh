@@ -16,8 +16,11 @@
 #pragma once
 
 #include "common.cuh"
+
+#ifdef _NVHPC_CUDA
 #include "nvexec/stream/common.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
+#endif
 
 #include <ranges>
 #include <algorithm>
@@ -27,6 +30,7 @@
 
 template <class Policy>
 bool is_gpu_policy(Policy&& policy) {
+#ifdef _NVHPC_CUDA
   bool* flag{};
   STDEXEC_DBG_ERR(cudaMallocHost(&flag, sizeof(bool)));
   std::for_each(policy, flag, flag + 1, [](bool& f) {
@@ -37,9 +41,11 @@ bool is_gpu_policy(Policy&& policy) {
   STDEXEC_DBG_ERR(cudaFreeHost(flag));
 
   return h_flag;
+#else 
+  return false;
+#endif
 }
 
-#ifdef _NVHPC_CUDA
 template <class Policy>
 void run_stdpar(float dt, bool write_vtk, std::size_t n_inner_iterations,
                 std::size_t n_outer_iterations, grid_t &grid,
@@ -70,5 +76,4 @@ void run_stdpar(float dt, bool write_vtk, std::size_t n_inner_iterations,
                        }
                      });
 }
-#endif
 

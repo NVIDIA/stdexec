@@ -25,18 +25,25 @@
 #include <vector>
 #include <string.h>
 
+#include <math.h>
+
+#ifdef _NVHPC_CUDA
 #define STDEXEC_STDERR
 #include "nvexec/detail/throw_on_cuda_error.cuh"
+#endif
 
 struct deleter_t {
   bool on_gpu{};
 
   template <class T>
   void operator()(T *ptr) {
+#ifdef _NVHPC_CUDA
     if (on_gpu) {
       STDEXEC_DBG_ERR(cudaFree(ptr));
     }
-    else {
+    else 
+#endif
+    {
       free(ptr);
     }
   }
@@ -47,9 +54,13 @@ inline std::unique_ptr<T, deleter_t>
 allocate_on(bool gpu, std::size_t elements = 1) {
   T *ptr{};
 
+#ifdef _NVHPC_CUDA
   if (gpu) {
     STDEXEC_DBG_ERR(cudaMallocManaged(&ptr, elements * sizeof(T)));
-  } else {
+  } 
+  else 
+#endif
+  {
     ptr = reinterpret_cast<T *>(malloc(elements * sizeof(T)));
   }
 
@@ -79,7 +90,7 @@ struct fields_accessor {
 
   float *base_ptr;
 
-  [[nodiscard]] __host__ __device__ float *get(field_id id) const {
+  [[nodiscard]] float *get(field_id id) const {
     return base_ptr + static_cast<int>(id) * cells;
   }
 };
@@ -111,14 +122,14 @@ struct grid_t {
 
 constexpr float C0 = 299792458.0f; // Speed of light [metres per second]
 
-__host__ __device__ inline bool
+inline bool
 is_circle_part(float x, float y,
                float object_x, float object_y, float object_size) {
   const float os2 = object_size * object_size;
   return ((x - object_x) * (x - object_x) + (y - object_y) * (y - object_y) <= os2);
 }
 
-__host__ __device__ inline float
+inline float
 calculate_dt(float dx, float dy) {
   const float cfl = 0.3;
   return cfl * std::min(dx, dy) / C0;
@@ -128,7 +139,7 @@ struct grid_initializer_t {
   float dt;
   fields_accessor accessor;
 
-  __host__ __device__ void
+  void
   operator()(std::size_t cell_id) const {
     const std::size_t row = cell_id / accessor.n;
     const std::size_t column = cell_id % accessor.n;
@@ -169,27 +180,27 @@ struct grid_initializer_t {
   }
 };
 
-__host__ __device__ inline grid_initializer_t
+inline grid_initializer_t
 grid_initializer(float dt, fields_accessor accessor) {
   return {dt, accessor};
 }
 
-__host__ __device__ inline std::size_t
+inline std::size_t
 right_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
   return col == N - 1 ? cell_id - (N - 1) : cell_id + 1;
 }
 
-__host__ __device__ inline std::size_t
+inline std::size_t
 left_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
   return col == 0 ? cell_id + N - 1 : cell_id - 1;
 }
 
-__host__ __device__ inline std::size_t
+inline std::size_t
 bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
   return row == 0 ? cell_id + N * (N - 1) : cell_id - N;
 }
 
-__host__ __device__ inline std::size_t
+inline std::size_t
 top_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
   return row == N - 1 ? cell_id - N * (N - 1) : cell_id + N;
 }
@@ -197,7 +208,7 @@ top_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
 struct h_field_calculator_t {
   fields_accessor accessor;
 
-  __host__ __device__ void
+  void
   operator()(std::size_t cell_id) const __attribute__((always_inline)) {
     const std::size_t N = accessor.n;
     const std::size_t column = cell_id % N;
@@ -214,7 +225,7 @@ struct h_field_calculator_t {
   }
 };
 
-__host__ __device__ inline h_field_calculator_t
+inline h_field_calculator_t
 update_h(fields_accessor accessor) {
   return {accessor};
 }
@@ -225,19 +236,19 @@ struct e_field_calculator_t {
   fields_accessor accessor;
   std::size_t source_position;
 
-  [[nodiscard]] __host__ __device__ float
+  [[nodiscard]] float
   gaussian_pulse(float t, float t_0, float tau) const {
     return exp(-(((t - t_0) / tau) * (t - t_0) / tau));
   }
 
-  [[nodiscard]] __host__ __device__ float
+  [[nodiscard]] float
   calculate_source(float t, float frequency) const {
     const float tau = 0.5f / frequency;
     const float t_0 = 6.0f * tau;
     return gaussian_pulse(t, t_0, tau);
   }
 
-  __host__ __device__ void
+  void
   operator()(std::size_t cell_id) const __attribute__((always_inline)) {
     const std::size_t N = accessor.n;
     const std::size_t column = cell_id % N;
@@ -266,7 +277,7 @@ struct e_field_calculator_t {
   }
 };
 
-__host__ __device__ inline e_field_calculator_t
+inline e_field_calculator_t
 update_e(float *time, float dt, fields_accessor accessor) {
   std::size_t source_position = accessor.n / 2 + (accessor.n * (accessor.n / 2));
   return {dt, time, accessor, source_position};

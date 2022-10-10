@@ -16,10 +16,27 @@
 #pragma once
 
 #include "common.cuh"
-#include "nvexec/detail/throw_on_cuda_error.cuh"
 
+
+#ifdef _NVHPC_CUDA
+#include "nvexec/detail/throw_on_cuda_error.cuh"
 #include <nvexec/stream_context.cuh>
 #include <nvexec/multi_gpu_context.cuh>
+#else
+namespace nvexec {
+  struct stream_receiver_base{};
+  struct stream_sender_base{};
+
+  namespace detail {
+    struct stream_op_state_base{};
+  }
+
+  inline bool is_on_gpu() {
+    return false;
+  }
+}
+#endif 
+
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 
@@ -47,6 +64,7 @@ namespace repeat_n_detail {
 
       friend void
       tag_invoke(std::execution::start_t, operation_state_t &self) noexcept {
+#ifdef _NVHPC_CUDA
         using inner_op_state_t = ex::connect_result_t<Sender, sink_receiver>;
         if constexpr (std::is_base_of_v<nvexec::detail::stream_op_state_base, inner_op_state_t>) {
           inner_op_state_t op_state = ex::connect((Sender&&)self.sender_, sink_receiver{});
@@ -54,7 +72,10 @@ namespace repeat_n_detail {
             ex::start(op_state);
           }
           STDEXEC_DBG_ERR(cudaStreamSynchronize(op_state.stream_));
-        } else {
+        } 
+        else 
+#endif
+        {
           for (std::size_t i = 0; i < self.n_; i++) {
             std::this_thread::sync_wait((Sender&&)self.sender_);
           }
