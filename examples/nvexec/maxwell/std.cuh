@@ -17,6 +17,7 @@
 
 #include "common.cuh"
 
+#include <chrono>
 #include <thread>
 #include <vector>
 #include <barrier>
@@ -51,44 +52,62 @@ void run_std(float dt, bool write_vtk, std::size_t n_inner_iterations,
   std::vector<std::thread> threads(n_threads);
   std::barrier barrier(n_threads);
 
-  report_performance(grid.cells, n_inner_iterations * n_outer_iterations, method,
-                     [&]() {
-                       for (std::size_t tid = 0; tid < n_threads; tid++) {
-                         threads[tid] = std::thread([=, &barrier] {
-                           time_storage_t time{false};
-                           auto h_updater = update_h(accessor);
-                           auto e_updater = update_e(time.get(), dt, accessor);
+  std::vector<std::chrono::system_clock::time_point> begins(n_threads);
+  std::vector<std::chrono::system_clock::time_point> ends(n_threads);
 
-                           auto [begin, end] = even_share(accessor.cells, tid, n_threads);
+  for (std::size_t tid = 0; tid < n_threads; tid++) {
+    threads[tid] = std::thread([=, &barrier, &begins, &ends] {
+      time_storage_t time{false};
+      auto h_updater = update_h(accessor);
+      auto e_updater = update_e(time.get(), dt, accessor);
 
-                           std::size_t report_step = 0;
-                           const bool writer_thread = write_vtk && tid == 0;
-                           auto writer = dump_vtk(writer_thread, report_step, accessor);
+      auto [begin, end] = even_share(accessor.cells, tid, n_threads);
 
-                           for (; report_step < n_outer_iterations; report_step++) {
-                             for (std::size_t compute_step = 0;
-                                  compute_step < n_inner_iterations;
-                                  compute_step++) {
-                               for (std::size_t i = begin; i < end; i++) {
-                                 h_updater(i);
-                               }
-                               barrier.arrive_and_wait();
-                               for (std::size_t i = begin; i < end; i++) {
-                                 e_updater(i);
-                               }
-                               barrier.arrive_and_wait();
-                             }
+      std::size_t report_step = 0;
+      const bool writer_thread = write_vtk && tid == 0;
+      auto writer = dump_vtk(writer_thread, report_step, accessor);
+      
+      barrier.arrive_and_wait();
+      begins[tid] = std::chrono::system_clock::now();
 
-                             writer(false);
-                             if (write_vtk) {
-                               barrier.arrive_and_wait();
-                             }
-                           }
-                         });
-                       }
+      for (; report_step < n_outer_iterations; report_step++) {
+        for (std::size_t compute_step = 0;
+             compute_step < n_inner_iterations;
+             compute_step++) {
+          for (std::size_t i = begin; i < end; i++) {
+            h_updater(i);
+          }
+          barrier.arrive_and_wait();
+          for (std::size_t i = begin; i < end; i++) {
+            e_updater(i);
+          }
+          barrier.arrive_and_wait();
+        }
 
-                       for (std::size_t tid = 0; tid < n_threads; tid++) {
-                         threads[tid].join();
-                       }
-                     });
+        writer(false);
+        if (write_vtk) {
+          barrier.arrive_and_wait();
+        }
+      }
+      ends[tid] = std::chrono::system_clock::now();
+    });
+  }
+
+  for (std::size_t tid = 0; tid < n_threads; tid++) {
+    threads[tid].join();
+  }
+
+  std::chrono::system_clock::time_point begin = begins[0];
+  std::chrono::system_clock::time_point end = ends[0];
+
+  for (std::size_t tid = 1; tid < n_threads; tid++) {
+    begin = std::min(begins[tid], begin);
+    end = std::max(ends[tid], end);
+  }
+
+  report_performance(
+      grid.cells, 
+      n_inner_iterations * n_outer_iterations, 
+      method, 
+      std::chrono::duration<double>(end - begin).count());
 }

@@ -420,17 +420,11 @@ report_header() {
             << std::setw(11) << "BW [GB/s]" << "\n";
 }
 
-template <class Action>
 void report_performance(
   std::size_t cells,
   std::size_t iterations,
   std::string_view method,
-  Action action) {
-  auto begin = std::chrono::high_resolution_clock::now();
-  action();
-  auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = std::chrono::duration<double>(end - begin).count();
-
+  double elapsed) {
   // Assume perfect locality
   const std::size_t memory_accesses_per_cell = 6 * 2; // 8 + 9;
   const std::size_t memory_accesses = iterations * cells * memory_accesses_per_cell;
@@ -443,6 +437,20 @@ void report_performance(
             << std::setw(11) << std::setprecision(3) << elapsed << ", "
             << std::setw(11) << std::setprecision(3) << gbytes_per_second
             << std::endl;
+}
+
+template <class Action>
+void report_performance(
+  std::size_t cells,
+  std::size_t iterations,
+  std::string_view method,
+  Action action) {
+  auto begin = std::chrono::high_resolution_clock::now();
+  action();
+  auto end = std::chrono::high_resolution_clock::now();
+  auto elapsed = std::chrono::duration<double>(end - begin).count();
+
+  report_performance(cells, iterations, method, elapsed);
 }
 
 bool contains(std::string_view str, char c) {
