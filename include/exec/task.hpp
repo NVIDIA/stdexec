@@ -143,7 +143,7 @@ namespace exec {
       struct __default_task_context_impl::__awaiter_context<void> {
         template <class _Ty>
           explicit __awaiter_context(
-            __default_task_context_impl& __self, _Ty&) noexcept
+            __default_task_context_impl&, _Ty&) noexcept
           {}
 
         template <__indirect_stop_token_provider _ParentPromise>
