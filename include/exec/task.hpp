@@ -202,6 +202,22 @@ namespace exec {
         std::variant<std::monostate, __void, std::exception_ptr> __data_{};
       };
 
+    // Specify basic_task's completion signatures
+    //   This is only necessary when basic_task is not generally awaitable
+    //   owing to constraints imposed by its _Context parameter.
+    template <class... _Ts>
+      using __task_traits_t =
+        std::execution::completion_signatures<
+          std::execution::set_value_t(_Ts...),
+          std::execution::set_error_t(std::exception_ptr),
+          std::execution::set_stopped_t()>;
+
+    template <class _Ty> requires (!std::is_same_v<void, _Ty>)
+    auto __task_completion_sigs() -> __task_traits_t<_Ty>;
+
+    template <class _Ty> requires (std::is_same_v<void, _Ty>)
+    auto __task_completion_sigs() -> __task_traits_t<>;
+
     ////////////////////////////////////////////////////////////////////////////////
     // basic_task
     template <class _Ty, class _Context = default_task_context<_Ty>>
@@ -306,18 +322,8 @@ namespace exec {
           return __task_awaitable<>{std::exchange(__self.__coro_, {})};
         }
 
-        // Specify basic_task's completion signatures
-        //   This is only necessary when basic_task is not generally awaitable
-        //   owing to constraints imposed by its _Context parameter.
-        template <class... _Ts>
-          using __task_traits_t =
-            std::execution::completion_signatures<
-              std::execution::set_value_t(_Ts...),
-              std::execution::set_error_t(std::exception_ptr),
-              std::execution::set_stopped_t()>;
-
         friend auto tag_invoke(std::execution::get_completion_signatures_t, const basic_task&, auto)
-          -> std::conditional_t<std::is_void_v<_Ty>, __task_traits_t<>, __task_traits_t<_Ty>>;
+          -> decltype(__task_completion_sigs<_Ty>());
 
         explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
           : __coro_(__coro)
