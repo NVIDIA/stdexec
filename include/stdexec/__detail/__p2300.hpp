@@ -207,7 +207,7 @@ namespace std {
     using stdexec::as_awaitable;
 
     // [exec.with_awaitable_senders]
-    struct with_awaitable_senders;
+    using stdexec::with_awaitable_senders;
     #endif // !_STD_NO_COROUTINES_
   } // namespace execution
 
