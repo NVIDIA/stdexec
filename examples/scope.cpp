@@ -18,6 +18,7 @@
 #include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
 
+#include "exec/env.hpp"
 #include "exec/static_thread_pool.hpp"
 
 #include <cstdio>
@@ -37,7 +38,7 @@ class noop_receiver : receiver_adaptor<noop_receiver> {
   void set_stopped() noexcept {
   }
   auto get_env() const& {
-    return stdexec::make_env(with(get_stop_token, std::never_stop_token{}));
+    return exec::make_env(exec::with(get_stop_token, std::never_stop_token{}));
   }
 };
 

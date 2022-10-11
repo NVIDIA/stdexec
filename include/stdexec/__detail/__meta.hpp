@@ -242,6 +242,22 @@ namespace stdexec {
   template <class _Fn, class _First, class _Second, class _Third>
     concept __minvocable3 = __valid3<_Fn::template __f, _First, _Second, _Third>;
 
+  template <class _Fn, class _Default, class... _Args>
+    struct __with_default_ {
+      using __t = _Default;
+    };
+  template <class _Fn, class _Default, class... _Args>
+      requires __minvocable<_Fn, _Args...>
+    struct __with_default_<_Fn, _Default, _Args...> {
+      using __t = __minvoke<_Fn, _Args...>;
+    };
+
+  template <class _Fn, class _Default>
+    struct __with_default {
+      template <class... _Args>
+        using __f = __t<__with_default_<_Fn, _Default, _Args...>>;
+    };
+
   template <template <class...> class _T, class... _Args>
       requires __valid<_T, _Args...>
     struct __defer_ { using __t = _T<_Args...>; };

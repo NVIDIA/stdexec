@@ -162,7 +162,7 @@ template <class SenderId, class FunId>
             Fun,
             stdexec::__member_t<Self, Sender>,
             Env>,
-          stdexec::__mbind_front_q<stdexec::execution::__set_value_invoke_t, Fun>,
+          stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>,
           stdexec::__q<set_error>>;
 
     template <stdexec::__decays_to<then_sender_t> Self, std::execution::receiver Receiver>

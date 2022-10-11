@@ -16,6 +16,7 @@
 #pragma once
 
 #include <stdexec/execution.hpp>
+#include <exec/env.hpp>
 #include <type_traits>
 
 #include "nvexec/stream/common.cuh"
@@ -49,8 +50,8 @@ namespace nvexec {
         }
 
         friend auto tag_invoke(std::execution::get_env_t, const __receiver& __self)
-          -> stdexec::make_env_t<stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
-          return stdexec::make_env(stdexec::with(std::execution::get_stop_token, __self.__sh_state_.__stop_source_.get_token()));
+          -> exec::make_env_t<exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
+          return exec::make_env(stdexec::__with(std::execution::get_stop_token, __self.__sh_state_.__stop_source_.get_token()));
         }
 
         explicit __receiver(_SharedState &__sh_state) noexcept
@@ -80,14 +81,14 @@ namespace nvexec {
         using __bound_values_t =
           stdexec::__value_types_of_t<
             _Sender,
-            stdexec::make_env_t<stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
+            exec::make_env_t<exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
             stdexec::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
             stdexec::__q<__bind_tuples>>;
 
         using __variant_t =
           stdexec::__error_types_of_t<
             _Sender,
-            stdexec::make_env_t<stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
+            exec::make_env_t<exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
             stdexec::__transform<
               stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
               __bound_values_t>>;
@@ -253,7 +254,7 @@ namespace nvexec {
         friend auto tag_invoke(std::execution::get_completion_signatures_t, _Self&&, _Env) ->
           std::execution::make_completion_signatures<
             _Sender,
-            stdexec::execution::make_env_t<stdexec::execution::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
+            exec::make_env_t<exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
             std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>,
             __set_value_t,
             __set_error_t>;

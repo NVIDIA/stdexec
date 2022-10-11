@@ -226,9 +226,9 @@ set(test_sourceFiles
     test/stdexec/detail/test_completion_signatures.cpp
     test/stdexec/detail/test_create.cpp
     test/stdexec/detail/test_utility.cpp
-    test/stdexec/queries/test_env.cpp
     test/stdexec/queries/test_get_forward_progress_guarantee.cpp
     test/exec/test_type_async_scope.cpp
+    test/exec/test_env.cpp
     test/exec/async_scope/test_dtor.cpp
     test/exec/async_scope/test_spawn.cpp
     test/exec/async_scope/test_spawn_future.cpp

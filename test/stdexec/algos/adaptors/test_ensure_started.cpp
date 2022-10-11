@@ -19,6 +19,7 @@
 
 #include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
+#include <exec/env.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
@@ -199,7 +200,7 @@ TEST_CASE("stopping ensure_started before the source completes calls set_stopped
   impulse_scheduler sch;
   bool called{false};
   auto snd = ex::on(sch, ex::just(19))
-           | stdexec::write(stdexec::with(ex::get_stop_token, stop_source.get_token()))
+           | exec::write(exec::with(ex::get_stop_token, stop_source.get_token()))
            | ex::ensure_started();
   auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
   ex::start(op);
@@ -218,7 +219,7 @@ TEST_CASE("stopping ensure_started before the lazy opstate is started calls set_
   auto snd = ex::let_value(
                 ex::just() | ex::then([&]{ ++count; }),
                 [=] { return ex::on(sch, ex::just(19)); })
-           | stdexec::write(stdexec::with(ex::get_stop_token, stop_source.get_token()))
+           | exec::write(exec::with(ex::get_stop_token, stop_source.get_token()))
            | ex::ensure_started();
   CHECK(count == 1);
   auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
@@ -235,7 +236,7 @@ TEST_CASE("stopping ensure_started after the task has already completed doesn't 
   int count = 0;
   auto snd = ex::just()
            | ex::then([&] { ++count; return 42; })
-           | stdexec::write(stdexec::with(ex::get_stop_token, stop_source.get_token()))
+           | exec::write(exec::with(ex::get_stop_token, stop_source.get_token()))
            | ex::ensure_started();
   CHECK(count == 1);
   auto op = ex::connect(std::move(snd), expect_value_receiver{42});

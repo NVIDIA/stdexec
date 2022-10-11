@@ -19,6 +19,7 @@
 #include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
 
+#include "exec/env.hpp"
 #include "exec/static_thread_pool.hpp"
 
 #include <test_common/schedulers.hpp>
@@ -34,7 +35,7 @@ void expect_empty(exec::async_scope& scope) {
   CHECK_FALSE(std::this_thread::execute_may_block_caller(sch));
   auto op = ex::connect(
     ex::then(scope.on_empty(), [&](){  loop.finish(); }),
-    expect_void_receiver{stdexec::make_env(stdexec::with(ex::get_scheduler, sch))});
+    expect_void_receiver{exec::make_env(exec::with(ex::get_scheduler, sch))});
   ex::start(op);
   loop.run();
 }
