@@ -46,8 +46,9 @@ struct op_state_t {
   Receiver rcvr_;
   std::execution::connect_result_t<Sender, receiver_t> op_state_;
 
-  op_state_t(Sender&& sndr, stdexec::__decays_to<Receiver> auto&& rcvr)
-    : rcvr_((decltype(rcvr)&&) rcvr)
+  template <stdexec::__decays_to<Receiver> CvrefReceiver>
+  op_state_t(Sender&& sndr, CvrefReceiver&& rcvr)
+    : rcvr_((CvrefReceiver&&) rcvr)
     , op_state_(std::execution::connect((Sender&&) sndr, receiver_t{{}, this}))
   {}
 };

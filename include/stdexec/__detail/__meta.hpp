@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cassert>
 #include <exception>
 #include <type_traits>
 #include <utility>

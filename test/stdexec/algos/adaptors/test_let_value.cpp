@@ -208,7 +208,7 @@ TEST_CASE("let_value exposes a parameter that is destructed when the main operat
 
   {
     int res{0};
-    auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>{&res});
+    auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);
     // The function is called immediately after starting the operation
     CHECK(fun_called);

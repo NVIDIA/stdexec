@@ -135,7 +135,7 @@ TEST_CASE("bulk forwards values", "[adaptors][bulk]") {
                  counter[i]++;
                }
              });
-  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{magic_number});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{magic_number});
   ex::start(op);
 
   for (int i = 0; i < n; i++) {
@@ -152,7 +152,7 @@ TEST_CASE("bulk cannot be used to change the value type", "[adaptors][bulk]") {
                return function_object_t<int>{nullptr};
              });
 
-  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{magic_number});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{magic_number});
   ex::start(op);
 }
 

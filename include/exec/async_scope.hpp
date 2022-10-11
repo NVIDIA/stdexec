@@ -18,6 +18,7 @@
 #include <stdexec/execution.hpp>
 #include <stdexec/__detail/__intrusive_queue.hpp>
 #include <exec/env.hpp>
+#include <exec/inline_scheduler.hpp>
 
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////
@@ -35,7 +36,8 @@ namespace exec {
 
     using __env_t =
       make_env_t<
-        with_t<get_stop_token_t, in_place_stop_token>>;
+        with_t<get_stop_token_t, in_place_stop_token>,
+        with_t<get_scheduler_t, inline_scheduler>>;
 
     struct __impl {
       in_place_stop_source __stop_source_{};
@@ -51,7 +53,8 @@ namespace exec {
 
       __env_t __make_env_() const noexcept {
         return make_env(
-          with(stdexec::get_stop_token, __stop_source_.get_token()));
+          with(get_stop_token, __stop_source_.get_token()),
+          with(get_scheduler, inline_scheduler{}));
       }
     };
 
@@ -86,11 +89,11 @@ namespace exec {
         using _Receiver = __t<_ReceiverId>;
         STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
           connect_result_t<_Constrained, __when_empty_rcvr<_ReceiverId>> __op_;
-        template <__decays_to<_Constrained> _Sender, class _Receiver>
-          explicit __when_empty_op(const __impl* __scope, _Sender&& __sndr, _Receiver&& __rcvr)
+        template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
+          explicit __when_empty_op(const __impl* __scope, _Sender&& __sndr, _Rcvr&& __rcvr)
             : __when_empty_op_base<_ReceiverId>{
                 {{}, __scope, __notify_waiter},
-                (_Receiver&&) __rcvr}
+                (_Rcvr&&) __rcvr}
             , __op_(connect((_Sender&&) __sndr, __when_empty_rcvr<_ReceiverId>{this}))
           {}
       private:
@@ -131,7 +134,7 @@ namespace exec {
             return __when_empty_op_t<_Receiver>{
               __self.__scope_,
               ((_Self&&) __self).__c_,
-              (_Receiver&&)__rcvr};
+              (_Receiver&&) __rcvr};
           }
         template <__decays_to<__when_empty_sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
@@ -197,10 +200,10 @@ namespace exec {
         using _Receiver = __t<_ReceiverId>;
         STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
           connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>> __op_;
-        template <class _Constrained, class _Receiver>
-          explicit __nest_op(const __impl* __scope, _Constrained&& __c, _Receiver&& __rcvr)
-            : __nest_op_base<_ReceiverId>{{}, __scope, (_Receiver&&) __rcvr}
-            , __op_(connect((_Constrained&&)__c, __nest_rcvr<_ReceiverId>{this})) {}
+        template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
+          explicit __nest_op(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)
+            : __nest_op_base<_ReceiverId>{{}, __scope, (_Rcvr&&) __rcvr}
+            , __op_(connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {}
       private:
         void __start_() noexcept {
           STDEXEC_ASSERT(this->__scope_);
@@ -233,7 +236,7 @@ namespace exec {
             return __nest_operation_t<_Receiver>{
               __self.__scope_,
               ((_Self&&) __self).__c_,
-              (_Receiver&&)__rcvr};
+              (_Receiver&&) __rcvr};
           }
         template <__decays_to<__nest_sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)

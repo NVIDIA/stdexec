@@ -92,8 +92,8 @@
 //   REQUIRE(ex::receiver<recv_int_ec, std::error_code>);
 //   REQUIRE(ex::receiver<expect_void_receiver>);
 //   REQUIRE(ex::receiver<expect_void_receiver_ex>);
-//   REQUIRE(ex::receiver<expect_value_receiver<int>>);
-//   REQUIRE(ex::receiver<expect_value_receiver<double>>);
+//   REQUIRE(ex::receiver<expect_value_receiver<empty_env, int>>);
+//   REQUIRE(ex::receiver<expect_value_receiver<empty_env, double>>);
 //   REQUIRE(ex::receiver<expect_stopped_receiver>);
 //   REQUIRE(ex::receiver<expect_stopped_receiver_ex>);
 //   REQUIRE(ex::receiver<expect_error_receiver>);
@@ -110,8 +110,8 @@
 //   REQUIRE(ex::receiver_of<recv_int_ec, int>);
 //   REQUIRE(ex::receiver_of<expect_void_receiver>);
 //   REQUIRE(ex::receiver_of<expect_void_receiver_ex>);
-//   REQUIRE(ex::receiver_of<expect_value_receiver<int>, int>);
-//   REQUIRE(ex::receiver_of<expect_value_receiver<double>, double>);
+//   REQUIRE(ex::receiver_of<expect_value_receiver<empty_env, int>, int>);
+//   REQUIRE(ex::receiver_of<expect_value_receiver<empty_env, double>, double>);
 //   REQUIRE(ex::receiver_of<expect_stopped_receiver, char>);
 //   REQUIRE(ex::receiver_of<expect_stopped_receiver_ex, char>);
 //   REQUIRE(ex::receiver_of<expect_error_receiver, char>);
