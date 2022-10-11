@@ -17,6 +17,7 @@
 
 #include <stdexec/execution.hpp>
 #include <stdexec/__detail/__intrusive_queue.hpp>
+#include <exec/env.hpp>
 
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////

@@ -37,7 +37,7 @@ struct on_stop_requested {
 
 template <class Env>
   using env_t =
-    stdexec::make_env_t<Env, stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>;
+    exec::make_env_t<Env, exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>;
 
 template <class...>
   using swallow_values = std::execution::completion_signatures<>;
@@ -178,10 +178,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         }
 
         auto get_env() const
-          -> stdexec::make_env_t<std::execution::env_of_t<Receiver>, stdexec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
-          return stdexec::make_env(
+          -> exec::make_env_t<std::execution::env_of_t<Receiver>, exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
+          return exec::make_env(
             std::execution::get_env(base()),
-            stdexec::with(std::execution::get_stop_token, op_state_->stop_source_.get_token()));
+            stdexec::__with(std::execution::get_stop_token, op_state_->stop_source_.get_token()));
         }
 
         operation_t<CvrefReceiverId>* op_state_;

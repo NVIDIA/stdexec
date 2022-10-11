@@ -295,8 +295,8 @@ namespace nvexec {
       template <class _Sender, class _Env>
         using __with_error =
           stdexec::__if_c<
-            stdexec::execution::__sends<_Set, _Sender, _Env>,
-            stdexec::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>,
+            stdexec::__sends<_Set, _Sender, _Env>,
+            stdexec::completion_signatures<std::execution::set_error_t(cudaError_t)>,
             std::execution::completion_signatures<>>;
 
       template <class _Sender, class _Env>

@@ -127,7 +127,7 @@ template <class SenderId, class FunId>
 
         static constexpr std::size_t value =
           stdexec::__v<
-            stdexec::execution::__gather_sigs_t<
+            stdexec::__gather_sigs_t<
               std::execution::set_error_t, 
               Sender,  
               std::execution::env_of_t<Receiver>, 
