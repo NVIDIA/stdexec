@@ -50,20 +50,17 @@ namespace exec {
       }
     };
 
+    template <class _ParentPromise>
+      struct __default_awaiter_context;
+
     ////////////////////////////////////////////////////////////////////////////////
     // This is the context that is associated with basic_task's promise type
     // by default. It handles forwarding of stop requests from parent to child.
     class __default_task_context_impl {
-      std::in_place_stop_token __stop_token_;
-
-      // This is the context associated with basic_task's awaiter. By default
-      // it does nothing.
       template <class _ParentPromise>
-        struct __awaiter_context {
-          explicit __awaiter_context(
-              __default_task_context_impl&, _ParentPromise&) noexcept
-          {}
-        };
+        friend struct __default_awaiter_context;
+
+      std::in_place_stop_token __stop_token_;
 
       friend auto tag_invoke(
             std::execution::get_stop_token_t, const __default_task_context_impl& __self)
@@ -82,20 +79,32 @@ namespace exec {
         using promise_context_t = __default_task_context_impl;
 
       template <class _ThisPromise, class _ParentPromise = void>
-        using awaiter_context_t = __awaiter_context<_ParentPromise>;
+        using awaiter_context_t = __default_awaiter_context<_ParentPromise>;
     };
+
+    template <class _Ty>
+      using default_task_context = __default_task_context_impl;
+
+    // This is the context associated with basic_task's awaiter. By default
+    // it does nothing.
+    template <class _ParentPromise>
+      struct __default_awaiter_context {
+        explicit __default_awaiter_context(
+            __default_task_context_impl&, _ParentPromise&) noexcept
+        {}
+      };
 
     ////////////////////////////////////////////////////////////////////////////////
     // This is the context to be associated with basic_task's awaiter when
     // the parent coroutine's promise type is known, is a __stop_token_provider,
     // and its stop token type is neither in_place_stop_token nor unstoppable.
     template <__indirect_stop_token_provider _ParentPromise>
-      struct __default_task_context_impl::__awaiter_context<_ParentPromise> {
+      struct __default_awaiter_context<_ParentPromise> {
         using __stop_token_t = std::execution::stop_token_of_t<std::execution::env_of_t<_ParentPromise>>;
         using __stop_callback_t =
           typename __stop_token_t::template callback_type<__forward_stop_request>;
 
-        explicit __awaiter_context(
+        explicit __default_awaiter_context(
             __default_task_context_impl& __self, _ParentPromise& __parent) noexcept
             // Register a callback that will request stop on this basic_task's
             // stop_source when stop is requested on the parent coroutine's stop
@@ -118,8 +127,8 @@ namespace exec {
         requires std::same_as<
             std::in_place_stop_token,
             std::execution::stop_token_of_t<std::execution::env_of_t<_ParentPromise>>>
-      struct __default_task_context_impl::__awaiter_context<_ParentPromise> {
-        explicit __awaiter_context(
+      struct __default_awaiter_context<_ParentPromise> {
+        explicit __default_awaiter_context(
             __default_task_context_impl& __self, _ParentPromise& __parent) noexcept {
           __self.__stop_token_ =
             std::execution::get_stop_token(std::execution::get_env(__parent));
@@ -131,8 +140,8 @@ namespace exec {
     template <__indirect_stop_token_provider _ParentPromise>
         requires stdexec::unstoppable_token<
             std::execution::stop_token_of_t<std::execution::env_of_t<_ParentPromise>>>
-      struct __default_task_context_impl::__awaiter_context<_ParentPromise> {
-        explicit __awaiter_context(
+      struct __default_awaiter_context<_ParentPromise> {
+        explicit __default_awaiter_context(
             __default_task_context_impl&, _ParentPromise&) noexcept
         {}
       };
@@ -140,14 +149,14 @@ namespace exec {
     // Finally, if we don't know the parent coroutine's promise type, assume the
     // worst and save a type-erased stop callback.
     template<>
-      struct __default_task_context_impl::__awaiter_context<void> {
+      struct __default_awaiter_context<void> {
         template <class _Ty>
-          explicit __awaiter_context(
+          explicit __default_awaiter_context(
             __default_task_context_impl& __self, _Ty&) noexcept
           {}
 
         template <__indirect_stop_token_provider _ParentPromise>
-          explicit __awaiter_context(
+          explicit __default_awaiter_context(
               __default_task_context_impl& __self, _ParentPromise& __parent) {
             // Register a callback that will request stop on this basic_task's
             // stop_source when stop is requested on the parent coroutine's stop
@@ -174,9 +183,6 @@ namespace exec {
         std::in_place_stop_source __stop_source_{};
         std::any __stop_callback_{};
       };
-
-    template <class _Ty>
-      using default_task_context = __default_task_context_impl;
 
     template <class _Promise, class _ParentPromise = void>
       using awaiter_context_t =
@@ -306,18 +312,26 @@ namespace exec {
           return __task_awaitable<>{std::exchange(__self.__coro_, {})};
         }
 
+        // From the list of types [_Ty], remove any types that are void, and send
+        //   the resulting list to __qf<set_value_t>, which uses the list of types
+        //   as arguments of a function type. In other words, set_value_t() if _Ty
+        //   is void, and set_value_t(_Ty) otherwise.
+        using __set_value_sig_t =
+          stdexec::__minvoke1<
+            stdexec::__remove<void, stdexec::__qf<std::execution::set_value_t>>,
+            _Ty>;
+
         // Specify basic_task's completion signatures
         //   This is only necessary when basic_task is not generally awaitable
         //   owing to constraints imposed by its _Context parameter.
-        template <class... _Ts>
-          using __task_traits_t =
-            std::execution::completion_signatures<
-              std::execution::set_value_t(_Ts...),
-              std::execution::set_error_t(std::exception_ptr),
-              std::execution::set_stopped_t()>;
+        using __task_traits_t =
+          std::execution::completion_signatures<
+            __set_value_sig_t,
+            std::execution::set_error_t(std::exception_ptr),
+            std::execution::set_stopped_t()>;
 
         friend auto tag_invoke(std::execution::get_completion_signatures_t, const basic_task&, auto)
-          -> std::conditional_t<std::is_void_v<_Ty>, __task_traits_t<>, __task_traits_t<_Ty>>;
+          -> __task_traits_t;
 
         explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
           : __coro_(__coro)
