@@ -13,6 +13,17 @@ jobs:
           prebuild_command: |
             wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
             apt update && apt install -y --no-install-recommends git cmake;
+  build-gcc-12:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: docker://lucteo/action-cxx-toolkit.gcc12:latest
+        with:
+          cc: gcc-12
+          checks: build test
+          prebuild_command: |
+            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
+            apt update && apt install -y --no-install-recommends git cmake;
   build-clang-12:
     runs-on: ubuntu-latest
     steps:
