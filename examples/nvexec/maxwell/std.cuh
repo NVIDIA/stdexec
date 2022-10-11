@@ -42,12 +42,6 @@ void run_std(float dt, bool write_vtk, std::size_t n_inner_iterations,
              std::string_view method) {
   fields_accessor accessor = grid.accessor();
 
-  // TODO Initialize by threads that access data to preserve locality (NUMA)
-  auto initializer = grid_initializer(dt, accessor);
-  for (std::size_t i = 0; i < accessor.cells; i++) {
-    initializer(i);
-  }
-
   const std::size_t n_threads = std::thread::hardware_concurrency();
   std::vector<std::thread> threads(n_threads);
   std::barrier barrier(n_threads);
@@ -60,8 +54,13 @@ void run_std(float dt, bool write_vtk, std::size_t n_inner_iterations,
       time_storage_t time{false};
       auto h_updater = update_h(accessor);
       auto e_updater = update_e(time.get(), dt, accessor);
+      auto initializer = grid_initializer(dt, accessor);
 
       auto [begin, end] = even_share(accessor.cells, tid, n_threads);
+
+      for (std::size_t i = begin; i < end; i++) {
+        initializer(i);
+      }
 
       std::size_t report_step = 0;
       const bool writer_thread = write_vtk && tid == 0;
