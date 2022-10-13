@@ -42,16 +42,8 @@ namespace nvexec {
 
 namespace ex = std::execution;
 
-namespace repeat_n_detail {
 
-  struct sink_receiver : nvexec::stream_receiver_base {
-    friend void tag_invoke(ex::set_value_t, sink_receiver &&, auto&&...) noexcept {}
-    friend void tag_invoke(ex::set_error_t, sink_receiver &&, auto&&) noexcept {}
-    friend void tag_invoke(ex::set_stopped_t, sink_receiver &&) noexcept {}
-    friend stdexec::__empty_env tag_invoke(ex::get_env_t, sink_receiver) noexcept {
-      return {};
-    }
-  };
+namespace repeat_n_detail {
 
   template <class SenderId, class ReceiverId>
     struct operation_state_t {
@@ -64,21 +56,8 @@ namespace repeat_n_detail {
 
       friend void
       tag_invoke(std::execution::start_t, operation_state_t &self) noexcept {
-#ifdef _NVHPC_CUDA
-        using inner_op_state_t = ex::connect_result_t<Sender, sink_receiver>;
-        if constexpr (std::is_base_of_v<nvexec::detail::stream_op_state_base, inner_op_state_t>) {
-          inner_op_state_t op_state = ex::connect((Sender&&)self.sender_, sink_receiver{});
-          for (std::size_t i = 0; i < self.n_; i++) {
-            ex::start(op_state);
-          }
-          STDEXEC_DBG_ERR(cudaStreamSynchronize(op_state.stream_));
-        } 
-        else 
-#endif
-        {
-          for (std::size_t i = 0; i < self.n_; i++) {
-            std::this_thread::sync_wait((Sender&&)self.sender_);
-          }
+        for (std::size_t i = 0; i < self.n_; i++) {
+          std::this_thread::sync_wait((Sender&&)self.sender_);
         }
         ex::set_value((Receiver&&)self.receiver_);
       }
@@ -91,11 +70,12 @@ namespace repeat_n_detail {
     };
 
   template <class SenderId>
-    struct repeat_n_sender_t : nvexec::stream_sender_base {
+    struct repeat_n_sender_t {
       using Sender = stdexec::__t<SenderId>;
 
       using completion_signatures = std::execution::completion_signatures<
         std::execution::set_value_t(),
+        std::execution::set_stopped_t(),
         std::execution::set_error_t(std::exception_ptr)>;
 
       Sender sender_;
@@ -111,7 +91,7 @@ namespace repeat_n_detail {
           self.n_);
       }
 
-      template <stdexec::__none_of<std::execution::connect_t> Tag, class... Ts>
+      template <stdexec::__none_of<std::execution::get_completion_scheduler_t<std::execution::set_value_t>> Tag, class... Ts>
         requires std::tag_invocable<Tag, Sender, Ts...> friend decltype(auto)
       tag_invoke(Tag tag, const repeat_n_sender_t &s, Ts &&...ts) noexcept {
         return tag(s.sender_, std::forward<Ts>(ts)...);
@@ -121,7 +101,7 @@ namespace repeat_n_detail {
   struct repeat_n_t {
     template <class Sender>
     repeat_n_sender_t<stdexec::__x<Sender>> operator()(std::size_t n, Sender &&__sndr) const noexcept {
-      return repeat_n_sender_t<stdexec::__x<Sender>>{{}, std::forward<Sender>(__sndr), n};
+      return repeat_n_sender_t<stdexec::__x<Sender>>{std::forward<Sender>(__sndr), n};
     }
   };
 }

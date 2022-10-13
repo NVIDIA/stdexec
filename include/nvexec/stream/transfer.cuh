@@ -62,8 +62,6 @@ namespace transfer {
             stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
             bound_values_t>>;
 
-      using enqueue_receiver_t = detail::stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
-
       struct receiver_t {
         operation_state_t &op_state_;
 
@@ -97,7 +95,8 @@ namespace transfer {
 
       Receiver receiver_;
 
-      using inner_op_state_t = std::execution::connect_result_t<Sender, enqueue_receiver_t>;
+      using enqueue_receiver = detail::stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
+      using inner_op_state_t = std::execution::connect_result_t<Sender, enqueue_receiver>;
       inner_op_state_t inner_op_;
 
       cudaStream_t allocate() {
@@ -141,9 +140,13 @@ namespace transfer {
         , started_(ATOMIC_FLAG_INIT)
         , receiver_((Receiver&&)receiver)
         , inner_op_{
-            std::execution::connect((Sender&&)sender,
-            detail::stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>{
-              std::execution::get_env(receiver_), storage_.get(), task_, hub_->producer()})} {
+            std::execution::connect(
+                (Sender&&)sender,
+                enqueue_receiver{
+                  std::execution::get_env(receiver_), 
+                  storage_.get(), 
+                  task_, 
+                  hub_->producer()})} {
         if (this->status_ == cudaSuccess) {
           this->status_ = task_->status_;
         }
