@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <atomic>
 #include <stdexec/execution.hpp>
 
 #include <cuda/std/type_traits>
@@ -135,6 +136,12 @@ namespace nvexec {
                 }, tpl);
             }, *self.variant_);
           };
+
+          this->free_ = [](task_base_t* t) noexcept {
+            STDEXEC_DBG_ERR(cudaFree(t->atom_next_));
+            STDEXEC_DBG_ERR(cudaFreeHost(t));
+          };
+
           this->next_ = nullptr;
 
           constexpr std::size_t ptr_size = sizeof(this->atom_next_);
@@ -267,6 +274,7 @@ namespace nvexec {
         using inner_op_state_t = std::execution::connect_result_t<sender_t, intermediate_receiver>;
 
         friend void tag_invoke(std::execution::start_t, operation_state_t& op) noexcept {
+          op.started_.test_and_set(::cuda::std::memory_order::relaxed);
           op.stream_ = op.get_stream();
 
           if (op.status_ != cudaSuccess) {
@@ -315,20 +323,32 @@ namespace nvexec {
           : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver)
           , hub_(hub)
           , storage_(queue::make_host<variant_t>(this->status_))
-          , task_(queue::make_host<task_t>(this->status_, receiver_provider(*this), storage_.get()))
+          , task_(queue::make_host<task_t>(this->status_, receiver_provider(*this), storage_.get()).release())
+          , started_(ATOMIC_FLAG_INIT)
           , inner_op_{
               std::execution::connect((sender_t&&)sender,
               detail::stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>{
-                std::execution::get_env(out_receiver), storage_.get(), task_.get(), hub_->producer()})} {
+                std::execution::get_env(out_receiver), storage_.get(), task_, hub_->producer()})} {
           if (this->status_ == cudaSuccess) {
             this->status_ = task_->status_;
           }
         }
+
+        ~operation_state_t() {
+          if (!started_.test(::cuda::memory_order_relaxed)) {
+            if (task_) {
+              task_->free_(task_);
+            }
+          }
+        }
+
         STDEXEC_IMMOVABLE(operation_state_t);
 
         queue::task_hub_t* hub_;
         queue::host_ptr<variant_t> storage_;
-        queue::host_ptr<task_t> task_;
+        task_t *task_;
+
+        ::cuda::std::atomic_flag started_;
         inner_op_state_t inner_op_;
       };
   }

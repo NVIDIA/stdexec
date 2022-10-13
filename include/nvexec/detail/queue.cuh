@@ -30,6 +30,7 @@ namespace nvexec::detail {
       task_base_t* next_{};
       task_base_t* atom_next_{};
       fn_t* execute_{};
+      fn_t* free_{};
     };
 
     struct device_deleter_t {
@@ -113,6 +114,7 @@ namespace nvexec::detail {
     struct root_task_t : task_base_t {
       root_task_t() {
         this->execute_ = [](task_base_t* t) noexcept {};
+        this->free_ = [](task_base_t* t) noexcept {};
         this->next_ = nullptr;
       }
     };
@@ -135,7 +137,9 @@ namespace nvexec::detail {
               }
               std::this_thread::yield();
             }
-            current = next_ref.load(::cuda::memory_order_acquire);
+            task_base_t* next = next_ref.load(::cuda::memory_order_acquire);
+            current->free_(current);
+            current = next;
             current->execute_(current);
           }
         });
