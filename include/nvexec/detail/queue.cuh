@@ -96,9 +96,9 @@ namespace nvexec::detail {
 
           task_base_t* expected = nullptr;
           if (atom_next_ref.compare_exchange_weak(
-                expected, task, ::cuda::memory_order_release, ::cuda::memory_order_relaxed)) {
+                expected, task, ::cuda::memory_order_relaxed, ::cuda::memory_order_relaxed)) {
             task_ref next_ref(old_tail->next_);
-            next_ref.store(task);
+            next_ref.store(task, ::cuda::memory_order_release);
             break;
           }
 
