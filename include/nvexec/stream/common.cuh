@@ -76,7 +76,7 @@ namespace nvexec {
     struct stream_op_state_base{};
 
     template <class EnvId, class VariantId>
-      class stream_enqueue_receiver : public stream_receiver_base {
+      class stream_enqueue_receiver {
         using Env = stdexec::__t<EnvId>;
         using Variant = stdexec::__t<VariantId>;
 
@@ -87,8 +87,8 @@ namespace nvexec {
 
       public:
         template <stdexec::__one_of<std::execution::set_value_t,
-                                std::execution::set_error_t,
-                                std::execution::set_stopped_t> Tag,
+                                    std::execution::set_error_t,
+                                    std::execution::set_stopped_t> Tag,
                   class... As _NVCXX_CAPTURE_PACK(As)>
           friend void tag_invoke(Tag tag, stream_enqueue_receiver&& self, As&&... as) noexcept {
             _NVCXX_EXPAND_PACK(As, as,
@@ -97,6 +97,11 @@ namespace nvexec {
             self.producer_(self.task_);
           }
 
+        template <stdexec::__decays_to<std::exception_ptr> E>
+          friend void tag_invoke(std::execution::set_error_t, stream_enqueue_receiver&& self, E&& e) noexcept {
+            self.variant_->template emplace<decayed_tuple<std::execution::set_error_t, cudaError_t>>(std::execution::set_error, cudaErrorUnknown);
+            self.producer_(self.task_);
+          }
 
         friend Env tag_invoke(std::execution::get_env_t, const stream_enqueue_receiver& self) {
           return self.env_;
@@ -118,7 +123,7 @@ namespace nvexec {
         tag(std::move(receiver), (As&&)as...);
       }
 
-    template <stream_receiver Receiver, class Variant>
+    template <class Receiver, class Variant>
       struct continuation_task_t : queue::task_base_t {
         Receiver receiver_;
         Variant* variant_;
@@ -150,10 +155,6 @@ namespace nvexec {
           if (status_ == cudaSuccess) {
             status_ = STDEXEC_DBG_ERR(cudaMemset(this->atom_next_, 0, ptr_size));
           }
-        }
-
-        ~continuation_task_t() {
-          STDEXEC_DBG_ERR(cudaFree(this->atom_next_));
         }
       };
   }
@@ -212,8 +213,8 @@ namespace nvexec {
       operation_state_base_t<ReceiverId>& operation_state_;
 
       template <stdexec::__one_of<std::execution::set_value_t,
-                              std::execution::set_error_t,
-                              std::execution::set_stopped_t> Tag,
+                                  std::execution::set_error_t,
+                                  std::execution::set_stopped_t> Tag,
                 class... As  _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, propagate_receiver_t&& self, As&&... as) noexcept {
         _NVCXX_EXPAND_PACK(As, as,
@@ -248,6 +249,7 @@ namespace nvexec {
           using bind_tuples =
             stdexec::__mbind_front_q<
               variant,
+              tuple_t<std::execution::set_stopped_t>,
               tuple_t<std::execution::set_error_t, cudaError_t>,
               _Ts...>;
 

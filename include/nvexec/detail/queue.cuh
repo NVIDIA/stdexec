@@ -28,7 +28,7 @@ namespace nvexec::detail {
       using fn_t = void(task_base_t*) noexcept;
 
       task_base_t* next_{};
-      task_base_t* atom_next_{};
+      task_base_t** atom_next_{};
       fn_t* execute_{};
       fn_t* free_{};
     };
@@ -93,7 +93,7 @@ namespace nvexec::detail {
         task_base_t* old_tail = tail_ref.load(::cuda::memory_order_acquire);
 
         while (true) {
-          atom_task_ref atom_next_ref(old_tail->atom_next_);
+          atom_task_ref atom_next_ref(*old_tail->atom_next_);
 
           task_base_t* expected = nullptr;
           if (atom_next_ref.compare_exchange_weak(
@@ -114,8 +114,14 @@ namespace nvexec::detail {
     struct root_task_t : task_base_t {
       root_task_t() {
         this->execute_ = [](task_base_t* t) noexcept {};
-        this->free_ = [](task_base_t* t) noexcept {};
+        this->free_ = [](task_base_t* t) noexcept {
+          STDEXEC_DBG_ERR(cudaFree(t->atom_next_));
+        };
         this->next_ = nullptr;
+
+        constexpr std::size_t ptr_size = sizeof(this->atom_next_);
+        STDEXEC_DBG_ERR(cudaMalloc(&this->atom_next_, ptr_size));
+        STDEXEC_DBG_ERR(cudaMemset(this->atom_next_, 0, ptr_size));
       }
     };
 
