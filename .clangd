@@ -29,6 +29,7 @@ CompileFlags:
     # report all errors
     - "-ferror-limit=0"
     - "-DSTDEXEC_NVHPC()=1"
+    - "-D_NVHPC_CUDA=1"
   Remove:
     # strip CUDA fatbin args
     - "-Xfatbin*"

@@ -21,6 +21,7 @@
 #include <cuda/std/type_traits>
 #include <cuda/atomic>
 #include <cuda/std/tuple>
+#include <optional>
 
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #include "nvexec/detail/queue.cuh"
@@ -55,9 +56,51 @@ namespace nvexec {
   struct stream_context;
   struct stream_scheduler;
   struct stream_sender_base {};
-  struct stream_receiver_base {
-    constexpr static std::size_t memory_allocation_size = 0;
+  struct stream_receiver_base { constexpr static std::size_t memory_allocation_size = 0; };
+  struct stream_env_base { std::optional<cudaStream_t> stream_; };
+
+  struct get_stream_t {
+    template <stdexec::__none_of<stdexec::no_env> Env>
+      std::optional<cudaStream_t> operator()(const Env&) const noexcept {
+        return std::nullopt;
+      }
+    template <stdexec::__none_of<stdexec::no_env> Env>
+        requires (std::is_base_of_v<stream_env_base, Env>)
+      std::optional<cudaStream_t> operator()(const Env& env) const noexcept {
+        return env.stream_;
+      }
   };
+
+  inline constexpr get_stream_t get_stream{};
+
+  template <class BaseEnvId>
+    struct stream_env : stream_env_base {
+      using BaseEnv = stdexec::__t<BaseEnvId>;
+      BaseEnv base_env_;
+
+      template <stdexec::__none_of<get_stream_t> Tag, 
+                stdexec::same_as<stream_env> Self,
+                class... As _NVCXX_CAPTURE_PACK(As)>
+          requires stdexec::__callable<Tag, const BaseEnv&, As...>
+        friend auto tag(Tag tag, const Self& self, As&&... as) noexcept {
+          _NVCXX_EXPAND_PACK(As, as, 
+              return ((Tag&&)tag)(self.base_env_, (As&&)as...);
+          ); 
+        }
+    };
+
+  template <class BaseEnv>
+    using make_stream_env_t = 
+      stdexec::__if_c<
+        std::is_base_of_v<stream_env_base, BaseEnv>,
+        BaseEnv,
+        stream_env<stdexec::__x<BaseEnv>>
+      >;
+
+  template <class BaseEnv>
+    make_stream_env_t<BaseEnv> make_stream_env(BaseEnv&& base, std::optional<cudaStream_t> stream) noexcept {
+      return make_stream_env_t<BaseEnv>{{stream}, (BaseEnv&&)base};
+    }
 
   template <class... Ts>
     using decayed_tuple = tuple_t<std::decay_t<Ts>...>;
@@ -303,10 +346,17 @@ namespace nvexec {
         cudaStream_t get_stream() {
           cudaStream_t stream{};
 
-          if constexpr (std::is_base_of_v<detail::stream_op_state_base, inner_op_state_t>) {
-            stream = inner_op_.get_stream();
+          std::optional<cudaStream_t> env_stream = 
+            nvexec::get_stream(stdexec::get_env(this->receiver_));
+
+          if (env_stream) {
+            stream = *env_stream;
           } else {
-            stream = this->allocate();
+            if constexpr (std::is_base_of_v<detail::stream_op_state_base, inner_op_state_t>) {
+              stream = inner_op_.get_stream();
+            } else {
+              stream = this->allocate();
+            }
           }
 
           return stream;
