@@ -30,9 +30,6 @@ namespace exec {
     struct __task : __immovable {
       const __impl* __scope_;
       void (*__notify_waiter)(__task*) noexcept;
-      friend void __empty_sender_notify_waiter(__task& __self) {
-        __self.__notify_waiter(&__self);
-      }
       __task* __next_ = nullptr;
     };
 
@@ -168,8 +165,8 @@ namespace exec {
             __scope = nullptr;
             // do not access __scope
             while (!__local.empty()) {
-              auto __next = __local.pop_front();
-              __empty_sender_notify_waiter(*__next);
+              auto* __next = __local.pop_front();
+              __next->__notify_waiter(__next);
               // __scope must be considered deleted
             }
           }
