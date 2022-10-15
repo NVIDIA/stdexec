@@ -45,18 +45,12 @@ namespace nvexec::detail::stream {
           friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
             SharedState &state = self.sh_state_;
             cudaStream_t stream = state.op_state2_.stream_;
-            if (self.sh_state_.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); 
-                self.sh_state_.status_ == cudaSuccess) {
-              _NVCXX_EXPAND_PACK(As, as,
-                using tuple_t = decayed_tuple<Tag, As...>;
-                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-                state.data_->template emplace<tuple_t>(Tag{}, as...);
-              )
-            } else {
-              using tuple_t = decayed_tuple<std::execution::set_error_t, cudaError_t>;
+            _NVCXX_EXPAND_PACK(As, as,
+              using tuple_t = decayed_tuple<Tag, As...>;
               state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-              state.data_->template emplace<tuple_t>(std::execution::set_error, self.sh_state_.status_);
-            }
+              copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
+            )
+            state.status_ = STDEXEC_DBG_ERR(cudaEventRecord(state.event_));
             state.notify();
           }
 
@@ -177,8 +171,10 @@ namespace nvexec::detail::stream {
           operation_t *op = static_cast<operation_t*>(self);
           op->on_stop_.reset();
 
-          cudaError_t status = op->shared_state_->status_;
+          cudaError_t& status = op->shared_state_->status_;
           if (status == cudaSuccess) {
+            status = STDEXEC_DBG_ERR(cudaStreamWaitEvent(op->stream_, op->shared_state_->event_));
+
             visit([&](auto& tupl) noexcept -> void {
               apply([&](auto tag, auto&... args) noexcept -> void {
                 op->propagate_completion_signal(tag, args...);
