@@ -45,15 +45,16 @@ namespace nvexec::detail::stream {
           friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
             SharedState &state = self.sh_state_;
             cudaStream_t stream = state.op_state2_.stream_;
-
             if (self.sh_state_.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); 
                 self.sh_state_.status_ == cudaSuccess) {
               _NVCXX_EXPAND_PACK(As, as,
                 using tuple_t = decayed_tuple<Tag, As...>;
+                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
                 state.data_->template emplace<tuple_t>(Tag{}, as...);
               )
             } else {
               using tuple_t = decayed_tuple<std::execution::set_error_t, cudaError_t>;
+              state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
               state.data_->template emplace<tuple_t>(std::execution::set_error, self.sh_state_.status_);
             }
             state.notify();
@@ -109,7 +110,9 @@ namespace nvexec::detail::stream {
         std::in_place_stop_source stop_source_{};
         inner_op_state_t op_state2_;
         std::atomic<void*> head_;
+        unsigned int index_{0};
         variant_t *data_{nullptr};
+        cudaEvent_t event_;
         cudaError_t status_{cudaSuccess};
 
         explicit sh_state_t(Sender& sndr)
@@ -118,12 +121,14 @@ namespace nvexec::detail::stream {
           status_ = STDEXEC_DBG_ERR(cudaMallocManaged(&data_, sizeof(variant_t)));
           if (status_ == cudaSuccess) {
             new (data_) variant_t();
+            status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_));
           }
         }
 
         ~sh_state_t() {
           if (data_) {
             STDEXEC_DBG_ERR(cudaFree(data_));
+            STDEXEC_DBG_ERR(cudaEventDestroy(event_));
           }
         }
 
@@ -178,7 +183,7 @@ namespace nvexec::detail::stream {
               apply([&](auto tag, auto&... args) noexcept -> void {
                 op->propagate_completion_signal(tag, args...);
               }, tupl);
-            }, *op->shared_state_->data_);
+            }, *op->shared_state_->data_, op->shared_state_->index_);
           } else {
             op->propagate_completion_signal(std::execution::set_error, std::move(status));
           }
@@ -189,6 +194,8 @@ namespace nvexec::detail::stream {
         }
 
         friend void tag_invoke(std::execution::start_t, operation_t& self) noexcept {
+          self.stream_ = self.allocate();
+
           sh_state_t<SenderId>* shared_state = self.shared_state_.get();
           std::atomic<void*>& head = shared_state->head_;
           void* const completion_state = static_cast<void*>(shared_state);

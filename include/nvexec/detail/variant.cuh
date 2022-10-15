@@ -147,6 +147,12 @@ namespace nvexec {
     using union_t = detail::static_storage_t<max_alignment, max_size>;
 
     template <detail::one_of<Ts...> T>
+      using index_of = 
+        std::integral_constant<
+          index_t, 
+          detail::find_index<index_t, T, Ts...>()>;
+
+    template <detail::one_of<Ts...> T>
       T& get() {
         return *reinterpret_cast<T*>(storage_.data_);
       }
@@ -179,7 +185,7 @@ namespace nvexec {
       // TODO Construct alternative
       // ::new (storage_.data_) T((As&&)as...);
       get<T>() = T((As&&)as...);
-      index_ = detail::find_index<index_t, T, Ts...>();
+      index_ = index_of<T>();
     }
 
     void destroy() {
