@@ -45,7 +45,7 @@ namespace nvexec {
 namespace ex = std::execution;
 
 #ifdef _NVHPC_CUDA
-namespace nvexec::repeat_n {
+namespace nvexec::detail::stream::repeat_n {
   template <class OpT>
     class receiver_t : public stream_receiver_base {
       using Sender = typename OpT::Sender;
@@ -228,9 +228,9 @@ namespace repeat_n_detail {
 
 struct repeat_n_t {
 #ifdef _NVHPC_CUDA
-  template <nvexec::stream_completing_sender Sender>
-    nvexec::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>> operator()(std::size_t n, Sender &&__sndr) const noexcept {
-      return nvexec::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>>{{}, std::forward<Sender>(__sndr), n};
+  template <nvexec::detail::stream::stream_completing_sender Sender>
+    nvexec::detail::stream::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>> operator()(std::size_t n, Sender &&__sndr) const noexcept {
+      return nvexec::detail::stream::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>>{{}, std::forward<Sender>(__sndr), n};
     }
 #endif
 

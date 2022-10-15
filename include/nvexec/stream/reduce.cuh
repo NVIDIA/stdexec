@@ -26,7 +26,7 @@
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
 namespace nvexec {
-
+namespace detail::stream {
 template <typename Range>
   auto __begin(Range&& range) {
     return begin(range);
@@ -241,7 +241,8 @@ struct reduce_t {
       return {{}, {}, {(Fun&&) __fun}};
     }
 };
+}
 
-inline constexpr reduce_t reduce{};
+inline constexpr detail::stream::reduce_t reduce{};
 }
 

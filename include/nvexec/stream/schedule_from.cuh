@@ -22,7 +22,7 @@
 #include "nvexec/detail/tuple.cuh"
 #include "nvexec/detail/variant.cuh"
 
-namespace nvexec {
+namespace nvexec::detail::stream {
 
 namespace schedule_from {
 
@@ -123,7 +123,7 @@ template <class Scheduler, class SenderId>
     using Sender = stdexec::__t<SenderId>;
     using source_sender_th = schedule_from::source_sender_t<Sender>;
 
-    detail::queue::task_hub_t* hub_;
+    queue::task_hub_t* hub_;
     source_sender_th sndr_;
 
     template <class Self, class Receiver>
@@ -166,7 +166,7 @@ template <class Scheduler, class SenderId>
           _Env,
           std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>>;
 
-    schedule_from_sender_t(detail::queue::task_hub_t* hub, Sender sndr)
+    schedule_from_sender_t(queue::task_hub_t* hub, Sender sndr)
       : hub_(hub)
       , sndr_{{}, (Sender&&)sndr} {
     }

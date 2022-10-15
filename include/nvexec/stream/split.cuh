@@ -22,7 +22,7 @@
 #include "nvexec/stream/common.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace nvexec {
+namespace nvexec::detail::stream {
   namespace split {
     template <class _SenderId, class _SharedState>
       class __receiver : public stream_receiver_base {

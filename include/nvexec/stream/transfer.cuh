@@ -21,7 +21,7 @@
 #include "nvexec/stream/common.cuh"
 #include "stdexec/__detail/__p2300.hpp"
 
-namespace nvexec {
+namespace nvexec::detail::stream {
 
 namespace transfer {
   template <class SenderId, class ReceiverId>
@@ -87,8 +87,8 @@ namespace transfer {
       cudaStream_t stream_{0};
       cudaError_t status_{cudaSuccess};
 
-      detail::queue::task_hub_t* hub_;
-      detail::queue::host_ptr<variant_t> storage_;
+      queue::task_hub_t* hub_;
+      queue::host_ptr<variant_t> storage_;
       task_t *task_;
 
       ::cuda::std::atomic_flag started_;
@@ -133,10 +133,10 @@ namespace transfer {
         std::execution::start(op.inner_op_);
       }
 
-      operation_state_t(detail::queue::task_hub_t* hub, Sender&& sender, Receiver &&receiver)
+      operation_state_t(queue::task_hub_t* hub, Sender&& sender, Receiver &&receiver)
         : hub_(hub)
-        , storage_(detail::queue::make_host<variant_t>(this->status_))
-        , task_(detail::queue::make_host<task_t>(this->status_, receiver_t{*this}, storage_.get()).release())
+        , storage_(queue::make_host<variant_t>(this->status_))
+        , task_(queue::make_host<task_t>(this->status_, receiver_t{*this}, storage_.get()).release())
         , started_(ATOMIC_FLAG_INIT)
         , receiver_((Receiver&&)receiver)
         , inner_op_{
@@ -174,7 +174,7 @@ template <class SenderId>
           stdexec::__x<stdexec::__member_t<Self, Sender>>, 
           stdexec::__x<Receiver>>;
 
-    detail::queue::task_hub_t* hub_;
+    queue::task_hub_t* hub_;
     Sender sndr_;
 
     template <stdexec::__decays_to<transfer_sender_t> Self, std::execution::receiver Receiver>
@@ -210,7 +210,7 @@ template <class SenderId>
       return ((Tag&&) tag)(self.sndr_, (As&&) as...);
     }
 
-    transfer_sender_t(detail::queue::task_hub_t* hub, Sender sndr)
+    transfer_sender_t(queue::task_hub_t* hub, Sender sndr)
       : hub_(hub)
       , sndr_{(Sender&&)sndr} {
     }

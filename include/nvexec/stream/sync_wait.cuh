@@ -22,7 +22,7 @@
 #include "nvexec/detail/queue.cuh"
 #include "nvexec/stream/transfer.cuh"
 
-namespace nvexec {
+namespace nvexec::detail::stream {
   namespace sync_wait {
     namespace __impl {
       struct __env {
@@ -115,7 +115,7 @@ namespace nvexec {
           (!std::tag_invocable<sync_wait_t, Sender>) &&
           std::execution::sender<Sender, __impl::__env> &&
           std::execution::sender_to<Sender, __impl::receiver_t<stdexec::__x<Sender>>>
-      auto operator()(detail::queue::task_hub_t* hub, Sender&& __sndr) const
+      auto operator()(queue::task_hub_t* hub, Sender&& __sndr) const
         -> std::optional<__impl::sync_wait_result_t<Sender>> {
         using state_t = __impl::state_t<stdexec::__x<Sender>>;
         state_t state {};
