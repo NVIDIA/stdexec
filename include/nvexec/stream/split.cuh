@@ -140,11 +140,11 @@ namespace nvexec::detail::stream {
         }
       };
 
-    // TODO Stream operation
-    template <class SenderId, class _ReceiverId>
-      class operation_t : public operation_base_t {
+    template <class SenderId, class ReceiverId>
+      class operation_t : public operation_base_t
+                        , public operation_state_base_t<ReceiverId> {
         using Sender = stdexec::__t<SenderId>;
-        using Receiver = stdexec::__t<_ReceiverId>;
+        using Receiver = stdexec::__t<ReceiverId>;
 
         struct on_stop_requested {
           std::in_place_stop_source& stop_source_;
@@ -155,7 +155,6 @@ namespace nvexec::detail::stream {
         using on_stop = std::optional<typename std::execution::stop_token_of_t<
             std::execution::env_of_t<Receiver> &>::template callback_type<on_stop_requested>>;
 
-        Receiver recvr_;
         on_stop on_stop_{};
         std::shared_ptr<sh_state_t<SenderId>> shared_state_;
 
@@ -164,7 +163,7 @@ namespace nvexec::detail::stream {
                     std::shared_ptr<sh_state_t<SenderId>> shared_state)
             noexcept(std::is_nothrow_move_constructible_v<Receiver>)
           : operation_base_t{nullptr, notify}
-          , recvr_((Receiver&&)rcvr)
+          , operation_state_base_t<ReceiverId>((Receiver&&)rcvr)
           , shared_state_(move(shared_state)) {
         }
         STDEXEC_IMMOVABLE(operation_t);
@@ -176,13 +175,17 @@ namespace nvexec::detail::stream {
           cudaError_t status = op->shared_state_->status_;
           if (status == cudaSuccess) {
             visit([&](auto& tupl) noexcept -> void {
-              apply([&](auto tag, auto&&... args) noexcept -> void {
-                tag((Receiver&&) op->recvr_, args...);
+              apply([&](auto tag, auto&... args) noexcept -> void {
+                op->propagate_completion_signal(tag, args...);
               }, tupl);
             }, *op->shared_state_->data_);
           } else {
-            std::execution::set_error((Receiver&&)op->recvr_, std::move(status));
+            op->propagate_completion_signal(std::execution::set_error, std::move(status));
           }
+        }
+
+        cudaStream_t get_stream() {
+          return this->allocate();
         }
 
         friend void tag_invoke(std::execution::start_t, operation_t& self) noexcept {
@@ -193,7 +196,7 @@ namespace nvexec::detail::stream {
 
           if (old != completion_state) {
             self.on_stop_.emplace(
-                std::execution::get_stop_token(std::execution::get_env(self.recvr_)),
+                std::execution::get_stop_token(std::execution::get_env(self.receiver_)),
                 on_stop_requested{shared_state->stop_source_});
           }
 
@@ -244,7 +247,7 @@ namespace nvexec::detail::stream {
         }
 
       template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As _NVCXX_CAPTURE_PACK(As)>
-          requires (!stdexec::__is_instance_of<Tag, std::execution::get_completion_scheduler_t>) &&
+          requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, std::execution::get_completion_scheduler_t>) && 
             stdexec::__callable<Tag, const Sender&, As...>
         friend auto tag_invoke(Tag tag, const split_sender_t& self, As&&... as)
           noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
