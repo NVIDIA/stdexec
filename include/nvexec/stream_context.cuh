@@ -31,6 +31,7 @@
 #include "nvexec/stream/upon_stopped.cuh"
 #include "nvexec/stream/when_all.cuh"
 #include "nvexec/stream/reduce.cuh"
+#include "nvexec/stream/ensure_started.cuh"
 
 #include "nvexec/stream/common.cuh"
 #include "nvexec/detail/queue.cuh"
@@ -64,6 +65,9 @@ namespace nvexec {
 
     template <std::execution::sender Sender>
       using transfer_sender_th = transfer_sender_t<stdexec::__x<Sender>>;
+
+    template <std::execution::sender Sender>
+      using ensure_started_th = ensure_started_sender_t<stdexec::__x<Sender>>;
 
     struct stream_scheduler {
       friend stream_context;
@@ -158,6 +162,12 @@ namespace nvexec {
         friend then_sender_th<S, Fn>
         tag_invoke(std::execution::then_t, const stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
           return then_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&)fun};
+        }
+
+      template <std::execution::sender S>
+        friend ensure_started_th<S>
+        tag_invoke(std::execution::ensure_started_t, const stream_scheduler& sch, S&& sndr) noexcept {
+          return ensure_started_th<S>((S&&) sndr);
         }
 
       template <stdexec::__one_of<
