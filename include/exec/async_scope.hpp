@@ -377,7 +377,7 @@ namespace exec {
           _Sender,
           __env_t,
           __mbind_front_q<__decayed_tuple, set_value_t>,
-          __q<__single_t>>;
+          __q<__single>>;
 
     template <class _SenderId>
       struct __future_rcvr {

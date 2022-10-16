@@ -396,12 +396,18 @@ namespace stdexec {
       __t<__concat_completion_signatures<_Completions...>>;
 
   template <class _Traits, class _Env>
+    inline constexpr bool
+      __valid_completion_signatures_ = false;
+  template <class... _Sigs, class _Env>
+    inline constexpr bool
+      __valid_completion_signatures_<completion_signatures<_Sigs...>, _Env> = true;
+  template <>
+    inline constexpr bool
+      __valid_completion_signatures_<dependent_completion_signatures<no_env>, no_env> = true;
+
+  template <class _Traits, class _Env>
     concept __valid_completion_signatures =
-      __is_instance_of<_Traits, completion_signatures> ||
-      (
-        same_as<_Traits, dependent_completion_signatures<no_env>> &&
-        same_as<_Env, no_env>
-      );
+      __valid_completion_signatures_<_Traits, _Env>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -510,23 +516,6 @@ namespace stdexec {
   inline constexpr get_completion_signatures_t get_completion_signatures {};
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders]
-  // NOT TO SPEC (YET)
-  template <class _Sender, class _Env>
-    concept __sender =
-      requires (_Sender&& __sndr, _Env&& __env) {
-        { get_completion_signatures((_Sender&&) __sndr, (_Env&&) __env) } ->
-          __valid_completion_signatures<_Env>;
-      };
-
-  template <class _Sender, class _Env = no_env>
-    concept sender =
-      __sender<_Sender, _Env> &&
-      __sender<_Sender, no_env> &&
-      move_constructible<remove_cvref_t<_Sender>> &&
-      constructible_from<remove_cvref_t<_Sender>, _Sender>;
-
-  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
   template <class _Sender, class _Env>
     using __completion_signatures_of_t =
@@ -534,6 +523,20 @@ namespace stdexec {
         get_completion_signatures_t,
         _Sender,
         _Env>;
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders]
+  // NOT TO SPEC (YET)
+  template <class _Sender, class _Env = no_env>
+    concept sender =
+      requires (_Sender&& __sndr, _Env&& __env) {
+        get_completion_signatures((_Sender&&) __sndr, no_env{});
+        get_completion_signatures((_Sender&&) __sndr, (_Env&&) __env);
+      } &&
+      __valid_completion_signatures<__completion_signatures_of_t<_Sender, no_env>, no_env> &&
+      __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env> &&
+      move_constructible<remove_cvref_t<_Sender>> &&
+      constructible_from<remove_cvref_t<_Sender>, _Sender>;
 
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender<S, Ctx> are both true, then they
@@ -628,11 +631,11 @@ namespace stdexec {
 
   template <class _Sender, class _Env = no_env>
     using __single_sender_value_t =
-      __value_types_of_t<_Sender, _Env, __single_or<void>, __q<__single_t>>;
+      __value_types_of_t<_Sender, _Env, __single_or<void>, __q<__single>>;
 
   template <class _Sender, class _Env = no_env>
     using __single_value_variant_sender_t =
-      value_types_of_t<_Sender, _Env, __types, __single_t>;
+      value_types_of_t<_Sender, _Env, __types, __single>;
 
   template <class _Sender, class _Env = no_env>
     concept __single_typed_sender =
@@ -848,15 +851,27 @@ namespace stdexec {
     template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
       struct get_completion_scheduler_t;
   }
+  using __sender_queries::get_completion_scheduler_t;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.schedulers]
   template <class _Scheduler>
-    concept scheduler =
-      requires(_Scheduler&& __sched, const __sender_queries::get_completion_scheduler_t<set_value_t> __tag) {
+    concept __has_schedule =
+      requires(_Scheduler&& __sched) {
         { schedule((_Scheduler&&) __sched) } -> sender;
-        { tag_invoke(__tag, schedule((_Scheduler&&) __sched)) } -> same_as<remove_cvref_t<_Scheduler>>;
-      } &&
+      };
+
+  template <class _Scheduler>
+    concept __sender_has_completion_scheduler =
+      requires(_Scheduler&& __sched, const get_completion_scheduler_t<set_value_t>&& __tag) {
+        { tag_invoke(std::move(__tag), schedule((_Scheduler&&) __sched)) }
+          -> same_as<remove_cvref_t<_Scheduler>>;
+      };
+
+  template <class _Scheduler>
+    concept scheduler =
+      __has_schedule<_Scheduler> &&
+      __sender_has_completion_scheduler<_Scheduler> &&
       equality_comparable<remove_cvref_t<_Scheduler>> &&
       copy_constructible<remove_cvref_t<_Scheduler>>;
 
@@ -1716,34 +1731,74 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumer.start_detached]
   namespace __start_detached {
-    using __env = __make_env_t<__with_t<get_scheduler_t, __inln::__scheduler>>;
+    template <class _EnvId>
+      struct __detached_receiver {
+        using _Env = __t<_EnvId>;
+        [[no_unique_address]] _Env __env_;
+        template <class... _As>
+          friend void tag_invoke(set_value_t, __detached_receiver&&, _As&&...) noexcept
+          {}
+        template <class _Error>
+          [[noreturn]]
+          friend void tag_invoke(set_error_t, __detached_receiver&&, _Error&&) noexcept {
+            std::terminate();
+          }
+        friend void tag_invoke(set_stopped_t, __detached_receiver&&) noexcept
+        {}
+        friend const _Env& tag_invoke(get_env_t, const __detached_receiver& __self) noexcept {
+          // BUGBUG NOT TO SPEC
+          return __self.__env_;
+        }
+      };
+    template <class _Env>
+      __detached_receiver(_Env) -> __detached_receiver<__x<_Env>>;
 
-    struct __detached_receiver {
-      friend void tag_invoke(set_value_t, __detached_receiver&&, auto&&...) noexcept {}
-      [[noreturn]]
-      friend void tag_invoke(set_error_t, __detached_receiver&&, auto&&) noexcept {
-        std::terminate();
-      }
-      friend void tag_invoke(set_stopped_t, __detached_receiver&&) noexcept {}
-      friend __env tag_invoke(get_env_t, const __detached_receiver&) noexcept {
-        // BUGBUG NOT TO SPEC
-        return __make_env(__with(get_scheduler, __inln::__scheduler{}));
-      }
-    };
+    struct start_detached_t;
+
+    // When looking for user-defined customizations of start_detached, these
+    // are the signatures to test against, in order:
+    template <class _Sender, class _Env>
+      using __cust_sigs =
+        __msignatures<
+          tag_invoke_t(start_detached_t, _Sender),
+          tag_invoke_t(start_detached_t, _Sender, _Env),
+          tag_invoke_t(start_detached_t, get_scheduler_t(_Env), _Sender),
+          tag_invoke_t(start_detached_t, get_scheduler_t(_Env), _Sender, _Env)>;
+
+    template <class _Sender, class _Env>
+      inline constexpr bool __is_start_detached_customized =
+        __v<__many_well_formed<__cust_sigs<_Sender, _Env>>>;
+
+    template <class _Sender, class _Env>
+      using __which_t = __mwhich_t<__cust_sigs<_Sender, _Env>, __mas_sig<void>>;
+
+    template <class _Sender, class _Env>
+      using __which_i = __mwhich_i<__cust_sigs<_Sender, _Env>, __mas_sig<void>>;
 
     struct start_detached_t {
-      template <sender _Sender>
-        requires tag_invocable<start_detached_t, _Sender>
-      void operator()(_Sender&& __sndr) const
-        noexcept(nothrow_tag_invocable<start_detached_t, _Sender>) {
-        (void) tag_invoke(start_detached_t{}, (_Sender&&) __sndr);
-      }
-      template <sender _Sender>
-        requires (!tag_invocable<start_detached_t, _Sender>) &&
-          sender_to<_Sender, __detached_receiver>
-      void operator()(_Sender&& __sndr) const noexcept(false) {
-        __submit((_Sender&&) __sndr, __detached_receiver{});
-      }
+      template <sender _Sender, class _Env = __empty_env>
+          requires
+            sender_to<_Sender, __detached_receiver<__x<remove_cvref_t<_Env>>>> ||
+            __is_start_detached_customized<_Sender, _Env>
+        void operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
+          noexcept(__mnoexcept_v<__which_t<_Sender, _Env>>) {
+          // The selected customization should return void
+          static_assert(same_as<void, __mtypeof<__which_t<_Sender, _Env>>>);
+          constexpr auto __idx = __v<__which_i<_Sender, _Env>>;
+          // Dispatch to the correct implementation:
+          if constexpr (__idx == 0) {
+            tag_invoke(start_detached_t{}, (_Sender&&) __sndr);
+          } else if constexpr (__idx == 1) {
+            tag_invoke(start_detached_t{}, (_Sender&&) __sndr, (_Env&&) __env);
+          } else if constexpr (__idx == 2) {
+            tag_invoke(start_detached_t{}, get_scheduler(__env), (_Sender&&) __sndr);
+          } else if constexpr (__idx == 3) {
+            auto __sched = get_scheduler(__env);
+            tag_invoke(start_detached_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
+          } else {
+            __submit((_Sender&&) __sndr, __detached_receiver{(_Env&&) __env});
+          }
+        }
     };
   } // namespace __start_detached
   using __start_detached::start_detached_t;
@@ -5032,7 +5087,7 @@ namespace stdexec {
             _Sender,
             __env,
             execution::__decayed_tuple,
-            __single_t>;
+            __single>;
 
       template <class _Sender>
         using __sync_wait_with_variant_result_t =

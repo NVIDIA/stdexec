@@ -23,8 +23,10 @@
 
 namespace ex = std::execution;
 
+static const auto env = exec::make_env(exec::with(ex::get_scheduler, inline_scheduler{}));
+
 TEST_CASE("Can pass exec::on sender to start_detached", "[adaptors][exec::on]") {
-  ex::start_detached(exec::on(inline_scheduler{}, ex::just()));
+  ex::start_detached(exec::on(inline_scheduler{}, ex::just()), env);
 }
 
 TEST_CASE("Can pass exec::on sender to split", "[adaptors][exec::on]") {
