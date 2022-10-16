@@ -2,9 +2,6 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-// clang doesn't get along with libcu++
-#if STDEXEC_NVHPC()
-
 #include <cuda/atomic>
 
 #include "nvexec/stream/common.cuh"
@@ -53,4 +50,3 @@ TEST_CASE("start_detached doesn't block", "[cuda][stream][consumers][start_detac
   THROW_ON_CUDA_ERROR(cudaFreeHost(device_flag));
 }
 
-#endif
