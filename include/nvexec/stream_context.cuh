@@ -83,10 +83,9 @@ namespace nvexec {
           cudaStream_t stream_{0};
           cudaError_t status_{cudaSuccess};
 
-          template <stdexec::__decays_to<R> Receiver>
-            operation_state_t(Receiver&& rec) : rec_((Receiver&&)rec) {
-              status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
-            }
+          operation_state_t(R&& rec) : rec_((R&&)rec) {
+            status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
+          }
 
           ~operation_state_t() {
             STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
@@ -217,7 +216,7 @@ namespace nvexec {
       template <std::execution::sender S>
         friend split_sender_th<S>
         tag_invoke(std::execution::split_t, const stream_scheduler& sch, S&& sndr) noexcept {
-          return split_sender_th<S>((S&&)sndr);
+          return split_sender_th<S>((S&&)sndr, sch.hub_);
         }
 
       friend sender_t tag_invoke(std::execution::schedule_t, const stream_scheduler& self) noexcept {

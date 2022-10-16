@@ -61,12 +61,12 @@ namespace nvexec::detail::stream {
 
           template <class Error>
             void set_error(Error err) noexcept {
-              if constexpr (stdexec::__decays_to<Error, std::exception_ptr>)
+              if constexpr (stdexec::__decays_to<Error, cudaError_t>) {
                 state_->data_.template emplace<2>((Error&&) err);
-              else if constexpr (stdexec::__decays_to<Error, std::error_code>)
-                state_->data_.template emplace<2>(std::make_exception_ptr(std::system_error(err)));
-              else
-                state_->data_.template emplace<2>(std::make_exception_ptr((Error&&) err));
+              } else {
+                // What is `exception_ptr` but death pending
+                state_->data_.template emplace<2>(cudaErrorUnknown);
+              }
               loop_->finish();
             }
 
@@ -100,7 +100,7 @@ namespace nvexec::detail::stream {
       template <class SenderId>
         struct state_t {
           using _Tuple = sync_wait_result_t<stdexec::__t<SenderId>>;
-          std::variant<std::monostate, _Tuple, std::exception_ptr, std::execution::set_stopped_t> data_{};
+          std::variant<std::monostate, _Tuple, cudaError_t, std::execution::set_stopped_t> data_{};
         };
 
       template <std::execution::sender Sender>
@@ -131,7 +131,7 @@ namespace nvexec::detail::stream {
         loop.run();
 
         if (state.data_.index() == 2)
-          std::rethrow_exception(std::get<2>(state.data_));
+          std::rethrow_exception(std::make_exception_ptr(std::get<2>(state.data_)));
 
         if (state.data_.index() == 3)
           return std::nullopt;

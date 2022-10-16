@@ -34,3 +34,66 @@ TEST_CASE("split works", "[cuda][stream][adaptors][split]") {
   REQUIRE(v2 == 42);
 }
 
+TEST_CASE("split can preceed a sender without values", "[cuda][stream][adaptors][split]") {
+  nvexec::stream_context stream_ctx{};
+
+  flags_storage_t flags_storage{};
+  auto flags = flags_storage.get();
+
+  auto snd = ex::schedule(stream_ctx.get_scheduler()) //
+           | ex::split()
+           | a_sender([=]() noexcept {
+               if (is_on_gpu()) {
+                 flags.set();
+               }
+             });
+
+  std::this_thread::sync_wait(std::move(snd));
+
+  REQUIRE(flags_storage.all_set_once());
+}
+
+TEST_CASE("split can succeed a sender", "[cuda][stream][adaptors][split]") {
+  SECTION("without values") {
+    nvexec::stream_context stream_ctx{};
+    flags_storage_t<2> flags_storage{};
+    auto flags = flags_storage.get();
+
+    auto snd = ex::schedule(stream_ctx.get_scheduler()) //
+             | a_sender([flags] {
+                 if (is_on_gpu()) {
+                   flags.set(1);
+                 }
+               })
+             | ex::split()
+             | ex::then([flags] {
+                 if (is_on_gpu()) {
+                   flags.set(0);
+                 }
+               });
+    std::this_thread::sync_wait(std::move(snd));
+
+    REQUIRE(flags_storage.all_set_once());
+  }
+
+  SECTION("with values") {
+    nvexec::stream_context stream_ctx{};
+    flags_storage_t flags_storage{};
+    auto flags = flags_storage.get();
+
+    auto snd = ex::schedule(stream_ctx.get_scheduler()) //
+             | a_sender([]() -> bool {
+                 return is_on_gpu();
+               })
+             | ex::split()
+             | ex::then([flags](bool a_sender_was_on_gpu) {
+                 if (a_sender_was_on_gpu * is_on_gpu()) {
+                   flags.set();
+                 }
+               });
+    std::this_thread::sync_wait(std::move(snd)).value();
+
+    REQUIRE(flags_storage.all_set_once());
+  }
+}
+

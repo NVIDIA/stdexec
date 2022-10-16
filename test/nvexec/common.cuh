@@ -161,6 +161,10 @@ namespace detail {
           stdexec::__x<stdexec::__member_t<Self, Sender>>,
           stdexec::__x<receiver_th<Receiver>>>;
 
+      template <class _Error>
+        using set_error = 
+          std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>;
+
       template <class Self, class Env>
         using completion_signatures =
           stdexec::__make_completion_signatures<
@@ -171,7 +175,8 @@ namespace detail {
               Fun,
               stdexec::__member_t<Self, Sender>,
               Env>,
-            stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>>;
+            stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>,
+            stdexec::__q<set_error>>;
 
       template <stdexec::__decays_to<sender_t> Self, std::execution::receiver Receiver>
         requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>

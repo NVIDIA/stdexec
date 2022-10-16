@@ -106,8 +106,7 @@ namespace nvexec::detail::stream {
           old_tail = tail_ref.load(::cuda::memory_order_acquire);
         }
 
-        tail_ref.compare_exchange_strong(
-            old_tail, task, ::cuda::memory_order_release, ::cuda::memory_order_relaxed);
+        tail_ref.compare_exchange_strong(old_tail, task);
       }
     };
 

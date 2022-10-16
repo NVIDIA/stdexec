@@ -169,7 +169,7 @@ namespace nvexec {
       template <std::execution::sender S>
         friend split_sender_th<S>
         tag_invoke(std::execution::split_t, const multi_gpu_stream_scheduler& sch, S&& sndr) noexcept {
-          return split_sender_th<S>((S&&)sndr);
+          return split_sender_th<S>((S&&)sndr, sch.hub_);
         }
 
       friend sender_t tag_invoke(std::execution::schedule_t, const multi_gpu_stream_scheduler& self) noexcept {

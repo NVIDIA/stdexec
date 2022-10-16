@@ -58,7 +58,7 @@ namespace nvexec::detail::stream::repeat_n {
         friend void tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
           _NVCXX_EXPAND_PACK(_Args, __args,
             OpT &op_state = __self.op_state_;
-            __tag((Receiver&&)op_state.receiver_, (_Args&&)__args...);
+            op_state.propagate_completion_signal(_Tag{}, (_Args&&)__args...);
           )
         }
 
@@ -69,13 +69,7 @@ namespace nvexec::detail::stream::repeat_n {
         op_state.i_++;
 
         if (op_state.i_ == op_state.n_) {
-          if constexpr (stream_receiver<Receiver>) {
-            ex::set_value((Receiver&&)op_state.receiver_);
-          } else {
-            detail::continuation_kernel
-              <std::decay_t<Receiver>, std::execution::set_value_t>
-                <<<1, 1, 0, op_state.stream_>>>(op_state.receiver_, std::execution::set_value);
-          }
+          op_state.propagate_completion_signal(std::execution::set_value);
           return;
         }
 

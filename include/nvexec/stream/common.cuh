@@ -143,6 +143,7 @@ namespace nvexec {
 
           template <stdexec::__decays_to<std::exception_ptr> E>
             friend void tag_invoke(std::execution::set_error_t, stream_enqueue_receiver&& self, E&& e) noexcept {
+              // What is `exception_ptr` but death pending
               self.variant_->template emplace<decayed_tuple<std::execution::set_error_t, cudaError_t>>(std::execution::set_error, cudaErrorUnknown);
               self.producer_(self.task_);
             }
@@ -397,9 +398,9 @@ namespace nvexec {
 
           STDEXEC_IMMOVABLE(operation_state_t);
 
-          queue::task_hub_t* hub_;
+          queue::task_hub_t* hub_{};
           queue::host_ptr<variant_t> storage_;
-          task_t *task_;
+          task_t *task_{};
 
           ::cuda::std::atomic_flag started_;
           inner_op_state_t inner_op_;
