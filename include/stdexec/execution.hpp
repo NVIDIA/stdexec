@@ -4779,6 +4779,7 @@ namespace stdexec {
                       __single_or<void>>...>,
                   __>;
 
+              in_place_stop_source __stop_source_{};
               __child_op_states_tuple_t __child_states_;
               _Receiver __recvr_;
               std::atomic<std::size_t> __count_{sizeof...(_SenderIds)};
@@ -4786,7 +4787,6 @@ namespace stdexec {
               std::atomic<__state_t> __state_{__started};
               error_types_of_t<__sender, __env_t<_Env>, __variant> __errors_{};
               [[no_unique_address]] __child_values_tuple_t __values_{};
-              in_place_stop_source __stop_source_{};
               std::optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template
                   callback_type<__on_stop_requested>> __on_stop_{};
             };
