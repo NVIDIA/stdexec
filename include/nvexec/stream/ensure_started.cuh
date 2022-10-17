@@ -34,8 +34,10 @@ namespace nvexec::detail::stream {
       stdexec::__make_env_t<
         stdexec::__with_t<std::execution::get_stop_token_t, stdexec::in_place_stop_token>>;
 
-    template <class SharedState>
+    template <class SenderId, class SharedState>
       class receiver_t : stream_receiver_base {
+        using Sender = stdexec::__t<SenderId>;
+
         stdexec::__intrusive_ptr<SharedState> shared_state_;
 
       public:
@@ -49,13 +51,20 @@ namespace nvexec::detail::stream {
                   class... As _NVCXX_CAPTURE_PACK(As)>
           friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
             SharedState& state = *self.shared_state_;
-            cudaStream_t stream = state.op_state2_.stream_;
 
-            _NVCXX_EXPAND_PACK(As, as,
-              using tuple_t = decayed_tuple<Tag, As...>;
-              state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-              copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
-            )
+            if constexpr (stream_sender<Sender>) {
+              cudaStream_t stream = state.op_state2_.stream_;
+              _NVCXX_EXPAND_PACK(As, as,
+                using tuple_t = decayed_tuple<Tag, As...>;
+                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+                copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
+              )
+            } else {
+              _NVCXX_EXPAND_PACK(As, as,
+                using tuple_t = decayed_tuple<Tag, As...>;
+                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+              );
+            }
 
             state.notify();
             self.shared_state_.reset();
@@ -71,6 +80,20 @@ namespace nvexec::detail::stream {
       using notify_fn = void(operation_base_t*) noexcept;
       notify_fn* notify_{};
     };
+
+    template <class T>
+      T* malloc_managed(cudaError_t &status) {
+        T* ptr{};
+
+        if (status == cudaSuccess) {
+          if (status = STDEXEC_DBG_ERR(cudaMallocManaged(&ptr, sizeof(T))); status == cudaSuccess) {
+            new (ptr) T();
+            return ptr;
+          }
+        }
+
+        return nullptr;
+      }
 
     template <class SenderId>
       struct sh_state_t : stdexec::__enable_intrusive_from_this<sh_state_t<SenderId>> {
@@ -99,24 +122,50 @@ namespace nvexec::detail::stream {
               stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
               bound_values_t>>;
 
-        using receiver_ = receiver_t<sh_state_t>;
-        using inner_op_state_t = std::execution::connect_result_t<Sender, receiver_>;
+        using inner_receiver_t = receiver_t<SenderId, sh_state_t>;
+        using task_t = detail::continuation_task_t<inner_receiver_t, variant_t>;
+        using enqueue_receiver_t = detail::stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>;
+        using intermediate_receiver = 
+          stdexec::__t<
+            std::conditional_t<
+              stream_sender<Sender>,
+              stdexec::__x<inner_receiver_t>,
+              stdexec::__x<enqueue_receiver_t>>>;
+        using inner_op_state_t = std::execution::connect_result_t<Sender, intermediate_receiver>;
 
+        cudaError_t status_{cudaSuccess};
         unsigned int index_{0};
         variant_t *data_{nullptr};
+        task_t *task_{nullptr}; 
         stdexec::in_place_stop_source stop_source_{};
 
         std::atomic<void*> op_state1_;
         inner_op_state_t op_state2_;
 
-        explicit sh_state_t(Sender& sndr)
-          : op_state1_{nullptr}
-          , op_state2_(std::execution::connect((Sender&&) sndr, receiver_{*this})) {
-            STDEXEC_DBG_ERR(cudaMallocManaged(&data_, sizeof(variant_t)));
-            new (data_) variant_t();
+        template <stdexec::__decays_to<Sender> S>
+            requires (stream_sender<S>)
+          explicit sh_state_t(S& sndr, queue::task_hub_t*)
+            : data_(malloc_managed<variant_t>(status_))
+            , op_state1_{nullptr}
+            , op_state2_(std::execution::connect((Sender&&) sndr, inner_receiver_t{*this})) {
+              std::execution::start(op_state2_);
+          }
 
-            std::execution::start(op_state2_);
-        }
+        template <stdexec::__decays_to<Sender> S>
+            requires (!stream_sender<S>)
+          explicit sh_state_t(S& sndr, queue::task_hub_t* hub)
+            : data_(malloc_managed<variant_t>(status_))
+            , task_(queue::make_host<task_t>(status_, inner_receiver_t{*this}, data_).release())
+            , op_state2_(
+                std::execution::connect(
+                  (Sender&&)sndr,
+                  enqueue_receiver_t{
+                    stdexec::__make_env(stdexec::__with(std::execution::get_stop_token, std::move(stop_source_.get_token()))),
+                    data_, 
+                    task_, 
+                    hub->producer()})) {
+              std::execution::start(op_state2_);
+          }
 
         ~sh_state_t() {
           if (data_) {
@@ -290,9 +339,9 @@ namespace nvexec::detail::stream {
             set_error_t>;
 
      public:
-      explicit ensure_started_sender_t(Sender sndr)
+      explicit ensure_started_sender_t(Sender sndr, queue::task_hub_t* hub)
         : sndr_((Sender&&) sndr)
-        , shared_state_{stdexec::__make_intrusive<sh_state_>(sndr_)}
+        , shared_state_{stdexec::__make_intrusive<sh_state_>(sndr_, hub)}
       {}
       ~ensure_started_sender_t() {
         if (nullptr != shared_state_) {

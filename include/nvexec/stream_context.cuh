@@ -166,7 +166,7 @@ namespace nvexec {
       template <std::execution::sender S>
         friend ensure_started_th<S>
         tag_invoke(std::execution::ensure_started_t, const stream_scheduler& sch, S&& sndr) noexcept {
-          return ensure_started_th<S>((S&&) sndr);
+          return ensure_started_th<S>((S&&) sndr, sch.hub_);
         }
 
       template <stdexec::__one_of<
