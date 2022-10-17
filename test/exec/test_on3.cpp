@@ -30,7 +30,7 @@ TEST_CASE("Can pass exec::on sender to start_detached", "[adaptors][exec::on]") 
 }
 
 TEST_CASE("Can pass exec::on sender to split", "[adaptors][exec::on]") {
-  auto snd = ex::split(exec::on(inline_scheduler{}, ex::just()));
+  auto snd = ex::split(exec::on(inline_scheduler{}, ex::just()), env);
   (void) snd;
 }
 

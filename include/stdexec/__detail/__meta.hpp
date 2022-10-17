@@ -228,6 +228,15 @@ namespace stdexec {
   template <class _Fn, class _First, class _Second, class _Third>
     concept __minvocable3 = __valid3<_Fn::template __f, _First, _Second, _Third>;
 
+  template <bool>
+    struct __make_dependent_ {
+      template <class _Ty>
+        using __f = _Ty;
+    };
+  template <class _NonDependent, class _Dependent>
+    using __make_dependent_on =
+      __minvoke<__make_dependent_<sizeof(__types<_Dependent>*) == 0>, _NonDependent>;
+
   template <class _Fn, class _Default, class... _Args>
     struct __with_default_ {
       using __t = _Default;
@@ -686,6 +695,11 @@ namespace stdexec {
           _Signatures,
           __mfind_if<__q1<__mrequires>, __mcount>,
           _Extra...>>)>;
-  template <class _Ty, bool _Noexcept = false>
-    using __mas_sig = _Ty (*())() noexcept(_Noexcept);
+  template <class _Ty, bool _Noexcept = true>
+    struct __mconstruct {
+      template <class... _As>
+        auto operator()(_As&&... __as) const
+          noexcept(_Noexcept && noexcept(_Ty((_As&&) __as...)))
+          -> decltype(_Ty((_As&&) __as...));
+    };
 }
