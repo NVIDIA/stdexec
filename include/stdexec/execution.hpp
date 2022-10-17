@@ -4736,14 +4736,14 @@ namespace stdexec {
 
               template <size_t... _Is>
                 __operation(_WhenAll&& __when_all, _Receiver __rcvr, std::index_sequence<_Is...>)
-                  : __child_states_{
+                  : __recvr_((_Receiver&&) __rcvr)
+                  , __child_states_{
                       __conv{[&__when_all, this]() {
                         return execution::connect(
                             std::get<_Is>(((_WhenAll&&) __when_all).__sndrs_),
                             __receiver<_CvrefReceiverId, _Is>{{}, this});
                       }}...
                     }
-                  , __recvr_((_Receiver&&) __rcvr)
                 {}
               __operation(_WhenAll&& __when_all, _Receiver __rcvr)
                 : __operation((_WhenAll&&) __when_all, (_Receiver&&) __rcvr, _Indices{})
@@ -4782,16 +4782,16 @@ namespace stdexec {
                       __single_or<void>>...>,
                   __>;
 
-              __child_op_states_tuple_t __child_states_;
+              in_place_stop_source __stop_source_{};
               _Receiver __recvr_;
               std::atomic<std::size_t> __count_{sizeof...(_SenderIds)};
               // Could be non-atomic here and atomic_ref everywhere except __completion_fn
               std::atomic<__state_t> __state_{__started};
               error_types_of_t<__sender, __env_t<_Env>, __variant> __errors_{};
               [[no_unique_address]] __child_values_tuple_t __values_{};
-              in_place_stop_source __stop_source_{};
               std::optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template
                   callback_type<__on_stop_requested>> __on_stop_{};
+              __child_op_states_tuple_t __child_states_;
             };
 
           template <__decays_to<__sender> _Self, receiver _Receiver>
