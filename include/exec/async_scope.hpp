@@ -458,13 +458,12 @@ namespace exec {
         }
 
         std::optional<in_place_stop_callback<__forward_stopped>> __forward_scope_;
-        connect_result_t<_Sender, __future_rcvr<__x<_Sender>>> __op_;
-
         std::mutex __mutex_;
         __future_step __step_ = __future_step::__created;
         std::unique_ptr<__future_state> __no_future_;
         std::variant<std::monostate, __future_result_t<_Sender>, std::tuple<set_stopped_t>> __data_;
         __intrusive_queue<&__subscription::__next_> __subscribers_;
+        connect_result_t<_Sender, __future_rcvr<__x<_Sender>>> __op_;
       };
 
     template <class _SenderId>
