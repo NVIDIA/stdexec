@@ -144,7 +144,7 @@ template <class Scheduler, class SenderId>
             });
     }
 
-    template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_stopped_t> _Tag>
+    template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_stopped_t, std::execution::set_error_t> _Tag>
     friend Scheduler tag_invoke(std::execution::get_completion_scheduler_t<_Tag>, const schedule_from_sender_t& __self) noexcept {
       return {__self.hub_};
     }
