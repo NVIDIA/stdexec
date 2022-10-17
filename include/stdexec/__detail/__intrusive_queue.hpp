@@ -20,6 +20,8 @@
 #include <tuple>
 #include <utility>
 
+#include <stdexec/__detail/__config.hpp>
+
 namespace stdexec {
   namespace __queue {
     template <auto _Next>
@@ -41,7 +43,7 @@ namespace stdexec {
         }
 
         ~__intrusive_queue() {
-          assert(empty());
+          STDEXEC_ASSERT(empty());
         }
 
         static __intrusive_queue make_reversed(_Item* __list) noexcept {
@@ -65,7 +67,7 @@ namespace stdexec {
         }
 
         [[nodiscard]] _Item* pop_front() noexcept {
-          assert(!empty());
+          STDEXEC_ASSERT(!empty());
           _Item* __item = std::exchange(__head_, __head_->*_Next);
           if (__head_ == nullptr) {
             __tail_ = nullptr;
@@ -74,7 +76,7 @@ namespace stdexec {
         }
 
         void push_front(_Item* __item) noexcept {
-          assert(__item != nullptr);
+          STDEXEC_ASSERT(__item != nullptr);
           __item->*_Next = __head_;
           __head_ = __item;
           if (__tail_ == nullptr) {
@@ -83,7 +85,7 @@ namespace stdexec {
         }
 
         void push_back(_Item* __item) noexcept {
-          assert(__item != nullptr);
+          STDEXEC_ASSERT(__item != nullptr);
           __item->*_Next = nullptr;
           if (__tail_ == nullptr) {
             __head_ = __item;
