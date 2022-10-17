@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace nvexec::submit {
+namespace nvexec::detail::stream::submit {
 
 template <class SenderId, class ReceiverId>
 struct op_state_t {

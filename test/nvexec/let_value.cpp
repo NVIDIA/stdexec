@@ -4,7 +4,6 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-#if STDEXEC_NVHPC()
 namespace ex = std::execution;
 
 using nvexec::is_on_gpu;
@@ -87,4 +86,3 @@ TEST_CASE("let_value returns values on GPU", "[cuda][stream][adaptors][let_value
   REQUIRE(result == 1);
 }
 
-#endif

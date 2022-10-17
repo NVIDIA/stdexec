@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace nvexec {
+namespace nvexec::detail::stream {
   namespace let_xxx {
     template <class Fun, class ResultSenderT, class... As>
       __launch_bounds__(1)

@@ -16,7 +16,7 @@
 - [x] `schedule_from`
 - [x] `transfer`
 - [x] `sync_wait`
-- [ ] `ensure_started`
+- [x] `ensure_started`
 - [x] `start_detached`
 
 ### TO DO

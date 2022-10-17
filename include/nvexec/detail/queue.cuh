@@ -22,14 +22,15 @@
 
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace nvexec::detail {
+namespace nvexec::detail::stream {
   namespace queue {
     struct task_base_t {
       using fn_t = void(task_base_t*) noexcept;
 
       task_base_t* next_{};
-      task_base_t* atom_next_{};
+      task_base_t** atom_next_{};
       fn_t* execute_{};
+      fn_t* free_{};
     };
 
     struct device_deleter_t {
@@ -92,28 +93,34 @@ namespace nvexec::detail {
         task_base_t* old_tail = tail_ref.load(::cuda::memory_order_acquire);
 
         while (true) {
-          atom_task_ref atom_next_ref(old_tail->atom_next_);
+          atom_task_ref atom_next_ref(*old_tail->atom_next_);
 
           task_base_t* expected = nullptr;
           if (atom_next_ref.compare_exchange_weak(
-                expected, task, ::cuda::memory_order_release, ::cuda::memory_order_relaxed)) {
+                expected, task, ::cuda::memory_order_relaxed, ::cuda::memory_order_relaxed)) {
             task_ref next_ref(old_tail->next_);
-            next_ref.store(task);
+            next_ref.store(task, ::cuda::memory_order_release);
             break;
           }
 
           old_tail = tail_ref.load(::cuda::memory_order_acquire);
         }
 
-        tail_ref.compare_exchange_strong(
-            old_tail, task, ::cuda::memory_order_release, ::cuda::memory_order_relaxed);
+        tail_ref.compare_exchange_strong(old_tail, task);
       }
     };
 
     struct root_task_t : task_base_t {
       root_task_t() {
         this->execute_ = [](task_base_t* t) noexcept {};
+        this->free_ = [](task_base_t* t) noexcept {
+          STDEXEC_DBG_ERR(cudaFree(t->atom_next_));
+        };
         this->next_ = nullptr;
+
+        constexpr std::size_t ptr_size = sizeof(this->atom_next_);
+        STDEXEC_DBG_ERR(cudaMalloc(&this->atom_next_, ptr_size));
+        STDEXEC_DBG_ERR(cudaMemset(this->atom_next_, 0, ptr_size));
       }
     };
 
@@ -135,7 +142,9 @@ namespace nvexec::detail {
               }
               std::this_thread::yield();
             }
-            current = next_ref.load(::cuda::memory_order_acquire);
+            task_base_t* next = next_ref.load(::cuda::memory_order_acquire);
+            current->free_(current);
+            current = next;
             current->execute_(current);
           }
         });

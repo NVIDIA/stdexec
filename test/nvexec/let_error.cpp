@@ -4,8 +4,6 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-#if STDEXEC_NVHPC() 
-
 namespace ex = std::execution;
 
 using nvexec::is_on_gpu;
@@ -39,6 +37,4 @@ TEST_CASE("let_error executes on GPU", "[cuda][stream][adaptors][let_error]") {
 
   REQUIRE(flags_storage.all_set_once());
 }
-
-#endif
 

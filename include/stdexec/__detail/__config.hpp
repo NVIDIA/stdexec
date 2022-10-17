@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <cassert>
+
 #define STDEXEC_CAT_(X, ...) X ## __VA_ARGS__
 #define STDEXEC_CAT(X, ...) STDEXEC_CAT_(X, __VA_ARGS__)
 
@@ -59,4 +61,18 @@
 #endif
 #ifndef STDEXEC_MSVC
 #define STDEXEC_MSVC() 0
+#endif
+
+#ifdef STDEXEC_ASSERT
+#error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
+#endif
+
+#define STDEXEC_ASSERT(_X) \
+  do { \
+    static_assert(noexcept(_X)); \
+    STDEXEC_ASSERT_FN(_X); \
+  } while(false)
+
+#ifndef STDEXEC_ASSERT_FN
+#define STDEXEC_ASSERT_FN assert
 #endif

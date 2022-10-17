@@ -22,7 +22,7 @@
 #include "nvexec/detail/queue.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace nvexec {
+namespace nvexec::detail::stream {
 
 namespace when_all {
 
@@ -86,13 +86,13 @@ template <class Env, class... Senders>
 template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
   struct when_all_sender_t : stream_sender_base {
     template <class... Sndrs>
-      explicit when_all_sender_t(detail::queue::task_hub_t* hub, Sndrs&&... __sndrs)
+      explicit when_all_sender_t(queue::task_hub_t* hub, Sndrs&&... __sndrs)
         : hub_(hub)
         , sndrs_((Sndrs&&) __sndrs...)
       {}
 
    private:
-    const detail::queue::task_hub_t* hub_{};
+    const queue::task_hub_t* hub_{};
 
     template <class CvrefEnv>
       using completion_sigs =

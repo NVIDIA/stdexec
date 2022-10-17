@@ -16,6 +16,7 @@
 #pragma once
 
 #include "common.cuh"
+#include "stdexec/execution.hpp"
 
 
 #ifdef _NVHPC_CUDA
@@ -37,22 +38,134 @@ namespace nvexec {
 }
 #endif 
 
+#include <optional>
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 
 namespace ex = std::execution;
 
+#ifdef _NVHPC_CUDA
+namespace nvexec::detail::stream::repeat_n {
+  template <class OpT>
+    class receiver_t : public stream_receiver_base {
+      using Sender = typename OpT::Sender;
+      using Receiver = typename OpT::Receiver;
+
+      OpT &op_state_;
+
+    public:
+      template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args _NVCXX_CAPTURE_PACK(_Args)>
+        friend void tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
+          _NVCXX_EXPAND_PACK(_Args, __args,
+            OpT &op_state = __self.op_state_;
+            op_state.propagate_completion_signal(_Tag{}, (_Args&&)__args...);
+          )
+        }
+
+      friend void tag_invoke(ex::set_value_t, receiver_t&& __self) noexcept {
+        using inner_op_state_t = ex::connect_result_t<Sender, receiver_t>;
+
+        OpT &op_state = __self.op_state_;
+        op_state.i_++;
+
+        if (op_state.i_ == op_state.n_) {
+          op_state.propagate_completion_signal(std::execution::set_value);
+          return;
+        }
+
+        inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
+            stdexec::__conv{[&]() noexcept {
+              return ex::connect((Sender&&)op_state.sender_, receiver_t{op_state});
+            }});
+
+        ex::start(inner_op_state);
+      }
+
+      friend auto tag_invoke(ex::get_env_t, const receiver_t& self) noexcept
+        -> make_stream_env_t<stdexec::env_of_t<Receiver>> {
+        return make_stream_env(
+            stdexec::get_env(self.op_state_.receiver_), 
+            std::optional<cudaStream_t>{self.op_state_.stream_});
+      }
+
+      explicit receiver_t(OpT& op_state)
+        : op_state_(op_state)
+      {}
+    };
+
+  template <class SenderId, class ReceiverId>
+    struct operation_state_t : operation_state_base_t<ReceiverId>  {
+      using Sender = stdexec::__t<SenderId>;
+      using Receiver = stdexec::__t<ReceiverId>;
+
+      using inner_op_state_t = ex::connect_result_t<Sender, receiver_t<operation_state_t>>;
+
+      Sender sender_;
+      std::optional<inner_op_state_t> inner_op_state_;
+      std::size_t n_{};
+      std::size_t i_{};
+
+      cudaStream_t get_stream() {
+        return this->stream_;
+      }
+
+      friend void tag_invoke(std::execution::start_t, operation_state_t& op) noexcept {
+        op.stream_ = op.allocate();
+
+        if (op.status_ != cudaSuccess) {
+          // Couldn't allocate memory for operation state, complete with error
+          op.propagate_completion_signal(std::execution::set_error, std::move(op.status_));
+        } else {
+          if (op.n_) {
+            std::execution::start(*op.inner_op_state_);
+          } else {
+            op.propagate_completion_signal(std::execution::set_value);
+          }
+        }
+      }
+
+      operation_state_t(Sender&& sender, Receiver&& receiver, std::size_t n)
+        : operation_state_base_t<ReceiverId>((Receiver&&)receiver)
+        , sender_{(Sender&&)sender}
+        , n_(n) {
+        inner_op_state_.emplace(
+          stdexec::__conv{[&]() noexcept {
+            return ex::connect((Sender&&)sender_, receiver_t{*this});
+          }});
+      }
+    };
+
+  template <class SenderId>
+    struct repeat_n_sender_t : stream_sender_base {
+      using Sender = stdexec::__t<SenderId>;
+
+      using completion_signatures = std::execution::completion_signatures<
+        std::execution::set_value_t(),
+        std::execution::set_error_t(std::exception_ptr)>;
+
+      Sender sender_;
+      std::size_t n_{};
+
+      template <stdexec::__decays_to<repeat_n_sender_t> Self, class Receiver>
+        requires std::tag_invocable<std::execution::connect_t, Sender, Receiver> friend auto
+      tag_invoke(std::execution::connect_t, Self &&self, Receiver &&r) 
+        -> operation_state_t<SenderId, stdexec::__x<Receiver>> {
+        return operation_state_t<SenderId, stdexec::__x<Receiver>>(
+          (Sender&&)self.sender_,
+          (Receiver&&)r,
+          self.n_);
+      }
+
+      template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... Ts>
+        requires std::tag_invocable<Tag, Sender, Ts...> friend decltype(auto)
+      tag_invoke(Tag tag, const repeat_n_sender_t &s, Ts &&...ts) noexcept {
+        return tag(s.sender_, std::forward<Ts>(ts)...);
+      }
+    };
+} 
+#endif
+
 namespace repeat_n_detail {
-
-  struct sink_receiver : nvexec::stream_receiver_base {
-    friend void tag_invoke(ex::set_value_t, sink_receiver &&, auto&&...) noexcept {}
-    friend void tag_invoke(ex::set_error_t, sink_receiver &&, auto&&) noexcept {}
-    friend void tag_invoke(ex::set_stopped_t, sink_receiver &&) noexcept {}
-    friend stdexec::__empty_env tag_invoke(ex::get_env_t, sink_receiver) noexcept {
-      return {};
-    }
-  };
-
   template <class SenderId, class ReceiverId>
     struct operation_state_t {
       using Sender = stdexec::__t<SenderId>;
@@ -64,21 +177,8 @@ namespace repeat_n_detail {
 
       friend void
       tag_invoke(std::execution::start_t, operation_state_t &self) noexcept {
-#ifdef _NVHPC_CUDA
-        using inner_op_state_t = ex::connect_result_t<Sender, sink_receiver>;
-        if constexpr (std::is_base_of_v<nvexec::detail::stream_op_state_base, inner_op_state_t>) {
-          inner_op_state_t op_state = ex::connect((Sender&&)self.sender_, sink_receiver{});
-          for (std::size_t i = 0; i < self.n_; i++) {
-            ex::start(op_state);
-          }
-          STDEXEC_DBG_ERR(cudaStreamSynchronize(op_state.stream_));
-        } 
-        else 
-#endif
-        {
-          for (std::size_t i = 0; i < self.n_; i++) {
-            std::this_thread::sync_wait((Sender&&)self.sender_);
-          }
+        for (std::size_t i = 0; i < self.n_; i++) {
+          std::this_thread::sync_wait((Sender&&)self.sender_);
         }
         ex::set_value((Receiver&&)self.receiver_);
       }
@@ -91,11 +191,12 @@ namespace repeat_n_detail {
     };
 
   template <class SenderId>
-    struct repeat_n_sender_t : nvexec::stream_sender_base {
+    struct repeat_n_sender_t {
       using Sender = stdexec::__t<SenderId>;
 
       using completion_signatures = std::execution::completion_signatures<
         std::execution::set_value_t(),
+        std::execution::set_stopped_t(),
         std::execution::set_error_t(std::exception_ptr)>;
 
       Sender sender_;
@@ -111,22 +212,29 @@ namespace repeat_n_detail {
           self.n_);
       }
 
-      template <stdexec::__none_of<std::execution::connect_t> Tag, class... Ts>
+      template <stdexec::__none_of<std::execution::get_completion_scheduler_t<std::execution::set_value_t>> Tag, class... Ts>
         requires std::tag_invocable<Tag, Sender, Ts...> friend decltype(auto)
       tag_invoke(Tag tag, const repeat_n_sender_t &s, Ts &&...ts) noexcept {
         return tag(s.sender_, std::forward<Ts>(ts)...);
       }
     };
-
-  struct repeat_n_t {
-    template <class Sender>
-    repeat_n_sender_t<stdexec::__x<Sender>> operator()(std::size_t n, Sender &&__sndr) const noexcept {
-      return repeat_n_sender_t<stdexec::__x<Sender>>{{}, std::forward<Sender>(__sndr), n};
-    }
-  };
 }
 
-inline constexpr repeat_n_detail::repeat_n_t repeat_n{};
+struct repeat_n_t {
+#ifdef _NVHPC_CUDA
+  template <nvexec::detail::stream::stream_completing_sender Sender>
+    nvexec::detail::stream::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>> operator()(std::size_t n, Sender &&__sndr) const noexcept {
+      return nvexec::detail::stream::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>>{{}, std::forward<Sender>(__sndr), n};
+    }
+#endif
+
+  template <class Sender>
+    repeat_n_detail::repeat_n_sender_t<stdexec::__x<Sender>> operator()(std::size_t n, Sender &&__sndr) const noexcept {
+      return repeat_n_detail::repeat_n_sender_t<stdexec::__x<Sender>>{std::forward<Sender>(__sndr), n};
+    }
+};
+
+inline constexpr repeat_n_t repeat_n{};
 
 template <class SchedulerT>
 [[nodiscard]] bool is_gpu_scheduler(SchedulerT &&scheduler) {

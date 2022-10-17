@@ -101,26 +101,39 @@ namespace nvexec {
     };
 
     template <class VisitorT, class V>
-      void visit_impl(std::integral_constant<std::size_t, 0>, VisitorT&& visitor, V&& v) {
-        if (0 == v.index_) {
+      void visit_impl(std::integral_constant<std::size_t, 0>, VisitorT&& visitor, V&& v, std::size_t index) {
+        if (0 == index) {
           ((VisitorT&&)visitor)(v.template get<0>());
         }
       }
 
     template <std::size_t I, class VisitorT, class V>
-      void visit_impl(std::integral_constant<std::size_t, I>, VisitorT&& visitor, V&& v) {
-        if (I == v.index_) {
+      void visit_impl(std::integral_constant<std::size_t, I>, VisitorT&& visitor, V&& v, std::size_t index) {
+        if (I == index) {
           ((VisitorT&&)visitor)(v.template get<I>());
           return;
         }
 
-        visit_impl(std::integral_constant<std::size_t, I - 1>{}, (VisitorT&&)visitor, (V&&)v);
+        visit_impl(std::integral_constant<std::size_t, I - 1>{}, (VisitorT&&)visitor, (V&&)v, index);
       }
   }
 
   template <class VisitorT, class V>
     void visit(VisitorT&& visitor, V&& v) {
-      detail::visit_impl(std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{}, (VisitorT&&)visitor, (V&&)v);
+      detail::visit_impl(
+          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{}, 
+          (VisitorT&&)visitor, 
+          (V&&)v,
+          v.index_);
+    }
+
+  template <class VisitorT, class V>
+    void visit(VisitorT&& visitor, V&& v, std::size_t index) {
+      detail::visit_impl(
+          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{}, 
+          (VisitorT&&)visitor, 
+          (V&&)v,
+          index);
     }
 
   template <class... Ts>
@@ -132,6 +145,12 @@ namespace nvexec {
 
     using index_t = unsigned int;
     using union_t = detail::static_storage_t<max_alignment, max_size>;
+
+    template <detail::one_of<Ts...> T>
+      using index_of = 
+        std::integral_constant<
+          index_t, 
+          detail::find_index<index_t, T, Ts...>()>;
 
     template <detail::one_of<Ts...> T>
       T& get() {
@@ -166,7 +185,7 @@ namespace nvexec {
       // TODO Construct alternative
       // ::new (storage_.data_) T((As&&)as...);
       get<T>() = T((As&&)as...);
-      index_ = detail::find_index<index_t, T, Ts...>();
+      index_ = index_of<T>();
     }
 
     void destroy() {

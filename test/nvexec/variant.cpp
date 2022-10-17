@@ -115,3 +115,23 @@ TEST_CASE("variant works with cuda tuple", "[cuda][stream][containers][variant]"
   }, v);
 }
 
+TEST_CASE("variant internal index bypass works", "[cuda][stream][containers][variant]") {
+  variant_t<tuple_t<int, double>, tuple_t<char, int>> v;
+
+  v.emplace<tuple_t<int, double>>(42, 4.2);
+  visit([](auto& tuple) {
+      apply([](auto i, auto d) {
+        REQUIRE(i == 42);
+        REQUIRE(d == 4.2);
+      }, tuple);
+  }, v, 0);
+
+  v.emplace<tuple_t<char, int>>('f', 4);
+  visit([](auto& tuple) {
+      apply([](auto c, auto i) {
+        REQUIRE(c == 'f');
+        REQUIRE(i == 4);
+      }, tuple);
+  }, v, 1);
+}
+

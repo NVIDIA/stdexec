@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace nvexec {
+namespace nvexec::detail::stream {
 
 namespace then {
 
