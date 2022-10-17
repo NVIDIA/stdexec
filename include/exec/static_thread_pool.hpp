@@ -17,6 +17,7 @@
 #pragma once
 
 #include <stdexec/execution.hpp>
+#include <stdexec/__detail/__config.hpp>
 #include <stdexec/__detail/__intrusive_queue.hpp>
 #include <stdexec/__detail/__meta.hpp>
 
@@ -469,7 +470,7 @@ namespace exec {
     : threadCount_(threadCount)
     , threadStates_(threadCount)
     , nextThread_(0) {
-    assert(threadCount > 0);
+    STDEXEC_ASSERT(threadCount > 0);
 
     threads_.reserve(threadCount);
 

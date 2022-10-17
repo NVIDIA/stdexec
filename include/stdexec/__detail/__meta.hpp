@@ -20,23 +20,7 @@
 #include <utility>
 #include <stdexec/__detail/__config.hpp>
 
-#ifdef STDEXEC_ASSERT
-#error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
-#endif
-
-#define STDEXEC_ASSERT(_X) \
-  do { \
-    static_assert(noexcept(_X)); \
-    STDEXEC_ASSERT_FN(_X); \
-  } while(false)
-
-#ifndef STDEXEC_ASSERT_FN
-#define STDEXEC_ASSERT_FN stdexec::__stdexec_assert
-#endif
-
 namespace stdexec {
-
-  inline constexpr void __stdexec_assert(bool valid) {if (!valid) {std::terminate();}}
 
   struct __ {};
 

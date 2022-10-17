@@ -1487,7 +1487,7 @@ namespace stdexec {
         _Value await_resume() {
           switch (__result_.index()) {
           case 0: // receiver contract not satisfied
-            assert(!"_Should never get here");
+            STDEXEC_ASSERT(!"_Should never get here");
             break;
           case 1: // set_value
             if constexpr (!std::is_void_v<_Value>)
@@ -3174,7 +3174,7 @@ namespace stdexec {
                 std::memory_order_acquire)) {
                 // We get here when the task completed during the execution
                 // of this function. Complete the operation synchronously.
-                assert(__old == __completion_state);
+                STDEXEC_ASSERT(__old == __completion_state);
                 __self.__notify(&__self);
               }
             }

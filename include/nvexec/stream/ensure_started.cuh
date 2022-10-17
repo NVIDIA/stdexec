@@ -234,7 +234,7 @@ namespace nvexec::detail::stream {
                 std::memory_order_acquire)) {
                 // We get here when the task completed during the execution
                 // of this function. Complete the operation synchronously.
-                assert(old == completion_state);
+                STDEXEC_ASSERT(old == completion_state);
                 self.notify(&self);
               }
             }
