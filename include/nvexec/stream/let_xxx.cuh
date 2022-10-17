@@ -24,7 +24,7 @@ namespace nvexec::detail::stream {
   namespace let_xxx {
     template <class Fun, class ResultSenderT, class... As>
       __launch_bounds__(1)
-      __global__ void kernel_with_result(Fun fn, ResultSenderT* result, As&&... as) {
+      __global__ void kernel_with_result(Fun fn, ResultSenderT* result, As... as) {
         new (result) ResultSenderT(fn((As&&)as...));
       }
 
@@ -196,7 +196,10 @@ namespace nvexec::detail::stream {
               cudaStream_t stream = __self.__op_state_->stream_;
 
               result_sender_t* result_sender = reinterpret_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
-              kernel_with_result<<<1, 1, 0, stream>>>(__self.__op_state_->__fun_, result_sender, (_As&&)__as...);
+              kernel_with_result
+                <std::decay_t<_Fun>, result_sender_t, _As...>
+                  <<<1, 1, 0, stream>>>(
+                    __self.__op_state_->__fun_, result_sender, (_As&&)__as...);
 
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status == cudaSuccess) {
                 auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(

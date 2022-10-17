@@ -86,3 +86,47 @@ TEST_CASE("let_value returns values on GPU", "[cuda][stream][adaptors][let_value
   REQUIRE(result == 1);
 }
 
+TEST_CASE("let_value can preceed a sender without values", "[cuda][stream][adaptors][let_value]") {
+  nvexec::stream_context stream_ctx{};
+
+  flags_storage_t<2> flags_storage{};
+  auto flags = flags_storage.get();
+
+  auto snd = ex::schedule(stream_ctx.get_scheduler()) //
+           | ex::let_value([flags] {
+               if (is_on_gpu()) {
+                 flags.set(0);
+               }
+
+               return ex::just();
+             })
+           | a_sender([flags] {
+               if (is_on_gpu()) {
+                 flags.set(1);
+               }
+             });
+  std::this_thread::sync_wait(std::move(snd));
+
+  REQUIRE(flags_storage.all_set_once());
+}
+
+TEST_CASE("let_value can succeed a sender", "[cuda][stream][adaptors][let_value]") {
+  nvexec::stream_context stream_ctx{};
+  nvexec::stream_scheduler sch = stream_ctx.get_scheduler();
+  flags_storage_t flags_storage{};
+  auto flags = flags_storage.get();
+
+  auto snd = ex::schedule(sch)
+           | a_sender([]() noexcept {})
+           | ex::let_value([=] {
+               if (is_on_gpu()) {
+                 flags.set();
+               }
+
+               return ex::schedule(sch);
+             });
+  std::this_thread::sync_wait(std::move(snd));
+
+  REQUIRE(flags_storage.all_set_once());
+}
+
