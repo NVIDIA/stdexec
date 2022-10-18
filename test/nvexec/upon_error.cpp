@@ -8,6 +8,28 @@ namespace ex = std::execution;
 
 using nvexec::is_on_gpu;
 
+template <typename... Ts>
+struct type_array {};
+
+struct empty_env {};
+
+template <typename ExpectedValType, typename ActualType>
+inline void check_types_impl() {
+  static_assert(std::is_same<ExpectedValType, ActualType>::value);
+}
+
+template <typename ExpectedValType, typename Env = empty_env, typename S>
+inline void check_val_types(S snd) {
+  using t = typename ex::value_types_of_t<S, Env, type_array, type_array>;
+  check_types_impl<ExpectedValType, t>();
+}
+
+template <typename ExpectedValType, typename Env = empty_env, typename S>
+inline void check_err_types(S snd) {
+  using t = typename ex::error_types_of_t<S, Env, type_array>;
+  check_types_impl<ExpectedValType, t>();
+}
+
 TEST_CASE("upon_error returns a sender", "[cuda][stream][adaptors][upon_error]") {
   nvexec::stream_context stream_ctx{};
 
@@ -65,12 +87,11 @@ TEST_CASE("upon_error can succeed a sender without values", "[cuda][stream][adap
   flags_storage_t flags_storage{};
   auto flags = flags_storage.get();
 
-  // TODO Support other error types
-  auto snd = ex::just_error(cudaSuccess) | //
+  auto snd = ex::just_error(42) | //
              ex::transfer(stream_ctx.get_scheduler()) | //
              a_sender([=]() noexcept {}) |
-             ex::upon_error([=](cudaError_t err) { 
-               if (is_on_gpu() && err == cudaSuccess) {
+             ex::upon_error([=](int err) noexcept { 
+               if (is_on_gpu() && err == 42) {
                  flags.set();
                }
              }); 

@@ -69,11 +69,11 @@ TEST_CASE("let_error can succeed a sender", "[cuda][stream][adaptors][let_error]
   flags_storage_t flags_storage{};
   auto flags = flags_storage.get();
 
-  auto snd = ex::just_error(cudaSuccess)
+  auto snd = ex::just_error(42)
            | ex::transfer(stream_ctx.get_scheduler()) //
            | a_sender([]() noexcept {})
-           | ex::let_error([=](cudaError_t err) {
-               if (is_on_gpu() && err == cudaSuccess) {
+           | ex::let_error([=](int err) {
+               if (is_on_gpu() && err == 42) {
                  flags.set();
                }
 

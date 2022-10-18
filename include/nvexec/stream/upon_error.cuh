@@ -147,11 +147,7 @@ template <class SenderId, class FunId>
         stdexec::__make_completion_signatures<
           stdexec::__member_t<Self, Sender>,
           Env,
-          stdexec::__with_error_invoke_t<
-            std::execution::set_error_t,
-            Fun,
-            stdexec::__member_t<Self, Sender>,
-            Env>,
+          stdexec::completion_signatures<std::execution::set_error_t(cudaError_t)>,
           stdexec::__q<stdexec::__compl_sigs::__default_set_value>,
           stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>>;
 
