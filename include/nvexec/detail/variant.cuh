@@ -18,6 +18,8 @@
 #include <algorithm>
 #include <type_traits>
 #include <stdexec/concepts.hpp>
+#include <stdexec/execution.hpp>
+#include <cuda/std/tuple>
 
 namespace nvexec {
 
@@ -181,16 +183,21 @@ namespace nvexec {
       }
       
     template <detail::one_of<Ts...> T, class... As>
-    void construct(As&&... as) {
-      // TODO Construct alternative
-      // ::new (storage_.data_) T((As&&)as...);
-      get<T>() = T((As&&)as...);
-      index_ = index_of<T>();
-    }
+      void construct(As&&... as) {
+        ::new(storage_.data_) T((As&&)as...);
+        index_ = index_of<T>();
+      }
 
     void destroy() {
       if (holds_alternative()) {
-        // TODO Destruct alternative
+        visit([](auto& val) noexcept {
+          using val_t = std::decay_t<decltype(val)>;
+          if constexpr(std::is_same_v<val_t, ::cuda::std::tuple<std::execution::set_error_t, std::exception_ptr>>) {
+            // TODO Not quite possible at the moment
+          } else {
+            val.~val_t();
+          }
+        }, *this);
       }
       index_ = detail::npos<index_t>();
     }

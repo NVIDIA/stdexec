@@ -150,17 +150,22 @@ TEST_CASE("then can succeed a sender", "[cuda][stream][adaptors][then]") {
   }
 }
 
-/*
 TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
+  flags_storage_t flags_storage{};
+  auto flags = flags_storage.get();
 
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
            | ex::then([]() -> move_only_t {
                return move_only_t{42};
+             })
+           | ex::then([flags](move_only_t val) {
+               if (val.contains(42)) {
+                 flags.set();
+               }
              });
-  auto [v] = std::this_thread::sync_wait(std::move(snd)).value();
+  std::this_thread::sync_wait(std::move(snd));
 
-  REQUIRE(v == move_only_t{42});
+  REQUIRE(flags_storage.all_set_once());
 }
-*/
 

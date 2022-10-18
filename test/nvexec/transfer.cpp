@@ -98,3 +98,41 @@ TEST_CASE("transfer_just changes context to GPU", "[cuda][stream][adaptors][tran
   REQUIRE(result == true);
 }
 
+TEST_CASE("transfer_just supports move-only types", "[cuda][stream][adaptors][transfer]") {
+  nvexec::stream_context stream_ctx{};
+  nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
+
+  auto snd = ex::transfer_just(gpu, move_only_t{42})
+           | ex::then([=](move_only_t val) noexcept {
+               if (is_on_gpu() && val.contains(42)) {
+                 return true;
+               }
+               return false;
+             });
+  const auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+
+  REQUIRE(result == true);
+}
+
+TEST_CASE("transfer supports move-only types", "[cuda][stream][adaptors][transfer]") {
+  nvexec::stream_context stream_ctx{};
+
+  exec::inline_scheduler cpu{};
+  nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
+
+  auto snd = ex::schedule(gpu)
+           | ex::then([] {
+               return move_only_t{42};
+             })
+           | ex::transfer(cpu)
+           | ex::then([=](move_only_t val) noexcept {
+               if (!is_on_gpu() && val.contains(42)) {
+                 return true;
+               }
+               return false;
+             });
+  const auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+
+  REQUIRE(result == true);
+}
+

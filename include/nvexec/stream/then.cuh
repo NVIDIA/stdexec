@@ -27,13 +27,13 @@ namespace then {
 template <class Fun, class... As>
   __launch_bounds__(1)
   __global__ void kernel(Fun fn, As... as) {
-    fn((As&&)as...);
+    fn(std::move(as)...);
   }
 
 template <class Fun, class ResultT, class... As>
   __launch_bounds__(1)
   __global__ void kernel_with_result(Fun fn, ResultT* result, As... as) {
-    new (result) ResultT(fn((As&&)as...));
+    new (result) ResultT(fn(std::move(as)...));
   }
 
 template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
@@ -48,10 +48,10 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
 
     template <class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, As&&... as)
-        noexcept requires std::invocable<Fun, As...> {
+        noexcept requires std::invocable<Fun, std::add_rvalue_reference_t<std::decay_t<As>>...> {
 
         _NVCXX_EXPAND_PACK(As, as,
-          using result_t = std::decay_t<std::invoke_result_t<Fun, As...>>;
+          using result_t = std::decay_t<std::invoke_result_t<Fun, std::add_rvalue_reference_t<std::decay_t<As>>...>>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
           operation_state_base_t<ReceiverId> &op_state = self.op_state_;
           cudaStream_t stream = op_state.stream_;
@@ -78,7 +78,7 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
       }
 
     template <stdexec::__one_of<std::execution::set_error_t,
-                            std::execution::set_stopped_t> Tag,
+                                std::execution::set_stopped_t> Tag,
               class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
         _NVCXX_EXPAND_PACK(As, as,

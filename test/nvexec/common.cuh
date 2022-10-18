@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include <cuda/atomic>
-
 #include <algorithm>
 #include <stdexec/execution.hpp>
 #include <stdexcept>
@@ -233,19 +231,17 @@ struct move_only_t {
 
   ~move_only_t() {
     if (this != self_) {
+      // TODO Trap
       std::printf("Error: move_only_t::~move_only_t failed\n");
-      NV_IF_TARGET(NV_IS_HOST,
-                   (std::terminate();),
-                   (__trap();));
     }
   }
 
-  bool operator==(const move_only_t& rhs) {
+  bool contains(int val) {
     if (this != self_) {
       return false;
     }
 
-    return data_ == rhs.data_;
+    return data_ == val;
   }
 
   int data_{invalid};

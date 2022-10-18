@@ -37,8 +37,8 @@ namespace schedule_from {
       operation_state_base_t<ReceiverId>& operation_state_;
 
       template <stdexec::__one_of<std::execution::set_value_t,
-                              std::execution::set_error_t,
-                              std::execution::set_stopped_t> Tag,
+                                  std::execution::set_error_t,
+                                  std::execution::set_stopped_t> Tag,
                 class... As  _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
         auto stream = self.operation_state_.stream_;

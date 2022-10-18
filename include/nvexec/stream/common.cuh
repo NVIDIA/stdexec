@@ -200,7 +200,7 @@ namespace nvexec {
 
       template <class Receiver, class Tag, class... As>
         __launch_bounds__(1) __global__ void continuation_kernel(Receiver receiver, Tag tag, As... as) {
-          tag(std::move(receiver), (As&&)as...);
+          tag(std::move(receiver), std::move(as)...);
         }
 
       template <class Receiver, class Variant>
@@ -215,11 +215,11 @@ namespace nvexec {
             this->execute_ = [](task_base_t* t) noexcept {
               continuation_task_t &self = *reinterpret_cast<continuation_task_t*>(t);
 
-              visit([&self](auto& tpl) noexcept {
-                  ::cuda::std::apply([&self](auto tag, auto... as) noexcept {
-                    tag(std::move(self.receiver_), decltype(as)(as)...);
-                  }, tpl);
-              }, *self.variant_);
+              visit([&self](auto&& tpl) noexcept {
+                  ::cuda::std::apply([&self](auto tag, auto&&... as) noexcept {
+                    tag(std::move(self.receiver_), std::move(as)...);
+                  }, std::move(tpl));
+              }, std::move(*self.variant_));
             };
 
             this->free_ = [](task_base_t* t) noexcept {
