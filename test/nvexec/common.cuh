@@ -15,10 +15,13 @@
  */
 #pragma once
 
+#include <cuda/atomic>
+
 #include <algorithm>
 #include <stdexec/execution.hpp>
 #include <stdexcept>
 #include <cstdio>
+#include <cstdlib>
 
 namespace nvexec {
 
@@ -213,4 +216,39 @@ struct a_sender_t {
 };
 
 constexpr a_sender_t a_sender;
+
+struct move_only_t {
+  static constexpr int invalid = -42;
+
+  move_only_t() = delete;
+  move_only_t(int data) 
+    : data_(data)
+    , self_(this) {
+  }
+
+  move_only_t(move_only_t&& other) 
+    : data_(other.data_)
+    , self_(this) {
+  }
+
+  ~move_only_t() {
+    if (this != self_) {
+      std::printf("Error: move_only_t::~move_only_t failed\n");
+      NV_IF_TARGET(NV_IS_HOST,
+                   (std::terminate();),
+                   (__trap();));
+    }
+  }
+
+  bool operator==(const move_only_t& rhs) {
+    if (this != self_) {
+      return false;
+    }
+
+    return data_ == rhs.data_;
+  }
+
+  int data_{invalid};
+  move_only_t* self_;
+};
 

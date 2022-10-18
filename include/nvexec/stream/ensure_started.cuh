@@ -98,29 +98,7 @@ namespace nvexec::detail::stream {
     template <class SenderId>
       struct sh_state_t : stdexec::__enable_intrusive_from_this<sh_state_t<SenderId>> {
         using Sender = stdexec::__t<SenderId>;
-
-        template <class... _Ts>
-          using bind_tuples =
-            stdexec::__mbind_front_q<
-              variant_t,
-              tuple_t<std::execution::set_stopped_t>, // Initial state of the variant is set_stopped
-              tuple_t<std::execution::set_error_t, cudaError_t>,
-              _Ts...>;
-
-        using bound_values_t =
-          stdexec::__value_types_of_t<
-            Sender,
-            env_t,
-            stdexec::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
-            stdexec::__q<bind_tuples>>;
-
-        using variant_t =
-          stdexec::__error_types_of_t<
-            Sender,
-            env_t,
-            stdexec::__transform<
-              stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
-              bound_values_t>>;
+        using variant_t = variant_storage_t<Sender, env_t>;
 
         using inner_receiver_t = receiver_t<SenderId, sh_state_t>;
         using task_t = detail::continuation_task_t<inner_receiver_t, variant_t>;
@@ -228,7 +206,7 @@ namespace nvexec::detail::stream {
           op->on_stop_.reset();
 
           visit([&](auto& tupl) noexcept -> void {
-            apply([&](auto tag, auto&... args) noexcept -> void {
+            ::cuda::std::apply([&](auto tag, auto&... args) noexcept -> void {
               op->propagate_completion_signal(tag, args...);
             }, tupl);
           }, *op->shared_state_->data_, op->shared_state_->index_);

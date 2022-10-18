@@ -26,7 +26,6 @@
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #include "nvexec/detail/queue.cuh"
 #include "nvexec/detail/variant.cuh"
-#include "nvexec/detail/tuple.cuh"
 
 namespace nvexec {
 
@@ -72,6 +71,45 @@ namespace nvexec {
         }
     };
 
+    template <class... Ts>
+      using decayed_tuple = ::cuda::std::tuple<std::decay_t<Ts>...>;
+
+    namespace stream_storage_impl {
+      template <class... _Ts>
+        using variant =
+          stdexec::__minvoke<
+            stdexec::__if_c<
+              sizeof...(_Ts) != 0,
+              stdexec::__transform<stdexec::__q1<std::decay_t>, stdexec::__munique<stdexec::__q<variant_t>>>,
+              stdexec::__mconst<stdexec::__not_a_variant>>,
+            _Ts...>;
+
+      template <class... _Ts>
+        using bind_tuples =
+          stdexec::__mbind_front_q<
+            variant,
+            ::cuda::std::tuple<std::execution::set_stopped_t>,
+            ::cuda::std::tuple<std::execution::set_error_t, cudaError_t>,
+            _Ts...>;
+
+      template <class Sender, class Env>
+        using bound_values_t =
+          stdexec::__value_types_of_t<
+            Sender,
+            Env,
+            stdexec::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
+            stdexec::__q<bind_tuples>>;
+    }
+
+    template <class Sender, class Env>
+      using variant_storage_t =
+        stdexec::__error_types_of_t<
+          Sender,
+          Env,
+          stdexec::__transform<
+            stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
+            stream_storage_impl::bound_values_t<Sender, Env>>>;
+
     inline constexpr get_stream_t get_stream{};
 
     template <class BaseEnvId>
@@ -102,9 +140,6 @@ namespace nvexec {
       make_stream_env_t<BaseEnv> make_stream_env(BaseEnv&& base, std::optional<cudaStream_t> stream) noexcept {
         return make_stream_env_t<BaseEnv>{{stream}, (BaseEnv&&)base};
       }
-
-    template <class... Ts>
-      using decayed_tuple = tuple_t<std::decay_t<Ts>...>;
 
     template <class S>
       concept stream_sender =
@@ -181,7 +216,7 @@ namespace nvexec {
               continuation_task_t &self = *reinterpret_cast<continuation_task_t*>(t);
 
               visit([&self](auto& tpl) noexcept {
-                  apply([&self](auto tag, auto... as) noexcept {
+                  ::cuda::std::apply([&self](auto tag, auto... as) noexcept {
                     tag(std::move(self.receiver_), decltype(as)(as)...);
                   }, tpl);
               }, *self.variant_);
@@ -280,38 +315,7 @@ namespace nvexec {
           using inner_receiver_t = stdexec::__t<InnerReceiverId>;
           using outer_receiver_t = stdexec::__t<OuterReceiverId>;
           using env_t = std::execution::env_of_t<outer_receiver_t>;
-
-          template <class... _Ts>
-            using variant =
-              stdexec::__minvoke<
-                stdexec::__if_c<
-                  sizeof...(_Ts) != 0,
-                  stdexec::__transform<stdexec::__q1<std::decay_t>, stdexec::__munique<stdexec::__q<variant_t>>>,
-                  stdexec::__mconst<stdexec::__not_a_variant>>,
-                _Ts...>;
-
-          template <class... _Ts>
-            using bind_tuples =
-              stdexec::__mbind_front_q<
-                variant,
-                tuple_t<std::execution::set_stopped_t>,
-                tuple_t<std::execution::set_error_t, cudaError_t>,
-                _Ts...>;
-
-          using bound_values_t =
-            stdexec::__value_types_of_t<
-              sender_t,
-              env_t,
-              stdexec::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
-              stdexec::__q<bind_tuples>>;
-
-          using variant_t =
-            stdexec::__error_types_of_t<
-              sender_t,
-              env_t,
-              stdexec::__transform<
-                stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
-                bound_values_t>>;
+          using variant_t = variant_storage_t<sender_t, env_t>;
 
           using task_t = detail::continuation_task_t<inner_receiver_t, variant_t>;
           using intermediate_receiver = stdexec::__t<std::conditional_t<

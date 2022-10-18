@@ -19,7 +19,6 @@
 #include <type_traits>
 
 #include "nvexec/stream/common.cuh"
-#include "nvexec/detail/tuple.cuh"
 #include "nvexec/detail/variant.cuh"
 
 namespace nvexec::detail::stream {
@@ -30,37 +29,8 @@ namespace schedule_from {
     struct receiver_t : stream_receiver_base {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
-
-      template <class... _Ts>
-        using variant =
-          stdexec::__minvoke<
-            stdexec::__if_c<
-              sizeof...(_Ts) != 0,
-              stdexec::__transform<stdexec::__q1<std::decay_t>, stdexec::__munique<stdexec::__q<variant_t>>>,
-              stdexec::__mconst<stdexec::__not_a_variant>>,
-            _Ts...>;
-
-      template <class... _Ts>
-        using bind_tuples =
-          stdexec::__mbind_front_q<
-            variant,
-            tuple_t<std::execution::set_stopped_t>,
-            _Ts...>;
-
-      using bound_values_t =
-        stdexec::__value_types_of_t<
-          Sender,
-          std::execution::env_of_t<Receiver>,
-          stdexec::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
-          stdexec::__q<bind_tuples>>;
-
-      using storage_t =
-        stdexec::__error_types_of_t<
-          Sender,
-          std::execution::env_of_t<Receiver>,
-          stdexec::__transform<
-            stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
-            bound_values_t>>;
+      using Env = std::execution::env_of_t<Receiver>;
+      using storage_t = variant_storage_t<Sender, Env>;
 
       constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
 

@@ -29,38 +29,7 @@ namespace transfer {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using Env = std::execution::env_of_t<Receiver>;
-
-      template <class... _Ts>
-        using variant =
-          stdexec::__minvoke<
-            stdexec::__if_c<
-              sizeof...(_Ts) != 0,
-              stdexec::__transform<stdexec::__q1<std::decay_t>, stdexec::__munique<stdexec::__q<variant_t>>>,
-              stdexec::__mconst<stdexec::__not_a_variant>>,
-            _Ts...>;
-
-      template <class... _Ts>
-        using bind_tuples =
-          stdexec::__mbind_front_q<
-            variant,
-            tuple_t<std::execution::set_stopped_t>,
-            tuple_t<std::execution::set_error_t, cudaError_t>,
-            _Ts...>;
-
-      using bound_values_t =
-        stdexec::__value_types_of_t<
-          Sender,
-          Env,
-          stdexec::__mbind_front_q<decayed_tuple, std::execution::set_value_t>,
-          stdexec::__q<bind_tuples>>;
-
-      using variant_t =
-        stdexec::__error_types_of_t<
-          Sender,
-          Env,
-          stdexec::__transform<
-            stdexec::__mbind_front_q<decayed_tuple, std::execution::set_error_t>,
-            bound_values_t>>;
+      using variant_t = variant_storage_t<Sender, Env>;
 
       struct receiver_t {
         operation_state_t &op_state_;

@@ -260,14 +260,14 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
             case when_all::started:
               if constexpr (sends_values<Traits>::value) {
                 // All child operations completed successfully:
-                apply(
+                ::cuda::std::apply(
                   [this](auto&... opt_vals) -> void {
                     std::apply(
                       [this](auto&... all_vals) -> void {
                         std::execution::set_value((Receiver&&) recvr_, all_vals...);
                       },
                       std::tuple_cat(
-                        apply(
+                        ::cuda::std::apply(
                           [](auto&... vals) { return std::tie(vals...); },
                           opt_vals
                         )...
@@ -353,7 +353,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
           stdexec::__if<
             sends_values<Traits>,
             stdexec::__minvoke<
-              stdexec::__q<tuple_t>,
+              stdexec::__q<::cuda::std::tuple>,
               stdexec::__value_types_of_t<
                 stdexec::__t<SenderIds>,
                 when_all::env_t<Env>,

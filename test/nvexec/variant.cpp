@@ -17,15 +17,14 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include <cuda/std/tuple>
+
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #include "nvexec/detail/variant.cuh"
-#include "nvexec/detail/tuple.cuh"
 #include "common.cuh"
 
 using nvexec::variant_t;
-using nvexec::tuple_t;
 using nvexec::visit;
-using nvexec::apply;
 
 TEST_CASE("variant max size is correct", "[cuda][stream][containers][variant]") {
   STATIC_REQUIRE(variant_t<double>::max_size == sizeof(double));
@@ -95,20 +94,20 @@ TEST_CASE("variant emplaces alternative from GPU", "[cuda][stream][containers][v
 }
 
 TEST_CASE("variant works with cuda tuple", "[cuda][stream][containers][variant]") {
-  variant_t<tuple_t<int, double>, tuple_t<char, int>> v;
+  variant_t<cuda::std::tuple<int, double>, cuda::std::tuple<char, int>> v;
   REQUIRE(v.index_ == 0);
 
-  v.emplace<tuple_t<int, double>>(42, 4.2);
+  v.emplace<cuda::std::tuple<int, double>>(42, 4.2);
   visit([](auto& tuple) {
-      apply([](auto i, auto d) {
+      cuda::std::apply([](auto i, auto d) {
         REQUIRE(i == 42);
         REQUIRE(d == 4.2);
       }, tuple);
   }, v);
 
-  v.emplace<tuple_t<char, int>>('f', 4);
+  v.emplace<cuda::std::tuple<char, int>>('f', 4);
   visit([](auto& tuple) {
-      apply([](auto c, auto i) {
+      cuda::std::apply([](auto c, auto i) {
         REQUIRE(c == 'f');
         REQUIRE(i == 4);
       }, tuple);
@@ -116,19 +115,19 @@ TEST_CASE("variant works with cuda tuple", "[cuda][stream][containers][variant]"
 }
 
 TEST_CASE("variant internal index bypass works", "[cuda][stream][containers][variant]") {
-  variant_t<tuple_t<int, double>, tuple_t<char, int>> v;
+  variant_t<cuda::std::tuple<int, double>, cuda::std::tuple<char, int>> v;
 
-  v.emplace<tuple_t<int, double>>(42, 4.2);
+  v.emplace<cuda::std::tuple<int, double>>(42, 4.2);
   visit([](auto& tuple) {
-      apply([](auto i, auto d) {
+      cuda::std::apply([](auto i, auto d) {
         REQUIRE(i == 42);
         REQUIRE(d == 4.2);
       }, tuple);
   }, v, 0);
 
-  v.emplace<tuple_t<char, int>>('f', 4);
+  v.emplace<cuda::std::tuple<char, int>>('f', 4);
   visit([](auto& tuple) {
-      apply([](auto c, auto i) {
+      cuda::std::apply([](auto c, auto i) {
         REQUIRE(c == 'f');
         REQUIRE(i == 4);
       }, tuple);
