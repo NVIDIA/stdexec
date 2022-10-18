@@ -35,7 +35,7 @@ TEST_CASE("Can pass exec::on sender to split", "[adaptors][exec::on]") {
 }
 
 TEST_CASE("Can pass exec::on sender to ensure_started", "[adaptors][exec::on]") {
-  auto snd = ex::ensure_started(exec::on(inline_scheduler{}, ex::just()));
+  auto snd = ex::ensure_started(exec::on(inline_scheduler{}, ex::just()), env);
   (void) snd;
 }
 
