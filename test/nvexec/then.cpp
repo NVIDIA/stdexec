@@ -150,6 +150,45 @@ TEST_CASE("then can succeed a sender", "[cuda][stream][adaptors][then]") {
   }
 }
 
+TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][then]") {
+  SECTION("without values") {
+    nvexec::stream_context stream_ctx{};
+    flags_storage_t flags_storage{};
+    auto flags = flags_storage.get();
+
+    auto snd = ex::schedule(stream_ctx.get_scheduler()) //
+             | a_sender()
+             | ex::then([flags] {
+                 if (is_on_gpu()) {
+                   flags.set();
+                 }
+               });
+    std::this_thread::sync_wait(std::move(snd));
+
+    REQUIRE(flags_storage.all_set_once());
+  }
+
+  SECTION("with values") {
+    nvexec::stream_context stream_ctx{};
+    flags_storage_t flags_storage{};
+    auto flags = flags_storage.get();
+
+    auto snd = ex::schedule(stream_ctx.get_scheduler()) //
+             | ex::then([]() -> bool {
+                 return is_on_gpu();
+               })
+             | a_sender()
+             | ex::then([flags](bool a_sender_was_on_gpu) {
+                 if (a_sender_was_on_gpu * is_on_gpu()) {
+                   flags.set();
+                 }
+               });
+    std::this_thread::sync_wait(std::move(snd)).value();
+
+    REQUIRE(flags_storage.all_set_once());
+  }
+}
+
 TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
   flags_storage_t flags_storage{};
