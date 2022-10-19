@@ -181,7 +181,7 @@ TEST_CASE("spawn doesn't accept non-void senders", "[async_scope][spawn]") {
   static_assert(!is_spawn_worthy<decltype(ex::just("hello"))>);
 }
 TEST_CASE("TODO: spawn doesn't accept senders of errors", "[async_scope][spawn]") {
-  // TODO: check if just_error(exception_ptr) should be alloed
+  // TODO: check if just_error(exception_ptr) should be allowed
   static_assert(is_spawn_worthy<decltype(ex::just_error(std::exception_ptr{}))>);
   static_assert(!is_spawn_worthy<decltype(ex::just_error(std::error_code{}))>);
   static_assert(!is_spawn_worthy<decltype(ex::just_error(-1))>);
