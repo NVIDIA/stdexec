@@ -142,8 +142,8 @@ namespace exec {
               | exec::write(exec::with(get_scheduler, __old_sched))
               | transfer(__self.__sched_)
               | ((_Self&&) __self).__closure_
-              | exec::write(exec::with(get_scheduler, __self.__sched_))
               | transfer(__old_sched)
+              | exec::write(exec::with(get_scheduler, __self.__sched_))
               ;
           }
 
