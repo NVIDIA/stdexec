@@ -49,7 +49,7 @@ TEST_CASE(
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::schedule_from(sched, ex::just(13));
-  auto op = ex::connect(snd, expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(snd, expect_value_receiver_ex{recv_value});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task; no effect expected
   CHECK(recv_value == 0);
@@ -70,7 +70,7 @@ TEST_CASE("schedule_from calls the given sender when the scheduler dictates",
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::schedule_from(sched, std::move(snd_base));
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
   ex::start(op);
   // The sender is started, even if the scheduler hasn't yet triggered
   CHECK(called);
@@ -200,6 +200,6 @@ auto tag_invoke(decltype(ex::schedule_from), inline_scheduler sched, just_string
 TEST_CASE("schedule_from can be customized", "[adaptors][schedule_from]") {
   // The customization will return a different value
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(std::string{"transfer"}));
-  auto op = ex::connect(std::move(snd), expect_value_receiver<std::string>("hijacked"));
+  auto op = ex::connect(std::move(snd), expect_value_receiver(std::string{"hijacked"}));
   ex::start(op);
 }

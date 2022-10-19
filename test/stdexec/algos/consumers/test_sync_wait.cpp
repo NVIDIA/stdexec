@@ -197,7 +197,7 @@ using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::s
 optional<tuple<std::string>> tag_invoke(
     decltype(sync_wait), inline_scheduler sched, my_string_sender_t&& s) {
   std::string res;
-  auto op = ex::connect(std::move(s), expect_value_receiver_ex{&res});
+  auto op = ex::connect(std::move(s), expect_value_receiver_ex{res});
   ex::start(op);
   CHECK(res == "hello");
   // change the string
@@ -260,7 +260,7 @@ using my_transfered_multi_value_sender_t = decltype(ex::transfer(my_multi_value_
 optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> tag_invoke(
     decltype(sync_wait_with_variant), inline_scheduler sched, my_transfered_multi_value_sender_t&& s) {
   std::string res;
-  auto op = ex::connect(std::move(s), expect_value_receiver_ex{&res});
+  auto op = ex::connect(std::move(s), expect_value_receiver_ex{res});
   ex::start(op);
   CHECK(res == "hello_multi");
   // change the string

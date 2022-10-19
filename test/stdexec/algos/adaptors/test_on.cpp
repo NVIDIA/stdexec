@@ -48,7 +48,7 @@ TEST_CASE("on calls the receiver when the scheduler dictates", "[adaptors][on]")
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::on(sched, ex::just(13));
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task; no effect expected
   CHECK(recv_value == 0);
@@ -68,7 +68,7 @@ TEST_CASE("on calls the given sender when the scheduler dictates", "[adaptors][o
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::on(sched, std::move(snd_base));
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task
   // The base sender shouldn't be started
@@ -180,7 +180,7 @@ TEST_CASE("on can be customized", "[adaptors][on]") {
   // The customization will return a different value
   auto snd = ex::on(inline_scheduler{}, ex::just(std::string{"world"}));
   std::string res;
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<std::string>(&res));
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
   ex::start(op);
   REQUIRE(res == "Hello, world!");
 }

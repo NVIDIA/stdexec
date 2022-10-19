@@ -45,7 +45,7 @@ TEST_CASE(
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::transfer_just(sched, 13);
-  auto op = ex::connect(snd, expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(snd, expect_value_receiver_ex{recv_value});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task; no effect expected
   CHECK(recv_value == 0);
@@ -156,7 +156,7 @@ TEST_CASE("transfer_just can be customized", "[factories][transfer_just]") {
   // The customization will alter the value passed in
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"world"});
   std::string res;
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<std::string>(&res));
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
   ex::start(op);
   REQUIRE(res == "Hello, world");
 }

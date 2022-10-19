@@ -73,7 +73,7 @@ TEST_CASE("can call set_value on a int receiver", "[cpo][cpo_receiver]") {
 }
 
 TEST_CASE("can call set_value on a string receiver", "[cpo][cpo_receiver]") {
-  ex::set_value(expect_value_receiver<std::string>{"hello"}, std::string{"hello"});
+  ex::set_value(expect_value_receiver{std::string{"hello"}}, std::string{"hello"});
 }
 
 TEST_CASE("can call set_stopped on a receiver", "[cpo][cpo_receiver]") {
@@ -96,7 +96,7 @@ TEST_CASE("can call set_error with an error code on a receiver", "[cpo][cpo_rece
 }
 
 TEST_CASE("set_value with a value passes the value to the receiver", "[cpo][cpo_receiver]") {
-  ex::set_value(expect_value_receiver<int>{10}, 10);
+  ex::set_value(expect_value_receiver{10}, 10);
 }
 
 TEST_CASE("can call set_value on a receiver with plain value type", "[cpo][cpo_receiver]") {

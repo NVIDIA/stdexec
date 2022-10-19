@@ -96,7 +96,7 @@ namespace stdexec {
         using type = tag_invoke_result_t<_Tag, _Args...>;
       };
 
-    struct __tag {
+    struct tag_invoke_t {
       template <class _Tag, class... _Args>
           requires tag_invocable<_Tag, _Args...>
         constexpr auto operator()(_Tag __tag, _Args&&... __args) const
@@ -107,7 +107,8 @@ namespace stdexec {
     };
   } // namespace __tag_invoke
 
-  inline constexpr __tag_invoke::__tag tag_invoke {};
+  using __tag_invoke::tag_invoke_t;
+  inline constexpr tag_invoke_t tag_invoke {};
 
   template<auto& _Tag>
     using tag_t = decay_t<decltype(_Tag)>;

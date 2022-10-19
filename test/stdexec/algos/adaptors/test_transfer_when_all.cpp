@@ -41,7 +41,7 @@ TEST_CASE("transfer_when_all with environment returns a sender", "[adaptors][tra
 TEST_CASE("transfer_when_all simple example", "[adaptors][transfer_when_all]") {
   auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
-  auto op = ex::connect(std::move(snd1), expect_value_receiver<double>{3.1415});
+  auto op = ex::connect(std::move(snd1), expect_value_receiver{3.1415});
   ex::start(op);
 }
 TEST_CASE("transfer_when_all with no senders", "[adaptors][transfer_when_all]") {
@@ -56,7 +56,7 @@ TEST_CASE("transfer_when_all transfers the result when the scheduler dictates",
   auto snd = ex::transfer_when_all(sched, ex::just(3), ex::just(0.1415));
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
   double res{0.0};
-  auto op = ex::connect(std::move(snd1), expect_value_receiver_ex<double>{&res});
+  auto op = ex::connect(std::move(snd1), expect_value_receiver_ex{res});
   ex::start(op);
   CHECK(res == 0.0);
   sched.start_next();
@@ -67,7 +67,7 @@ TEST_CASE("transfer_when_all with no senders transfers the result", "[adaptors][
   auto snd = ex::transfer_when_all(sched);
   auto snd1 = std::move(snd) | ex::then([]() { return true; });
   bool res{false};
-  auto op = ex::connect(std::move(snd1), expect_value_receiver_ex<bool>{&res});
+  auto op = ex::connect(std::move(snd1), expect_value_receiver_ex{res});
   ex::start(op);
   CHECK(!res);
   sched.start_next();
