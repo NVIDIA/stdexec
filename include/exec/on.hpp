@@ -115,6 +115,13 @@ namespace exec {
         template <scheduler _Scheduler, sender _Sender>
             requires constructible_from<decay_t<_Sender>, _Sender>
           auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
+            // connect-based customization will remove the need for this check
+            using __has_customizations =
+              __call_result_t<__has_algorithm_customizations_t, _Scheduler>;
+            static_assert(
+              !__has_customizations{},
+              "For now the default exec::on implementation doesn't support scheduling "
+              "onto schedulers that customize algorithms.");
             return __start_on_sender{(_Scheduler&&) __sched, (_Sender&&) __sndr};
           }
       };

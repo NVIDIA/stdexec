@@ -843,7 +843,26 @@ namespace stdexec {
         return execution::forward_progress_guarantee::weakly_parallel;
       }
     };
+
+    struct __has_algorithm_customizations_t {
+      template <class _T>
+        using __result_t =
+          tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
+      template <class _T>
+        requires tag_invocable<__has_algorithm_customizations_t, __cref_t<_T>>
+      constexpr __result_t<_T> operator()(_T&& __t) const noexcept(noexcept(__result_t<_T>{})) {
+        using _Bool = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
+        static_assert(_Bool{} ? true : true); // must be contextually convertible to bool
+        return _Bool{};
+      }
+      constexpr std::false_type operator()(auto&&) const noexcept {
+        return {};
+      }
+    };
   } // namespace __scheduler_queries
+  using __scheduler_queries::__has_algorithm_customizations_t;
+  inline constexpr __has_algorithm_customizations_t __has_algorithm_customizations{};
+
   using __scheduler_queries::get_forward_progress_guarantee_t;
   inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 
@@ -4588,6 +4607,13 @@ namespace stdexec {
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
         -> __impl::__sender<__x<decay_t<_Scheduler>>,
                             __x<decay_t<_Sender>>> {
+        // connect-based customization will remove the need for this check
+        using __has_customizations =
+          __call_result_t<__has_algorithm_customizations_t, _Scheduler>;
+        static_assert(
+          !__has_customizations{},
+          "For now the default stdexec::on implementation doesn't support scheduling "
+          "onto schedulers that customize algorithms.");
         return {(_Scheduler&&) __sched, (_Sender&&) __sndr};
       }
     };
