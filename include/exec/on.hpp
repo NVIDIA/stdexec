@@ -39,8 +39,9 @@ namespace exec {
         template <class _Self, class _OldSched>
           static auto __call(_Self&& __self, _OldSched __old_sched) {
             return std::move(((_Self&&) __self).__sndr_)
+              | exec::write(exec::with(get_scheduler, __self.__sched_))
               | transfer(__old_sched)
-              | exec::write(exec::with(get_scheduler, __self.__sched_));
+              ;
           }
 
         template <scheduler _OldSched>
@@ -138,11 +139,12 @@ namespace exec {
         template <class _Self, class _OldSched>
           static auto __call(_Self&& __self, _OldSched __old_sched) {
             return ((_Self&&) __self).__sndr_
-              | transfer(__self.__sched_)
               | exec::write(exec::with(get_scheduler, __old_sched))
+              | transfer(__self.__sched_)
               | ((_Self&&) __self).__closure_
+              | exec::write(exec::with(get_scheduler, __self.__sched_))
               | transfer(__old_sched)
-              | exec::write(exec::with(get_scheduler, __self.__sched_));
+              ;
           }
 
         template <scheduler _OldSched>
