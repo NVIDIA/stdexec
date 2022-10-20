@@ -54,10 +54,12 @@ namespace nvexec::detail::stream::repeat_n {
       OpT &op_state_;
 
     public:
-      template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
+      template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args _NVCXX_CAPTURE_PACK(_Args)>
         friend void tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
-          OpT &op_state = __self.op_state_;
-          op_state.propagate_completion_signal(_Tag{}, (_Args&&)__args...);
+          _NVCXX_EXPAND_PACK(_Args, __args,
+            OpT &op_state = __self.op_state_;
+            op_state.propagate_completion_signal(_Tag{}, (_Args&&)__args...);
+          )
         }
 
       friend void tag_invoke(ex::set_value_t, receiver_t&& __self) noexcept {

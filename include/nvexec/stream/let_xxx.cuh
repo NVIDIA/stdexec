@@ -184,45 +184,49 @@ namespace nvexec::detail::stream {
             __self.__op_state_->propagate_completion_signal(std::execution::set_error, (_Error&&) __err);
           }
 
-        template <stdexec::__one_of<_Let> _Tag, class... _As>
+        template <stdexec::__one_of<_Let> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
               std::execution::sender_to<__apply_result_t<_Fun, __which_tuple_t<_As...>&>, _Receiver>
           friend void tag_invoke(_Tag, __receiver&& __self, _As&&... __as) noexcept {
-            using __tuple_t = __which_tuple_t<_As...>;
-            using __op_state_t = stdexec::__mapply<stdexec::__q<__op_state_for_t>, __tuple_t>;
-            using result_sender_t = __result_sender_t<_Fun, _As...>;
+            _NVCXX_EXPAND_PACK(_As, __as,
+              using __tuple_t = __which_tuple_t<_As...>;
+              using __op_state_t = stdexec::__mapply<stdexec::__q<__op_state_for_t>, __tuple_t>;
+              using result_sender_t = __result_sender_t<_Fun, _As...>;
 
-            cudaStream_t stream = __self.__op_state_->stream_;
+              cudaStream_t stream = __self.__op_state_->stream_;
 
-            result_sender_t* result_sender = reinterpret_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
-            kernel_with_result
-              <std::decay_t<_Fun>, result_sender_t, _As...>
-                <<<1, 1, 0, stream>>>(
-                  __self.__op_state_->__fun_, result_sender, (_As&&)__as...);
+              result_sender_t* result_sender = reinterpret_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
+              kernel_with_result
+                <std::decay_t<_Fun>, result_sender_t, _As...>
+                  <<<1, 1, 0, stream>>>(
+                    __self.__op_state_->__fun_, result_sender, (_As&&)__as...);
 
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status == cudaSuccess) {
-              auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
-                stdexec::__conv{[&] {
-                  return std::execution::connect(
-                      *result_sender,
-                      propagate_receiver_t<_ReceiverId>{
-                        {},
-                        static_cast<operation_state_base_t<_ReceiverId>&>(
-                            *__self.__op_state_)});
-                }}
-              );
-              std::execution::start(__op);
-            } else {
-              __self.__op_state_->propagate_completion_signal(
-                  std::execution::set_error, std::move(status));
-            }
+              if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status == cudaSuccess) {
+                auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
+                  stdexec::__conv{[&] {
+                    return std::execution::connect(
+                        *result_sender,
+                        propagate_receiver_t<_ReceiverId>{
+                          {},
+                          static_cast<operation_state_base_t<_ReceiverId>&>(
+                              *__self.__op_state_)});
+                  }}
+                );
+                std::execution::start(__op);
+              } else {
+                __self.__op_state_->propagate_completion_signal(
+                    std::execution::set_error, std::move(status));
+              }
+            )
           }
 
-        template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_error_t, std::execution::set_stopped_t> _Tag, class... _As>
+        template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_error_t, std::execution::set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires stdexec::__none_of<_Tag, _Let> && stdexec::__callable<_Tag, _Receiver, _As...>
           friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
-            static_assert(stdexec::__nothrow_callable<_Tag, _Receiver, _As...>);
-            __self.__op_state_->propagate_completion_signal(_Tag{}, (_As&&)__as...);
+            _NVCXX_EXPAND_PACK(_As, __as,
+              static_assert(stdexec::__nothrow_callable<_Tag, _Receiver, _As...>);
+              __self.__op_state_->propagate_completion_signal(_Tag{}, (_As&&)__as...);
+            )
           }
 
         friend auto tag_invoke(std::execution::get_env_t, const __receiver& __self)
@@ -318,12 +322,14 @@ namespace nvexec::detail::stream {
           };
         }
 
-      template <stdexec::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As>
+      template <stdexec::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
           requires stdexec::__callable<_Tag, const _Sender&, _As...>
         friend auto tag_invoke(_Tag __tag, const let_sender_t& __self, _As&&... __as)
           noexcept(stdexec::__nothrow_callable<_Tag, const _Sender&, _As...>)
           -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-          return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+          _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+          )
         }
 
       template <stdexec::__decays_to<let_sender_t> _Self, class _Env>

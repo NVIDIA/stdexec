@@ -157,11 +157,13 @@ namespace exec {
 
         template <
             __one_of<set_value_t, set_error_t, set_stopped_t> _Tag,
-            class... _As>
+            class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, _Receiver, _As...>
           friend void tag_invoke(_Tag, __nest_rcvr&& __self, _As&&... __as) noexcept {
             auto __scope = __self.__op_->__scope_;
-            _Tag{}(std::move(__self.__op_->__rcvr_), (_As&&) __as...);
+            _NVCXX_EXPAND_PACK(_As, __as,
+              _Tag{}(std::move(__self.__op_->__rcvr_), (_As&&) __as...);
+            )
             // do not access __op_
             // do not access this
             __complete(__scope);
@@ -485,13 +487,15 @@ namespace exec {
 
         template <
             __one_of<set_value_t, set_error_t, set_stopped_t> _Tag,
-            __movable_value... _As>
+            __movable_value... _As _NVCXX_CAPTURE_PACK(_As)>
           friend void tag_invoke(_Tag, __future_rcvr&& __self, _As&&... __as) noexcept {
             auto& __state = *__self.__state_;
             try {
               std::unique_lock __guard{__state.__mutex_};
-              using _Tuple = __decayed_tuple<_Tag, _As...>;
-              __state.__data_.template emplace<_Tuple>(_Tag{}, (_As&&) __as...);
+              _NVCXX_EXPAND_PACK(_As, __as,
+                using _Tuple = __decayed_tuple<_Tag, _As...>;
+                __state.__data_.template emplace<_Tuple>(_Tag{}, (_As&&) __as...);
+              )
               __guard.unlock();
               __self.__dispatch_result_();
             } catch(...) {

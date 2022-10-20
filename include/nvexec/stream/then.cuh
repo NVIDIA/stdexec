@@ -46,40 +46,44 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
   public:
     constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
-    template <class... As>
+    template <class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, As&&... as)
         noexcept requires std::invocable<Fun, std::add_rvalue_reference_t<std::decay_t<As>>...> {
 
-        using result_t = std::decay_t<std::invoke_result_t<Fun, std::add_rvalue_reference_t<std::decay_t<As>>...>>;
-        constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
-        operation_state_base_t<ReceiverId> &op_state = self.op_state_;
-        cudaStream_t stream = op_state.stream_;
+        _NVCXX_EXPAND_PACK(As, as,
+          using result_t = std::decay_t<std::invoke_result_t<Fun, std::add_rvalue_reference_t<std::decay_t<As>>...>>;
+          constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
+          operation_state_base_t<ReceiverId> &op_state = self.op_state_;
+          cudaStream_t stream = op_state.stream_;
 
-        if constexpr (does_not_return_a_value) {
-          kernel<std::decay_t<Fun>, As...><<<1, 1, 0, stream>>>(self.f_, (As&&)as...);
+          if constexpr (does_not_return_a_value) {
+            kernel<std::decay_t<Fun>, As...><<<1, 1, 0, stream>>>(self.f_, (As&&)as...);
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-            op_state.propagate_completion_signal(std::execution::set_value);
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+              op_state.propagate_completion_signal(std::execution::set_value);
+            } else {
+              op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
+            }
           } else {
-            op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
-          }
-        } else {
-          result_t *d_result = reinterpret_cast<result_t*>(op_state.temp_storage_);
-          kernel_with_result<std::decay_t<Fun>, result_t, As...><<<1, 1, 0, stream>>>(self.f_, d_result, (As&&)as...);
+            result_t *d_result = reinterpret_cast<result_t*>(op_state.temp_storage_);
+            kernel_with_result<std::decay_t<Fun>, result_t, As...><<<1, 1, 0, stream>>>(self.f_, d_result, (As&&)as...);
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-            op_state.propagate_completion_signal(std::execution::set_value, *d_result);
-          } else {
-            op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+              op_state.propagate_completion_signal(std::execution::set_value, *d_result);
+            } else {
+              op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
+            }
           }
-        }
+        );
       }
 
     template <stdexec::__one_of<std::execution::set_error_t,
                                 std::execution::set_stopped_t> Tag,
-              class... As>
+              class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-        self.op_state_.propagate_completion_signal(tag, (As&&)as...);
+        _NVCXX_EXPAND_PACK(As, as,
+          self.op_state_.propagate_completion_signal(tag, (As&&)as...);
+        );
       }
 
     friend std::execution::env_of_t<Receiver> tag_invoke(std::execution::get_env_t, const receiver_t& self) {

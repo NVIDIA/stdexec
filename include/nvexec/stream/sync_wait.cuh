@@ -70,10 +70,12 @@ namespace nvexec::detail::stream {
               loop_->finish();
             }
 
-          template <class Sender2 = Sender, class... As>
+          template <class Sender2 = Sender, class... As _NVCXX_CAPTURE_PACK(As)>
               requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
             friend void tag_invoke(std::execution::set_value_t, receiver_t&& rcvr, As&&... as) noexcept try {
-              rcvr.state_->data_.template emplace<1>((As&&) as...);
+              _NVCXX_EXPAND_PACK(As, as,
+                rcvr.state_->data_.template emplace<1>((As&&) as...);
+              )
               rcvr.loop_->finish();
             } catch(...) {
               rcvr.set_error(std::current_exception());

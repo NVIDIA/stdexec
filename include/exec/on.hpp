@@ -97,12 +97,14 @@ namespace exec {
             -> _ENVIRONMENT_HAS_NO_SCHEDULER_FOR_THE_ON_ADAPTOR_TO_TRANSITION_BACK_TO<_Env, _Sender>;
 
         // forward sender queries:
-        template <tag_category<forwarding_sender_query> _Tag, class... _As>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __start_on_sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            )
           }
       };
     template <class _Scheduler, class _Sender>
@@ -199,12 +201,14 @@ namespace exec {
             -> _ENVIRONMENT_HAS_NO_SCHEDULER_FOR_THE_ON_ADAPTOR_TO_TRANSITION_BACK_TO<_Env, _Sender>;
 
         // forward sender queries:
-        template <tag_category<forwarding_sender_query> _Tag, class... _As>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __continue_on_sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+            )
           }
       };
     template <class _Sender, class _Scheduler, class _Closure>

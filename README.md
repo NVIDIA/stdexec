@@ -61,19 +61,14 @@ This library is header-only, so all the source code can be found in the `include
 | Vendor-specific extensions and customizations | <code>&lt;<i>(vendor)</i>exec/...&gt;</code> | <code>::<i>(vendor)</i>exec</code> |
 | | |
 
+
+
 ## Building
 
 The following tools are needed:
 
 * [`CMake`](https://cmake.org/)
 * GCC 11+ or clang 12+
-
-> **Note**
->
-> If you are interested in building with the <strong>`nvc++`</strong> compiler
-> from <strong>NVIDIA's [HPC SDK](https://developer.nvidia.com/hpc-sdk)</strong>
-> versions 22.7 or 22.9, please use the
-> [`nvhpc-22.7`](https://github.com/NVIDIA/stdexec/tree/nvhpc-22.7) branch.
 
 Perform the following actions:
 
