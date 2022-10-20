@@ -22,7 +22,7 @@
 #include "nvexec/detail/cuda_atomic.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace nvexec::detail::stream {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace queue {
     struct task_base_t {
       using fn_t = void(task_base_t*) noexcept;

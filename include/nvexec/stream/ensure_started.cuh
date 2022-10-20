@@ -21,7 +21,7 @@
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #include "nvexec/stream/common.cuh"
 
-namespace nvexec::detail::stream {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace ensure_started {
     template <class Tag, class Variant, class... As>
       __launch_bounds__(1)
@@ -101,8 +101,8 @@ namespace nvexec::detail::stream {
         using variant_t = variant_storage_t<Sender, env_t>;
 
         using inner_receiver_t = receiver_t<SenderId, sh_state_t>;
-        using task_t = detail::continuation_task_t<inner_receiver_t, variant_t>;
-        using enqueue_receiver_t = detail::stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>;
+        using task_t = continuation_task_t<inner_receiver_t, variant_t>;
+        using enqueue_receiver_t = stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>;
         using intermediate_receiver = 
           stdexec::__t<
             std::conditional_t<
@@ -216,13 +216,13 @@ namespace nvexec::detail::stream {
           cudaStream_t stream{};
 
           std::optional<cudaStream_t> env_stream = 
-            nvexec::detail::stream::get_stream(stdexec::get_env(this->receiver_));
+            nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream(stdexec::get_env(this->receiver_));
 
           if (env_stream) {
             stream = *env_stream;
           } else {
             using inner_op_state_t = typename sh_state_t<SenderId>::inner_op_state_t;
-            if constexpr (std::is_base_of_v<detail::stream_op_state_base, inner_op_state_t>) {
+            if constexpr (std::is_base_of_v<stream_op_state_base, inner_op_state_t>) {
               stream = shared_state_->op_state2_.get_stream();
             } else {
               stream = this->allocate();

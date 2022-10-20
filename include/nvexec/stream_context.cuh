@@ -38,7 +38,7 @@
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
 namespace nvexec {
-  namespace detail::stream {
+  namespace STDEXEC_STREAM_DETAIL_NS {
     template <std::execution::sender Sender, std::integral Shape, class Fun>
       using bulk_sender_th = bulk_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, Shape, stdexec::__x<std::remove_cvref_t<Fun>>>;
 
@@ -76,7 +76,7 @@ namespace nvexec {
         using schedule_from_sender_th = schedule_from_sender_t<stream_scheduler, stdexec::__x<std::remove_cvref_t<Sender>>>;
 
       template <class RId>
-        struct operation_state_t : detail::stream_op_state_base {
+        struct operation_state_t : stream_op_state_base {
           using R = stdexec::__t<RId>;
 
           R rec_;
@@ -104,11 +104,11 @@ namespace nvexec {
               }
             } else {
               if (op.status_ == cudaSuccess) {
-                detail::continuation_kernel
+                continuation_kernel
                   <std::decay_t<R>, std::execution::set_value_t>
                     <<<1, 1, 0, op.stream_>>>(op.rec_, std::execution::set_value);
               } else {
-                detail::continuation_kernel
+                continuation_kernel
                   <std::decay_t<R>, std::execution::set_error_t, cudaError_t>
                     <<<1, 1, 0, op.stream_>>>(op.rec_, std::execution::set_error, op.status_);
               }
@@ -282,10 +282,10 @@ namespace nvexec {
       }
   }
 
-  using detail::stream::stream_scheduler;
+  using STDEXEC_STREAM_DETAIL_NS::stream_scheduler;
 
   struct stream_context {
-    detail::stream::queue::task_hub_t hub{};
+    STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub{};
 
     stream_scheduler get_scheduler() {
       return {&hub};

@@ -20,6 +20,8 @@
 #include <stdexcept>
 #include <cstdio>
 
+#define STDEXEC_STREAM_DETAIL_NS _strm
+
 namespace nvexec {
   namespace detail {
     inline cudaError_t debug_cuda_error(cudaError_t error, char const* file_name, int line) {

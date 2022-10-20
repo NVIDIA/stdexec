@@ -19,13 +19,12 @@
 #include <type_traits>
 
 #include "nvexec/stream/common.cuh"
-#include "stdexec/__detail/__p2300.hpp"
 
-namespace nvexec::detail::stream {
-
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+ 
 namespace transfer {
   template <class SenderId, class ReceiverId>
-    struct operation_state_t : detail::stream_op_state_base {
+    struct operation_state_t : stream_op_state_base {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using Env = std::execution::env_of_t<Receiver>;
@@ -50,7 +49,7 @@ namespace transfer {
         }
       };
 
-      using task_t = detail::continuation_task_t<receiver_t, variant_t>;
+      using task_t = continuation_task_t<receiver_t, variant_t>;
 
       bool owner_{false};
       cudaStream_t stream_{0};
@@ -64,7 +63,7 @@ namespace transfer {
 
       Receiver receiver_;
 
-      using enqueue_receiver = detail::stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
+      using enqueue_receiver = stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
       using inner_op_state_t = std::execution::connect_result_t<Sender, enqueue_receiver>;
       inner_op_state_t inner_op_;
 
@@ -80,7 +79,7 @@ namespace transfer {
       cudaStream_t get_stream() {
         cudaStream_t stream{};
 
-        if constexpr (std::is_base_of_v<detail::stream_op_state_base, inner_op_state_t>) {
+        if constexpr (std::is_base_of_v<stream_op_state_base, inner_op_state_t>) {
           stream = inner_op_.get_stream();
         } else {
           stream = this->allocate();
