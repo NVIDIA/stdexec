@@ -19,10 +19,10 @@
 #include <stdexec/execution.hpp>
 
 #include <cuda/std/type_traits>
-#include <cuda/atomic>
 #include <cuda/std/tuple>
 #include <optional>
 
+#include "nvexec/detail/cuda_atomic.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #include "nvexec/detail/queue.cuh"
 #include "nvexec/detail/variant.cuh"
