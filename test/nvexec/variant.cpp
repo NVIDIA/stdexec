@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include "nvexec/detail/cuda_fwd.cuh"
 #include <cuda/std/tuple>
 
 #include "nvexec/detail/throw_on_cuda_error.cuh"
