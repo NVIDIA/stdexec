@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace nvexec::detail::stream {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
 namespace bulk {
   template <int BlockThreads, std::integral Shape, class Fun, class... As>
@@ -261,7 +261,7 @@ namespace multi_gpu_bulk {
 
   template <class SenderId, class ReceiverId, class Shape, class Fun>
     using operation_base_t =
-      detail::operation_state_t<
+      operation_state_t<
         SenderId,
         stdexec::__x<receiver_t<SenderId, ReceiverId, Shape, Fun>>,
         ReceiverId>;

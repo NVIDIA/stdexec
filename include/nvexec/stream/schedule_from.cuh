@@ -21,7 +21,7 @@
 #include "nvexec/stream/common.cuh"
 #include "nvexec/detail/variant.cuh"
 
-namespace nvexec::detail::stream {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
 namespace schedule_from {
 

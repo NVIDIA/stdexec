@@ -20,7 +20,7 @@
 
 #include "nvexec/stream/common.cuh"
 
-namespace nvexec::detail::stream {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace let_xxx {
     template <class Fun, class ResultSenderT, class... As>
       __launch_bounds__(1)
@@ -235,7 +235,7 @@ namespace nvexec::detail::stream {
 
     template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
       using __operation_base =
-        detail::operation_state_t<
+        operation_state_t<
           _SenderId,
           stdexec::__x<__receiver<_SenderId, _ReceiverId, _FunId, _Let>>,
           _ReceiverId>;

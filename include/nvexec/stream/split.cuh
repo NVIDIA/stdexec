@@ -23,7 +23,7 @@
 #include "nvexec/stream/common.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace nvexec::detail::stream {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace split {
     template <class Tag, class Variant, class... As>
       __launch_bounds__(1)
@@ -97,8 +97,8 @@ namespace nvexec::detail::stream {
         using Env = exec::make_env_t<exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>;
         using variant_t = variant_storage_t<Sender, Env>;
         using inner_receiver_t = receiver_t<SenderId, sh_state_t>;
-        using task_t = detail::continuation_task_t<inner_receiver_t, variant_t>;
-        using enqueue_receiver_t = detail::stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
+        using task_t = continuation_task_t<inner_receiver_t, variant_t>;
+        using enqueue_receiver_t = stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
         using intermediate_receiver = 
           stdexec::__t<
             std::conditional_t<

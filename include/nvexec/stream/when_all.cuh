@@ -22,7 +22,7 @@
 #include "nvexec/detail/queue.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
-namespace nvexec::detail::stream {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
 namespace when_all {
 
@@ -188,7 +188,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
       };
 
     template <class CvrefReceiverId>
-      struct operation_t : detail::stream_op_state_base {
+      struct operation_t : stream_op_state_base {
         using WhenAll = stdexec::__member_t<CvrefReceiverId, when_all_sender_t>;
         using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
         using Env = std::execution::env_of_t<Receiver>;
@@ -228,7 +228,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
         template <class OpT>
         static void sync(OpT& op) noexcept {
-          if constexpr (std::is_base_of_v<detail::stream_op_state_base, OpT>) {
+          if constexpr (std::is_base_of_v<stream_op_state_base, OpT>) {
             if (op.stream_) {
               if (op.status_ == cudaSuccess) {
                 op.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.stream_));
