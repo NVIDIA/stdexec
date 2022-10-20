@@ -19,8 +19,6 @@
 #include <type_traits>
 
 #include "nvexec/stream/common.cuh"
-#include "nvexec/detail/queue.cuh"
-#include "nvexec/stream/transfer.cuh"
 
 namespace nvexec::detail::stream {
   namespace sync_wait {
@@ -73,9 +71,14 @@ namespace nvexec::detail::stream {
           template <class Sender2 = Sender, class... As _NVCXX_CAPTURE_PACK(As)>
               requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
             friend void tag_invoke(std::execution::set_value_t, receiver_t&& rcvr, As&&... as) noexcept try {
-              _NVCXX_EXPAND_PACK(As, as,
-                rcvr.state_->data_.template emplace<1>((As&&) as...);
-              )
+              if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+                  status == cudaSuccess) {
+                _NVCXX_EXPAND_PACK(As, as,
+                  rcvr.state_->data_.template emplace<1>((As&&) as...);
+                )
+              } else {
+                rcvr.set_error(status);
+              }
               rcvr.loop_->finish();
             } catch(...) {
               rcvr.set_error(std::current_exception());
@@ -83,11 +86,21 @@ namespace nvexec::detail::stream {
 
           template <class Error>
             friend void tag_invoke(std::execution::set_error_t, receiver_t&& rcvr, Error err) noexcept {
-              rcvr.set_error((Error &&) err);
+              if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+                  status == cudaSuccess) {
+                rcvr.set_error((Error &&) err);
+              } else {
+                rcvr.set_error(status);
+              }
             }
 
           friend void tag_invoke(std::execution::set_stopped_t __d, receiver_t&& rcvr) noexcept {
-            rcvr.state_->data_.template emplace<3>(__d);
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+                status == cudaSuccess) {
+              rcvr.state_->data_.template emplace<3>(__d);
+            } else {
+              rcvr.set_error(status);
+            }
             rcvr.loop_->finish();
           }
 
@@ -100,11 +113,10 @@ namespace nvexec::detail::stream {
       template <class SenderId>
         struct state_t {
           using _Tuple = sync_wait_result_t<stdexec::__t<SenderId>>;
+
+          cudaStream_t stream_{};
           std::variant<std::monostate, _Tuple, cudaError_t, std::execution::set_stopped_t> data_{};
         };
-
-      template <std::execution::sender Sender>
-        using transfer_sender_th = transfer_sender_t<stdexec::__x<Sender>>;
     } // namespace __impl
 
     struct sync_wait_t {
@@ -121,10 +133,10 @@ namespace nvexec::detail::stream {
         state_t state {};
         std::execution::run_loop loop;
 
-        auto __op_state =
-          std::execution::connect(
-            __impl::transfer_sender_th<Sender>(hub, (Sender&&)__sndr),
-            __impl::receiver_t<stdexec::__x<Sender>>{{}, &state, &loop});
+        exit_operation_state_t<Sender, __impl::receiver_t<stdexec::__x<Sender>>> __op_state =
+          exit_op_state(hub, (Sender&&)__sndr, __impl::receiver_t<stdexec::__x<Sender>>{{}, &state, &loop});
+        state.stream_ = __op_state.get_stream();
+
         std::execution::start(__op_state);
 
         // Wait for the variant to be filled in.
