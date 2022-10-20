@@ -19,7 +19,6 @@
 
 #include <type_traits>
 
-#include "nvexec/detail/cuda_fwd.cuh"
 #include "nvexec/detail/cuda_atomic.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 

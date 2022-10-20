@@ -18,7 +18,6 @@
 #include <stdexec/execution.hpp>
 #include <type_traits>
 
-#include "nvexec/detail/cuda_fwd.cuh"
 #include <cuda/std/type_traits>
 
 #include <cub/device/device_reduce.cuh>

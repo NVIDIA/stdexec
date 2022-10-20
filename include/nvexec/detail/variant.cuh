@@ -20,8 +20,6 @@
 #include <stdexec/concepts.hpp>
 #include <stdexec/execution.hpp>
 
-#include <nvexec/detail/cuda_fwd.cuh>
-
 #include <cuda/std/tuple>
 
 namespace nvexec {

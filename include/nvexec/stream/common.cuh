@@ -18,7 +18,6 @@
 #include <atomic>
 #include <stdexec/execution.hpp>
 
-#include <nvexec/detail/cuda_fwd.cuh>
 #include <cuda/std/type_traits>
 #include <cuda/std/tuple>
 #include <optional>
