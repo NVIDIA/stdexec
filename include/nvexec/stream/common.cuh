@@ -119,12 +119,10 @@ namespace nvexec {
 
         template <stdexec::__none_of<get_stream_t> Tag, 
                   stdexec::same_as<stream_env> Self,
-                  class... As _NVCXX_CAPTURE_PACK(As)>
+                  class... As>
             requires stdexec::__callable<Tag, const BaseEnv&, As...>
           friend auto tag(Tag tag, const Self& self, As&&... as) noexcept {
-            _NVCXX_EXPAND_PACK(As, as, 
-                return ((Tag&&)tag)(self.base_env_, (As&&)as...);
-            ); 
+            return ((Tag&&)tag)(self.base_env_, (As&&)as...);
           }
       };
 
@@ -168,11 +166,9 @@ namespace nvexec {
           template <stdexec::__one_of<std::execution::set_value_t,
                                       std::execution::set_error_t,
                                       std::execution::set_stopped_t> Tag,
-                    class... As _NVCXX_CAPTURE_PACK(As)>
+                    class... As>
             friend void tag_invoke(Tag tag, stream_enqueue_receiver&& self, As&&... as) noexcept {
-              _NVCXX_EXPAND_PACK(As, as,
-                self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
-              );
+              self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
               self.producer_(self.task_);
             }
 
@@ -252,18 +248,16 @@ namespace nvexec {
         operation_state_base_t(outer_receiver_t receiver)
           : receiver_(receiver) {}
 
-        template <class Tag, class... As _NVCXX_CAPTURE_PACK(As)>
+        template <class Tag, class... As>
         void propagate_completion_signal(Tag tag, As&&... as) noexcept {
-          _NVCXX_EXPAND_PACK(As, as,
-            if constexpr (stream_receiver<outer_receiver_t>) {
-              tag((outer_receiver_t&&)receiver_, (As&&)as...);
-            } else {
-              detail::continuation_kernel
-                <std::decay_t<outer_receiver_t>, Tag, As...>
-                <<<1, 1, 0, stream_>>>(
-                  receiver_, tag, (As&&)as...);
-            }
-          );
+          if constexpr (stream_receiver<outer_receiver_t>) {
+            tag((outer_receiver_t&&)receiver_, (As&&)as...);
+          } else {
+            detail::continuation_kernel
+              <std::decay_t<outer_receiver_t>, Tag, As...>
+              <<<1, 1, 0, stream_>>>(
+                receiver_, tag, (As&&)as...);
+          }
         }
 
         cudaStream_t allocate() {
@@ -295,11 +289,9 @@ namespace nvexec {
         template <stdexec::__one_of<std::execution::set_value_t,
                                     std::execution::set_error_t,
                                     std::execution::set_stopped_t> Tag,
-                  class... As  _NVCXX_CAPTURE_PACK(As)>
+                  class... As >
         friend void tag_invoke(Tag tag, propagate_receiver_t&& self, As&&... as) noexcept {
-          _NVCXX_EXPAND_PACK(As, as,
-            self.operation_state_.template propagate_completion_signal<Tag, As...>(tag, (As&&)as...);
-          );
+          self.operation_state_.template propagate_completion_signal<Tag, As...>(tag, (As&&)as...);
         }
 
         friend std::execution::env_of_t<stdexec::__t<ReceiverId>>

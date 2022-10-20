@@ -143,11 +143,9 @@ namespace reduce_ {
 
       template <stdexec::__one_of<std::execution::set_error_t,
                               std::execution::set_stopped_t> Tag,
-                class... As _NVCXX_CAPTURE_PACK(As)>
+                class... As>
         friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-          _NVCXX_EXPAND_PACK(As, as,
-            self.op_state_.propagate_completion_signal(tag, (As&&)as...);
-          );
+          self.op_state_.propagate_completion_signal(tag, (As&&)as...);
         }
 
       friend std::execution::env_of_t<Receiver> tag_invoke(std::execution::get_env_t, const receiver_t& self) {
