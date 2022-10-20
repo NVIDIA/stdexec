@@ -43,37 +43,33 @@ namespace bulk {
       operation_state_base_t<ReceiverId>& op_state_;
 
     public:
-      template <class... As _NVCXX_CAPTURE_PACK(As)>
+      template <class... As>
         friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, As&&... as)
           noexcept requires stdexec::__callable<Fun, Shape, As...> {
           operation_state_base_t<ReceiverId> &op_state = self.op_state_;
 
-          _NVCXX_EXPAND_PACK(As, as,
-            if (self.shape_) {
-              cudaStream_t stream = op_state.stream_;
-              constexpr int block_threads = 256;
-              const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1) / block_threads;
-              kernel
-                <block_threads, Shape, Fun, As...>
-                  <<<grid_blocks, block_threads, 0, stream>>>(
-                    self.shape_, self.f_, (As&&)as...);
-            }
+          if (self.shape_) {
+            cudaStream_t stream = op_state.stream_;
+            constexpr int block_threads = 256;
+            const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1) / block_threads;
+            kernel
+              <block_threads, Shape, Fun, As...>
+                <<<grid_blocks, block_threads, 0, stream>>>(
+                  self.shape_, self.f_, (As&&)as...);
+          }
 
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-              op_state.propagate_completion_signal(std::execution::set_value, (As&&)as...);
-            } else {
-              op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
-            }
-          );
+          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+            op_state.propagate_completion_signal(std::execution::set_value, (As&&)as...);
+          } else {
+            op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
+          }
         }
 
       template <stdexec::__one_of<std::execution::set_error_t,
                                   std::execution::set_stopped_t> Tag, 
-                class... As _NVCXX_CAPTURE_PACK(As)>
+                class... As>
         friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-          _NVCXX_EXPAND_PACK(As, as,
-            self.op_state_.propagate_completion_signal(tag, (As&&)as...);
-          );
+          self.op_state_.propagate_completion_signal(tag, (As&&)as...);
         }
 
       friend std::execution::env_of_t<Receiver> tag_invoke(std::execution::get_env_t, const receiver_t& self) {
@@ -185,7 +181,7 @@ namespace multi_gpu_bulk {
       }
 
     public:
-      template <class... As _NVCXX_CAPTURE_PACK(As)>
+      template <class... As>
         friend void tag_invoke(std::execution::set_value_t, receiver_t&& self, As&&... as)
           noexcept requires stdexec::__callable<Fun, Shape, As...> {
           operation_t<SenderId, ReceiverId, Shape, Fun> &op_state = self.op_state_;
@@ -195,65 +191,61 @@ namespace multi_gpu_bulk {
           cudaStream_t baseline_stream = op_state.stream_;
           cudaEventRecord(op_state.ready_to_launch_, baseline_stream);
 
-          _NVCXX_EXPAND_PACK(As, as,
-            if (self.shape_) {
-              constexpr int block_threads = 256;
-              for (int dev = 0; dev < op_state.num_devices_; dev++) {
-                if (op_state.current_device_ != dev) {
-                  cudaStream_t stream = op_state.streams_[dev];
-                  auto [begin, end] = even_share(self.shape_, dev, op_state.num_devices_);
-                  auto shape = static_cast<int>(end - begin);
-                  const int grid_blocks = (shape + block_threads - 1) / block_threads;
-
-                  if (begin < end) {
-                    cudaSetDevice(dev);
-                    cudaStreamWaitEvent(stream, op_state.ready_to_launch_);
-                    kernel
-                      <block_threads, Shape, Fun, As...>
-                        <<<grid_blocks, block_threads, 0, stream>>>(
-                          begin, end, self.f_, (As&&)as...);
-                    cudaEventRecord(op_state.ready_to_complete_[dev], op_state.streams_[dev]);
-                  }
-                }
-              }
-
-              {
-                const int dev = op_state.current_device_;
-                cudaSetDevice(dev);
+          if (self.shape_) {
+            constexpr int block_threads = 256;
+            for (int dev = 0; dev < op_state.num_devices_; dev++) {
+              if (op_state.current_device_ != dev) {
+                cudaStream_t stream = op_state.streams_[dev];
                 auto [begin, end] = even_share(self.shape_, dev, op_state.num_devices_);
                 auto shape = static_cast<int>(end - begin);
                 const int grid_blocks = (shape + block_threads - 1) / block_threads;
 
                 if (begin < end) {
+                  cudaSetDevice(dev);
+                  cudaStreamWaitEvent(stream, op_state.ready_to_launch_);
                   kernel
                     <block_threads, Shape, Fun, As...>
-                      <<<grid_blocks, block_threads, 0, baseline_stream>>>(
+                      <<<grid_blocks, block_threads, 0, stream>>>(
                         begin, end, self.f_, (As&&)as...);
-                }
-              }
-
-              for (int dev = 0; dev < op_state.num_devices_; dev++) {
-                if (dev != op_state.current_device_) {
-                  cudaStreamWaitEvent(baseline_stream, op_state.ready_to_complete_[dev]);
+                  cudaEventRecord(op_state.ready_to_complete_[dev], op_state.streams_[dev]);
                 }
               }
             }
 
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-              op_state.propagate_completion_signal(std::execution::set_value, (As&&)as...);
-            } else {
-              op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
+            {
+              const int dev = op_state.current_device_;
+              cudaSetDevice(dev);
+              auto [begin, end] = even_share(self.shape_, dev, op_state.num_devices_);
+              auto shape = static_cast<int>(end - begin);
+              const int grid_blocks = (shape + block_threads - 1) / block_threads;
+
+              if (begin < end) {
+                kernel
+                  <block_threads, Shape, Fun, As...>
+                    <<<grid_blocks, block_threads, 0, baseline_stream>>>(
+                      begin, end, self.f_, (As&&)as...);
+              }
             }
-          );
+
+            for (int dev = 0; dev < op_state.num_devices_; dev++) {
+              if (dev != op_state.current_device_) {
+                cudaStreamWaitEvent(baseline_stream, op_state.ready_to_complete_[dev]);
+              }
+            }
+          }
+
+          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+            op_state.propagate_completion_signal(std::execution::set_value, (As&&)as...);
+          } else {
+            op_state.propagate_completion_signal(std::execution::set_error, std::move(status));
+          }
         }
 
       template <stdexec::__one_of<std::execution::set_error_t,
                                   std::execution::set_stopped_t> Tag, 
-                class... As _NVCXX_CAPTURE_PACK(As)>
+                class... As>
         friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-          _NVCXX_EXPAND_PACK(As, as,
-            self.op_state_.propagate_completion_signal(tag, (As&&)as...);
-          );
+          self.op_state_.propagate_completion_signal(tag, (As&&)as...);
         }
 
       friend std::execution::env_of_t<Receiver> tag_invoke(std::execution::get_env_t, const receiver_t& self) {

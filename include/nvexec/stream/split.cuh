@@ -42,23 +42,19 @@ namespace nvexec::detail::stream {
         template <stdexec::__one_of<std::execution::set_value_t, 
                                     std::execution::set_error_t, 
                                     std::execution::set_stopped_t> Tag, 
-                  class... As _NVCXX_CAPTURE_PACK(As)>
+                  class... As>
           friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
             SharedState &state = self.sh_state_;
 
             if constexpr (stream_sender<Sender>) {
               cudaStream_t stream = state.op_state2_.stream_;
-              _NVCXX_EXPAND_PACK(As, as,
-                using tuple_t = decayed_tuple<Tag, As...>;
-                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-                copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
-              );
+              using tuple_t = decayed_tuple<Tag, As...>;
+              state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+              copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
               state.status_ = STDEXEC_DBG_ERR(cudaEventRecord(state.event_, stream));
             } else {
-              _NVCXX_EXPAND_PACK(As, as,
-                using tuple_t = decayed_tuple<Tag, As...>;
-                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-              );
+              using tuple_t = decayed_tuple<Tag, As...>;
+              state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
             }
 
             state.notify();
@@ -287,15 +283,13 @@ namespace nvexec::detail::stream {
                                         self.shared_state_};
         }
 
-      template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As _NVCXX_CAPTURE_PACK(As)>
+      template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
           requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, std::execution::get_completion_scheduler_t>) && 
             stdexec::__callable<Tag, const Sender&, As...>
         friend auto tag_invoke(Tag tag, const split_sender_t& self, As&&... as)
           noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
           -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
-          _NVCXX_EXPAND_PACK_RETURN(As, as,
-            return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-          )
+          return ((Tag&&) tag)(self.sndr_, (As&&) as...);
         }
 
       template <class... Tys>

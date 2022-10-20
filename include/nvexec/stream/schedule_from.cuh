@@ -39,19 +39,17 @@ namespace schedule_from {
       template <stdexec::__one_of<std::execution::set_value_t,
                                   std::execution::set_error_t,
                                   std::execution::set_stopped_t> Tag,
-                class... As  _NVCXX_CAPTURE_PACK(As)>
+                class... As >
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
         auto stream = self.operation_state_.stream_;
-        _NVCXX_EXPAND_PACK(As, as,
-          storage_t *storage = reinterpret_cast<storage_t*>(self.operation_state_.temp_storage_);
-          storage->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
+        storage_t *storage = reinterpret_cast<storage_t*>(self.operation_state_.temp_storage_);
+        storage->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
 
-          visit([&](auto& tpl) noexcept {
-            apply([&](auto tag, auto&... tas) noexcept {
-              self.operation_state_.template propagate_completion_signal(tag, tas...);
-            }, tpl);
-          }, *storage);
-        );
+        visit([&](auto& tpl) noexcept {
+          apply([&](auto tag, auto&... tas) noexcept {
+            self.operation_state_.template propagate_completion_signal(tag, tas...);
+          }, tpl);
+        }, *storage);
       }
 
       friend std::execution::env_of_t<stdexec::__t<ReceiverId>>
@@ -68,14 +66,12 @@ namespace schedule_from {
           return std::execution::connect(((Self&&)self).sender_, (Receiver&&)rcvr);
         }
 
-      template <stdexec::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+      template <stdexec::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As>
         requires stdexec::__callable<_Tag, const Sender&, _As...>
       friend auto tag_invoke(_Tag __tag, const source_sender_t& __self, _As&&... __as)
         noexcept(stdexec::__nothrow_callable<_Tag, const Sender&, _As...>)
         -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const Sender&, _As...> {
-        _NVCXX_EXPAND_PACK_RETURN(_As, _as,
-          return ((_Tag&&) __tag)(__self.sender_, (_As&&) __as...);
-        )
+        return ((_Tag&&) __tag)(__self.sender_, (_As&&) __as...);
       }
 
       template <stdexec::__decays_to<source_sender_t> _Self, class _Env>
@@ -119,14 +115,12 @@ template <class Scheduler, class SenderId>
       return {__self.hub_};
     }
 
-    template <stdexec::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+    template <stdexec::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As>
       requires stdexec::__callable<_Tag, const Sender&, _As...>
     friend auto tag_invoke(_Tag __tag, const schedule_from_sender_t& __self, _As&&... __as)
       noexcept(stdexec::__nothrow_callable<_Tag, const Sender&, _As...>)
       -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const Sender&, _As...> {
-      _NVCXX_EXPAND_PACK_RETURN(_As, _as,
-        return ((_Tag&&) __tag)(__self.sndr_, (_As&&) __as...);
-      )
+      return ((_Tag&&) __tag)(__self.sndr_, (_As&&) __as...);
     }
 
     template <stdexec::__decays_to<schedule_from_sender_t> _Self, class _Env>

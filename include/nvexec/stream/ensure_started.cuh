@@ -48,22 +48,18 @@ namespace nvexec::detail::stream {
         template <stdexec::__one_of<std::execution::set_value_t, 
                                     std::execution::set_error_t, 
                                     std::execution::set_stopped_t> Tag, 
-                  class... As _NVCXX_CAPTURE_PACK(As)>
+                  class... As>
           friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
             SharedState& state = *self.shared_state_;
 
             if constexpr (stream_sender<Sender>) {
               cudaStream_t stream = state.op_state2_.stream_;
-              _NVCXX_EXPAND_PACK(As, as,
-                using tuple_t = decayed_tuple<Tag, As...>;
-                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-                copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
-              )
+              using tuple_t = decayed_tuple<Tag, As...>;
+              state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+              copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
             } else {
-              _NVCXX_EXPAND_PACK(As, as,
-                using tuple_t = decayed_tuple<Tag, As...>;
-                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-              );
+              using tuple_t = decayed_tuple<Tag, As...>;
+              state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
             }
 
             state.notify();

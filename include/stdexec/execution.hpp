@@ -45,21 +45,6 @@
 #define _PRAGMA_IGNORE(__arg)
 #endif
 
-#if STDEXEC_NVHPC()
-#define _NVCXX_CAPTURE_PACK(_Xs) , class _NVCxxList = stdexec::__types<_Xs...>
-#define _NVCXX_EXPAND_PACK(_Xs, __xs, ...) \
-  [&]<class... _Xs>(stdexec::__types<_Xs...>*, auto*... __ptrs) -> decltype(auto) { \
-    return [&]<class... _Xs>(_Xs&&... __xs) -> decltype(auto) { \
-      __VA_ARGS__ \
-    }(((_Xs&&) *(std::add_pointer_t<_Xs>) __ptrs)...); \
-  }((_NVCxxList*) nullptr, &__xs...);
-#define _NVCXX_EXPAND_PACK_RETURN return _NVCXX_EXPAND_PACK
-#else
-#define _NVCXX_CAPTURE_PACK(_Xs)
-#define _NVCXX_EXPAND_PACK(_Xs, __xs, ...) __VA_ARGS__
-#define _NVCXX_EXPAND_PACK_RETURN(_Xs, __xs, ...) __VA_ARGS__
-#endif
-
 #if STDEXEC_NVHPC() || STDEXEC_GCC()
 #define STDEXEC_NON_LEXICAL_FRIENDSHIP 1
 #endif
@@ -175,13 +160,11 @@ namespace stdexec {
         template <
             __none_of<typename _Withs::__tag_t..., get_completion_signatures_t> _Tag,
             same_as<__env_> _Self,
-            class... _As _NVCXX_CAPTURE_PACK(_As)>
+            class... _As>
             requires __callable<_Tag, const typename _Self::__base_env_t&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as) noexcept
             -> __call_result_if_t<same_as<_Self, __env_>, _Tag, const typename _Self::__base_env_t&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
-            )
+            return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
           }
       };
     template <class _BaseEnv, class... _Withs>
@@ -1678,15 +1661,13 @@ namespace stdexec {
           struct __receiver {
             __operation* __op_state_;
             // Forward all the receiver ops, and delete the operation state.
-            template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+            template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
               requires __callable<_Tag, _Receiver, _As...>
             friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as)
                 noexcept(__nothrow_callable<_Tag, _Receiver, _As...>) {
               // Delete the state as cleanup:
-              _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-                std::unique_ptr<__operation> __g{__self.__op_state_};
-                return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
-              )
+              std::unique_ptr<__operation> __g{__self.__op_state_};
+              return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
             }
             // Forward all receiever queries.
             friend auto tag_invoke(get_env_t, const __receiver& __self)
@@ -2109,14 +2090,12 @@ namespace stdexec {
             return execution::connect(((__t&&) __self).base(), (_Receiver&&) __rcvr);
           }
 
-          template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <tag_category<forwarding_sender_query> _Tag, class... _As>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Base&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
-            )
+            return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
           }
 
          protected:
@@ -2160,22 +2139,18 @@ namespace stdexec {
               }
             }
 
-          template <same_as<set_value_t> _SetValue, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <same_as<set_value_t> _SetValue, class... _As>
           friend auto tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept
             -> decltype(_CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...)) {
-            _NVCXX_EXPAND_PACK(_As, __as,
-              static_assert(noexcept(_CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...)));
-              _CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...);
-            )
+            static_assert(noexcept(_CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...)));
+            _CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...);
           }
 
-          template <same_as<set_value_t> _SetValue, class _D = _Derived, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <same_as<set_value_t> _SetValue, class _D = _Derived, class... _As>
             requires _MISSING_MEMBER(_D, set_value) &&
               tag_invocable<set_value_t, __base_t<_D>, _As...>
           friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
-            _NVCXX_EXPAND_PACK(_As, __as,
-              execution::set_value(__get_base((_D&&) __self), (_As&&) __as...);
-            )
+            execution::set_value(__get_base((_D&&) __self), (_As&&) __as...);
           }
 
           template <same_as<set_error_t> _SetError, class _Error>
@@ -2244,14 +2219,12 @@ namespace stdexec {
             execution::start(__c_cast<__t>(__self).base());
           }
 
-          template <__none_of<start_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <__none_of<start_t> _Tag, class... _As>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
             -> __call_result_if_t<__none_of<_Tag, start_t>, _Tag, const _Base&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
-            )
+            return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
           }
 
          protected:
@@ -2284,14 +2257,12 @@ namespace stdexec {
             return execution::schedule(__c_cast<__t>((_Self&&) __self).base());
           }
 
-          template <tag_category<forwarding_scheduler_query> _Tag, same_as<_Derived> _Self, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <tag_category<forwarding_scheduler_query> _Tag, same_as<_Derived> _Self, class... _As>
             requires __callable<_Tag, const _Base&, _As...>
           friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_scheduler_query>, _Tag, const _Base&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
-            )
+            return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
           }
 
          protected:
@@ -2874,19 +2845,17 @@ namespace stdexec {
         __sh_state<_SenderId, _EnvId>& __sh_state_;
 
       public:
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
         friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
           __sh_state<_SenderId, _EnvId>& __state = __self.__sh_state_;
 
-          _NVCXX_EXPAND_PACK(_As, __as,
-            try {
-              using __tuple_t = __decayed_tuple<_Tag, _As...>;
-              __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
-            } catch (...) {
-              using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
-              __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
-            }
-          )
+          try {
+            using __tuple_t = __decayed_tuple<_Tag, _As...>;
+            __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
+          } catch (...) {
+            using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
+            __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
+          }
           __state.__notify();
         }
 
@@ -3075,15 +3044,13 @@ namespace stdexec {
                                           __self.__shared_state_};
           }
 
-        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As>
             requires (!__is_instance_of<_Tag, get_completion_scheduler_t>) &&
               __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-            )
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 
         template <__decays_to<__sender> _Self, class _OtherEnv>
@@ -3192,15 +3159,13 @@ namespace stdexec {
           : __shared_state_(__shared_state.__intrusive_from_this()) {
         }
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
         friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
           __sh_state<_SenderId, _EnvId>& __state = *__self.__shared_state_;
 
           try {
-            _NVCXX_EXPAND_PACK(_As, __as,
-              using __tuple_t = __decayed_tuple<_Tag, _As...>;
-              __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
-            )
+            using __tuple_t = __decayed_tuple<_Tag, _As...>;
+            __state.__data_.template emplace<__tuple_t>(__tag, (_As &&) __as...);
           } catch (...) {
             using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
             __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
@@ -3659,33 +3624,29 @@ namespace stdexec {
               set_error(std::move(__self).base(), (_Error&&) __err);
             }
 
-          template <__one_of<_Let> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <__one_of<_Let> _Tag, class... _As>
               requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
                 sender_to<__apply_result_t<_Fun, __which_tuple_t<_As...>&>, _Receiver>
             friend void tag_invoke(_Tag, __receiver&& __self, _As&&... __as) noexcept try {
-              _NVCXX_EXPAND_PACK(_As, __as,
-                using __tuple_t = __which_tuple_t<_As...>;
-                using __op_state_t = __mapply<__q<__op_state_for_t>, __tuple_t>;
-                auto& __args =
-                  __self.__op_state_->__storage_.__args_.template emplace<__tuple_t>((_As&&) __as...);
-                auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
-                  __conv{[&] {
-                    return connect(std::apply(std::move(__self.__op_state_->__fun_), __args), std::move(__self).base());
-                  }}
-                );
-                start(__op);
-              )
+              using __tuple_t = __which_tuple_t<_As...>;
+              using __op_state_t = __mapply<__q<__op_state_for_t>, __tuple_t>;
+              auto& __args =
+                __self.__op_state_->__storage_.__args_.template emplace<__tuple_t>((_As&&) __as...);
+              auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
+                __conv{[&] {
+                  return connect(std::apply(std::move(__self.__op_state_->__fun_), __args), std::move(__self).base());
+                }}
+              );
+              start(__op);
             } catch(...) {
               set_error(std::move(__self).base(), std::current_exception());
             }
 
-          template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
               requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
             friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
-              _NVCXX_EXPAND_PACK(_As, __as,
-                static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
-                __tag(std::move(__self).base(), (_As&&) __as...);
-              )
+              static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
+              __tag(std::move(__self).base(), (_As&&) __as...);
             }
 
           friend auto tag_invoke(get_env_t, const __receiver& __self)
@@ -3767,14 +3728,12 @@ namespace stdexec {
               };
             }
 
-          template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <tag_category<forwarding_sender_query> _Tag, class... _As>
               requires __callable<_Tag, const _Sender&, _As...>
             friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
               noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-              _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-                return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-              )
+              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
 
           template <__decays_to<__sender> _Self, class _Env>
@@ -3913,14 +3872,12 @@ namespace stdexec {
             return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
           }
 
-        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-            )
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 
         template <class... _Tys>
@@ -4222,12 +4179,10 @@ namespace stdexec {
           __self.__op_state_->__complete();
         }
 
-        template <__one_of<set_error_t, set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+        template <__one_of<set_error_t, set_stopped_t> _Tag, class... _As>
           requires __callable<_Tag, _Receiver, _As...>
         friend void tag_invoke(_Tag, __receiver2&& __self, _As&&... __as) noexcept {
-          _NVCXX_EXPAND_PACK(_As, __as,
-            _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
-          )
+          _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
         }
 
         friend auto tag_invoke(get_env_t, const __receiver2& __self)
@@ -4273,17 +4228,15 @@ namespace stdexec {
           start(*__self.__op_state_->__state2_);
         }
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args _NVCXX_CAPTURE_PACK(_Args)>
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args>
           requires __callable<_Tag, _Receiver, _Args...>
         friend void tag_invoke(_Tag __tag, __receiver1&& __self, _Args&&... __args) noexcept {
-          _NVCXX_EXPAND_PACK(_Args, __args,
-            __try_call(
-              (_Receiver&&) __self.__op_state_->__rcvr_,
-              __fun_c<__complete_<_Tag, _Args...>>,
-              (_Tag&&) __tag,
-              (__receiver1&&) __self,
-              (_Args&&) __args...);
-          )
+          __try_call(
+            (_Receiver&&) __self.__op_state_->__rcvr_,
+            __fun_c<__complete_<_Tag, _Args...>>,
+            (_Tag&&) __tag,
+            (__receiver1&&) __self,
+            (_Args&&) __args...);
         }
 
         friend auto tag_invoke(get_env_t, const __receiver1& __self)
@@ -4355,14 +4308,12 @@ namespace stdexec {
           return __self.__sched_;
         }
 
-        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As>
           requires __callable<_Tag, const _Sender&, _As...>
         friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
           noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
           -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-          _NVCXX_EXPAND_PACK_RETURN(_As, _as,
-            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-          )
+          return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
         }
 
         template <class... _Errs>
@@ -4568,14 +4519,12 @@ namespace stdexec {
                     (_Receiver&&) __rcvr};
           }
 
-          template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <tag_category<forwarding_sender_query> _Tag, class... _As>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-            )
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 
           template <class...>
@@ -4715,14 +4664,12 @@ namespace stdexec {
               __receiver_t<_Receiver>{(_Receiver&&) __rcvr});
         }
 
-        template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
+        template <tag_category<forwarding_sender_query> _Tag, class... _As>
             requires __callable<_Tag, const _Sender&, _As...>
           friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-            )
+            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
 
         template <class _Env>
@@ -5246,12 +5193,10 @@ namespace stdexec {
               __state_->__data_.template emplace<2>(std::make_exception_ptr((_Error&&) __err));
             __loop_->finish();
           }
-          template <class _Sender2 = _Sender, class... _As _NVCXX_CAPTURE_PACK(_As)>
+          template <class _Sender2 = _Sender, class... _As>
             requires constructible_from<__sync_wait_result_t<_Sender2>, _As...>
           friend void tag_invoke(execution::set_value_t, __receiver&& __rcvr, _As&&... __as) noexcept try {
-            _NVCXX_EXPAND_PACK(_As, __as,
-              __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
-            )
+            __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
             __rcvr.__loop_->finish();
           } catch(...) {
             __rcvr.__set_error(std::current_exception());
