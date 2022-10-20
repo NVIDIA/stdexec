@@ -411,6 +411,28 @@ namespace nvexec {
         };
     }
 
+    template <class Sender, class OuterReceiver>
+        requires stream_receiver<OuterReceiver>
+      using exit_operation_state_t 
+        = detail::operation_state_t<
+            stdexec::__x<Sender>, 
+            stdexec::__x<propagate_receiver_t<stdexec::__x<OuterReceiver>>>, 
+            stdexec::__x<OuterReceiver>>;
+
+    template <class Sender, class OuterReceiver>
+      exit_operation_state_t<Sender, OuterReceiver>
+      exit_op_state(queue::task_hub_t* hub, Sender&& sndr, OuterReceiver&& rcvr) noexcept {
+        using ReceiverId = stdexec::__x<OuterReceiver>;
+        return exit_operation_state_t<Sender, OuterReceiver>(
+          (Sender&&)sndr, 
+          hub, 
+          (OuterReceiver&&)rcvr, 
+          [](operation_state_base_t<ReceiverId>& op) -> propagate_receiver_t<ReceiverId> {
+            return propagate_receiver_t<ReceiverId>{{}, op};
+          }
+        );
+      }
+
     template <class S>
       concept stream_completing_sender =
         std::execution::sender<S> &&
