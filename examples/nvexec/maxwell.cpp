@@ -23,6 +23,8 @@
 #include "maxwell/cuda.cuh"
 #endif
 
+#define ENABLE_SIGNLE_THREAD_CONTEXTS 1
+
 int main(int argc, char *argv[]) {
   auto params = parse_cmd(argc, argv);
 
@@ -33,9 +35,9 @@ int main(int argc, char *argv[]) {
               << "\t--inner-iterations\n"
               << "\t--run-std\n"
               << "\t--run-stdpar\n"
-              << "\t--run-cpp\n"
+              // << "\t--run-cpp\n"
               << "\t--run-cuda\n"
-              << "\t--run-inline-scheduler\n"
+              // << "\t--run-inline-scheduler\n"
               << "\t--run-thread-pool-scheduler\n"
               << "\t--run-stream-scheduler\n"
               << "\t--run-multi-gpu-scheduler\n"
@@ -68,9 +70,12 @@ int main(int argc, char *argv[]) {
   report_header();
 
   // S&R
+#if ENABLE_SIGNLE_THREAD_CONTEXTS 
   if (value(params, "run-inline-scheduler")) {
     run_snr_on("CPU (snr inline)", exec::inline_scheduler{});
   }
+#endif
+
   if (value(params, "run-thread-pool-scheduler")) {
     exec::static_thread_pool pool{std::thread::hardware_concurrency()};
     run_snr_on("CPU (snr thread pool)", pool.get_scheduler());
@@ -99,7 +104,7 @@ int main(int argc, char *argv[]) {
     nvexec::multi_gpu_stream_context stream_context{};
     run_snr_on("GPU (multi-GPU)", stream_context.get_scheduler());
   }
-  #endif
+#endif
 
   // Naive
   if (value(params, "run-std")) {
@@ -130,6 +135,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
+#if ENABLE_SIGNLE_THREAD_CONTEXTS 
   if (value(params, "run-cpp")) {
     grid_t grid{N, false /* !gpu */};
 
@@ -142,5 +148,6 @@ int main(int argc, char *argv[]) {
       store_results(accessor);
     }
   }
+#endif
 }
 
