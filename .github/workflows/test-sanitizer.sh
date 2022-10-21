@@ -18,6 +18,6 @@ docker run ${DOCKER_RUN_PARAMS} \
     -e INPUT_CC='clang-13' \
     -e INPUT_MAKEFLAGS='-j 4' \
     -e INPUT_CHECKS='sanitize=address sanitize=undefined' \
-    lucteo/action-cxx-toolkit.main:latest
+    ghcr.io/trxcllnt/action-cxx-toolkit:main
 status=$?
 printStatus $status
