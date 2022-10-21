@@ -40,6 +40,7 @@ namespace nvexec {
 
 #include <optional>
 #include <exec/inline_scheduler.hpp>
+#include <exec/on.hpp>
 #include <exec/static_thread_pool.hpp>
 
 namespace ex = std::execution;
@@ -223,15 +224,24 @@ namespace repeat_n_detail {
 struct repeat_n_t {
 #ifdef _NVHPC_CUDA
   template <nvexec::detail::stream::stream_completing_sender Sender>
-    nvexec::detail::stream::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>> operator()(std::size_t n, Sender &&__sndr) const noexcept {
-      return nvexec::detail::stream::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>>{{}, std::forward<Sender>(__sndr), n};
+    auto operator()(Sender &&__sndr, std::size_t n) const noexcept
+      -> nvexec::detail::stream::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>> {
+      return nvexec::detail::stream::repeat_n::repeat_n_sender_t<stdexec::__x<Sender>>{
+        {}, std::forward<Sender>(__sndr), n};
     }
 #endif
 
   template <class Sender>
-    repeat_n_detail::repeat_n_sender_t<stdexec::__x<Sender>> operator()(std::size_t n, Sender &&__sndr) const noexcept {
-      return repeat_n_detail::repeat_n_sender_t<stdexec::__x<Sender>>{std::forward<Sender>(__sndr), n};
+    auto operator()(Sender &&__sndr, std::size_t n) const noexcept
+      -> repeat_n_detail::repeat_n_sender_t<stdexec::__x<Sender>> {
+      return repeat_n_detail::repeat_n_sender_t<stdexec::__x<Sender>>{
+        std::forward<Sender>(__sndr), n};
     }
+
+  auto operator()(std::size_t n) const noexcept
+    -> stdexec::__binder_back<repeat_n_t, std::size_t> {
+    return {{}, {}, n};
+  }
 };
 
 inline constexpr repeat_n_t repeat_n{};
@@ -254,15 +264,15 @@ auto maxwell_eqs_snr(float dt,
                      std::execution::scheduler auto &&writer) {
   auto write = dump_vtk(write_results, report_step, accessor);
 
-  return repeat_n(
-           n_outer_iterations,
-             repeat_n(
-               n_inner_iterations,
-                 ex::schedule(computer)
-               | ex::bulk(accessor.cells, update_h(accessor))
-               | ex::bulk(accessor.cells, update_e(time, dt, accessor)))
-           | ex::transfer(writer)
-           | ex::then(std::move(write)));
+
+  return exec::on(writer,
+                ex::just()
+              | exec::on(computer,
+                        ex::bulk(accessor.cells, update_h(accessor))
+                      | ex::bulk(accessor.cells, update_e(time, dt, accessor))
+                      | repeat_n(n_inner_iterations))
+              | ex::then(std::move(write))
+              | repeat_n(n_outer_iterations));
 }
 
 void run_snr(float dt,
