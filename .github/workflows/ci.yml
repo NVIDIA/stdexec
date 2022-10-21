@@ -35,10 +35,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - { GPU: "v100", DRIVER: "450", ARCH: "amd64" }
+          # CUDA 11.0's libcu++ version is too old for stdexec
+          # - { GPU: "v100", DRIVER: "450", ARCH: "amd64" }
           - { GPU: "v100", DRIVER: "495", ARCH: "amd64" }
-          # Note: can't do ARM64 until we build multiarch action-cxx-toolkit images
-          # - { GPU: "v100", DRIVER: "450", ARCH: "arm64" }
+          # Can't do ARM64 until we build multiarch action-cxx-toolkit images
           # - { GPU: "v100", DRIVER: "495", ARCH: "arm64" }
           # - { GPU: "a100", DRIVER: "495", ARCH: "arm64" }
     runs-on:
@@ -48,7 +48,6 @@ jobs:
       - ${{ matrix.ARCH }}
     container:
       image: ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-cuda_multi-nvhpc22.7
-      options: --entrypoint /bin/bash
       env:
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
         INPUT_CC: "mpicc"
@@ -57,9 +56,9 @@ jobs:
         INPUT_CHECKS: "build test"
         NVLOCALRC: "/opt/nvidia/localrc"
         INPUT_PREBUILD_COMMAND: |
-          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-          apt update && apt install -y --no-install-recommends git cmake;
-          makelocalrc -d /opt/nvidia -x "$(dirname $(which nvc++))";
+          'wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -'
+          'apt update && apt install -y --no-install-recommends git cmake'
+          'makelocalrc -d /opt/nvidia -x "$(dirname $(which nvc++))"'
     steps:
       - name: Run nvidia-smi to make sure GPU is working
         run: nvidia-smi
