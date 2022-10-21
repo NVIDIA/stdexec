@@ -18,7 +18,18 @@ If:
 CompileFlags:
   Add:
     # Allow variadic CUDA functions
-    - "-Xclang -fcuda-allow-variadic-functions"
+    - "-Xclang=-fcuda-allow-variadic-functions"
+
+---
+
+# Use clang++ in CUDA mode to provide intellisense for files with `nvexec` in their path
+If:
+  PathMatch: (include|examples|test)/nvexec.*
+CompileFlags:
+  Compiler: clang++
+  Add:
+    - -x
+    - cuda
 
 ---
 
@@ -29,7 +40,9 @@ CompileFlags:
     # report all errors
     - "-ferror-limit=0"
     - "-D_NVHPC_CUDA=1"
+    - "-ftemplate-backtrace-limit=0"
   Remove:
+    - -stdpar
     # strip CUDA fatbin args
     - "-Xfatbin*"
     - "-gpu=*"
