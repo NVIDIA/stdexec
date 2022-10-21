@@ -1939,60 +1939,60 @@ namespace stdexec {
 
   namespace __closure {
     template <class _T0, class _T1>
-    struct __compose : sender_adaptor_closure<__compose<_T0, _T1>> {
-      [[no_unique_address]] _T0 __t0_;
-      [[no_unique_address]] _T1 __t1_;
+      struct __compose : sender_adaptor_closure<__compose<_T0, _T1>> {
+        [[no_unique_address]] _T0 __t0_;
+        [[no_unique_address]] _T1 __t1_;
 
-      template <sender _Sender>
-        requires __callable<_T0, _Sender> && __callable<_T1, __call_result_t<_T0, _Sender>>
-      __call_result_t<_T1, __call_result_t<_T0, _Sender>> operator()(_Sender&& __sndr) && {
-        return ((_T1&&) __t1_)(((_T0&&) __t0_)((_Sender&&) __sndr));
-      }
+        template <sender _Sender>
+          requires __callable<_T0, _Sender> && __callable<_T1, __call_result_t<_T0, _Sender>>
+        __call_result_t<_T1, __call_result_t<_T0, _Sender>> operator()(_Sender&& __sndr) && {
+          return ((_T1&&) __t1_)(((_T0&&) __t0_)((_Sender&&) __sndr));
+        }
 
-      template <sender _Sender>
-        requires __callable<const _T0&, _Sender> && __callable<const _T1&, __call_result_t<const _T0&, _Sender>>
-      __call_result_t<_T1, __call_result_t<_T0, _Sender>> operator()(_Sender&& __sndr) const & {
-        return __t1_(__t0_((_Sender&&) __sndr));
-      }
-    };
+        template <sender _Sender>
+          requires __callable<const _T0&, _Sender> && __callable<const _T1&, __call_result_t<const _T0&, _Sender>>
+        __call_result_t<_T1, __call_result_t<_T0, _Sender>> operator()(_Sender&& __sndr) const & {
+          return __t1_(__t0_((_Sender&&) __sndr));
+        }
+      };
 
     template <__class _D>
       struct sender_adaptor_closure
       {};
 
     template <__sender_adaptor_closure _T0, __sender_adaptor_closure _T1>
-    __compose<remove_cvref_t<_T0>, remove_cvref_t<_T1>> operator|(_T0&& __t0, _T1&& __t1) {
-      return {{}, (_T0&&) __t0, (_T1&&) __t1};
-    }
+      __compose<remove_cvref_t<_T0>, remove_cvref_t<_T1>> operator|(_T0&& __t0, _T1&& __t1) {
+        return {{}, (_T0&&) __t0, (_T1&&) __t1};
+      }
 
     template <sender _Sender, __sender_adaptor_closure_for<_Sender> _Closure>
-    __call_result_t<_Closure, _Sender> operator|(_Sender&& __sndr, _Closure&& __clsur) {
-      return ((_Closure&&) __clsur)((_Sender&&) __sndr);
-    }
+      __call_result_t<_Closure, _Sender> operator|(_Sender&& __sndr, _Closure&& __clsur) {
+        return ((_Closure&&) __clsur)((_Sender&&) __sndr);
+      }
 
     template <class _Fun, class... _As>
-    struct __binder_back : sender_adaptor_closure<__binder_back<_Fun, _As...>> {
-      [[no_unique_address]] _Fun __fun_;
-      std::tuple<_As...> __as_;
+      struct __binder_back : sender_adaptor_closure<__binder_back<_Fun, _As...>> {
+        [[no_unique_address]] _Fun __fun_;
+        std::tuple<_As...> __as_;
 
-      template <sender _Sender>
-        requires __callable<_Fun, _Sender, _As...>
-      __call_result_t<_Fun, _Sender, _As...> operator()(_Sender&& __sndr) &&
-        noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
-        return std::apply([&__sndr, this](_As&... __as) {
-            return ((_Fun&&) __fun_)((_Sender&&) __sndr, (_As&&) __as...);
-          }, __as_);
-      }
+        template <sender _Sender>
+          requires __callable<_Fun, _Sender, _As...>
+        __call_result_t<_Fun, _Sender, _As...> operator()(_Sender&& __sndr) &&
+          noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
+          return std::apply([&__sndr, this](_As&... __as) {
+              return ((_Fun&&) __fun_)((_Sender&&) __sndr, (_As&&) __as...);
+            }, __as_);
+        }
 
-      template <sender _Sender>
-        requires __callable<const _Fun&, _Sender, const _As&...>
-      __call_result_t<const _Fun&, _Sender, const _As&...> operator()(_Sender&& __sndr) const &
-        noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>) {
-        return std::apply([&__sndr, this](const _As&... __as) {
-            return __fun_((_Sender&&) __sndr, __as...);
-          }, __as_);
-      }
-    };
+        template <sender _Sender>
+          requires __callable<const _Fun&, _Sender, const _As&...>
+        __call_result_t<const _Fun&, _Sender, const _As&...> operator()(_Sender&& __sndr) const &
+          noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>) {
+          return std::apply([&__sndr, this](const _As&... __as) {
+              return __fun_((_Sender&&) __sndr, __as...);
+            }, __as_);
+        }
+      };
   } // namespace __closure
   using __closure::__binder_back;
 
@@ -5358,77 +5358,6 @@ namespace stdexec {
   inline constexpr sync_wait_t sync_wait{};
   using __sync_wait::sync_wait_with_variant_t;
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
-
-  namespace __create {
-    struct __void {
-      template <class _Fn>
-        void emplace(_Fn&& __fn) noexcept(__nothrow_callable<_Fn>) {
-          ((_Fn&&) __fn)();
-        }
-    };
-
-    template <class _Receiver, class _Args>
-      struct __context {
-        [[no_unique_address]] _Receiver receiver;
-        [[no_unique_address]] _Args args;
-      };
-
-    template <class _ReceiverId, class _FnId, class _ArgsId>
-      struct __operation {
-        using _Fn = __t<_FnId>;
-        using _Context = __context<__t<_ReceiverId>, __t<_ArgsId>>;
-        using _Result = __call_result_t<_Fn, _Context&>;
-        using _State = __if_c<same_as<_Result, void>, __void, std::optional<_Result>>;
-
-        [[no_unique_address]] _Context __ctx_;
-        [[no_unique_address]] _Fn __fn_;
-        [[no_unique_address]] _State __state_{};
-
-        friend void tag_invoke(start_t, __operation& __self) noexcept {
-          __self.__state_.emplace(__conv{
-            [&]() noexcept {
-              return ((_Fn&&) __self.__fn_)(__self.__ctx_);
-            }
-          });
-        }
-      };
-
-    template <class _Sigs, class _FnId, class _ArgsId>
-      struct __sender {
-        using _Fn = __t<_FnId>;
-        using _Args = __t<_ArgsId>;
-        using completion_signatures = _Sigs;
-
-        _Fn __fn_;
-        _Args __args_;
-
-        template <__decays_to<__sender> _Self, receiver_of<_Sigs> _Receiver>
-          requires __callable<_Fn, __context<_Receiver, _Args>&> &&
-            constructible_from<_Fn, __member_t<_Self, _Fn>> &&
-            constructible_from<_Args, __member_t<_Self, _Args>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          -> __operation<__x<decay_t<_Receiver>>, _FnId, _ArgsId> {
-          static_assert(__nothrow_callable<_Fn, __context<_Receiver, _Args>&>);
-          return {{(_Receiver&&) __rcvr, ((_Self&&) __self).__args_}, ((_Self&&) __self).__fn_};
-        }
-      };
-
-    template <__completion_signature... _Sigs>
-      struct __create_t {
-        using __compl_sigs = completion_signatures<_Sigs...>;
-
-        template <class _Fn, class... _Args>
-            requires move_constructible<_Fn> &&
-              constructible_from<__decayed_tuple<_Args...>, _Args...>
-          auto operator()(_Fn __fn, _Args&&... __args) const
-            -> __sender<__compl_sigs, __x<_Fn>, __x<__decayed_tuple<_Args...>>> {
-            return {(_Fn&&) __fn, {(_Args&&) __args...}};
-          }
-      };
-  } // namespace __create
-
-  template <__completion_signature... _Sigs>
-    inline constexpr __create::__create_t<_Sigs...> create {};
 } // namespace stdexec
 
 #include <stdexec/__detail/__p2300.hpp>

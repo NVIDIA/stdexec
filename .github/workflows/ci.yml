@@ -5,72 +5,108 @@ jobs:
   build-gcc-11:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - uses: docker://lucteo/action-cxx-toolkit.gcc11:latest
+      - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11
         with:
           cc: gcc-11
           checks: build test
           prebuild_command: |
-            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-            apt update && apt install -y --no-install-recommends git cmake;
+            apt update && apt install -y --no-install-recommends git;
+
   build-clang-12:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - uses: docker://lucteo/action-cxx-toolkit.clang12:latest
+      - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12
         with:
           cc: clang-12
           checks: build test
           cxxflags: -stdlib=libc++
           prebuild_command: |
-            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-            apt update && apt install -y --no-install-recommends git cmake;
+            apt update && apt install -y --no-install-recommends git;
+
+  build-nvcxx-22-7:
+    strategy:
+      matrix:
+        include:
+          # CUDA 11.0's libcu++ version is too old for stdexec
+          # - { GPU: "v100", DRIVER: "450", ARCH: "amd64" }
+          - { GPU: "v100", DRIVER: "495", ARCH: "amd64" }
+          # Can't do ARM64 until we build multiarch action-cxx-toolkit images
+          # - { GPU: "v100", DRIVER: "495", ARCH: "arm64" }
+          # - { GPU: "a100", DRIVER: "495", ARCH: "arm64" }
+    runs-on:
+      - self-hosted
+      - linux
+      - gpu-${{ matrix.GPU }}-${{ matrix.DRIVER }}-1
+      - ${{ matrix.ARCH }}
+    container:
+      image: ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-cuda11.7-nvhpc22.7
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+        INPUT_CC: "mpicc"
+        INPUT_MAKEFLAGS: "-j"
+        INPUT_IGNORE_CONAN: true
+        INPUT_CHECKS: "build test"
+        NVLOCALRC: "/opt/nvidia/localrc"
+        INPUT_PREBUILD_COMMAND: |
+          makelocalrc -d /opt/nvidia -x "$(dirname $(which nvc++))";
+    steps:
+      - name: Run nvidia-smi to make sure GPU is working
+        run: nvidia-smi
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Build and test with nvc++ (v22.7)
+        run: entrypoint.py
+
 #  build-clang-13:
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@master
-#      - uses: docker://lucteo/action-cxx-toolkit.clang13:latest
+#      - uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang13
 #        with:
 #          cc: clang-13
 #          checks: build test
 #          cxxflags: -stdlib=libc++
 #          prebuild_command: |
-#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-#            apt update && apt install -y --no-install-recommends git cmake;
+#            apt update && apt install -y --no-install-recommends git;
 
 #  static-checks:
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@master
-#      - uses: docker://lucteo/action-cxx-toolkit.main:latest
+#      - uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:main
 #        with:
 #          cc: clang-13
 #          checks: cppcheck clang-tidy
 #          clangtidyflags: '-quiet'
 #          cppcheckflags: '--enable=warning,style,performance,portability --inline-suppr'
 #          prebuild_command: |
-#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-#            apt update && apt install -y --no-install-recommends git cmake;
+#            apt update && apt install -y --no-install-recommends git;
 
 #  clang-format:
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@master
-#      - uses: docker://lucteo/action-cxx-toolkit.main:latest
+#      - uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:main
 #        with:
 #          checks: clang-format
 #          clangformatdirs: src test
 #          prebuild_command: |
-#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-#            apt update && apt install -y --no-install-recommends git cmake;
+#            apt update && apt install -y --no-install-recommends git;
 
 #  sanitizer:
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@master
-#      - uses: docker://lucteo/action-cxx-toolkit.main:latest
+#      - uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:main
 #        with:
 #          checks: sanitize=address sanitize=undefined
 #          prebuild_command: |
-#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-#            apt update && apt install -y --no-install-recommends git cmake;
+#            apt update && apt install -y --no-install-recommends git;
