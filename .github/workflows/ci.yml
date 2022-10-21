@@ -13,8 +13,7 @@ jobs:
           cc: gcc-11
           checks: build test
           prebuild_command: |
-            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-            apt update && apt install -y --no-install-recommends git cmake;
+            apt update && apt install -y --no-install-recommends git;
 
   build-clang-12:
     runs-on: ubuntu-latest
@@ -28,8 +27,7 @@ jobs:
           checks: build test
           cxxflags: -stdlib=libc++
           prebuild_command: |
-            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-            apt update && apt install -y --no-install-recommends git cmake;
+            apt update && apt install -y --no-install-recommends git;
 
   build-nvcxx-22-7:
     strategy:
@@ -56,8 +54,6 @@ jobs:
         INPUT_CHECKS: "build test"
         NVLOCALRC: "/opt/nvidia/localrc"
         INPUT_PREBUILD_COMMAND: |
-          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-          apt update && apt install -y --no-install-recommends git cmake;
           makelocalrc -d /opt/nvidia -x "$(dirname $(which nvc++))";
     steps:
       - name: Run nvidia-smi to make sure GPU is working
@@ -79,8 +75,7 @@ jobs:
 #          checks: build test
 #          cxxflags: -stdlib=libc++
 #          prebuild_command: |
-#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-#            apt update && apt install -y --no-install-recommends git cmake;
+#            apt update && apt install -y --no-install-recommends git;
 
 #  static-checks:
 #    runs-on: ubuntu-latest
@@ -93,8 +88,7 @@ jobs:
 #          clangtidyflags: '-quiet'
 #          cppcheckflags: '--enable=warning,style,performance,portability --inline-suppr'
 #          prebuild_command: |
-#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-#            apt update && apt install -y --no-install-recommends git cmake;
+#            apt update && apt install -y --no-install-recommends git;
 
 #  clang-format:
 #    runs-on: ubuntu-latest
@@ -105,8 +99,7 @@ jobs:
 #          checks: clang-format
 #          clangformatdirs: src test
 #          prebuild_command: |
-#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-#            apt update && apt install -y --no-install-recommends git cmake;
+#            apt update && apt install -y --no-install-recommends git;
 
 #  sanitizer:
 #    runs-on: ubuntu-latest
@@ -116,5 +109,4 @@ jobs:
 #        with:
 #          checks: sanitize=address sanitize=undefined
 #          prebuild_command: |
-#            wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
-#            apt update && apt install -y --no-install-recommends git cmake;
+#            apt update && apt install -y --no-install-recommends git;
