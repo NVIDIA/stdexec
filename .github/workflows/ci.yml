@@ -31,7 +31,7 @@ jobs:
             wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
             apt update && apt install -y --no-install-recommends git cmake;
 
-  build-nvc++-22.7:
+  build-nvc++-22_7:
     strategy:
       matrix:
         include:
