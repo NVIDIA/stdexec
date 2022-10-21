@@ -36,7 +36,7 @@ jobs:
       matrix:
         include:
           - { GPU: "v100", DRIVER: "450", ARCH: "amd64" }
-          # - { GPU: "v100", DRIVER: "495", ARCH: "amd64" }
+          - { GPU: "v100", DRIVER: "495", ARCH: "amd64" }
           # Note: can't do ARM64 until we build multiarch action-cxx-toolkit images
           # - { GPU: "v100", DRIVER: "450", ARCH: "arm64" }
           # - { GPU: "v100", DRIVER: "495", ARCH: "arm64" }
