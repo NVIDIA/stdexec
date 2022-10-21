@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
+#include <exec/create.hpp>
 #include <exec/static_thread_pool.hpp>
 
 #include <optional>
@@ -69,7 +70,7 @@ namespace {
 
 TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result", "[detail][create]") {
   auto snd = [this](int a, int b) {
-    return stdexec::create<ex::set_value_t(int)>(
+    return exec::create<ex::set_value_t(int)>(
       [a, b, this]<class Context>(Context& ctx) noexcept {
         anIntAPI(a, b, &ctx, [](void* pv, int result) {
           ex::set_value(std::move(static_cast<Context*>(pv)->receiver), result);
@@ -87,7 +88,7 @@ TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result"
 TEST_CASE_METHOD(create_test_fixture, "wrap an async API that doesn't compute a result", "[detail][create]") {
   bool called = false;
   auto snd = [&called, this]() {
-    return stdexec::create<ex::set_value_t()>(
+    return exec::create<ex::set_value_t()>(
       [this]<class Context>(Context& ctx) noexcept {
         aVoidAPI(&ctx, [](void* pv) {
           Context& ctx = *static_cast<Context*>(pv);

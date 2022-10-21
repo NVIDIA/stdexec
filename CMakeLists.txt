@@ -221,10 +221,10 @@ set(test_sourceFiles
     test/stdexec/algos/consumers/test_sync_wait.cpp
     test/stdexec/algos/other/test_execute.cpp
     test/stdexec/detail/test_completion_signatures.cpp
-    test/stdexec/detail/test_create.cpp
     test/stdexec/detail/test_utility.cpp
     test/stdexec/queries/test_get_forward_progress_guarantee.cpp
     test/exec/test_type_async_scope.cpp
+    test/exec/test_create.cpp
     test/exec/test_env.cpp
     test/exec/test_on.cpp
     test/exec/test_on2.cpp
