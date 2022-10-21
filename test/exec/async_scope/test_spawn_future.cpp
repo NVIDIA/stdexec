@@ -317,11 +317,10 @@ TEST_CASE("spawn_future accepts non-void senders", "[async_scope][spawn_future]"
   static_assert(is_spawn_future_worthy<decltype(ex::just(3.14))>);
   static_assert(is_spawn_future_worthy<decltype(ex::just("hello"))>);
 }
-TEST_CASE("TODO: spawn_future accepts senders of errors", "[async_scope][spawn_future]") {
-  // TOOD: check if this is correct
+TEST_CASE("spawn_future accepts senders of errors", "[async_scope][spawn_future]") {
   static_assert(is_spawn_future_worthy<decltype(ex::just_error(std::exception_ptr{}))>);
-  static_assert(!is_spawn_future_worthy<decltype(ex::just_error(std::error_code{}))>);
-  static_assert(!is_spawn_future_worthy<decltype(ex::just_error(-1))>);
+  static_assert(is_spawn_future_worthy<decltype(ex::just_error(std::error_code{}))>);
+  static_assert(is_spawn_future_worthy<decltype(ex::just_error(-1))>);
 }
 TEST_CASE(
     "spawn_future should accept senders that send stopped signal", "[async_scope][spawn_future]") {

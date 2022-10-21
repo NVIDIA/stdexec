@@ -155,29 +155,26 @@ target_compile_options(stdexec_executable_flags INTERFACE
 
 # Set up CUDASchedulers library
 option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" NO)
-find_package(CUDAToolkit)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC" OR STDEXEC_ENABLE_CUDA)
-  if(CUDAToolkit_FOUND)
-      file(GLOB_RECURSE SCHED_SOURCES include/nvexec/*.cuh)
-      add_library(CUDASchedulers INTERFACE ${SCHED_SOURCES})
-      target_link_libraries(CUDASchedulers INTERFACE stdexec stdexec_executable_flags CUDA::cudart)
-      target_include_directories(CUDASchedulers INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-      target_compile_features(CUDASchedulers INTERFACE cxx_std_20)
+    file(GLOB_RECURSE SCHED_SOURCES include/nvexec/*.cuh)
+    add_library(CUDASchedulers INTERFACE ${SCHED_SOURCES})
+    target_link_libraries(CUDASchedulers INTERFACE stdexec stdexec_executable_flags)
+    target_include_directories(CUDASchedulers INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_compile_features(CUDASchedulers INTERFACE cxx_std_20)
 
-      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        target_compile_options(CUDASchedulers INTERFACE -x cu -Wno-unknown-cuda-version)
-        foreach(arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
-          target_compile_options(CUDASchedulers INTERFACE --cuda-gpu-arch=sm_${arch})
-        endforeach()
-      elseif (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
-        target_compile_options(CUDASchedulers INTERFACE -stdpar -gpu=nomanaged)
-        target_link_options(CUDASchedulers INTERFACE -stdpar -gpu=nomanaged)
-        foreach(arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
-          target_compile_options(CUDASchedulers INTERFACE -gpu=cc${arch})
-        endforeach()
-      endif()
-  endif()
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+      target_compile_options(CUDASchedulers INTERFACE -x cu -Wno-unknown-cuda-version)
+      foreach(arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
+        target_compile_options(CUDASchedulers INTERFACE --cuda-gpu-arch=sm_${arch})
+      endforeach()
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
+      target_compile_options(CUDASchedulers INTERFACE -stdpar -gpu=nomanaged)
+      target_link_options(CUDASchedulers INTERFACE -stdpar -gpu=nomanaged)
+      foreach(arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
+        target_compile_options(CUDASchedulers INTERFACE -gpu=cc${arch})
+      endforeach()
+    endif()
 endif()
 
 # Now, set up test executable
@@ -229,6 +226,9 @@ set(test_sourceFiles
     test/stdexec/queries/test_get_forward_progress_guarantee.cpp
     test/exec/test_type_async_scope.cpp
     test/exec/test_env.cpp
+    test/exec/test_on.cpp
+    test/exec/test_on2.cpp
+    test/exec/test_on3.cpp
     test/exec/async_scope/test_dtor.cpp
     test/exec/async_scope/test_spawn.cpp
     test/exec/async_scope/test_spawn_future.cpp

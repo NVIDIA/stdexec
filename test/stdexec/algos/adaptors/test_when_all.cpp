@@ -38,7 +38,7 @@ TEST_CASE("when_all with environment returns a sender", "[adaptors][when_all]") 
 TEST_CASE("when_all simple example", "[adaptors][when_all]") {
   auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
-  auto op = ex::connect(std::move(snd1), expect_value_receiver<double>{3.1415});
+  auto op = ex::connect(std::move(snd1), expect_value_receiver{3.1415});
   ex::start(op);
 }
 
@@ -117,7 +117,7 @@ TEST_CASE("when_all completes when children complete", "[adaptors][when_all]") {
           called = true;
           return a + b + c;
         });
-  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{41});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{41});
   ex::start(op);
   // The when_all scheduler will complete only after 3 impulses
   CHECK_FALSE(called);

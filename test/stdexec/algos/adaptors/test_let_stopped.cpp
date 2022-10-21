@@ -92,7 +92,7 @@ TEST_CASE("let_stopped function is not called on regular flow", "[adaptors][let_
                             called = true;
                             return ex::just(0);
                           });
-  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{13});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{13});
   ex::start(op);
   CHECK_FALSE(called);
 }

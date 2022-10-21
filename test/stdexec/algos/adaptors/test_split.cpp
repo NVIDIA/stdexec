@@ -39,8 +39,8 @@ TEST_CASE("split with environment returns a sender", "[adaptors][split]") {
 }
 TEST_CASE("split simple example", "[adaptors][split]") {
   auto snd = ex::split(ex::just(19));
-  auto op1 = ex::connect(snd, expect_value_receiver<int>{19});
-  auto op2 = ex::connect(snd, expect_value_receiver<int>{19});
+  auto op1 = ex::connect(snd, expect_value_receiver{19});
+  auto op2 = ex::connect(snd, expect_value_receiver{19});
   ex::start(op1);
   ex::start(op2);
   // The receiver will ensure that the right value is produced
@@ -49,8 +49,8 @@ TEST_CASE("split executes predecessor sender once", "[adaptors][split]") {
   SECTION("when parameters are passed") {
     int counter{};
     auto snd = ex::split(ex::just() | ex::then([&]{ counter++; return counter; }));
-    auto op1 = ex::connect(snd, expect_value_receiver<int>{1});
-    auto op2 = ex::connect(snd, expect_value_receiver<int>{1});
+    auto op1 = ex::connect(snd, expect_value_receiver{1});
+    auto op2 = ex::connect(snd, expect_value_receiver{1});
     ex::start(op1);
     ex::start(op2);
     // The receiver will ensure that the right value is produced
@@ -79,8 +79,8 @@ TEST_CASE("split passes lvalue references", "[adaptors][split]") {
     return prev_val;
   });
 
-  auto op1 = ex::connect(std::move(then), expect_value_receiver<int>{42});
-  auto op2 = ex::connect(split, expect_value_receiver<int>{21});
+  auto op1 = ex::connect(std::move(then), expect_value_receiver{42});
+  auto op2 = ex::connect(split, expect_value_receiver{21});
   ex::start(op1);
   ex::start(op2);
   // The receiver will ensure that the right value is produced

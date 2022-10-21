@@ -19,10 +19,10 @@
 #include <stdexec/execution.hpp>
 
 #include <cuda/std/type_traits>
-#include <cuda/atomic>
 #include <cuda/std/tuple>
 #include <optional>
 
+#include "nvexec/detail/cuda_atomic.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #include "nvexec/detail/queue.cuh"
 #include "nvexec/detail/variant.cuh"
@@ -410,6 +410,28 @@ namespace nvexec {
           inner_op_state_t inner_op_;
         };
     }
+
+    template <class Sender, class OuterReceiver>
+        requires stream_receiver<OuterReceiver>
+      using exit_operation_state_t 
+        = detail::operation_state_t<
+            stdexec::__x<Sender>, 
+            stdexec::__x<propagate_receiver_t<stdexec::__x<OuterReceiver>>>, 
+            stdexec::__x<OuterReceiver>>;
+
+    template <class Sender, class OuterReceiver>
+      exit_operation_state_t<Sender, OuterReceiver>
+      exit_op_state(queue::task_hub_t* hub, Sender&& sndr, OuterReceiver&& rcvr) noexcept {
+        using ReceiverId = stdexec::__x<OuterReceiver>;
+        return exit_operation_state_t<Sender, OuterReceiver>(
+          (Sender&&)sndr, 
+          hub, 
+          (OuterReceiver&&)rcvr, 
+          [](operation_state_base_t<ReceiverId>& op) -> propagate_receiver_t<ReceiverId> {
+            return propagate_receiver_t<ReceiverId>{{}, op};
+          }
+        );
+      }
 
     template <class S>
       concept stream_completing_sender =

@@ -66,7 +66,7 @@ TEST_CASE("stopped_as_error using error_code error type", "[adaptors][stopped_as
   check_err_types<type_array<std::exception_ptr, std::error_code>>(snd);
   check_sends_stopped<false>(snd);
 
-  auto op = ex::connect(std::move(snd), expect_value_receiver<int>{11});
+  auto op = ex::connect(std::move(snd), expect_value_receiver{11});
   ex::start(op);
   sched.start_next();
 }

@@ -20,6 +20,7 @@
 namespace std {
   // <functional>
   using stdexec::tag_invoke;
+  using stdexec::tag_invoke_t;
   using stdexec::tag_invoke_result;
   using stdexec::tag_invoke_result_t;
   using stdexec::tag_invocable;

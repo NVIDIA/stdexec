@@ -207,8 +207,8 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
         template <class Sender, std::size_t Index>
           using child_op_state =
-            std::execution::connect_result_t<
-              stdexec::__member_t<WhenAll, Sender>,
+            exit_operation_state_t<
+              Sender&&, 
               receiver_t<CvrefReceiverId, Index>>;
 
         using Indices = std::index_sequence_for<SenderIds...>;
@@ -296,14 +296,22 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
         template <size_t... Is>
           operation_t(WhenAll&& when_all, Receiver rcvr, std::index_sequence<Is...>)
-            : child_states_{
-              stdexec::__conv{[&when_all, this]() {
-                  return std::execution::connect(
-                      std::get<Is>(((WhenAll&&) when_all).sndrs_),
-                      receiver_t<CvrefReceiverId, Is>{{}, {}, this});
+            : recvr_((Receiver&&) rcvr) 
+            , child_states_{
+                stdexec::__conv{[&when_all, this]() {
+                  operation_t* parent_op = this;
+                  queue::task_hub_t* hub = 
+                    const_cast<queue::task_hub_t*>(
+                      std::execution::get_completion_scheduler<std::execution::set_value_t>(
+                        std::get<Is>(when_all.sndrs_)
+                      ).hub_);
+                  return exit_op_state<decltype(std::get<Is>(((WhenAll&&)when_all).sndrs_)),
+                                       receiver_t<CvrefReceiverId, Is>>(
+                           hub,
+                           std::get<Is>(((WhenAll&&) when_all).sndrs_), 
+                           receiver_t<CvrefReceiverId, Is>{{}, {}, parent_op});
                 }}...
-              }
-            , recvr_((Receiver&&) rcvr) {
+              } {
             status_ = STDEXEC_DBG_ERR(cudaMallocManaged(&values_, sizeof(child_values_tuple_t)));
           }
         operation_t(WhenAll&& when_all, Receiver rcvr)
@@ -361,8 +369,8 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
                 stdexec::__single_or<void>>...>,
             stdexec::__>;
 
-        child_op_states_tuple_t child_states_;
         Receiver recvr_;
+        child_op_states_tuple_t child_states_;
         std::atomic<std::size_t> count_{sizeof...(SenderIds)};
         std::array<cudaEvent_t, sizeof...(SenderIds)> events_;
         // Could be non-atomic here and atomic_ref everywhere except __completion_fn
@@ -385,10 +393,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         -> completion_sigs<stdexec::__member_t<Self, Env>>;
 
     template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_stopped_t> _Tag>
-      requires WithCompletionScheduler
-    friend Scheduler tag_invoke(std::execution::get_completion_scheduler_t<_Tag>, const when_all_sender_t& __self) noexcept {
-      return Scheduler(__self.hub_);
-    }
+        requires WithCompletionScheduler
+      friend Scheduler tag_invoke(std::execution::get_completion_scheduler_t<_Tag>, const when_all_sender_t& __self) noexcept {
+        return Scheduler(__self.hub_);
+      }
 
     std::tuple<stdexec::__t<SenderIds>...> sndrs_;
   };

@@ -18,8 +18,8 @@
 #include <stdexec/execution.hpp>
 
 #include <type_traits>
-#include <cuda/atomic>
 
+#include "nvexec/detail/cuda_atomic.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
 namespace nvexec::detail::stream {

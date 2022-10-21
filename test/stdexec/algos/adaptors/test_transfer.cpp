@@ -50,7 +50,7 @@ TEST_CASE("transfer can be piped", "[adaptors][transfer]") {
   ex::sender auto snd = ex::just(13) | ex::transfer(sched);
   // Start the operation
   int res{0};
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<int>(&res));
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
   ex::start(op);
 
   // The value will be available when the scheduler will execute the next operation
@@ -63,7 +63,7 @@ TEST_CASE("transfer calls the receiver when the scheduler dictates", "[adaptors]
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::transfer(ex::just(13), sched);
-  auto op = ex::connect(snd, expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(snd, expect_value_receiver_ex{recv_value});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task; no effect expected
   CHECK(recv_value == 0);
@@ -83,7 +83,7 @@ TEST_CASE("transfer calls the given sender when the scheduler dictates", "[adapt
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::transfer(std::move(snd_base), sched);
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{&recv_value});
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
   ex::start(op);
   // The sender is started, even if the scheduler hasn't yet triggered
   CHECK(called);
@@ -223,7 +223,7 @@ TEST_CASE("transfer can be customized", "[adaptors][transfer]") {
   // The customization will return a different value
   auto snd = ex::transfer(ex::just(val_type1{1}), inline_scheduler{});
   val_type1 res{0};
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<val_type1>(&res));
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
   ex::start(op);
   REQUIRE(res.val_ == 53);
 }
@@ -232,7 +232,7 @@ TEST_CASE("transfer follows schedule_from customization", "[adaptors][transfer]"
   // The schedule_from customization will return a different value
   auto snd = ex::transfer(ex::just(val_type2{2}), inline_scheduler{});
   val_type2 res{0};
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<val_type2>(&res));
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
   ex::start(op);
   REQUIRE(res.val_ == 59);
 }
@@ -244,7 +244,7 @@ TEST_CASE("transfer can be customized with two schedulers", "[adaptors][transfer
   auto snd = ex::transfer_just(sched_src, val_type3{1}) //
              | ex::transfer(sched_dest);
   val_type3 res{0};
-  auto op = ex::connect(std::move(snd), expect_value_receiver_ex<val_type3>(&res));
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
   ex::start(op);
   // we are not using impulse_scheduler anymore, so the value should be available
   REQUIRE(res.val_ == 61);

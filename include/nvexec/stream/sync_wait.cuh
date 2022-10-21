@@ -47,7 +47,7 @@ namespace nvexec::detail::stream {
             Sender,
             __env,
             stdexec::__decayed_tuple,
-            stdexec::__single_t>;
+            stdexec::__single>;
 
       template <class SenderId>
         struct state_t;
