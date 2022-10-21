@@ -22,6 +22,6 @@ docker run ${DOCKER_RUN_PARAMS} \
     -e INPUT_PREBUILD_COMMAND="\
 wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -; \
 apt update && apt install -y --no-install-recommends git cmake" \
-    lucteo/action-cxx-toolkit.clang12:latest
+    ghcr.io/trxcllnt/action-cxx-toolkit:clang12
 status=$?
 printStatus $status
