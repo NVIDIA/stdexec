@@ -51,7 +51,7 @@ jobs:
       options: --entrypoint /bin/bash
       env:
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
-        INPUT_CC: "nvc++"
+        INPUT_CC: "mpicc"
         INPUT_MAKEFLAGS: "-j"
         INPUT_IGNORE_CONAN: true
         INPUT_CHECKS: "build test"

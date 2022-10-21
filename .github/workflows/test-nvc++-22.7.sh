@@ -17,9 +17,9 @@ docker run ${DOCKER_RUN_PARAMS} \
     --runtime=nvidia \
     -e NVLOCALRC="/opt/nvidia/localrc" \
     -e INPUT_BUILDDIR="/github/workspace/${BUILDDIR}" \
-    -e INPUT_MAKEFLAGS='-j 4' \
+    -e INPUT_MAKEFLAGS="-j$(nproc --ignore=2)" \
     -e INPUT_IGNORE_CONAN='true' \
-    -e INPUT_CC='nvc++' \
+    -e INPUT_CC='mpicc' \
     -e INPUT_CHECKS='build test install' \
     -e INPUT_PREBUILD_COMMAND='
 wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
