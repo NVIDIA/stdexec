@@ -56,9 +56,9 @@ jobs:
         INPUT_CHECKS: "build test"
         NVLOCALRC: "/opt/nvidia/localrc"
         INPUT_PREBUILD_COMMAND: |
-          "wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;"
-          "apt update && apt install -y --no-install-recommends git cmake;"
-          "makelocalrc -d /opt/nvidia -x $(dirname $(which nvc++));"
+          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
+          apt update && apt install -y --no-install-recommends git cmake;
+          makelocalrc -d /opt/nvidia -x "$(dirname $(which nvc++))";
     steps:
       - name: Run nvidia-smi to make sure GPU is working
         run: nvidia-smi
