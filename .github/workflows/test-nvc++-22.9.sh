@@ -25,6 +25,6 @@ docker run ${DOCKER_RUN_PARAMS} \
 wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -;
 apt update && apt install -y --no-install-recommends git cmake;
 makelocalrc -d /opt/nvidia -x "$(dirname $(which nvc++))";' \
-    ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-cuda11.7-nvhpc22.9
+    ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-cuda_multi-nvhpc22.9
 status=$?
 printStatus $status
