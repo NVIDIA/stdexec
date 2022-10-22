@@ -4360,7 +4360,7 @@ namespace stdexec {
         friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
           noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
           -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-          _NVCXX_EXPAND_PACK_RETURN(_As, _as,
+          _NVCXX_EXPAND_PACK_RETURN(_As, __as,
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           )
         }
