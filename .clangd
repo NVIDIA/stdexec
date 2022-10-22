@@ -30,6 +30,7 @@ CompileFlags:
   Add:
     - -x
     - cuda
+    - -D__NVCOMPILER
 
 ---
 
@@ -63,3 +64,6 @@ Diagnostics:
   Suppress:
     - "variadic_device_fn"
     - "attributes_not_allowed"
+    # The NVHPC version of _NVCXX_EXPAND_PACK macro triggers this clang error.
+    # Temporarily suppressing it, but should probably fix
+    - "template_param_shadow"
