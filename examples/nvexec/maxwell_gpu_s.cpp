@@ -15,15 +15,8 @@
  */
 
 #include "maxwell/snr.cuh"
-#include "maxwell/std.cuh"
 #include "maxwell/stdpar.cuh"
-#include "maxwell/cpp.cuh"
-
-#ifdef _NVHPC_CUDA
 #include "maxwell/cuda.cuh"
-#endif
-
-#define ENABLE_SIGNLE_THREAD_CONTEXTS 1
 
 int main(int argc, char *argv[]) {
   auto params = parse_cmd(argc, argv);
@@ -33,14 +26,9 @@ int main(int argc, char *argv[]) {
               << "\t--write-vtk\n"
               << "\t--write-results\n"
               << "\t--inner-iterations\n"
-              << "\t--run-std\n"
               << "\t--run-stdpar\n"
-              // << "\t--run-cpp\n"
               << "\t--run-cuda\n"
-              // << "\t--run-inline-scheduler\n"
-              << "\t--run-thread-pool-scheduler\n"
               << "\t--run-stream-scheduler\n"
-              << "\t--run-multi-gpu-scheduler\n"
               << "\t--N\n"
               << std::endl;
     return 0;
@@ -69,19 +57,6 @@ int main(int argc, char *argv[]) {
 
   report_header();
 
-  // S&R
-#if ENABLE_SIGNLE_THREAD_CONTEXTS 
-  if (value(params, "run-inline-scheduler")) {
-    run_snr_on("CPU (snr inline)", exec::inline_scheduler{});
-  }
-#endif
-
-  if (value(params, "run-thread-pool-scheduler")) {
-    exec::static_thread_pool pool{std::thread::hardware_concurrency()};
-    run_snr_on("CPU (snr thread pool)", pool.get_scheduler());
-  }
-
-#ifdef _NVHPC_CUDA
   if (value(params, "run-cuda")) {
     grid_t grid{N, true /* gpu */};
 
@@ -100,26 +75,6 @@ int main(int argc, char *argv[]) {
     run_snr_on("GPU (snr cuda stream)", stream_ctx.get_scheduler());
   }
 
-  if (value(params, "run-multi-gpu-scheduler")) {
-    nvexec::multi_gpu_stream_context stream_context{};
-    run_snr_on("GPU (multi-GPU)", stream_context.get_scheduler());
-  }
-#endif
-
-  // Naive
-  if (value(params, "run-std")) {
-    grid_t grid{N, false /* !gpu */};
-
-    auto accessor = grid.accessor();
-    auto dt = calculate_dt(accessor.dx, accessor.dy);
-
-    run_std(dt, write_vtk, n_inner_iterations, n_outer_iterations, grid, "CPU (std)");
-
-    if (write_results) {
-      store_results(accessor);
-    }
-  }
-
   if (value(params, "run-stdpar")) {
     const bool gpu = is_gpu_policy(std::execution::par_unseq);
     std::string_view method = gpu ? "GPU (stdpar)" : "CPU (stdpar)";
@@ -134,20 +89,5 @@ int main(int argc, char *argv[]) {
       store_results(accessor);
     }
   }
-
-#if ENABLE_SIGNLE_THREAD_CONTEXTS 
-  if (value(params, "run-cpp")) {
-    grid_t grid{N, false /* !gpu */};
-
-    auto accessor = grid.accessor();
-    auto dt = calculate_dt(accessor.dx, accessor.dy);
-
-    run_cpp(dt, write_vtk, n_inner_iterations, n_outer_iterations, grid, "CPU (cpp)");
-
-    if (write_results) {
-      store_results(accessor);
-    }
-  }
-#endif
 }
 
