@@ -17,9 +17,8 @@
 
 #include "common.cuh"
 
-void run_cpp(float dt, bool write_vtk, std::size_t n_inner_iterations,
-             std::size_t n_outer_iterations, grid_t &grid,
-             std::string_view method) {
+void run_cpp(float dt, bool write_vtk, std::size_t n_iterations,
+             grid_t &grid, std::string_view method) {
   fields_accessor accessor = grid.accessor();
 
   auto initializer = grid_initializer(dt, accessor);
@@ -33,24 +32,21 @@ void run_cpp(float dt, bool write_vtk, std::size_t n_inner_iterations,
       auto h_updater = update_h(accessor);
       auto e_updater = update_e(time.get(), dt, accessor);
 
-      std::size_t report_step = 0;
-      auto writer = dump_vtk(write_vtk, report_step, accessor);
+      auto writer = dump_vtk(write_vtk, accessor);
 
-      for (; report_step < n_outer_iterations; report_step++) {
-        for (std::size_t compute_step = 0;
-            compute_step < n_inner_iterations;
-            compute_step++) {
-          for (std::size_t i = 0; i < accessor.cells; i++) {
-            h_updater(i);
-          }
-          for (std::size_t i = 0; i < accessor.cells; i++) {
-            e_updater(i);
-          }
+      for (std::size_t compute_step = 0;
+          compute_step < n_iterations;
+          compute_step++) {
+        for (std::size_t i = 0; i < accessor.cells; i++) {
+          h_updater(i);
         }
-
-        writer(false);
+        for (std::size_t i = 0; i < accessor.cells; i++) {
+          e_updater(i);
+        }
       }
+
+      writer();
     };
 
-  report_performance(grid.cells, n_inner_iterations * n_outer_iterations, method, action);
+  report_performance(grid.cells, n_iterations * n_iterations, method, action);
 }

@@ -28,9 +28,8 @@ __global__ void kernel(std::size_t cells, Action action) {
   }
 }
 
-void run_cuda(float dt, bool write_vtk, std::size_t n_inner_iterations,
-              std::size_t n_outer_iterations, grid_t &grid,
-              std::string_view method) {
+void run_cuda(float dt, bool write_vtk, std::size_t n_iterations,
+              grid_t &grid, std::string_view method) {
   fields_accessor accessor = grid.accessor();
 
   constexpr int block_threads = 256;
@@ -38,26 +37,26 @@ void run_cuda(float dt, bool write_vtk, std::size_t n_inner_iterations,
   const std::size_t grid_blocks = (cells + block_threads - 1) / block_threads;
 
   time_storage_t time{true};
-  std::size_t report_step{};
-  auto writer = dump_vtk(write_vtk, report_step, accessor);
+  auto writer = dump_vtk(write_vtk, accessor);
   auto initializer = grid_initializer(dt, accessor);
   auto h_updater = update_h(accessor);
   auto e_updater = update_e(time.get(), dt, accessor);
 
-  kernel<block_threads><<<grid_blocks, block_threads>>>(cells, initializer);
+  cudaStream_t stream{};
+  cudaStreamCreate(&stream);
 
-  report_performance(grid.cells, n_inner_iterations * n_outer_iterations, method,
+  kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, initializer);
+  STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+
+  report_performance(grid.cells, n_iterations, method,
                      [&]() {
-                         for (; report_step < n_outer_iterations; report_step++) {
-                           for (std::size_t compute_step = 0;
-                                compute_step < n_inner_iterations;
-                                compute_step++) {
-
-                             kernel<block_threads><<<grid_blocks, block_threads>>>(cells, h_updater);
-                             kernel<block_threads><<<grid_blocks, block_threads>>>(cells, e_updater);
-                           }
-                           writer(false);
+                         for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
+                           kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, h_updater);
+                           kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, e_updater);
                          }
-                         STDEXEC_DBG_ERR(cudaStreamSynchronize(0));
+                         writer(false);
+                         STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
                      });
+
+  cudaStreamDestroy(stream);
 }

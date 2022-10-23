@@ -285,7 +285,6 @@ update_e(float *time, float dt, fields_accessor accessor) {
 
 class result_dumper_t {
   bool write_results_{};
-  std::size_t &report_step_;
   fields_accessor accessor_;
 
   void write_vtk(const std::string &filename) const {
@@ -297,7 +296,7 @@ class result_dumper_t {
 
     int rank_ = 0;
     if (rank_ == 0) {
-      printf("\twriting report #%d", (int)report_step_);
+      printf("\twriting vtk");
       fflush(stdout);
     }
 
@@ -359,29 +358,23 @@ class result_dumper_t {
 
 public:
   result_dumper_t(bool write_results,
-                  std::size_t &report_step,
                   fields_accessor accessor)
     : write_results_(write_results)
-    , report_step_(report_step)
     , accessor_(accessor) {}
 
   void operator()(bool update_time = true) const {
     int rank_ = 0;
     const std::string filename = std::string("output_") +
                                  std::to_string(rank_) + "_" +
-                                 std::to_string(report_step_) + ".vtk";
-
-    if (update_time) {
-      report_step_++;
-    }
+                                 std::to_string(0) + ".vtk";
 
     write_vtk(filename);
   }
 };
 
 inline result_dumper_t
-dump_vtk(bool write_results, std::size_t &report_step, fields_accessor accessor) {
-  return {write_results, report_step, accessor};
+dump_vtk(bool write_results, fields_accessor accessor) {
+  return {write_results, accessor};
 }
 
 class time_storage_t {
@@ -397,30 +390,6 @@ public:
 
 std::string bin_name(int node_id) {
   return "out_" + std::to_string(node_id) + ".bin";
-}
-
-inline void
-store_results(fields_accessor accessor) {
-  const int node_id = 0;
-  const int n_nodes = 1;
-
-  const std::size_t begin = 0;
-  const std::size_t end = accessor.cells;
-
-  if (node_id == 0) {
-    std::ofstream meta("meta.txt");
-
-    meta << accessor.cells << std::endl;
-    meta << n_nodes << std::endl;
-  }
-
-  std::ofstream bin(bin_name(node_id), std::ios::binary);
-  bin.write(reinterpret_cast<const char *>(&begin), sizeof(std::size_t));
-  bin.write(reinterpret_cast<const char *>(&end), sizeof(std::size_t));
-
-  float *ez = accessor.get(field_id::ez);
-  std::size_t n_bytes = accessor.cells * sizeof(float);
-  bin.write(reinterpret_cast<const char *>(ez), n_bytes);
 }
 
 inline void

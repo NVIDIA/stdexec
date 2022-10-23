@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
               << "\t--write-vtk\n"
               << "\t--write-results\n"
-              << "\t--inner-iterations\n"
+              << "\t--iterations\n"
               << "\t--N\n"
               << std::endl;
     return 0;
@@ -32,8 +32,7 @@ int main(int argc, char *argv[]) {
 
   const bool write_vtk = value(params, "write-vtk");
   const bool write_results = value(params, "write-results");
-  const std::size_t n_inner_iterations = value(params, "inner-iterations", 100);
-  const std::size_t n_outer_iterations = value(params, "outer-iterations", 10);
+  const std::size_t n_iterations = value(params, "iterations", 100);
   const std::size_t N = value(params, "N", 512);
 
   auto run_snr_on = [&](std::string_view scheduler_name,
@@ -43,12 +42,8 @@ int main(int argc, char *argv[]) {
     auto accessor = grid.accessor();
     auto dt = calculate_dt(accessor.dx, accessor.dy);
 
-    run_snr(dt, write_vtk, n_inner_iterations, n_outer_iterations, grid, 
+    run_snr(dt, write_vtk, n_iterations, grid, 
             scheduler_name, std::forward<decltype(scheduler)>(scheduler));
-
-    if (write_results) {
-      store_results(accessor);
-    }
   };
 
   report_header();

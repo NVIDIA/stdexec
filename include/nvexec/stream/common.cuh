@@ -161,25 +161,14 @@ namespace nvexec {
         queue::task_base_t* task_;
         queue::producer_t producer_;
 
-        public:
-          template <stdexec::__one_of<std::execution::set_value_t,
-                                      std::execution::set_error_t,
-                                      std::execution::set_stopped_t> Tag,
-                    class... As>
-            friend void tag_invoke(Tag tag, stream_enqueue_receiver&& self, As&&... as) noexcept {
-              self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
-              self.producer_(self.task_);
-            }
-
-          template <stdexec::__decays_to<std::exception_ptr> E>
-            friend void tag_invoke(std::execution::set_error_t, stream_enqueue_receiver&& self, E&& e) noexcept {
-              // What is `exception_ptr` but death pending
-              self.variant_->template emplace<decayed_tuple<std::execution::set_error_t, cudaError_t>>(std::execution::set_error, cudaErrorUnknown);
-              self.producer_(self.task_);
-            }
-
-          friend Env tag_invoke(std::execution::get_env_t, const stream_enqueue_receiver& self) {
-            return self.env_;
+      public:
+        template <stdexec::__one_of<std::execution::set_value_t,
+                                    std::execution::set_error_t,
+                                    std::execution::set_stopped_t> Tag,
+                  class... As>
+          friend void tag_invoke(Tag tag, stream_enqueue_receiver&& self, As&&... as) noexcept {
+            self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
+            self.producer_(self.task_);
           }
 
         template <stdexec::__decays_to<std::exception_ptr> E>
@@ -436,6 +425,14 @@ namespace nvexec {
         std::execution::sender<S> &&
         requires (const S& sndr) {
           { std::execution::get_completion_scheduler<std::execution::set_value_t>(sndr).hub_ } -> 
+              std::same_as<queue::task_hub_t*>;
+        };
+
+    template <class R>
+      concept receiver_with_stream_env =
+        std::execution::receiver<R> &&
+        requires (const R& rcvr) {
+          { std::execution::get_scheduler(std::execution::get_env(rcvr)).hub_ } -> 
               std::same_as<queue::task_hub_t*>;
         };
 
