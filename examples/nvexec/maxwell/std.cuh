@@ -37,9 +37,8 @@ even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
   return std::make_pair(begin, end);
 }
 
-void run_std(float dt, bool write_vtk, std::size_t n_inner_iterations,
-             std::size_t n_outer_iterations, grid_t &grid,
-             std::string_view method) {
+void run_std(float dt, bool write_vtk, std::size_t n_iterations,
+             grid_t &grid, std::string_view method) {
   fields_accessor accessor = grid.accessor();
 
   const std::size_t n_threads = std::thread::hardware_concurrency();
@@ -62,31 +61,28 @@ void run_std(float dt, bool write_vtk, std::size_t n_inner_iterations,
         initializer(i);
       }
 
-      std::size_t report_step = 0;
       const bool writer_thread = write_vtk && tid == 0;
-      auto writer = dump_vtk(writer_thread, report_step, accessor);
+      auto writer = dump_vtk(writer_thread, accessor);
       
       barrier.arrive_and_wait();
       begins[tid] = std::chrono::system_clock::now();
 
-      for (; report_step < n_outer_iterations; report_step++) {
-        for (std::size_t compute_step = 0;
-             compute_step < n_inner_iterations;
-             compute_step++) {
-          for (std::size_t i = begin; i < end; i++) {
-            h_updater(i);
-          }
-          barrier.arrive_and_wait();
-          for (std::size_t i = begin; i < end; i++) {
-            e_updater(i);
-          }
-          barrier.arrive_and_wait();
+      for (std::size_t compute_step = 0;
+           compute_step < n_iterations;
+           compute_step++) {
+        for (std::size_t i = begin; i < end; i++) {
+          h_updater(i);
         }
+        barrier.arrive_and_wait();
+        for (std::size_t i = begin; i < end; i++) {
+          e_updater(i);
+        }
+        barrier.arrive_and_wait();
+      }
 
-        writer(false);
-        if (write_vtk) {
-          barrier.arrive_and_wait();
-        }
+      writer();
+      if (write_vtk) {
+        barrier.arrive_and_wait();
       }
       ends[tid] = std::chrono::system_clock::now();
     });
@@ -106,7 +102,7 @@ void run_std(float dt, bool write_vtk, std::size_t n_inner_iterations,
 
   report_performance(
       grid.cells, 
-      n_inner_iterations * n_outer_iterations, 
+      n_iterations, 
       method, 
       std::chrono::duration<double>(end - begin).count());
 }

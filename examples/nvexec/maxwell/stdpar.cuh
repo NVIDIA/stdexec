@@ -47,8 +47,8 @@ bool is_gpu_policy(Policy&& policy) {
 }
 
 template <class Policy>
-void run_stdpar(float dt, bool write_vtk, std::size_t n_inner_iterations,
-                std::size_t n_outer_iterations, grid_t &grid,
+void run_stdpar(float dt, bool write_vtk, 
+                std::size_t n_iterations, grid_t &grid,
                 Policy&& policy,
                 std::string_view method) {
   fields_accessor accessor = grid.accessor();
@@ -59,21 +59,18 @@ void run_stdpar(float dt, bool write_vtk, std::size_t n_inner_iterations,
 
   std::for_each(policy, begin, end, grid_initializer(dt, accessor));
 
-  report_performance(grid.cells, n_inner_iterations * n_outer_iterations, method,
+  report_performance(grid.cells, n_iterations, method,
                      [&]() {
-                       std::size_t report_step = 0;
-                       auto writer = dump_vtk(write_vtk, report_step, accessor);
-                       for (; report_step < n_outer_iterations; report_step++) {
-                         for (std::size_t compute_step = 0;
-                              compute_step < n_inner_iterations;
-                              compute_step++) {
+                       auto writer = dump_vtk(write_vtk, accessor);
+                       for (std::size_t compute_step = 0;
+                            compute_step < n_iterations;
+                            compute_step++) {
 
-                           std::for_each(policy, begin, end, update_h(accessor));
-                           std::for_each(policy, begin, end, update_e(time.get(), dt, accessor));
-                         }
-
-                         writer(false);
+                         std::for_each(policy, begin, end, update_h(accessor));
+                         std::for_each(policy, begin, end, update_e(time.get(), dt, accessor));
                        }
+
+                       writer();
                      });
 }
 

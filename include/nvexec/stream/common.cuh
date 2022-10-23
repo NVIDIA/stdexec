@@ -436,6 +436,14 @@ namespace nvexec {
               std::same_as<queue::task_hub_t*>;
         };
 
+    template <class R>
+      concept receiver_with_stream_env =
+        std::execution::receiver<R> &&
+        requires (const R& rcvr) {
+          { std::execution::get_scheduler(std::execution::get_env(rcvr)).hub_ } -> 
+              std::same_as<queue::task_hub_t*>;
+        };
+
     template <class Sender, class InnerReceiver, class OuterReceiver>
       using stream_op_state_t = operation_state_t<stdexec::__x<Sender>,
                                                   stdexec::__x<InnerReceiver>,
