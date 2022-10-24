@@ -157,7 +157,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (data_) {
             STDEXEC_DBG_ERR(cudaFree(data_));
-            STDEXEC_DBG_ERR(cudaEventDestroy(event_));
+            if constexpr (stream_sender<Sender>) {
+              STDEXEC_DBG_ERR(cudaEventDestroy(event_));
+            }
           }
         }
 
