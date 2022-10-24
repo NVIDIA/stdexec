@@ -15,6 +15,10 @@
  */
 #pragma once
 
+#if __cplusplus < 202002L
+#error This library requires the use of C++20.
+#endif
+
 #include <cassert>
 
 #define STDEXEC_CAT_(X, ...) X ## __VA_ARGS__

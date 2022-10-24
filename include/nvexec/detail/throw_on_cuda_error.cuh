@@ -15,16 +15,19 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
+#include "../../stdexec/execution.hpp"
+
+#include "config.cuh"
 
 #include <stdexcept>
 #include <cstdio>
 
-#define STDEXEC_STREAM_DETAIL_NS _strm
-
 namespace nvexec {
   namespace detail {
-    inline cudaError_t debug_cuda_error(cudaError_t error, char const* file_name, int line) {
+    inline cudaError_t debug_cuda_error(
+        cudaError_t error,
+        [[maybe_unused]] char const* file_name,
+        [[maybe_unused]] int line) {
       // Clear the global CUDA error state which may have been set by the last
       // call. Otherwise, errors may "leak" to unrelated calls.
       cudaGetLastError();
@@ -36,9 +39,6 @@ namespace nvexec {
                     file_name, line, 
                     cudaGetErrorString(error));
       }
-#else
-      (void)file_name;
-      (void)line;
 #endif
 
       return error;

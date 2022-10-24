@@ -15,8 +15,13 @@
  */
 #pragma once
 
+#if __cpp_concepts < 201907L
+#error This library requires support for C++20 concepts
+#endif
+
 #include <version>
 
+// Perhaps the stdlib lacks support for concepts though:
 #if __has_include(<concepts>) && __cpp_lib_concepts	>= 202002
 #include <concepts>
 namespace __std_concepts_polyfill {

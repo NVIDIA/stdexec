@@ -16,10 +16,10 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
-#include <stdexec/__detail/__config.hpp>
-#include <stdexec/__detail/__intrusive_queue.hpp>
-#include <stdexec/__detail/__meta.hpp>
+#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__config.hpp"
+#include "../stdexec/__detail/__intrusive_queue.hpp"
+#include "../stdexec/__detail/__meta.hpp"
 
 #include <atomic>
 #include <condition_variable>

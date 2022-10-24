@@ -15,25 +15,8 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__meta.hpp"
+#if !defined(_NVHPC_CUDA) && !defined(__CUDACC__)
+#error The NVIDIA schedulers and utilities require CUDA support
+#endif
 
-namespace exec {
-  template <stdexec::__nothrow_callable _Fn>
-    struct scope_guard {
-      [[no_unique_address]] _Fn __fn_;
-      [[no_unique_address]] stdexec::__immovable __hidden_{};
-      bool __dismissed_{false};
-
-      ~scope_guard() {
-        if (!__dismissed_)
-          ((_Fn&&) __fn_)();
-      }
-
-      void dismiss() noexcept {
-        __dismissed_ = true;
-      }
-    };
-
-  template <stdexec::__nothrow_callable _Fn>
-    scope_guard(_Fn) -> scope_guard<_Fn>;
-} // namespace exec
+#define STDEXEC_STREAM_DETAIL_NS _strm

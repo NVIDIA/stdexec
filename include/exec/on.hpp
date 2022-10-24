@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
-#include <exec/env.hpp>
+#include "../stdexec/execution.hpp"
+#include "env.hpp"
 
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////

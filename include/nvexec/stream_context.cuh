@@ -15,27 +15,28 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
+#include "../stdexec/execution.hpp"
 #include <type_traits>
 
-#include "nvexec/stream/sync_wait.cuh"
-#include "nvexec/stream/bulk.cuh"
-#include "nvexec/stream/let_xxx.cuh"
-#include "nvexec/stream/schedule_from.cuh"
-#include "nvexec/stream/start_detached.cuh"
-#include "nvexec/stream/submit.cuh"
-#include "nvexec/stream/split.cuh"
-#include "nvexec/stream/then.cuh"
-#include "nvexec/stream/transfer.cuh"
-#include "nvexec/stream/upon_error.cuh"
-#include "nvexec/stream/upon_stopped.cuh"
-#include "nvexec/stream/when_all.cuh"
-#include "nvexec/stream/reduce.cuh"
-#include "nvexec/stream/ensure_started.cuh"
+#include "detail/config.cuh"
+#include "stream/sync_wait.cuh"
+#include "stream/bulk.cuh"
+#include "stream/let_xxx.cuh"
+#include "stream/schedule_from.cuh"
+#include "stream/start_detached.cuh"
+#include "stream/submit.cuh"
+#include "stream/split.cuh"
+#include "stream/then.cuh"
+#include "stream/transfer.cuh"
+#include "stream/upon_error.cuh"
+#include "stream/upon_stopped.cuh"
+#include "stream/when_all.cuh"
+#include "stream/reduce.cuh"
+#include "stream/ensure_started.cuh"
 
-#include "nvexec/stream/common.cuh"
-#include "nvexec/detail/queue.cuh"
-#include "nvexec/detail/throw_on_cuda_error.cuh"
+#include "stream/common.cuh"
+#include "detail/queue.cuh"
+#include "detail/throw_on_cuda_error.cuh"
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {

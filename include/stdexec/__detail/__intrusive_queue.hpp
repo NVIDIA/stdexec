@@ -20,7 +20,7 @@
 #include <tuple>
 #include <utility>
 
-#include <stdexec/__detail/__config.hpp>
+#include "__config.hpp"
 
 namespace stdexec {
   namespace __queue {
