@@ -16,12 +16,12 @@
 #pragma once
 
 #include <atomic>
-#include <stdexec/execution.hpp>
-#include <exec/env.hpp>
+#include "../../stdexec/execution.hpp"
+#include "../../exec/env.hpp"
 #include <type_traits>
 
-#include "nvexec/stream/common.cuh"
-#include "nvexec/detail/throw_on_cuda_error.cuh"
+#include "common.cuh"
+#include "../detail/throw_on_cuda_error.cuh"
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace split {

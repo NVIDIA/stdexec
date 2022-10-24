@@ -19,6 +19,7 @@
 #error This file must be included before <cuda/atomic> from libcudacxx
 #endif
 
+#include "config.cuh"
 #include <cuda/std/detail/__config>
 
 #if _LIBCUDACXX_STD_VER > 17 && _LIBCUDACXX_CUDA_API_VERSION < 1009000

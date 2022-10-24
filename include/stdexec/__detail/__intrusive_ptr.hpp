@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include <stdexec/__detail/__meta.hpp>
-#include <stdexec/concepts.hpp>
+#include "__meta.hpp"
+#include "../concepts.hpp"
 
 #include <atomic>
 #include <memory>

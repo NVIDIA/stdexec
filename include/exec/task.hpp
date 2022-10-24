@@ -21,10 +21,10 @@
 #include <utility>
 #include <variant>
 
-#include <stdexec/coroutine.hpp>
-#include <stdexec/execution.hpp>
-#include <stdexec/__detail/__meta.hpp>
-#include <exec/scope.hpp>
+#include "../stdexec/coroutine.hpp"
+#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "scope.hpp"
 
 _PRAGMA_PUSH()
 _PRAGMA_IGNORE("-Wundefined-inline")
