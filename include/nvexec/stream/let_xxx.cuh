@@ -162,7 +162,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using _Sender = stdexec::__t<_SenderId>;
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Fun = stdexec::__t<_FunId>;
-        using _Env = stdexec::env_of_t<_Receiver>;
+        using _Env = typename operation_state_base_t<_ReceiverId>::env_t;
 
         constexpr static std::size_t memory_allocation_size = 
           stdexec::__v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
@@ -192,7 +192,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             using __op_state_t = stdexec::__mapply<stdexec::__q<__op_state_for_t>, __tuple_t>;
             using result_sender_t = __result_sender_t<_Fun, _As...>;
 
-            cudaStream_t stream = __self.__op_state_->stream_;
+            cudaStream_t stream = __self.__op_state_->get_stream();
 
             result_sender_t* result_sender = reinterpret_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
             kernel_with_result
@@ -225,9 +225,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             __self.__op_state_->propagate_completion_signal(_Tag{}, (_As&&)__as...);
           }
 
-        friend auto tag_invoke(stdexec::get_env_t, const __receiver& __self)
-          -> stdexec::env_of_t<_Receiver> {
-          return stdexec::get_env(__self.__op_state_->receiver_);
+        friend _Env tag_invoke(stdexec::get_env_t, const __receiver& __self) {
+          return __self.__op_state_->make_env();
         }
 
         __operation<_SenderId, _ReceiverId, _FunId, _Let>* __op_state_;
@@ -251,11 +250,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __operation(_Sender&& __sndr, _Receiver2&& __rcvr, _Fun __fun)
             : __operation_base<_SenderId, _ReceiverId, _FunId, _Let>(
                 (_Sender&&) __sndr,
-                stdexec::get_completion_scheduler<stdexec::set_value_t>(__sndr).hub_,
                 (_Receiver2&&)__rcvr,
                 [this] (operation_state_base_t<stdexec::__x<_Receiver2>> &) -> __receiver_t {
                   return __receiver_t{{}, this};
-                })
+                },
+                stdexec::get_completion_scheduler<stdexec::set_value_t>(__sndr).context_state_)
             , __fun_((_Fun&&) __fun)
           {}
         STDEXEC_IMMOVABLE(__operation);

@@ -24,10 +24,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
  
 namespace transfer {
   template <class SenderId, class ReceiverId>
-    struct operation_state_t : stream_op_state_base {
+    struct operation_state_t : operation_state_base_t<ReceiverId> {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
-      using Env = stdexec::env_of_t<Receiver>;
+      using Env = typename operation_state_base_t<ReceiverId>::env_t;
       using variant_t = variant_storage_t<Sender, Env>;
 
       struct receiver_t {
@@ -41,54 +41,28 @@ namespace transfer {
           Tag{}(std::move(self.op_state_.receiver_), (As&&)as...);
         }
 
-        friend stdexec::env_of_t<stdexec::__t<ReceiverId>>
+        friend Env
         tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-          return stdexec::get_env(self.operation_state_.receiver_);
+          return self.operation_state_.make_env();
         }
       };
 
       using task_t = continuation_task_t<receiver_t, variant_t>;
 
-      bool owner_{false};
-      cudaStream_t stream_{0};
       cudaError_t status_{cudaSuccess};
+      context_state_t context_state_;
 
-      queue::task_hub_t* hub_;
       queue::host_ptr<variant_t> storage_;
       task_t *task_;
 
       ::cuda::std::atomic_flag started_;
 
-      Receiver receiver_;
-
       using enqueue_receiver = stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
       using inner_op_state_t = stdexec::connect_result_t<Sender, enqueue_receiver>;
       inner_op_state_t inner_op_;
 
-      cudaStream_t allocate() {
-        if (stream_ == 0) {
-          owner_ = true;
-          status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
-        }
-
-        return stream_;
-      }
-
-      cudaStream_t get_stream() {
-        cudaStream_t stream{};
-
-        if constexpr (std::is_base_of_v<stream_op_state_base, inner_op_state_t>) {
-          stream = inner_op_.get_stream();
-        } else {
-          stream = this->allocate();
-        }
-
-        return stream;
-      }
-
       friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
         op.started_.test_and_set(::cuda::std::memory_order::relaxed);
-        op.stream_ = op.get_stream();
 
         if (op.status_ != cudaSuccess) {
           // Couldn't allocate memory for operation state, complete with error
@@ -99,30 +73,22 @@ namespace transfer {
         stdexec::start(op.inner_op_);
       }
 
-      operation_state_t(queue::task_hub_t* hub, Sender&& sender, Receiver &&receiver)
-        : hub_(hub)
-        , storage_(queue::make_host<variant_t>(this->status_))
-        , task_(queue::make_host<task_t>(this->status_, receiver_t{*this}, storage_.get()).release())
+      operation_state_t(Sender&& sender, Receiver &&receiver, context_state_t context_state)
+        : operation_state_base_t<ReceiverId>((Receiver&&)receiver, context_state, true)
+        , context_state_(context_state)
+        , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
+        , task_(queue::make_host<task_t>(this->status_, context_state.pinned_resource_, receiver_t{*this}, storage_.get(), this->get_stream(), context_state.pinned_resource_).release())
         , started_(ATOMIC_FLAG_INIT)
-        , receiver_((Receiver&&)receiver)
         , inner_op_{
             stdexec::connect(
                 (Sender&&)sender,
                 enqueue_receiver{
-                  stdexec::get_env(receiver_), 
+                  this->make_env(), 
                   storage_.get(), 
                   task_, 
-                  hub_->producer()})} {
+                  context_state_.hub_->producer()})} {
         if (this->status_ == cudaSuccess) {
           this->status_ = task_->status_;
-        }
-      }
-
-      ~operation_state_t() {
-        if (owner_) {
-          STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
-          stream_ = 0;
-          owner_ = false;
         }
       }
 
@@ -140,7 +106,7 @@ template <class SenderId>
           stdexec::__x<stdexec::__member_t<Self, Sender>>, 
           stdexec::__x<Receiver>>;
 
-    queue::task_hub_t* hub_;
+    context_state_t context_state_;
     Sender sndr_;
 
     template <stdexec::__decays_to<transfer_sender_t> Self, stdexec::receiver Receiver>
@@ -148,9 +114,9 @@ template <class SenderId>
     friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
       -> op_state_th<Self, Receiver> {
       return op_state_th<Self, Receiver>{
-        self.hub_, 
         (Sender&&)self.sndr_, 
-        (Receiver&&)rcvr};
+        (Receiver&&)rcvr,
+        self.context_state_};
     }
 
     template <stdexec::__decays_to<transfer_sender_t> Self, class Env>
@@ -176,8 +142,8 @@ template <class SenderId>
       return ((Tag&&) tag)(self.sndr_, (As&&) as...);
     }
 
-    transfer_sender_t(queue::task_hub_t* hub, Sender sndr)
-      : hub_(hub)
+    transfer_sender_t(context_state_t context_state, Sender sndr)
+      : context_state_(context_state)
       , sndr_{(Sender&&)sndr} {
     }
   };

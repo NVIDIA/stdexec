@@ -36,6 +36,7 @@ namespace bulk {
   template <class ReceiverId, std::integral Shape, class Fun>
     class receiver_t : public stream_receiver_base {
       using Receiver = stdexec::__t<ReceiverId>;
+      using Env = typename operation_state_base_t<ReceiverId>::env_t;
 
       Shape shape_;
       Fun f_;
@@ -49,7 +50,7 @@ namespace bulk {
           operation_state_base_t<ReceiverId> &op_state = self.op_state_;
 
           if (self.shape_) {
-            cudaStream_t stream = op_state.stream_;
+            cudaStream_t stream = op_state.get_stream();
             constexpr int block_threads = 256;
             const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1) / block_threads;
             kernel
@@ -72,8 +73,8 @@ namespace bulk {
           self.op_state_.propagate_completion_signal(tag, (As&&)as...);
         }
 
-      friend stdexec::env_of_t<Receiver> tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-        return stdexec::get_env(self.op_state_.receiver_);
+      friend Env tag_invoke(stdexec::get_env_t, const receiver_t& self) noexcept {
+        return self.op_state_.make_env();
       }
 
       explicit receiver_t(Shape shape, Fun fun, operation_state_base_t<ReceiverId>& op_state)
@@ -188,7 +189,7 @@ namespace multi_gpu_bulk {
 
           // TODO Manage errors
           // TODO Usual logic when there's only a single GPU
-          cudaStream_t baseline_stream = op_state.stream_;
+          cudaStream_t baseline_stream = op_state.get_stream();
           cudaEventRecord(op_state.ready_to_launch_, baseline_stream);
 
           if (self.shape_) {
@@ -272,19 +273,14 @@ namespace multi_gpu_bulk {
       using Receiver = stdexec::__t<ReceiverId>;
 
       template <class _Receiver2>
-        operation_t(
-            int num_devices,
-            Sender&& __sndr, 
-            _Receiver2&& __rcvr, 
-            Shape shape, 
-            Fun fun)
+        operation_t(int num_devices, Sender&& __sndr, _Receiver2&& __rcvr, Shape shape, Fun fun, context_state_t context_state)
           : operation_base_t<SenderId, ReceiverId, Shape, Fun>(
               (Sender&&) __sndr,
-              stdexec::get_completion_scheduler<stdexec::set_value_t>(__sndr).hub_,
               (_Receiver2&&)__rcvr,
               [&] (operation_state_base_t<stdexec::__x<_Receiver2>> &) -> receiver_t<SenderId, ReceiverId, Shape, Fun> {
                 return receiver_t<SenderId, ReceiverId, Shape, Fun>(shape, fun, *this);
-              })
+              },
+              context_state)
           , num_devices_(num_devices)
           , streams_(new cudaStream_t[num_devices_]) 
           , ready_to_complete_(new cudaEvent_t[num_devices_]) {
@@ -354,12 +350,15 @@ template <class SenderId, std::integral Shape, class FunId>
         requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
       friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
         -> multi_gpu_bulk::operation_t<stdexec::__x<stdexec::__member_t<Self, Sender>>, stdexec::__x<Receiver>, Shape, Fun> {
+        auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(self.sndr_);
+        context_state_t context_state = sch.context_state_;
         return multi_gpu_bulk::operation_t<stdexec::__x<stdexec::__member_t<Self, Sender>>, stdexec::__x<Receiver>, Shape, Fun>(
             self.num_devices_,
             ((Self&&)self).sndr_,
             (Receiver&&)rcvr,
             self.shape_,
-            self.fun_);
+            self.fun_,
+            context_state);
         }
 
     template <stdexec::__decays_to<multi_gpu_bulk_sender_t> Self, class Env>

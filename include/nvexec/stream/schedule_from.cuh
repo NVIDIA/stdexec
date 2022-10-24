@@ -29,7 +29,7 @@ namespace schedule_from {
     struct receiver_t : stream_receiver_base {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
-      using Env = stdexec::env_of_t<Receiver>;
+      using Env = typename operation_state_base_t<ReceiverId>::env_t;
       using storage_t = variant_storage_t<Sender, Env>;
 
       constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
@@ -39,9 +39,8 @@ namespace schedule_from {
       template <stdexec::__one_of<stdexec::set_value_t,
                                   stdexec::set_error_t,
                                   stdexec::set_stopped_t> Tag,
-                class... As >
+                class... As>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-        auto stream = self.operation_state_.stream_;
         storage_t *storage = reinterpret_cast<storage_t*>(self.operation_state_.temp_storage_);
         storage->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
 
@@ -52,9 +51,9 @@ namespace schedule_from {
         }, *storage);
       }
 
-      friend stdexec::env_of_t<stdexec::__t<ReceiverId>>
+      friend Env 
       tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-        return stdexec::get_env(self.operation_state_.receiver_);
+        return self.operation_state_.make_env();
       }
     };
 
@@ -89,7 +88,7 @@ template <class Scheduler, class SenderId>
     using Sender = stdexec::__t<SenderId>;
     using source_sender_th = schedule_from::source_sender_t<Sender>;
 
-    queue::task_hub_t* hub_;
+    context_state_t context_state_;
     source_sender_th sndr_;
 
     template <class Self, class Receiver>
@@ -102,26 +101,26 @@ template <class Scheduler, class SenderId>
     friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
       -> stream_op_state_t<stdexec::__member_t<Self, source_sender_th>, receiver_t<Self, Receiver>, Receiver> {
         return stream_op_state<stdexec::__member_t<Self, source_sender_th>>(
-            self.hub_,
             ((Self&&)self).sndr_,
             (Receiver&&)rcvr,
             [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Self, Receiver> {
               return receiver_t<Self, Receiver>{{}, stream_provider};
-            });
+            },
+            self.context_state_);
     }
 
     template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t, stdexec::set_error_t> _Tag>
-    friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const schedule_from_sender_t& __self) noexcept {
-      return {__self.hub_};
-    }
+      friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const schedule_from_sender_t& __self) noexcept {
+        return {__self.context_state_};
+      }
 
     template <stdexec::tag_category<stdexec::forwarding_sender_query> _Tag, class... _As>
-      requires stdexec::__callable<_Tag, const Sender&, _As...>
-    friend auto tag_invoke(_Tag __tag, const schedule_from_sender_t& __self, _As&&... __as)
-      noexcept(stdexec::__nothrow_callable<_Tag, const Sender&, _As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, stdexec::forwarding_sender_query>, _Tag, const Sender&, _As...> {
-      return ((_Tag&&) __tag)(__self.sndr_, (_As&&) __as...);
-    }
+        requires stdexec::__callable<_Tag, const Sender&, _As...>
+      friend auto tag_invoke(_Tag __tag, const schedule_from_sender_t& __self, _As&&... __as)
+        noexcept(stdexec::__nothrow_callable<_Tag, const Sender&, _As...>)
+        -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, stdexec::forwarding_sender_query>, _Tag, const Sender&, _As...> {
+        return ((_Tag&&) __tag)(__self.sndr_, (_As&&) __as...);
+      }
 
     template <stdexec::__decays_to<schedule_from_sender_t> _Self, class _Env>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
@@ -130,8 +129,8 @@ template <class Scheduler, class SenderId>
           _Env,
           stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>>;
 
-    schedule_from_sender_t(queue::task_hub_t* hub, Sender sndr)
-      : hub_(hub)
+    schedule_from_sender_t(context_state_t context_state, Sender sndr)
+      : context_state_(context_state)
       , sndr_{{}, (Sender&&)sndr} {
     }
   };

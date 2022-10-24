@@ -53,7 +53,7 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
         using result_t = std::decay_t<std::invoke_result_t<Fun, std::add_rvalue_reference_t<std::decay_t<As>>...>>;
         constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
         operation_state_base_t<ReceiverId> &op_state = self.op_state_;
-        cudaStream_t stream = op_state.stream_;
+        cudaStream_t stream = op_state.get_stream();
 
         if constexpr (does_not_return_a_value) {
           kernel<std::decay_t<Fun>, As...><<<1, 1, 0, stream>>>(self.f_, (As&&)as...);
@@ -82,8 +82,9 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
         self.op_state_.propagate_completion_signal(tag, (As&&)as...);
       }
 
-    friend stdexec::env_of_t<Receiver> tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-      return stdexec::get_env(self.op_state_.receiver_);
+    friend typename operation_state_base_t<ReceiverId>::env_t 
+    tag_invoke(stdexec::get_env_t, const receiver_t& self) {
+      return self.op_state_.make_env();
     }
 
     explicit receiver_t(Fun fun, operation_state_base_t<ReceiverId> &op_state)

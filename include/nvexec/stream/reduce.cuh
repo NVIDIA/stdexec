@@ -91,12 +91,11 @@ namespace reduce_ {
 
       template <class Range>
       friend void tag_invoke(stdexec::set_value_t, receiver_t&& self, Range&& range) noexcept {
-        cudaStream_t stream = self.op_state_.stream_;
+        cudaStream_t stream = self.op_state_.get_stream();
 
         using Result = ::cuda::std::decay_t<
           ::cuda::std::invoke_result_t<Fun, decltype(*begin(std::declval<Range>())),
-                                            decltype(*begin(std::declval<Range>()))>
-        >;
+                                            decltype(*begin(std::declval<Range>()))>>;
 
         using value_t = Result;
         value_t *d_out = reinterpret_cast<value_t*>(self.op_state_.temp_storage_);

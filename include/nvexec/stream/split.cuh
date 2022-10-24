@@ -25,6 +25,11 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace split {
+    using env_t = 
+      make_stream_env_t<
+        stdexec::__make_env_t<
+          stdexec::__with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>>;
+
     template <class Tag, class Variant, class... As>
       __launch_bounds__(1)
       __global__ void copy_kernel(Variant* var, As&&... as) {
@@ -47,7 +52,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             SharedState &state = self.sh_state_;
 
             if constexpr (stream_sender<Sender>) {
-              cudaStream_t stream = state.op_state2_.stream_;
+              cudaStream_t stream = state.op_state2_.get_stream();
               using tuple_t = decayed_tuple<Tag, As...>;
               state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
               copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
@@ -60,9 +65,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             state.notify();
           }
 
-        friend auto tag_invoke(stdexec::get_env_t, const receiver_t& self)
-          -> exec::make_env_t<exec::with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>> {
-          return exec::make_env(stdexec::__with(stdexec::get_stop_token, self.sh_state_.stop_source_.get_token()));
+        friend env_t tag_invoke(stdexec::get_env_t, const receiver_t& self) {
+          return self.sh_state_.make_env();
         }
 
         explicit receiver_t(SharedState &sh_state_t) noexcept
@@ -91,14 +95,23 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return nullptr;
       }
 
+    inline cudaStream_t create_stream(cudaError_t& status, context_state_t context_state) {
+      cudaStream_t stream{};
+
+      if (status == cudaSuccess) {
+        std::tie(stream, status) = create_stream_with_priority(context_state.priority_);
+      }
+
+      return stream;
+    }
+
     template <class SenderId>
       struct sh_state_t {
         using Sender = stdexec::__t<SenderId>;
-        using Env = exec::make_env_t<exec::with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>;
-        using variant_t = variant_storage_t<Sender, Env>;
+        using variant_t = variant_storage_t<Sender, env_t>;
         using inner_receiver_t = receiver_t<SenderId, sh_state_t>;
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
-        using enqueue_receiver_t = stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
+        using enqueue_receiver_t = stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>;
         using intermediate_receiver = 
           stdexec::__t<
             std::conditional_t<
@@ -107,7 +120,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               stdexec::__x<enqueue_receiver_t>>>;
         using inner_op_state_t = stdexec::connect_result_t<Sender, intermediate_receiver>;
 
+        context_state_t context_state_;
         cudaError_t status_{cudaSuccess};
+        cudaStream_t stream_{};
+
         stdexec::in_place_stop_source stop_source_{};
         std::atomic<void*> head_{nullptr};
         unsigned int index_{0};
@@ -119,8 +135,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <stdexec::__decays_to<Sender> S>
             requires (stream_sender<S>)
-          explicit sh_state_t(S& sndr, queue::task_hub_t*)
-            : data_(malloc_managed<variant_t>(status_))
+          explicit sh_state_t(S& sndr, context_state_t context_state)
+            : context_state_(context_state)
+            , stream_(create_stream(status_, context_state_))
+            , data_(malloc_managed<variant_t>(status_))
             , op_state2_(stdexec::connect((Sender&&) sndr, inner_receiver_t{*this}))
             , started_(ATOMIC_FLAG_INIT) {
             if (status_ == cudaSuccess) {
@@ -130,17 +148,19 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <stdexec::__decays_to<Sender> S>
             requires (!stream_sender<S>)
-          explicit sh_state_t(S& sndr, queue::task_hub_t* hub)
-            : data_(malloc_managed<variant_t>(status_))
-            , task_(queue::make_host<task_t>(status_, inner_receiver_t{*this}, data_).release())
+          explicit sh_state_t(S& sndr, context_state_t context_state)
+            : context_state_(context_state)
+            , stream_(create_stream(status_, context_state_))
+            , data_(malloc_managed<variant_t>(status_))
+            , task_(queue::make_host<task_t>(status_, context_state.pinned_resource_, inner_receiver_t{*this}, data_, stream_, context_state.pinned_resource_).release())
             , op_state2_(
                 stdexec::connect(
                   (Sender&&)sndr,
                   enqueue_receiver_t{
-                    exec::make_env(stdexec::__with(stdexec::get_stop_token, stop_source_.get_token())), 
+                    make_env(), 
                     data_, 
                     task_, 
-                    hub->producer()})) 
+                    context_state.hub_->producer()})) 
             , started_(ATOMIC_FLAG_INIT) {
           }
 
@@ -156,7 +176,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             if constexpr (stream_sender<Sender>) {
               STDEXEC_DBG_ERR(cudaEventDestroy(event_));
             }
+            STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
           }
+        }
+
+        env_t make_env() const {
+          return make_stream_env(
+              stdexec::__make_env(stdexec::__with(stdexec::get_stop_token, stop_source_.get_token())),
+              stream_);
         }
 
         void notify() noexcept {
@@ -195,7 +222,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                     std::shared_ptr<sh_state_t<SenderId>> shared_state)
             noexcept(std::is_nothrow_move_constructible_v<Receiver>)
           : operation_base_t{nullptr, notify}
-          , operation_state_base_t<ReceiverId>((Receiver&&)rcvr)
+          , operation_state_base_t<ReceiverId>((Receiver&&)rcvr, shared_state->context_state_, false)
           , shared_state_(move(shared_state)) {
         }
         STDEXEC_IMMOVABLE(operation_t);
@@ -207,7 +234,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           cudaError_t& status = op->shared_state_->status_;
           if (status == cudaSuccess) {
             if constexpr (stream_sender<Sender>) {
-              status = STDEXEC_DBG_ERR(cudaStreamWaitEvent(op->stream_, op->shared_state_->event_));
+              status = STDEXEC_DBG_ERR(cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_));
             }
 
             visit([&](auto& tupl) noexcept -> void {
@@ -220,13 +247,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        cudaStream_t get_stream() {
-          return this->allocate();
-        }
-
         friend void tag_invoke(stdexec::start_t, operation_t& self) noexcept {
-          self.stream_ = self.get_stream();
-
           sh_state_t<SenderId>* shared_state = self.shared_state_.get();
           std::atomic<void*>& head = shared_state->head_;
           void* const completion_state = static_cast<void*>(shared_state);
@@ -309,9 +330,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             set_value_t,
             set_error_t>;
 
-      explicit split_sender_t(Sender sndr, queue::task_hub_t* hub)
+      explicit split_sender_t(context_state_t context_state, Sender sndr)
           : sndr_((Sender&&) sndr)
-          , shared_state_{std::make_shared<sh_state_>(sndr_, hub)}
+          , shared_state_{std::make_shared<sh_state_>(sndr_, context_state)}
       {}
     };
 }
