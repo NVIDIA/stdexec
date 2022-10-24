@@ -140,7 +140,7 @@ TEST_CASE("then can succeed a sender", "[cuda][stream][adaptors][then]") {
                  return is_on_gpu();
                })
              | ex::then([flags](bool a_sender_was_on_gpu) {
-                 if (a_sender_was_on_gpu * is_on_gpu()) {
+                 if (a_sender_was_on_gpu && is_on_gpu()) {
                    flags.set();
                  }
                });
@@ -179,7 +179,7 @@ TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][th
                })
              | a_sender()
              | ex::then([flags](bool a_sender_was_on_gpu) {
-                 if (a_sender_was_on_gpu * is_on_gpu()) {
+                 if (a_sender_was_on_gpu && is_on_gpu()) {
                    flags.set();
                  }
                });
@@ -206,5 +206,17 @@ TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptor
   std::this_thread::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
+}
+
+TEST_CASE("then can preceed a sender with values", "[cuda][stream][adaptors][then]") {
+  nvexec::stream_context stream_ctx{};
+
+  auto snd = ex::schedule(stream_ctx.get_scheduler()) 
+           | ex::then([]() -> bool { return is_on_gpu(); })
+           | a_sender([](bool then_was_on_gpu) -> bool {
+               return then_was_on_gpu && is_on_gpu(); 
+             });
+  auto [ok] = std::this_thread::sync_wait(std::move(snd)).value();
+  REQUIRE(ok);
 }
 
