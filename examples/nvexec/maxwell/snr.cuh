@@ -58,7 +58,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       public:
         template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
           friend void tag_invoke(_Tag __tag, receiver_2_t&& __self, _Args&&... __args) noexcept {
-            __self.op_state_.propagate_completion_signal(_Tag{}, (_Args&&)__args...);
+            OpT &op_state = __self.op_state_;
+            op_state.propagate_completion_signal(_Tag{}, (_Args&&)__args...);
           }
 
         friend void tag_invoke(ex::set_value_t, receiver_2_t&& __self) noexcept {
@@ -102,7 +103,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       public:
         template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
           friend void tag_invoke(_Tag __tag, receiver_1_t&& __self, _Args&&... __args) noexcept {
-            __self.op_state_.propagate_completion_signal(_Tag{}, (_Args&&)__args...);
+            OpT &op_state = __self.op_state_;
+            op_state.propagate_completion_signal(_Tag{}, (_Args&&)__args...);
           }
 
         friend void tag_invoke(ex::set_value_t, receiver_1_t&& __self) noexcept {
