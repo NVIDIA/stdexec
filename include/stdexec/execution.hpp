@@ -27,12 +27,12 @@
 #include <type_traits>
 #include <variant>
 
-#include <stdexec/__detail/__intrusive_ptr.hpp>
-#include <stdexec/__detail/__meta.hpp>
-#include <stdexec/functional.hpp>
-#include <stdexec/concepts.hpp>
-#include <stdexec/coroutine.hpp>
-#include <stdexec/stop_token.hpp>
+#include "__detail/__intrusive_ptr.hpp"
+#include "__detail/__meta.hpp"
+#include "functional.hpp"
+#include "concepts.hpp"
+#include "coroutine.hpp"
+#include "stop_token.hpp"
 
 #if STDEXEC_CLANG()
 #define _STRINGIZE(__arg) #__arg
@@ -5360,7 +5360,7 @@ namespace stdexec {
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 } // namespace stdexec
 
-#include <stdexec/__detail/__p2300.hpp>
+#include "__detail/__p2300.hpp"
 
 #ifdef __EDG__
 #pragma diagnostic pop

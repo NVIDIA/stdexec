@@ -15,9 +15,9 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
-#include <stdexec/__detail/__intrusive_queue.hpp>
-#include <exec/env.hpp>
+#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__intrusive_queue.hpp"
+#include "env.hpp"
 
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////

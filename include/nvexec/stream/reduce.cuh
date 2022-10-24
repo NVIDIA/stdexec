@@ -15,15 +15,15 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
+#include "../../stdexec/execution.hpp"
 #include <type_traits>
 
 #include <cuda/std/type_traits>
 
 #include <cub/device/device_reduce.cuh>
 
-#include "nvexec/stream/common.cuh"
-#include "nvexec/detail/throw_on_cuda_error.cuh"
+#include "common.cuh"
+#include "../detail/throw_on_cuda_error.cuh"
 
 namespace nvexec {
 namespace STDEXEC_STREAM_DETAIL_NS {

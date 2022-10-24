@@ -15,12 +15,13 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
+#include "../../stdexec/execution.hpp"
 
 #include <type_traits>
 
-#include "nvexec/detail/cuda_atomic.cuh"
-#include "nvexec/detail/throw_on_cuda_error.cuh"
+#include "config.cuh"
+#include "cuda_atomic.cuh"
+#include "throw_on_cuda_error.cuh"
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace queue {

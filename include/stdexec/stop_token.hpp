@@ -27,8 +27,8 @@
 #include <stop_token>
 #endif
 
-#include <stdexec/concepts.hpp>
-#include <stdexec/__detail/__config.hpp>
+#include "concepts.hpp"
+#include "__detail/__config.hpp"
 
 namespace stdexec {
   // [stoptoken.inplace], class in_place_stop_token

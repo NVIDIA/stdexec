@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
+#include "../stdexec/execution.hpp"
 #include <type_traits>
 
-#include "nvexec/stream_context.cuh"
+#include "stream_context.cuh"
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {

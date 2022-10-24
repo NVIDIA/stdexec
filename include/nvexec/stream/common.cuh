@@ -16,16 +16,17 @@
 #pragma once
 
 #include <atomic>
-#include <stdexec/execution.hpp>
+#include "../../stdexec/execution.hpp"
 
 #include <cuda/std/type_traits>
 #include <cuda/std/tuple>
 #include <optional>
 
-#include "nvexec/detail/cuda_atomic.cuh"
-#include "nvexec/detail/throw_on_cuda_error.cuh"
-#include "nvexec/detail/queue.cuh"
-#include "nvexec/detail/variant.cuh"
+#include "../detail/config.cuh"
+#include "../detail/cuda_atomic.cuh"
+#include "../detail/throw_on_cuda_error.cuh"
+#include "../detail/queue.cuh"
+#include "../detail/variant.cuh"
 
 namespace nvexec {
 

@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <nvexec/detail/cuda_fwd.cuh>
+#include "cuda_fwd.cuh"
 
 #include <cuda/atomic>
 
