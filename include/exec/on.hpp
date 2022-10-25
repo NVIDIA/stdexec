@@ -29,10 +29,8 @@ namespace exec {
     template <on_kind>
       struct on_t;
 
-    template <class _SchedulerId, class _SenderId>
+    template <class _Scheduler, class _Sender>
       struct __start_fn {
-        using _Scheduler = __t<_SchedulerId>;
-        using _Sender = __t<_SenderId>;
         _Scheduler __sched_;
         _Sender __sndr_;
 
@@ -55,7 +53,7 @@ namespace exec {
       };
     template <class _Scheduler, class _Sender>
       __start_fn(_Scheduler, _Sender)
-        -> __start_fn<__x<_Scheduler>, __x<_Sender>>;
+        -> __start_fn<_Scheduler, _Sender>;
 
     template <class _Env, class _Sender>
       struct _ENVIRONMENT_HAS_NO_SCHEDULER_FOR_THE_ON_ADAPTOR_TO_TRANSITION_BACK_TO {};
@@ -125,11 +123,8 @@ namespace exec {
           }
       };
 
-    template <class _SenderId, class _SchedulerId, class _ClosureId>
+    template <class _Sender, class _Scheduler, class _Closure>
       struct __continue_fn {
-        using _Sender = __t<_SenderId>;
-        using _Scheduler = __t<_SchedulerId>;
-        using _Closure = __t<_ClosureId>;
         _Sender __sndr_;
         _Scheduler __sched_;
         _Closure __closure_;
@@ -156,7 +151,7 @@ namespace exec {
       };
     template <class _Sender, class _Scheduler, class _Closure>
       __continue_fn(_Sender, _Scheduler, _Closure)
-        -> __continue_fn<__x<_Sender>, __x<_Scheduler>, __x<_Closure>>;
+        -> __continue_fn<_Sender, _Scheduler, _Closure>;
 
     template <class _SenderId, class _SchedulerId, class _ClosureId>
       struct __continue_on_sender {
