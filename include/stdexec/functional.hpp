@@ -51,12 +51,13 @@ namespace stdexec {
 
   template <auto _Fun>
     struct __fun_c_t {
+      using _FunT = decltype(_Fun);
       template <class... _Args>
-          requires __callable<decltype(_Fun), _Args...>
+          requires __callable<_FunT, _Args...>
         auto operator()(_Args&&... __args) const
-          noexcept(noexcept(((decltype(_Fun)&&) _Fun)((_Args&&) __args...)))
-          -> __call_result_t<decltype(_Fun), _Args...> {
-          return ((decltype(_Fun)&&) _Fun)((_Args&&) __args...);
+          noexcept(noexcept(_Fun((_Args&&) __args...)))
+          -> __call_result_t<_FunT, _Args...> {
+          return _Fun((_Args&&) __args...);
         }
     };
   template <auto _Fun>
