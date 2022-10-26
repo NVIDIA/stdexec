@@ -35,14 +35,14 @@
 #include "stop_token.hpp"
 
 #if STDEXEC_CLANG()
-#define _STRINGIZE(__arg) #__arg
-#define _PRAGMA_PUSH() _Pragma("GCC diagnostic push")
-#define _PRAGMA_POP() _Pragma("GCC diagnostic pop")
-#define _PRAGMA_IGNORE(__arg) _Pragma(_STRINGIZE(GCC diagnostic ignored __arg))
+#define STDEXEC_STRINGIZE(__arg) #__arg
+#define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
+#define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
+#define STDEXEC_PRAGMA_IGNORE(__arg) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __arg))
 #else
-#define _PRAGMA_PUSH()
-#define _PRAGMA_POP()
-#define _PRAGMA_IGNORE(__arg)
+#define STDEXEC_PRAGMA_PUSH()
+#define STDEXEC_PRAGMA_POP()
+#define STDEXEC_PRAGMA_IGNORE(__arg)
 #endif
 
 #if STDEXEC_NVHPC() || STDEXEC_GCC()
@@ -55,9 +55,9 @@
 #pragma diag_suppress 497
 #endif
 
-_PRAGMA_PUSH()
-_PRAGMA_IGNORE("-Wundefined-inline")
-_PRAGMA_IGNORE("-Wundefined-internal")
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
+STDEXEC_PRAGMA_IGNORE("-Wundefined-internal")
 
 namespace stdexec {
   // BUGBUG
@@ -237,6 +237,9 @@ namespace stdexec {
   // [execution.receivers]
   namespace __receivers {
     struct set_value_t {
+      template <class _Fn, class... _Args>
+        using __f = __minvoke<_Fn, _Args...>;
+
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
       void operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
@@ -246,6 +249,10 @@ namespace stdexec {
     };
 
     struct set_error_t {
+      template <class _Fn, class... _Args>
+          requires (sizeof...(_Args) == 1)
+        using __f = __minvoke<_Fn, _Args...>;
+
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
       void operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
@@ -255,6 +262,10 @@ namespace stdexec {
     };
 
     struct set_stopped_t {
+      template <class _Fn, class... _Args>
+          requires (sizeof...(_Args) == 0)
+        using __f = __minvoke<_Fn, _Args...>;
+
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
       void operator()(_Receiver&& __rcvr) const noexcept {
@@ -269,6 +280,10 @@ namespace stdexec {
   inline constexpr set_value_t set_value{};
   inline constexpr set_error_t set_error{};
   inline constexpr set_stopped_t set_stopped{};
+
+  template <class _Tag>
+    concept __completion_tag =
+      __one_of<_Tag, set_value_t, set_error_t, set_stopped_t>;
 
   inline constexpr struct __try_call_t {
     template <class _Receiver, class _Fun, class... _Args>
@@ -327,38 +342,61 @@ namespace stdexec {
       __dependent await_resume();
 #endif
     };
+
+#if STDEXEC_NVHPC()
+    template <class _Sig>
+      concept __completion_signature =
+        __compl_sigs::__is_compl_sig<_Sig>;
+
+    template <class _Sig, class _Tag, class _Ty = __q<__types>>
+      using __signal_args_t =
+        decltype(__compl_sigs::__test((_Sig*) nullptr, _Tag{}, _Ty{}));
+#else
+    template <class _Sig>
+      concept __completion_signature =
+        __typename<decltype(__compl_sigs::__test((_Sig*) nullptr))>;
+
+    template <class _Sig, class _Tag, class _Ty = __q<__types>>
+      using __signal_args_t =
+        decltype(__compl_sigs::__test<_Tag, _Ty>((_Sig*) nullptr));
+#endif
   } // namespace __compl_sigs
+  using __compl_sigs::__completion_signature;
 
   template <same_as<no_env>>
     using dependent_completion_signatures =
       __compl_sigs::__dependent;
 
-#if STDEXEC_NVHPC()
-  template <class _Sig>
-    concept __completion_signature =
-      __compl_sigs::__is_compl_sig<_Sig>;
-
-  template <class _Sig, class _Tag, class _Ty = __q<__types>>
-    using __signal_args_t =
-      decltype(__compl_sigs::__test((_Sig*) nullptr, _Tag{}, _Ty{}));
-#else
-  template <class _Sig>
-    concept __completion_signature =
-      __typename<decltype(__compl_sigs::__test((_Sig*) nullptr))>;
-
-  template <class _Sig, class _Tag, class _Ty = __q<__types>>
-    using __signal_args_t =
-      decltype(__compl_sigs::__test<_Tag, _Ty>((_Sig*) nullptr));
-#endif
-
-  template <__completion_signature... _Sigs>
+  template <__compl_sigs::__completion_signature... _Sigs>
     struct completion_signatures {
-      template <class _Tag, class _Tuple, class _Variant>
-        using __gather_sigs =
-          __minvoke<
-            __concat<_Variant>,
-            __signal_args_t<_Sigs, _Tag, _Tuple>...>;
     };
+
+  namespace __compl_sigs {
+    template <class _TaggedTuple, __completion_tag _Tag, class... _Ts>
+      auto __as_tagged_tuple_(_Tag(*)(_Ts...), _TaggedTuple*)
+        -> __mconst<__minvoke<_TaggedTuple, _Tag, _Ts...>>;
+
+    template <class _Sig, class _TaggedTuple>
+      using __as_tagged_tuple =
+        decltype(__compl_sigs::__as_tagged_tuple_(
+          (_Sig*) nullptr,
+          (_TaggedTuple*) nullptr));
+
+    template <class _TaggedTuple, class _Variant, class... _Sigs>
+      auto __for_all_sigs_(completion_signatures<_Sigs...>*, _TaggedTuple*, _Variant*)
+        -> __mconst<
+            __minvoke<
+              _Variant,
+              __minvoke<__as_tagged_tuple<_Sigs, _TaggedTuple>>...>>;
+
+    template <class _Completions, class _TaggedTuple, class _Variant>
+      using __for_all_sigs =
+        __minvoke<
+          decltype(__compl_sigs::__for_all_sigs_(
+            (_Completions*) nullptr,
+            (_TaggedTuple*) nullptr,
+            (_Variant*) nullptr))>;
+  } // namespace __compl_sigs
 
   template <class _Ty>
     concept __is_completion_signatures =
@@ -381,7 +419,7 @@ namespace stdexec {
     using __concat_completion_signatures_t =
       __t<__concat_completion_signatures<_Completions...>>;
 
-  template <class _Traits, class _Env>
+  template <class _Completions, class _Env>
     inline constexpr bool
       __valid_completion_signatures_ = false;
   template <class... _Sigs, class _Env>
@@ -391,9 +429,9 @@ namespace stdexec {
     inline constexpr bool
       __valid_completion_signatures_<dependent_completion_signatures<no_env>, no_env> = true;
 
-  template <class _Traits, class _Env>
+  template <class _Completions, class _Env>
     concept __valid_completion_signatures =
-      __valid_completion_signatures_<_Traits, _Env>;
+      __valid_completion_signatures_<_Completions, _Env>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -565,11 +603,29 @@ namespace stdexec {
   template <class... _Ts>
     using __decayed_tuple = std::tuple<decay_t<_Ts>...>;
 
+  template <class _Tag, class _Tuple>
+    struct __select_completions_for {
+      template <same_as<_Tag> _Tag2, class... _Args>
+        using __f = __minvoke<_Tag2, _Tuple, _Args...>;
+    };
+
+  template <class _Tag, class _Tuple>
+    using __select_completions_for_or =
+      __with_default<
+        __select_completions_for<_Tag, _Tuple>,
+        __>;
+
+  template <class _Tag, class _Completions, class _Tuple, class _Variant>
+    using __gather_signal =
+      __compl_sigs::__for_all_sigs<
+        _Completions,
+        __select_completions_for_or<_Tag, _Tuple>,
+        __remove<__, _Variant>>;
+
   template <class _Tag, class _Sender, class _Env, class _Tuple, class _Variant>
       requires sender<_Sender, _Env>
-    using __gather_sigs_t =
-      typename completion_signatures_of_t<_Sender, _Env>
-        ::template __gather_sigs<_Tag, _Tuple, _Variant>;
+    using __gather_completions_for =
+      __gather_signal<_Tag, completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
 
   template <class _Sender,
             class _Env = no_env,
@@ -577,14 +633,14 @@ namespace stdexec {
             class _Variant = __q<__variant>>
       requires sender<_Sender, _Env>
     using __value_types_of_t =
-      __gather_sigs_t<set_value_t, _Sender, _Env, _Tuple, _Variant>;
+      __gather_completions_for<set_value_t, _Sender, _Env, _Tuple, _Variant>;
 
   template <class _Sender,
             class _Env = no_env,
             class _Variant = __q<__variant>>
       requires sender<_Sender, _Env>
     using __error_types_of_t =
-      __gather_sigs_t<set_error_t, _Sender, _Env, __q<__midentity>, _Variant>;
+      __gather_completions_for<set_error_t, _Sender, _Env, __q<__midentity>, _Variant>;
 
   template <class _Sender,
             class _Env = no_env,
@@ -604,7 +660,10 @@ namespace stdexec {
   template <class _Tag, class _Sender, class _Env = no_env>
       requires sender<_Sender, _Env>
     using __count_of =
-      __gather_sigs_t<_Tag, _Sender, _Env, __mconst<int>, __mcount>;
+      __compl_sigs::__for_all_sigs<
+        completion_signatures_of_t<_Sender, _Env>,
+        __q<__front>,
+        __mcount<_Tag>>;
 
   template <class _Tag, class _Sender, class _Env = no_env>
       requires __valid<__count_of, _Tag, _Sender, _Env>
@@ -1396,7 +1455,7 @@ namespace stdexec {
       sender<_Sender, _Env> &&
       same_as<
         __types<_SetSig>,
-        __gather_sigs_t<
+        __gather_completions_for<
           __tag_of_sig_t<_SetSig>,
           _Sender,
           _Env,
@@ -2251,7 +2310,7 @@ namespace stdexec {
   template <class _Tag, class _Fun, class _Sender, class _Env>
     using __with_error_invoke_t =
       __if_c<
-        __v<__gather_sigs_t<
+        __v<__gather_completions_for<
           _Tag,
           _Sender,
           _Env,
@@ -3576,7 +3635,7 @@ namespace stdexec {
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
       using __receiver =
         stdexec::__t<
-          __gather_sigs_t<
+          __gather_completions_for<
             _Let,
             __t<_SenderId>,
             env_of_t<__t<_ReceiverId>>,
@@ -4088,7 +4147,7 @@ namespace stdexec {
 
     template <class _Sender, class _Env, class _State, class _Tag>
       using __bind_completions_t =
-        __gather_sigs_t<_Tag, _Sender, _Env, __tuple_t<_Tag>, __make_bind<_State>>;
+        __gather_completions_for<_Tag, _Sender, _Env, __tuple_t<_Tag>, __make_bind<_State>>;
 
     template <class _Sender, class _Env>
       using __variant_for_t =
@@ -4702,13 +4761,13 @@ namespace stdexec {
         using __swallow_values = completion_signatures<>;
 
       template <class _Env, class... _Senders>
-        struct __traits {
+        struct __completions {
           using __t = dependent_completion_signatures<_Env>;
         };
 
       template <class _Env, class... _Senders>
           requires ((__v<__count_of<set_value_t, _Senders, _Env>> <= 1) &&...)
-        struct __traits<_Env, _Senders...> {
+        struct __completions<_Env, _Senders...> {
           using __non_values =
             __concat_completion_signatures_t<
               completion_signatures<
@@ -4750,14 +4809,17 @@ namespace stdexec {
            private:
             template <class _CvrefEnv>
               using __completion_sigs =
-                stdexec::__t<__traits<
+                stdexec::__t<__completions<
                   __env_t<remove_cvref_t<_CvrefEnv>>,
                   __member_t<_CvrefEnv, stdexec::__t<_SenderIds>>...>>;
 
-            template <class _Traits>
+            template <class _Completions>
               using __sends_values =
-                __bool<__v<typename _Traits::template
-                  __gather_sigs<set_value_t, __mconst<int>, __mcount>> != 0>;
+                __bool<__v<
+                  __compl_sigs::__for_all_sigs<
+                    _Completions,
+                    __q<__front>, // the tag type without the arguments
+                    __mcount<set_value_t>>> != 0>;
 
             template <class _CvrefReceiverId>
               struct __operation;
@@ -4766,7 +4828,7 @@ namespace stdexec {
               struct __receiver {
                 using _WhenAll = __member_t<_CvrefReceiverId, __sender::__t>;
                 using _Receiver = stdexec::__t<decay_t<_CvrefReceiverId>>;
-                using _Traits =
+                using _Completions =
                   __completion_sigs<
                     __member_t<_CvrefReceiverId, env_of_t<_Receiver>>>;
 
@@ -4795,7 +4857,7 @@ namespace stdexec {
                     }
                   template <class... _Values>
                     void set_value(_Values&&... __vals) && noexcept {
-                      if constexpr (__sends_values<_Traits>::value) {
+                      if constexpr (__sends_values<_Completions>::value) {
                         // We only need to bother recording the completion values
                         // if we're not already in the "error" or "stopped" state.
                         if (__op_state_->__state_ == __started) {
@@ -4840,7 +4902,7 @@ namespace stdexec {
                 using _Receiver = stdexec::__t<decay_t<_CvrefReceiverId>>;
                 using _Env = env_of_t<_Receiver>;
                 using _CvrefEnv = __member_t<_CvrefReceiverId, _Env>;
-                using _Traits = __completion_sigs<_CvrefEnv>;
+                using _Completions = __completion_sigs<_CvrefEnv>;
                 using _ErrTypes = error_types_of_t<__sender::__t, __env_t<_Env>, __variant>;
 
                 struct __t {
@@ -4856,7 +4918,7 @@ namespace stdexec {
 
                   template <size_t... _Is>
                     static auto __connect_children_(std::index_sequence<_Is...>)
-                      -> std::tuple<__child_op_state_t<stdexec::__t<_SenderIds>, __index<_Is>>...>;
+                      -> std::tuple<__child_op_state_t<stdexec::__t<_SenderIds>, __msize_t<_Is>>...>;
 
                   using __child_op_states_tuple_t =
                       decltype(__t::__connect_children_(_Indices{}));
@@ -4873,7 +4935,7 @@ namespace stdexec {
                     // All child operations have completed and arrived at the barrier.
                     switch(__state_.load(std::memory_order_relaxed)) {
                     case __started:
-                      if constexpr (__sends_values<_Traits>::value) {
+                      if constexpr (__sends_values<_Completions>::value) {
                         // All child operations completed successfully:
                         std::apply(
                           [this](auto&... __opt_vals) -> void {
@@ -4950,7 +5012,7 @@ namespace stdexec {
                   // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
                   using __child_values_tuple_t =
                     __if<
-                      __sends_values<_Traits>,
+                      __sends_values<_Completions>,
                       __minvoke<
                         __q<std::tuple>,
                         __value_types_of_t<
@@ -5374,4 +5436,4 @@ namespace stdexec {
 #pragma diagnostic pop
 #endif
 
-_PRAGMA_POP()
+STDEXEC_PRAGMA_POP()

@@ -110,12 +110,12 @@ template <class SenderId, class Fun>
 
       template <class T, int = 0>
         struct size_of_ {
-          using __t = stdexec::__index<sizeof(T)>;
+          using __t = stdexec::__msize_t<sizeof(T)>;
         };
 
       template <int W>
         struct size_of_<void, W> {
-          using __t = stdexec::__index<0>;
+          using __t = stdexec::__msize_t<0>;
         };
       
       template <class... As>
@@ -136,7 +136,7 @@ template <class SenderId, class Fun>
 
           static constexpr std::size_t value =
             stdexec::__v<
-              stdexec::__gather_sigs_t<
+              stdexec::__gather_completions_for<
                 stdexec::set_value_t, 
                 Sender,  
                 stdexec::env_of_t<Receiver>, 
