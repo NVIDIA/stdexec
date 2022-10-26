@@ -2142,9 +2142,9 @@ namespace stdexec {
             using __base_from_derived_t = decltype(__declval<_D>().base());
 
           using __get_base_t =
-            __if<
-              __bool<__has_base>,
-              __mbind_back<__defer<__member_t>, _Base>,
+            __if_c<
+              __has_base,
+              __mbind_back_q1<__member_t, _Base>,
               __q1<__base_from_derived_t>>;
 
           template <class _D>
