@@ -5,7 +5,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -27,7 +27,7 @@ TEST_CASE("when_all works", "[cuda][stream][adaptors][when_all]") {
   auto snd = ex::when_all(
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([=]{ if (is_on_gpu()) { flags.set(0); }}),
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([=]{ if (is_on_gpu()) { flags.set(1); }}));
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -38,7 +38,7 @@ TEST_CASE("when_all returns values", "[cuda][stream][adaptors][when_all]") {
   auto snd = ex::when_all(
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([]{ return is_on_gpu() * 24; }),
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([]{ return is_on_gpu() * 42; }));
-  auto [v1, v2] = std::this_thread::sync_wait(std::move(snd)).value();
+  auto [v1, v2] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(v1 == 24);
   REQUIRE(v2 == 42);
@@ -53,7 +53,7 @@ TEST_CASE("when_all with many senders", "[cuda][stream][adaptors][when_all]") {
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([]{ return is_on_gpu() * 3; }),
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([]{ return is_on_gpu() * 4; }),
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([]{ return is_on_gpu() * 5; }));
-  auto [v1, v2, v3, v4, v5] = std::this_thread::sync_wait(std::move(snd)).value();
+  auto [v1, v2, v3, v4, v5] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(v1 == 1);
   REQUIRE(v2 == 2);

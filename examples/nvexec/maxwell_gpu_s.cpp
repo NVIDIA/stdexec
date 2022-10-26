@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   const std::size_t N = value(params, "N", 512);
 
   auto run_snr_on = [&](std::string_view scheduler_name,
-                        std::execution::scheduler auto &&scheduler) {
+                        stdexec::scheduler auto &&scheduler) {
     grid_t grid{N, is_gpu_scheduler(scheduler)};
 
     auto accessor = grid.accessor();

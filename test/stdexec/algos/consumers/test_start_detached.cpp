@@ -22,7 +22,7 @@
 
 #include <chrono>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using namespace std::chrono_literals;
 

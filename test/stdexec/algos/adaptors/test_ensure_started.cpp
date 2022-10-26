@@ -24,7 +24,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 using exec::async_scope;
 
 TEST_CASE("ensure_started returns a sender", "[adaptors][ensure_started]") {
@@ -196,7 +196,7 @@ TEST_CASE("ensure_started stopped late", "[adaptors][ensure_started]") {
 }
 
 TEST_CASE("stopping ensure_started before the source completes calls set_stopped", "[adaptors][ensure_started]") {
-  std::in_place_stop_source stop_source;
+  stdexec::in_place_stop_source stop_source;
   impulse_scheduler sch;
   bool called{false};
   auto snd = ex::on(sch, ex::just(19))
@@ -212,7 +212,7 @@ TEST_CASE("stopping ensure_started before the source completes calls set_stopped
 }
 
 TEST_CASE("stopping ensure_started before the lazy opstate is started calls set_stopped", "[adaptors][ensure_started]") {
-  std::in_place_stop_source stop_source;
+  stdexec::in_place_stop_source stop_source;
   impulse_scheduler sch;
   int count = 0;
   bool called{false};
@@ -232,7 +232,7 @@ TEST_CASE("stopping ensure_started before the lazy opstate is started calls set_
 }
 
 TEST_CASE("stopping ensure_started after the task has already completed doesn't change the result", "[adaptors][ensure_started]") {
-  std::in_place_stop_source stop_source;
+  stdexec::in_place_stop_source stop_source;
   int count = 0;
   auto snd = ex::just()
            | ex::then([&] { ++count; return 42; })

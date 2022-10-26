@@ -22,7 +22,7 @@
 #include <exec/on.hpp>
 #include <exec/env.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 template <ex::scheduler Sched = inline_scheduler>
 inline auto _with_scheduler(Sched sched = {}) {

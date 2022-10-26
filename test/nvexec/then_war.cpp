@@ -4,7 +4,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -17,7 +17,7 @@ TEST_CASE("then can preceed a sender with values", "[cuda][stream][adaptors][the
            | a_sender([](bool then_was_on_gpu) -> bool {
                return then_was_on_gpu * is_on_gpu(); // nvbug/3810019
              });
-  auto [ok] = std::this_thread::sync_wait(std::move(snd)).value();
+  auto [ok] = stdexec::sync_wait(std::move(snd)).value();
   REQUIRE(ok);
 }
 

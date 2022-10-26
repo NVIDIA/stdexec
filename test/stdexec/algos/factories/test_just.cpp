@@ -19,7 +19,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 TEST_CASE("Simple test for just", "[factories][just]") {
   auto o1 = ex::connect(ex::just(1), expect_value_receiver(1));

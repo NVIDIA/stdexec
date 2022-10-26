@@ -29,7 +29,7 @@ namespace when_all {
 enum state_t { started, error, stopped };
 
 struct on_stop_requested {
-  std::in_place_stop_source& stop_source_;
+  stdexec::in_place_stop_source& stop_source_;
   void operator()() noexcept {
     stop_source_.request_stop();
   }
@@ -37,14 +37,14 @@ struct on_stop_requested {
 
 template <class Env>
   using env_t =
-    exec::make_env_t<Env, exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>;
+    exec::make_env_t<Env, exec::with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>;
 
 template <class...>
-  using swallow_values = std::execution::completion_signatures<>;
+  using swallow_values = stdexec::completion_signatures<>;
 
 template <class Env, class... Senders>
   struct traits {
-    using __t = std::execution::dependent_completion_signatures<Env>;
+    using __t = stdexec::dependent_completion_signatures<Env>;
   };
 
 template <class TupleT, class... As>
@@ -54,21 +54,21 @@ __global__ void copy_kernel(TupleT* tpl, As&&... as) {
 }
 
 template <class Env, class... Senders>
-    requires ((stdexec::__v<stdexec::__count_of<std::execution::set_value_t, Senders, Env>> <= 1) &&...)
+    requires ((stdexec::__v<stdexec::__count_of<stdexec::set_value_t, Senders, Env>> <= 1) &&...)
   struct traits<Env, Senders...> {
     using non_values =
       stdexec::__concat_completion_signatures_t<
-        std::execution::completion_signatures<
-          std::execution::set_error_t(cudaError_t),
-          std::execution::set_stopped_t()>,
-        std::execution::make_completion_signatures<
+        stdexec::completion_signatures<
+          stdexec::set_error_t(cudaError_t),
+          stdexec::set_stopped_t()>,
+        stdexec::make_completion_signatures<
           Senders,
           Env,
-          std::execution::completion_signatures<>,
+          stdexec::completion_signatures<>,
           swallow_values>...>;
     using values =
       stdexec::__minvoke<
-        stdexec::__concat<stdexec::__qf<std::execution::set_value_t>>,
+        stdexec::__concat<stdexec::__qf<stdexec::set_value_t>>,
         stdexec::__value_types_of_t<
           Senders,
           Env,
@@ -76,9 +76,9 @@ template <class Env, class... Senders>
           stdexec::__single_or<stdexec::__types<>>>...>;
     using __t =
       stdexec::__if_c<
-        (stdexec::__sends<std::execution::set_value_t, Senders, Env> &&...),
+        (stdexec::__sends<stdexec::set_value_t, Senders, Env> &&...),
         stdexec::__minvoke2<
-          stdexec::__push_back<stdexec::__q<std::execution::completion_signatures>>, non_values, values>,
+          stdexec::__push_back<stdexec::__q<stdexec::completion_signatures>>, non_values, values>,
         non_values>;
   };
 }
@@ -103,20 +103,20 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
     template <class Traits>
       using sends_values =
         stdexec::__bool<stdexec::__v<typename Traits::template
-          __gather_sigs<std::execution::set_value_t, stdexec::__mconst<int>, stdexec::__mcount>> != 0>;
+          __gather_sigs<stdexec::set_value_t, stdexec::__mconst<int>, stdexec::__mcount>> != 0>;
 
     template <class CvrefReceiverId>
       struct operation_t;
 
     template <class CvrefReceiverId, std::size_t Index>
-      struct receiver_t : std::execution::receiver_adaptor<receiver_t<CvrefReceiverId, Index>>
+      struct receiver_t : stdexec::receiver_adaptor<receiver_t<CvrefReceiverId, Index>>
                         , stream_receiver_base {
         using WhenAll = stdexec::__member_t<CvrefReceiverId, when_all_sender_t>;
         using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
         using SenderId = nvexec::detail::nth_type<Index, SenderIds...>;
         using Traits =
           completion_sigs<
-            stdexec::__member_t<CvrefReceiverId, std::execution::env_of_t<Receiver>>>;
+            stdexec::__member_t<CvrefReceiverId, stdexec::env_of_t<Receiver>>>;
 
         Receiver&& base() && noexcept {
           return (Receiver&&) op_state_->recvr_;
@@ -161,7 +161,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
           }
 
         template <class Error>
-            requires std::tag_invocable<std::execution::set_error_t, Receiver, Error>
+            requires std::tag_invocable<stdexec::set_error_t, Receiver, Error>
           void set_error(Error&& err) && noexcept {
             set_error((Error&&) err, when_all::started);
           }
@@ -178,10 +178,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         }
 
         auto get_env() const
-          -> exec::make_env_t<std::execution::env_of_t<Receiver>, exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
+          -> exec::make_env_t<stdexec::env_of_t<Receiver>, exec::with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>> {
           return exec::make_env(
-            std::execution::get_env(base()),
-            stdexec::__with(std::execution::get_stop_token, op_state_->stop_source_.get_token()));
+            stdexec::get_env(base()),
+            stdexec::__with(stdexec::get_stop_token, op_state_->stop_source_.get_token()));
         }
 
         operation_t<CvrefReceiverId>* op_state_;
@@ -191,7 +191,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
       struct operation_t : stream_op_state_base {
         using WhenAll = stdexec::__member_t<CvrefReceiverId, when_all_sender_t>;
         using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
-        using Env = std::execution::env_of_t<Receiver>;
+        using Env = stdexec::env_of_t<Receiver>;
         using CvrefEnv = stdexec::__member_t<CvrefReceiverId, Env>;
         using Traits = completion_sigs<CvrefEnv>;
 
@@ -264,7 +264,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
                   [this](auto&... opt_vals) -> void {
                     std::apply(
                       [this](auto&... all_vals) -> void {
-                        std::execution::set_value((Receiver&&) recvr_, all_vals...);
+                        stdexec::set_value((Receiver&&) recvr_, all_vals...);
                       },
                       std::tuple_cat(
                         ::cuda::std::apply(
@@ -280,17 +280,17 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
               break;
             case when_all::error:
               std::visit([this](auto& err) noexcept {
-                  std::execution::set_error((Receiver&&) recvr_, std::move(err));
+                  stdexec::set_error((Receiver&&) recvr_, std::move(err));
               }, errors_);
               break;
             case when_all::stopped:
-              std::execution::set_stopped((Receiver&&) recvr_);
+              stdexec::set_stopped((Receiver&&) recvr_);
               break;
             default:
               ;
             }
           } else {
-            std::execution::set_error((Receiver&&)recvr_, std::move(status_));
+            stdexec::set_error((Receiver&&)recvr_, std::move(status_));
           }
         }
 
@@ -302,7 +302,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
                   operation_t* parent_op = this;
                   queue::task_hub_t* hub = 
                     const_cast<queue::task_hub_t*>(
-                      std::execution::get_completion_scheduler<std::execution::set_value_t>(
+                      stdexec::get_completion_scheduler<stdexec::set_value_t>(
                         std::get<Is>(when_all.sndrs_)
                       ).hub_);
                   return exit_op_state<decltype(std::get<Is>(((WhenAll&&)when_all).sndrs_)),
@@ -338,20 +338,20 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
         STDEXEC_IMMOVABLE(operation_t);
 
-        friend void tag_invoke(std::execution::start_t, operation_t& self) noexcept {
+        friend void tag_invoke(stdexec::start_t, operation_t& self) noexcept {
           (void)self.get_stream();
 
           // register stop callback:
           self.on_stop_.emplace(
-              std::execution::get_stop_token(std::execution::get_env(self.recvr_)),
+              stdexec::get_stop_token(stdexec::get_env(self.recvr_)),
               when_all::on_stop_requested{self.stop_source_});
           if (self.stop_source_.stop_requested()) {
             // Stop has already been requested. Don't bother starting
             // the child operations.
-            std::execution::set_stopped((Receiver&&) self.recvr_);
+            stdexec::set_stopped((Receiver&&) self.recvr_);
           } else {
             std::apply([](auto&&... __child_ops) noexcept -> void {
-              (std::execution::start(__child_ops), ...);
+              (stdexec::start(__child_ops), ...);
             }, self.child_states_);
           }
         }
@@ -375,26 +375,26 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         std::array<cudaEvent_t, sizeof...(SenderIds)> events_;
         // Could be non-atomic here and atomic_ref everywhere except __completion_fn
         std::atomic<when_all::state_t> state_{when_all::started};
-        std::execution::error_types_of_t<when_all_sender_t, when_all::env_t<Env>, stdexec::__variant> errors_{};
+        stdexec::error_types_of_t<when_all_sender_t, when_all::env_t<Env>, stdexec::__variant> errors_{};
         child_values_tuple_t* values_{};
-        std::in_place_stop_source stop_source_{};
-        std::optional<typename std::execution::stop_token_of_t<std::execution::env_of_t<Receiver>&>::template
+        stdexec::in_place_stop_source stop_source_{};
+        std::optional<typename stdexec::stop_token_of_t<stdexec::env_of_t<Receiver>&>::template
             callback_type<when_all::on_stop_requested>> on_stop_{};
       };
 
-    template <stdexec::__decays_to<when_all_sender_t> Self, std::execution::receiver Receiver>
-      friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
+    template <stdexec::__decays_to<when_all_sender_t> Self, stdexec::receiver Receiver>
+      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
         -> operation_t<stdexec::__member_t<Self, stdexec::__x<std::decay_t<Receiver>>>> {
         return {(Self&&) self, (Receiver&&) rcvr};
       }
 
     template <stdexec::__decays_to<when_all_sender_t> Self, class Env>
-      friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> completion_sigs<stdexec::__member_t<Self, Env>>;
 
-    template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_stopped_t> _Tag>
+    template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> _Tag>
         requires WithCompletionScheduler
-      friend Scheduler tag_invoke(std::execution::get_completion_scheduler_t<_Tag>, const when_all_sender_t& __self) noexcept {
+      friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const when_all_sender_t& __self) noexcept {
         return Scheduler(__self.hub_);
       }
 

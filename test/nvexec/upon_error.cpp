@@ -4,7 +4,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -53,7 +53,7 @@ TEST_CASE("upon_error executes on GPU", "[cuda][stream][adaptors][upon_error]") 
                  flags.set();
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -76,7 +76,7 @@ TEST_CASE("upon_error can preceed a sender without values", "[cuda][stream][adap
                 flags.set(1);
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -95,7 +95,7 @@ TEST_CASE("upon_error can succeed a sender without values", "[cuda][stream][adap
                  flags.set();
                }
              }); 
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }

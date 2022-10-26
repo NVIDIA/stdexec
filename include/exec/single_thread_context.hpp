@@ -22,7 +22,7 @@
 
 namespace exec {
   class single_thread_context {
-    std::execution::run_loop loop_;
+    stdexec::run_loop loop_;
     std::thread thread_;
 
   public:

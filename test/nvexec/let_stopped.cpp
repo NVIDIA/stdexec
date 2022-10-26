@@ -4,7 +4,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -33,7 +33,7 @@ TEST_CASE("let_stopped executes on GPU", "[cuda][stream][adaptors][let_stopped]"
 
                return ex::just();
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -58,7 +58,7 @@ TEST_CASE("let_stopped can preceed a sender without values", "[cuda][stream][ada
                  flags.set(1);
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -79,7 +79,7 @@ TEST_CASE("let_stopped can succeed a sender", "[cuda][stream][adaptors][let_stop
 
                return ex::schedule(sch);
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }

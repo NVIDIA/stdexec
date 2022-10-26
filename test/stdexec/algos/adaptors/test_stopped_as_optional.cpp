@@ -21,7 +21,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 TEST_CASE("stopped_as_optional returns a sender", "[adaptors][stopped_as_optional]") {
   auto snd = ex::stopped_as_optional(ex::just(11));

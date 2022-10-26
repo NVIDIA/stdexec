@@ -2,9 +2,9 @@
 #include <exec/async_scope.hpp>
 #include "exec/static_thread_pool.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 using exec::async_scope;
-using std::this_thread::sync_wait;
+using stdexec::sync_wait;
 
 TEST_CASE("async_scope can be created and them immediately destructed", "[async_scope][dtor]") {
   async_scope scope;

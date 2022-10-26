@@ -21,7 +21,7 @@ auto end(simple_range<Iterator>& rng) {
   return rng.last;
 }
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 int main() {
   const int n = 2 * 1024;
@@ -34,7 +34,7 @@ int main() {
   auto snd = ex::transfer_just(stream_ctx.get_scheduler(), simple_range{first, last})
            | nvexec::reduce();
 
-  auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+  auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
   std::cout << "result: " << result << std::endl;
 }

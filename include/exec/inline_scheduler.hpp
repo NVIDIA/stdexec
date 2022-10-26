@@ -27,40 +27,40 @@ namespace exec {
       struct __op {
         using R = stdexec::__t<R_>;
         [[no_unique_address]] R rec_;
-        friend void tag_invoke(std::execution::start_t, __op& op) noexcept try {
-          std::execution::set_value((R&&) op.rec_);
+        friend void tag_invoke(stdexec::start_t, __op& op) noexcept try {
+          stdexec::set_value((R&&) op.rec_);
         } catch(...) {
-          std::execution::set_error((R&&) op.rec_, std::current_exception());
+          stdexec::set_error((R&&) op.rec_, std::current_exception());
         }
       };
 
     struct __sender {
       using completion_signatures =
-        std::execution::completion_signatures<
-          std::execution::set_value_t(),
-          std::execution::set_error_t(std::exception_ptr)>;
+        stdexec::completion_signatures<
+          stdexec::set_value_t(),
+          stdexec::set_error_t(std::exception_ptr)>;
 
       template <class R>
-        friend auto tag_invoke(std::execution::connect_t, __sender, R&& rec)
+        friend auto tag_invoke(stdexec::connect_t, __sender, R&& rec)
           noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
           -> __op<stdexec::__x<std::remove_cvref_t<R>>> {
           return {(R&&) rec};
         }
 
       friend inline_scheduler
-      tag_invoke(std::execution::get_completion_scheduler_t<std::execution::set_value_t>, __sender) noexcept {
+      tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, __sender) noexcept {
         return {};
       }
     };
 
-    friend __sender tag_invoke(std::execution::schedule_t, const inline_scheduler&) noexcept {
+    friend __sender tag_invoke(stdexec::schedule_t, const inline_scheduler&) noexcept {
       return {};
     }
 
-    friend std::execution::forward_progress_guarantee tag_invoke(
-        std::execution::get_forward_progress_guarantee_t,
+    friend stdexec::forward_progress_guarantee tag_invoke(
+        stdexec::get_forward_progress_guarantee_t,
         const inline_scheduler&) noexcept {
-      return std::execution::forward_progress_guarantee::weakly_parallel;
+      return stdexec::forward_progress_guarantee::weakly_parallel;
     }
 
     bool operator==(const inline_scheduler&) const noexcept = default;

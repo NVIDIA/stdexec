@@ -58,9 +58,9 @@ namespace exec {
       class sender {
        public:
         using completion_signatures =
-          std::execution::completion_signatures<
-            std::execution::set_value_t(),
-            std::execution::set_stopped_t()>;
+          stdexec::completion_signatures<
+            stdexec::set_value_t(),
+            stdexec::set_stopped_t()>;
        private:
         template <typename Receiver>
         operation<stdexec::__x<std::decay_t<Receiver>>>
@@ -74,13 +74,13 @@ namespace exec {
 
         template <class Receiver>
         friend operation<stdexec::__x<std::decay_t<Receiver>>>
-        tag_invoke(std::execution::connect_t, sender s, Receiver&& r) {
+        tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
           return s.make_operation_((Receiver &&) r);
         }
 
         template <class CPO>
         friend static_thread_pool::scheduler
-        tag_invoke(std::execution::get_completion_scheduler_t<CPO>, sender s) noexcept {
+        tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender s) noexcept {
           return s.make_scheduler_();
         }
 
@@ -115,7 +115,7 @@ namespace exec {
           using variant_t =
             stdexec::__value_types_of_t<
               Sender,
-              std::execution::env_of_t<Receiver>,
+              stdexec::env_of_t<Receiver>,
               stdexec::__q<stdexec::__decayed_tuple>,
               stdexec::__q<stdexec::__variant>>;
 
@@ -186,7 +186,7 @@ namespace exec {
               };
 
               auto completion = [&](auto&... args) {
-                std::execution::set_value((Receiver&&)self.receiver_, std::move(args)...);
+                stdexec::set_value((Receiver&&)self.receiver_, std::move(args)...);
               };
 
               if constexpr (MayThrow) {
@@ -207,7 +207,7 @@ namespace exec {
 
                 if (is_last_thread) {
                   if (self.exception_) {
-                    std::execution::set_error((Receiver&&)self.receiver_, self.exception_);
+                    stdexec::set_error((Receiver&&)self.receiver_, self.exception_);
                   } else {
                     self.apply(completion);
                   }
@@ -239,7 +239,7 @@ namespace exec {
           }
 
           template <class... As>
-          friend void tag_invoke(std::execution::set_value_t, bulk_receiver&& self, As&&... as) noexcept {
+          friend void tag_invoke(stdexec::set_value_t, bulk_receiver&& self, As&&... as) noexcept {
             using tuple_t = stdexec::__decayed_tuple<As...>;
 
             shared_state& state = self.shared_state_;
@@ -248,7 +248,7 @@ namespace exec {
               try {
                 state.data_.template emplace<tuple_t>((As &&) as...);
               } catch (...) {
-                std::execution::set_error(std::move(state.receiver_), std::current_exception());
+                stdexec::set_error(std::move(state.receiver_), std::current_exception());
               }
             } else {
               state.data_.template emplace<tuple_t>((As &&) as...);
@@ -258,20 +258,20 @@ namespace exec {
               self.enqueue();
             } else {
               state.apply([&](auto&... args) {
-                std::execution::set_value(std::move(state.receiver_), std::move(args)...);
+                stdexec::set_value(std::move(state.receiver_), std::move(args)...);
               });
             }
           }
 
-          template <stdexec::__one_of<std::execution::set_error_t, std::execution::set_stopped_t> Tag, class... As>
+          template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
           friend void tag_invoke(Tag tag, bulk_receiver&& self, As&&... as) noexcept {
             shared_state& state = self.shared_state_;
             tag((Receiver&&)state.receiver_, (As&&)as...);
           }
 
-          friend auto tag_invoke(std::execution::get_env_t, const bulk_receiver& self)
-            -> std::execution::env_of_t<Receiver> {
-            return std::execution::get_env(self.shared_state_.receiver_);
+          friend auto tag_invoke(stdexec::get_env_t, const bulk_receiver& self)
+            -> stdexec::env_of_t<Receiver> {
+            return stdexec::get_env(self.shared_state_.receiver_);
           }
         };
 
@@ -282,25 +282,25 @@ namespace exec {
 
           static constexpr bool may_throw =
               !stdexec::__v<stdexec::__value_types_of_t<
-                  Sender, std::execution::env_of_t<Receiver>,
+                  Sender, stdexec::env_of_t<Receiver>,
                   stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
                   stdexec::__q<stdexec::__mand>>>;
 
           using bulk_rcvr = bulk_receiver<SenderId, ReceiverId, Shape, Fun, may_throw>;
           using shared_state = bulk_shared_state<SenderId, ReceiverId, Shape, Fun, may_throw>;
-          using inner_op_state = std::execution::connect_result_t<Sender, bulk_rcvr>;
+          using inner_op_state = stdexec::connect_result_t<Sender, bulk_rcvr>;
 
           shared_state shared_state_;
 
           inner_op_state inner_op_;
 
-          friend void tag_invoke(std::execution::start_t, bulk_op_state& op) noexcept {
-            std::execution::start(op.inner_op_);
+          friend void tag_invoke(stdexec::start_t, bulk_op_state& op) noexcept {
+            stdexec::start(op.inner_op_);
           }
 
           bulk_op_state(static_thread_pool &pool, Shape shape, Fun fn, Sender&& sender, Receiver receiver)
             : shared_state_(pool, (Receiver&&)receiver, shape, fn)
-            , inner_op_{std::execution::connect((Sender&&)sender, bulk_rcvr{shared_state_})} {
+            , inner_op_{stdexec::connect((Sender&&)sender, bulk_rcvr{shared_state_})} {
           }
         };
 
@@ -322,13 +322,13 @@ namespace exec {
                   Env,
                   stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
                   stdexec::__q<stdexec::__mand>>>,
-                std::execution::completion_signatures<>,
+                stdexec::completion_signatures<>,
                 stdexec::__with_exception_ptr>;
 
           template <class... Tys>
           using set_value_t =
-            std::execution::completion_signatures<
-              std::execution::set_value_t(std::decay_t<Tys>...)>;
+            stdexec::completion_signatures<
+              stdexec::set_value_t(std::decay_t<Tys>...)>;
 
           template <class Self, class Env>
             using completion_signatures =
@@ -344,9 +344,9 @@ namespace exec {
                 stdexec::__x<stdexec::__member_t<Self, Sender>>,
                 stdexec::__x<std::remove_cvref_t<Receiver>>, Shape, Fun>;
 
-          template <stdexec::__decays_to<bulk_sender> Self, std::execution::receiver Receiver>
-            requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>
-          friend bulk_op_state_t<Self, Receiver> tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
+          template <stdexec::__decays_to<bulk_sender> Self, stdexec::receiver Receiver>
+            requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+          friend bulk_op_state_t<Self, Receiver> tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
             noexcept(std::is_nothrow_constructible_v<bulk_op_state_t<Self, Receiver>, static_thread_pool&, Shape, Fun, Sender, Receiver>) {
             return bulk_op_state_t<Self, Receiver>{
               self.pool_, self.shape_, self.fun_, ((Self&&)self).sndr_, (Receiver&&)rcvr
@@ -354,40 +354,40 @@ namespace exec {
           }
 
           template <stdexec::__decays_to<bulk_sender> Self, class Env>
-          friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
-            -> std::execution::dependent_completion_signatures<Env>;
+          friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+            -> stdexec::dependent_completion_signatures<Env>;
 
           template <stdexec::__decays_to<bulk_sender> Self, class Env>
-          friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
+          friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
             -> completion_signatures<Self, Env> requires true;
 
-          template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+          template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
             requires stdexec::__callable<Tag, const Sender&, As...>
           friend auto tag_invoke(Tag tag, const bulk_sender& self, As&&... as)
             noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-            -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+            -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
             return ((Tag&&) tag)(self.sndr_, (As&&) as...);
           }
         };
 
       friend sender
-      tag_invoke(std::execution::schedule_t, const scheduler& s) noexcept {
+      tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept {
         return s.make_sender_();
       }
 
-      template <std::execution::sender Sender, std::integral Shape, class Fun>
+      template <stdexec::sender Sender, std::integral Shape, class Fun>
         using bulk_sender_t = bulk_sender<stdexec::__x<std::remove_cvref_t<Sender>>, Shape, stdexec::__x<std::remove_cvref_t<Fun>>>;
 
-      template <std::execution::sender S, std::integral Shape, class Fn>
+      template <stdexec::sender S, std::integral Shape, class Fn>
       friend bulk_sender_t<S, Shape, Fn>
-      tag_invoke(std::execution::bulk_t, const scheduler& sch, S&& sndr, Shape shape, Fn fun) noexcept {
+      tag_invoke(stdexec::bulk_t, const scheduler& sch, S&& sndr, Shape shape, Fn fun) noexcept {
         return bulk_sender_t<S, Shape, Fn>{*sch.pool_, (S&&) sndr, shape, (Fn&&)fun};
       }
 
-      friend std::execution::forward_progress_guarantee tag_invoke(
-          std::execution::get_forward_progress_guarantee_t,
+      friend stdexec::forward_progress_guarantee tag_invoke(
+          stdexec::get_forward_progress_guarantee_t,
           const static_thread_pool&) noexcept {
-        return std::execution::forward_progress_guarantee::parallel;
+        return stdexec::forward_progress_guarantee::parallel;
       }
 
       friend class static_thread_pool;
@@ -444,12 +444,12 @@ namespace exec {
         this->__execute = [](task_base* t, std::uint32_t /* tid */) noexcept {
           auto& op = *static_cast<operation*>(t);
           auto stoken =
-            std::execution::get_stop_token(
-              std::execution::get_env(op.receiver_));
+            stdexec::get_stop_token(
+              stdexec::get_env(op.receiver_));
           if (stoken.stop_requested()) {
-            std::execution::set_stopped((Receiver &&) op.receiver_);
+            stdexec::set_stopped((Receiver &&) op.receiver_);
           } else {
-            std::execution::set_value((Receiver &&) op.receiver_);
+            stdexec::set_value((Receiver &&) op.receiver_);
           }
         };
       }
@@ -458,7 +458,7 @@ namespace exec {
         pool_.enqueue(op);
       }
 
-      friend void tag_invoke(std::execution::start_t, operation& op) noexcept {
+      friend void tag_invoke(stdexec::start_t, operation& op) noexcept {
         op.enqueue_(&op);
       }
     };

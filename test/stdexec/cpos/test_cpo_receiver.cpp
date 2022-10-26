@@ -21,7 +21,7 @@
 #include <string>
 #include <climits>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 struct recv_value {
   int* target_;

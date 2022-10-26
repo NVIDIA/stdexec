@@ -25,8 +25,8 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
-using namespace std::execution;
-using std::this_thread::sync_wait;
+using namespace stdexec;
+using stdexec::sync_wait;
 
 class noop_receiver : receiver_adaptor<noop_receiver> {
   friend receiver_adaptor<noop_receiver>;

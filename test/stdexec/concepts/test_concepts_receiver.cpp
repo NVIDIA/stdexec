@@ -18,7 +18,7 @@
 // #include <stdexec/execution.hpp>
 // #include <test_common/receivers.hpp>
 
-// namespace ex = std::execution;
+// namespace ex = stdexec;
 
 // struct recv_no_set_value {
 //   friend void tag_invoke(ex::set_stopped_t, recv_no_set_value) noexcept {}

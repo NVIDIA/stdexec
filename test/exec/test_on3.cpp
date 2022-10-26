@@ -21,7 +21,7 @@
 #include <exec/on.hpp>
 #include <exec/async_scope.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 static const auto env = exec::make_env(exec::with(ex::get_scheduler, inline_scheduler{}));
 
@@ -44,7 +44,7 @@ TEST_CASE("Can pass exec::on sender to async_scope::spawn", "[adaptors][exec::on
   impulse_scheduler sched;
   scope.spawn(exec::on(sched, ex::just()), env);
   sched.start_next();
-  std::this_thread::sync_wait(scope.on_empty());
+  stdexec::sync_wait(scope.on_empty());
 }
 
 TEST_CASE("Can pass exec::on sender to async_scope::spawn_future", "[adaptors][exec::on]") {
@@ -52,7 +52,7 @@ TEST_CASE("Can pass exec::on sender to async_scope::spawn_future", "[adaptors][e
   impulse_scheduler sched;
   auto fut = scope.spawn_future(exec::on(sched, ex::just(42)), env);
   sched.start_next();
-  auto [i] = std::this_thread::sync_wait(std::move(fut)).value();
+  auto [i] = stdexec::sync_wait(std::move(fut)).value();
   CHECK(i == 42);
-  std::this_thread::sync_wait(scope.on_empty());
+  stdexec::sync_wait(scope.on_empty());
 }

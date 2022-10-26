@@ -46,7 +46,7 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
     constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
     template <class Error>
-      friend void tag_invoke(std::execution::set_error_t, receiver_t&& self, Error&& error) 
+      friend void tag_invoke(stdexec::set_error_t, receiver_t&& self, Error&& error) 
           noexcept requires std::invocable<Fun, Error> {
         using result_t = std::decay_t<std::invoke_result_t<Fun, std::decay_t<Error>>>;
         constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
@@ -55,23 +55,23 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
         if constexpr (does_not_return_a_value) {
           kernel<Fun, Error><<<1, 1, 0, stream>>>(self.f_, (Error&&)error);
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-            self.op_state_.propagate_completion_signal(std::execution::set_value);
+            self.op_state_.propagate_completion_signal(stdexec::set_value);
           } else {
-            self.op_state_.propagate_completion_signal(std::execution::set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         } else {
           result_t *d_result = reinterpret_cast<result_t*>(self.op_state_.temp_storage_);
           kernel_with_result<Fun, Error><<<1, 1, 0, stream>>>(self.f_, d_result, error);
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-            self.op_state_.propagate_completion_signal(std::execution::set_value, *d_result);
+            self.op_state_.propagate_completion_signal(stdexec::set_value, *d_result);
           } else {
-            self.op_state_.propagate_completion_signal(std::execution::set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         }
       }
 
-    template <stdexec::__one_of<std::execution::set_value_t,
-                                std::execution::set_stopped_t> Tag, 
+    template <stdexec::__one_of<stdexec::set_value_t,
+                                stdexec::set_stopped_t> Tag, 
               class... As _NVCXX_CAPTURE_PACK(As)>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
         _NVCXX_EXPAND_PACK(As, as,
@@ -79,9 +79,9 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
         );
       }
 
-    friend std::execution::env_of_t<stdexec::__t<ReceiverId>>
-    tag_invoke(std::execution::get_env_t, const receiver_t& self) {
-      return std::execution::get_env(self.op_state_.receiver_);
+    friend stdexec::env_of_t<stdexec::__t<ReceiverId>>
+    tag_invoke(stdexec::get_env_t, const receiver_t& self) {
+      return stdexec::get_env(self.op_state_.receiver_);
     }
 
     explicit receiver_t(Fun fun, operation_state_base_t<ReceiverId> &op_state)
@@ -120,7 +120,7 @@ template <class SenderId, class FunId>
       };
 
     template <class Receiver>
-        requires std::execution::sender<Sender, std::execution::env_of_t<Receiver>>
+        requires stdexec::sender<Sender, stdexec::env_of_t<Receiver>>
       struct max_result_size {
         template <class... _As>
           using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
@@ -128,9 +128,9 @@ template <class SenderId, class FunId>
         static constexpr std::size_t value =
           stdexec::__v<
             stdexec::__gather_sigs_t<
-              std::execution::set_error_t, 
+              stdexec::set_error_t, 
               Sender,  
-              std::execution::env_of_t<Receiver>, 
+              stdexec::env_of_t<Receiver>, 
               stdexec::__q<result_size_for_t>, 
               stdexec::__q<max_in_pack>>>;
       };
@@ -147,13 +147,13 @@ template <class SenderId, class FunId>
         stdexec::__make_completion_signatures<
           stdexec::__member_t<Self, Sender>,
           Env,
-          stdexec::completion_signatures<std::execution::set_error_t(cudaError_t)>,
+          stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
           stdexec::__q<stdexec::__compl_sigs::__default_set_value>,
           stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>>;
 
-    template <stdexec::__decays_to<upon_error_sender_t> Self, std::execution::receiver Receiver>
-      requires std::execution::receiver_of<Receiver, completion_signatures<Self, std::execution::env_of_t<Receiver>>>
-    friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
+    template <stdexec::__decays_to<upon_error_sender_t> Self, stdexec::receiver Receiver>
+      requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
       -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<stdexec::__member_t<Self, Sender>>(
             ((Self&&)self).sndr_,
@@ -164,18 +164,18 @@ template <class SenderId, class FunId>
     }
 
     template <stdexec::__decays_to<upon_error_sender_t> Self, class Env>
-    friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
-      -> std::execution::dependent_completion_signatures<Env>;
+    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+      -> stdexec::dependent_completion_signatures<Env>;
 
     template <stdexec::__decays_to<upon_error_sender_t> Self, class Env>
-    friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
+    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
       -> completion_signatures<Self, Env> requires true;
 
-    template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
       requires stdexec::__callable<Tag, const Sender&, As...>
     friend auto tag_invoke(Tag tag, const upon_error_sender_t& self, As&&... as)
       noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
       return ((Tag&&) tag)(self.sndr_, (As&&) as...);
     }
   };

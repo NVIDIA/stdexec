@@ -39,9 +39,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         SharedState &sh_state_;
 
       public:
-        template <stdexec::__one_of<std::execution::set_value_t, 
-                                    std::execution::set_error_t, 
-                                    std::execution::set_stopped_t> Tag, 
+        template <stdexec::__one_of<stdexec::set_value_t, 
+                                    stdexec::set_error_t, 
+                                    stdexec::set_stopped_t> Tag, 
                   class... As _NVCXX_CAPTURE_PACK(As)>
           friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
             SharedState &state = self.sh_state_;
@@ -64,9 +64,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             state.notify();
           }
 
-        friend auto tag_invoke(std::execution::get_env_t, const receiver_t& self)
-          -> exec::make_env_t<exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>> {
-          return exec::make_env(stdexec::__with(std::execution::get_stop_token, self.sh_state_.stop_source_.get_token()));
+        friend auto tag_invoke(stdexec::get_env_t, const receiver_t& self)
+          -> exec::make_env_t<exec::with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>> {
+          return exec::make_env(stdexec::__with(stdexec::get_stop_token, self.sh_state_.stop_source_.get_token()));
         }
 
         explicit receiver_t(SharedState &sh_state_t) noexcept
@@ -98,7 +98,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class SenderId>
       struct sh_state_t {
         using Sender = stdexec::__t<SenderId>;
-        using Env = exec::make_env_t<exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>;
+        using Env = exec::make_env_t<exec::with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>;
         using variant_t = variant_storage_t<Sender, Env>;
         using inner_receiver_t = receiver_t<SenderId, sh_state_t>;
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
@@ -109,10 +109,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               stream_sender<Sender>,
               stdexec::__x<inner_receiver_t>,
               stdexec::__x<enqueue_receiver_t>>>;
-        using inner_op_state_t = std::execution::connect_result_t<Sender, intermediate_receiver>;
+        using inner_op_state_t = stdexec::connect_result_t<Sender, intermediate_receiver>;
 
         cudaError_t status_{cudaSuccess};
-        std::in_place_stop_source stop_source_{};
+        stdexec::in_place_stop_source stop_source_{};
         std::atomic<void*> head_{nullptr};
         unsigned int index_{0};
         variant_t *data_{nullptr};
@@ -125,7 +125,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             requires (stream_sender<S>)
           explicit sh_state_t(S& sndr, queue::task_hub_t*)
             : data_(malloc_managed<variant_t>(status_))
-            , op_state2_(std::execution::connect((Sender&&) sndr, inner_receiver_t{*this}))
+            , op_state2_(stdexec::connect((Sender&&) sndr, inner_receiver_t{*this}))
             , started_(ATOMIC_FLAG_INIT) {
             if (status_ == cudaSuccess) {
               status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_));
@@ -138,10 +138,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             : data_(malloc_managed<variant_t>(status_))
             , task_(queue::make_host<task_t>(status_, inner_receiver_t{*this}, data_).release())
             , op_state2_(
-                std::execution::connect(
+                stdexec::connect(
                   (Sender&&)sndr,
                   enqueue_receiver_t{
-                    exec::make_env(stdexec::__with(std::execution::get_stop_token, stop_source_.get_token())), 
+                    exec::make_env(stdexec::__with(stdexec::get_stop_token, stop_source_.get_token())), 
                     data_, 
                     task_, 
                     hub->producer()})) 
@@ -183,13 +183,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Receiver = stdexec::__t<ReceiverId>;
 
         struct on_stop_requested {
-          std::in_place_stop_source& stop_source_;
+          stdexec::in_place_stop_source& stop_source_;
           void operator()() noexcept {
             stop_source_.request_stop();
           }
         };
-        using on_stop = std::optional<typename std::execution::stop_token_of_t<
-            std::execution::env_of_t<Receiver> &>::template callback_type<on_stop_requested>>;
+        using on_stop = std::optional<typename stdexec::stop_token_of_t<
+            stdexec::env_of_t<Receiver> &>::template callback_type<on_stop_requested>>;
 
         on_stop on_stop_{};
         std::shared_ptr<sh_state_t<SenderId>> shared_state_;
@@ -220,7 +220,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               }, tupl);
             }, *op->shared_state_->data_, op->shared_state_->index_);
           } else {
-            op->propagate_completion_signal(std::execution::set_error, std::move(status));
+            op->propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         }
 
@@ -228,7 +228,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           return this->allocate();
         }
 
-        friend void tag_invoke(std::execution::start_t, operation_t& self) noexcept {
+        friend void tag_invoke(stdexec::start_t, operation_t& self) noexcept {
           self.stream_ = self.get_stream();
 
           sh_state_t<SenderId>* shared_state = self.shared_state_.get();
@@ -238,7 +238,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (old != completion_state) {
             self.on_stop_.emplace(
-                std::execution::get_stop_token(std::execution::get_env(self.receiver_)),
+                stdexec::get_stop_token(stdexec::get_env(self.receiver_)),
                 on_stop_requested{shared_state->stop_source_});
           }
 
@@ -262,7 +262,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               shared_state->notify();
             } else {
               shared_state->started_.test_and_set(::cuda::memory_order_relaxed);
-              std::execution::start(shared_state->op_state2_);
+              stdexec::start(shared_state->op_state2_);
             }
           }
         }
@@ -280,38 +280,38 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::shared_ptr<sh_state_> shared_state_;
 
     public:
-      template <stdexec::__decays_to<split_sender_t> Self, std::execution::receiver Receiver>
-          requires std::execution::receiver_of<Receiver, std::execution::completion_signatures_of_t<Self, stdexec::__empty_env>>
-        friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& recvr)
+      template <stdexec::__decays_to<split_sender_t> Self, stdexec::receiver Receiver>
+          requires stdexec::receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::__empty_env>>
+        friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& recvr)
           noexcept(std::is_nothrow_constructible_v<std::decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
           return operation_t<Receiver>{(Receiver &&) recvr,
                                         self.shared_state_};
         }
 
-      template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As _NVCXX_CAPTURE_PACK(As)>
-          requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, std::execution::get_completion_scheduler_t>) && 
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As _NVCXX_CAPTURE_PACK(As)>
+          requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, stdexec::get_completion_scheduler_t>) && 
             stdexec::__callable<Tag, const Sender&, As...>
         friend auto tag_invoke(Tag tag, const split_sender_t& self, As&&... as)
           noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-          -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+          -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
           _NVCXX_EXPAND_PACK_RETURN(As, as,
             return ((Tag&&) tag)(self.sndr_, (As&&) as...);
           )
         }
 
       template <class... Tys>
-        using set_value_t = std::execution::completion_signatures<std::execution::set_value_t(const std::decay_t<Tys>&...)>;
+        using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(const std::decay_t<Tys>&...)>;
 
       template <class Ty>
-        using set_error_t = std::execution::completion_signatures<std::execution::set_error_t(const std::decay_t<Ty>&)>;
+        using set_error_t = stdexec::completion_signatures<stdexec::set_error_t(const std::decay_t<Ty>&)>;
 
       template <stdexec::__decays_to<split_sender_t> Self, class Env>
-        friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env) ->
-          std::execution::make_completion_signatures<
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env) ->
+          stdexec::make_completion_signatures<
             Sender,
-            exec::make_env_t<exec::with_t<std::execution::get_stop_token_t, std::in_place_stop_token>>,
-            std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>,
+            exec::make_env_t<exec::with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>,
+            stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
             set_value_t,
             set_error_t>;
 

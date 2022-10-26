@@ -45,7 +45,7 @@
 // Use a thread pool
 #include "exec/static_thread_pool.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 struct sync_stream {
 private:
@@ -113,7 +113,7 @@ int main() {
     scope.spawn(std::move(snd));
   }
 
-  (void) std::this_thread::sync_wait(scope.on_empty());
+  (void) stdexec::sync_wait(scope.on_empty());
 
   return 0;
 }

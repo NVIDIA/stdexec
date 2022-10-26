@@ -23,7 +23,7 @@
 #include <exec/env.hpp>
 #include <exec/static_thread_pool.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 template <ex::scheduler Sched = inline_scheduler>
 inline auto _with_scheduler(Sched sched = {}) {
@@ -103,7 +103,7 @@ TEST_CASE("exec::on works when changing threads", "[adaptors][exec::on]") {
   ex::sender auto snd = exec::on(pool.get_scheduler(), ex::just()) //
                         | ex::then([&] { called = true; })
                         | _with_scheduler();
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
   // the work should be executed
   REQUIRE(called);
 }

@@ -52,7 +52,7 @@
 // Use a thread pool
 #include "exec/static_thread_pool.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 struct http_request {
   std::string url_;
