@@ -1843,7 +1843,6 @@ namespace stdexec {
             _Receiver __rcvr_;
 
             friend void tag_invoke(start_t, __operation& __op_state) noexcept {
-              static_assert(__nothrow_callable<_CPO, _Receiver, _Ts...>);
               std::apply([&__op_state](_Ts&... __ts) {
                 _CPO{}((_Receiver&&) __op_state.__rcvr_, (_Ts&&) __ts...);
               }, __op_state.__vals_);
@@ -3650,15 +3649,6 @@ namespace stdexec {
               connect_result_t<__result_sender_t<_Fun, _As...>, _Receiver>;
           #endif
 
-          // handle the case when let_error is used with an input sender that
-          // never completes with set_error(exception_ptr)
-          template <__decays_to<std::exception_ptr> _Error>
-              requires same_as<_Let, set_error_t> &&
-                (!__v<__error_types_of_t<_Sender, _Env, __transform<__q1<decay_t>, __contains<std::exception_ptr>>>>)
-            friend void tag_invoke(set_error_t, __receiver&& __self, _Error&& __err) noexcept {
-              set_error(std::move(__self).base(), (_Error&&) __err);
-            }
-
           template <__one_of<_Let> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
               requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
                 sender_to<__apply_result_t<_Fun, __which_tuple_t<_As...>&>, _Receiver>
@@ -4254,7 +4244,6 @@ namespace stdexec {
 
         template <class... _Args>
           static constexpr bool __nothrow_complete_ =
-            __nothrow_connectable<schedule_result_t<_Scheduler>, __receiver2_t> &&
             (__nothrow_decay_copyable<_Args> &&...);
 
         template <class _Tag, class... _Args>
@@ -4263,14 +4252,9 @@ namespace stdexec {
           // we can forward the completion from within the scheduler's
           // execution context.
           __self.__op_state_->__data_.template emplace<__decayed_tuple<_Tag, _Args...>>(_Tag{}, (_Args&&) __args...);
-          // Schedule the completion to happen on the scheduler's
-          // execution context.
-          __self.__op_state_->__state2_.emplace(
-              __conv{[__op_state = __self.__op_state_] {
-                return connect(schedule(__op_state->__sched_), __receiver2_t{__op_state});
-              }});
-          // Enqueue the scheduled operation:
-          start(*__self.__op_state_->__state2_);
+          // Enqueue the schedule operation so the completion happens
+          // on the scheduler's execution context.
+          start(__self.__op_state_->__state2_);
         }
 
         template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args _NVCXX_CAPTURE_PACK(_Args)>
@@ -4307,14 +4291,16 @@ namespace stdexec {
         _Scheduler __sched_;
         _Receiver __rcvr_;
         __variant_t __data_;
-        std::optional<connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t>> __state2_;
         connect_result_t<_CvrefSender, __receiver1_t> __state1_;
+        connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
 
         template <__decays_to<_Receiver> _CvrefReceiver>
           __operation1(_Scheduler __sched, _CvrefSender&& __sndr, _CvrefReceiver&& __rcvr)
-            : __sched_(__sched)
+            : __sched_((_Scheduler&&) __sched)
             , __rcvr_((_CvrefReceiver&&) __rcvr)
-            , __state1_(connect((_CvrefSender&&) __sndr, __receiver1_t{this})) {}
+            , __state1_(connect((_CvrefSender&&) __sndr, __receiver1_t{this}))
+            , __state2_(connect(schedule(__sched_), __receiver2_t{this}))
+          {}
         STDEXEC_IMMOVABLE(__operation1);
 
         friend void tag_invoke(start_t, __operation1& __op_state) noexcept {
@@ -4322,19 +4308,25 @@ namespace stdexec {
         }
 
         void __complete() noexcept try {
-          std::visit([&](auto&& __tupl) -> void {
-            if constexpr (__decays_to<decltype(__tupl), std::monostate>) {
+          std::visit([&]<class _Tup>(_Tup& __tupl) -> void {
+            if constexpr (same_as<_Tup, std::monostate>) {
               std::terminate(); // reaching this indicates a bug in schedule_from
             } else {
-              std::apply([&](auto __tag, auto&&... __args) -> void {
-                __tag((_Receiver&&) __rcvr_, (decltype(__args)&&) __args...);
-              }, (decltype(__tupl)&&) __tupl);
+              std::apply([&]<class... _Args>(auto __tag, _Args&... __args) -> void {
+                __tag((_Receiver&&) __rcvr_, (_Args&&) __args...);
+              }, __tupl);
             }
-          }, (__variant_t&&) __data_);
+          }, __data_);
         } catch(...) {
           set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
       };
+
+    template <class _Tag>
+      using __decay_signature =
+        __transform<
+          __q1<decay_t>,
+          __mcompose<__q1<completion_signatures>, __qf<_Tag>>>;
 
     template <class _SchedulerId, class _SenderId>
       struct __sender {
@@ -4376,23 +4368,25 @@ namespace stdexec {
               completion_signatures<>,
               __with_exception_ptr>;
 
-        template <class...>
-          using __value_t = completion_signatures<>;
+        template <class _Env>
+          using __scheduler_completions_t =
+            __make_completion_signatures<
+              schedule_result_t<_Scheduler>,
+              _Env,
+              __with_error_t<_Env>,
+              __mconst<completion_signatures<>>>;
 
         template <__decays_to<__sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
-            make_completion_signatures<
+            __make_completion_signatures<
               __member_t<_Self, _Sender>,
               _Env,
-              make_completion_signatures<
-                schedule_result_t<_Scheduler>,
-                _Env,
-                __with_error_t<_Env>,
-                __value_t>>;
+              __scheduler_completions_t<_Env>,
+              __decay_signature<set_value_t>,
+              __decay_signature<set_error_t>>;
       };
 
     struct schedule_from_t {
-      // NOT TO SPEC: permit non-typed senders:
       template <scheduler _Scheduler, sender _Sender>
         requires tag_invocable<schedule_from_t, _Scheduler, _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
@@ -4401,7 +4395,6 @@ namespace stdexec {
         return tag_invoke(*this, (_Scheduler&&) __sched, (_Sender&&) __sndr);
       }
 
-      // NOT TO SPEC: permit non-typed senders:
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
         -> __sender<__x<decay_t<_Scheduler>>, __x<decay_t<_Sender>>> {
