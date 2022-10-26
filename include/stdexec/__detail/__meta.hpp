@@ -119,6 +119,15 @@ namespace stdexec {
         using __f = _Fn<_First, _Second, _Third>;
     };
 
+  template <template <class...> class _T, std::size_t _Count>
+    struct __qN;
+  template <template <class...> class _T>
+    struct __qN<_T, 1u> : __q1<_T> {};
+  template <template <class...> class _T>
+    struct __qN<_T, 2u> : __q2<_T> {};
+  template <template <class...> class _T>
+    struct __qN<_T, 3u> : __q3<_T> {};
+
   template <template<class...> class _Fn, class... _Front>
     struct __mbind_front_q {
       template <class... _Args>
@@ -253,29 +262,10 @@ namespace stdexec {
         using __f = __t<__with_default_<_Fn, _Default, _Args...>>;
     };
 
-  template <template <class...> class _T, class... _Args>
-      requires __valid<_T, _Args...>
-    struct __defer_ { using __t = _T<_Args...>; };
-  template <template <class...> class _T, class _A>
-      requires requires { typename _T<_A>; }
-    struct __defer_<_T, _A> { using __t = _T<_A>; };
-  template <template <class...> class _T, class _A, class _B>
-      requires requires { typename _T<_A, _B>; }
-    struct __defer_<_T, _A, _B> { using __t = _T<_A, _B>; };
-  template <template <class...> class _T, class _A, class _B, class _C>
-      requires requires { typename _T<_A, _B, _C>; }
-    struct __defer_<_T, _A, _B, _C> { using __t = _T<_A, _B, _C>; };
-  template <template <class...> class _T, class _A, class _B, class _C, class _D>
-      requires requires { typename _T<_A, _B, _C, _D>; }
-    struct __defer_<_T, _A, _B, _C, _D> { using __t = _T<_A, _B, _C, _D>; };
-  template <template <class...> class _T, class _A, class _B, class _C, class _D, class _E>
-      requires requires { typename _T<_A, _B, _C, _D, _E>; }
-    struct __defer_<_T, _A, _B, _C, _D, _E> { using __t = _T<_A, _B, _C, _D, _E>; };
-
   template <template <class...> class _T>
-    struct __defer {
+    struct __mdefer {
       template <class... _Args>
-        using __f = __t<__defer_<_T, _Args...>>;
+        using __f = __minvoke<__qN<_T, sizeof...(_Args)>, _Args...>;
     };
 
   template <class _T>
