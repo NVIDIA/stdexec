@@ -30,7 +30,7 @@ TEST_CASE(
 }
 
 TEST_CASE("transform can avoid the __types wrapping with __defer<__id>", "[detail][transform]") {
-  using tr = __transform<__q1<__id>, __defer<__id>>;
+  using tr = __transform<__q1<__id>, __mdefer<__id>>;
   using res = __minvoke<tr, int>;
   static_assert(is_same_v<res, int>);
 }
