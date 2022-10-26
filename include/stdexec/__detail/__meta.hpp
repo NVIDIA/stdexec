@@ -101,16 +101,22 @@ namespace stdexec {
         using __f = _Fn<_Args...>;
     };
 
-  template <template <class> class _Fn>
+  template <template <class...> class _Fn>
     struct __q1 {
       template <class _Arg>
         using __f = _Fn<_Arg>;
     };
 
-  template <template <class, class> class _Fn>
+  template <template <class...> class _Fn>
     struct __q2 {
       template <class _First, class _Second>
         using __f = _Fn<_First, _Second>;
+    };
+
+  template <template <class...> class _Fn>
+    struct __q3 {
+      template <class _First, class _Second, class _Third>
+        using __f = _Fn<_First, _Second, _Third>;
     };
 
   template <template<class...> class _Fn, class... _Front>
@@ -184,12 +190,6 @@ namespace stdexec {
 
   template <class _Fn, class... _Back>
     using __mbind_back3 = __mbind_back_q3<_Fn::template __f, _Back...>;
-
-  template <template <class, class, class> class _Fn>
-    struct __q3 {
-      template <class _First, class _Second, class _Third>
-        using __f = _Fn<_First, _Second, _Third>;
-    };
 
   template <class _Fn, class... _Args>
     using __minvoke = typename _Fn::template __f<_Args...>;
