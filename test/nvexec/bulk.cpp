@@ -4,7 +4,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -27,7 +27,7 @@ TEST_CASE("bulk executes on GPU", "[cuda][stream][adaptors][bulk]") {
                  flags.set(idx);
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -46,7 +46,7 @@ TEST_CASE("bulk forwards values on GPU", "[cuda][stream][adaptors][bulk]") {
                  }
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -65,7 +65,7 @@ TEST_CASE("bulk forwards multiple values on GPU", "[cuda][stream][adaptors][bulk
                  }
                }
              });
-  const auto [i, d] = std::this_thread::sync_wait(std::move(snd)).value();
+  const auto [i, d] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(flags_storage.all_set_once());
   REQUIRE(i == 42);
@@ -89,7 +89,7 @@ TEST_CASE("bulk can preceed a sender without values", "[cuda][stream][adaptors][
                  flags.set(2);
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -111,7 +111,7 @@ TEST_CASE("bulk can succeed a sender", "[cuda][stream][adaptors][bulk]") {
                    flags.set(idx);
                  }
                });
-    std::this_thread::sync_wait(std::move(snd));
+    stdexec::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -130,7 +130,7 @@ TEST_CASE("bulk can succeed a sender", "[cuda][stream][adaptors][bulk]") {
                    flags.set(idx);
                  }
                });
-    std::this_thread::sync_wait(std::move(snd)).value();
+    stdexec::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
   }

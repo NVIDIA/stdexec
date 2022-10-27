@@ -29,7 +29,7 @@ struct op_state_t {
   struct receiver_t : stream_receiver_base {
     op_state_t* op_state_;
 
-    template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_error_t, std::execution::set_stopped_t> Tag, class... As>
+    template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
       requires stdexec::__callable<Tag, Receiver, As...>
     friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as)
         noexcept(stdexec::__nothrow_callable<Tag, Receiver, As...>) {
@@ -38,25 +38,25 @@ struct op_state_t {
       return tag((Receiver&&) self.op_state_->rcvr_, (As&&) as...);
     }
     // Forward all receiever queries.
-    friend auto tag_invoke(std::execution::get_env_t, const receiver_t& self)
-      -> std::execution::env_of_t<Receiver> {
-      return std::execution::get_env((const Receiver&) self.op_state_->rcvr_);
+    friend auto tag_invoke(stdexec::get_env_t, const receiver_t& self)
+      -> stdexec::env_of_t<Receiver> {
+      return stdexec::get_env((const Receiver&) self.op_state_->rcvr_);
     }
   };
   Receiver rcvr_;
-  std::execution::connect_result_t<Sender, receiver_t> op_state_;
+  stdexec::connect_result_t<Sender, receiver_t> op_state_;
 
   template <stdexec::__decays_to<Receiver> CvrefReceiver>
   op_state_t(Sender&& sndr, CvrefReceiver&& rcvr)
     : rcvr_((CvrefReceiver&&) rcvr)
-    , op_state_(std::execution::connect((Sender&&) sndr, receiver_t{{}, this}))
+    , op_state_(stdexec::connect((Sender&&) sndr, receiver_t{{}, this}))
   {}
 };
 
 struct submit_t {
-  template <std::execution::receiver Receiver, std::execution::sender_to<Receiver> Sender>
+  template <stdexec::receiver Receiver, stdexec::sender_to<Receiver> Sender>
   void operator()(Sender&& sndr, Receiver&& rcvr) const noexcept(false) {
-    std::execution::start((new op_state_t<stdexec::__x<Sender>, stdexec::__x<std::decay_t<Receiver>>>{
+    stdexec::start((new op_state_t<stdexec::__x<Sender>, stdexec::__x<std::decay_t<Receiver>>>{
         (Sender&&) sndr, (Receiver&&) rcvr})->op_state_);
   }
 };

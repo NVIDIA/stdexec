@@ -3,7 +3,7 @@
 
 #include <cstdio>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 int main() {
   using nvexec::is_on_gpu;
@@ -34,6 +34,6 @@ int main() {
                fork | ex::bulk(4, bulk_fn(2)))
            | ex::then(then_fn(2));
 
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 }
 

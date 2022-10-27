@@ -20,7 +20,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 TEST_CASE("transfer_just returns a sender", "[factories][transfer_just]") {
   auto snd = ex::transfer_just(inline_scheduler{}, 13);

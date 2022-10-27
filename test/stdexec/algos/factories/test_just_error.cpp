@@ -19,7 +19,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 TEST_CASE("Simple test for just_error", "[factories][just_error]") {
   auto op = ex::connect(ex::just_error(std::exception_ptr{}), expect_error_receiver{});

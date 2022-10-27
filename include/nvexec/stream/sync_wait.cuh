@@ -24,24 +24,24 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace sync_wait {
     namespace __impl {
       struct __env {
-        std::execution::run_loop::__scheduler __sched_;
+        stdexec::run_loop::__scheduler __sched_;
 
-        friend auto tag_invoke(std::execution::get_scheduler_t, const __env& __self) noexcept
-          -> std::execution::run_loop::__scheduler {
+        friend auto tag_invoke(stdexec::get_scheduler_t, const __env& __self) noexcept
+          -> stdexec::run_loop::__scheduler {
           return __self.__sched_;
         }
 
-        friend auto tag_invoke(std::execution::get_delegatee_scheduler_t, const __env& __self) noexcept
-          -> std::execution::run_loop::__scheduler {
+        friend auto tag_invoke(stdexec::get_delegatee_scheduler_t, const __env& __self) noexcept
+          -> stdexec::run_loop::__scheduler {
           return __self.__sched_;
         }
       };
 
       // What should sync_wait(just_stopped()) return?
       template <class Sender>
-          requires std::execution::sender<Sender, __env>
+          requires stdexec::sender<Sender, __env>
         using sync_wait_result_t =
-          std::execution::value_types_of_t<
+          stdexec::value_types_of_t<
             Sender,
             __env,
             stdexec::__decayed_tuple,
@@ -55,7 +55,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           using Sender = stdexec::__t<SenderId>;
 
           state_t<SenderId>* state_;
-          std::execution::run_loop* loop_;
+          stdexec::run_loop* loop_;
 
           template <class Error>
             void set_error(Error err) noexcept {
@@ -70,7 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           template <class Sender2 = Sender, class... As>
               requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
-            friend void tag_invoke(std::execution::set_value_t, receiver_t&& rcvr, As&&... as) noexcept try {
+            friend void tag_invoke(stdexec::set_value_t, receiver_t&& rcvr, As&&... as) noexcept try {
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
                   status == cudaSuccess) {
                 rcvr.state_->data_.template emplace<1>((As&&) as...);
@@ -83,7 +83,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
 
           template <class Error>
-            friend void tag_invoke(std::execution::set_error_t, receiver_t&& rcvr, Error err) noexcept {
+            friend void tag_invoke(stdexec::set_error_t, receiver_t&& rcvr, Error err) noexcept {
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
                   status == cudaSuccess) {
                 rcvr.set_error((Error &&) err);
@@ -92,7 +92,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               }
             }
 
-          friend void tag_invoke(std::execution::set_stopped_t __d, receiver_t&& rcvr) noexcept {
+          friend void tag_invoke(stdexec::set_stopped_t __d, receiver_t&& rcvr) noexcept {
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
                 status == cudaSuccess) {
               rcvr.state_->data_.template emplace<3>(__d);
@@ -103,7 +103,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
 
           friend stdexec::__empty_env
-          tag_invoke(std::execution::get_env_t, const receiver_t& rcvr) noexcept {
+          tag_invoke(stdexec::get_env_t, const receiver_t& rcvr) noexcept {
             return {};
           }
         };
@@ -113,7 +113,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           using _Tuple = sync_wait_result_t<stdexec::__t<SenderId>>;
 
           cudaStream_t stream_{};
-          std::variant<std::monostate, _Tuple, cudaError_t, std::execution::set_stopped_t> data_{};
+          std::variant<std::monostate, _Tuple, cudaError_t, stdexec::set_stopped_t> data_{};
         };
     } // namespace __impl
 
@@ -121,21 +121,21 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <stdexec::__single_value_variant_sender<__impl::__env> Sender>
         requires
           (!stdexec::__tag_invocable_with_completion_scheduler<
-            sync_wait_t, std::execution::set_value_t, Sender>) &&
+            sync_wait_t, stdexec::set_value_t, Sender>) &&
           (!std::tag_invocable<sync_wait_t, Sender>) &&
-          std::execution::sender<Sender, __impl::__env> &&
-          std::execution::sender_to<Sender, __impl::receiver_t<stdexec::__x<Sender>>>
+          stdexec::sender<Sender, __impl::__env> &&
+          stdexec::sender_to<Sender, __impl::receiver_t<stdexec::__x<Sender>>>
       auto operator()(queue::task_hub_t* hub, Sender&& __sndr) const
         -> std::optional<__impl::sync_wait_result_t<Sender>> {
         using state_t = __impl::state_t<stdexec::__x<Sender>>;
         state_t state {};
-        std::execution::run_loop loop;
+        stdexec::run_loop loop;
 
         exit_operation_state_t<Sender, __impl::receiver_t<stdexec::__x<Sender>>> __op_state =
           exit_op_state(hub, (Sender&&)__sndr, __impl::receiver_t<stdexec::__x<Sender>>{{}, &state, &loop});
         state.stream_ = __op_state.get_stream();
 
-        std::execution::start(__op_state);
+        stdexec::start(__op_state);
 
         // Wait for the variant to be filled in.
         loop.run();

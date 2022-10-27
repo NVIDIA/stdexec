@@ -19,7 +19,7 @@
 #include "test_common/receivers.hpp"
 #include "test_common/type_helpers.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 template <typename R>
 struct op_state : immovable {

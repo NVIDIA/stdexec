@@ -29,16 +29,16 @@ namespace schedule_from {
     struct receiver_t : stream_receiver_base {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
-      using Env = std::execution::env_of_t<Receiver>;
+      using Env = stdexec::env_of_t<Receiver>;
       using storage_t = variant_storage_t<Sender, Env>;
 
       constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
 
       operation_state_base_t<ReceiverId>& operation_state_;
 
-      template <stdexec::__one_of<std::execution::set_value_t,
-                                  std::execution::set_error_t,
-                                  std::execution::set_stopped_t> Tag,
+      template <stdexec::__one_of<stdexec::set_value_t,
+                                  stdexec::set_error_t,
+                                  stdexec::set_stopped_t> Tag,
                 class... As >
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
         auto stream = self.operation_state_.stream_;
@@ -52,31 +52,31 @@ namespace schedule_from {
         }, *storage);
       }
 
-      friend std::execution::env_of_t<stdexec::__t<ReceiverId>>
-      tag_invoke(std::execution::get_env_t, const receiver_t& self) {
-        return std::execution::get_env(self.operation_state_.receiver_);
+      friend stdexec::env_of_t<stdexec::__t<ReceiverId>>
+      tag_invoke(stdexec::get_env_t, const receiver_t& self) {
+        return stdexec::get_env(self.operation_state_.receiver_);
       }
     };
 
   template <class Sender>
     struct source_sender_t : stream_sender_base {
-      template <stdexec::__decays_to<source_sender_t> Self, std::execution::receiver Receiver>
-      friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
-        -> std::execution::connect_result_t<stdexec::__member_t<Self, Sender>, Receiver> {
-          return std::execution::connect(((Self&&)self).sender_, (Receiver&&)rcvr);
+      template <stdexec::__decays_to<source_sender_t> Self, stdexec::receiver Receiver>
+      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+        -> stdexec::connect_result_t<stdexec::__member_t<Self, Sender>, Receiver> {
+          return stdexec::connect(((Self&&)self).sender_, (Receiver&&)rcvr);
         }
 
-      template <stdexec::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As>
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> _Tag, class... _As>
         requires stdexec::__callable<_Tag, const Sender&, _As...>
       friend auto tag_invoke(_Tag __tag, const source_sender_t& __self, _As&&... __as)
         noexcept(stdexec::__nothrow_callable<_Tag, const Sender&, _As...>)
-        -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const Sender&, _As...> {
+        -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, stdexec::forwarding_sender_query>, _Tag, const Sender&, _As...> {
         return ((_Tag&&) __tag)(__self.sender_, (_As&&) __as...);
       }
 
       template <stdexec::__decays_to<source_sender_t> _Self, class _Env>
-        friend auto tag_invoke(std::execution::get_completion_signatures_t, _Self&&, _Env) ->
-          std::execution::make_completion_signatures<
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
+          stdexec::make_completion_signatures<
             stdexec::__member_t<_Self, Sender>,
             _Env>;
 
@@ -97,9 +97,9 @@ template <class Scheduler, class SenderId>
         stdexec::__x<stdexec::__member_t<Self, Sender>>, 
         stdexec::__x<Receiver>>;
 
-    template <stdexec::__decays_to<schedule_from_sender_t> Self, std::execution::receiver Receiver>
-      requires std::execution::sender_to<stdexec::__member_t<Self, source_sender_th>, Receiver>
-    friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
+    template <stdexec::__decays_to<schedule_from_sender_t> Self, stdexec::receiver Receiver>
+      requires stdexec::sender_to<stdexec::__member_t<Self, source_sender_th>, Receiver>
+    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
       -> stream_op_state_t<stdexec::__member_t<Self, source_sender_th>, receiver_t<Self, Receiver>, Receiver> {
         return stream_op_state<stdexec::__member_t<Self, source_sender_th>>(
             self.hub_,
@@ -110,25 +110,25 @@ template <class Scheduler, class SenderId>
             });
     }
 
-    template <stdexec::__one_of<std::execution::set_value_t, std::execution::set_stopped_t, std::execution::set_error_t> _Tag>
-    friend Scheduler tag_invoke(std::execution::get_completion_scheduler_t<_Tag>, const schedule_from_sender_t& __self) noexcept {
+    template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t, stdexec::set_error_t> _Tag>
+    friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const schedule_from_sender_t& __self) noexcept {
       return {__self.hub_};
     }
 
-    template <stdexec::tag_category<std::execution::forwarding_sender_query> _Tag, class... _As>
+    template <stdexec::tag_category<stdexec::forwarding_sender_query> _Tag, class... _As>
       requires stdexec::__callable<_Tag, const Sender&, _As...>
     friend auto tag_invoke(_Tag __tag, const schedule_from_sender_t& __self, _As&&... __as)
       noexcept(stdexec::__nothrow_callable<_Tag, const Sender&, _As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, std::execution::forwarding_sender_query>, _Tag, const Sender&, _As...> {
+      -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, stdexec::forwarding_sender_query>, _Tag, const Sender&, _As...> {
       return ((_Tag&&) __tag)(__self.sndr_, (_As&&) __as...);
     }
 
     template <stdexec::__decays_to<schedule_from_sender_t> _Self, class _Env>
-      friend auto tag_invoke(std::execution::get_completion_signatures_t, _Self&&, _Env) ->
-        std::execution::make_completion_signatures<
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
+        stdexec::make_completion_signatures<
           stdexec::__member_t<_Self, Sender>,
           _Env,
-          std::execution::completion_signatures<std::execution::set_error_t(cudaError_t)>>;
+          stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>>;
 
     schedule_from_sender_t(queue::task_hub_t* hub, Sender sndr)
       : hub_(hub)

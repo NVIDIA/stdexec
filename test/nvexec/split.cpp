@@ -4,7 +4,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -27,8 +27,8 @@ TEST_CASE("split works", "[cuda][stream][adaptors][split]") {
   auto b1 = fork | ex::then([](bool on_gpu) { return on_gpu * 24; });
   auto b2 = fork | ex::then([](bool on_gpu) { return on_gpu * 42; });
 
-  auto [v1] = std::this_thread::sync_wait(std::move(b1)).value();
-  auto [v2] = std::this_thread::sync_wait(std::move(b2)).value();
+  auto [v1] = stdexec::sync_wait(std::move(b1)).value();
+  auto [v2] = stdexec::sync_wait(std::move(b2)).value();
 
   REQUIRE(v1 == 24);
   REQUIRE(v2 == 42);
@@ -48,7 +48,7 @@ TEST_CASE("split can preceed a sender without values", "[cuda][stream][adaptors]
                }
              });
 
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -71,7 +71,7 @@ TEST_CASE("split can succeed a sender", "[cuda][stream][adaptors][split]") {
                    flags.set(0);
                  }
                });
-    std::this_thread::sync_wait(std::move(snd));
+    stdexec::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -91,7 +91,7 @@ TEST_CASE("split can succeed a sender", "[cuda][stream][adaptors][split]") {
                    flags.set();
                  }
                });
-    std::this_thread::sync_wait(std::move(snd)).value();
+    stdexec::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
   }

@@ -23,7 +23,7 @@
 
 #if !_STD_NO_COROUTINES_
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 template <typename Awaiter>
 struct promise {

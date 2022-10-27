@@ -25,7 +25,7 @@
 int main() {
   auto x =
     then(
-      std::execution::just(42),
+      stdexec::just(42),
       [](int i) {
         std::printf("Got: %d\n", i);
         return i;
@@ -34,6 +34,6 @@ int main() {
 
   // prints:
   //   Got: 42
-  auto [a] = std::this_thread::sync_wait(std::move(x)).value();
+  auto [a] = stdexec::sync_wait(std::move(x)).value();
   (void) a;
 }

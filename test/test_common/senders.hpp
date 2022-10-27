@@ -20,7 +20,7 @@
 #include <test_common/type_helpers.hpp>
 #include <stdexec/execution.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 template <class... Values>
 struct fallible_just {

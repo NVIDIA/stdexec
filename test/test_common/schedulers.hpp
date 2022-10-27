@@ -22,7 +22,7 @@
 #include <functional>
 #include <vector>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 //! Scheduler that will send impulses on user's request.
 //! One can obtain senders from this, connect them to receivers and start the operation states.

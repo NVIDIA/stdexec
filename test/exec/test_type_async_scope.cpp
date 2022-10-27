@@ -26,13 +26,13 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 namespace {
 void expect_empty(exec::async_scope& scope) {
   ex::run_loop loop;
   ex::scheduler auto sch = loop.get_scheduler();
-  CHECK_FALSE(std::this_thread::execute_may_block_caller(sch));
+  CHECK_FALSE(stdexec::execute_may_block_caller(sch));
   auto op = ex::connect(
     ex::then(scope.on_empty(), [&](){  loop.finish(); }),
     expect_void_receiver{exec::make_env(exec::with(ex::get_scheduler, sch))});
@@ -56,7 +56,7 @@ TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
     exec::async_scope scope;
     ex::sender auto begin = ex::schedule(sch);
     scope.spawn(begin);
-    std::this_thread::sync_wait(scope.on_empty());
+    stdexec::sync_wait(scope.on_empty());
     expect_empty(scope);
   }
 
@@ -64,7 +64,7 @@ TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
     exec::async_scope scope;
     ex::sender auto begin = ex::schedule(sch);
     {ex::sender auto nst = scope.nest(begin); (void)nst;}
-    std::this_thread::sync_wait(scope.on_empty());
+    stdexec::sync_wait(scope.on_empty());
     expect_empty(scope);
   }
 
@@ -74,7 +74,7 @@ TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
     ex::sender auto nst = scope.nest(begin);
     auto op = ex::connect(std::move(nst), expect_void_receiver{});
     ex::start(op);
-    std::this_thread::sync_wait(scope.on_empty());
+    stdexec::sync_wait(scope.on_empty());
     expect_empty(scope);
   }
 
@@ -83,8 +83,8 @@ TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
     exec::async_scope scope;
     std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
-    {ex::sender auto ftr = scope.spawn_future(begin | std::execution::then([&](){produced = true;})); (void)ftr;}
-    std::this_thread::sync_wait(scope.on_empty() | std::execution::then([&](){STDEXEC_ASSERT(produced.load());}));
+    {ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([&](){produced = true;})); (void)ftr;}
+    stdexec::sync_wait(scope.on_empty() | stdexec::then([&](){STDEXEC_ASSERT(produced.load());}));
     expect_empty(scope);
   }
   
@@ -93,11 +93,11 @@ TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
     exec::async_scope scope;
     std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto ftr = scope.spawn_future(begin | std::execution::then([&](){produced = true;}));
-    std::this_thread::sync_wait(scope.on_empty() | std::execution::then([&](){STDEXEC_ASSERT(produced.load());}));
+    ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([&](){produced = true;}));
+    stdexec::sync_wait(scope.on_empty() | stdexec::then([&](){STDEXEC_ASSERT(produced.load());}));
     auto op = ex::connect(std::move(ftr), expect_void_receiver{});
     ex::start(op);
-    std::this_thread::sync_wait(scope.on_empty());
+    stdexec::sync_wait(scope.on_empty());
     expect_empty(scope);
   }
 }

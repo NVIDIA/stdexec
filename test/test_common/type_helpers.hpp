@@ -18,7 +18,7 @@
 
 #include <stdexec/execution.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 //! Used for to make a class non-movable without giving up aggregate initialization
 struct immovable {

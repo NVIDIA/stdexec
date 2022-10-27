@@ -195,7 +195,7 @@ namespace nvexec {
       if (holds_alternative()) {
         visit([](auto& val) noexcept {
           using val_t = std::decay_t<decltype(val)>;
-          if constexpr(std::is_same_v<val_t, ::cuda::std::tuple<std::execution::set_error_t, std::exception_ptr>>) {
+          if constexpr(std::is_same_v<val_t, ::cuda::std::tuple<stdexec::set_error_t, std::exception_ptr>>) {
             // TODO Not quite possible at the moment
           } else {
             val.~val_t();

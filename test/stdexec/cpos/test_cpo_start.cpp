@@ -18,7 +18,7 @@
 #include <stdexec/execution.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 struct my_oper : immovable {
   bool started_{false};

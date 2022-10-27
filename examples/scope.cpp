@@ -25,8 +25,8 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
-using namespace std::execution;
-using std::this_thread::sync_wait;
+using namespace stdexec;
+using stdexec::sync_wait;
 
 class noop_receiver : receiver_adaptor<noop_receiver> {
   friend receiver_adaptor<noop_receiver>;
@@ -38,7 +38,7 @@ class noop_receiver : receiver_adaptor<noop_receiver> {
   void set_stopped() noexcept {
   }
   auto get_env() const& {
-    return exec::make_env(exec::with(get_stop_token, std::never_stop_token{}));
+    return exec::make_env(exec::with(get_stop_token, stdexec::never_stop_token{}));
   }
 };
 

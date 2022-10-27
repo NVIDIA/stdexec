@@ -21,7 +21,7 @@
 #include <stdexec/execution.hpp>
 #include <tuple>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 namespace empty_recv {
 
@@ -435,7 +435,7 @@ inline void wait_for_value(S&& snd, Ts&&... val) {
   static_assert(stdexec::__single_value_variant_sender<S>,
       "Sender passed to sync_wait needs to have one variant for sending set_value");
 
-  std::optional<std::tuple<Ts...>> res = std::this_thread::sync_wait((S &&) snd);
+  std::optional<std::tuple<Ts...>> res = stdexec::sync_wait((S &&) snd);
   CHECK(res.has_value());
   std::tuple<Ts...> expected((Ts &&) val...);
   if constexpr (std::tuple_size_v<std::tuple<Ts...>> == 1)

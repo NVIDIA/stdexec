@@ -20,7 +20,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 // For testing `when_all_with_variant`, we just check a couple of examples, check customization, and
 // we assume it's implemented in terms of `when_all`.

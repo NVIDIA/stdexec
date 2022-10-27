@@ -20,7 +20,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 // For testing `transfer_when_all` we assume that, the main implementation is based on `transfer`
 // and `when_all`. As both of these are tested independently, we provide fewer tests here.

@@ -20,7 +20,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 // TODO: implement upon_stopped
 TEST_CASE("upon_stopped returns a sender", "[adaptors][upon_stopped]") {

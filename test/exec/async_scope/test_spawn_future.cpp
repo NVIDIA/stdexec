@@ -4,15 +4,15 @@
 #include "test_common/schedulers.hpp"
 #include "test_common/receivers.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 using exec::async_scope;
-using std::this_thread::sync_wait;
+using stdexec::sync_wait;
 
 namespace {
 void expect_empty(exec::async_scope& scope) {
   ex::run_loop loop;
   ex::scheduler auto sch = loop.get_scheduler();
-  CHECK_FALSE(std::this_thread::execute_may_block_caller(sch));
+  CHECK_FALSE(stdexec::execute_may_block_caller(sch));
   auto op = ex::connect(
     ex::then(scope.on_empty(), [&](){  loop.finish(); }),
     expect_void_receiver{exec::make_env(exec::with(ex::get_scheduler, sch))});

@@ -4,7 +4,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -28,7 +28,7 @@ TEST_CASE("let_value executes on GPU", "[cuda][stream][adaptors][let_value]") {
                }
                return ex::just();
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -49,7 +49,7 @@ TEST_CASE("let_value accepts values on GPU", "[cuda][stream][adaptors][let_value
                }
                return ex::just();
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -69,7 +69,7 @@ TEST_CASE("let_value accepts multiple values on GPU", "[cuda][stream][adaptors][
                }
                return ex::just();
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -81,7 +81,7 @@ TEST_CASE("let_value returns values on GPU", "[cuda][stream][adaptors][let_value
            | ex::let_value([=]() {
                return ex::just(is_on_gpu());
              });
-  const auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+  const auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(result == 1);
 }
@@ -105,7 +105,7 @@ TEST_CASE("let_value can preceed a sender without values", "[cuda][stream][adapt
                  flags.set(1);
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -125,7 +125,7 @@ TEST_CASE("let_value can succeed a sender", "[cuda][stream][adaptors][let_value]
 
                return ex::schedule(sch);
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }

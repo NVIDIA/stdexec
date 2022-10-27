@@ -34,17 +34,17 @@ namespace exec {
     template <class _Ty>
       concept __stop_token_provider =
         requires(const _Ty& t) {
-          std::execution::get_stop_token(t);
+          stdexec::get_stop_token(t);
         };
 
     template <class _Ty>
       concept __indirect_stop_token_provider =
         requires(const _Ty& t) {
-          { std::execution::get_env(t) } -> __stop_token_provider;
+          { stdexec::get_env(t) } -> __stop_token_provider;
         };
 
     struct __forward_stop_request {
-      std::in_place_stop_source& __stop_source_;
+      stdexec::in_place_stop_source& __stop_source_;
       void operator()() noexcept {
         __stop_source_.request_stop();
       }
@@ -60,11 +60,11 @@ namespace exec {
       template <class _ParentPromise>
         friend struct __default_awaiter_context;
 
-      std::in_place_stop_token __stop_token_;
+      stdexec::in_place_stop_token __stop_token_;
 
       friend auto tag_invoke(
-            std::execution::get_stop_token_t, const __default_task_context_impl& __self)
-          noexcept -> std::in_place_stop_token {
+            stdexec::get_stop_token_t, const __default_task_context_impl& __self)
+          noexcept -> stdexec::in_place_stop_token {
         return __self.__stop_token_;
       }
 
@@ -100,7 +100,7 @@ namespace exec {
     // and its stop token type is neither in_place_stop_token nor unstoppable.
     template <__indirect_stop_token_provider _ParentPromise>
       struct __default_awaiter_context<_ParentPromise> {
-        using __stop_token_t = std::execution::stop_token_of_t<std::execution::env_of_t<_ParentPromise>>;
+        using __stop_token_t = stdexec::stop_token_of_t<stdexec::env_of_t<_ParentPromise>>;
         using __stop_callback_t =
           typename __stop_token_t::template callback_type<__forward_stop_request>;
 
@@ -110,14 +110,14 @@ namespace exec {
             // stop_source when stop is requested on the parent coroutine's stop
             // token.
           : __stop_callback_{
-              std::execution::get_stop_token(std::execution::get_env(__parent)),
+              stdexec::get_stop_token(stdexec::get_env(__parent)),
               __forward_stop_request{__stop_source_}} {
           static_assert(std::is_nothrow_constructible_v<
               __stop_callback_t, __stop_token_t, __forward_stop_request>);
           __self.__stop_token_ = __stop_source_.get_token();
         }
 
-        std::in_place_stop_source __stop_source_{};
+        stdexec::in_place_stop_source __stop_source_{};
         __stop_callback_t __stop_callback_;
       };
 
@@ -125,13 +125,13 @@ namespace exec {
     // we don't need to register a stop callback.
     template <__indirect_stop_token_provider _ParentPromise>
         requires std::same_as<
-            std::in_place_stop_token,
-            std::execution::stop_token_of_t<std::execution::env_of_t<_ParentPromise>>>
+            stdexec::in_place_stop_token,
+            stdexec::stop_token_of_t<stdexec::env_of_t<_ParentPromise>>>
       struct __default_awaiter_context<_ParentPromise> {
         explicit __default_awaiter_context(
             __default_task_context_impl& __self, _ParentPromise& __parent) noexcept {
           __self.__stop_token_ =
-            std::execution::get_stop_token(std::execution::get_env(__parent));
+            stdexec::get_stop_token(stdexec::get_env(__parent));
         }
       };
 
@@ -139,7 +139,7 @@ namespace exec {
     // forwarding stop tokens or stop requests at all.
     template <__indirect_stop_token_provider _ParentPromise>
         requires stdexec::unstoppable_token<
-            std::execution::stop_token_of_t<std::execution::env_of_t<_ParentPromise>>>
+            stdexec::stop_token_of_t<stdexec::env_of_t<_ParentPromise>>>
       struct __default_awaiter_context<_ParentPromise> {
         explicit __default_awaiter_context(
             __default_task_context_impl&, _ParentPromise&) noexcept
@@ -162,17 +162,17 @@ namespace exec {
             // stop_source when stop is requested on the parent coroutine's stop
             // token.
             using __stop_token_t =
-              std::execution::stop_token_of_t<
-                std::execution::env_of_t<_ParentPromise>>;
+              stdexec::stop_token_of_t<
+                stdexec::env_of_t<_ParentPromise>>;
             using __stop_callback_t =
               typename __stop_token_t::template callback_type<__forward_stop_request>;
 
-            if constexpr (std::same_as<__stop_token_t, std::in_place_stop_token>) {
+            if constexpr (std::same_as<__stop_token_t, stdexec::in_place_stop_token>) {
               __self.__stop_token_ =
-                std::execution::get_stop_token(std::execution::get_env(__parent));
+                stdexec::get_stop_token(stdexec::get_env(__parent));
             } else if(auto __token =
-                        std::execution::get_stop_token(
-                          std::execution::get_env(__parent));
+                        stdexec::get_stop_token(
+                          stdexec::get_env(__parent));
                       __token.stop_possible()) {
               __stop_callback_.emplace<__stop_callback_t>(
                   std::move(__token), __forward_stop_request{__stop_source_});
@@ -180,13 +180,13 @@ namespace exec {
             }
           }
 
-        std::in_place_stop_source __stop_source_{};
+        stdexec::in_place_stop_source __stop_source_{};
         std::any __stop_callback_{};
       };
 
     template <class _Promise, class _ParentPromise = void>
       using awaiter_context_t =
-        typename std::execution::env_of_t<_Promise>::
+        typename stdexec::env_of_t<_Promise>::
           template awaiter_context_t<_Promise, _ParentPromise>;
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -255,7 +255,7 @@ namespace exec {
           }
           using __context_t =
             typename _Context::template promise_context_t<__promise>;
-          friend __context_t tag_invoke(std::execution::get_env_t, const __promise& __self) {
+          friend __context_t tag_invoke(stdexec::get_env_t, const __promise& __self) {
             return __self.__context_;
           }
           __context_t __context_;
@@ -302,7 +302,7 @@ namespace exec {
             requires std::constructible_from<
                 awaiter_context_t<__promise, _ParentPromise>, __promise&, _ParentPromise&>
           friend __task_awaitable<_ParentPromise>
-          tag_invoke(std::execution::as_awaitable_t, basic_task&& __self, _ParentPromise&) noexcept {
+          tag_invoke(stdexec::as_awaitable_t, basic_task&& __self, _ParentPromise&) noexcept {
             return __task_awaitable<_ParentPromise>{std::exchange(__self.__coro_, {})};
           }
 
@@ -318,19 +318,19 @@ namespace exec {
         //   is void, and set_value_t(_Ty) otherwise.
         using __set_value_sig_t =
           stdexec::__minvoke1<
-            stdexec::__remove<void, stdexec::__qf<std::execution::set_value_t>>,
+            stdexec::__remove<void, stdexec::__qf<stdexec::set_value_t>>,
             _Ty>;
 
         // Specify basic_task's completion signatures
         //   This is only necessary when basic_task is not generally awaitable
         //   owing to constraints imposed by its _Context parameter.
         using __task_traits_t =
-          std::execution::completion_signatures<
+          stdexec::completion_signatures<
             __set_value_sig_t,
-            std::execution::set_error_t(std::exception_ptr),
-            std::execution::set_stopped_t()>;
+            stdexec::set_error_t(std::exception_ptr),
+            stdexec::set_stopped_t()>;
 
-        friend auto tag_invoke(std::execution::get_completion_signatures_t, const basic_task&, auto)
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, const basic_task&, auto)
           -> __task_traits_t;
 
         explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
