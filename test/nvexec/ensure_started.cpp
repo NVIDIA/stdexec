@@ -8,7 +8,7 @@
 #include "common.cuh"
 #include "stdexec/__detail/__p2300.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -30,7 +30,7 @@ TEST_CASE("ensure_started is eager", "[cuda][stream][adaptors][ensure_started]")
 
   REQUIRE(flags_storage.all_set_once());
 
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 }
 
 TEST_CASE("ensure_started propagates values", "[cuda][stream][adaptors][ensure_started]") {
@@ -48,7 +48,7 @@ TEST_CASE("ensure_started propagates values", "[cuda][stream][adaptors][ensure_s
                 return val * is_on_gpu();
               });
 
-  auto [v] = std::this_thread::sync_wait(std::move(snd2)).value();
+  auto [v] = stdexec::sync_wait(std::move(snd2)).value();
 
   REQUIRE(v == 1);
 }
@@ -71,7 +71,7 @@ TEST_CASE("ensure_started can preceed a sender without values", "[cuda][stream][
                  flags.set(1);
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -94,7 +94,7 @@ TEST_CASE("ensure_started can succeed a sender", "[cuda][stream][adaptors][ensur
                    flags.set(0);
                  }
                });
-    std::this_thread::sync_wait(std::move(snd));
+    stdexec::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -114,7 +114,7 @@ TEST_CASE("ensure_started can succeed a sender", "[cuda][stream][adaptors][ensur
                    flags.set();
                  }
                });
-    std::this_thread::sync_wait(std::move(snd)).value();
+    stdexec::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
   }

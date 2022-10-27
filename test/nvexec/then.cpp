@@ -4,7 +4,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -27,7 +27,7 @@ TEST_CASE("then executes on GPU", "[cuda][stream][adaptors][then]") {
                  flags.set();
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -46,7 +46,7 @@ TEST_CASE("then accepts values on GPU", "[cuda][stream][adaptors][then]") {
                  }
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -65,7 +65,7 @@ TEST_CASE("then accepts multiple values on GPU", "[cuda][stream][adaptors][then]
                  }
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -81,7 +81,7 @@ TEST_CASE("then returns values on GPU", "[cuda][stream][adaptors][then]") {
 
                return 0;
              });
-  const auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+  const auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(result == 42);
 }
@@ -103,7 +103,7 @@ TEST_CASE("then can preceed a sender without values", "[cuda][stream][adaptors][
                  flags.set(1);
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }
@@ -125,7 +125,7 @@ TEST_CASE("then can succeed a sender", "[cuda][stream][adaptors][then]") {
                    flags.set(0);
                  }
                });
-    std::this_thread::sync_wait(std::move(snd));
+    stdexec::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -144,7 +144,7 @@ TEST_CASE("then can succeed a sender", "[cuda][stream][adaptors][then]") {
                    flags.set();
                  }
                });
-    std::this_thread::sync_wait(std::move(snd)).value();
+    stdexec::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -163,7 +163,7 @@ TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][th
                    flags.set();
                  }
                });
-    std::this_thread::sync_wait(std::move(snd));
+    stdexec::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -183,7 +183,7 @@ TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][th
                    flags.set();
                  }
                });
-    std::this_thread::sync_wait(std::move(snd)).value();
+    stdexec::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -203,7 +203,7 @@ TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptor
                  flags.set();
                }
              });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());
 }

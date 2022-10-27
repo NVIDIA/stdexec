@@ -20,8 +20,8 @@
 
 #include "exec/static_thread_pool.hpp"
 
-using namespace std::execution;
-using std::this_thread::sync_wait;
+using namespace stdexec;
+using stdexec::sync_wait;
 
 int main() {
   exec::static_thread_pool ctx{8};

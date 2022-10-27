@@ -23,7 +23,7 @@
 
 #include <chrono>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using namespace std::chrono_literals;
 
@@ -57,7 +57,7 @@ TEST_CASE("let_value can be piped", "[adaptors][let_value]") {
 
 TEST_CASE("let_value returning void can we waited on", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just() | ex::let_value([] { return ex::just(); });
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 }
 
 TEST_CASE("let_value can be used to produce values", "[adaptors][let_value]") {

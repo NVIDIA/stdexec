@@ -25,11 +25,11 @@
 #include <thread>
 #include <chrono>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 using std::optional;
 using std::tuple;
-using std::this_thread::sync_wait;
-using std::this_thread::sync_wait_with_variant;
+using stdexec::sync_wait;
+using stdexec::sync_wait_with_variant;
 
 using namespace std::chrono_literals;
 

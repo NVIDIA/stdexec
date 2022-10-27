@@ -32,7 +32,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     using env_t = 
       stdexec::__make_env_t<
-        stdexec::__with_t<std::execution::get_stop_token_t, stdexec::in_place_stop_token>>;
+        stdexec::__with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>;
 
     template <class SenderId, class SharedState>
       class receiver_t : stream_receiver_base {
@@ -45,9 +45,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           : shared_state_(shared_state.__intrusive_from_this()) {
         }
 
-        template <stdexec::__one_of<std::execution::set_value_t, 
-                                    std::execution::set_error_t, 
-                                    std::execution::set_stopped_t> Tag, 
+        template <stdexec::__one_of<stdexec::set_value_t, 
+                                    stdexec::set_error_t, 
+                                    stdexec::set_stopped_t> Tag, 
                   class... As _NVCXX_CAPTURE_PACK(As)>
           friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
             SharedState& state = *self.shared_state_;
@@ -70,9 +70,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             self.shared_state_.reset();
           }
 
-          friend env_t tag_invoke(std::execution::get_env_t, const receiver_t& self) {
+          friend env_t tag_invoke(stdexec::get_env_t, const receiver_t& self) {
             auto stok = self.shared_state_->stop_source_.get_token();
-            return stdexec::__make_env(stdexec::__with(std::execution::get_stop_token, std::move(stok)));
+            return stdexec::__make_env(stdexec::__with(stdexec::get_stop_token, std::move(stok)));
           }
         };
 
@@ -109,7 +109,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               stream_sender<Sender>,
               stdexec::__x<inner_receiver_t>,
               stdexec::__x<enqueue_receiver_t>>>;
-        using inner_op_state_t = std::execution::connect_result_t<Sender, intermediate_receiver>;
+        using inner_op_state_t = stdexec::connect_result_t<Sender, intermediate_receiver>;
 
         cudaError_t status_{cudaSuccess};
         unsigned int index_{0};
@@ -125,8 +125,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           explicit sh_state_t(S& sndr, queue::task_hub_t*)
             : data_(malloc_managed<variant_t>(status_))
             , op_state1_{nullptr}
-            , op_state2_(std::execution::connect((Sender&&) sndr, inner_receiver_t{*this})) {
-              std::execution::start(op_state2_);
+            , op_state2_(stdexec::connect((Sender&&) sndr, inner_receiver_t{*this})) {
+              stdexec::start(op_state2_);
           }
 
         template <stdexec::__decays_to<Sender> S>
@@ -135,14 +135,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             : data_(malloc_managed<variant_t>(status_))
             , task_(queue::make_host<task_t>(status_, inner_receiver_t{*this}, data_).release())
             , op_state2_(
-                std::execution::connect(
+                stdexec::connect(
                   (Sender&&)sndr,
                   enqueue_receiver_t{
-                    stdexec::__make_env(stdexec::__with(std::execution::get_stop_token, std::move(stop_source_.get_token()))),
+                    stdexec::__make_env(stdexec::__with(stdexec::get_stop_token, std::move(stop_source_.get_token()))),
                     data_, 
                     task_, 
                     hub->producer()})) {
-              std::execution::start(op_state2_);
+              stdexec::start(op_state2_);
           }
 
         ~sh_state_t() {
@@ -173,13 +173,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Receiver = stdexec::__t<ReceiverId>;
 
         struct on_stop_requested {
-          std::in_place_stop_source& stop_source_;
+          stdexec::in_place_stop_source& stop_source_;
           void operator()() noexcept {
             stop_source_.request_stop();
           }
         };
-        using on_stop = std::optional<typename std::execution::stop_token_of_t<
-            std::execution::env_of_t<Receiver> &>::template callback_type<on_stop_requested>>;
+        using on_stop = std::optional<typename stdexec::stop_token_of_t<
+            stdexec::env_of_t<Receiver> &>::template callback_type<on_stop_requested>>;
 
         on_stop on_stop_{};
         stdexec::__intrusive_ptr<sh_state_t<SenderId>> shared_state_;
@@ -232,7 +232,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           return stream;
         }
 
-        friend void tag_invoke(std::execution::start_t, operation_t& self) noexcept {
+        friend void tag_invoke(stdexec::start_t, operation_t& self) noexcept {
           self.stream_ = self.get_stream();
 
           sh_state_t<SenderId>* shared_state = self.shared_state_.get();
@@ -244,13 +244,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           } else {
             // register stop callback:
             self.on_stop_.emplace(
-                std::execution::get_stop_token(std::execution::get_env(self.receiver_)),
+                stdexec::get_stop_token(stdexec::get_env(self.receiver_)),
                 on_stop_requested{shared_state->stop_source_});
             // Check if the stop_source has requested cancellation
             if (shared_state->stop_source_.stop_requested()) {
               // Stop has already been requested. Don't bother starting
               // the child operations.
-              self.propagate_completion_signal(std::execution::set_stopped_t{});
+              self.propagate_completion_signal(stdexec::set_stopped_t{});
             } else {
               // Otherwise, the inner source hasn't notified completion.
               // Set this operation as the op_state1 so it's notified.
@@ -280,9 +280,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       Sender sndr_;
       stdexec::__intrusive_ptr<sh_state_> shared_state_;
 
-      template <std::same_as<ensure_started_sender_t> Self, std::execution::receiver Receiver>
-          requires std::execution::receiver_of<Receiver, std::execution::completion_signatures_of_t<Self, stdexec::__empty_env>>
-        friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
+      template <std::same_as<ensure_started_sender_t> Self, stdexec::receiver Receiver>
+          requires stdexec::receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::__empty_env>>
+        friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
           noexcept(std::is_nothrow_constructible_v<std::decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
           return operation_t<Receiver>{(Receiver &&) rcvr,
@@ -290,29 +290,29 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
       template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-          requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, std::execution::get_completion_scheduler_t>) &&
+          requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, stdexec::get_completion_scheduler_t>) &&
             stdexec::__callable<Tag, const Sender&, As...>
         friend auto tag_invoke(Tag tag, const ensure_started_sender_t& self, As&&... as)
           noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-          -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+          -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
           return ((Tag&&) tag)(self.sndr_, (As&&) as...);
         }
 
       template <class... Tys>
         using set_value_t = 
-          std::execution::completion_signatures<std::execution::set_value_t(const std::decay_t<Tys>&...)>;
+          stdexec::completion_signatures<stdexec::set_value_t(const std::decay_t<Tys>&...)>;
 
       template <class Ty>
         using set_error_t = 
-          std::execution::completion_signatures<std::execution::set_error_t(const std::decay_t<Ty>&)>;
+          stdexec::completion_signatures<stdexec::set_error_t(const std::decay_t<Ty>&)>;
 
       template <std::same_as<ensure_started_sender_t> Self, class Env>
-        friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env) ->
-          std::execution::make_completion_signatures<
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env) ->
+          stdexec::make_completion_signatures<
             Sender,
             ensure_started::env_t,
-            std::execution::completion_signatures<std::execution::set_error_t(cudaError_t),
-                                                  std::execution::set_stopped_t()>, 
+            stdexec::completion_signatures<stdexec::set_error_t(cudaError_t),
+                                                  stdexec::set_stopped_t()>, 
             set_value_t,
             set_error_t>;
 

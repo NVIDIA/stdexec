@@ -21,7 +21,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 TEST_CASE("into_variant returns a sender", "[adaptors][into_variant]") {
   auto snd = ex::into_variant(ex::just(11));

@@ -17,7 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using namespace std;
 

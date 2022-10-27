@@ -18,7 +18,7 @@
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 namespace {
 struct uncustomized_scheduler {

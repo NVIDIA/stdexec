@@ -17,7 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 struct my_scheduler {
   struct my_sender  {

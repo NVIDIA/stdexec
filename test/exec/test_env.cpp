@@ -18,7 +18,7 @@
 #include <stdexec/execution.hpp>
 #include <exec/env.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 namespace {
 // Two dummy properties:
@@ -26,7 +26,7 @@ constexpr struct Foo {
   template <class Env>
     requires std::tag_invocable<Foo, Env>
   auto operator()(const Env& e) const {
-    return std::tag_invoke(*this, e);
+    return stdexec::tag_invoke(*this, e);
   }
 } foo {};
 
@@ -34,7 +34,7 @@ constexpr struct Bar {
   template <class Env>
     requires std::tag_invocable<Bar, Env>
   auto operator()(const Env& e) const {
-    return std::tag_invoke(*this, e);
+    return stdexec::tag_invoke(*this, e);
   }
 } bar {};
 }

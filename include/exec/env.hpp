@@ -144,7 +144,7 @@ namespace exec {
           -> make_env_t<env_of_t<_Receiver>, _Withs...> {
           return std::apply(
             [this](auto&... __withs) {
-              return make_env(execution::get_env(base()), __withs...);
+              return make_env(stdexec::get_env(base()), __withs...);
             },
             __op_->__withs_);
         }

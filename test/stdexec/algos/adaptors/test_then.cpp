@@ -20,7 +20,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 TEST_CASE("then returns a sender", "[adaptors][then]") {
   auto snd = ex::then(ex::just(), [] {});
@@ -49,7 +49,7 @@ TEST_CASE("then can be piped", "[adaptors][then]") {
 
 TEST_CASE("then returning void can we waited on", "[adaptors][then]") {
   ex::sender auto snd = ex::just() | ex::then([] {});
-  std::this_thread::sync_wait(std::move(snd));
+  stdexec::sync_wait(std::move(snd));
 }
 
 TEST_CASE("then can be used to transform the value", "[adaptors][then]") {

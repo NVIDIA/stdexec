@@ -3,9 +3,9 @@
 #include "test_common/schedulers.hpp"
 #include "test_common/receivers.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 using exec::async_scope;
-using std::this_thread::sync_wait;
+using stdexec::sync_wait;
 
 TEST_CASE("empty will complete immediately on an empty async_scope", "[async_scope][empty]") {
   async_scope scope;

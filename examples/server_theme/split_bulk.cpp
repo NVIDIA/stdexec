@@ -27,7 +27,7 @@
  * - implement the handler for applying 3 edge detection algorithms on one image
  * - implement the handler for applying a blur filter over the given set of images
  * - we show one can use multiple threads to execute a more complex work
- * - we show how to use `execution::split` / `execution::when_all` and `execution::bulk`
+ * - we show how to use `stdexec::split` / `stdexec::when_all` and `stdexec::bulk`
  * - error and cancellation handling is performed outside the handler
  *
  * Example goals:
@@ -47,7 +47,7 @@
 // Use a thread pool
 #include "exec/static_thread_pool.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 struct http_request {
   std::string url_;
@@ -189,6 +189,6 @@ int main() {
     scope.spawn(ex::on(sched, std::move(action)));
   }
 
-  std::this_thread::sync_wait(scope.on_empty());
+  stdexec::sync_wait(scope.on_empty());
   pool.request_stop();
 }

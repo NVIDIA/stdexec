@@ -3,9 +3,9 @@
 #include "test_common/schedulers.hpp"
 #include "test_common/receivers.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 using exec::async_scope;
-using std::this_thread::sync_wait;
+using stdexec::sync_wait;
 
 //! Sender that throws exception when connected
 struct throwing_sender {

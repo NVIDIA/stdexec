@@ -24,26 +24,26 @@
 // Example code:
 struct fail_some {
   using completion_signatures =
-    std::execution::completion_signatures<
-      std::execution::set_value_t(int),
-      std::execution::set_error_t(std::exception_ptr)>;
+    stdexec::completion_signatures<
+      stdexec::set_value_t(int),
+      stdexec::set_error_t(std::exception_ptr)>;
   template <class R>
   struct op {
     R r_;
-    friend void tag_invoke(std::execution::start_t, op& self) noexcept {
+    friend void tag_invoke(stdexec::start_t, op& self) noexcept {
       static int i = 0;
       if (++i < 3) {
         std::printf("fail!\n");
-        std::execution::set_error(std::move(self.r_), std::exception_ptr{});
+        stdexec::set_error(std::move(self.r_), std::exception_ptr{});
       } else {
         std::printf("success!\n");
-        std::execution::set_value(std::move(self.r_), 42);
+        stdexec::set_value(std::move(self.r_), 42);
       }
     }
   };
 
   template <class R>
-  friend op<R> tag_invoke(std::execution::connect_t, fail_some, R r) {
+  friend op<R> tag_invoke(stdexec::connect_t, fail_some, R r) {
     return {std::move(r)};
   }
 };
@@ -54,6 +54,6 @@ int main() {
   //   fail!
   //   fail!
   //   success!
-  auto [a] = std::this_thread::sync_wait(std::move(x)).value();
+  auto [a] = stdexec::sync_wait(std::move(x)).value();
   (void) a;
 }

@@ -27,15 +27,15 @@ namespace transfer {
     struct operation_state_t : stream_op_state_base {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
-      using Env = std::execution::env_of_t<Receiver>;
+      using Env = stdexec::env_of_t<Receiver>;
       using variant_t = variant_storage_t<Sender, Env>;
 
       struct receiver_t {
         operation_state_t &op_state_;
 
-        template <stdexec::__one_of<std::execution::set_value_t,
-                                    std::execution::set_error_t,
-                                    std::execution::set_stopped_t> Tag,
+        template <stdexec::__one_of<stdexec::set_value_t,
+                                    stdexec::set_error_t,
+                                    stdexec::set_stopped_t> Tag,
                   class... As  _NVCXX_CAPTURE_PACK(As)>
         friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
           _NVCXX_EXPAND_PACK(As, as,
@@ -43,9 +43,9 @@ namespace transfer {
           );
         }
 
-        friend std::execution::env_of_t<stdexec::__t<ReceiverId>>
-        tag_invoke(std::execution::get_env_t, const receiver_t& self) {
-          return std::execution::get_env(self.operation_state_.receiver_);
+        friend stdexec::env_of_t<stdexec::__t<ReceiverId>>
+        tag_invoke(stdexec::get_env_t, const receiver_t& self) {
+          return stdexec::get_env(self.operation_state_.receiver_);
         }
       };
 
@@ -64,7 +64,7 @@ namespace transfer {
       Receiver receiver_;
 
       using enqueue_receiver = stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
-      using inner_op_state_t = std::execution::connect_result_t<Sender, enqueue_receiver>;
+      using inner_op_state_t = stdexec::connect_result_t<Sender, enqueue_receiver>;
       inner_op_state_t inner_op_;
 
       cudaStream_t allocate() {
@@ -88,17 +88,17 @@ namespace transfer {
         return stream;
       }
 
-      friend void tag_invoke(std::execution::start_t, operation_state_t& op) noexcept {
+      friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
         op.started_.test_and_set(::cuda::std::memory_order::relaxed);
         op.stream_ = op.get_stream();
 
         if (op.status_ != cudaSuccess) {
           // Couldn't allocate memory for operation state, complete with error
-          std::execution::set_error(std::move(op.receiver_), std::move(op.status_));
+          stdexec::set_error(std::move(op.receiver_), std::move(op.status_));
           return;
         }
 
-        std::execution::start(op.inner_op_);
+        stdexec::start(op.inner_op_);
       }
 
       operation_state_t(queue::task_hub_t* hub, Sender&& sender, Receiver &&receiver)
@@ -108,10 +108,10 @@ namespace transfer {
         , started_(ATOMIC_FLAG_INIT)
         , receiver_((Receiver&&)receiver)
         , inner_op_{
-            std::execution::connect(
+            stdexec::connect(
                 (Sender&&)sender,
                 enqueue_receiver{
-                  std::execution::get_env(receiver_), 
+                  stdexec::get_env(receiver_), 
                   storage_.get(), 
                   task_, 
                   hub_->producer()})} {
@@ -145,9 +145,9 @@ template <class SenderId>
     queue::task_hub_t* hub_;
     Sender sndr_;
 
-    template <stdexec::__decays_to<transfer_sender_t> Self, std::execution::receiver Receiver>
-      requires std::execution::sender_to<stdexec::__member_t<Self, Sender>, Receiver>
-    friend auto tag_invoke(std::execution::connect_t, Self&& self, Receiver&& rcvr)
+    template <stdexec::__decays_to<transfer_sender_t> Self, stdexec::receiver Receiver>
+      requires stdexec::sender_to<stdexec::__member_t<Self, Sender>, Receiver>
+    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
       -> op_state_th<Self, Receiver> {
       return op_state_th<Self, Receiver>{
         self.hub_, 
@@ -156,25 +156,25 @@ template <class SenderId>
     }
 
     template <stdexec::__decays_to<transfer_sender_t> Self, class Env>
-    friend auto tag_invoke(std::execution::get_completion_signatures_t, Self&&, Env)
-      -> std::execution::dependent_completion_signatures<Env>;
+    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+      -> stdexec::dependent_completion_signatures<Env>;
 
     template <stdexec::__decays_to<transfer_sender_t> _Self, class _Env>
-      friend auto tag_invoke(std::execution::get_completion_signatures_t, _Self&&, _Env) ->
-        std::execution::make_completion_signatures<
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
+        stdexec::make_completion_signatures<
           stdexec::__member_t<_Self, Sender>,
           _Env,
-          std::execution::completion_signatures<
-            std::execution::set_stopped_t(),
-            std::execution::set_error_t(cudaError_t)
+          stdexec::completion_signatures<
+            stdexec::set_stopped_t(),
+            stdexec::set_error_t(cudaError_t)
           >
         > requires true;
 
-    template <stdexec::tag_category<std::execution::forwarding_sender_query> Tag, class... As>
+    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
       requires stdexec::__callable<Tag, const Sender&, As...>
     friend auto tag_invoke(Tag tag, const transfer_sender_t& self, As&&... as)
       noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, std::execution::forwarding_sender_query>, Tag, const Sender&, As...> {
+      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
       return ((Tag&&) tag)(self.sndr_, (As&&) as...);
     }
 

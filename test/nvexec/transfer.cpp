@@ -5,7 +5,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -50,7 +50,7 @@ TEST_CASE("transfer changes context to GPU", "[cuda][stream][adaptors][transfer]
                }
                return 0;
              });
-  const auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+  const auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(result == 2);
 }
@@ -75,7 +75,7 @@ TEST_CASE("transfer changes context from GPU", "[cuda][stream][adaptors][transfe
                }
                return 0;
              });
-  const auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+  const auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(result == 2);
 }
@@ -93,7 +93,7 @@ TEST_CASE("transfer_just changes context to GPU", "[cuda][stream][adaptors][tran
                }
                return false;
              });
-  const auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+  const auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(result == true);
 }
@@ -109,7 +109,7 @@ TEST_CASE("transfer_just supports move-only types", "[cuda][stream][adaptors][tr
                }
                return false;
              });
-  const auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+  const auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(result == true);
 }
@@ -131,7 +131,7 @@ TEST_CASE("transfer supports move-only types", "[cuda][stream][adaptors][transfe
                }
                return false;
              });
-  const auto [result] = std::this_thread::sync_wait(std::move(snd)).value();
+  const auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(result == true);
 }

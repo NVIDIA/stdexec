@@ -16,7 +16,7 @@
 
 #include <stdexec/execution.hpp>
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 enum class scope_t { free_standing, scheduler };
 

@@ -4,9 +4,9 @@
 #include "test_common/receivers.hpp"
 #include "exec/single_thread_context.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 using exec::async_scope;
-using std::this_thread::sync_wait;
+using stdexec::sync_wait;
 
 TEST_CASE("calling request_stop will be visible in stop_source", "[async_scope][stop]") {
   async_scope scope;

@@ -25,8 +25,8 @@
  *
  * Specific problem description:
  * - we are looking at the flow of handling a "classify" request type
- * - show how a single-threaded process can be broken into multiple steps with `execution::then` and
- * `execution::upon_*` functions
+ * - show how a single-threaded process can be broken into multiple steps with `stdexec::then` and
+ * `stdexec::upon_*` functions
  * - handle errors and cancellations that might occur during the processing
  * - at the end of the flow, we always end up with an HTTP response
  *
@@ -49,7 +49,7 @@
 // Use a thread pool
 #include "exec/static_thread_pool.hpp"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 struct http_request {
   std::string url_;
@@ -199,6 +199,6 @@ int main() {
     scope.spawn(ex::on(sched, std::move(action)));
   }
 
-  std::this_thread::sync_wait(scope.on_empty());
+  stdexec::sync_wait(scope.on_empty());
   pool.request_stop();
 }

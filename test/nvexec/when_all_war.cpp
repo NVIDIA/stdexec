@@ -5,7 +5,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-namespace ex = std::execution;
+namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
@@ -16,7 +16,7 @@ TEST_CASE("when_all works with unknown senders", "[cuda][stream][adaptors][when_
   auto snd = ex::when_all(
       ex::schedule(sch) | ex::then([]() -> int { return is_on_gpu() * 24; }),
       ex::schedule(sch) | a_sender([]() -> int { return is_on_gpu() * 42; }));
-  auto [v1, v2] = std::this_thread::sync_wait(std::move(snd)).value();
+  auto [v1, v2] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(v1 == 24);
   REQUIRE(v2 == 42);
