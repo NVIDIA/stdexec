@@ -268,7 +268,7 @@ TEST_CASE("let_value keeps error_types from input sender", "[adaptors][let_value
       ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
   check_err_types<type_array<std::exception_ptr>>( //
       ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
-  check_err_types<type_array<std::exception_ptr, int>>( //
+  check_err_types<type_array<int, std::exception_ptr>>( //
       ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
 }
 TEST_CASE("let_value keeps sends_stopped from input sender", "[adaptors][let_value]") {
