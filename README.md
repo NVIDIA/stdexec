@@ -26,7 +26,7 @@ Below is a simple program that parallelizes some compute intensive work by execu
 
 extern int compute(int);
 
-int main() {
+int main()
 {
     // Declare a pool of 8 worker threads:
     exec::static_thread_pool pool(8);
