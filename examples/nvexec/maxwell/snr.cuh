@@ -82,11 +82,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           ex::start(inner_op_state);
         }
 
-        friend auto tag_invoke(ex::get_env_t, const receiver_2_t& self) noexcept
-          -> make_stream_env_t<stdexec::env_of_t<Receiver>> {
-          return make_stream_env(
-              stdexec::get_env(self.op_state_.receiver_), 
-              std::optional<cudaStream_t>{self.op_state_.stream_});
+        friend typename OpT::env_t tag_invoke(ex::get_env_t, const receiver_2_t& self) noexcept {
+          return self.op_state_.make_env();
         }
 
         explicit receiver_2_t(OpT& op_state)
@@ -125,11 +122,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        friend auto tag_invoke(ex::get_env_t, const receiver_1_t& self) noexcept
-          -> make_stream_env_t<stdexec::env_of_t<Receiver>> {
-          return make_stream_env(
-              stdexec::get_env(self.op_state_.receiver_), 
-              std::optional<cudaStream_t>{self.op_state_.stream_});
+        friend typename OpT::env_t tag_invoke(ex::get_env_t, const receiver_1_t& self) noexcept {
+          return self.op_state_.make_env();
         }
 
         explicit receiver_1_t(OpT& op_state)
@@ -155,13 +149,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         std::size_t n_{};
         std::size_t i_{};
 
-        cudaStream_t get_stream() {
-          return this->stream_;
-        }
-
         friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
-          op.stream_ = op.allocate();
-
           if (op.status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
             op.propagate_completion_signal(stdexec::set_error, std::move(op.status_));
@@ -175,7 +163,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& receiver, std::size_t n)
-          : operation_state_base_t<ReceiverId>((Receiver&&)receiver)
+          : operation_state_base_t<ReceiverId>(
+              (Receiver&&)receiver, 
+              stdexec::get_completion_scheduler<stdexec::set_value_t>(pred_sender).context_state_,
+              false)
           , pred_sender_{(PredSender&&)pred_sender}
           , closure_(closure)
           , n_(n) {
@@ -270,7 +261,7 @@ struct repeat_n_t {
 
 #ifdef _NVHPC_CUDA
       template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
-        requires (std::tag_invocable<stdexec::connect_t, Sender, Receiver>) &&
+        requires (stdexec::tag_invocable<stdexec::connect_t, Sender, Receiver>) &&
                  (!nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
       friend auto
       tag_invoke(stdexec::connect_t, Self &&self, Receiver &&r)
@@ -283,7 +274,7 @@ struct repeat_n_t {
       }
 
       template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
-        requires (std::tag_invocable<stdexec::connect_t, Sender, Receiver>) &&
+        requires (stdexec::tag_invocable<stdexec::connect_t, Sender, Receiver>) &&
                  (nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
       friend auto
       tag_invoke(stdexec::connect_t, Self &&self, Receiver &&r) 
@@ -296,7 +287,7 @@ struct repeat_n_t {
       }
 #else
       template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
-        requires std::tag_invocable<stdexec::connect_t, Sender, Receiver> friend auto
+        requires stdexec::tag_invocable<stdexec::connect_t, Sender, Receiver> friend auto
       tag_invoke(stdexec::connect_t, Self &&self, Receiver &&r)
         -> repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__x<Receiver>> {
         return repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__x<Receiver>>(
@@ -308,7 +299,7 @@ struct repeat_n_t {
 #endif
 
       template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... Ts>
-        requires std::tag_invocable<Tag, Sender, Ts...> friend decltype(auto)
+        requires stdexec::tag_invocable<Tag, Sender, Ts...> friend decltype(auto)
       tag_invoke(Tag tag, const repeat_n_sender_t &s, Ts &&...ts) noexcept {
         return tag(s.sender_, std::forward<Ts>(ts)...);
       }

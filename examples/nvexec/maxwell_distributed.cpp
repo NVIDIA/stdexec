@@ -1,0 +1,507 @@
+/*
+ * Copyright (c) 2022 NVIDIA Corporation
+ *
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *   https://llvm.org/LICENSE.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <exec/static_thread_pool.hpp>
+#include "maxwell/snr.cuh"
+#include "nvexec/stream_context.cuh"
+
+#if __has_include(<mpi.h>) 
+#include <mpi.h>
+#define MPI_ENABLED 1
+#else
+#define MPI_ENABLED 0
+#endif
+
+static std::pair<std::size_t, std::size_t>
+even_share(std::size_t n, std::uint32_t rank, std::uint32_t size) noexcept {
+  const auto avg_per_thread = n / size;
+  const auto n_big_share = avg_per_thread + 1;
+  const auto big_shares = n % size;
+  const auto is_big_share = rank < big_shares;
+  const auto begin = is_big_share ? n_big_share * rank
+                                  : n_big_share * big_shares +
+                                      (rank - big_shares) * avg_per_thread;
+  const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
+
+  return std::make_pair(begin, end);
+}
+
+template <class T>
+std::unique_ptr<T, deleter_t>
+device_alloc(std::size_t elements = 1) {
+  T *ptr{};
+  STDEXEC_DBG_ERR(cudaMalloc(&ptr, elements * sizeof(T)));
+  return std::unique_ptr<T, deleter_t>(ptr, deleter_t{true});
+}
+
+namespace distributed {
+  struct fields_accessor {
+    float dx;
+    float dy;
+
+    float width;
+    float height;
+
+    std::size_t n;
+    std::size_t cells;
+    std::size_t begin;
+    std::size_t end;
+
+    float *base_ptr;
+
+    [[nodiscard]] __host__ __device__ std::size_t own_cells() const {
+      return end - begin;
+    }
+
+    [[nodiscard]] __host__ __device__ float *get(field_id id) const {
+      return base_ptr + static_cast<int>(id) * (own_cells() + 2 * n) + n;
+    }
+  };
+
+  struct grid_t {
+    float width = 160;
+    float height = 160;
+
+    std::size_t n{};
+    std::size_t cells{};
+
+    std::size_t begin{};
+    std::size_t end{};
+    std::size_t own_cells{};
+
+    std::unique_ptr<float, deleter_t> fields_{};
+
+    grid_t(grid_t&&) = delete;
+    grid_t(const grid_t&) = delete;
+
+    grid_t(
+        std::size_t n,
+        std::size_t grid_begin,
+        std::size_t grid_end)
+      : n(n)
+      , cells(n * n)
+      , begin(grid_begin)
+      , end(grid_end)
+      , own_cells(end - begin)
+      , fields_(device_alloc<float>(static_cast<std::size_t>(own_cells + n * 2) *
+                                    static_cast<int>(field_id::fields_count))) {
+    }
+
+    [[nodiscard]] fields_accessor accessor() const {
+      return {height / n, width / n, width, height, n, cells, begin, end, fields_.get()};
+    }
+  };
+
+  class result_dumper_t {
+    bool write_results_{};
+    std::size_t rank_{};
+    std::size_t &report_step_;
+    fields_accessor accessor_;
+
+    bool with_halo_{};
+
+    void write_vtk(const std::string &filename) const {
+      if (!write_results_) {
+        return;
+      }
+
+      std::unique_ptr<float[]> h_ez;
+      float *ez = accessor_.get(field_id::ez);
+
+      h_ez = std::make_unique<float[]>(accessor_.own_cells() + 2 * accessor_.n);
+      cudaMemcpy(h_ez.get(),
+                 accessor_.get(field_id::ez),
+                 sizeof(float) * (accessor_.own_cells() + 2 * accessor_.n),
+                 cudaMemcpyDefault);
+      ez = h_ez.get();
+
+      if (rank_ == 0) {
+        printf("\twriting report #%d", (int)report_step_);
+        fflush(stdout);
+      }
+
+      FILE *f = fopen(filename.c_str(), "w");
+
+      const std::size_t nx = accessor_.n;
+      const float dx = accessor_.dx;
+      const float dy = accessor_.dy;
+
+      const std::size_t own_cells = accessor_.own_cells() + (with_halo_ ? 2 * accessor_.n : 0);
+
+      fprintf(f, "# vtk DataFile Version 3.0\n");
+      fprintf(f, "vtk output\n");
+      fprintf(f, "ASCII\n");
+      fprintf(f, "DATASET UNSTRUCTURED_GRID\n");
+      fprintf(f, "POINTS %d double\n", (int)(own_cells * 4));
+
+      const float y_offset = with_halo_ ? dy : 0.0f;
+      for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++) {
+        const std::size_t cell_id = own_cell_id + accessor_.begin;
+        const std::size_t i = cell_id % nx;
+        const std::size_t j = cell_id / nx;
+
+        fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 0), dy * static_cast<float>(j + 0) - y_offset);
+        fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 1), dy * static_cast<float>(j + 0) - y_offset);
+        fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 1), dy * static_cast<float>(j + 1) - y_offset);
+        fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 0), dy * static_cast<float>(j + 1) - y_offset);
+      }
+
+      fprintf(f, "CELLS %d %d\n", (int)own_cells, (int)own_cells * 5);
+
+      for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++) {
+        const std::size_t point_offset = own_cell_id * 4;
+        fprintf(f,
+                "4 %d %d %d %d\n",
+                (int)(point_offset + 0),
+                (int)(point_offset + 1),
+                (int)(point_offset + 2),
+                (int)(point_offset + 3));
+      }
+
+      fprintf(f, "CELL_TYPES %d\n", (int)own_cells);
+
+      for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++) {
+        fprintf(f, "9\n");
+      }
+
+      fprintf(f, "CELL_DATA %d\n", (int)own_cells);
+      fprintf(f, "SCALARS Ez double 1\n");
+      fprintf(f, "LOOKUP_TABLE default\n");
+
+      for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++) {
+        fprintf(f, "%lf\n", ez[own_cell_id - (with_halo_ ? accessor_.n : 0)]);
+      }
+
+      fclose(f);
+
+      if (rank_ == 0) {
+        printf(".\n");
+        fflush(stdout);
+      }
+    }
+
+  public:
+    result_dumper_t(
+        bool write_results,
+        int rank,
+        std::size_t &report_step,
+        fields_accessor accessor)
+      : write_results_(write_results)
+      , rank_(rank)
+      , report_step_(report_step)
+      , accessor_(accessor) {}
+
+    void operator()() const {
+      const std::string filename = std::string("output_") +
+                                   std::to_string(rank_) + "_" +
+                                   std::to_string(report_step_) + ".vtk";
+
+      write_vtk(filename);
+    }
+  };
+
+  __host__ result_dumper_t 
+  dump_vtk(bool write_results,
+                       int rank,
+                       std::size_t &report_step,
+                       fields_accessor accessor) {
+    return {write_results, rank, report_step, accessor};
+  }
+
+  template <class AccessorT>
+  struct grid_initializer_t {
+    float dt;
+    AccessorT accessor;
+
+    __host__ __device__ void
+    operator()(std::size_t cell_id) const {
+      const std::size_t row = (accessor.begin + cell_id) / accessor.n;
+      const std::size_t column = (accessor.begin + cell_id) % accessor.n;
+
+      float er = 1.0f;
+      float hr = 1.0f;
+
+      const float x = static_cast<float>(column) * accessor.dx;
+      const float y = static_cast<float>(row) * accessor.dy;
+
+      const float soil_y = accessor.width / 2.2;
+      const float object_y = soil_y - 22.0;
+      const float object_size = 3.0;
+      const float soil_er_hr = 1.3;
+
+      if (y < soil_y) {
+        const float middle_x = accessor.width / 2;
+        const float object_x = middle_x;
+
+        if (is_circle_part(x, y, object_x, object_y, object_size)) {
+          er = hr = 200000; /// Relative permeabuliti of Iron
+        }
+        else {
+          er = hr = soil_er_hr;
+        }
+      }
+
+      accessor.get(field_id::er)[cell_id] = er;
+
+      accessor.get(field_id::hx)[cell_id] = {};
+      accessor.get(field_id::hy)[cell_id] = {};
+
+      accessor.get(field_id::ez)[cell_id] = {};
+      accessor.get(field_id::dz)[cell_id] = {};
+
+      accessor.get(field_id::mh)[cell_id] = C0 * dt / hr;
+    }
+  };
+
+  template <class AccessorT>
+  __host__ __device__ inline grid_initializer_t<AccessorT>
+  grid_initializer(float dt, AccessorT accessor) {
+    return {dt, accessor};
+  }
+
+  __host__ __device__ inline std::size_t
+  right_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+    return col == N - 1 ? cell_id - (N - 1) : cell_id + 1;
+  }
+
+  __host__ __device__ inline std::size_t
+  left_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+    return col == 0 ? cell_id + N - 1 : cell_id - 1;
+  }
+
+  __host__ __device__ inline std::size_t
+  bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+    return cell_id - N;
+  }
+
+  __host__ __device__ inline std::size_t
+  top_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+    return cell_id + N;
+  }
+
+  template <class AccessorT>
+  struct h_field_calculator_t {
+    AccessorT accessor;
+
+    __host__ __device__ void
+    operator()(std::size_t cell_id) const __attribute__((always_inline)) {
+      const std::size_t N = accessor.n;
+      const std::size_t column = (accessor.begin + cell_id) % N;
+      const std::size_t row = (accessor.begin + cell_id) / N;
+      const float *ez = accessor.get(field_id::ez);
+      const float cell_ez = ez[cell_id];
+      const float neighbour_ex = ez[top_nid(cell_id, row, N)];
+      const float neighbour_ez = ez[right_nid(cell_id, column, N)];
+      const float mh = accessor.get(field_id::mh)[cell_id];
+      const float cex = (neighbour_ex - cell_ez) / accessor.dy;
+      const float cey = (cell_ez - neighbour_ez) / accessor.dx;
+      accessor.get(field_id::hx)[cell_id] -= mh * cex;
+      accessor.get(field_id::hy)[cell_id] -= mh * cey;
+    }
+  };
+
+  template <class AccessorT>
+  __host__ __device__ inline h_field_calculator_t<AccessorT>
+  update_h(AccessorT accessor) {
+    return {accessor};
+  }
+
+  template <class AccessorT>
+  struct e_field_calculator_t {
+    float dt;
+    float *time;
+    AccessorT accessor;
+    std::size_t source_position;
+
+    [[nodiscard]] __host__ __device__ float
+    gaussian_pulse(float t, float t_0, float tau) const {
+      return exp(-(((t - t_0) / tau) * (t - t_0) / tau));
+    }
+
+    [[nodiscard]] __host__ __device__ float
+    calculate_source(float t, float frequency) const {
+      const float tau = 0.5f / frequency;
+      const float t_0 = 6.0f * tau;
+      return gaussian_pulse(t, t_0, tau);
+    }
+
+    __host__ __device__ void
+    operator()(std::size_t cell_id) const __attribute__((always_inline)) {
+      const std::size_t N = accessor.n;
+      const std::size_t column = (accessor.begin + cell_id) % N;
+      const std::size_t row = (accessor.begin + cell_id) / N;
+      const bool source_owner = (accessor.begin + cell_id) == source_position;
+      const float er = accessor.get(field_id::er)[cell_id];
+      const float *hx = accessor.get(field_id::hx);
+      const float *hy = accessor.get(field_id::hy);
+      const float cell_hy = hy[cell_id];
+      const float neighbour_hy = hy[left_nid(cell_id, column, N)];
+      const float hy_diff = cell_hy - neighbour_hy;
+      const float cell_hx = hx[cell_id];
+      const float neighbour_hx = hx[bottom_nid(cell_id, row, N)];
+      const float hx_diff = neighbour_hx - cell_hx;
+      float cell_dz = accessor.get(field_id::dz)[cell_id];
+
+      cell_dz += C0 * dt * (hy_diff / accessor.dx + hx_diff / accessor.dy);
+
+      if (source_owner) {
+        cell_dz += calculate_source(*time, 5E+7);
+        *time += dt;
+      }
+
+      accessor.get(field_id::ez)[cell_id] = cell_dz / er;
+      accessor.get(field_id::dz)[cell_id] = cell_dz;
+    }
+  };
+
+  template <class AccessorT>
+  __host__ __device__ inline e_field_calculator_t<AccessorT>
+  update_e(float *time, float dt, AccessorT accessor) {
+    std::size_t source_position = accessor.n / 2 + (accessor.n * (accessor.n / 2));
+    return {dt, time, accessor, source_position};
+  }
+}
+
+// TODO Combine hz/hy in a float2 type to pass in a single MPI copy
+int main(int argc, char *argv[]) {
+  int rank{};
+  int size{1};
+
+#if MPI_ENABLED
+  MPI_Init(&argc, &argv);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+#endif
+
+  std::cout << rank << " / " << size << std::endl;
+
+  auto params = parse_cmd(argc, argv);
+
+  if (value(params, "help") || value(params, "h")) {
+    std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
+              << "\t--write-vtk\n"
+              << "\t--iterations\n"
+              << "\t--N\n"
+              << std::endl;
+    return 0;
+  }
+
+  const bool write_wtk = value(params, "write-vtk");
+  const std::size_t n_iterations = value(params, "iterations", 1000);
+  const std::size_t N = value(params, "N", 512);
+  const auto [row_begin, row_end] = even_share(N, rank, size);
+  const std::size_t rank_begin = row_begin * N;
+  const std::size_t rank_end = row_end * N;
+  distributed::grid_t grid{N, rank_begin, rank_end};
+
+  auto accessor = grid.accessor();
+  auto dt = calculate_dt(accessor.dx, accessor.dy);
+
+  nvexec::stream_context stream_context{};
+  nvexec::stream_scheduler gpu = stream_context.get_scheduler(nvexec::stream_priority::low);
+  nvexec::stream_scheduler gpu_with_priority = stream_context.get_scheduler(nvexec::stream_priority::high);
+
+  time_storage_t time{true /* on gpu */};
+
+  auto shift = [](std::size_t shift, auto action) {
+    return [=](std::size_t cell_id) {
+      action(shift + cell_id);
+    };
+  };
+
+  stdexec::this_thread::sync_wait(
+    ex::schedule(gpu) |
+    ex::bulk(accessor.own_cells(), distributed::grid_initializer(dt, accessor)));
+
+  const int prev_rank = rank == 0 ? size - 1 : rank - 1;
+  const int next_rank = rank == (size - 1) ? 0 : rank + 1;
+
+  auto exchange_hx = [&] {
+#if MPI_ENABLED
+     MPI_Request requests[2];
+     MPI_Irecv(accessor.get(field_id::hx) - N, N, MPI_FLOAT, prev_rank, 0, MPI_COMM_WORLD, requests + 0);
+     MPI_Isend(accessor.get(field_id::hx) + accessor.own_cells() - N, N, MPI_FLOAT, next_rank, 0, MPI_COMM_WORLD, requests + 1);
+     MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
+#endif
+  };
+
+  auto exchange_ez = [&] {
+#if MPI_ENABLED
+     MPI_Request requests[2];
+     MPI_Irecv(accessor.get(field_id::ez) + accessor.own_cells(), N, MPI_FLOAT, next_rank, 0, MPI_COMM_WORLD, requests + 0);
+     MPI_Isend(accessor.get(field_id::ez), N, MPI_FLOAT, prev_rank, 0, MPI_COMM_WORLD, requests + 1);
+     MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
+#endif
+  };
+
+  exchange_hx();
+  exchange_ez();
+
+  std::size_t report_step = 0;
+  auto write = distributed::dump_vtk(write_wtk, rank, report_step, accessor);
+
+#define OVERLAP
+#if defined(OVERLAP)
+  exec::static_thread_pool thread_pool_ctx{2};
+  auto cpu = thread_pool_ctx.get_scheduler();
+
+  const std::size_t border_cells = N;
+  const std::size_t bulk_cells = accessor.own_cells() - border_cells;
+
+  auto border_h_update = distributed::update_h(accessor);
+  auto bulk_h_update = shift(border_cells, distributed::update_h(accessor));
+
+  auto border_e_update = shift(bulk_cells, distributed::update_e(time.get(), dt, accessor));
+  auto bulk_e_update = distributed::update_e(time.get(), dt, accessor);
+
+  for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
+    auto compute_h = ex::when_all(
+      ex::just() | exec::on(gpu, ex::bulk(bulk_cells, bulk_h_update)),
+      ex::just() | exec::on(gpu_with_priority, ex::bulk(border_cells, border_h_update)) | exec::on(cpu, ex::then(exchange_hx))
+    );
+
+    auto compute_e = ex::when_all(
+      ex::just() | exec::on(gpu, ex::bulk(bulk_cells, bulk_e_update)),
+      ex::just() | exec::on(gpu_with_priority, ex::bulk(border_cells, border_e_update)) | exec::on(cpu, ex::then(exchange_ez))
+    );
+
+    stdexec::this_thread::sync_wait(std::move(compute_h));
+    stdexec::this_thread::sync_wait(std::move(compute_e));
+  }
+
+  write();
+#else
+  for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
+    auto compute_h = ex::just() 
+                   | exec::on(gpu, ex::bulk(accessor.own_cells(), distributed::update_h(accessor)))
+                   | ex::then(exchange_hx);
+
+    auto compute_e = ex::just() 
+                   | exec::on(gpu, ex::bulk(accessor.own_cells(), distributed::update_e(time.get(), dt, accessor)))
+                   | ex::then(exchange_ez);
+
+    stdexec::this_thread::sync_wait(std::move(compute_h)); 
+    stdexec::this_thread::sync_wait(std::move(compute_e)); 
+  }
+
+  write();
+#endif
+
+#if MPI_ENABLED
+  MPI_Finalize();
+#endif
+}
+

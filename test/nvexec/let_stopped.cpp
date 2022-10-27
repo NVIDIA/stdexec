@@ -38,6 +38,8 @@ TEST_CASE("let_stopped executes on GPU", "[cuda][stream][adaptors][let_stopped]"
   REQUIRE(flags_storage.all_set_once());
 }
 
+// TODO NVBUG
+#if 0 
 TEST_CASE("let_stopped can preceed a sender without values", "[cuda][stream][adaptors][let_stopped]") {
   nvexec::stream_context stream_ctx{};
 
@@ -83,4 +85,5 @@ TEST_CASE("let_stopped can succeed a sender", "[cuda][stream][adaptors][let_stop
 
   REQUIRE(flags_storage.all_set_once());
 }
+#endif
 

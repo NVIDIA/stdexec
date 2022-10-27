@@ -87,7 +87,7 @@ namespace nvexec {
           }
 
         multi_gpu_stream_scheduler make_scheduler() const {
-          return multi_gpu_stream_scheduler{num_devices_, hub_};
+          return multi_gpu_stream_scheduler{num_devices_, context_state_};
         }
 
         template <class CPO>
@@ -96,19 +96,19 @@ namespace nvexec {
           return self.make_scheduler();
         }
 
-        sender_t(int num_devices,
-                 queue::task_hub_t* hub) noexcept
+        sender_t(int num_devices, context_state_t context_state) noexcept
           : num_devices_(num_devices)
-          , hub_(hub) {}
+          , context_state_(context_state) {
+        }
 
         int num_devices_;
-        queue::task_hub_t * hub_;
+        context_state_t context_state_;
       };
 
       template <stdexec::sender S>
         friend schedule_from_sender_th<S>
         tag_invoke(stdexec::schedule_from_t, const multi_gpu_stream_scheduler& sch, S&& sndr) noexcept {
-          return schedule_from_sender_th<S>(sch.hub_, (S&&) sndr);
+          return schedule_from_sender_th<S>(sch.context_state_, (S&&) sndr);
         }
 
       template <stdexec::sender S, std::integral Shape, class Fn>
@@ -148,7 +148,7 @@ namespace nvexec {
       template <stdexec::sender... Senders>
         friend auto
         tag_invoke(stdexec::transfer_when_all_t, const multi_gpu_stream_scheduler& sch, Senders&&... sndrs) noexcept {
-          return transfer_when_all_sender_th<multi_gpu_stream_scheduler, Senders...>(sch.hub_, (Senders&&)sndrs...);
+          return transfer_when_all_sender_th<multi_gpu_stream_scheduler, Senders...>(sch.context_state_, (Senders&&)sndrs...);
         }
 
       template <stdexec::sender... Senders>
@@ -156,36 +156,36 @@ namespace nvexec {
         tag_invoke(stdexec::transfer_when_all_with_variant_t, const multi_gpu_stream_scheduler& sch, Senders&&... sndrs) noexcept {
           return 
             transfer_when_all_sender_th<multi_gpu_stream_scheduler, stdexec::tag_invoke_result_t<stdexec::into_variant_t, Senders>...>(
-                sch.hub_, 
+                sch.context_state_, 
                 stdexec::into_variant((Senders&&)sndrs)...);
         }
 
       template <stdexec::sender S, stdexec::scheduler Sch>
         friend auto
         tag_invoke(stdexec::transfer_t, const multi_gpu_stream_scheduler& sch, S&& sndr, Sch&& scheduler) noexcept {
-          return stdexec::schedule_from((Sch&&)scheduler, transfer_sender_th<S>(sch.hub_, (S&&)sndr));
+          return stdexec::schedule_from((Sch&&)scheduler, transfer_sender_th<S>(sch.context_state_, (S&&)sndr));
         }
 
       template <stdexec::sender S>
         friend split_sender_th<S>
         tag_invoke(stdexec::split_t, const multi_gpu_stream_scheduler& sch, S&& sndr) noexcept {
-          return split_sender_th<S>((S&&)sndr, sch.hub_);
+          return split_sender_th<S>((S&&)sndr, sch.context_state_);
         }
 
       template <stdexec::sender S>
         friend ensure_started_th<S>
         tag_invoke(stdexec::ensure_started_t, const multi_gpu_stream_scheduler& sch, S&& sndr) noexcept {
-          return ensure_started_th<S>((S&&) sndr, sch.hub_);
+          return ensure_started_th<S>((S&&) sndr, sch.context_state_);
         }
 
       friend sender_t tag_invoke(stdexec::schedule_t, const multi_gpu_stream_scheduler& self) noexcept {
-        return {self.num_devices_, self.hub_};
+        return {self.num_devices_, self.context_state_};
       }
 
       template <stdexec::sender S>
         friend auto
         tag_invoke(stdexec::sync_wait_t, const multi_gpu_stream_scheduler& self, S&& sndr) {
-          return sync_wait::sync_wait_t{}(self.hub_, (S&&)sndr);
+          return sync_wait::sync_wait_t{}(self.context_state_, (S&&)sndr);
         }
 
       friend stdexec::forward_progress_guarantee tag_invoke(
@@ -194,36 +194,46 @@ namespace nvexec {
         return stdexec::forward_progress_guarantee::weakly_parallel;
       }
 
-      bool operator==(const multi_gpu_stream_scheduler&) const noexcept = default;
+      bool operator==(const multi_gpu_stream_scheduler& other) const noexcept {
+        return context_state_.hub_ == other.context_state_.hub_;
+      }
 
       multi_gpu_stream_scheduler(
           int num_devices,
-          const queue::task_hub_t* hub)
+          context_state_t context_state)
         : num_devices_(num_devices)
-        , hub_(const_cast<queue::task_hub_t*>(hub)) {
+        , context_state_(context_state) {
       }
 
     // private: TODO
       int num_devices_{};
-      queue::task_hub_t* hub_{};
+      context_state_t context_state_;
     };
   }
 
   using STDEXEC_STREAM_DETAIL_NS::multi_gpu_stream_scheduler;
 
   struct multi_gpu_stream_context {
-    int num_devices{};
-    STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub{};
+    int num_devices_{};
 
-    multi_gpu_stream_context() {
+    STDEXEC_STREAM_DETAIL_NS::pinned_resource pinned_resource_{};
+    std::pmr::monotonic_buffer_resource monotonic_resource_;
+    std::pmr::synchronized_pool_resource resource_;
+
+    STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub_;
+
+    multi_gpu_stream_context()
+      : monotonic_resource_(512 * 1024, &pinned_resource_)
+      , resource_(&monotonic_resource_)
+      , hub_(&resource_) {
       // TODO Manage errors
       int current_device{};
       cudaGetDevice(&current_device);
-      cudaGetDeviceCount(&num_devices);
+      cudaGetDeviceCount(&num_devices_);
       
-      for (int dev_id = 0; dev_id < num_devices; dev_id++) {
+      for (int dev_id = 0; dev_id < num_devices_; dev_id++) {
         cudaSetDevice(dev_id);
-        for (int peer_id = 0; peer_id < num_devices; peer_id++) {
+        for (int peer_id = 0; peer_id < num_devices_; peer_id++) {
           if (peer_id != dev_id) {
             int can_access{};
             cudaDeviceCanAccessPeer(&can_access, dev_id, peer_id);
@@ -237,8 +247,8 @@ namespace nvexec {
       cudaSetDevice(current_device);
     }
 
-    multi_gpu_stream_scheduler get_scheduler() {
-      return {num_devices, &hub};
+    multi_gpu_stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {
+      return {num_devices_, STDEXEC_STREAM_DETAIL_NS::context_state_t(&resource_, &hub_, priority)};
     }
   };
 }
