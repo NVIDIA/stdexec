@@ -367,9 +367,18 @@ namespace stdexec {
         using __f = __minvoke<_Fn, _Ts...>;
     };
 
+  template <class _Fn, class _T>
+    struct __uncurry_;
+  template <class _Fn, template <class...> class _A, class... _As>
+      requires __minvocable<_Fn, _As...>
+    struct __uncurry_<_Fn, _A<_As...>> {
+      using __t = __minvoke<_Fn, _As...>;
+    };
   template <class _Fn>
-    struct __uncurry : __concat<_Fn> {};
-
+    struct __uncurry {
+      template <class _T>
+        using __f = __t<__uncurry_<_Fn, _T>>;
+    };
   template <class _Fn, class _List>
     using __mapply =
       __minvoke<__uncurry<_Fn>, _List>;
