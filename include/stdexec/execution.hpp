@@ -3669,18 +3669,11 @@ namespace stdexec {
               _Set>;
 
         template <class _Sender, class _Env>
-          using __with_error =
-            __if_c<
-              __sends<_Set, _Sender, _Env>,
-              __with_exception_ptr,
-              completion_signatures<>>;
-
-        template <class _Sender, class _Env>
           using __completions =
             __mapply<
               __transform<
                 __tfx_signal<_Env, _Fun, _Set>,
-                __mbind_front_q<__concat_completion_signatures_t, __with_error<_Sender, _Env>>>,
+                __q<__concat_completion_signatures_t>>,
               completion_signatures_of_t<_Sender, _Env>>;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
