@@ -167,7 +167,7 @@ namespace std {
               template <class...> class _Variant = stdexec::__variant>
       using error_types_of_t STDEXEC_STD_DEPRECATED = stdexec::error_types_of_t<_Sender, _Env, _Variant>;
 
-    template <class _Sender, class _Env = no_env>
+    template <class _Sender, class _Env = stdexec::no_env>
       STDEXEC_STD_DEPRECATED
       inline constexpr bool sends_stopped = stdexec::sends_stopped<_Sender, _Env>;
 

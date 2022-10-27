@@ -38,7 +38,7 @@ class noop_receiver : receiver_adaptor<noop_receiver> {
   void set_stopped() noexcept {
   }
   auto get_env() const& {
-    return exec::make_env(exec::with(get_stop_token, std::never_stop_token{}));
+    return exec::make_env(exec::with(get_stop_token, stdexec::never_stop_token{}));
   }
 };
 
