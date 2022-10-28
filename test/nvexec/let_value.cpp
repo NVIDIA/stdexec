@@ -86,8 +86,6 @@ TEST_CASE("let_value returns values on GPU", "[cuda][stream][adaptors][let_value
   REQUIRE(result == 1);
 }
 
-// TODO NVBUG
-#if 0 
 TEST_CASE("let_value can preceed a sender without values", "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
 
@@ -131,5 +129,4 @@ TEST_CASE("let_value can succeed a sender", "[cuda][stream][adaptors][let_value]
 
   REQUIRE(flags_storage.all_set_once());
 }
-#endif
 
