@@ -284,25 +284,77 @@ namespace nvexec {
     private:
       std::pmr::memory_resource* _upstream;
     };
+
+    struct gpu_resource : public std::pmr::memory_resource {
+      void* do_allocate(size_t bytes, size_t /* alignment */) override {
+        void* ret;
+
+        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMalloc(&ret, bytes)); status != cudaSuccess) {
+          throw std::bad_alloc();
+        }
+
+        return ret;
+      }
+
+      void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+        STDEXEC_DBG_ERR(cudaFree(ptr));
+      }
+
+      bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+        return this == &other;
+      }
+        
+    private:
+      std::pmr::memory_resource* _upstream;
+    };
+
+    struct managed_resource : public std::pmr::memory_resource {
+      void* do_allocate(size_t bytes, size_t /* alignment */) override {
+        void* ret;
+
+        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocManaged(&ret, bytes)); status != cudaSuccess) {
+          throw std::bad_alloc();
+        }
+
+        return ret;
+      }
+
+      void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+        STDEXEC_DBG_ERR(cudaFree(ptr));
+      }
+
+      bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+        return this == &other;
+      }
+        
+    private:
+      std::pmr::memory_resource* _upstream;
+    };
+
+    template <class UnderlyingResource>
+      class resource_storage {
+        UnderlyingResource underlying_resource_{};
+        std::pmr::monotonic_buffer_resource monotonic_resource_{512 * 1024, &underlying_resource_};
+        std::pmr::synchronized_pool_resource resource_{&monotonic_resource_};
+
+      public:
+        std::pmr::memory_resource* get() {
+          return &resource_;
+        }
+      };
   }
 
   using STDEXEC_STREAM_DETAIL_NS::stream_scheduler;
 
   struct stream_context {
-    STDEXEC_STREAM_DETAIL_NS::pinned_resource pinned_resource_{};
-    std::pmr::monotonic_buffer_resource monotonic_resource_;
-    std::pmr::synchronized_pool_resource resource_;
-
+    STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::pinned_resource> pinned_resource_{};
     STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub_;
 
-    stream_context()
-      : monotonic_resource_(512 * 1024, &pinned_resource_)
-      , resource_(&monotonic_resource_)
-      , hub_(&resource_) {
+    stream_context() : hub_(pinned_resource_.get()) {
     }
 
     stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {
-      return {STDEXEC_STREAM_DETAIL_NS::context_state_t(&resource_, &hub_, priority)};
+      return {STDEXEC_STREAM_DETAIL_NS::context_state_t(pinned_resource_.get(), &hub_, priority)};
     }
   };
 }
