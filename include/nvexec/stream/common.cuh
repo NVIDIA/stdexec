@@ -65,14 +65,17 @@ namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     struct context_state_t {
       std::pmr::memory_resource *pinned_resource_{nullptr};
+      std::pmr::memory_resource *managed_resource_{nullptr};
       queue::task_hub_t* hub_{nullptr};
       stream_priority priority_;
 
       context_state_t(
         std::pmr::memory_resource *pinned_resource,
+        std::pmr::memory_resource *managed_resource,
         queue::task_hub_t* hub,
         stream_priority priority = stream_priority::normal)
         : pinned_resource_(pinned_resource)
+        , managed_resource_(managed_resource)
         , hub_(hub)
         , priority_(priority) {
       }
@@ -345,6 +348,7 @@ namespace nvexec {
 
         static constexpr bool borrows_stream = std::is_base_of_v<stream_env_base, outer_env_t>;
 
+        context_state_t context_state_;
         void *temp_storage_{nullptr};
         outer_receiver_t receiver_;
         cudaError_t status_{cudaSuccess};
@@ -355,10 +359,11 @@ namespace nvexec {
             outer_receiver_t receiver, 
             context_state_t context_state,
             bool deffer_stream_destruction)
-          : receiver_(receiver)
+          : context_state_(context_state)
+          , receiver_(receiver)
           , deffer_stream_destruction_(deffer_stream_destruction) {
           if constexpr(!borrows_stream) {
-            std::tie(own_stream_, status_) = create_stream_with_priority(context_state.priority_);
+            std::tie(own_stream_, status_) = create_stream_with_priority(context_state_.priority_);
           }
         }
 
@@ -397,10 +402,6 @@ namespace nvexec {
               STDEXEC_DBG_ERR(cudaStreamDestroy(*own_stream_));
             }
             own_stream_.reset();
-          }
-
-          if (temp_storage_) {
-            STDEXEC_DBG_ERR(cudaFree(temp_storage_));
           }
         }
       };
@@ -449,11 +450,10 @@ namespace nvexec {
 
           if constexpr (stream_receiver<inner_receiver_t>) {
             if (inner_receiver_t::memory_allocation_size) {
-              if (cudaError_t status = 
-                    STDEXEC_DBG_ERR(cudaMallocManaged(&op.temp_storage_, inner_receiver_t::memory_allocation_size)); 
-                    status != cudaSuccess) {
-                // Couldn't allocate memory for intermediate receiver, complete with error
-                op.propagate_completion_signal(stdexec::set_error, std::move(status));
+              try {
+                op.temp_storage_ = op.context_state_.managed_resource_->allocate(inner_receiver_t::memory_allocation_size);
+              } catch(...) {
+                op.propagate_completion_signal(stdexec::set_error, cudaErrorMemoryAllocation);
                 return;
               }
             }
@@ -491,6 +491,11 @@ namespace nvexec {
             if (task_) {
               task_->free_(task_);
             }
+          }
+
+          if (this->temp_storage_) {
+            this->context_state_.managed_resource_->deallocate(
+                this->temp_storage_, inner_receiver_t::memory_allocation_size);
           }
         }
 

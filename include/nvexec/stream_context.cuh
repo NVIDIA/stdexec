@@ -238,14 +238,15 @@ namespace nvexec {
     template <stream_completing_sender... Senders>
       when_all_sender_th<stream_scheduler, Senders...>
       tag_invoke(stdexec::when_all_t, Senders&&... sndrs) noexcept {
-        return when_all_sender_th<stream_scheduler, Senders...>{context_state_t{nullptr, nullptr}, (Senders&&)sndrs...};
+        return when_all_sender_th<stream_scheduler, Senders...>{
+          context_state_t{nullptr, nullptr, nullptr}, (Senders&&)sndrs...};
       }
 
     template <stream_completing_sender... Senders>
       when_all_sender_th<stream_scheduler, stdexec::tag_invoke_result_t<stdexec::into_variant_t, Senders>...>
       tag_invoke(stdexec::when_all_with_variant_t, Senders&&... sndrs) noexcept {
         return when_all_sender_th<stream_scheduler, stdexec::tag_invoke_result_t<stdexec::into_variant_t, Senders>...>{
-          context_state_t{nullptr, nullptr}, 
+          context_state_t{nullptr, nullptr, nullptr}, 
           stdexec::into_variant((Senders&&)sndrs)...
         };
       }
@@ -348,13 +349,21 @@ namespace nvexec {
 
   struct stream_context {
     STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::pinned_resource> pinned_resource_{};
+    STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::managed_resource> managed_resource_{};
+    // STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::gpu_resource> gpu_resource_{};
+
     STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub_;
 
     stream_context() : hub_(pinned_resource_.get()) {
     }
 
     stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {
-      return {STDEXEC_STREAM_DETAIL_NS::context_state_t(pinned_resource_.get(), &hub_, priority)};
+      return {STDEXEC_STREAM_DETAIL_NS::context_state_t(
+          pinned_resource_.get(), 
+          managed_resource_.get(), 
+          // gpu_resource_.get(), 
+          &hub_, 
+          priority)};
     }
   };
 }
