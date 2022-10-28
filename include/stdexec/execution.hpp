@@ -3534,8 +3534,6 @@ namespace stdexec {
     template <class _Set, class... _Args>
       struct __tfx_signal_<_Set, _Set(_Args...)> {
         template <class _Env, class _Fun>
-            requires invocable<_Fun, __decay_ref<_Args>...> &&
-              sender<std::invoke_result_t<_Fun, __decay_ref<_Args>...>, _Env>
           using __f =
             make_completion_signatures<
               __minvoke<__result_sender<_Fun>, _Args...>,
