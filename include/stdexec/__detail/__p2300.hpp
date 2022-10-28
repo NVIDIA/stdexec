@@ -136,13 +136,13 @@ namespace std {
     inline constexpr stdexec::start_t start{};
 
     // [exec.snd], senders
-    template <class _Sender, class _Env = no_env>
+    template <class _Sender, class _Env = stdexec::no_env>
       concept sender /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender<_Sender, _Env>;
 
     template <class _Sender, class _Receiver>
       concept sender_to /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_to<_Sender, _Receiver>;
 
-    template<class _Sender, class _SetSig, class _Env = no_env>
+    template<class _Sender, class _SetSig, class _Env = stdexec::no_env>
       concept sender_of /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_of<_Sender, _SetSig, _Env>;
 
     // [exec.sndtraits], completion signatures
@@ -150,20 +150,20 @@ namespace std {
     STDEXEC_STD_DEPRECATED
     inline constexpr stdexec::get_completion_signatures_t get_completion_signatures{};
 
-    template<class _Sender, class _Env = no_env>
+    template<class _Sender, class _Env = stdexec::no_env>
       using completion_signatures_of_t STDEXEC_STD_DEPRECATED = stdexec::completion_signatures_of_t<_Sender, _Env>;
 
     template <class _Env>
       using dependent_completion_signatures STDEXEC_STD_DEPRECATED = stdexec::dependent_completion_signatures<_Env>;
 
     template <class _Sender,
-              class _Env = no_env,
+              class _Env = stdexec::no_env,
               template <class...> class _Tuple = stdexec::__decayed_tuple,
               template <class...> class _Variant = stdexec::__variant>
       using value_types_of_t STDEXEC_STD_DEPRECATED = stdexec::value_types_of_t<_Sender, _Env, _Tuple, _Variant>;
 
     template <class _Sender,
-              class _Env = no_env,
+              class _Env = stdexec::no_env,
               template <class...> class _Variant = stdexec::__variant>
       using error_types_of_t STDEXEC_STD_DEPRECATED = stdexec::error_types_of_t<_Sender, _Env, _Variant>;
 
@@ -289,11 +289,11 @@ namespace std {
     // [exec.utils.mkcmplsigs]
     template<
       class _Sender,
-      class _Env = no_env,
-      class _Sigs = completion_signatures<>,
+      class _Env = stdexec::no_env,
+      class _Sigs = stdexec::completion_signatures<>,
       template <class...> class _SetValue = stdexec::__compl_sigs::__default_set_value,
       template <class> class _SetError = stdexec::__compl_sigs::__default_set_error,
-      class _SetStopped = completion_signatures<set_stopped_t()>>
+      class _SetStopped = stdexec::completion_signatures<stdexec::set_stopped_t()>>
     using make_completion_signatures STDEXEC_STD_DEPRECATED =
       stdexec::make_completion_signatures<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
 
