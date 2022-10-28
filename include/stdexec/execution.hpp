@@ -3490,32 +3490,26 @@ namespace stdexec {
           __mbind_back_q1<connect_result_t, _Receiver>,
           __result_sender<_Fun>>;
 
+    template <class _Set, class _Sig>
+      struct __tfx_signal_ {
+        template <class, class>
+          using __f = completion_signatures<_Sig>;
+      };
+
+    template <class _Set, class... _Args>
+      struct __tfx_signal_<_Set, _Set(_Args...)> {
+        template <class _Env, class _Fun>
+          using __f =
+            make_completion_signatures<
+              __minvoke<__result_sender<_Fun>, _Args...>,
+              _Env,
+              // because we don't know if connect-ing the result sender will throw:
+              completion_signatures<set_error_t(std::exception_ptr)>>;
+      };
+
     template <class _Env, class _Fun, class _Set, class _Sig>
-      struct __tfx_signal_ {};
-
-    template <class _Env, class _Fun, class _Set, class _Ret, class... _Args>
-        requires (!same_as<_Set, _Ret>)
-      struct __tfx_signal_<_Env, _Fun, _Set, _Ret(_Args...)> {
-        using __t = completion_signatures<_Ret(_Args...)>;
-      };
-
-    template <class _Env, class _Fun, class _Set, class... _Args>
-        requires invocable<_Fun, __decay_ref<_Args>...> &&
-          sender<std::invoke_result_t<_Fun, __decay_ref<_Args>...>, _Env>
-      struct __tfx_signal_<_Env, _Fun, _Set, _Set(_Args...)> {
-        using __t =
-          make_completion_signatures<
-            __minvoke<__result_sender<_Fun>, _Args...>,
-            _Env,
-            // because we don't know if connect-ing the result sender will throw:
-            completion_signatures<set_error_t(std::exception_ptr)>>;
-      };
-
-    template <class _Env, class _Fun, class _Set>
-      struct __tfx_signal {
-        template <class _Sig>
-          using __f = __t<__tfx_signal_<_Env, _Fun, _Set, _Sig>>;
-      };
+      using __tfx_signal_t =
+        __minvoke2<__tfx_signal_<_Set, _Sig>, _Env, _Fun>;
 
     template <class _ReceiverId, class _FunId, class _Let, class... _Tuples>
       struct __operation_base_ : __immovable {
@@ -3633,7 +3627,7 @@ namespace stdexec {
           using __completions =
             __mapply<
               __transform<
-                __tfx_signal<_Env, _Fun, _Set>,
+                __mbind_front_q1<__tfx_signal_t, _Env, _Fun, _Set>,
                 __q<__concat_completion_signatures_t>>,
               completion_signatures_of_t<_Sender, _Env>>;
 
