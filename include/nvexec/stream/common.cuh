@@ -265,7 +265,7 @@ namespace nvexec {
                                     stdexec::set_stopped_t> Tag,
                   class... As>
           friend void tag_invoke(Tag tag, stream_enqueue_receiver&& self, As&&... as) noexcept {
-            self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
+            self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, std::move(as)...);
             self.producer_(self.task_);
           }
 
@@ -292,8 +292,8 @@ namespace nvexec {
       };
 
     template <class Receiver, class Tag, class... As>
-      __launch_bounds__(1) __global__ void continuation_kernel(Receiver receiver, Tag tag, As... as) {
-        tag(std::move(receiver), std::move(as)...);
+      __launch_bounds__(1) __global__ void continuation_kernel(Receiver receiver, Tag tag, As&&... as) {
+        tag(std::move(receiver), (As&&)as...);
       }
 
     template <class Receiver, class Variant>
