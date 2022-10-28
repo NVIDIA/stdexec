@@ -194,7 +194,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
             cudaStream_t stream = __self.__op_state_->get_stream();
 
-            result_sender_t* result_sender = reinterpret_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
+            result_sender_t* result_sender = static_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
             kernel_with_result
               <std::decay_t<_Fun>, result_sender_t, _As...>
                 <<<1, 1, 0, stream>>>(

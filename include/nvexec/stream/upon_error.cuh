@@ -60,7 +60,7 @@ namespace upon_error {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
-            result_t *d_result = reinterpret_cast<result_t*>(self.op_state_.temp_storage_);
+            result_t *d_result = static_cast<result_t*>(self.op_state_.temp_storage_);
             kernel_with_result<Fun, Error><<<1, 1, 0, stream>>>(self.f_, d_result, error);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
               self.op_state_.propagate_completion_signal(stdexec::set_value, *d_result);

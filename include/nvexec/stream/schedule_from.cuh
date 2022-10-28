@@ -41,7 +41,7 @@ namespace schedule_from {
                                   stdexec::set_stopped_t> Tag,
                 class... As>
       friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-        storage_t *storage = reinterpret_cast<storage_t*>(self.operation_state_.temp_storage_);
+        storage_t *storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
         storage->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
 
         visit([&](auto& tpl) noexcept {

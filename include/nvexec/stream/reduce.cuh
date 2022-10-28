@@ -98,7 +98,7 @@ namespace reduce_ {
                                             decltype(*begin(std::declval<Range>()))>>;
 
         using value_t = Result;
-        value_t *d_out = reinterpret_cast<value_t*>(self.op_state_.temp_storage_);
+        value_t *d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
 
         void *d_temp_storage{};
         std::size_t temp_storage_size{};
