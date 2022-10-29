@@ -453,6 +453,9 @@ int main(int argc, char *argv[]) {
   std::size_t report_step = 0;
   auto write = distributed::dump_vtk(write_wtk, rank, report_step, accessor);
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  const auto begin = std::chrono::system_clock::now();
+
 #define OVERLAP
 #if defined(OVERLAP)
   exec::static_thread_pool thread_pool_ctx{2};
@@ -499,6 +502,20 @@ int main(int argc, char *argv[]) {
 
   write();
 #endif
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  const auto end = std::chrono::system_clock::now();
+
+  if (rank == 0) {
+    const double elapsed = std::chrono::duration<double>(end - begin).count();
+
+    report_header();
+    report_performance(
+        grid.cells, 
+        n_iterations, 
+        "GPU (distributed)", 
+        std::chrono::duration<double>(end - begin).count());
+  }
 
 #if MPI_ENABLED
   MPI_Finalize();
