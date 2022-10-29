@@ -317,7 +317,7 @@ namespace exec {
         //   as arguments of a function type. In other words, set_value_t() if _Ty
         //   is void, and set_value_t(_Ty) otherwise.
         using __set_value_sig_t =
-          stdexec::__minvoke1<
+          stdexec::__minvoke<
             stdexec::__remove<void, stdexec::__qf<stdexec::set_value_t>>,
             _Ty>;
 

@@ -62,13 +62,13 @@ namespace stdexec {
 
   // For hiding a template type parameter from ADL
   template <class _T>
-    struct __x_ {
+    struct _X {
       using __t = struct __t_ {
         using __t = _T;
       };
     };
   template <class _T>
-    using __x = __t<__x_<_T>>;
+    using __x = __t<_X<_T>>;
 
   template <bool _B>
     using __bool = std::bool_constant<_B>;
@@ -95,178 +95,79 @@ namespace stdexec {
   template <class _T, _T _I>
     inline constexpr _T __v<std::integral_constant<_T, _I>> = _I;
 
+  template <bool>
+    struct __i {
+      template <template <class...> class _Fn, class... _Args>
+        using __g = _Fn<_Args...>;
+    };
+
+  template <template <class...> class _Fn, class... _Args>
+    using __meval =
+      typename __i<(sizeof...(_Args) == ~0u)>::
+        template __g<_Fn, _Args...>;
+
+  template <class _Fn, class... _Args>
+    using __minvoke =
+      __meval<_Fn::template __f, _Args...>;
+
+  template <class _Ty, class... _Args>
+    using __make_dependent_on =
+      typename __i<(sizeof...(_Args) == ~0u)>::
+        template __g<__id, _Ty>;
+
   template <template <class...> class _Fn>
     struct __q {
       template <class... _Args>
-        using __f = _Fn<_Args...>;
+        using __f = __meval<_Fn, _Args...>;
     };
 
-  template <template <class...> class _Fn>
-    struct __q1 {
-      template <class _Arg>
-        using __f = _Fn<_Arg>;
-    };
-
-  template <template <class...> class _Fn>
-    struct __q2 {
-      template <class _First, class _Second>
-        using __f = _Fn<_First, _Second>;
-    };
-
-  template <template <class...> class _Fn>
-    struct __q3 {
-      template <class _First, class _Second, class _Third>
-        using __f = _Fn<_First, _Second, _Third>;
-    };
-
-  template <template <class...> class _T, std::size_t _Count>
-    struct __qN;
-  template <template <class...> class _T>
-    struct __qN<_T, 1u> : __q1<_T> {};
-  template <template <class...> class _T>
-    struct __qN<_T, 2u> : __q2<_T> {};
-  template <template <class...> class _T>
-    struct __qN<_T, 3u> : __q3<_T> {};
-
-  template <template<class...> class _Fn, class... _Front>
+  template <template <class...> class _Fn, class... _Front>
     struct __mbind_front_q {
       template <class... _Args>
-        using __f = _Fn<_Front..., _Args...>;
-    };
-
-  template <template<class...> class _Fn, class... _Front>
-    struct __mbind_front_q1 {
-      template <class _A>
-        using __f = _Fn<_Front..., _A>;
-    };
-
-  template <template<class...> class _Fn, class... _Front>
-    struct __mbind_front_q2 {
-      template <class _A, class _B>
-        using __f = _Fn<_Front..., _A, _B>;
-    };
-
-  template <template<class...> class _Fn, class... _Front>
-    struct __mbind_front_q3 {
-      template <class _A, class _B, class _C>
-        using __f = _Fn<_Front..., _A, _B, _C>;
+        using __f = __meval<_Fn, _Front..., _Args...>;
     };
 
   template <class _Fn, class... _Front>
     using __mbind_front = __mbind_front_q<_Fn::template __f, _Front...>;
 
-  template <class _Fn, class... _Front>
-    using __mbind_front1 = __mbind_front_q1<_Fn::template __f, _Front...>;
-
-  template <class _Fn, class... _Front>
-    using __mbind_front2 = __mbind_front_q2<_Fn::template __f, _Front...>;
-
-  template <class _Fn, class... _Front>
-    using __mbind_front3 = __mbind_front_q3<_Fn::template __f, _Front...>;
-
-  template <template<class...> class _Fn, class... _Back>
+  template <template <class...> class _Fn, class... _Back>
     struct __mbind_back_q {
       template <class... _Args>
-        using __f = _Fn<_Args..., _Back...>;
-    };
-
-  template <template<class...> class _Fn, class... _Back>
-    struct __mbind_back_q1 {
-      template <class _A>
-        using __f = _Fn<_A, _Back...>;
-    };
-
-  template <template<class...> class _Fn, class... _Back>
-    struct __mbind_back_q2 {
-      template <class _A, class _B>
-        using __f = _Fn<_A, _B, _Back...>;
-    };
-
-  template <template<class...> class _Fn, class... _Back>
-    struct __mbind_back_q3 {
-      template <class _A, class _B, class _C>
-        using __f = _Fn<_A, _B, _C, _Back...>;
+        using __f = __meval<_Fn, _Args..., _Back...>;
     };
 
   template <class _Fn, class... _Back>
     using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
-  template <class _Fn, class... _Back>
-    using __mbind_back1 = __mbind_back_q1<_Fn::template __f, _Back...>;
-
-  template <class _Fn, class... _Back>
-    using __mbind_back2 = __mbind_back_q2<_Fn::template __f, _Back...>;
-
-  template <class _Fn, class... _Back>
-    using __mbind_back3 = __mbind_back_q3<_Fn::template __f, _Back...>;
-
-  template <class _Fn, class... _Args>
-    using __minvoke = typename _Fn::template __f<_Args...>;
-
-  template <class _Fn, class _First>
-    using __minvoke1 = typename _Fn::template __f<_First>;
-
-  template <class _Fn, class _First, class _Second>
-    using __minvoke2 = typename _Fn::template __f<_First, _Second>;
-
-  template <class _Fn, class _First, class _Second, class _Third>
-    using __minvoke3 = typename _Fn::template __f<_First, _Second, _Third>;
-
   template <template <class...> class _T, class... _Args>
-    concept __valid = requires { typename _T<_Args...>; };
-
-  template <template <class> class _T, class _First>
-    concept __valid1 = requires { typename _T<_First>; };
-
-  template <template <class, class> class _T, class _First, class _Second>
-    concept __valid2 = requires { typename _T<_First, _Second>; };
-
-  template <template <class, class, class> class _T, class _First, class _Second, class _Third>
-    concept __valid3 = requires { typename _T<_First, _Second, _Third>; };
+    concept __valid =
+      requires {
+        typename __meval<_T, _Args...>;
+      };
 
   template <class _Fn, class... _Args>
     concept __minvocable =
       __valid<_Fn::template __f, _Args...>;
 
-  template <class _Fn, class _First>
-    concept __minvocable1 = __valid1<_Fn::template __f, _First>;
-
-  template <class _Fn, class _First, class _Second>
-    concept __minvocable2 = __valid2<_Fn::template __f, _First, _Second>;
-
-  template <class _Fn, class _First, class _Second, class _Third>
-    concept __minvocable3 = __valid3<_Fn::template __f, _First, _Second, _Third>;
-
   template <bool>
-    struct __make_dependent_ {
-      template <class _Ty>
-        using __f = _Ty;
+    struct __if_ {
+      template <class _True, class>
+        using __f = _True;
     };
-  template <class _NonDependent, class _Dependent>
-    using __make_dependent_on =
-      __minvoke<__make_dependent_<sizeof(__types<_Dependent>*) == 0>, _NonDependent>;
-
-  template <class _Fn, class _Default, class... _Args>
-    struct __with_default_ {
-      using __t = _Default;
+  template <>
+    struct __if_<false> {
+      template <class, class _False>
+        using __f = _False;
     };
-  template <class _Fn, class _Default, class... _Args>
-      requires __minvocable<_Fn, _Args...>
-    struct __with_default_<_Fn, _Default, _Args...> {
-      using __t = __minvoke<_Fn, _Args...>;
-    };
-
-  template <class _Fn, class _Default>
-    struct __with_default {
-      template <class... _Args>
-        using __f = __t<__with_default_<_Fn, _Default, _Args...>>;
-    };
-
-  template <template <class...> class _T>
-    struct __mdefer {
-      template <class... _Args>
-        using __f = __minvoke<__qN<_T, sizeof...(_Args)>, _Args...>;
-    };
+  #if STDEXEC_NVHPC()
+  template <class _Pred, class _True, class _False>
+    using __if = __minvoke<__if_<_Pred::value>, _True, _False>;
+  #else
+  template <class _Pred, class _True, class _False>
+    using __if = __minvoke<__if_<__v<_Pred>>, _True, _False>;
+  #endif
+  template <bool _Pred, class _True, class _False>
+    using __if_c = __minvoke<__if_<_Pred>, _True, _False>;
 
   template <class _T>
     struct __mconst {
@@ -274,21 +175,27 @@ namespace stdexec {
         using __f = _T;
     };
 
+  template <class _Fn, class _Default>
+    struct __with_default {
+      template <class... _Args>
+        using __f =
+          __minvoke<
+            __if_c<__minvocable<_Fn, _Args...>, _Fn, __mconst<_Default>>,
+            _Args...>;
+    };
+
   template <class _Fn, class _Continuation = __q<__types>>
     struct __transform {
       template <class... _Args>
-        using __f = __minvoke<_Continuation, __minvoke1<_Fn, _Args>...>;
+        using __f = __minvoke<_Continuation, __minvoke<_Fn, _Args>...>;
     };
 
   template <class _Fn, class...>
     struct __fold_right_ {};
   template <class _Fn, class _State, class _Head, class... _Tail>
-      #if !STDEXEC_NVHPC()
-      // BUGBUG find better work-around
-      requires __minvocable2<_Fn, _State, _Head>
-      #endif
+      requires __minvocable<_Fn, _State, _Head>
     struct __fold_right_<_Fn, _State, _Head, _Tail...>
-      : __fold_right_<_Fn, __minvoke2<_Fn, _State, _Head>, _Tail...> {};
+      : __fold_right_<_Fn, __minvoke<_Fn, _State, _Head>, _Tail...> {};
   template <class _Fn, class _State>
     struct __fold_right_<_Fn, _State> {
       using __t = _State;
@@ -341,26 +248,6 @@ namespace stdexec {
         using __f = __t<__concat_<_Continuation, _Args...>>;
     };
 
-  template <bool>
-    struct __if_ {
-      template <class _True, class>
-        using __f = _True;
-    };
-  template <>
-    struct __if_<false> {
-      template <class, class _False>
-        using __f = _False;
-    };
-  #if STDEXEC_NVHPC()
-  template <class _Pred, class _True, class _False>
-    using __if = __minvoke2<__if_<_Pred::value>, _True, _False>;
-  #else
-  template <class _Pred, class _True, class _False>
-    using __if = __minvoke2<__if_<__v<_Pred>>, _True, _False>;
-  #endif
-  template <bool _Pred, class _True, class _False>
-    using __if_c = __minvoke2<__if_<_Pred>, _True, _False>;
-
   template <class _Fn>
     struct __curry {
       template <class... _Ts>
@@ -392,7 +279,7 @@ namespace stdexec {
     struct __mcount_if {
       template <class... _Ts>
         using __f =
-          std::integral_constant<std::size_t, (bool(__minvoke1<_Fn, _Ts>::value) + ...)>;
+          std::integral_constant<std::size_t, (bool(__minvoke<_Fn, _Ts>::value) + ...)>;
     };
 
   template <class _T>
@@ -438,14 +325,14 @@ namespace stdexec {
   template <class _Second, class _First>
     struct __mcompose<_Second, _First> {
       template <class... _Args>
-        using __f = __minvoke1<_Second, __minvoke<_First, _Args...>>;
+        using __f = __minvoke<_Second, __minvoke<_First, _Args...>>;
     };
 
   template <class _Last, class _Penultimate, class... _Rest>
     struct __mcompose<_Last, _Penultimate, _Rest...> {
       template <class... _Args>
         using __f =
-          __minvoke1<_Last, __minvoke<__mcompose<_Penultimate, _Rest...>, _Args...>>;
+          __minvoke<_Last, __minvoke<__mcompose<_Penultimate, _Rest...>, _Args...>>;
     };
 
   template <class _Old, class _New, class _Continuation = __q<__types>>
@@ -553,10 +440,10 @@ namespace stdexec {
             template <class...> class _C, class... _Cs,
             template <class...> class _D, class... _Ds>
       requires requires {
-        typename __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+        typename __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>;
       }
     struct __mzip_with2_<_Fn, _Continuation, _C<_Cs...>, _D<_Ds...>> {
-      using __t = __minvoke<_Continuation, __minvoke2<_Fn, _Cs, _Ds>...>;
+      using __t = __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>;
     };
 
   template <class _Fn, class _Continuation = __q<__types>>
@@ -584,7 +471,7 @@ namespace stdexec {
       : __mfind_if_<_Fn, _Continuation, _Tail...>
     {};
   template <class _Fn, class _Continuation, class _Head, class... _Tail>
-      requires __v<__minvoke1<_Fn, _Head>>
+      requires __v<__minvoke<_Fn, _Head>>
     struct __mfind_if_<_Fn, _Continuation, _Head, _Tail...> {
       using __t = __minvoke<_Continuation, _Head, _Tail...>;
     };
@@ -613,17 +500,17 @@ namespace stdexec {
   template <class _Fn>
     struct __mall_of {
       template <class... _Args>
-        using __f = __mand<__minvoke1<_Fn, _Args>...>;
+        using __f = __mand<__minvoke<_Fn, _Args>...>;
     };
   template <class _Fn>
     struct __mnone_of {
       template <class... _Args>
-        using __f = __mand<__mnot<__minvoke1<_Fn, _Args>>...>;
+        using __f = __mand<__mnot<__minvoke<_Fn, _Args>>...>;
     };
   template <class _Fn>
     struct __many_of {
       template <class... _Args>
-        using __f = __mor<__minvoke1<_Fn, _Args>...>;
+        using __f = __mor<__minvoke<_Fn, _Args>...>;
     };
 
   template <class _Ty>
@@ -650,10 +537,10 @@ namespace stdexec {
 
   template <class _Ty>
     using __mrequires =
-      __bool<__valid1<__mtypeof, _Ty>>;
+      __bool<__valid<__mtypeof, _Ty>>;
   template <class _Ty>
     concept __mrequires_v =
-      __valid1<__mtypeof, _Ty>;
+      __valid<__mtypeof, _Ty>;
 
   template <class _Ty>
     inline constexpr bool __mnoexcept__ = true;
@@ -679,12 +566,12 @@ namespace stdexec {
     };
   template <class _Signatures>
     using __many_well_formed =
-      __minvoke1<_Signatures, __many_of<__q1<__mrequires>>>;
+      __minvoke<_Signatures, __many_of<__q<__mrequires>>>;
   template <class _Signatures, class... _Extra>
     using __mwhich_t =
       __minvoke<
         _Signatures,
-        __mfind_if<__q1<__mrequires>, __q<__front>>,
+        __mfind_if<__q<__mrequires>, __q<__front>>,
         _Extra...>;
   template <class _Signatures, class... _Extra>
     using __mwhich_i =
@@ -692,7 +579,7 @@ namespace stdexec {
         __v<__minvoke<_Signatures, __mcount, _Extra...>> -
         __v<__minvoke<
           _Signatures,
-          __mfind_if<__q1<__mrequires>, __mcount>,
+          __mfind_if<__q<__mrequires>, __mcount>,
           _Extra...>>)>;
   template <class _Ty, bool _Noexcept = true>
     struct __mconstruct {

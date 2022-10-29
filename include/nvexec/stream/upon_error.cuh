@@ -48,7 +48,7 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
     template <class Error>
       friend void tag_invoke(stdexec::set_error_t, receiver_t&& self, Error&& error) 
           noexcept requires std::invocable<Fun, Error> {
-        using result_t = std::decay_t<std::invoke_result_t<Fun, std::decay_t<Error>>>;
+        using result_t = std::invoke_result_t<Fun, std::decay_t<Error>>;
         constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
         cudaStream_t stream = self.op_state_.stream_;
 
@@ -60,7 +60,8 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
             self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         } else {
-          result_t *d_result = reinterpret_cast<result_t*>(self.op_state_.temp_storage_);
+          using decayed_result_t = std::decay_t<result_t>;
+          decayed_result_t *d_result = reinterpret_cast<decayed_result_t*>(self.op_state_.temp_storage_);
           kernel_with_result<Fun, Error><<<1, 1, 0, stream>>>(self.f_, d_result, error);
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_value, *d_result);
