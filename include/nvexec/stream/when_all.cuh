@@ -219,7 +219,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
             -> std::tuple<child_op_state<stdexec::__t<SenderIds>, Is>...>;
 
         using child_op_states_tuple_t =
-            decltype((connect_children_)(Indices{}));
+            decltype(operation_t::connect_children_(Indices{}));
 
         void arrive() noexcept {
           if (0 == --count_) {

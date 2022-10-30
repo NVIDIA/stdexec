@@ -364,7 +364,7 @@ namespace exec {
       std::tuple<_Tag, _Ts...> __completion_as_tuple_(_Tag(*)(_Ts&&...));
     template <class _Fn>
       using __completion_as_tuple_t =
-        decltype((__completion_as_tuple_)((_Fn*) nullptr));
+        decltype(__scope::__completion_as_tuple_((_Fn*) nullptr));
 #endif
 
     template <class... _Ts>
