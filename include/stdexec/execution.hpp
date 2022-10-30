@@ -86,7 +86,8 @@ namespace stdexec {
     template <class _Ty>
       const _Ty& __cref_fn(const _Ty&);
     template <class _Ty>
-      using __cref_t = decltype((__cref_fn)(__declval<_Ty>()));
+      using __cref_t =
+        decltype(__scheduler_queries::__cref_fn(__declval<_Ty>()));
 
     struct execute_may_block_caller_t {
       template <class _T>
@@ -830,7 +831,8 @@ namespace stdexec {
     template <class _Ty>
       const _Ty& __cref_fn(const _Ty&);
     template <class _Ty>
-      using __cref_t = decltype((__cref_fn)(__declval<_Ty>()));
+      using __cref_t =
+        decltype(__scheduler_queries::__cref_fn(__declval<_Ty>()));
 
     struct get_forward_progress_guarantee_t {
       template <class _T>
@@ -1396,7 +1398,7 @@ namespace stdexec {
   template <class _Tag, class... _Args>
     _Tag __tag_of_sig_(_Tag(*)(_Args...));
   template <class _Sig>
-    using __tag_of_sig_t = decltype((__tag_of_sig_)((_Sig*) nullptr));
+    using __tag_of_sig_t = decltype(stdexec::__tag_of_sig_((_Sig*) nullptr));
 
   template<class _Sender, class _SetSig, class _Env = no_env>
     concept sender_of =
@@ -2347,10 +2349,10 @@ namespace stdexec {
   template <class _Receiver, class _Fun, class... _As>
     void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept {
       if constexpr (__nothrow_invocable<_Fun, _As...>) {
-        (__set_value_invoke_)((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
+        stdexec::__set_value_invoke_((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
       } else {
         try {
-          (__set_value_invoke_)((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
+          stdexec::__set_value_invoke_((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
         } catch(...) {
           set_error((_Receiver&&) __rcvr, std::current_exception());
         }
@@ -2402,7 +2404,7 @@ namespace stdexec {
           requires invocable<_Fun, _As...> &&
             __receiver_of_invoke_result<_Receiver, _Fun, _As...>
         void set_value(_As&&... __as) && noexcept {
-          (__set_value_invoke)(
+          stdexec::__set_value_invoke(
             ((__receiver&&) *this).base(),
             (_Fun&&) __f_,
             (_As&&) __as...);
@@ -2516,7 +2518,7 @@ namespace stdexec {
           requires invocable<_Fun, _Error> &&
             __receiver_of_invoke_result<_Receiver, _Fun, _Error>
         void set_error(_Error&& __err) && noexcept {
-          (__set_value_invoke)(
+          stdexec::__set_value_invoke(
             ((__receiver&&) *this).base(),
             (_Fun&&) __f_,
             (_Error&&) __err);
@@ -2623,7 +2625,7 @@ namespace stdexec {
         // Customize set_stopped by invoking the invocable and passing the result
         // to the base class
         void set_stopped() && noexcept {
-          (__set_value_invoke)(
+          stdexec::__set_value_invoke(
             ((__receiver&&) *this).base(),
             (_Fun&&) __f_);
         }
@@ -4833,7 +4835,7 @@ namespace stdexec {
                   -> std::tuple<__child_op_state_t<__t<_SenderIds>, __index<_Is>>...>;
 
               using __child_op_states_tuple_t =
-                  decltype((__connect_children_)(_Indices{}));
+                  decltype(__operation::__connect_children_(_Indices{}));
 
               void __arrive() noexcept {
                 if (0 == --__count_) {
