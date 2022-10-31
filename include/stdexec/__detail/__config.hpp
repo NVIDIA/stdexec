@@ -80,3 +80,28 @@
 #ifndef STDEXEC_ASSERT_FN
 #define STDEXEC_ASSERT_FN assert
 #endif
+
+// Before gcc-12, gcc really didn't like tuples or variants of immovable types
+#if STDEXEC_GCC() && (__GNUC__ < 12)
+#  define STDEXEC_IMMOVABLE(_X) _X(_X&&)
+#else
+#  define STDEXEC_IMMOVABLE(_X) _X(_X&&) = delete
+#endif
+
+// UNKNOWN BUG: nvc++ seems to generate bad code for non-template
+// classes types with [[no_unique_address]] fields when the class
+// type is nested within a class template
+#if STDEXEC_NVHPC()
+#  define STDEXEC_NO_UNIQUE_ADDRESS
+#else
+#  define STDEXEC_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#endif
+
+// BUG (gcc PR93711): copy elision fails when initializing a
+// [[no_unique_address]] field from a function returning an object
+// of class type by value
+#if STDEXEC_GCC()
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+#else
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS STDEXEC_NO_UNIQUE_ADDRESS
+#endif

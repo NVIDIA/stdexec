@@ -20,8 +20,8 @@
 namespace exec {
   template <stdexec::__nothrow_callable _Fn>
     struct scope_guard {
-      [[no_unique_address]] _Fn __fn_;
-      [[no_unique_address]] stdexec::__immovable __hidden_{};
+      STDEXEC_NO_UNIQUE_ADDRESS _Fn __fn_;
+      STDEXEC_NO_UNIQUE_ADDRESS stdexec::__immovable __hidden_{};
       bool __dismissed_{false};
 
       ~scope_guard() {

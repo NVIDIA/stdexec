@@ -131,7 +131,7 @@ namespace stdexec {
         struct __t {
           using __tag_t = _Tag;
           using __value_t = _Value;
-          [[no_unique_address]] std::unwrap_reference_t<_Value> __value_;
+          STDEXEC_NO_UNIQUE_ADDRESS std::unwrap_reference_t<_Value> __value_;
 
           template <same_as<_Tag> _T, class... _Ts>
             friend auto tag_invoke(_T, const __t& __self, _Ts&&...)
@@ -170,7 +170,7 @@ namespace stdexec {
       struct __env_ : _Withs... {
         using _BaseEnv = stdexec::__t<_BaseEnvId>;
         using __base_env_t = _BaseEnv;
-        [[no_unique_address]] _BaseEnv __base_env_{};
+        STDEXEC_NO_UNIQUE_ADDRESS _BaseEnv __base_env_{};
 
         // Forward the receiver queries:
         template <
@@ -1756,7 +1756,7 @@ namespace stdexec {
     template <class _EnvId>
       struct __detached_receiver {
         using _Env = __t<_EnvId>;
-        [[no_unique_address]] _Env __env_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Env __env_;
         template <class... _As>
           friend void tag_invoke(set_value_t, __detached_receiver&&, _As&&...) noexcept
           {}
@@ -1961,8 +1961,8 @@ namespace stdexec {
   namespace __closure {
     template <class _T0, class _T1>
       struct __compose : sender_adaptor_closure<__compose<_T0, _T1>> {
-        [[no_unique_address]] _T0 __t0_;
-        [[no_unique_address]] _T1 __t1_;
+        STDEXEC_NO_UNIQUE_ADDRESS _T0 __t0_;
+        STDEXEC_NO_UNIQUE_ADDRESS _T1 __t1_;
 
         template <sender _Sender>
           requires __callable<_T0, _Sender> && __callable<_T1, __call_result_t<_T0, _Sender>>
@@ -1993,7 +1993,7 @@ namespace stdexec {
 
     template <class _Fun, class... _As>
       struct __binder_back : sender_adaptor_closure<__binder_back<_Fun, _As...>> {
-        [[no_unique_address]] _Fun __fun_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
         std::tuple<_As...> __as_;
 
         template <sender _Sender>
@@ -2044,7 +2044,7 @@ namespace stdexec {
               : __base_((_T1&&) __base) {}
 
          private:
-          [[no_unique_address]] _Base __base_;
+          STDEXEC_NO_UNIQUE_ADDRESS _Base __base_;
 
          protected:
           _Base& base() & noexcept { return __base_; }
@@ -2396,7 +2396,7 @@ namespace stdexec {
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Fun = stdexec::__t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
-        [[no_unique_address]] _Fun __f_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __f_;
 
         // Customize set_value by invoking the invocable and passing the result
         // to the base class
@@ -2424,8 +2424,8 @@ namespace stdexec {
         template <receiver _Receiver>
           using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _FunId>;
 
-        [[no_unique_address]] _Sender __sndr_;
-        [[no_unique_address]] _Fun __fun_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
 
         template <class _Self, class _Env>
           using __completion_signatures =
@@ -2510,7 +2510,7 @@ namespace stdexec {
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Fun = stdexec::__t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
-        [[no_unique_address]] _Fun __f_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __f_;
 
         // Customize set_error by invoking the invocable and passing the result
         // to the base class
@@ -2538,8 +2538,8 @@ namespace stdexec {
         template <class _Receiver>
           using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _FunId>;
 
-        [[no_unique_address]] _Sender __sndr_;
-        [[no_unique_address]] _Fun __fun_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
 
         template <class _Self, class _Env>
           using __completion_signatures =
@@ -2620,7 +2620,7 @@ namespace stdexec {
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Fun = stdexec::__t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
-        [[no_unique_address]] _Fun __f_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __f_;
 
         // Customize set_stopped by invoking the invocable and passing the result
         // to the base class
@@ -2644,8 +2644,8 @@ namespace stdexec {
         template <class _Receiver>
           using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _FunId>;
 
-        [[no_unique_address]] _Sender __sndr_;
-        [[no_unique_address]] _Fun __fun_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
 
         template <class _Self, class _Env>
           using __completion_signatures =
@@ -2730,8 +2730,8 @@ namespace stdexec {
         using _Fun = stdexec::__t<_FunId>;
         friend receiver_adaptor<__receiver, _Receiver>;
 
-        [[no_unique_address]] _Shape __shape_;
-        [[no_unique_address]] _Fun __f_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Shape __shape_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __f_;
 
         template <class... _As>
         void set_value(_As&&... __as) && noexcept
@@ -2770,9 +2770,9 @@ namespace stdexec {
         template <receiver _Receiver>
           using __receiver = __receiver<__x<remove_cvref_t<_Receiver>>, _Shape, _FunId>;
 
-        [[no_unique_address]] _Sender __sndr_;
-        [[no_unique_address]] _Shape __shape_;
-        [[no_unique_address]] _Fun __fun_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Shape __shape_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
 
         template <class _Fun, class _Sender, class _Env>
           using __with_error_invoke_t =
@@ -3912,7 +3912,7 @@ namespace stdexec {
         struct __operation : __task {
           using _Receiver = __t<_ReceiverId>;
           run_loop* __loop_;
-          [[no_unique_address]] _Receiver __rcvr_;
+          STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
 
           static void __execute_impl(__task* __p) noexcept {
             auto& __rcvr = ((__operation*) __p)->__rcvr_;
@@ -4942,7 +4942,7 @@ namespace stdexec {
               // Could be non-atomic here and atomic_ref everywhere except __completion_fn
               std::atomic<__state_t> __state_{__started};
               error_types_of_t<__sender, __env_t<_Env>, __variant> __errors_{};
-              [[no_unique_address]] __child_values_tuple_t __values_{};
+              STDEXEC_NO_UNIQUE_ADDRESS __child_values_tuple_t __values_{};
               std::optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template
                   callback_type<__on_stop_requested>> __on_stop_{};
               __child_op_states_tuple_t __child_states_;

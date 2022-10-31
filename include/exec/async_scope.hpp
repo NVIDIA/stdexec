@@ -57,7 +57,7 @@ namespace exec {
     template <class _ReceiverId>
       struct __when_empty_op_base : __task {
         using _Receiver = __t<_ReceiverId>;
-        [[no_unique_address]] _Receiver __rcvr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
       };
 
     template <class _ConstrainedId, class _ReceiverId>
@@ -98,7 +98,7 @@ namespace exec {
         using _Constrained = __t<_ConstrainedId>;
 
         const __impl* __scope_;
-        [[no_unique_address]] _Constrained __c_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
       private:
         template <class _Self, class _Receiver>
           using __when_empty_op_t =
@@ -131,7 +131,7 @@ namespace exec {
       struct __nest_op_base : __immovable {
         using _Receiver = __t<_ReceiverId>;
         const __impl* __scope_;
-        [[no_unique_address]] _Receiver __rcvr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
       };
 
     template <class _ReceiverId>
@@ -204,7 +204,7 @@ namespace exec {
       struct __nest_sender {
         using _Constrained = __t<_ConstrainedId>;
         const __impl* __scope_;
-        [[no_unique_address]] _Constrained __c_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
       private:
         template <class _Receiver>
           using __nest_operation_t = __nest_op<_ConstrainedId, __x<remove_cvref_t<_Receiver>>>;
@@ -318,9 +318,9 @@ namespace exec {
           set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
 
-        [[no_unique_address]] _Receiver __rcvr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
-        [[no_unique_address]] __forward_consumer __forward_consumer_;
+        STDEXEC_NO_UNIQUE_ADDRESS __forward_consumer __forward_consumer_;
 
       public:
         ~__future_op() noexcept {

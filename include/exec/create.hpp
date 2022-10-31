@@ -32,8 +32,8 @@ namespace exec {
 
     template <class _Receiver, class _Args>
       struct __context {
-        [[no_unique_address]] _Receiver receiver;
-        [[no_unique_address]] _Args args;
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver receiver;
+        STDEXEC_NO_UNIQUE_ADDRESS _Args args;
       };
 
     template <class _ReceiverId, class _FnId, class _ArgsId>
@@ -43,9 +43,9 @@ namespace exec {
         using _Result = __call_result_t<_Fn, _Context&>;
         using _State = __if_c<same_as<_Result, void>, __void, std::optional<_Result>>;
 
-        [[no_unique_address]] _Context __ctx_;
-        [[no_unique_address]] _Fn __fn_;
-        [[no_unique_address]] _State __state_{};
+        STDEXEC_NO_UNIQUE_ADDRESS _Context __ctx_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fn __fn_;
+        STDEXEC_NO_UNIQUE_ADDRESS _State __state_{};
 
         friend void tag_invoke(start_t, __operation& __self) noexcept {
           __self.__state_.emplace(__conv{
