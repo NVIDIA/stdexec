@@ -1829,63 +1829,92 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
   namespace __just {
+    template <class _Tag, class... _Ts>
+      using __completion_signatures_ = completion_signatures<_Tag(_Ts...)>;
 
-    template <class _CPO, class... _Ts>
-    using __completion_signatures_ = completion_signatures<_CPO(_Ts...)>;
+    template <class _ReceiverId, class _Tag, class... _Ts>
+      struct __operation {
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        struct __t : __immovable {
+          using __id = __operation;
+          std::tuple<_Ts...> __vals_;
+          _Receiver __rcvr_;
 
-    template <class _CPO, class... _Ts>
-      struct __sender {
-        std::tuple<_Ts...> __vals_;
-
-        using completion_signatures = __completion_signatures_<_CPO, _Ts...>;
-
-        template <class _ReceiverId>
-          struct __operation : __immovable {
-            using _Receiver = __t<_ReceiverId>;
-            std::tuple<_Ts...> __vals_;
-            _Receiver __rcvr_;
-
-            friend void tag_invoke(start_t, __operation& __op_state) noexcept {
-              std::apply([&__op_state](_Ts&... __ts) {
-                _CPO{}((_Receiver&&) __op_state.__rcvr_, (_Ts&&) __ts...);
-              }, __op_state.__vals_);
-            }
-          };
-
-        template <receiver_of<completion_signatures> _Receiver>
-          requires (copy_constructible<_Ts> &&...)
-        friend auto tag_invoke(connect_t, const __sender& __sndr, _Receiver&& __rcvr)
-          noexcept((std::is_nothrow_copy_constructible_v<_Ts> &&...))
-          -> __operation<__x<remove_cvref_t<_Receiver>>> {
-          return {{}, __sndr.__vals_, (_Receiver&&) __rcvr};
-        }
-
-        template <receiver_of<completion_signatures> _Receiver>
-        friend auto tag_invoke(connect_t, __sender&& __sndr, _Receiver&& __rcvr)
-          noexcept((std::is_nothrow_move_constructible_v<_Ts> &&...))
-          -> __operation<__x<remove_cvref_t<_Receiver>>> {
-          return {{}, ((__sender&&) __sndr).__vals_, (_Receiver&&) __rcvr};
-        }
+          friend void tag_invoke(start_t, __t& __op_state) noexcept {
+            std::apply([&__op_state](_Ts&... __ts) {
+              _Tag{}((_Receiver&&) __op_state.__rcvr_, (_Ts&&) __ts...);
+            }, __op_state.__vals_);
+          }
+        };
       };
+
+    template <class _Tag, class... _Ts>
+      struct __basic_sender {
+        template <class _Receiver>
+          using __operation_t = stdexec::__t<__operation<__id<_Receiver>, _Tag, _Ts...>>;
+
+        struct __t {
+          using __id = __basic_sender;
+          using completion_signatures = __completion_signatures_<_Tag, _Ts...>;
+          std::tuple<_Ts...> __vals_;
+
+          template <receiver_of<completion_signatures> _Receiver>
+              requires (copy_constructible<_Ts> &&...)
+            friend auto tag_invoke(connect_t, const __t& __sndr, _Receiver __rcvr)
+              noexcept((std::is_nothrow_copy_constructible_v<_Ts> &&...))
+              -> __operation_t<_Receiver> {
+              return {{}, __sndr.__vals_, (_Receiver&&) __rcvr};
+            }
+
+          template <receiver_of<completion_signatures> _Receiver>
+            friend auto tag_invoke(connect_t, __t&& __sndr, _Receiver __rcvr)
+              noexcept((std::is_nothrow_move_constructible_v<_Ts> &&...))
+              -> __operation_t<_Receiver> {
+              return {{}, ((__t&&) __sndr).__vals_, (_Receiver&&) __rcvr};
+            }
+        };
+      };
+
+    template <class... _Values>
+      struct __sender {
+        using __base = stdexec::__t<__basic_sender<set_value_t, _Values...>>;
+        struct __t : __base {
+          using __id = __sender;
+        };
+      };
+
+    template <class _Error>
+      struct __error_sender {
+        using __base = stdexec::__t<__basic_sender<set_error_t, _Error>>;
+        struct __t : __base {
+          using __id = __error_sender;
+        };
+      };
+
+    struct __stopped_sender
+      : __t<__basic_sender<set_stopped_t>> {
+      using __id = __stopped_sender;
+      using __t = __stopped_sender;
+    };
 
     inline constexpr struct __just_t {
       template <__movable_value... _Ts>
-      __sender<set_value_t, decay_t<_Ts>...> operator()(_Ts&&... __ts) const
-        noexcept((std::is_nothrow_constructible_v<decay_t<_Ts>, _Ts> &&...)) {
-        return {{(_Ts&&) __ts...}};
-      }
+        __t<__sender<decay_t<_Ts>...>> operator()(_Ts&&... __ts) const
+          noexcept((std::is_nothrow_constructible_v<decay_t<_Ts>, _Ts> &&...)) {
+          return {{{(_Ts&&) __ts...}}};
+        }
     } just {};
 
     inline constexpr struct __just_error_t {
       template <__movable_value _Error>
-      __sender<set_error_t, decay_t<_Error>> operator()(_Error&& __err) const
-        noexcept(std::is_nothrow_constructible_v<decay_t<_Error>, _Error>) {
-        return {{(_Error&&) __err}};
-      }
+        __t<__error_sender<decay_t<_Error>>> operator()(_Error&& __err) const
+          noexcept(std::is_nothrow_constructible_v<decay_t<_Error>, _Error>) {
+          return {{{(_Error&&) __err}}};
+        }
     } just_error {};
 
     inline constexpr struct __just_stopped_t {
-      __sender<set_stopped_t> operator()() const noexcept {
+      __stopped_sender operator()() const noexcept {
         return {{}};
       }
     } just_stopped {};
