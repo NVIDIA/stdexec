@@ -163,4 +163,40 @@ namespace exec {
       tail_sender_to<_TailSender, _TailReceiver> &&
       __nullable_tail_operation_state<connect_result_t<_TailSender, _TailReceiver>>;
 
+
+  struct __null_tail_receiver {
+    void set_value() noexcept {}
+    void set_error(std::exception_ptr) noexcept {}
+    void set_done() noexcept {}
+  };
+
+  struct __null_tail_sender {
+    struct op {
+      // this is a nullable_tail_sender that always returns false to prevent
+      // callers from calling start() and unwind()
+      inline constexpr operator bool() const noexcept { return false; }
+      friend void tag_invoke(start_t, op& self) noexcept {
+        std::terminate();
+      }
+
+      friend void tag_invoke(unwind_t, op& self) noexcept {
+        std::terminate();
+      }
+    };
+
+    using completion_signatures = completion_signatures<set_value_t(), set_stopped_t()>;
+
+    template <class Receiver>
+    friend auto tag_invoke(connect_t, __null_tail_sender&&, Receiver&&)
+        -> op {
+      return {};
+    }
+
+    template<class _Env>
+    friend constexpr bool tag_invoke(
+        exec::always_completes_inline_t, exec::c_t<__null_tail_sender>, exec::c_t<_Env>) noexcept {
+      return true;
+    }
+  };
+
 } // namespace exec

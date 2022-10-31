@@ -56,3 +56,8 @@ TEST_CASE("Test ATailSender is a tail_sender", "[tail_sender]") {
   static_assert(exec::tail_sender<ATailSender>);
   CHECK(exec::tail_sender<ATailSender>);
 }
+
+TEST_CASE("Test __null_tail_sender is a tail_sender", "[tail_sender]") {
+  static_assert(exec::tail_sender<exec::__null_tail_sender>);
+  CHECK(exec::tail_sender<exec::__null_tail_sender>);
+}
