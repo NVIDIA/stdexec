@@ -22,10 +22,38 @@
 #include <version>
 
 // Perhaps the stdlib lacks support for concepts though:
-#if __has_include(<concepts>) && __cpp_lib_concepts	>= 202002
+#if __has_include(<concepts>) && __cpp_lib_concepts >= 202002
+#define STDEXEC_HAS_STD_CONCEPTS_HEADER() 1
+#else
+#define STDEXEC_HAS_STD_CONCEPTS_HEADER() 0
+#endif
+
+#if STDEXEC_HAS_STD_CONCEPTS_HEADER()
 #include <concepts>
-namespace __std_concepts_polyfill {
-  using std::same_as;
+#else
+#include <type_traits>
+#endif
+
+namespace stdexec::__std_concepts {
+  #if defined(__clang__)
+  template<class _A, class _B>
+    concept __same_as = __is_same(_A, _B);
+  #elif defined(__GNUC__)
+  template<class _A, class _B>
+    concept __same_as = __is_same_as(_A, _B);
+  #else
+  template<class _A, class _B>
+    inline constexpr bool __same_as = false;
+  template<class _A>
+    inline constexpr bool __same_as<_A, _A> = true;
+  #endif
+
+  // Make sure we're using a same_as concept that doesn't instantiate std::is_same
+  template <class _A, class _B>
+    concept same_as = __same_as<_A, _B> && __same_as<_B, _A>;
+
+#if STDEXEC_HAS_STD_CONCEPTS_HEADER()
+
   using std::integral;
   using std::derived_from;
   using std::convertible_to;
@@ -34,27 +62,8 @@ namespace __std_concepts_polyfill {
   using std::constructible_from;
   using std::move_constructible;
   using std::copy_constructible;
-}
+
 #else
-#include <type_traits>
-
-namespace __std_concepts_polyfill {
-  // C++20 concepts
-  #if defined(__clang__)
-  template<class _A, class _B>
-    concept same_as = __is_same(_A, _B) && __is_same(_B, _A);
-  #elif defined(__GNUC__)
-  template<class _A, class _B>
-    concept same_as = __is_same_as(_A, _B) && __is_same_as(_B, _A);
-  #else
-  template<class _A, class _B>
-    inline constexpr bool __same_as_v = false;
-  template<class _A>
-    inline constexpr bool __same_as_v<_A, _A> = true;
-
-  template<class _A, class _B>
-    concept same_as = __same_as_v<_A, _B> && __same_as_v<_B, _A>;
-  #endif
 
   template <class T>
     concept integral = std::is_integral_v<T>;
@@ -98,24 +107,38 @@ namespace __std_concepts_polyfill {
     concept copy_constructible =
       move_constructible<_T> &&
       constructible_from<_T, _T const&>;
-} // namespace __std_concepts_polyfill
-
-namespace std {
-  using namespace __std_concepts_polyfill;
-}
 #endif
+} // namespace stdexec::__std_concepts
 
 namespace stdexec {
-  using namespace __std_concepts_polyfill;
+  using namespace __std_concepts;
   using std::decay_t;
 
+  // // TODO: this makes nvc++ sad. Find out why.
+  // template <class _Ty>
+  //   _Ty __decay__(const _Ty&);
+  // template <class _Ty>
+  //   _Ty* __decay__(_Ty*);
+
+  // template <class _Ty>
+  //   auto __decay_(_Ty&&(*__fn)()) -> decltype((__decay__)(__fn()));
+  // template <class>
+  //   void __decay_(...);
+
+  // template <class _Ty>
+  //   using decay_t = decltype((__decay_<_Ty>)(0));
+
+  // C++20 concepts
   template<class _T, class _U>
     concept __decays_to =
       same_as<decay_t<_T>, _U>;
 
+  template <class>
+    concept __true = true;
+
   template <class _C>
     concept __class =
-      std::is_class_v<_C> && __decays_to<_C, _C>;
+      __true<int _C::*> && (!__same_as<const _C, _C>);
 
   template <class _T, class... _As>
     concept __one_of =
@@ -169,3 +192,9 @@ namespace stdexec {
     concept __nothrow_decay_copyable =
       __nothrow_constructible_from<decay_t<_Ty>, _Ty>;
 } // namespace stdexec
+
+#if !STDEXEC_HAS_STD_CONCEPTS_HEADER()
+namespace std {
+  using namespace stdexec::__std_concepts;
+}
+#endif

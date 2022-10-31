@@ -173,13 +173,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <class... _As>
           using __op_state_for_t =
-            stdexec::__minvoke2<stdexec::__q2<stdexec::connect_result_t>, __result_sender_t<_Fun, _As...>, propagate_receiver_t<_ReceiverId>>;
+            stdexec::__minvoke<stdexec::__q<stdexec::connect_result_t>, __result_sender_t<_Fun, _As...>, propagate_receiver_t<_ReceiverId>>;
 
         // handle the case when let_error is used with an input sender that
         // never completes with set_error(exception_ptr)
         template <stdexec::__decays_to<std::exception_ptr> _Error>
             requires std::same_as<_Let, stdexec::set_error_t> &&
-              (!stdexec::__v<stdexec::__error_types_of_t<_Sender, _Env, stdexec::__transform<stdexec::__q1<std::decay_t>, stdexec::__contains<std::exception_ptr>>>>)
+              (!stdexec::__v<stdexec::__error_types_of_t<_Sender, _Env, stdexec::__transform<stdexec::__q<std::decay_t>, stdexec::__contains<std::exception_ptr>>>>)
           friend void tag_invoke(stdexec::set_error_t, __receiver&& __self, _Error&& __err) noexcept {
             __self.__op_state_->propagate_completion_signal(stdexec::set_error, (_Error&&) __err);
           }
@@ -293,7 +293,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __tfx_signal_t = stdexec::__t<let_xxx::__tfx_signal_impl<_Env, _Fun, _Set, _Sig>>;
 
       template <class _Env>
-        using __tfx_signal = stdexec::__mbind_front_q1<__tfx_signal_t, _Env>;
+        using __tfx_signal = stdexec::__mbind_front_q<__tfx_signal_t, _Env>;
 
       template <class _Sender, class _Env>
         using __with_error =

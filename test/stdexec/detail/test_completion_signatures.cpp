@@ -46,7 +46,7 @@ TEST_CASE(
 TEST_CASE(
     "set_error_sig can be used to transform error types to corresponding completion signatures",
     "[detail][completion_signatures]") {
-  using set_error_f = stdexec::__q1<set_error_sig>;
+  using set_error_f = stdexec::__q<set_error_sig>;
 
   using tr = stdexec::__transform<set_error_f, stdexec::__q<stdexec::__types>>;
 
@@ -61,7 +61,7 @@ TEST_CASE(
 
 TEST_CASE(
     "set_error_sig can be used to transform exception_ptr", "[detail][completion_signatures]") {
-  using set_error_f = stdexec::__q1<set_error_sig>;
+  using set_error_f = stdexec::__q<set_error_sig>;
 
   using tr = stdexec::__transform<set_error_f, stdexec::__q<stdexec::__types>>;
 
@@ -95,7 +95,7 @@ TEST_CASE("__error_types_of_t can also transform error types", "[detail][complet
   using snd_ec_t = decltype(ex::just_error(error_code{}));
   using snd_str_t = decltype(ex::just_error(std::string{}));
 
-  using set_error_f = stdexec::__q1<set_error_sig>;
+  using set_error_f = stdexec::__q<set_error_sig>;
   using tr = stdexec::__transform<set_error_f>;
 
   using sig_eptr = stdexec::__error_types_of_t<snd_eptr_t, ex::no_env, tr>;
@@ -114,7 +114,7 @@ void expect_val_types() {
 }
 template <typename CS, typename ExpectedErrTypes>
 void expect_err_types() {
-  using t = typename CS::template __gather_sigs<ex::set_error_t, stdexec::__q1<stdexec::__id>, stdexec::__q<stdexec::__types>>;
+  using t = typename CS::template __gather_sigs<ex::set_error_t, stdexec::__q<stdexec::__id>, stdexec::__q<stdexec::__types>>;
   static_assert(is_same_v<t, ExpectedErrTypes>);
 }
 
@@ -258,7 +258,7 @@ TEST_CASE("error_types_of_t can be used to get error types",
 TEST_CASE(
     "regression: error_types_of_t can be used to transform error types",
     "[detail][completion_signatures]") {
-  using tr = stdexec::__transform<stdexec::__q1<set_error_sig>>;
+  using tr = stdexec::__transform<stdexec::__q<set_error_sig>>;
 
   using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
   using err_t =
