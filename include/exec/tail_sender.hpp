@@ -186,8 +186,8 @@ namespace exec {
 
     using completion_signatures = completion_signatures<set_value_t(), set_stopped_t()>;
 
-    template <class Receiver>
-    friend auto tag_invoke(connect_t, __null_tail_sender&&, Receiver&&)
+    template <class _TailReceiver>
+    friend auto tag_invoke(connect_t, __null_tail_sender&&, _TailReceiver&&)
         -> op {
       return {};
     }
@@ -199,4 +199,46 @@ namespace exec {
     }
   };
 
+  template<tail_sender _TailSender>
+    struct maybe_tail_sender {
+      maybe_tail_sender() noexcept = default;
+      maybe_tail_sender(__null_tail_sender) noexcept {}
+      maybe_tail_sender(_TailSender __t) noexcept : tail_sender_(__t) {}
+      template <class _TailReceiver>
+      struct op {
+        using op_t = connect_result_t<_TailSender, _TailReceiver>;
+        explicit op() {}
+        explicit op(_TailSender __t, _TailReceiver __r) : op_(stdexec::connect(__t, __r)) {}
+        operator bool() const noexcept { return !!op_ && !!*op_; }
+
+        friend auto tag_invoke(start_t, op& __self) noexcept {
+          if (!__self.op_ || !*__self.op_) { std::terminate(); }
+          return stdexec::start(*__self.op_);
+        }
+
+        friend void tag_invoke(unwind_t, op& __self) noexcept {
+          if (!__self.op_ || !*__self.op_) { std::terminate(); }
+          exec::unwind(*__self.op_);
+        }
+        std::optional<op_t> op_;
+      };
+
+      using completion_signatures = completion_signatures<set_value_t(), set_stopped_t()>;
+
+      template <class _TailReceiver>
+      friend auto tag_invoke(connect_t, maybe_tail_sender&& __self, _TailReceiver&& __r)
+          -> op<_TailReceiver> {
+        if (!__self.tail_sender_) { return {}; }
+        return {((maybe_tail_sender&&)__self).tail_sender_, __r};
+      }
+
+      template<class _Env>
+      friend constexpr bool tag_invoke(
+          exec::always_completes_inline_t, exec::c_t<maybe_tail_sender>, exec::c_t<_Env>) noexcept {
+        return true;
+      }
+
+    private:
+      std::optional<_TailSender> tail_sender_;
+    };
 } // namespace exec
