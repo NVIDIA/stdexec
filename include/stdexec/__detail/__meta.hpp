@@ -60,16 +60,6 @@ namespace stdexec {
   template <class _T>
     using __t = typename _T::__t;
 
-  // For hiding a template type parameter from ADL
-  template <class _T>
-    struct _X {
-      using __t = struct __t_ {
-        using __t = _T;
-      };
-    };
-  template <class _T>
-    using __x = __t<_X<_T>>;
-
   template <bool _B>
     using __bool = std::bool_constant<_B>;
 
@@ -389,6 +379,39 @@ namespace stdexec {
           requires (sizeof...(_As) <= 1)
         using __f = __front<_As..., _Ty>;
     };
+
+  // For hiding a template type parameter from ADL
+  template <class _Ty>
+    struct _X {
+      using __t = struct _T {
+        using __t = _Ty;
+      };
+    };
+  template <class _Ty>
+    using __x = __t<_X<_Ty>>;
+
+  template <class _Ty>
+    struct _Y {
+      using __t = _Ty;
+    };
+
+  template <class _Ty>
+    concept __has_id =
+      requires {
+        typename _Ty::__id;
+      };
+  template <bool>
+    struct __id_ {
+      template <class _Ty>
+        using __f = typename _Ty::__id;
+    };
+  template <>
+    struct __id_<false> {
+      template <class _Ty>
+        using __f = _Y<_Ty>;
+    };
+  template <class _Ty>
+    using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
 
   template <class _Fun, class... _As>
     concept __callable =
