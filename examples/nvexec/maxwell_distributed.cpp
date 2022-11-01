@@ -453,7 +453,9 @@ int main(int argc, char *argv[]) {
   std::size_t report_step = 0;
   auto write = distributed::dump_vtk(write_wtk, rank, report_step, accessor);
 
+#if MPI_ENABLED
   MPI_Barrier(MPI_COMM_WORLD);
+#endif
   const auto begin = std::chrono::system_clock::now();
 
 #define OVERLAP
@@ -503,7 +505,9 @@ int main(int argc, char *argv[]) {
   write();
 #endif
 
+#if MPI_ENABLED
   MPI_Barrier(MPI_COMM_WORLD);
+#endif
   const auto end = std::chrono::system_clock::now();
 
   if (rank == 0) {
