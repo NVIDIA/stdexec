@@ -88,7 +88,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         if (status == cudaSuccess) {
           try {
-            ptr = reinterpret_cast<T*>(pinned_resource->allocate(bytes, alignment));
+            ptr = static_cast<T*>(pinned_resource->allocate(bytes, alignment));
             new (ptr) T((As&&)as...);
           } catch(...) {
             status = cudaError_t::cudaErrorMemoryAllocation;

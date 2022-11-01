@@ -158,12 +158,13 @@ namespace nvexec {
           detail::find_index<index_t, T, Ts...>()>;
 
     template <detail::one_of<Ts...> T>
-      T& get() {
-        return *reinterpret_cast<T*>(storage_.data_);
+      T& get() noexcept {
+        void* data = storage_.data_;
+        return *static_cast<T*>(data);
       }
 
     template <std::size_t I>
-      detail::nth_type<I, Ts...>& get() {
+      detail::nth_type<I, Ts...>& get() noexcept {
         return get<detail::nth_type<I, Ts...>>();
       }
 
