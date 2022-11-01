@@ -334,9 +334,10 @@ namespace stdexec {
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      void operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
+      auto operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept
+        -> tag_invoke_result_t<set_value_t, _Receiver, _As...> {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
-        (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
+        return tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
       }
     };
 
@@ -348,9 +349,10 @@ namespace stdexec {
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      void operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
+      auto operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept
+        -> tag_invoke_result_t<set_error_t, _Receiver, _Error> {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
-        (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
+        return tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
       }
     };
 
@@ -362,9 +364,10 @@ namespace stdexec {
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      void operator()(_Receiver&& __rcvr) const noexcept {
+      auto operator()(_Receiver&& __rcvr) const noexcept
+        -> tag_invoke_result_t<set_stopped_t, _Receiver> {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
-        (void) tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
+        return tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
       }
     };
   } // namespace __receivers
@@ -1210,8 +1213,9 @@ namespace stdexec {
     struct start_t {
       template <class _Op>
         requires tag_invocable<start_t, _Op&>
-      void operator()(_Op& __op) const noexcept(nothrow_tag_invocable<start_t, _Op&>) {
-        (void) tag_invoke(start_t{}, __op);
+      auto operator()(_Op& __op) const noexcept(nothrow_tag_invocable<start_t, _Op&>)
+        -> tag_invoke_result_t<start_t, _Op&> {
+        return tag_invoke(start_t{}, __op);
       }
     };
   }
