@@ -24,13 +24,13 @@ using namespace stdexec;
 
 TEST_CASE(
     "transform identity will return the given types (wrapped in __types)", "[detail][transform]") {
-  using tr = __transform<__q1<__id>>;
+  using tr = __transform<__q<__midentity>>;
   using res = __minvoke<tr, int, char>;
   static_assert(is_same_v<res, __types<int, char>>);
 }
 
-TEST_CASE("transform can avoid the __types wrapping with __defer<__id>", "[detail][transform]") {
-  using tr = __transform<__q1<__id>, __mdefer<__id>>;
+TEST_CASE("transform can avoid the __types wrapping with __q<__midentity>", "[detail][transform]") {
+  using tr = __transform<__q<__midentity>, __q<__midentity>>;
   using res = __minvoke<tr, int>;
   static_assert(is_same_v<res, int>);
 }
@@ -39,14 +39,14 @@ template <typename T>
 using as_optional = std::optional<T>;
 
 TEST_CASE("transform can wrap input types", "[detail][transform]") {
-  using tr = __transform<__q1<as_optional>>;
+  using tr = __transform<__q<as_optional>>;
   using res = __minvoke<tr, int, char>;
   static_assert(is_same_v<res, __types<optional<int>, optional<char>>>);
 }
 
 TEST_CASE("transform continuation can be used to wrap the result in another template",
     "[detail][transform]") {
-  using tr = __transform<__q1<as_optional>, __q<tuple>>;
+  using tr = __transform<__q<as_optional>, __q<tuple>>;
   using res = __minvoke<tr, int, char>;
   static_assert(is_same_v<res, tuple<optional<int>, optional<char>>>);
 }

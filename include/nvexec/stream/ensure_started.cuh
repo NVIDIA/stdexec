@@ -120,8 +120,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         std::atomic<void*> op_state1_;
         inner_op_state_t op_state2_;
 
-        template <stdexec::__decays_to<Sender> S>
-            requires (stream_sender<S>)
+        template <stream_sender S>
           explicit sh_state_t(S& sndr, queue::task_hub_t*)
             : data_(malloc_managed<variant_t>(status_))
             , op_state1_{nullptr}
@@ -129,8 +128,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               stdexec::start(op_state2_);
           }
 
-        template <stdexec::__decays_to<Sender> S>
-            requires (!stream_sender<S>)
+        template <class S>
           explicit sh_state_t(S& sndr, queue::task_hub_t* hub)
             : data_(malloc_managed<variant_t>(status_))
             , task_(queue::make_host<task_t>(status_, inner_receiver_t{*this}, data_).release())

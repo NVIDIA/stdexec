@@ -18,7 +18,8 @@
 #include "concepts.hpp"
 
 #include <version>
-#if __cpp_impl_coroutine >= 201902 && __cpp_lib_coroutine	>= 201902
+#if __cpp_impl_coroutine >= 201902 && __cpp_lib_coroutine >= 201902 \
+  && !STDEXEC_NVHPC()
 #include <coroutine>
 namespace __coro = std;
 #elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)

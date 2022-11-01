@@ -37,14 +37,14 @@ template <class Fun, class ResultT>
   }
 
 template <class T>
-  inline constexpr std::size_t size_of_ = sizeof(T);
+  inline constexpr std::size_t size_of_ = sizeof(std::decay_t<T>);
 
 template <>
   inline constexpr std::size_t size_of_<void> = 0;
 
 template <class ReceiverId, class Fun>
   class receiver_t : public stream_receiver_base {
-    using result_t = std::decay_t<std::invoke_result_t<Fun>>;
+    using result_t = std::invoke_result_t<Fun>;
 
     Fun f_;
     operation_state_base_t<ReceiverId> &op_state_;
@@ -64,7 +64,8 @@ template <class ReceiverId, class Fun>
           self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
         }
       } else {
-        result_t *d_result = reinterpret_cast<result_t*>(self.op_state_.temp_storage_);
+        using decayed_result_t = std::decay_t<result_t>;
+        decayed_result_t *d_result = reinterpret_cast<decayed_result_t*>(self.op_state_.temp_storage_);
         kernel_with_result<Fun><<<1, 1, 0, stream>>>(self.f_, d_result);
         if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
           self.op_state_.propagate_completion_signal(stdexec::set_value, *d_result);
@@ -122,7 +123,7 @@ template <class SenderId, class FunId>
             stdexec::__member_t<Self, Sender>,
             Env>,
           stdexec::__q<stdexec::__compl_sigs::__default_set_value>,
-          stdexec::__q1<stdexec::__compl_sigs::__default_set_error>,
+          stdexec::__q<stdexec::__compl_sigs::__default_set_error>,
           stdexec::__set_value_invoke_t<Fun>>;
 
     template <stdexec::__decays_to<upon_stopped_sender_t> Self, stdexec::receiver Receiver>

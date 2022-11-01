@@ -77,7 +77,7 @@ template <class Env, class... Senders>
     using __t =
       stdexec::__if_c<
         (stdexec::__sends<stdexec::set_value_t, Senders, Env> &&...),
-        stdexec::__minvoke2<
+        stdexec::__minvoke<
           stdexec::__push_back<stdexec::__q<stdexec::completion_signatures>>, non_values, values>,
         non_values>;
   };
