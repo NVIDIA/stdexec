@@ -81,7 +81,7 @@ namespace stdexec {
     struct __types;
 
   template <class _T>
-    using __id = _T;
+    using __midentity = _T;
 
   template <class _T>
     inline constexpr auto __v = _T::value;
@@ -113,7 +113,7 @@ namespace stdexec {
   template <class _Ty, class... _Args>
     using __make_dependent_on =
       typename __i<(sizeof...(_Args) == ~0u)>::
-        template __g<__id, _Ty>;
+        template __g<__midentity, _Ty>;
 
   template <template <class...> class _Fn>
     struct __q {

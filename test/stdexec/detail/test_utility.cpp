@@ -24,13 +24,13 @@ using namespace stdexec;
 
 TEST_CASE(
     "transform identity will return the given types (wrapped in __types)", "[detail][transform]") {
-  using tr = __transform<__q<__id>>;
+  using tr = __transform<__q<__midentity>>;
   using res = __minvoke<tr, int, char>;
   static_assert(is_same_v<res, __types<int, char>>);
 }
 
-TEST_CASE("transform can avoid the __types wrapping with __q<__id>", "[detail][transform]") {
-  using tr = __transform<__q<__id>, __q<__id>>;
+TEST_CASE("transform can avoid the __types wrapping with __q<__midentity>", "[detail][transform]") {
+  using tr = __transform<__q<__midentity>, __q<__midentity>>;
   using res = __minvoke<tr, int>;
   static_assert(is_same_v<res, int>);
 }

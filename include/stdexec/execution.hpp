@@ -599,7 +599,7 @@ namespace stdexec {
             class _Variant = __q<__variant>>
       requires sender<_Sender, _Env>
     using __error_types_of_t =
-      __gather_sigs_t<set_error_t, _Sender, _Env, __q<__id>, _Variant>;
+      __gather_sigs_t<set_error_t, _Sender, _Env, __q<__midentity>, _Variant>;
 
   template <class _Sender,
             class _Env = no_env,

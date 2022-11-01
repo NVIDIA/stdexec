@@ -114,7 +114,7 @@ void expect_val_types() {
 }
 template <typename CS, typename ExpectedErrTypes>
 void expect_err_types() {
-  using t = typename CS::template __gather_sigs<ex::set_error_t, stdexec::__q<stdexec::__id>, stdexec::__q<stdexec::__types>>;
+  using t = typename CS::template __gather_sigs<ex::set_error_t, stdexec::__q<stdexec::__midentity>, stdexec::__q<stdexec::__types>>;
   static_assert(is_same_v<t, ExpectedErrTypes>);
 }
 
