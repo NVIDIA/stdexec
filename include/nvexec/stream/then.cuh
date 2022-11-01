@@ -33,7 +33,7 @@ template <class Fun, class... As>
 template <class Fun, class ResultT, class... As>
   __launch_bounds__(1)
   __global__ void kernel_with_result(Fun fn, ResultT* result, As... as) {
-    new (result) ResultT(fn(std::move(as)...));
+    new (result) ResultT(std::move(fn)(std::move(as)...));
   }
 
 template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
@@ -50,13 +50,13 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
       friend void tag_invoke(stdexec::set_value_t, receiver_t&& self, As&&... as)
         noexcept requires std::invocable<Fun, std::decay_t<As>...> {
 
-        using result_t = std::decay_t<std::invoke_result_t<Fun, std::decay_t<As>...>>;
+        using result_t = std::invoke_result_t<Fun, std::decay_t<As>...>;
         constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
         operation_state_base_t<ReceiverId> &op_state = self.op_state_;
         cudaStream_t stream = op_state.get_stream();
 
         if constexpr (does_not_return_a_value) {
-          kernel<std::decay_t<Fun>, As...><<<1, 1, 0, stream>>>(self.f_, (As&&)as...);
+          kernel<Fun, As...><<<1, 1, 0, stream>>>(self.f_, (As&&)as...);
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
             op_state.propagate_completion_signal(stdexec::set_value);
@@ -64,8 +64,9 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
             op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         } else {
-          result_t *d_result = static_cast<result_t*>(op_state.temp_storage_);
-          kernel_with_result<std::decay_t<Fun>, result_t, As...><<<1, 1, 0, stream>>>(self.f_, d_result, (As&&)as...);
+          using decayed_result_t = std::decay_t<result_t>;
+          decayed_result_t *d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
+          kernel_with_result<std::decay_t<Fun>, decayed_result_t, As...><<<1, 1, 0, stream>>>(self.f_, d_result, (As&&)as...);
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
             op_state.propagate_completion_signal(stdexec::set_value, *d_result);
@@ -160,7 +161,7 @@ template <class SenderId, class FunId>
             stdexec::__member_t<Self, Sender>,
             Env>,
           stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>,
-          stdexec::__q1<set_error>>;
+          stdexec::__q<set_error>>;
 
     template <stdexec::__decays_to<then_sender_t> Self, stdexec::receiver Receiver>
       requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>

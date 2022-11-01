@@ -133,36 +133,33 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         inner_op_state_t op_state2_;
         ::cuda::std::atomic_flag started_;
 
-        template <stdexec::__decays_to<Sender> S>
-            requires (stream_sender<S>)
-          explicit sh_state_t(S& sndr, context_state_t context_state)
-            : context_state_(context_state)
-            , stream_(create_stream(status_, context_state_))
-            , data_(malloc_managed<variant_t>(status_))
-            , op_state2_(stdexec::connect((Sender&&) sndr, inner_receiver_t{*this}))
-            , started_(ATOMIC_FLAG_INIT) {
-            if (status_ == cudaSuccess) {
-              status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_));
-            }
+        explicit sh_state_t(Sender& sndr, context_state_t context_state)
+          requires (stream_sender<Sender>)
+          : context_state_(context_state)
+          , stream_(create_stream(status_, context_state_))
+          , data_(malloc_managed<variant_t>(status_))
+          , op_state2_(stdexec::connect((Sender&&) sndr, inner_receiver_t{*this}))
+          , started_(ATOMIC_FLAG_INIT) {
+          if (status_ == cudaSuccess) {
+            status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_));
           }
+        }
 
-        template <stdexec::__decays_to<Sender> S>
-            requires (!stream_sender<S>)
-          explicit sh_state_t(S& sndr, context_state_t context_state)
-            : context_state_(context_state)
-            , stream_(create_stream(status_, context_state_))
-            , data_(malloc_managed<variant_t>(status_))
-            , task_(queue::make_host<task_t>(status_, context_state.pinned_resource_, inner_receiver_t{*this}, data_, stream_, context_state.pinned_resource_).release())
-            , op_state2_(
-                stdexec::connect(
-                  (Sender&&)sndr,
-                  enqueue_receiver_t{
-                    make_env(), 
-                    data_, 
-                    task_, 
-                    context_state.hub_->producer()})) 
-            , started_(ATOMIC_FLAG_INIT) {
-          }
+        explicit sh_state_t(Sender& sndr, context_state_t context_state)
+          : context_state_(context_state)
+          , stream_(create_stream(status_, context_state_))
+          , data_(malloc_managed<variant_t>(status_))
+          , task_(queue::make_host<task_t>(status_, context_state.pinned_resource_, inner_receiver_t{*this}, data_, stream_, context_state.pinned_resource_).release())
+          , op_state2_(
+              stdexec::connect(
+                (Sender&&)sndr,
+                enqueue_receiver_t{
+                  make_env(), 
+                  data_, 
+                  task_, 
+                  context_state.hub_->producer()})) 
+          , started_(ATOMIC_FLAG_INIT) {
+        }
 
         ~sh_state_t() {
           if (!started_.test(::cuda::memory_order_relaxed)) {

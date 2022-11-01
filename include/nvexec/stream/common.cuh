@@ -144,7 +144,7 @@ namespace nvexec {
           stdexec::__minvoke<
             stdexec::__if_c<
               sizeof...(_Ts) != 0,
-              stdexec::__transform<stdexec::__q1<std::decay_t>, stdexec::__munique<stdexec::__q<variant_t>>>,
+              stdexec::__transform<stdexec::__q<std::decay_t>, stdexec::__munique<stdexec::__q<variant_t>>>,
               stdexec::__mconst<stdexec::__not_a_variant>>,
             _Ts...>;
 

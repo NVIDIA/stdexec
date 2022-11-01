@@ -24,8 +24,8 @@
 #define _DECLVAL(...) \
   ((static_cast<__VA_ARGS__(*)()noexcept>(0))())
 
-namespace __std_concepts_polyfill {
-#if __has_include(<concepts>) && __cpp_lib_concepts	>= 202002
+namespace stdexec::__std_concepts {
+#if STDEXEC_HAS_STD_CONCEPTS_HEADER()
   using std::invocable;
 #else
   template<class _F, class... _As>
@@ -34,10 +34,10 @@ namespace __std_concepts_polyfill {
         std::invoke((_F&&) __f, (_As&&) __as...);
       };
 #endif
-}
+} // stdexec::__std_concepts
 
 namespace std {
-  using namespace __std_concepts_polyfill;
+  using namespace stdexec::__std_concepts;
 }
 
 namespace stdexec {

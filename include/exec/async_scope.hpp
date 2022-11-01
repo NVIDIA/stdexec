@@ -388,7 +388,7 @@ namespace exec {
       using __completions_as_variant =
         __mapply<
           __transform<
-            __q1<__completion_as_tuple_t>,
+            __q<__completion_as_tuple_t>,
             __mbind_front_q<std::variant, std::monostate>>,
           _Completions>;
 
