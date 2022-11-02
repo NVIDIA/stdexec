@@ -42,13 +42,13 @@
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     template <stdexec::sender Sender, std::integral Shape, class Fun>
-      using bulk_sender_th = bulk_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, Shape, stdexec::__x<std::remove_cvref_t<Fun>>>;
+      using bulk_sender_th = stdexec::__t<bulk_sender_t<stdexec::__id<std::decay_t<Sender>>, Shape, Fun>>;
 
     template <stdexec::sender Sender>
-      using split_sender_th = split_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>>;
+      using split_sender_th = stdexec::__t<split_sender_t<stdexec::__id<std::decay_t<Sender>>>>;
 
     template <stdexec::sender Sender, class Fun>
-      using then_sender_th = then_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, stdexec::__x<std::remove_cvref_t<Fun>>>;
+      using then_sender_th = stdexec::__t<then_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
 
     template <class Scheduler, stdexec::sender... Senders>
       using when_all_sender_th = when_all_sender_t<false, Scheduler, stdexec::__x<std::decay_t<Senders>>...>;
@@ -57,25 +57,25 @@ namespace nvexec {
       using transfer_when_all_sender_th = when_all_sender_t<true, Scheduler, stdexec::__x<std::decay_t<Senders>>...>;
 
     template <stdexec::sender Sender, class Fun>
-      using upon_error_sender_th = upon_error_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, stdexec::__x<std::remove_cvref_t<Fun>>>;
+      using upon_error_sender_th = stdexec::__t<upon_error_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
 
     template <stdexec::sender Sender, class Fun>
-      using upon_stopped_sender_th = upon_stopped_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, stdexec::__x<std::remove_cvref_t<Fun>>>;
+      using upon_stopped_sender_th = stdexec::__t<upon_stopped_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
 
-    template <class Let, stdexec::sender Sender, class Fun>
-      using let_xxx_th = let_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, stdexec::__x<std::remove_cvref_t<Fun>>, Let>;
-
-    template <stdexec::sender Sender>
-      using transfer_sender_th = transfer_sender_t<stdexec::__x<Sender>>;
+    template <class Set, stdexec::sender Sender, class Fun>
+      using let_xxx_th = stdexec::__t<let_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun, stdexec::__x<Set>>>;
 
     template <stdexec::sender Sender>
-      using ensure_started_th = ensure_started_sender_t<stdexec::__x<Sender>>;
+      using transfer_sender_th = stdexec::__t<transfer_sender_t<stdexec::__id<std::decay_t<Sender>>>>;
+
+    template <stdexec::sender Sender>
+      using ensure_started_th = stdexec::__t<ensure_started_sender_t<stdexec::__x<Sender>>>;
 
     struct stream_scheduler {
       friend stream_context;
 
       template <stdexec::sender Sender>
-        using schedule_from_sender_th = schedule_from_sender_t<stream_scheduler, stdexec::__x<std::remove_cvref_t<Sender>>>;
+        using schedule_from_sender_th = stdexec::__t<schedule_from_sender_t<stream_scheduler, stdexec::__id<std::decay_t<Sender>>>>;
 
       template <class ReceiverId>
         struct operation_state_t : operation_state_base_t<ReceiverId> {
@@ -147,15 +147,22 @@ namespace nvexec {
           return ensure_started_th<S>(sch.context_state_, (S&&) sndr);
         }
 
-      template <stdexec::__one_of<
-                  stdexec::let_value_t, 
-                  stdexec::let_stopped_t, 
-                  stdexec::let_error_t> Let, 
-                stdexec::sender S, 
-                class Fn>
-        friend let_xxx_th<Let, S, Fn>
-        tag_invoke(Let, const stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
-          return let_xxx_th<Let, S, Fn>{{}, (S &&) sndr, (Fn &&) fun};
+      template <stdexec::sender S, class Fn>
+        friend let_xxx_th<stdexec::set_value_t, S, Fn>
+        tag_invoke(stdexec::let_value_t, const stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+          return let_xxx_th<stdexec::set_value_t, S, Fn>{{}, (S &&) sndr, (Fn &&) fun};
+        }
+
+      template <stdexec::sender S, class Fn>
+        friend let_xxx_th<stdexec::set_error_t, S, Fn>
+        tag_invoke(stdexec::let_error_t, const stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+          return let_xxx_th<stdexec::set_error_t, S, Fn>{{}, (S &&) sndr, (Fn &&) fun};
+        }
+
+      template <stdexec::sender S, class Fn>
+        friend let_xxx_th<stdexec::set_stopped_t, S, Fn>
+        tag_invoke(stdexec::let_stopped_t, const stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+          return let_xxx_th<stdexec::set_stopped_t, S, Fn>{{}, (S &&) sndr, (Fn &&) fun};
         }
 
       template <stdexec::sender S, class Fn>

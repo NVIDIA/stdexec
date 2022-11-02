@@ -85,62 +85,64 @@ namespace bulk {
     };
 }
 
-template <class SenderId, std::integral Shape, class FunId>
-  struct bulk_sender_t : stream_sender_base {
+template <class SenderId, std::integral Shape, class Fun>
+  struct bulk_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
 
-    Sender sndr_;
-    Shape shape_;
-    Fun fun_;
+    struct __t : stream_sender_base {
+      using __id = bulk_sender_t;
+      Sender sndr_;
+      Shape shape_;
+      Fun fun_;
 
-    using set_error_t =
-      stdexec::completion_signatures<
-        stdexec::set_error_t(cudaError_t)>;
+      using set_error_t =
+        stdexec::completion_signatures<
+          stdexec::set_error_t(cudaError_t)>;
 
-    template <class Receiver>
-      using receiver_t = bulk::receiver_t<stdexec::__x<Receiver>, Shape, Fun>;
+      template <class Receiver>
+        using receiver_t = bulk::receiver_t<stdexec::__x<Receiver>, Shape, Fun>;
 
-    template <class... Tys>
-    using set_value_t =
-      stdexec::completion_signatures<
-        stdexec::set_value_t(Tys...)>;
+      template <class... Tys>
+      using set_value_t =
+        stdexec::completion_signatures<
+          stdexec::set_value_t(Tys...)>;
 
-    template <class Self, class Env>
-      using completion_signatures =
-        stdexec::__make_completion_signatures<
-          stdexec::__member_t<Self, Sender>,
-          Env,
-          set_error_t,
-          stdexec::__q<set_value_t>>;
+      template <class Self, class Env>
+        using completion_signatures =
+          stdexec::__make_completion_signatures<
+            stdexec::__member_t<Self, Sender>,
+            Env,
+            set_error_t,
+            stdexec::__q<set_value_t>>;
 
-    template <stdexec::__decays_to<bulk_sender_t> Self, stdexec::receiver Receiver>
-      requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-      -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<stdexec::__member_t<Self, Sender>>(
-            ((Self&&)self).sndr_,
-            (Receiver&&)rcvr,
-            [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
-              return receiver_t<Receiver>(self.shape_, self.fun_, stream_provider);
-            });
+      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
+        requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+        -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+          return stream_op_state<stdexec::__member_t<Self, Sender>>(
+              ((Self&&)self).sndr_,
+              (Receiver&&)rcvr,
+              [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
+                return receiver_t<Receiver>(self.shape_, self.fun_, stream_provider);
+              });
+        }
+
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> stdexec::dependent_completion_signatures<Env>;
+
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> completion_signatures<Self, Env> requires true;
+
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
+        requires stdexec::__callable<Tag, const Sender&, As...>
+      friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
+        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
+        return ((Tag&&) tag)(self.sndr_, (As&&) as...);
       }
-
-    template <stdexec::__decays_to<bulk_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> stdexec::dependent_completion_signatures<Env>;
-
-    template <stdexec::__decays_to<bulk_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env> requires true;
-
-    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-      requires stdexec::__callable<Tag, const Sender&, As...>
-    friend auto tag_invoke(Tag tag, const bulk_sender_t& self, As&&... as)
-      noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-      return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-    }
+    };
   };
 
 namespace multi_gpu_bulk {
@@ -316,68 +318,69 @@ namespace multi_gpu_bulk {
     };
 }
 
-template <class SenderId, std::integral Shape, class FunId>
-  struct multi_gpu_bulk_sender_t : stream_sender_base {
+template <class SenderId, std::integral Shape, class Fun>
+  struct multi_gpu_bulk_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
 
-    int num_devices_;
-    Sender sndr_;
-    Shape shape_;
-    Fun fun_;
+    struct __t : stream_sender_base {
+      using __id = multi_gpu_bulk_sender_t;
+      int num_devices_;
+      Sender sndr_;
+      Shape shape_;
+      Fun fun_;
 
-    using set_error_t =
-      stdexec::completion_signatures<
-        stdexec::set_error_t(cudaError_t)>;
-
-    template <class Receiver>
-      using receiver_t = multi_gpu_bulk::receiver_t<SenderId, stdexec::__x<Receiver>, Shape, Fun>;
-
-    template <class... Tys>
-      using set_value_t =
+      using set_error_t =
         stdexec::completion_signatures<
-          stdexec::set_value_t(Tys...)>;
+          stdexec::set_error_t(cudaError_t)>;
 
-    template <class Self, class Env>
-      using completion_signatures =
-        stdexec::__make_completion_signatures<
-          stdexec::__member_t<Self, Sender>,
-          Env,
-          set_error_t,
-          stdexec::__q<set_value_t>>;
+      template <class Receiver>
+        using receiver_t = multi_gpu_bulk::receiver_t<SenderId, stdexec::__x<Receiver>, Shape, Fun>;
 
-    template <stdexec::__decays_to<multi_gpu_bulk_sender_t> Self, stdexec::receiver Receiver>
-        requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-        -> multi_gpu_bulk::operation_t<stdexec::__x<stdexec::__member_t<Self, Sender>>, stdexec::__x<Receiver>, Shape, Fun> {
-        auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(self.sndr_);
-        context_state_t context_state = sch.context_state_;
-        return multi_gpu_bulk::operation_t<stdexec::__x<stdexec::__member_t<Self, Sender>>, stdexec::__x<Receiver>, Shape, Fun>(
-            self.num_devices_,
-            ((Self&&)self).sndr_,
-            (Receiver&&)rcvr,
-            self.shape_,
-            self.fun_,
-            context_state);
-        }
+      template <class... Tys>
+        using set_value_t =
+          stdexec::completion_signatures<
+            stdexec::set_value_t(Tys...)>;
 
-    template <stdexec::__decays_to<multi_gpu_bulk_sender_t> Self, class Env>
+      template <class Self, class Env>
+        using completion_signatures =
+          stdexec::__make_completion_signatures<
+            stdexec::__member_t<Self, Sender>,
+            Env,
+            set_error_t,
+            stdexec::__q<set_value_t>>;
+
+      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
+          requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+        friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+          -> multi_gpu_bulk::operation_t<stdexec::__x<stdexec::__member_t<Self, Sender>>, stdexec::__x<Receiver>, Shape, Fun> {
+          auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(self.sndr_);
+          context_state_t context_state = sch.context_state_;
+          return multi_gpu_bulk::operation_t<stdexec::__x<stdexec::__member_t<Self, Sender>>, stdexec::__x<Receiver>, Shape, Fun>(
+              self.num_devices_,
+              ((Self&&)self).sndr_,
+              (Receiver&&)rcvr,
+              self.shape_,
+              self.fun_,
+              context_state);
+          }
+
+      template <stdexec::__decays_to<__t> Self, class Env>
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+          -> stdexec::dependent_completion_signatures<Env>;
+
+      template <stdexec::__decays_to<__t> Self, class Env>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-        -> stdexec::dependent_completion_signatures<Env>;
+        -> completion_signatures<Self, Env> requires true;
 
-    template <stdexec::__decays_to<multi_gpu_bulk_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env> requires true;
-
-    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-        requires stdexec::__callable<Tag, const Sender&, As...>
-      friend auto tag_invoke(Tag tag, const multi_gpu_bulk_sender_t& self, As&&... as)
-        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, 
-                                      Tag, const Sender&, As...> {
-        return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-      }
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
+          requires stdexec::__callable<Tag, const Sender&, As...>
+        friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
+          noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+          -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, 
+                                        Tag, const Sender&, As...> {
+          return ((Tag&&) tag)(self.sndr_, (As&&) as...);
+        }
+    };
   };
-
 }
 

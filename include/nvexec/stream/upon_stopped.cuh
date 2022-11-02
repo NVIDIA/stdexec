@@ -94,62 +94,64 @@ namespace upon_stopped {
     };
 }
 
-template <class SenderId, class FunId>
-  struct upon_stopped_sender_t : stream_sender_base {
+template <class SenderId, class Fun>
+  struct upon_stopped_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
 
-    Sender sndr_;
-    Fun fun_;
+    struct __t : stream_sender_base {
+      using __id = upon_stopped_sender_t;
+      Sender sndr_;
+      Fun fun_;
 
-    using set_error_t =
-      stdexec::completion_signatures<
-        stdexec::set_error_t(std::exception_ptr)>;
+      using set_error_t =
+        stdexec::completion_signatures<
+          stdexec::set_error_t(std::exception_ptr)>;
 
-    template <class Receiver>
-      using receiver_t = upon_stopped::receiver_t<stdexec::__x<Receiver>, Fun>;
+      template <class Receiver>
+        using receiver_t = upon_stopped::receiver_t<stdexec::__x<Receiver>, Fun>;
 
-    template <class Self, class Env>
-      using completion_signatures =
-        stdexec::__make_completion_signatures<
-          stdexec::__member_t<Self, Sender>,
-          Env,
-          stdexec::__with_error_invoke_t<
-            stdexec::set_stopped_t,
-            Fun,
+      template <class Self, class Env>
+        using completion_signatures =
+          stdexec::__make_completion_signatures<
             stdexec::__member_t<Self, Sender>,
-            Env>,
-          stdexec::__q<stdexec::__compl_sigs::__default_set_value>,
-          stdexec::__q<stdexec::__compl_sigs::__default_set_error>,
-          stdexec::__set_value_invoke_t<Fun>>;
+            Env,
+            stdexec::__with_error_invoke_t<
+              stdexec::set_stopped_t,
+              Fun,
+              stdexec::__member_t<Self, Sender>,
+              Env>,
+            stdexec::__q<stdexec::__compl_sigs::__default_set_value>,
+            stdexec::__q<stdexec::__compl_sigs::__default_set_error>,
+            stdexec::__set_value_invoke_t<Fun>>;
 
-    template <stdexec::__decays_to<upon_stopped_sender_t> Self, stdexec::receiver Receiver>
-      requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-      -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<stdexec::__member_t<Self, Sender>>(
-            ((Self&&)self).sndr_,
-            (Receiver&&)rcvr,
-            [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
-              return receiver_t<Receiver>(self.fun_, stream_provider);
-            });
-    }
+      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
+        requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+        -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+          return stream_op_state<stdexec::__member_t<Self, Sender>>(
+              ((Self&&)self).sndr_,
+              (Receiver&&)rcvr,
+              [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
+                return receiver_t<Receiver>(self.fun_, stream_provider);
+              });
+      }
 
-    template <stdexec::__decays_to<upon_stopped_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> stdexec::dependent_completion_signatures<Env>;
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> stdexec::dependent_completion_signatures<Env>;
 
-    template <stdexec::__decays_to<upon_stopped_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env> requires true;
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> completion_signatures<Self, Env> requires true;
 
-    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-      requires stdexec::__callable<Tag, const Sender&, As...>
-    friend auto tag_invoke(Tag tag, const upon_stopped_sender_t& self, As&&... as)
-      noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-      return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-    }
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
+        requires stdexec::__callable<Tag, const Sender&, As...>
+      friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
+        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
+        return ((Tag&&) tag)(self.sndr_, (As&&) as...);
+      }
+    };
   };
-
 }
+

@@ -158,75 +158,75 @@ namespace reduce_ {
     };
 }
 
-template <class SenderId, class FunId>
-  struct reduce_sender_t : stream_sender_base {
+template <class SenderId, class Fun>
+  struct reduce_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
 
-    Sender sndr_;
-    Fun fun_;
+    struct __t : stream_sender_base {
+      using __id = reduce_sender_t;
 
-    template <class Receiver>
-      using receiver_t = reduce_::receiver_t<
-          SenderId, 
-          stdexec::__x<Receiver>, 
-          Fun>;
+      Sender sndr_;
+      Fun fun_;
 
-    template <class... Range>
-        requires (sizeof...(Range) == 1)
-      using set_value_t =
-        stdexec::completion_signatures<stdexec::set_value_t(
-          std::add_lvalue_reference_t<
-            ::cuda::std::decay_t<
-              ::cuda::std::invoke_result_t<Fun, decltype(*__begin(std::declval<Range>())), decltype(*__begin(std::declval<Range>()))>
-            >
-          >...
-        )>;
+      template <class Receiver>
+        using receiver_t = reduce_::receiver_t<
+            SenderId, 
+            stdexec::__x<Receiver>, 
+            Fun>;
 
-    template <class Self, class Env>
-      using completion_signatures =
-        stdexec::make_completion_signatures<
-          stdexec::__member_t<Self, Sender>,
-          Env,
-          stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
-          set_value_t
-          >;
+      template <class... Range>
+          requires (sizeof...(Range) == 1)
+        using set_value_t =
+          stdexec::completion_signatures<stdexec::set_value_t(
+            std::add_lvalue_reference_t<
+              ::cuda::std::decay_t<
+                ::cuda::std::invoke_result_t<Fun, decltype(*__begin(std::declval<Range>())), decltype(*__begin(std::declval<Range>()))>
+              >
+            >...
+          )>;
 
-    template <stdexec::__decays_to<reduce_sender_t> Self, stdexec::receiver Receiver>
-      requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-      -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<stdexec::__member_t<Self, Sender>>(
-          ((Self&&)self).sndr_,
-          (Receiver&&)rcvr,
-          [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.fun_, stream_provider);
-          });
-    }
+      template <class Self, class Env>
+        using completion_signatures =
+          stdexec::make_completion_signatures<
+            stdexec::__member_t<Self, Sender>,
+            Env,
+            stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
+            set_value_t
+            >;
 
-    template <stdexec::__decays_to<reduce_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> stdexec::dependent_completion_signatures<Env>;
+      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
+        requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+        -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+          return stream_op_state<stdexec::__member_t<Self, Sender>>(
+            ((Self&&)self).sndr_,
+            (Receiver&&)rcvr,
+            [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
+              return receiver_t<Receiver>(self.fun_, stream_provider);
+            });
+      }
 
-    template <stdexec::__decays_to<reduce_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env> requires true;
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> stdexec::dependent_completion_signatures<Env>;
 
-    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-      requires stdexec::__callable<Tag, const Sender&, As...>
-    friend auto tag_invoke(Tag tag, const reduce_sender_t& self, As&&... as)
-      noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-      return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-    }
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> completion_signatures<Self, Env> requires true;
+
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
+        requires stdexec::__callable<Tag, const Sender&, As...>
+      friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
+        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
+        return ((Tag&&) tag)(self.sndr_, (As&&) as...);
+      }
+    };
   };
 
 struct reduce_t {
   template <class Sender, class Fun>
-    using __sender =
-      reduce_sender_t<
-        stdexec::__x<std::remove_cvref_t<Sender>>,
-        stdexec::__x<std::remove_cvref_t<Fun>>>;
+    using __sender = stdexec::__t<reduce_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
 
   template <stdexec::sender Sender, stdexec::__movable_value Fun>
     __sender<Sender, Fun> operator()(Sender&& __sndr, Fun __fun) const {

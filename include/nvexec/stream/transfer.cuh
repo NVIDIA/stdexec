@@ -97,55 +97,58 @@ namespace transfer {
 }
 
 template <class SenderId>
-  struct transfer_sender_t : stream_sender_base {
+  struct transfer_sender_t {
     using Sender = stdexec::__t<SenderId>;
 
-    template <class Self, class Receiver>
-      using op_state_th = 
-        transfer::operation_state_t<
-          stdexec::__x<stdexec::__member_t<Self, Sender>>, 
-          stdexec::__x<Receiver>>;
+    struct __t : stream_sender_base {
+      using __id = transfer_sender_t;
 
-    context_state_t context_state_;
-    Sender sndr_;
+      template <class Self, class Receiver>
+        using op_state_th = 
+          transfer::operation_state_t<
+            stdexec::__x<stdexec::__member_t<Self, Sender>>, 
+            stdexec::__x<Receiver>>;
 
-    template <stdexec::__decays_to<transfer_sender_t> Self, stdexec::receiver Receiver>
-      requires stdexec::sender_to<stdexec::__member_t<Self, Sender>, Receiver>
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-      -> op_state_th<Self, Receiver> {
-      return op_state_th<Self, Receiver>{
-        (Sender&&)self.sndr_, 
-        (Receiver&&)rcvr,
-        self.context_state_};
-    }
+      context_state_t context_state_;
+      Sender sndr_;
 
-    template <stdexec::__decays_to<transfer_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> stdexec::dependent_completion_signatures<Env>;
+      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
+        requires stdexec::sender_to<stdexec::__member_t<Self, Sender>, Receiver>
+      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+        -> op_state_th<Self, Receiver> {
+        return op_state_th<Self, Receiver>{
+          (Sender&&)self.sndr_, 
+          (Receiver&&)rcvr,
+          self.context_state_};
+      }
 
-    template <stdexec::__decays_to<transfer_sender_t> _Self, class _Env>
-      friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
-        stdexec::make_completion_signatures<
-          stdexec::__member_t<_Self, Sender>,
-          _Env,
-          stdexec::completion_signatures<
-            stdexec::set_stopped_t(),
-            stdexec::set_error_t(cudaError_t)
-          >
-        > requires true;
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> stdexec::dependent_completion_signatures<Env>;
 
-    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-      requires stdexec::__callable<Tag, const Sender&, As...>
-    friend auto tag_invoke(Tag tag, const transfer_sender_t& self, As&&... as)
-      noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-      return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-    }
+      template <stdexec::__decays_to<__t> _Self, class _Env>
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
+          stdexec::make_completion_signatures<
+            stdexec::__member_t<_Self, Sender>,
+            _Env,
+            stdexec::completion_signatures<
+              stdexec::set_stopped_t(),
+              stdexec::set_error_t(cudaError_t)
+            >
+          > requires true;
 
-    transfer_sender_t(context_state_t context_state, Sender sndr)
-      : context_state_(context_state)
-      , sndr_{(Sender&&)sndr} {
-    }
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
+        requires stdexec::__callable<Tag, const Sender&, As...>
+      friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
+        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
+        return ((Tag&&) tag)(self.sndr_, (As&&) as...);
+      }
+
+      __t(context_state_t context_state, Sender sndr)
+        : context_state_(context_state)
+        , sndr_{(Sender&&)sndr} {
+      }
+    };
   };
-
 }

@@ -23,13 +23,13 @@
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     template <stdexec::sender Sender, std::integral Shape, class Fun>
-      using multi_gpu_bulk_sender_th = multi_gpu_bulk_sender_t<stdexec::__x<std::remove_cvref_t<Sender>>, Shape, stdexec::__x<std::remove_cvref_t<Fun>>>;
+      using multi_gpu_bulk_sender_th = stdexec::__t<multi_gpu_bulk_sender_t<stdexec::__id<std::decay_t<Sender>>, Shape, Fun>>;
 
     struct multi_gpu_stream_scheduler {
       friend stream_context;
 
       template <stdexec::sender Sender>
-        using schedule_from_sender_th = schedule_from_sender_t<stream_scheduler, stdexec::__x<std::remove_cvref_t<Sender>>>;
+        using schedule_from_sender_th = stdexec::__t<schedule_from_sender_t<stream_scheduler, stdexec::__id<std::decay_t<Sender>>>>;
 
       template <class RId>
         struct operation_state_t : stream_op_state_base {

@@ -284,53 +284,56 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   } // namespace split
 
   template <class SenderId>
-    class split_sender_t : stream_sender_base {
+    struct split_sender_t {
       using Sender = stdexec::__t<SenderId>;
-      using sh_state_ = split::sh_state_t<SenderId>;
-      template <class Receiver>
-        using operation_t = split::operation_t<SenderId, stdexec::__x<std::remove_cvref_t<Receiver>>>;
 
-      Sender sndr_;
-      std::shared_ptr<sh_state_> shared_state_;
+      struct __t : stream_sender_base {
+        using __id = split_sender_t;
+        using sh_state_ = split::sh_state_t<SenderId>;
+        template <class Receiver>
+          using operation_t = split::operation_t<SenderId, stdexec::__x<std::remove_cvref_t<Receiver>>>;
 
-    public:
-      template <stdexec::__decays_to<split_sender_t> Self, stdexec::receiver Receiver>
-          requires stdexec::receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::__empty_env>>
-        friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& recvr)
-          noexcept(std::is_nothrow_constructible_v<std::decay_t<Receiver>, Receiver>)
-          -> operation_t<Receiver> {
-          return operation_t<Receiver>{(Receiver &&) recvr,
-                                        self.shared_state_};
-        }
+        Sender sndr_;
+        std::shared_ptr<sh_state_> shared_state_;
 
-      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-          requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, stdexec::get_completion_scheduler_t>) && 
-            stdexec::__callable<Tag, const Sender&, As...>
-        friend auto tag_invoke(Tag tag, const split_sender_t& self, As&&... as)
-          noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-          -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-          return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-        }
+        template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
+            requires stdexec::receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::__empty_env>>
+          friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& recvr)
+            noexcept(std::is_nothrow_constructible_v<std::decay_t<Receiver>, Receiver>)
+            -> operation_t<Receiver> {
+            return operation_t<Receiver>{(Receiver &&) recvr,
+                                          self.shared_state_};
+          }
 
-      template <class... Tys>
-        using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(const std::decay_t<Tys>&...)>;
+        template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
+            requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, stdexec::get_completion_scheduler_t>) && 
+              stdexec::__callable<Tag, const Sender&, As...>
+          friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
+            noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+            -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
+            return ((Tag&&) tag)(self.sndr_, (As&&) as...);
+          }
 
-      template <class Ty>
-        using set_error_t = stdexec::completion_signatures<stdexec::set_error_t(const std::decay_t<Ty>&)>;
+        template <class... Tys>
+          using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(const std::decay_t<Tys>&...)>;
 
-      template <stdexec::__decays_to<split_sender_t> Self, class Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env) ->
-          stdexec::make_completion_signatures<
-            Sender,
-            exec::make_env_t<exec::with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>,
-            stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
-            set_value_t,
-            set_error_t>;
+        template <class Ty>
+          using set_error_t = stdexec::completion_signatures<stdexec::set_error_t(const std::decay_t<Ty>&)>;
 
-      explicit split_sender_t(context_state_t context_state, Sender sndr)
-          : sndr_((Sender&&) sndr)
-          , shared_state_{std::make_shared<sh_state_>(sndr_, context_state)}
-      {}
+        template <stdexec::__decays_to<__t> Self, class Env>
+          friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env) ->
+            stdexec::make_completion_signatures<
+              Sender,
+              exec::make_env_t<exec::with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>,
+              stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
+              set_value_t,
+              set_error_t>;
+
+        explicit __t(context_state_t context_state, Sender sndr)
+            : sndr_((Sender&&) sndr)
+            , shared_state_{std::make_shared<sh_state_>(sndr_, context_state)}
+        {}
+      };
     };
 }
 
