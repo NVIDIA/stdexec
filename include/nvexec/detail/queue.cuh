@@ -142,8 +142,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::thread poller_;
       ::cuda::std::atomic_flag stopped_ = ATOMIC_FLAG_INIT;
 
-      poller_t(task_base_t* head) : head_(head) {
-        poller_ = std::thread([this] {
+      poller_t(int dev_id, task_base_t* head) : head_(head) {
+        poller_ = std::thread([dev_id, this] {
+          cudaSetDevice(dev_id);
+
           task_base_t* current = head_;
 
           while (true) {
@@ -175,10 +177,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       device_ptr<task_base_t*> tail_ptr_;
       poller_t poller_;
 
-      task_hub_t(std::pmr::memory_resource* pinned_resource)
+      task_hub_t(int dev_id, std::pmr::memory_resource* pinned_resource)
         : head_(make_host<root_task_t>(status_, pinned_resource))
         , tail_ptr_(make_device<task_base_t*>(status_, head_.get()))
-        , poller_(head_.get()) {
+        , poller_(dev_id, head_.get()) {
       }
 
       producer_t producer() {

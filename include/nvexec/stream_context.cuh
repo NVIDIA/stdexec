@@ -352,9 +352,18 @@ namespace nvexec {
     STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::managed_resource> managed_resource_{};
     // STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::gpu_resource> gpu_resource_{};
 
+    static int get_device() {
+      int dev_id{};
+      cudaGetDevice(&dev_id);
+      return dev_id;
+    }
+
+    int dev_id_{};
     STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub_;
 
-    stream_context() : hub_(pinned_resource_.get()) {
+    stream_context() 
+      : dev_id_(get_device())
+      , hub_(dev_id_, pinned_resource_.get()) {
     }
 
     stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {

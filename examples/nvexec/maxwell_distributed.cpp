@@ -18,12 +18,7 @@
 #include "maxwell/snr.cuh"
 #include "nvexec/stream_context.cuh"
 
-#if __has_include(<mpi.h>) 
 #include <mpi.h>
-#define MPI_ENABLED 1
-#else
-#define MPI_ENABLED 0
-#endif
 
 static std::pair<std::size_t, std::size_t>
 even_share(std::size_t n, std::uint32_t rank, std::uint32_t size) noexcept {
@@ -380,11 +375,14 @@ int main(int argc, char *argv[]) {
   int rank{};
   int size{1};
 
-#if MPI_ENABLED
-  MPI_Init(&argc, &argv);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-#endif
+  // Initialize MPI 
+  {
+    int prov{};
+
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &prov);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+  }
 
   std::cout << rank << " / " << size << std::endl;
 
@@ -430,21 +428,17 @@ int main(int argc, char *argv[]) {
   const int next_rank = rank == (size - 1) ? 0 : rank + 1;
 
   auto exchange_hx = [&] {
-#if MPI_ENABLED
      MPI_Request requests[2];
      MPI_Irecv(accessor.get(field_id::hx) - N, N, MPI_FLOAT, prev_rank, 0, MPI_COMM_WORLD, requests + 0);
      MPI_Isend(accessor.get(field_id::hx) + accessor.own_cells() - N, N, MPI_FLOAT, next_rank, 0, MPI_COMM_WORLD, requests + 1);
      MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
-#endif
   };
 
   auto exchange_ez = [&] {
-#if MPI_ENABLED
      MPI_Request requests[2];
      MPI_Irecv(accessor.get(field_id::ez) + accessor.own_cells(), N, MPI_FLOAT, next_rank, 0, MPI_COMM_WORLD, requests + 0);
      MPI_Isend(accessor.get(field_id::ez), N, MPI_FLOAT, prev_rank, 0, MPI_COMM_WORLD, requests + 1);
      MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
-#endif
   };
 
   exchange_hx();
@@ -453,9 +447,7 @@ int main(int argc, char *argv[]) {
   std::size_t report_step = 0;
   auto write = distributed::dump_vtk(write_wtk, rank, report_step, accessor);
 
-#if MPI_ENABLED
   MPI_Barrier(MPI_COMM_WORLD);
-#endif
   const auto begin = std::chrono::system_clock::now();
 
 #define OVERLAP
@@ -505,9 +497,7 @@ int main(int argc, char *argv[]) {
   write();
 #endif
 
-#if MPI_ENABLED
   MPI_Barrier(MPI_COMM_WORLD);
-#endif
   const auto end = std::chrono::system_clock::now();
 
   if (rank == 0) {
@@ -521,8 +511,6 @@ int main(int argc, char *argv[]) {
         std::chrono::duration<double>(end - begin).count());
   }
 
-#if MPI_ENABLED
   MPI_Finalize();
-#endif
 }
 
