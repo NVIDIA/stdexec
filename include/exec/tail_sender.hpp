@@ -209,6 +209,7 @@ namespace exec {
   };
 
   template<tail_sender _TailSender>
+      requires (!same_as<__null_tail_sender, _TailSender>)
     struct maybe_tail_sender {
       maybe_tail_sender() noexcept = default;
       maybe_tail_sender(__null_tail_sender) noexcept {}
@@ -313,96 +314,124 @@ namespace exec {
       bool valid_;
     };
 
-  template<tail_sender _TailSender, tail_receiver _TailReceiver>
-    auto __start_until_nullable(_TailSender __t, _TailReceiver __r) {
-      if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
-        return __t;
-      } else if constexpr (__terminal_tail_sender_to<_TailSender, _TailReceiver>) {
-        // restrict scope of op
-        {
-          auto op = stdexec::connect(std::move(__t), std::move(__r));
-          stdexec::start(op);
-        }
-        return __null_tail_sender{};
-      } else {
-        auto op = stdexec::connect(std::move(__t), __r);
-        return __start_until_nullable(stdexec::start(op), std::move(__r));
-      }
-    }
+  namespace __start_until_nullable_ {
 
-#if 0
-  template <class _Next, class _TailSender, class _TailReceiver, class... _Prev>
-    auto __start_next(_Next next, _TailReceiver r) {
-      if constexpr (__one_of<_Next, _TailSender, _Prev...>) {
+    struct __start_until_nullable_t;
+
+    template<tail_sender _TailSender, tail_receiver _TailReceiver>
+    struct __start_until_nullable_result;
+
+    template<class _TailSender, class _TailReceiver>
+    using __start_until_nullable_result_t = typename __start_until_nullable_result<_TailSender, _TailReceiver>::type;
+
+    template<tail_sender _TailSender, tail_receiver _TailReceiver>
+    struct __start_until_nullable_result {
+      using type =
+        __if<
+          __bool<__nullable_tail_sender_to<_TailSender, _TailReceiver>>, _TailSender,
+          __if<
+            __bool<__terminal_tail_sender_to<_TailSender, _TailReceiver>>, __null_tail_sender,
+            __minvoke<__with_default<__q<__start_until_nullable_result_t>, __null_tail_sender>,
+              __next_tail_from_sender_to_t<_TailSender, _TailReceiver>,
+              _TailReceiver>
+            >
+          >;
+    };
+
+    struct __start_until_nullable_t {
+      template<tail_sender _TailSender, tail_receiver _TailReceiver>
+        auto operator()(_TailSender __t, _TailReceiver __r) const noexcept
+          -> __start_until_nullable_result_t<_TailSender, _TailReceiver> {
+          if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
+            return __t;
+          } else if constexpr (__terminal_tail_sender_to<_TailSender, _TailReceiver>) {
+            // restrict scope of op
+            {
+              auto op = stdexec::connect(std::move(__t), std::move(__r));
+              stdexec::start(op);
+            }
+            return __null_tail_sender{};
+          } else {
+            auto op = stdexec::connect(std::move(__t), __r);
+            return __start_until_nullable_t{}(stdexec::start(op), std::move(__r));
+          }
+        }
+    };
+
+  } // namespace __start_until_nullable_
+  using __start_until_nullable_::__start_until_nullable_t;
+  inline constexpr __start_until_nullable_t __start_until_nullable{};
+
+  template <tail_sender _NextTailSender, tail_sender _TailSender, tail_receiver _TailReceiver, tail_sender... _PrevTailSenders>
+    auto __start_next(_NextTailSender __next, _TailReceiver __r) {
+      if constexpr (__one_of<_NextTailSender, _TailSender, _PrevTailSenders...>) {
         static_assert(
-            (nullable_tail_sender_to<_TailSender, _TailReceiver> ||
-            (nullable_tail_sender_to<_Prev, _TailReceiver> || ...)),
+            (__nullable_tail_sender_to<_TailSender, _TailReceiver> ||
+            (__nullable_tail_sender_to<_PrevTailSenders, _TailReceiver> || ...)),
             "At least one tail_sender in a cycle must be nullable to avoid "
             "entering an infinite loop");
-        return __start_until_nullable(next, std::move(r));
+        return __start_until_nullable(__next, std::move(__r));
       } else {
         using result_type =
-            decltype(__start_sequential(next, r, type_list<_TailSender, _Prev...>{}));
-        if constexpr (same_as<result_type, _Next>) {
+            decltype(__start_sequential<_NextTailSender, _TailReceiver, _TailSender, _PrevTailSenders...>(__next, __r));
+        if constexpr (same_as<result_type, _NextTailSender>) {
           // Let the loop in resume_tail_sender() handle checking the boolean.
-          return next;
+          return __next;
         } else {
-          return __start_sequential(next, std::move(r), type_list<_TailSender, _Prev...>{});
+          return __start_sequential<_NextTailSender, _TailReceiver, _TailSender, _PrevTailSenders...>(__next, std::move(__r));
         }
       }
     }
 
-  template<tail_sender _TailSender, tail_receiver _TailReceiver, class... _Prev>
-    auto _start_sequential(_TailSender c, _TailReceiver r, type_list<_Prev...>) {
-      static_assert(
-          _tail_sender<_TailSender>, "_start_sequential: must be called with a tail_sender");
-      if constexpr (_terminal_tail_sender_to<_TailSender, _TailReceiver>) {
-        if constexpr (nullable_tail_sender_to<_TailSender, _TailReceiver>) {
+  template<tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
+    auto __start_sequential(_TailSender c, _TailReceiver r) {
+      if constexpr (__terminal_tail_sender_to<_TailSender, _TailReceiver>) {
+        if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
           return c;
         } else {
           // restrict scope of op
           {
-            auto op = unifex::connect(std::move(c), std::move(r));
-            unifex::start(op);
+            auto op = stdexec::connect(std::move(c), std::move(r));
+            stdexec::start(op);
           }
-          return null_tail_sender{};
+          return __null_tail_sender{};
         }
       } else {
-        using next_t = next_tail_sender_to_t<_TailSender, _TailReceiver>;
-        using result_type = decltype(_start_next<next_t, _TailSender, _TailReceiver, _Prev...>(
+        using next_t = __next_tail_from_sender_to_t<_TailSender, _TailReceiver>;
+        using result_type = decltype(__start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>(
             std::declval<next_t>(), r));
-        if constexpr (std::is_void_v<next_t>) {
-          // restrict scope of op
-          {
-            auto op = unifex::connect(std::move(c), std::move(r));
-            unifex::start(op);
-          }
-          return null_tail_sender{};
-        } else if constexpr (same_as<result_type, next_t>) {
-          auto op = unifex::connect(std::move(c), std::move(r));
-          return unifex::start(op);
-        } else if constexpr (nullable_tail_sender_to<_TailSender, _TailReceiver>) {
-          auto op = unifex::connect(std::move(c), r);
-          using result_type = variant_tail_sender<
-              null_tail_sender,
-              decltype(_start_next<next_t, _TailSender, _TailReceiver, _Prev...>(
-                  unifex::start(op), r))>;
+        if constexpr (same_as<result_type, next_t>) {
+          static_assert(__nullable_tail_sender_to<_TailSender, _TailReceiver>, "recursing tail_sender must be nullable");
+          auto op = stdexec::connect(std::move(c), std::move(r));
+          // using result_type = variant_tail_sender<
+          //     __null_tail_sender,
+          //     next_t>;
           if (!op) {
-            return result_type{null_tail_sender{}};
+            return //result_type{
+              next_t{};//__null_tail_sender{}};
           }
-          return result_type{
-              _start_next<next_t, _TailSender, _TailReceiver, _Prev...>(unifex::start(op), r)};
+          return //result_type{
+            stdexec::start(op);//};
+        } else if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
+          auto op = stdexec::connect(std::move(c), r);
+          // using result_type = variant_tail_sender<
+          //     __null_tail_sender,
+          //     decltype(_start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>(
+          //         stdexec::start(op), r))>;
+          // if (!op) {
+          //   return result_type{__null_tail_sender{}};
+          // }
+          if (!op) {
+            return //result_type{
+              __null_tail_sender{};//};
+          }
+          return //result_type{
+              __start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>(stdexec::start(op), r);//};
         } else {
-          auto op = unifex::connect(std::move(c), r);
-          return _start_next<next_t, _TailSender, _TailReceiver, _Prev...>(unifex::start(op), r);
+          auto op = stdexec::connect(std::move(c), r);
+          return __start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>(stdexec::start(op), r);
         }
       }
     }
-
-  template<class _TailSender, class _TailReceiver>  //
-    auto _start_sequential(_TailSender c, _TailReceiver r) {
-      return _start_sequential(c, r, type_list<>{});
-    }
-#endif
 
 } // namespace exec
