@@ -450,7 +450,6 @@ int main(int argc, char *argv[]) {
   MPI_Barrier(MPI_COMM_WORLD);
   const auto begin = std::chrono::system_clock::now();
 
-#define OVERLAP
 #if defined(OVERLAP)
   exec::static_thread_pool thread_pool_ctx{2};
   auto cpu = thread_pool_ctx.get_scheduler();
