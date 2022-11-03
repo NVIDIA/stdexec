@@ -2118,47 +2118,6 @@ namespace stdexec {
       /**/
     #endif
 
-    template <__class _Derived, sender _Base>
-      struct sender_adaptor {
-        class __t : __adaptor_base<_Base> {
-          _DEFINE_MEMBER(connect);
-
-          template <same_as<connect_t> _Connect, __decays_to<_Derived> _Self, receiver _Receiver>
-          friend auto tag_invoke(_Connect, _Self&& __self, _Receiver&& __rcvr)
-            noexcept(noexcept(_CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr)))
-            -> decltype(_CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr))
-          {
-            return _CALL_MEMBER(connect, (_Self&&) __self, (_Receiver&&) __rcvr);
-          }
-
-          template <same_as<connect_t> _Connect, __decays_to<_Derived> _Self, receiver _Receiver>
-            requires _MISSING_MEMBER(decay_t<_Self>, connect) &&
-              sender_to<__member_t<_Self, _Base>, _Receiver>
-          friend auto tag_invoke(_Connect, _Self&& __self, _Receiver&& __rcvr)
-            noexcept(__nothrow_connectable<__member_t<_Self, _Base>, _Receiver>)
-            -> connect_result_t<__member_t<_Self, _Base>, _Receiver> {
-            return stdexec::connect(((__t&&) __self).base(), (_Receiver&&) __rcvr);
-          }
-
-          template <tag_category<forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
-            requires __callable<_Tag, const _Base&, _As...>
-          friend auto tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
-            noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
-            -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Base&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__self.base(), (_As&&) __as...);
-            )
-          }
-
-         protected:
-          using __adaptor_base<_Base>::base;
-
-         public:
-          __t() = default;
-          using __adaptor_base<_Base>::__adaptor_base;
-        };
-      };
-
     template <__class _Derived, class _Base>
       struct receiver_adaptor {
         class __t : __adaptor_base<_Base> {
@@ -2256,103 +2215,11 @@ namespace stdexec {
           using __adaptor_base<_Base>::__adaptor_base;
         };
       };
-
-    template <__class _Derived, operation_state _Base>
-      struct operation_state_adaptor {
-        class __t : __adaptor_base<_Base>, __immovable {
-          _DEFINE_MEMBER(start);
-
-          template <same_as<start_t> _Start, class _D = _Derived>
-          friend auto tag_invoke(_Start, _Derived& __self) noexcept
-            -> decltype(_CALL_MEMBER(start, (_D&) __self)) {
-            static_assert(noexcept(_CALL_MEMBER(start, (_D&) __self)));
-            _CALL_MEMBER(start, (_D&) __self);
-          }
-
-          template <same_as<start_t> _Start, class _D = _Derived>
-            requires _MISSING_MEMBER(_D, start)
-          friend void tag_invoke(_Start, _Derived& __self) noexcept {
-            stdexec::start(__c_cast<__t>(__self).base());
-          }
-
-          template <__none_of<start_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
-            requires __callable<_Tag, const _Base&, _As...>
-          friend auto tag_invoke(_Tag __tag, const _Derived& __self, _As&&... __as)
-            noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
-            -> __call_result_if_t<__none_of<_Tag, start_t>, _Tag, const _Base&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
-            )
-          }
-
-         protected:
-          using __adaptor_base<_Base>::base;
-
-         public:
-          __t() = default;
-          using __adaptor_base<_Base>::__adaptor_base;
-        };
-      };
-
-    template <__class _Derived, scheduler _Base>
-      struct scheduler_adaptor {
-        class __t : __adaptor_base<_Base> {
-          _DEFINE_MEMBER(schedule);
-
-          template <same_as<schedule_t> _Schedule, __decays_to<_Derived> _Self>
-          friend auto tag_invoke(_Schedule, _Self&& __self)
-            noexcept(noexcept(_CALL_MEMBER(schedule, (_Self&&) __self)))
-            -> decltype(_CALL_MEMBER(schedule, (_Self&&) __self)) {
-            return _CALL_MEMBER(schedule, (_Self&&) __self);
-          }
-
-          template <same_as<schedule_t> _Schedule, __decays_to<_Derived> _Self>
-            requires _MISSING_MEMBER(decay_t<_Self>, schedule) &&
-              scheduler<__member_t<_Self, _Base>>
-          friend auto tag_invoke(_Schedule, _Self&& __self)
-            noexcept(noexcept(stdexec::schedule(__declval<__member_t<_Self, _Base>>())))
-            -> schedule_result_t<_Self> {
-            return stdexec::schedule(__c_cast<__t>((_Self&&) __self).base());
-          }
-
-          template <tag_category<forwarding_scheduler_query> _Tag, same_as<_Derived> _Self, class... _As _NVCXX_CAPTURE_PACK(_As)>
-            requires __callable<_Tag, const _Base&, _As...>
-          friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as)
-            noexcept(__nothrow_callable<_Tag, const _Base&, _As...>)
-            -> __call_result_if_t<tag_category<_Tag, forwarding_scheduler_query>, _Tag, const _Base&, _As...> {
-            _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-              return ((_Tag&&) __tag)(__c_cast<__t>(__self).base(), (_As&&) __as...);
-            )
-          }
-
-         protected:
-          using __adaptor_base<_Base>::base;
-
-         public:
-          __t() = default;
-          using __adaptor_base<_Base>::__adaptor_base;
-        };
-      };
   } // namespace __adaptors
-
-  // NOT TO SPEC
-  template <__class _Derived, sender _Base>
-    using sender_adaptor =
-      typename __adaptors::sender_adaptor<_Derived, _Base>::__t;
 
   template <__class _Derived, receiver _Base = __adaptors::__not_a_receiver>
     using receiver_adaptor =
       typename __adaptors::receiver_adaptor<_Derived, _Base>::__t;
-
-  // NOT TO SPEC
-  template <__class _Derived, operation_state _Base>
-    using operation_state_adaptor =
-      typename __adaptors::operation_state_adaptor<_Derived, _Base>::__t;
-
-  // NOT TO SPEC
-  template <__class _Derived, scheduler _Base>
-    using scheduler_adaptor =
-      typename __adaptors::scheduler_adaptor<_Derived, _Base>::__t;
 
   template <class _Receiver, class... _As>
     concept __receiver_of_maybe_void =
@@ -4670,7 +4537,6 @@ namespace stdexec {
     template <class _SenderId>
       class __sender {
         using _Sender = __t<_SenderId>;
-        friend sender_adaptor<__sender, _Sender>;
         template <class _Receiver>
           using __receiver_t = __receiver<_SenderId, __x<remove_cvref_t<_Receiver>>>;
 
