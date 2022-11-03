@@ -93,7 +93,7 @@ namespace stdexec {
 
   template <template <class...> class _Fn, class... _Args>
     using __meval =
-      typename __i<(sizeof...(_Args) == ~0u)>::
+      typename __i<(sizeof(__types<_Args...>*) == 0)>::
         template __g<_Fn, _Args...>;
 
   template <class _Fn, class... _Args>
@@ -141,7 +141,7 @@ namespace stdexec {
 
   template <bool>
     struct __if_ {
-      template <class _True, class>
+      template <class _True, class...>
         using __f = _True;
     };
   template <>
@@ -150,14 +150,17 @@ namespace stdexec {
         using __f = _False;
     };
   #if STDEXEC_NVHPC()
-  template <class _Pred, class _True, class _False>
-    using __if = __minvoke<__if_<_Pred::value>, _True, _False>;
+  template <class _Pred, class _True, class... _False>
+      requires (sizeof...(_False) <= 1)
+    using __if = __minvoke<__if_<_Pred::value>, _True, _False...>;
   #else
-  template <class _Pred, class _True, class _False>
-    using __if = __minvoke<__if_<__v<_Pred>>, _True, _False>;
+  template <class _Pred, class _True, class... _False>
+      requires (sizeof...(_False) <= 1)
+    using __if = __minvoke<__if_<__v<_Pred>>, _True, _False...>;
   #endif
-  template <bool _Pred, class _True, class _False>
-    using __if_c = __minvoke<__if_<_Pred>, _True, _False>;
+  template <bool _Pred, class _True, class... _False>
+      requires (sizeof...(_False) <= 1)
+    using __if_c = __minvoke<__if_<_Pred>, _True, _False...>;
 
   template <class _T>
     struct __mconst {
