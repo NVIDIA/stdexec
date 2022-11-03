@@ -92,9 +92,9 @@ namespace exec {
 
         template <__decays_to<__sender> _Self, class _Receiver>
           requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          noexcept(std::is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
-          -> __operation<_Tag, __x<__default_t<env_of_t<_Receiver>>>, __x<decay_t<_Receiver>>> {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+          noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
+          -> __operation<_Tag, __x<__default_t<env_of_t<_Receiver>>>, __x<_Receiver>> {
           return {{}, ((_Self&&) __self).__default_, (_Receiver&&) __rcvr};
         }
 
@@ -183,9 +183,9 @@ namespace exec {
         std::tuple<_Withs...> __withs_;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
-          requires sender_to<__member_t<_Self, _Sender>, __receiver_t<__x<decay_t<_Receiver>>>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          -> __operation_t<_Self, __x<decay_t<_Receiver>>> {
+          requires sender_to<__member_t<_Self, _Sender>, __receiver_t<__x<_Receiver>>>
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+          -> __operation_t<_Self, __x<_Receiver>> {
           return {((_Self&&) __self).__sndr_,
                   (_Receiver&&) __rcvr,
                   ((_Self&&) __self).__withs_};
