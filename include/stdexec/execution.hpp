@@ -219,8 +219,6 @@ namespace stdexec {
         constexpr auto operator()(const _EnvProvider& __with_env) const
           noexcept(nothrow_tag_invocable<get_env_t, const _EnvProvider&>)
           -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
-          using _Env = tag_invoke_result_t<get_env_t, const _EnvProvider&>;
-          static_assert(!same_as<_Env, no_env>);
           return tag_invoke(*this, __with_env);
         }
     };
@@ -1235,8 +1233,10 @@ namespace stdexec {
 
     template <class _Env>
       struct __any_debug_receiver {
-        friend void tag_invoke(set_value_t, __any_debug_receiver&&, auto&&...) noexcept;
-        friend void tag_invoke(set_error_t, __any_debug_receiver&&, auto&&) noexcept;
+        template <class... _Args>
+          friend void tag_invoke(set_value_t, __any_debug_receiver&&, _Args&&...) noexcept;
+        template <class _Error>
+          friend void tag_invoke(set_error_t, __any_debug_receiver&&, _Error&&) noexcept;
         friend void tag_invoke(set_stopped_t, __any_debug_receiver&&) noexcept;
         friend __debug_env_t<_Env> tag_invoke(get_env_t, __any_debug_receiver) noexcept;
       };
