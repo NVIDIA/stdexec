@@ -2039,9 +2039,8 @@ namespace stdexec {
     // accessible from derived.
     template <class _T, class _U>
       __member_t<_U, _T> __c_cast(_U&& u) noexcept requires __decays_to<_T, _T> {
-        static_assert(std::is_reference_v<__member_t<_U, _T>>);
         static_assert(std::is_base_of_v<_T, std::remove_reference_t<_U>>);
-        return (__member_t<_U, _T>) (_U&&) u;
+        return (__member_t<_U, _T>&&) (_U&&) u;
       }
     namespace __no {
       struct __nope {};
