@@ -75,7 +75,7 @@ namespace exec {
               __start_fn{__self.__sched_, ((_Self&&) __self).__sndr_});
           }
 
-        template <class _Self>
+        template <__decays_to<__start_on_sender> _Self>
           using __inner_t = decltype(__call(__declval<_Self>()));
 
         template <__decays_to<__start_on_sender> _Self, receiver _Receiver>
@@ -181,16 +181,23 @@ namespace exec {
           }
 
         template <class _Sender, class _Receiver, class... _Ts>
-          using __sender_t =
-            decltype(__declval<__self_t<_Sender, _Receiver, _Ts...>&>().transform_sender_(
+          using __new_sender_t =
+            decltype(__declval<__self_t<_Ts...>&>().transform_sender_(
               __declval<_Sender>(),
               __declval<__call_result_t<get_scheduler_t, env_of_t<_Receiver>>>()));
 
         template <class _Sender, class _Receiver>
+            requires __valid<__new_sender_t, _Sender, _Receiver>
           auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr)
-            -> __sender_t<_Sender, _Receiver> {
+              -> __new_sender_t<_Sender, _Receiver> {
             auto __sched = get_scheduler(stdexec::get_env(__rcvr));
             return transform_sender_((_Sender&&) __sndr, __sched);
+          }
+
+        template <class _Sender, class _Receiver>
+          auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr) {
+            return _FAILURE_TO_CONNECT_::_WHAT_<
+              _ENVIRONMENT_HAS_NO_SCHEDULER_FOR_THE_ON_ADAPTOR_TO_TRANSITION_BACK_TO<env_of_t<_Receiver>, _Sender>>{};
           }
 
         template <class _Env>

@@ -201,7 +201,7 @@ namespace exec {
 
         template <__decays_to<__sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> make_completion_signatures<
+            -> completion_signatures_of_t<
                 __member_t<_Self, _Sender>,
                 make_env_t<_Env, _Withs...>>;
       };
