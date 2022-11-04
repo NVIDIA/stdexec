@@ -66,6 +66,11 @@ namespace stdexec {
   template <std::size_t _N>
     using __index = std::integral_constant<std::size_t, _N>;
 
+  template <class _Ty>
+    struct __mtype {
+      using __t = _Ty;
+    };
+
   // Some utilities for manipulating lists of types at compile time
   template <class...>
     struct __types;

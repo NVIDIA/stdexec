@@ -2010,14 +2010,14 @@ namespace stdexec {
       struct sender_adaptor_closure
       {};
 
-    template <__sender_adaptor_closure _T0, __sender_adaptor_closure _T1>
-      __compose<remove_cvref_t<_T0>, remove_cvref_t<_T1>> operator|(_T0&& __t0, _T1&& __t1) {
-        return {{}, (_T0&&) __t0, (_T1&&) __t1};
-      }
-
     template <sender _Sender, __sender_adaptor_closure_for<_Sender> _Closure>
       __call_result_t<_Closure, _Sender> operator|(_Sender&& __sndr, _Closure&& __clsur) {
         return ((_Closure&&) __clsur)((_Sender&&) __sndr);
+      }
+
+    template <__sender_adaptor_closure _T0, __sender_adaptor_closure _T1>
+      __compose<remove_cvref_t<_T0>, remove_cvref_t<_T1>> operator|(_T0&& __t0, _T1&& __t1) {
+        return {{}, (_T0&&) __t0, (_T1&&) __t1};
       }
 
     template <class _Fun, class... _As>
