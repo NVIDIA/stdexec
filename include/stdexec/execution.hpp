@@ -4638,6 +4638,8 @@ namespace stdexec {
                 _Env,
                 completion_signatures<>,
                 __swallow_values>...>;
+          template <class _T>
+            using __decay_rvalue_ref = decay_t<_T>&&;
           using __values =
             __minvoke<
               __concat<__qf<set_value_t>>,
@@ -4645,7 +4647,8 @@ namespace stdexec {
                 _Senders,
                 _Env,
                 __q<__types>,
-                __single_or<__types<>>>...>;
+                __mcompose<__uncurry<__transform<__q<__decay_rvalue_ref>>>, __single_or<__types<>>>>...>;
+
           using __t =
             __if_c<
               (__sends<set_value_t, _Senders, _Env> &&...),
