@@ -42,7 +42,7 @@ as `N::S<A,B,C>::T` does _not_ inherit the associated entities of `A`,
 
 Stdexec provides some utilities that bundle up that technique, but it
 requires certain rules to be followed to get the full benefit. Rather
-that defining a sender adaptor as:
+than defining a sender adaptor as:
 
 ```c++
 template <class Sender, class Arg>
