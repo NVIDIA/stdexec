@@ -255,45 +255,48 @@ namespace nvexec {
     struct stream_op_state_base{};
 
     template <class EnvId, class VariantId>
-      class stream_enqueue_receiver {
+      struct stream_enqueue_receiver {
         using Env = stdexec::__t<EnvId>;
         using Variant = stdexec::__t<VariantId>;
 
-        Env env_;
-        Variant* variant_;
-        queue::task_base_t* task_;
-        queue::producer_t producer_;
+        class __t {
+          Env env_;
+          Variant* variant_;
+          queue::task_base_t* task_;
+          queue::producer_t producer_;
 
-      public:
-        template <stdexec::__one_of<stdexec::set_value_t,
-                                    stdexec::set_error_t,
-                                    stdexec::set_stopped_t> Tag,
-                  class... As>
-          friend void tag_invoke(Tag tag, stream_enqueue_receiver&& self, As&&... as) noexcept {
-            self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, std::move(as)...);
-            self.producer_(self.task_);
+        public:
+          using __id = stream_enqueue_receiver;
+
+          template <stdexec::__one_of<stdexec::set_value_t,
+                                      stdexec::set_error_t,
+                                      stdexec::set_stopped_t> Tag,
+                    class... As>
+            friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
+              self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, std::move(as)...);
+              self.producer_(self.task_);
+            }
+
+          template <stdexec::__decays_to<std::exception_ptr> E>
+            friend void tag_invoke(stdexec::set_error_t, __t&& self, E&& e) noexcept {
+              // What is `exception_ptr` but death pending
+              self.variant_->template emplace<decayed_tuple<stdexec::set_error_t, cudaError_t>>(stdexec::set_error, cudaErrorUnknown);
+              self.producer_(self.task_);
+            }
+
+          friend Env tag_invoke(stdexec::get_env_t, const __t& self) {
+            return self.env_;
           }
 
-        template <stdexec::__decays_to<std::exception_ptr> E>
-          friend void tag_invoke(stdexec::set_error_t, stream_enqueue_receiver&& self, E&& e) noexcept {
-            // What is `exception_ptr` but death pending
-            self.variant_->template emplace<decayed_tuple<stdexec::set_error_t, cudaError_t>>(stdexec::set_error, cudaErrorUnknown);
-            self.producer_(self.task_);
-          }
-
-        friend Env tag_invoke(stdexec::get_env_t, const stream_enqueue_receiver& self) {
-          return self.env_;
-        }
-
-        stream_enqueue_receiver(
-            Env env,
-            Variant* variant,
-            queue::task_base_t* task,
-            queue::producer_t producer)
-          : env_(env)
-          , variant_(variant)
-          , task_(task)
-          , producer_(producer) {}
+          __t(Env env,
+              Variant* variant,
+              queue::task_base_t* task,
+              queue::producer_t producer)
+            : env_(env)
+            , variant_(variant)
+            , task_(task)
+            , producer_(producer) {}
+        };
       };
 
     template <class Receiver, class Tag, class... As>
@@ -409,22 +412,27 @@ namespace nvexec {
       };
 
     template <class OuterReceiverId>
-      struct propagate_receiver_t : stream_receiver_base {
+      struct propagate_receiver_t {
         using outer_receiver_t = stdexec::__t<OuterReceiverId>;
-        operation_state_base_t<OuterReceiverId>& operation_state_;
 
-        template <stdexec::__one_of<stdexec::set_value_t,
-                                    stdexec::set_error_t,
-                                    stdexec::set_stopped_t> Tag,
-                  class... As >
-        friend void tag_invoke(Tag tag, propagate_receiver_t&& self, As&&... as) noexcept {
-          self.operation_state_.propagate_completion_signal(tag, (As&&)as...);
-        }
+        struct __t : stream_receiver_base {
+          using __id = propagate_receiver_t;
 
-        friend make_stream_env_t<stdexec::env_of_t<outer_receiver_t>>
-        tag_invoke(stdexec::get_env_t, const propagate_receiver_t& self) {
-          return self.operation_state_.make_env();
-        }
+          operation_state_base_t<OuterReceiverId>& operation_state_;
+
+          template <stdexec::__one_of<stdexec::set_value_t,
+                                      stdexec::set_error_t,
+                                      stdexec::set_stopped_t> Tag,
+                    class... As >
+          friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
+            self.operation_state_.propagate_completion_signal(tag, (As&&)as...);
+          }
+
+          friend make_stream_env_t<stdexec::env_of_t<outer_receiver_t>>
+          tag_invoke(stdexec::get_env_t, const __t& self) {
+            return self.operation_state_.make_env();
+          }
+        };
       };
 
     template <class SenderId, class InnerReceiverId, class OuterReceiverId>
@@ -437,7 +445,7 @@ namespace nvexec {
 
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using stream_enqueue_receiver_t =
-          stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>;
+          stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
         using intermediate_receiver =
           stdexec::__if_c<stream_sender<sender_t>, inner_receiver_t, stream_enqueue_receiver_t>;
         using inner_op_state_t = stdexec::connect_result_t<sender_t, intermediate_receiver>;
@@ -514,19 +522,19 @@ namespace nvexec {
         requires stream_receiver<OuterReceiver>
       using exit_operation_state_t 
         = operation_state_t<
-            stdexec::__x<Sender>, 
-            stdexec::__x<propagate_receiver_t<stdexec::__x<OuterReceiver>>>, 
-            stdexec::__x<OuterReceiver>>;
+            stdexec::__id<Sender>, 
+            stdexec::__id<stdexec::__t<propagate_receiver_t<stdexec::__id<OuterReceiver>>>>, 
+            stdexec::__id<OuterReceiver>>;
 
     template <class Sender, class OuterReceiver>
       exit_operation_state_t<Sender, OuterReceiver>
       exit_op_state(Sender&& sndr, OuterReceiver&& rcvr, context_state_t context_state) noexcept {
-        using ReceiverId = stdexec::__x<OuterReceiver>;
+        using ReceiverId = stdexec::__id<OuterReceiver>;
         return exit_operation_state_t<Sender, OuterReceiver>(
           (Sender&&)sndr, 
           (OuterReceiver&&)rcvr, 
-          [](operation_state_base_t<ReceiverId>& op) -> propagate_receiver_t<ReceiverId> {
-            return propagate_receiver_t<ReceiverId>{{}, op};
+          [](operation_state_base_t<ReceiverId>& op) -> stdexec::__t<propagate_receiver_t<ReceiverId>> {
+            return stdexec::__t<propagate_receiver_t<ReceiverId>>{{}, op};
           },
           context_state);
       }
@@ -551,12 +559,12 @@ namespace nvexec {
       using inner_receiver_t =
         stdexec::__call_result_t<
           InnerReceiverProvider,
-          operation_state_base_t<stdexec::__x<OuterReceiver>>&>;
+          operation_state_base_t<stdexec::__id<OuterReceiver>>&>;
 
     template <class Sender, class InnerReceiver, class OuterReceiver>
-      using stream_op_state_t = operation_state_t<stdexec::__x<Sender>,
-                                                  stdexec::__x<InnerReceiver>,
-                                                  stdexec::__x<OuterReceiver>>;
+      using stream_op_state_t = operation_state_t<stdexec::__id<Sender>,
+                                                  stdexec::__id<InnerReceiver>,
+                                                  stdexec::__id<OuterReceiver>>;
 
     template <stream_completing_sender Sender, class OuterReceiver, class ReceiverProvider>
       stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>

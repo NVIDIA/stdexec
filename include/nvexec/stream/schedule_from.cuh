@@ -25,35 +25,39 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
 namespace schedule_from {
   template <class SenderId, class ReceiverId>
-    struct receiver_t : stream_receiver_base {
+    struct receiver_t {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using Env = typename operation_state_base_t<ReceiverId>::env_t;
-      using storage_t = variant_storage_t<Sender, Env>;
 
-      constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
+      struct __t : stream_receiver_base {
+        using __id = receiver_t;
+        using storage_t = variant_storage_t<Sender, Env>;
 
-      operation_state_base_t<ReceiverId>& operation_state_;
+        constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
 
-      template <stdexec::__one_of<stdexec::set_value_t,
-                                  stdexec::set_error_t,
-                                  stdexec::set_stopped_t> Tag,
-                class... As>
-      friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-        storage_t *storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
-        storage->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
+        operation_state_base_t<ReceiverId>& operation_state_;
 
-        visit([&](auto& tpl) noexcept {
-          apply([&](auto tag, auto&... tas) noexcept {
-            self.operation_state_.template propagate_completion_signal(tag, tas...);
-          }, tpl);
-        }, *storage);
-      }
+        template <stdexec::__one_of<stdexec::set_value_t,
+                                    stdexec::set_error_t,
+                                    stdexec::set_stopped_t> Tag,
+                  class... As>
+        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
+          storage_t *storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
+          storage->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
 
-      friend Env 
-      tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-        return self.operation_state_.make_env();
-      }
+          visit([&](auto& tpl) noexcept {
+            apply([&](auto tag, auto&... tas) noexcept {
+              self.operation_state_.template propagate_completion_signal(tag, tas...);
+            }, tpl);
+          }, *storage);
+        }
+
+        friend Env 
+        tag_invoke(stdexec::get_env_t, const __t& self) {
+          return self.operation_state_.make_env();
+        }
+      };
     };
 
   template <class Sender>
@@ -93,9 +97,11 @@ template <class Scheduler, class SenderId>
       source_sender_th sndr_;
 
       template <class Self, class Receiver>
-        using receiver_t = schedule_from::receiver_t<
-          stdexec::__x<stdexec::__member_t<Self, Sender>>, 
-          stdexec::__x<Receiver>>;
+        using receiver_t = 
+          stdexec::__t<
+            schedule_from::receiver_t<
+              stdexec::__id<stdexec::__member_t<Self, Sender>>, 
+              stdexec::__id<Receiver>>>;
 
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
         requires stdexec::sender_to<stdexec::__member_t<Self, source_sender_th>, Receiver>
@@ -104,7 +110,7 @@ template <class Scheduler, class SenderId>
           return stream_op_state<stdexec::__member_t<Self, source_sender_th>>(
               ((Self&&)self).sndr_,
               (Receiver&&)rcvr,
-              [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Self, Receiver> {
+              [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider) -> receiver_t<Self, Receiver> {
                 return receiver_t<Self, Receiver>{{}, stream_provider};
               },
               self.context_state_);

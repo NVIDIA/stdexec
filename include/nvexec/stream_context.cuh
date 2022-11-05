@@ -51,10 +51,10 @@ namespace nvexec {
       using then_sender_th = stdexec::__t<then_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
 
     template <class Scheduler, stdexec::sender... Senders>
-      using when_all_sender_th = when_all_sender_t<false, Scheduler, stdexec::__x<std::decay_t<Senders>>...>;
+      using when_all_sender_th = stdexec::__t<when_all_sender_t<false, Scheduler, stdexec::__id<std::decay_t<Senders>>...>>;
 
     template <class Scheduler, stdexec::sender... Senders>
-      using transfer_when_all_sender_th = when_all_sender_t<true, Scheduler, stdexec::__x<std::decay_t<Senders>>...>;
+      using transfer_when_all_sender_th = stdexec::__t<when_all_sender_t<true, Scheduler, stdexec::__id<std::decay_t<Senders>>...>>;
 
     template <stdexec::sender Sender, class Fun>
       using upon_error_sender_th = stdexec::__t<upon_error_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
@@ -69,7 +69,7 @@ namespace nvexec {
       using transfer_sender_th = stdexec::__t<transfer_sender_t<stdexec::__id<std::decay_t<Sender>>>>;
 
     template <stdexec::sender Sender>
-      using ensure_started_th = stdexec::__t<ensure_started_sender_t<stdexec::__x<Sender>>>;
+      using ensure_started_th = stdexec::__t<ensure_started_sender_t<stdexec::__id<Sender>>>;
 
     struct stream_scheduler {
       friend stream_context;
@@ -102,8 +102,8 @@ namespace nvexec {
         template <class R>
           friend auto tag_invoke(stdexec::connect_t, const sender_t& self, R&& rec)
             noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-            -> operation_state_t<stdexec::__x<std::remove_cvref_t<R>>> {
-            return operation_state_t<stdexec::__x<std::remove_cvref_t<R>>>((R&&) rec, self.context_state_);
+            -> operation_state_t<stdexec::__id<std::remove_cvref_t<R>>> {
+            return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec, self.context_state_);
           }
 
         stream_scheduler make_scheduler() const {

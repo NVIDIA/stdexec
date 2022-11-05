@@ -36,42 +36,46 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           stdexec::__with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>>;
 
     template <class SenderId, class SharedState>
-      class receiver_t : stream_receiver_base {
-        using Sender = stdexec::__t<SenderId>;
+      struct receiver_t {
+        class __t : stream_receiver_base {
+          using Sender = stdexec::__t<SenderId>;
 
-        stdexec::__intrusive_ptr<SharedState> shared_state_;
+          stdexec::__intrusive_ptr<SharedState> shared_state_;
 
-      public:
-        explicit receiver_t(SharedState& shared_state) noexcept
-          : shared_state_(shared_state.__intrusive_from_this()) {
-        }
+        public:
+          using __id = receiver_t;
 
-        template <stdexec::__one_of<stdexec::set_value_t, 
-                                    stdexec::set_error_t, 
-                                    stdexec::set_stopped_t> Tag, 
-                  class... As>
-          friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-            SharedState& state = *self.shared_state_;
+          explicit __t(SharedState& shared_state) noexcept
+            : shared_state_(shared_state.__intrusive_from_this()) {
+          }
 
-            if constexpr (stream_sender<Sender>) {
-              cudaStream_t stream = state.stream_;
-              using tuple_t = decayed_tuple<Tag, As...>;
-              state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-              copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
-              state.status_ = STDEXEC_DBG_ERR(cudaEventRecord(state.event_, stream));
-            } else {
-              using tuple_t = decayed_tuple<Tag, As...>;
-              state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+          template <stdexec::__one_of<stdexec::set_value_t, 
+                                      stdexec::set_error_t, 
+                                      stdexec::set_stopped_t> Tag, 
+                    class... As>
+            friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
+              SharedState& state = *self.shared_state_;
+
+              if constexpr (stream_sender<Sender>) {
+                cudaStream_t stream = state.stream_;
+                using tuple_t = decayed_tuple<Tag, As...>;
+                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+                copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&)as...);
+                state.status_ = STDEXEC_DBG_ERR(cudaEventRecord(state.event_, stream));
+              } else {
+                using tuple_t = decayed_tuple<Tag, As...>;
+                state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+              }
+
+              state.notify();
+              self.shared_state_.reset();
             }
 
-            state.notify();
-            self.shared_state_.reset();
-          }
-
-          friend env_t tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-            return self.shared_state_->make_env();
-          }
+            friend env_t tag_invoke(stdexec::get_env_t, const __t& self) {
+              return self.shared_state_->make_env();
+            }
         };
+      };
 
     struct operation_base_t {
       using notify_fn = void(operation_base_t*) noexcept;
@@ -107,15 +111,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Sender = stdexec::__t<SenderId>;
         using variant_t = variant_storage_t<Sender, env_t>;
 
-        using inner_receiver_t = receiver_t<SenderId, sh_state_t>;
+        using inner_receiver_t = stdexec::__t<receiver_t<SenderId, sh_state_t>>;
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
-        using enqueue_receiver_t = stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>;
+        using enqueue_receiver_t = stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
         using intermediate_receiver = 
           stdexec::__t<
             std::conditional_t<
               stream_sender<Sender>,
-              stdexec::__x<inner_receiver_t>,
-              stdexec::__x<enqueue_receiver_t>>>;
+              stdexec::__id<inner_receiver_t>,
+              stdexec::__id<enqueue_receiver_t>>>;
         using inner_op_state_t = stdexec::connect_result_t<Sender, intermediate_receiver>;
 
         context_state_t context_state_;
@@ -296,7 +300,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __id = ensure_started_sender_t;
         using sh_state_ = ensure_started::sh_state_t<SenderId>;
         template <class Receiver>
-          using operation_t = ensure_started::operation_t<SenderId, stdexec::__x<std::remove_cvref_t<Receiver>>>;
+          using operation_t = ensure_started::operation_t<SenderId, stdexec::__id<std::remove_cvref_t<Receiver>>>;
 
         Sender sndr_;
         stdexec::__intrusive_ptr<sh_state_> shared_state_;

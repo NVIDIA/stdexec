@@ -57,7 +57,7 @@ namespace transfer {
 
       ::cuda::std::atomic_flag started_;
 
-      using enqueue_receiver = stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>;
+      using enqueue_receiver = stdexec::__t<stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>>;
       using inner_op_state_t = stdexec::connect_result_t<Sender, enqueue_receiver>;
       inner_op_state_t inner_op_;
 
@@ -107,7 +107,7 @@ template <class SenderId>
         using op_state_th = 
           transfer::operation_state_t<
             stdexec::__x<stdexec::__member_t<Self, Sender>>, 
-            stdexec::__x<Receiver>>;
+            stdexec::__id<Receiver>>;
 
       context_state_t context_state_;
       Sender sndr_;

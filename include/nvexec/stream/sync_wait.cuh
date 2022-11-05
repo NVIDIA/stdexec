@@ -51,61 +51,65 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         struct state_t;
 
       template <class SenderId>
-        struct receiver_t : public stream_receiver_base {
+        struct receiver_t {
           using Sender = stdexec::__t<SenderId>;
 
-          state_t<SenderId>* state_;
-          stdexec::run_loop* loop_;
+          struct __t : public stream_receiver_base {
+            using __id = receiver_t;
 
-          template <class Error>
-            void set_error(Error err) noexcept {
-              if constexpr (stdexec::__decays_to<Error, cudaError_t>) {
-                state_->data_.template emplace<2>((Error&&) err);
-              } else {
-                // What is `exception_ptr` but death pending
-                state_->data_.template emplace<2>(cudaErrorUnknown);
+            state_t<SenderId>* state_;
+            stdexec::run_loop* loop_;
+
+            template <class Error>
+              void set_error(Error err) noexcept {
+                if constexpr (stdexec::__decays_to<Error, cudaError_t>) {
+                  state_->data_.template emplace<2>((Error&&) err);
+                } else {
+                  // What is `exception_ptr` but death pending
+                  state_->data_.template emplace<2>(cudaErrorUnknown);
+                }
+                loop_->finish();
               }
-              loop_->finish();
-            }
 
-          template <class Sender2 = Sender, class... As>
-              requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
-            friend void tag_invoke(stdexec::set_value_t, receiver_t&& rcvr, As&&... as) noexcept try {
+            template <class Sender2 = Sender, class... As>
+                requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
+              friend void tag_invoke(stdexec::set_value_t, __t&& rcvr, As&&... as) noexcept try {
+                if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+                    status == cudaSuccess) {
+                  rcvr.state_->data_.template emplace<1>((As&&) as...);
+                } else {
+                  rcvr.set_error(status);
+                }
+                rcvr.loop_->finish();
+              } catch(...) {
+                rcvr.set_error(std::current_exception());
+              }
+
+            template <class Error>
+              friend void tag_invoke(stdexec::set_error_t, __t&& rcvr, Error err) noexcept {
+                if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+                    status == cudaSuccess) {
+                  rcvr.set_error((Error &&) err);
+                } else {
+                  rcvr.set_error(status);
+                }
+              }
+
+            friend void tag_invoke(stdexec::set_stopped_t __d, __t&& rcvr) noexcept {
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
                   status == cudaSuccess) {
-                rcvr.state_->data_.template emplace<1>((As&&) as...);
+                rcvr.state_->data_.template emplace<3>(__d);
               } else {
                 rcvr.set_error(status);
               }
               rcvr.loop_->finish();
-            } catch(...) {
-              rcvr.set_error(std::current_exception());
             }
 
-          template <class Error>
-            friend void tag_invoke(stdexec::set_error_t, receiver_t&& rcvr, Error err) noexcept {
-              if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
-                  status == cudaSuccess) {
-                rcvr.set_error((Error &&) err);
-              } else {
-                rcvr.set_error(status);
-              }
+            friend stdexec::__empty_env
+            tag_invoke(stdexec::get_env_t, const __t& rcvr) noexcept {
+              return {};
             }
-
-          friend void tag_invoke(stdexec::set_stopped_t __d, receiver_t&& rcvr) noexcept {
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
-                status == cudaSuccess) {
-              rcvr.state_->data_.template emplace<3>(__d);
-            } else {
-              rcvr.set_error(status);
-            }
-            rcvr.loop_->finish();
-          }
-
-          friend stdexec::__empty_env
-          tag_invoke(stdexec::get_env_t, const receiver_t& rcvr) noexcept {
-            return {};
-          }
+          };
         };
 
       template <class SenderId>
@@ -118,23 +122,26 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     } // namespace __impl
 
     struct sync_wait_t {
+      template <class Sender>
+        using receiver_t = stdexec::__t<__impl::receiver_t<stdexec::__id<Sender>>>;
+
       template <stdexec::__single_value_variant_sender<__impl::__env> Sender>
         requires
           (!stdexec::__tag_invocable_with_completion_scheduler<
             sync_wait_t, stdexec::set_value_t, Sender>) &&
           (!stdexec::tag_invocable<sync_wait_t, Sender>) &&
           stdexec::sender<Sender, __impl::__env> &&
-          stdexec::sender_to<Sender, __impl::receiver_t<stdexec::__x<Sender>>>
+          stdexec::sender_to<Sender, receiver_t<Sender>>
       auto operator()(context_state_t context_state, Sender&& __sndr) const
         -> std::optional<__impl::sync_wait_result_t<Sender>> {
-        using state_t = __impl::state_t<stdexec::__x<Sender>>;
+        using state_t = __impl::state_t<stdexec::__id<Sender>>;
         state_t state {};
         stdexec::run_loop loop;
 
-        exit_operation_state_t<Sender, __impl::receiver_t<stdexec::__x<Sender>>> __op_state =
+        exit_operation_state_t<Sender, receiver_t<Sender>> __op_state =
           exit_op_state(
               (Sender&&)__sndr, 
-              __impl::receiver_t<stdexec::__x<Sender>>{{}, &state, &loop}, 
+              receiver_t<Sender>{{}, &state, &loop}, 
               context_state);
         state.stream_ = __op_state.get_stream();
 
