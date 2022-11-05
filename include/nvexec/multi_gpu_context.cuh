@@ -82,8 +82,8 @@ namespace nvexec {
         template <class R>
           friend auto tag_invoke(stdexec::connect_t, sender_t, R&& rec)
             noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-            -> operation_state_t<stdexec::__x<std::remove_cvref_t<R>>> {
-            return operation_state_t<stdexec::__x<std::remove_cvref_t<R>>>((R&&) rec);
+            -> operation_state_t<stdexec::__id<std::remove_cvref_t<R>>> {
+            return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec);
           }
 
         multi_gpu_stream_scheduler make_scheduler() const {

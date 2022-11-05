@@ -109,11 +109,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return stream;
     }
 
-    template <class SenderId>
+    template <class Sender>
       struct sh_state_t {
-        using Sender = stdexec::__t<SenderId>;
         using variant_t = variant_storage_t<Sender, env_t>;
-        using inner_receiver_t = stdexec::__t<receiver_t<SenderId, sh_state_t>>;
+        using inner_receiver_t = stdexec::__t<receiver_t<stdexec::__id<Sender>, sh_state_t>>;
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using enqueue_receiver_t = stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
         using intermediate_receiver = 
@@ -201,101 +200,105 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       };
 
     template <class SenderId, class ReceiverId>
-      class operation_t : public operation_base_t
-                        , public operation_state_base_t<ReceiverId> {
-        using Sender = stdexec::__t<SenderId>;
-        using Receiver = stdexec::__t<ReceiverId>;
+      struct operation_t {
+        class __t : public operation_base_t
+                  , public operation_state_base_t<ReceiverId> {
+          using __id = operation_t;
+          using Sender = stdexec::__t<SenderId>;
+          using Receiver = stdexec::__t<ReceiverId>;
 
-        struct on_stop_requested {
-          stdexec::in_place_stop_source& stop_source_;
-          void operator()() noexcept {
-            stop_source_.request_stop();
+          struct on_stop_requested {
+            stdexec::in_place_stop_source& stop_source_;
+            void operator()() noexcept {
+              stop_source_.request_stop();
+            }
+          };
+          using on_stop = std::optional<typename stdexec::stop_token_of_t<
+              stdexec::env_of_t<Receiver> &>::template callback_type<on_stop_requested>>;
+
+          on_stop on_stop_{};
+          std::shared_ptr<sh_state_t<Sender>> shared_state_;
+
+        public:
+          __t(Receiver&& rcvr,
+              std::shared_ptr<sh_state_t<Sender>> shared_state)
+              noexcept(std::is_nothrow_move_constructible_v<Receiver>)
+            : operation_base_t{nullptr, notify}
+            , operation_state_base_t<ReceiverId>((Receiver&&)rcvr, shared_state->context_state_, false)
+            , shared_state_(move(shared_state)) {
+          }
+          STDEXEC_IMMOVABLE(__t);
+
+          static void notify(operation_base_t* self) noexcept {
+            __t*op = static_cast<__t*>(self);
+            op->on_stop_.reset();
+
+            cudaError_t& status = op->shared_state_->status_;
+            if (status == cudaSuccess) {
+              if constexpr (stream_sender<Sender>) {
+                status = STDEXEC_DBG_ERR(cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_));
+              }
+
+              visit([&](auto& tupl) noexcept -> void {
+                ::cuda::std::apply([&](auto tag, auto&... args) noexcept -> void {
+                  op->propagate_completion_signal(tag, args...);
+                }, tupl);
+              }, *op->shared_state_->data_, op->shared_state_->index_);
+            } else {
+              op->propagate_completion_signal(stdexec::set_error, std::move(status));
+            }
+          }
+
+          friend void tag_invoke(stdexec::start_t, __t& self) noexcept {
+            sh_state_t<Sender>* shared_state = self.shared_state_.get();
+            std::atomic<void*>& head = shared_state->head_;
+            void* const completion_state = static_cast<void*>(shared_state);
+            void* old = head.load(std::memory_order_acquire);
+
+            if (old != completion_state) {
+              self.on_stop_.emplace(
+                  stdexec::get_stop_token(stdexec::get_env(self.receiver_)),
+                  on_stop_requested{shared_state->stop_source_});
+            }
+
+            do {
+              if (old == completion_state) {
+                self.notify(&self);
+                return;
+              }
+              self.next_ = static_cast<operation_base_t*>(old);
+            } while (!head.compare_exchange_weak(
+                old, static_cast<void *>(&self),
+                std::memory_order_release,
+                std::memory_order_acquire));
+
+            if (old == nullptr) {
+              // the inner sender isn't running
+              if (shared_state->stop_source_.stop_requested()) {
+                // 1. resets head to completion state
+                // 2. notifies waiting threads
+                // 3. propagates "stopped" signal to `out_r'`
+                shared_state->notify();
+              } else {
+                shared_state->started_.test_and_set(::cuda::memory_order_relaxed);
+                stdexec::start(shared_state->op_state2_);
+              }
+            }
           }
         };
-        using on_stop = std::optional<typename stdexec::stop_token_of_t<
-            stdexec::env_of_t<Receiver> &>::template callback_type<on_stop_requested>>;
-
-        on_stop on_stop_{};
-        std::shared_ptr<sh_state_t<SenderId>> shared_state_;
-
-      public:
-        operation_t(Receiver&& rcvr,
-                    std::shared_ptr<sh_state_t<SenderId>> shared_state)
-            noexcept(std::is_nothrow_move_constructible_v<Receiver>)
-          : operation_base_t{nullptr, notify}
-          , operation_state_base_t<ReceiverId>((Receiver&&)rcvr, shared_state->context_state_, false)
-          , shared_state_(move(shared_state)) {
-        }
-        STDEXEC_IMMOVABLE(operation_t);
-
-        static void notify(operation_base_t* self) noexcept {
-          operation_t *op = static_cast<operation_t*>(self);
-          op->on_stop_.reset();
-
-          cudaError_t& status = op->shared_state_->status_;
-          if (status == cudaSuccess) {
-            if constexpr (stream_sender<Sender>) {
-              status = STDEXEC_DBG_ERR(cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_));
-            }
-
-            visit([&](auto& tupl) noexcept -> void {
-              ::cuda::std::apply([&](auto tag, auto&... args) noexcept -> void {
-                op->propagate_completion_signal(tag, args...);
-              }, tupl);
-            }, *op->shared_state_->data_, op->shared_state_->index_);
-          } else {
-            op->propagate_completion_signal(stdexec::set_error, std::move(status));
-          }
-        }
-
-        friend void tag_invoke(stdexec::start_t, operation_t& self) noexcept {
-          sh_state_t<SenderId>* shared_state = self.shared_state_.get();
-          std::atomic<void*>& head = shared_state->head_;
-          void* const completion_state = static_cast<void*>(shared_state);
-          void* old = head.load(std::memory_order_acquire);
-
-          if (old != completion_state) {
-            self.on_stop_.emplace(
-                stdexec::get_stop_token(stdexec::get_env(self.receiver_)),
-                on_stop_requested{shared_state->stop_source_});
-          }
-
-          do {
-            if (old == completion_state) {
-              self.notify(&self);
-              return;
-            }
-            self.next_ = static_cast<operation_base_t*>(old);
-          } while (!head.compare_exchange_weak(
-              old, static_cast<void *>(&self),
-              std::memory_order_release,
-              std::memory_order_acquire));
-
-          if (old == nullptr) {
-            // the inner sender isn't running
-            if (shared_state->stop_source_.stop_requested()) {
-              // 1. resets head to completion state
-              // 2. notifies waiting threads
-              // 3. propagates "stopped" signal to `out_r'`
-              shared_state->notify();
-            } else {
-              shared_state->started_.test_and_set(::cuda::memory_order_relaxed);
-              stdexec::start(shared_state->op_state2_);
-            }
-          }
-        }
       };
   } // namespace split
 
   template <class SenderId>
     struct split_sender_t {
       using Sender = stdexec::__t<SenderId>;
+      using sh_state_ = split::sh_state_t<Sender>;
 
       struct __t : stream_sender_base {
         using __id = split_sender_t;
-        using sh_state_ = split::sh_state_t<SenderId>;
         template <class Receiver>
-          using operation_t = split::operation_t<SenderId, stdexec::__id<std::remove_cvref_t<Receiver>>>;
+          using operation_t = 
+            stdexec::__t<split::operation_t<SenderId, stdexec::__id<std::remove_cvref_t<Receiver>>>>;
 
         Sender sndr_;
         std::shared_ptr<sh_state_> shared_state_;

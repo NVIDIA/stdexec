@@ -346,70 +346,76 @@ namespace nvexec {
       };
 
     template <class OuterReceiverId>
-      struct operation_state_base_t : stream_op_state_base {
+      struct operation_state_base_ {
         using outer_receiver_t = stdexec::__t<OuterReceiverId>;
         using outer_env_t = stdexec::env_of_t<outer_receiver_t>;
-        using env_t = make_stream_env_t<outer_env_t>;
 
-        static constexpr bool borrows_stream = std::is_base_of_v<stream_env_base, outer_env_t>;
+        struct __t : stream_op_state_base {
+          using __id = operation_state_base_;
+          using env_t = make_stream_env_t<outer_env_t>;
+          static constexpr bool borrows_stream = std::is_base_of_v<stream_env_base, outer_env_t>;
 
-        context_state_t context_state_;
-        void *temp_storage_{nullptr};
-        outer_receiver_t receiver_;
-        cudaError_t status_{cudaSuccess};
-        std::optional<cudaStream_t> own_stream_{};
-        bool defer_stream_destruction_{false};
+          context_state_t context_state_;
+          void *temp_storage_{nullptr};
+          outer_receiver_t receiver_;
+          cudaError_t status_{cudaSuccess};
+          std::optional<cudaStream_t> own_stream_{};
+          bool defer_stream_destruction_{false};
 
-        operation_state_base_t(
-            outer_receiver_t receiver, 
-            context_state_t context_state,
-            bool defer_stream_destruction)
-          : context_state_(context_state)
-          , receiver_(receiver)
-          , defer_stream_destruction_(defer_stream_destruction) {
-          if constexpr(!borrows_stream) {
-            std::tie(own_stream_, status_) = create_stream_with_priority(context_state_.priority_);
-          }
-        }
-
-        cudaStream_t get_stream() const {
-          cudaStream_t stream{};
-
-          if constexpr(borrows_stream) {
-            const outer_env_t& env = stdexec::get_env(receiver_);
-            stream = ::nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream(env);
-          } else {
-            stream = *own_stream_;
+          __t(outer_receiver_t receiver, 
+              context_state_t context_state,
+              bool defer_stream_destruction)
+            : context_state_(context_state)
+            , receiver_(receiver)
+            , defer_stream_destruction_(defer_stream_destruction) {
+            if constexpr(!borrows_stream) {
+              std::tie(own_stream_, status_) = create_stream_with_priority(context_state_.priority_);
+            }
           }
 
-          return stream;
-        }
+          cudaStream_t get_stream() const {
+            cudaStream_t stream{};
 
-        env_t make_env() const {
-          return make_stream_env(stdexec::get_env(receiver_), get_stream());
-        }
-
-        template <class Tag, class... As>
-          void propagate_completion_signal(Tag tag, As&&... as) noexcept {
-            if constexpr (stream_receiver<outer_receiver_t>) {
-              tag((outer_receiver_t&&)receiver_, (As&&)as...);
+            if constexpr(borrows_stream) {
+              const outer_env_t& env = stdexec::get_env(receiver_);
+              stream = ::nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream(env);
             } else {
-              continuation_kernel
-                <std::decay_t<outer_receiver_t>, Tag, As...>
-                  <<<1, 1, 0, get_stream()>>>(
-                    receiver_, tag, (As&&)as...);
+              stream = *own_stream_;
             }
+
+            return stream;
           }
 
-        ~operation_state_base_t() {
-          if (own_stream_) {
-            if (!defer_stream_destruction_) {
-              STDEXEC_DBG_ERR(cudaStreamDestroy(*own_stream_));
-            }
-            own_stream_.reset();
+          env_t make_env() const {
+            return make_stream_env(stdexec::get_env(receiver_), get_stream());
           }
-        }
+
+          template <class Tag, class... As>
+            void propagate_completion_signal(Tag tag, As&&... as) noexcept {
+              if constexpr (stream_receiver<outer_receiver_t>) {
+                tag((outer_receiver_t&&)receiver_, (As&&)as...);
+              } else {
+                continuation_kernel
+                  <std::decay_t<outer_receiver_t>, Tag, As...>
+                    <<<1, 1, 0, get_stream()>>>(
+                      receiver_, tag, (As&&)as...);
+              }
+            }
+
+          ~__t() {
+            if (own_stream_) {
+              if (!defer_stream_destruction_) {
+                STDEXEC_DBG_ERR(cudaStreamDestroy(*own_stream_));
+              }
+              own_stream_.reset();
+            }
+          }
+        };
       };
+
+    template <class OuterReceiverId>
+      using operation_state_base_t = 
+        stdexec::__t<operation_state_base_<OuterReceiverId>>;
 
     template <class OuterReceiverId>
       struct propagate_receiver_t {
@@ -436,87 +442,93 @@ namespace nvexec {
       };
 
     template <class SenderId, class InnerReceiverId, class OuterReceiverId>
-      struct operation_state_t : operation_state_base_t<OuterReceiverId> {
-        using sender_t = stdexec::__t<SenderId>;
-        using inner_receiver_t = stdexec::__t<InnerReceiverId>;
-        using outer_receiver_t = stdexec::__t<OuterReceiverId>;
-        using typename operation_state_base_t<OuterReceiverId>::env_t;
-        using variant_t = variant_storage_t<sender_t, env_t>;
+      struct operation_state_ {
+        struct __t : operation_state_base_t<OuterReceiverId> {
+          using __id = operation_state_;
+          using sender_t = stdexec::__t<SenderId>;
+          using inner_receiver_t = stdexec::__t<InnerReceiverId>;
+          using outer_receiver_t = stdexec::__t<OuterReceiverId>;
+          using typename operation_state_base_t<OuterReceiverId>::env_t;
+          using variant_t = variant_storage_t<sender_t, env_t>;
 
-        using task_t = continuation_task_t<inner_receiver_t, variant_t>;
-        using stream_enqueue_receiver_t =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
-        using intermediate_receiver =
-          stdexec::__if_c<stream_sender<sender_t>, inner_receiver_t, stream_enqueue_receiver_t>;
-        using inner_op_state_t = stdexec::connect_result_t<sender_t, intermediate_receiver>;
+          using task_t = continuation_task_t<inner_receiver_t, variant_t>;
+          using stream_enqueue_receiver_t =
+            stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
+          using intermediate_receiver =
+            stdexec::__if_c<stream_sender<sender_t>, inner_receiver_t, stream_enqueue_receiver_t>;
+          using inner_op_state_t = stdexec::connect_result_t<sender_t, intermediate_receiver>;
 
-        friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
-          op.started_.test_and_set(::cuda::std::memory_order::relaxed);
+          friend void tag_invoke(stdexec::start_t, __t& op) noexcept {
+            op.started_.test_and_set(::cuda::std::memory_order::relaxed);
 
-          if (op.status_ != cudaSuccess) {
-            // Couldn't allocate memory for operation state, complete with error
-            op.propagate_completion_signal(stdexec::set_error, std::move(op.status_));
-            return;
-          }
+            if (op.status_ != cudaSuccess) {
+              // Couldn't allocate memory for operation state, complete with error
+              op.propagate_completion_signal(stdexec::set_error, std::move(op.status_));
+              return;
+            }
 
-          if constexpr (stream_receiver<inner_receiver_t>) {
-            if (inner_receiver_t::memory_allocation_size) {
-              try {
-                op.temp_storage_ = op.context_state_.managed_resource_->allocate(inner_receiver_t::memory_allocation_size);
-              } catch(...) {
-                op.propagate_completion_signal(stdexec::set_error, cudaErrorMemoryAllocation);
-                return;
+            if constexpr (stream_receiver<inner_receiver_t>) {
+              if (inner_receiver_t::memory_allocation_size) {
+                try {
+                  op.temp_storage_ = op.context_state_.managed_resource_->allocate(inner_receiver_t::memory_allocation_size);
+                } catch(...) {
+                  op.propagate_completion_signal(stdexec::set_error, cudaErrorMemoryAllocation);
+                  return;
+                }
               }
             }
+
+            stdexec::start(op.inner_op_);
           }
 
-          stdexec::start(op.inner_op_);
-        }
+          template <stdexec::__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
+              requires stream_sender<sender_t>
+            __t(sender_t&& sender, OutR&& out_receiver, ReceiverProvider receiver_provider, context_state_t context_state)
+              : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver, context_state, false)
+              , inner_op_{stdexec::connect((sender_t&&)sender, receiver_provider(*this))} {
+            }
 
-        template <stdexec::__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
-            requires stream_sender<sender_t>
-          operation_state_t(sender_t&& sender, OutR&& out_receiver, ReceiverProvider receiver_provider, context_state_t context_state)
-            : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver, context_state, false)
-            , inner_op_{stdexec::connect((sender_t&&)sender, receiver_provider(*this))} {
-          }
+          template <stdexec::__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
+            __t(sender_t&& sender, OutR&& out_receiver, ReceiverProvider receiver_provider, context_state_t context_state)
+              : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver, context_state, true)
+              , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
+              , task_(queue::make_host<task_t>(this->status_, context_state.pinned_resource_, receiver_provider(*this), storage_.get(), this->get_stream(), context_state.pinned_resource_).release())
+              , started_(ATOMIC_FLAG_INIT)
+              , inner_op_{
+                  stdexec::connect(
+                      (sender_t&&)sender,
+                      stream_enqueue_receiver_t{
+                        this->make_env(), storage_.get(), task_, context_state.hub_->producer()})} {
+              if (this->status_ == cudaSuccess) {
+                this->status_ = task_->status_;
+              }
+            }
 
-        template <stdexec::__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
-          operation_state_t(sender_t&& sender, OutR&& out_receiver, ReceiverProvider receiver_provider, context_state_t context_state)
-            : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver, context_state, true)
-            , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
-            , task_(queue::make_host<task_t>(this->status_, context_state.pinned_resource_, receiver_provider(*this), storage_.get(), this->get_stream(), context_state.pinned_resource_).release())
-            , started_(ATOMIC_FLAG_INIT)
-            , inner_op_{
-                stdexec::connect(
-                    (sender_t&&)sender,
-                    stream_enqueue_receiver_t{
-                      this->make_env(), storage_.get(), task_, context_state.hub_->producer()})} {
-            if (this->status_ == cudaSuccess) {
-              this->status_ = task_->status_;
+          ~__t() {
+            if (!started_.test(::cuda::memory_order_relaxed)) {
+              if (task_) {
+                task_->free_(task_);
+              }
+            }
+
+            if (this->temp_storage_) {
+              this->context_state_.managed_resource_->deallocate(
+                  this->temp_storage_, inner_receiver_t::memory_allocation_size);
             }
           }
 
-        ~operation_state_t() {
-          if (!started_.test(::cuda::memory_order_relaxed)) {
-            if (task_) {
-              task_->free_(task_);
-            }
-          }
+          STDEXEC_IMMOVABLE(__t);
 
-          if (this->temp_storage_) {
-            this->context_state_.managed_resource_->deallocate(
-                this->temp_storage_, inner_receiver_t::memory_allocation_size);
-          }
-        }
+          queue::host_ptr<variant_t> storage_;
+          task_t *task_{};
+          ::cuda::std::atomic_flag started_;
 
-        STDEXEC_IMMOVABLE(operation_state_t);
-
-        queue::host_ptr<variant_t> storage_;
-        task_t *task_{};
-        ::cuda::std::atomic_flag started_;
-
-        inner_op_state_t inner_op_;
+          inner_op_state_t inner_op_;
+        };
       };
+
+    template <class SenderId, class InnerReceiverId, class OuterReceiverId>
+      using operation_state_t = stdexec::__t<operation_state_<SenderId, InnerReceiverId, OuterReceiverId>>;
 
     template <class Sender, class OuterReceiver>
         requires stream_receiver<OuterReceiver>

@@ -106,11 +106,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return stream;
     }
 
-    template <class SenderId>
-      struct sh_state_t : stdexec::__enable_intrusive_from_this<sh_state_t<SenderId>> {
-        using Sender = stdexec::__t<SenderId>;
+    template <class Sender>
+      struct sh_state_t : stdexec::__enable_intrusive_from_this<sh_state_t<Sender>> {
+        using SenderId = stdexec::__id<Sender>;
         using variant_t = variant_storage_t<Sender, env_t>;
-
         using inner_receiver_t = stdexec::__t<receiver_t<SenderId, sh_state_t>>;
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using enqueue_receiver_t = stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
@@ -199,96 +198,100 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       };
 
     template <class SenderId, class ReceiverId>
-      class operation_t : public operation_base_t
-                        , public operation_state_base_t<ReceiverId> {
-        using Sender = stdexec::__t<SenderId>;
-        using Receiver = stdexec::__t<ReceiverId>;
+      struct operation_t {
+        class __t : public operation_base_t
+                  , public operation_state_base_t<ReceiverId> {
+          using Sender = stdexec::__t<SenderId>;
+          using Receiver = stdexec::__t<ReceiverId>;
 
-        struct on_stop_requested {
-          stdexec::in_place_stop_source& stop_source_;
-          void operator()() noexcept {
-            stop_source_.request_stop();
-          }
-        };
-        using on_stop = std::optional<typename stdexec::stop_token_of_t<
-            stdexec::env_of_t<Receiver> &>::template callback_type<on_stop_requested>>;
-
-        on_stop on_stop_{};
-        stdexec::__intrusive_ptr<sh_state_t<SenderId>> shared_state_;
-
-      public:
-        operation_t(Receiver rcvr,
-                    stdexec::__intrusive_ptr<sh_state_t<SenderId>> shared_state)
-            noexcept(std::is_nothrow_move_constructible_v<Receiver>)
-          : operation_base_t{notify}
-          , operation_state_base_t<ReceiverId>((Receiver&&)rcvr, shared_state->context_state_, false)
-          , shared_state_(std::move(shared_state)) {
-        }
-
-        ~operation_t() {
-          // Check to see if this operation was ever started. If not,
-          // detach the (potentially still running) operation:
-          if (nullptr == shared_state_->op_state1_.load(std::memory_order_acquire)) {
-            shared_state_->detach();
-          }
-        }
-
-        STDEXEC_IMMOVABLE(operation_t);
-
-        static void notify(operation_base_t* self) noexcept {
-          operation_t *op = static_cast<operation_t*>(self);
-          op->on_stop_.reset();
-
-          cudaError_t& status = op->shared_state_->status_;
-
-          if (status == cudaSuccess) {
-            if constexpr (stream_sender<Sender>) {
-              status = STDEXEC_DBG_ERR(cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_));
+          struct on_stop_requested {
+            stdexec::in_place_stop_source& stop_source_;
+            void operator()() noexcept {
+              stop_source_.request_stop();
             }
+          };
+          using on_stop = std::optional<typename stdexec::stop_token_of_t<
+              stdexec::env_of_t<Receiver> &>::template callback_type<on_stop_requested>>;
 
-            visit([&](auto& tupl) noexcept -> void {
-              ::cuda::std::apply([&](auto tag, auto&... args) noexcept -> void {
-                op->propagate_completion_signal(tag, args...);
-              }, tupl);
-            }, *op->shared_state_->data_, op->shared_state_->index_);
-          } else { 
-            op->propagate_completion_signal(stdexec::set_error, std::move(status));
+          on_stop on_stop_{};
+          stdexec::__intrusive_ptr<sh_state_t<Sender>> shared_state_;
+
+        public:
+          using __id = operation_t;
+
+          __t(Receiver rcvr,
+              stdexec::__intrusive_ptr<sh_state_t<Sender>> shared_state)
+              noexcept(std::is_nothrow_move_constructible_v<Receiver>)
+            : operation_base_t{notify}
+            , operation_state_base_t<ReceiverId>((Receiver&&)rcvr, shared_state->context_state_, false)
+            , shared_state_(std::move(shared_state)) {
           }
-        }
 
-        friend void tag_invoke(stdexec::start_t, operation_t& self) noexcept {
-          sh_state_t<SenderId>* shared_state = self.shared_state_.get();
-          std::atomic<void*>& op_state1 = shared_state->op_state1_;
-          void* const completion_state = static_cast<void*>(shared_state);
-          void* const old = op_state1.load(std::memory_order_acquire);
-          if (old == completion_state) {
-            self.notify(&self);
-          } else {
-            // register stop callback:
-            self.on_stop_.emplace(
-                stdexec::get_stop_token(stdexec::get_env(self.receiver_)),
-                on_stop_requested{shared_state->stop_source_});
-            // Check if the stop_source has requested cancellation
-            if (shared_state->stop_source_.stop_requested()) {
-              // Stop has already been requested. Don't bother starting
-              // the child operations.
-              self.propagate_completion_signal(stdexec::set_stopped_t{});
+          ~__t() {
+            // Check to see if this operation was ever started. If not,
+            // detach the (potentially still running) operation:
+            if (nullptr == shared_state_->op_state1_.load(std::memory_order_acquire)) {
+              shared_state_->detach();
+            }
+          }
+
+          STDEXEC_IMMOVABLE(__t);
+
+          static void notify(operation_base_t* self) noexcept {
+            __t* op = static_cast<__t*>(self);
+            op->on_stop_.reset();
+
+            cudaError_t& status = op->shared_state_->status_;
+
+            if (status == cudaSuccess) {
+              if constexpr (stream_sender<Sender>) {
+                status = STDEXEC_DBG_ERR(cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_));
+              }
+
+              visit([&](auto& tupl) noexcept -> void {
+                ::cuda::std::apply([&](auto tag, auto&... args) noexcept -> void {
+                  op->propagate_completion_signal(tag, args...);
+                }, tupl);
+              }, *op->shared_state_->data_, op->shared_state_->index_);
+            } else { 
+              op->propagate_completion_signal(stdexec::set_error, std::move(status));
+            }
+          }
+
+          friend void tag_invoke(stdexec::start_t, __t& self) noexcept {
+            sh_state_t<Sender>* shared_state = self.shared_state_.get();
+            std::atomic<void*>& op_state1 = shared_state->op_state1_;
+            void* const completion_state = static_cast<void*>(shared_state);
+            void* const old = op_state1.load(std::memory_order_acquire);
+            if (old == completion_state) {
+              self.notify(&self);
             } else {
-              // Otherwise, the inner source hasn't notified completion.
-              // Set this operation as the op_state1 so it's notified.
-              void* old = nullptr;
-              if (!op_state1.compare_exchange_weak(
-                old, &self,
-                std::memory_order_release,
-                std::memory_order_acquire)) {
-                // We get here when the task completed during the execution
-                // of this function. Complete the operation synchronously.
-                STDEXEC_ASSERT(old == completion_state);
-                self.notify(&self);
+              // register stop callback:
+              self.on_stop_.emplace(
+                  stdexec::get_stop_token(stdexec::get_env(self.receiver_)),
+                  on_stop_requested{shared_state->stop_source_});
+              // Check if the stop_source has requested cancellation
+              if (shared_state->stop_source_.stop_requested()) {
+                // Stop has already been requested. Don't bother starting
+                // the child operations.
+                self.propagate_completion_signal(stdexec::set_stopped_t{});
+              } else {
+                // Otherwise, the inner source hasn't notified completion.
+                // Set this operation as the op_state1 so it's notified.
+                void* old = nullptr;
+                if (!op_state1.compare_exchange_weak(
+                  old, &self,
+                  std::memory_order_release,
+                  std::memory_order_acquire)) {
+                  // We get here when the task completed during the execution
+                  // of this function. Complete the operation synchronously.
+                  STDEXEC_ASSERT(old == completion_state);
+                  self.notify(&self);
+                }
               }
             }
           }
-        }
+        };
       };
     }
 
@@ -298,9 +301,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       struct __t : stream_sender_base {
         using __id = ensure_started_sender_t;
-        using sh_state_ = ensure_started::sh_state_t<SenderId>;
+        using sh_state_ = ensure_started::sh_state_t<Sender>;
         template <class Receiver>
-          using operation_t = ensure_started::operation_t<SenderId, stdexec::__id<std::remove_cvref_t<Receiver>>>;
+          using operation_t = 
+            stdexec::__t<
+              ensure_started::operation_t<SenderId, stdexec::__id<std::remove_cvref_t<Receiver>>>>;
 
         Sender sndr_;
         stdexec::__intrusive_ptr<sh_state_> shared_state_;
