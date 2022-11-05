@@ -78,50 +78,62 @@ namespace nvexec {
         using schedule_from_sender_th = stdexec::__t<schedule_from_sender_t<stream_scheduler, stdexec::__id<std::decay_t<Sender>>>>;
 
       template <class ReceiverId>
-        struct operation_state_t : operation_state_base_t<ReceiverId> {
+        struct operation_state_ {
           using Receiver = stdexec::__t<ReceiverId>;
 
-          cudaStream_t stream_{0};
-          cudaError_t status_{cudaSuccess};
+          struct __t : operation_state_base_t<ReceiverId> {
+            using __id = operation_state_;
 
-          operation_state_t(Receiver&& receiver, context_state_t context_state) 
-            : operation_state_base_t<ReceiverId>((Receiver&&)receiver, context_state, false) {
-          }
+            cudaStream_t stream_{0};
+            cudaError_t status_{cudaSuccess};
 
-          friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
-            op.propagate_completion_signal(stdexec::set_value);
-          }
+            __t(Receiver&& receiver, context_state_t context_state) 
+              : operation_state_base_t<ReceiverId>((Receiver&&)receiver, context_state, false) {
+            }
+
+            friend void tag_invoke(stdexec::start_t, __t& op) noexcept {
+              op.propagate_completion_signal(stdexec::set_value);
+            }
+          };
         };
 
-      struct sender_t : stream_sender_base {
-        using completion_signatures =
-          stdexec::completion_signatures<
-            stdexec::set_value_t(),
-            stdexec::set_error_t(cudaError_t)>;
+      template <class ReceiverId>
+        using operation_state_t = stdexec::__t<operation_state_<ReceiverId>>;
 
-        template <class R>
-          friend auto tag_invoke(stdexec::connect_t, const sender_t& self, R&& rec)
-            noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-            -> operation_state_t<stdexec::__id<std::remove_cvref_t<R>>> {
-            return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec, self.context_state_);
+      struct sender_ {
+        struct __t : stream_sender_base {
+          using __id = sender_;
+          using completion_signatures =
+            stdexec::completion_signatures<
+              stdexec::set_value_t(),
+              stdexec::set_error_t(cudaError_t)>;
+
+          template <class R>
+            friend auto tag_invoke(stdexec::connect_t, const __t& self, R&& rec)
+              noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
+              -> operation_state_t<stdexec::__id<std::remove_cvref_t<R>>> {
+              return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec, self.context_state_);
+            }
+
+          stream_scheduler make_scheduler() const {
+            return stream_scheduler{context_state_};
           }
 
-        stream_scheduler make_scheduler() const {
-          return stream_scheduler{context_state_};
-        }
+          template <class CPO>
+            friend stream_scheduler
+            tag_invoke(stdexec::get_completion_scheduler_t<CPO>, __t self) noexcept {
+              return self.make_scheduler();
+            }
 
-        template <class CPO>
-        friend stream_scheduler
-        tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender_t self) noexcept {
-          return self.make_scheduler();
-        }
+          __t(context_state_t context_state) noexcept
+            : context_state_(context_state) {
+          }
 
-        sender_t(context_state_t context_state) noexcept
-          : context_state_(context_state) {
-        }
-
-        context_state_t context_state_;
+          context_state_t context_state_;
+        };
       };
+
+      using sender_t = stdexec::__t<sender_>;
 
       template <stdexec::sender S>
         friend schedule_from_sender_th<S>
