@@ -958,6 +958,10 @@ namespace stdexec {
     using stop_token_of_t =
       remove_cvref_t<decltype(get_stop_token(__declval<_T>()))>;
 
+  template <receiver _Receiver>
+    using __current_scheduler_t =
+      __call_result_t<get_scheduler_t, env_of_t<_Receiver>>;
+
   template <class _SchedulerProvider>
     concept __scheduler_provider =
       requires (const _SchedulerProvider& __sp) {

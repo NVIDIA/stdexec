@@ -95,7 +95,7 @@ namespace exec {
           using __new_sender_t =
             decltype(__declval<__self_t<_Ts...>&>().transform_sender_(
               __declval<_Sender>(),
-              __declval<__call_result_t<get_scheduler_t, env_of_t<_Receiver>>>()));
+              __declval<__current_scheduler_t<_Receiver>>()));
 
         template <class _Sender>
           using __on_sender_t =
@@ -108,17 +108,24 @@ namespace exec {
                 env_of_t<_Receiver>, __on_sender_t<_Sender>>>;
 
         template <class _Sender, class _Receiver>
-            requires __valid<__new_sender_t, _Sender, _Receiver>
-          auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr)
-            -> __new_sender_t<_Sender, _Receiver> {
-            auto __sched = get_scheduler(stdexec::get_env(__rcvr));
-            return transform_sender_((_Sender&&) __sndr, __sched);
-          }
+          using __result_t =
+            __minvoke<
+              __if_c<
+                __valid<__new_sender_t, _Sender, _Receiver>,
+                __q<__new_sender_t>,
+                __q<__diagnostic_t>>,
+              _Sender,
+              _Receiver>;
 
         template <class _Sender, class _Receiver>
           auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr)
-            -> __diagnostic_t<_Sender, _Receiver> {
-            return {};
+            -> __result_t<_Sender, _Receiver> {
+            if constexpr (__valid<__new_sender_t, _Sender, _Receiver>) {
+              auto __sched = get_scheduler(stdexec::get_env(__rcvr));
+              return transform_sender_((_Sender&&) __sndr, __sched);
+            } else {
+              return {};
+            }
           }
       };
 
@@ -151,6 +158,9 @@ namespace exec {
           }
       };
 
+    template <class _SenderId, class _Scheduler, class _Closure>
+      struct __continue_on;
+
     template <class _Scheduler, class _Closure>
       struct __continue_on_kernel : __default_kernel {
         _Scheduler __sched_;
@@ -176,22 +186,37 @@ namespace exec {
           using __new_sender_t =
             decltype(__declval<__self_t<_Ts...>&>().transform_sender_(
               __declval<_Sender>(),
-              __declval<__call_result_t<get_scheduler_t, env_of_t<_Receiver>>>()));
+              __declval<__current_scheduler_t<_Receiver>>()));
+
+        template <class _Sender>
+          using __on_sender_t =
+            __member_t<_Sender, __continue_on<__pretty_print<decay_t<_Sender>>, _Scheduler, _Closure>>;
 
         template <class _Sender, class _Receiver>
-            requires __valid<__new_sender_t, _Sender, _Receiver>
+          using __diagnostic_t =
+            _FAILURE_TO_CONNECT_::_WHAT_<
+              _ENVIRONMENT_HAS_NO_SCHEDULER_FOR_THE_ON_ADAPTOR_TO_TRANSITION_BACK_TO<
+                env_of_t<_Receiver>, __on_sender_t<_Sender>>>;
+
+        template <class _Sender, class _Receiver>
+          using __result_t =
+            __minvoke<
+              __if_c<
+                __valid<__new_sender_t, _Sender, _Receiver>,
+                __q<__new_sender_t>,
+                __q<__diagnostic_t>>,
+              _Sender,
+              _Receiver>;
+
+        template <class _Sender, class _Receiver>
           auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr)
-              -> __new_sender_t<_Sender, _Receiver> {
-            auto __sched = get_scheduler(stdexec::get_env(__rcvr));
-            return transform_sender_((_Sender&&) __sndr, __sched);
-          }
-
-        template <class _Sender, class _Receiver>
-          auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr) {
-            using _SenderId =
-              __minvoke<__with_default<__id_<>, _Sender>, _Sender>;
-            return _FAILURE_TO_CONNECT_::_WHAT_<
-              _ENVIRONMENT_HAS_NO_SCHEDULER_FOR_THE_ON_ADAPTOR_TO_TRANSITION_BACK_TO<env_of_t<_Receiver>, _SenderId>>{};
+            -> __result_t<_Sender, _Receiver> {
+            if constexpr (__valid<__new_sender_t, _Sender, _Receiver>) {
+              auto __sched = get_scheduler(stdexec::get_env(__rcvr));
+              return transform_sender_((_Sender&&) __sndr, __sched);
+            } else {
+              return {};
+            }
           }
 
         template <class _Env>
