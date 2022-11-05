@@ -126,8 +126,10 @@ TEST_CASE("Test __start_until_nullable()", "[tail_sender]") {
   // an empty maybe_tail_sender arg is empty when returned
   int called = 0;
   CHECK(called == 0);
-  exec::maybe_tail_sender<ATailSender> maybe =
-    exec::__start_until_nullable(exec::maybe_tail_sender<ATailSender>{}, ATailReceiver{&called});
+  exec::maybe_tail_sender<ATailSender>
+    maybe = exec::__start_until_nullable(
+      exec::maybe_tail_sender<ATailSender>{},
+      ATailReceiver{&called});
   CHECK(called == 0);
   auto op0 = ex::connect(std::move(maybe), ATailReceiver{&called});
   CHECK(called == 0);
@@ -162,15 +164,18 @@ TEST_CASE("Test __start_until_nullable()", "[tail_sender]") {
 TEST_CASE("Test __start_next()", "[tail_sender]") {
   int called = 0;
   CHECK(called == 0);
-  auto maybe = exec::__start_next<exec::maybe_tail_sender<ATailSender>, ATailSender>(
-    exec::maybe_tail_sender<ATailSender>{ATailSender{}},
-    ANestTailReceiver<exec::maybe_tail_sender<ATailSender>>{ATailSender{}, &called});
-  CHECK(called == 0);
+  exec::__variant_tail_sender<
+      exec::__all_resumed_tail_sender,
+      exec::maybe_tail_sender<ATailSender>>
+    maybe = exec::__start_next<exec::maybe_tail_sender<ATailSender>, ATailSender>(
+      exec::maybe_tail_sender<ATailSender>{ATailSender{}},
+      ANestTailReceiver<exec::maybe_tail_sender<ATailSender>>{ATailSender{}, &called});
+  CHECK(called == 1);
   auto op1 = ex::connect(std::move(maybe), ATailReceiver{&called});
-  CHECK(called == 0);
+  CHECK(called == 1);
   CHECK(!!op1);
   ex::start(op1);
-  CHECK(called == 1);
+  CHECK(called == 2);
 
   // static_assert that this is infinite..
   // exec::__start_next<ATailSender, ATailSender>(ATailSender{ATailSender{}},
@@ -180,9 +185,12 @@ TEST_CASE("Test __start_next()", "[tail_sender]") {
 TEST_CASE("Test __start_sequential()", "[tail_sender]") {
   int called = 0;
   CHECK(called == 0);
-  exec::maybe_tail_sender<ATailSender> maybe = exec::__start_sequential(
-    exec::maybe_tail_sender<ATailSender>{ATailSender{}},
-    ANestTailReceiver<exec::maybe_tail_sender<ATailSender>>{ATailSender{}, &called});
+  exec::__variant_tail_sender<
+      exec::__all_resumed_tail_sender,
+      exec::maybe_tail_sender<ATailSender>>
+    maybe = exec::__start_sequential(
+      exec::maybe_tail_sender<ATailSender>{ATailSender{}},
+      ANestTailReceiver<exec::maybe_tail_sender<ATailSender>>{ATailSender{}, &called});
   CHECK(called == 1);
   auto op1 = ex::connect(std::move(maybe), ATailReceiver{&called});
   CHECK(called == 1);
@@ -213,4 +221,65 @@ TEST_CASE("Test __start_sequential()", "[tail_sender]") {
   // static_assert that this is infinite..
   // exec::__start_next<ATailSender, ATailSender>(ATailSender{ATailSender{}},
   //   ANestTailReceiver<ATailSender>{ATailSender{}, &called});
+}
+
+TEST_CASE("Test resume_tail_senders_until_one_remaining()", "[tail_sender]") {
+  int called = 0;
+  CHECK(called == 0);
+  exec::__variant_tail_sender<
+      exec::__all_resumed_tail_sender,
+      exec::__null_tail_sender,
+      exec::maybe_tail_sender<ATailSender>>
+    maybe = exec::resume_tail_senders_until_one_remaining(
+      ANestTailReceiver<exec::maybe_tail_sender<ATailSender>>{ATailSender{}, &called},
+      exec::maybe_tail_sender<ATailSender>{},
+      ATailSender{},
+      exec::__null_tail_sender{}
+    );
+  CHECK(called == 8);
+  auto op1 = ex::connect(std::move(maybe), ATailReceiver{&called});
+  CHECK(called == 8);
+  CHECK(!!op1);
+  ex::start(op1);
+  CHECK(called == 9);
+
+  called = 0;
+  CHECK(called == 0);
+  maybe = exec::resume_tail_senders_until_one_remaining(
+    ANestTailReceiver<exec::maybe_tail_sender<ATailSender>>{exec::maybe_tail_sender<ATailSender>{}, &called},
+    exec::maybe_tail_sender<ATailSender>{ATailSender{}},
+    ATailSender{},
+    exec::__null_tail_sender{}
+  );
+  CHECK(called == 2);
+  auto op2 = ex::connect(std::move(maybe), ATailReceiver{&called});
+  CHECK(called == 2);
+  CHECK(!op2);
+
+  called = 0;
+  CHECK(called == 0);
+  exec::__variant_tail_sender<exec::__all_resumed_tail_sender, exec::__null_tail_sender>
+    empty = exec::resume_tail_senders_until_one_remaining(
+      ANestTailReceiver<exec::__null_tail_sender>{exec::__null_tail_sender{}, &called},
+      exec::maybe_tail_sender<ATailSender>{ATailSender{}},
+      ATailSender{},
+      exec::__null_tail_sender{}
+    );
+  CHECK(called == 2);
+  auto op3 = ex::connect(std::move(empty), ATailReceiver{&called});
+  CHECK(called == 2);
+  CHECK(!op3);
+
+  called = 0;
+  CHECK(called == 0);
+  empty = exec::resume_tail_senders_until_one_remaining(
+    ANestTailReceiver<exec::__null_tail_sender>{exec::__null_tail_sender{}, &called},
+    exec::maybe_tail_sender<ATailSender>{},
+    ATailSender{},
+    exec::__null_tail_sender{}
+  );
+  CHECK(called == 1);
+  auto op4 = ex::connect(std::move(empty), ATailReceiver{&called});
+  CHECK(called == 1);
+  CHECK(!op4);
 }
