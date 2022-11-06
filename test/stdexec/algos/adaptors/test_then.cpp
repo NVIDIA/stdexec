@@ -159,15 +159,33 @@ TEST_CASE("then keeps sends_stopped from input sender", "[adaptors][then]") {
 }
 
 // Return a different sender when we invoke this custom defined on implementation
-using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-template <typename Fun>
-auto tag_invoke(ex::then_t, inline_scheduler sched, my_string_sender_t, Fun) {
+#if !STDEXEC_NVHPC()
+template <ex::sender_of<ex::set_value_t(std::string), empty_env> Sender, typename Fun>
+auto tag_invoke(ex::then_t, inline_scheduler sched, Sender, Fun) {
   return ex::just(std::string{"hallo"});
 }
+#else
+struct string_receiver {
+  friend void tag_invoke(ex::set_value_t, string_receiver, std::string) noexcept {}
+  friend empty_env tag_invoke(ex::get_env_t, string_receiver) noexcept { return {}; }
+};
+template <ex::sender_to<string_receiver> Sender, typename Fun>
+auto tag_invoke(ex::then_t, inline_scheduler sched, Sender, Fun) {
+  return ex::just(std::string{"hallo"});
+}
+#endif
 
 TEST_CASE("then can be customized", "[adaptors][then]") {
   // The customization will return a different value
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
              | ex::then([](std::string x) { return x + ", world"; });
+  wait_for_value(std::move(snd), std::string{"hallo"});
+}
+
+TEST_CASE("then can be customized late in connect", "[adaptors][then]") {
+  // The customization will return a different value
+  auto snd = ex::on(inline_scheduler{},
+                    ex::just(std::string{"hello"})
+                  | ex::then([](std::string x) { return x + ", world"; }));
   wait_for_value(std::move(snd), std::string{"hallo"});
 }

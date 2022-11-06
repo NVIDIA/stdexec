@@ -831,25 +831,7 @@ namespace stdexec {
         return stdexec::forward_progress_guarantee::weakly_parallel;
       }
     };
-
-    struct __has_algorithm_customizations_t {
-      template <class _T>
-        using __result_t =
-          tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
-      template <class _T>
-        requires tag_invocable<__has_algorithm_customizations_t, __cref_t<_T>>
-      constexpr __result_t<_T> operator()(_T&& __t) const noexcept(noexcept(__result_t<_T>{})) {
-        using _Bool = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
-        static_assert(_Bool{} ? true : true); // must be contextually convertible to bool
-        return _Bool{};
-      }
-      constexpr std::false_type operator()(auto&&) const noexcept {
-        return {};
-      }
-    };
   } // namespace __scheduler_queries
-  using __scheduler_queries::__has_algorithm_customizations_t;
-  inline constexpr __has_algorithm_customizations_t __has_algorithm_customizations{};
 
   using __scheduler_queries::get_forward_progress_guarantee_t;
   inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
@@ -944,23 +926,43 @@ namespace stdexec {
       }
       auto operator()() const noexcept;
     };
+
+    struct __use_connect_transform_t {
+      template <__none_of<no_env> _Env>
+        requires tag_invocable<__use_connect_transform_t, const _Env&>
+      constexpr std::true_type operator()(const _Env& __env) const noexcept {
+        return {};
+      }
+      template <__none_of<no_env> _Env>
+      constexpr std::false_type operator()(const _Env&) const noexcept {
+        return {};
+      }
+    };
   } // namespace __general_queries
   using __general_queries::get_allocator_t;
   using __general_queries::get_scheduler_t;
   using __general_queries::get_delegatee_scheduler_t;
   using __general_queries::get_stop_token_t;
+  using __general_queries::__use_connect_transform_t;
   inline constexpr get_scheduler_t get_scheduler{};
   inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
   inline constexpr get_allocator_t get_allocator{};
   inline constexpr get_stop_token_t get_stop_token{};
 
+  template <class _Env>
+    concept __try_connect_transform =
+      requires (const _Env& __env) {
+        { __use_connect_transform_t{}(__env) } -> __is_true;
+      };
+
   template <class _T>
     using stop_token_of_t =
       remove_cvref_t<decltype(get_stop_token(__declval<_T>()))>;
 
+  template <class _Env>
+    using __scheduler_of_t = __call_result_t<get_scheduler_t, _Env>;
   template <receiver _Receiver>
-    using __current_scheduler_t =
-      __call_result_t<get_scheduler_t, env_of_t<_Receiver>>;
+    using __current_scheduler_t = __scheduler_of_t<env_of_t<_Receiver>>;
 
   template <class _SchedulerProvider>
     concept __scheduler_provider =
@@ -1252,6 +1254,24 @@ namespace stdexec {
   namespace __connect {
     struct connect_t;
 
+    struct __connect_transform_t {
+      template <class _Scheduler, class _Sender, class _Receiver>
+          requires tag_invocable<__connect_transform_t, _Scheduler, _Sender, _Receiver>
+        auto operator()(_Scheduler&& __sched, _Sender&& __snd, _Receiver&& __rcvr) const
+          -> tag_invoke_result_t<__connect_transform_t, _Scheduler, _Sender, _Receiver> {
+          return tag_invoke(*this, (_Scheduler&&) __sched, (_Sender&&) __snd, (_Receiver&&) __rcvr);
+        }
+    };
+
+    template <class _Sender, class _Receiver>
+      concept __connect_transformable =
+        __try_connect_transform<env_of_t<_Receiver>> &&
+        __callable<
+          __connect_transform_t,
+          __current_scheduler_t<_Receiver>,
+          _Sender,
+          _Receiver>;
+
     template <class _Sender, class _Receiver>
       concept __connectable_with_tag_invoke =
         sender<_Sender, env_of_t<_Receiver>> &&
@@ -1270,12 +1290,28 @@ namespace stdexec {
 
       template <class _Sender, class _Receiver>
         requires
+          __connect_transformable<_Sender, _Receiver> || // NOT TO SPEC
           __connectable_with_tag_invoke<_Sender, _Receiver> ||
           __callable<__connect_awaitable_t, _Sender, _Receiver> ||
           tag_invocable<__is_debug_env_t, env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
           noexcept(__nothrow_connect<_Sender, _Receiver>()) {
-        if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
+        // BUGBUG NOT TO SPEC:
+        if constexpr (__connect_transformable<_Sender, _Receiver>) {
+          // We are connecting a sender within an on() expression.
+          // Use the current scheduler from the receiver to re-dispatch
+          // to a customized version of the algorithm.
+          using _Scheduler = __current_scheduler_t<_Receiver>;
+          static_assert(
+            operation_state<__call_result_t<__connect_transform_t, _Scheduler, _Sender, _Receiver>>,
+            "stdexec::connect(sender, receiver) must return a type that "
+            "satisfies the operation_state concept");
+          return tag_invoke(
+            __connect_transform_t{},
+            get_scheduler(get_env(__rcvr)),
+            (_Sender&&) __sndr,
+            (_Receiver&&) __rcvr);
+        } else if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
             "stdexec::connect(sender, receiver) must return a type that "
@@ -1299,6 +1335,7 @@ namespace stdexec {
 
   using __connect::connect_t;
   inline constexpr __connect::connect_t connect {};
+  using __connect::__connect_transform_t;
 
   template <class _Sender, class _Receiver>
     using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
@@ -1306,6 +1343,11 @@ namespace stdexec {
   template <class _Sender, class _Receiver>
     concept __nothrow_connectable =
       noexcept(connect(__declval<_Sender>(), __declval<_Receiver>()));
+
+  template <class _Env>
+      requires __try_connect_transform<_Env>
+    using __connect_transform_scheduler_t =
+      __scheduler_of_t<_Env>;
 
   ////////////////////////////////////////////////////////////////////////////
   // `__debug_sender`
@@ -2270,6 +2312,8 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
+    struct then_t;
+
     template <class _ReceiverId, class _Fun>
       struct __receiver {
         using _Receiver = stdexec::__t<_ReceiverId>;
@@ -2361,13 +2405,39 @@ namespace stdexec {
             };
           }
 
-          template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> dependent_completion_signatures<_Env>;
+          template <class _Self, class _Scheduler>
+              requires tag_invocable<then_t, _Scheduler, __member_t<_Self, _Sender>, __member_t<_Self, _Fun>>
+            using __connect_transform_sender_t =
+              tag_invoke_result_t<then_t, _Scheduler, __member_t<_Self, _Sender>, __member_t<_Self, _Fun>>;
+
+          // NOT TO SPEC
+          template <scheduler _Scheduler, __decays_to<__t> _Self, receiver _Receiver, class _Tag = then_t>
+            requires sender_to<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver>
+          friend auto tag_invoke(__connect_transform_t, _Scheduler __sched, _Self&& __self, _Receiver __rcvr)
+            -> connect_result_t<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver> {
+            return connect(
+              tag_invoke(
+                _Tag{},
+                (_Scheduler&&) __sched,
+                ((_Self&&) __self).__sndr_,
+                ((_Self&&) __self).__fun_),
+              (_Receiver&&) __rcvr);
+          }
+
+          template <__decays_to<__t> _Self>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, no_env)
+            -> dependent_completion_signatures<no_env>;
 
           template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> __completion_signatures<_Self, _Env> requires true;
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+            -> __completion_signatures<_Self, _Env>;
+
+          template <__decays_to<__t> _Self, class _Env>
+            requires __try_connect_transform<_Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+            -> completion_signatures_of_t<
+                __connect_transform_sender_t<_Self, __scheduler_of_t<_Env>>,
+                _Env>;
 
           // forward sender queries:
           template <tag_category<forwarding_sender_query> _Tag, class... _As>
@@ -2386,16 +2456,18 @@ namespace stdexec {
 
       template <sender _Sender, __movable_value _Fun>
         requires __tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>
-      sender auto operator()(_Sender&& __sndr, _Fun __fun) const
-        noexcept(nothrow_tag_invocable<then_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Fun>) {
+      auto operator()(_Sender&& __sndr, _Fun __fun) const
+        noexcept(nothrow_tag_invocable<then_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Fun>)
+        -> tag_invoke_result_t<then_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Fun> {
         auto __sched = get_completion_scheduler<set_value_t>(__sndr);
         return tag_invoke(then_t{}, std::move(__sched), (_Sender&&) __sndr, (_Fun&&) __fun);
       }
       template <sender _Sender, __movable_value _Fun>
         requires (!__tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>) &&
           tag_invocable<then_t, _Sender, _Fun>
-      sender auto operator()(_Sender&& __sndr, _Fun __fun) const
-        noexcept(nothrow_tag_invocable<then_t, _Sender, _Fun>) {
+      auto operator()(_Sender&& __sndr, _Fun __fun) const
+        noexcept(nothrow_tag_invocable<then_t, _Sender, _Fun>)
+        -> tag_invoke_result_t<then_t, _Sender, _Fun> {
         return tag_invoke(then_t{}, (_Sender&&) __sndr, (_Fun&&) __fun);
       }
       template <sender _Sender, __movable_value _Fun>
@@ -2418,6 +2490,8 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_error]
   namespace __upon_error {
+    struct upon_error_t;
+
     template <class _ReceiverId, class _Fun>
       struct __receiver {
         using _Receiver = stdexec::__t<_ReceiverId>;
@@ -2480,12 +2554,39 @@ namespace stdexec {
                 __receiver<_Receiver>{(_Receiver&&) __rcvr, ((_Self&&) __self).__fun_});
           }
 
+          template <class _Self, class _Scheduler>
+              requires tag_invocable<upon_error_t, _Scheduler, __member_t<_Self, _Sender>, __member_t<_Self, _Fun>>
+            using __connect_transform_sender_t =
+              tag_invoke_result_t<upon_error_t, _Scheduler, __member_t<_Self, _Sender>, __member_t<_Self, _Fun>>;
+
+          // NOT TO SPEC
+          template <scheduler _Scheduler, __decays_to<__sender> _Self, receiver _Receiver, class _Tag = upon_error_t>
+            requires sender_to<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver>
+          friend auto tag_invoke(__connect_transform_t, _Scheduler __sched, _Self&& __self, _Receiver __rcvr)
+            -> connect_result_t<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver> {
+            return connect(
+              tag_invoke(
+                _Tag{},
+                (_Scheduler&&) __sched,
+                ((_Self&&) __self).__sndr_,
+                ((_Self&&) __self).__fun_),
+              (_Receiver&&) __rcvr);
+          }
+
+          template <__decays_to<__t> _Self>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, no_env)
+            -> dependent_completion_signatures<no_env>;
+
           template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> dependent_completion_signatures<_Env>;
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+            -> __completion_signatures<_Self, _Env>;
+
           template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> __completion_signatures<_Self, _Env> requires true;
+            requires __try_connect_transform<_Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+            -> completion_signatures_of_t<
+                __connect_transform_sender_t<_Self, __scheduler_of_t<_Env>>,
+                _Env>;
 
           template <tag_category<forwarding_sender_query> _Tag, class _Error>
             requires __callable<_Tag, const _Sender&, _Error>
@@ -2535,6 +2636,8 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_stopped]
   namespace __upon_stopped {
+    struct upon_stopped_t;
+
     template <class _ReceiverId, class _Fun>
       struct __receiver {
         using _Receiver = stdexec::__t<_ReceiverId>;
@@ -2594,12 +2697,39 @@ namespace stdexec {
                 __receiver<_Receiver>{(_Receiver&&) __rcvr, ((_Self&&) __self).__fun_});
           }
 
+          template <class _Self, class _Scheduler>
+              requires tag_invocable<upon_stopped_t, _Scheduler, __member_t<_Self, _Sender>, __member_t<_Self, _Fun>>
+            using __connect_transform_sender_t =
+              tag_invoke_result_t<upon_stopped_t, _Scheduler, __member_t<_Self, _Sender>, __member_t<_Self, _Fun>>;
+
+          // NOT TO SPEC
+          template <scheduler _Scheduler, __decays_to<__sender> _Self, receiver _Receiver, class _Tag = upon_stopped_t>
+            requires sender_to<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver>
+          friend auto tag_invoke(__connect_transform_t, _Scheduler __sched, _Self&& __self, _Receiver __rcvr)
+            -> connect_result_t<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver> {
+            return connect(
+              tag_invoke(
+                _Tag{},
+                (_Scheduler&&) __sched,
+                ((_Self&&) __self).__sndr_,
+                ((_Self&&) __self).__fun_),
+              (_Receiver&&) __rcvr);
+          }
+
+          template <__decays_to<__t> _Self>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, no_env)
+            -> dependent_completion_signatures<no_env>;
+
           template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> dependent_completion_signatures<_Env>;
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+            -> __completion_signatures<_Self, _Env>;
+
           template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> __completion_signatures<_Self, _Env> requires true;
+            requires __try_connect_transform<_Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+            -> completion_signatures_of_t<
+                __connect_transform_sender_t<_Self, __scheduler_of_t<_Env>>,
+                _Env>;
 
           template <tag_category<forwarding_sender_query> _Tag>
             requires __callable<_Tag, const _Sender&>
@@ -2650,6 +2780,8 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.bulk]
   namespace __bulk {
+    struct bulk_t;
+
     template <class _ReceiverId, integral _Shape, class _Fun>
       struct __receiver {
         using _Receiver = stdexec::__t<_ReceiverId>;
@@ -2737,13 +2869,40 @@ namespace stdexec {
                   ((_Self&&) __self).__fun_});
           }
 
-          template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> dependent_completion_signatures<_Env>;
+          template <class _Self, class _Scheduler>
+              requires tag_invocable<bulk_t, _Scheduler, __member_t<_Self, _Sender>, _Shape, __member_t<_Self, _Fun>>
+            using __connect_transform_sender_t =
+              tag_invoke_result_t<bulk_t, _Scheduler, __member_t<_Self, _Sender>, _Shape, __member_t<_Self, _Fun>>;
+
+          // NOT TO SPEC
+          template <scheduler _Scheduler, __decays_to<__sender> _Self, receiver _Receiver, class _Tag = bulk_t>
+            requires sender_to<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver>
+          friend auto tag_invoke(__connect_transform_t, _Scheduler __sched, _Self&& __self, _Receiver __rcvr)
+            -> connect_result_t<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver> {
+            return connect(
+              tag_invoke(
+                _Tag{},
+                (_Scheduler&&) __sched,
+                ((_Self&&) __self).__sndr_,
+                __self.__shape_,
+                ((_Self&&) __self).__fun_),
+              (_Receiver&&) __rcvr);
+          }
+
+          template <__decays_to<__t> _Self>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, no_env)
+            -> dependent_completion_signatures<no_env>;
 
           template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> __completion_signatures<_Self, _Env> requires true;
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+            -> __completion_signatures<_Self, _Env>;
+
+          template <__decays_to<__t> _Self, class _Env>
+            requires __try_connect_transform<_Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+            -> completion_signatures_of_t<
+                __connect_transform_sender_t<_Self, __scheduler_of_t<_Env>>,
+                _Env>;
 
           template <tag_category<forwarding_sender_query> _Tag, class... _As>
             requires __callable<_Tag, const _Sender&, _As...>
@@ -3487,14 +3646,14 @@ namespace stdexec {
           __mbind_back_q<connect_result_t, _Receiver>,
           __result_sender<_Fun>>;
 
-    template <class _Set, class _Sig>
+    template <class _SetTag, class _Sig>
       struct __tfx_signal_ {
         template <class, class>
           using __f = completion_signatures<_Sig>;
       };
 
-    template <class _Set, class... _Args>
-      struct __tfx_signal_<_Set, _Set(_Args...)> {
+    template <class _SetTag, class... _Args>
+      struct __tfx_signal_<_SetTag, _SetTag(_Args...)> {
         template <class _Env, class _Fun>
           using __f =
             make_completion_signatures<
@@ -3504,9 +3663,9 @@ namespace stdexec {
               completion_signatures<set_error_t(std::exception_ptr)>>;
       };
 
-    template <class _Env, class _Fun, class _Set, class _Sig>
+    template <class _Env, class _Fun, class _SetTag, class _Sig>
       using __tfx_signal_t =
-        __minvoke<__tfx_signal_<_Set, _Sig>, _Env, _Fun>;
+        __minvoke<__tfx_signal_<_SetTag, _Sig>, _Env, _Fun>;
 
     template <class _ReceiverId, class _Fun, class _Let, class... _Tuples>
       struct __operation_base_ {
@@ -3609,10 +3768,10 @@ namespace stdexec {
         };
       };
 
-    template <class _SenderId, class _Fun, class _SetId>
+    template <class _SenderId, class _Fun, class _LetTag>
       struct __sender {
         using _Sender = stdexec::__t<_SenderId>;
-        using _Set = stdexec::__t<_SetId>;
+        using _SetTag = stdexec::__t<_LetTag>;
 
         struct __t {
           using __id = __sender;
@@ -3623,20 +3782,20 @@ namespace stdexec {
                 stdexec::__id<__member_t<_Self, _Sender>>,
                 stdexec::__id<_Receiver>,
                 _Fun,
-                _Set>>;
+                _SetTag>>;
           template <class _Self, class _Receiver>
             using __receiver_t =
               __receiver<
                 stdexec::__id<__member_t<_Self, _Sender>>,
                 stdexec::__id<_Receiver>,
                 _Fun,
-                _Set>;
+                _SetTag>;
 
           template <class _Sender, class _Env>
             using __completions =
               __mapply<
                 __transform<
-                  __mbind_front_q<__tfx_signal_t, _Env, _Fun, _Set>,
+                  __mbind_front_q<__tfx_signal_t, _Env, _Fun, _SetTag>,
                   __q<__concat_completion_signatures_t>>,
                 completion_signatures_of_t<_Sender, _Env>>;
 
@@ -3652,6 +3811,40 @@ namespace stdexec {
               };
             }
 
+          template <class _Self, class _Scheduler>
+              requires tag_invocable<_LetTag, _Scheduler, __member_t<_Self, _Sender>, __member_t<_Self, _Fun>>
+            using __connect_transform_sender_t =
+              tag_invoke_result_t<_LetTag, _Scheduler, __member_t<_Self, _Sender>, __member_t<_Self, _Fun>>;
+
+          // NOT TO SPEC
+          template <scheduler _Scheduler, __decays_to<__sender> _Self, receiver _Receiver, class _Tag = _LetTag>
+            requires sender_to<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver>
+          friend auto tag_invoke(__connect_transform_t, _Scheduler __sched, _Self&& __self, _Receiver __rcvr)
+            -> connect_result_t<__connect_transform_sender_t<_Self, _Scheduler>, _Receiver> {
+            return connect(
+              tag_invoke(
+                _Tag{},
+                (_Scheduler&&) __sched,
+                ((_Self&&) __self).__sndr_,
+                ((_Self&&) __self).__fun_),
+              (_Receiver&&) __rcvr);
+          }
+
+          template <__decays_to<__t> _Self>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, no_env)
+              -> dependent_completion_signatures<no_env>;
+
+          template <__decays_to<__t> _Self, class _Env>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+              -> __completions<__member_t<_Self, _Sender>, _Env>;
+
+          template <__decays_to<__t> _Self, class _Env>
+            requires __try_connect_transform<_Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+            -> completion_signatures_of_t<
+                __connect_transform_sender_t<_Self, __scheduler_of_t<_Env>>,
+                _Env>;
+
           template <tag_category<forwarding_sender_query> _Tag, class... _As>
               requires __callable<_Tag, const _Sender&, _As...>
             friend auto tag_invoke(_Tag __tag, const __t& __self, _As&&... __as)
@@ -3659,13 +3852,6 @@ namespace stdexec {
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
-
-          template <__decays_to<__t> _Self, class _Env>
-            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-              -> dependent_completion_signatures<_Env>;
-          template <__decays_to<__t> _Self, class _Env>
-            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-              -> __completions<__member_t<_Self, _Sender>, _Env> requires true;
 
           _Sender __sndr_;
           _Fun __fun_;
@@ -3706,15 +3892,15 @@ namespace stdexec {
       };
 
     struct let_value_t
-      : __let::__let_xxx_t<let_value_t, set_value_t>
+      : __let_xxx_t<let_value_t, set_value_t>
     {};
 
     struct let_error_t
-      : __let::__let_xxx_t<let_error_t, set_error_t>
+      : __let_xxx_t<let_error_t, set_error_t>
     {};
 
     struct let_stopped_t
-      : __let::__let_xxx_t<let_stopped_t, set_stopped_t>
+      : __let_xxx_t<let_stopped_t, set_stopped_t>
     {};
   } // namespace __let
   using __let::let_value_t;
@@ -4306,18 +4492,22 @@ namespace stdexec {
         };
       };
 
+    template <class _Scheduler, class _Sender>
+      using __sender_t =
+        __t<__sender<__id<_Scheduler>, __id<decay_t<_Sender>>>>;
+
     struct schedule_from_t {
       template <scheduler _Scheduler, sender _Sender>
         requires tag_invocable<schedule_from_t, _Scheduler, _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
+      auto operator()(_Scheduler __sched, _Sender&& __sndr) const
         noexcept(nothrow_tag_invocable<schedule_from_t, _Scheduler, _Sender>)
         -> tag_invoke_result_t<schedule_from_t, _Scheduler, _Sender> {
         return tag_invoke(*this, (_Scheduler&&) __sched, (_Sender&&) __sndr);
       }
 
       template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
-        -> stdexec::__t<__sender<stdexec::__id<decay_t<_Scheduler>>, stdexec::__id<decay_t<_Sender>>>> {
+      auto operator()(_Scheduler __sched, _Sender&& __sndr) const
+        -> __sender_t<_Scheduler, _Sender> {
         return {(_Scheduler&&) __sched, (_Sender&&) __sndr};
       }
     };
@@ -4328,11 +4518,82 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.transfer]
   namespace __transfer {
+    struct transfer_t;
+
+    template <class _SenderId, class _SchedulerId>
+      struct __sender {
+        using _Sender = stdexec::__t<_SenderId>;
+        using _Scheduler = stdexec::__t<_SchedulerId>;
+        template <class _Self>
+          using __schedule_from_sender_t =
+            decltype(schedule_from(
+              __declval<_Scheduler>(),
+              __declval<__member_t<_Self, _Sender>>()));
+
+        struct __t {
+          using __id = __sender;
+
+          _Sender __sndr_;
+          _Scheduler __sched_;
+
+          template <__decays_to<__t> _Self, receiver _Receiver>
+              requires sender_to<__schedule_from_sender_t<_Self>, _Receiver>
+            friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+              -> connect_result_t<__schedule_from_sender_t<_Self>, _Receiver> {
+              return connect(
+                schedule_from(((_Self&&) __self).__sched_, ((_Self&&) __self).__sndr_),
+                (_Receiver&&) __rcvr);
+            }
+
+          template <class _Self, class _Sched>
+              requires tag_invocable<transfer_t, _Sched, __member_t<_Self, _Sender>, __member_t<_Self, _Scheduler>>
+            using __connect_transform_sender_t =
+              tag_invoke_result_t<transfer_t, _Sched, __member_t<_Self, _Sender>, __member_t<_Self, _Scheduler>>;
+
+          template <scheduler _Sched, __decays_to<__t> _Self, receiver _Receiver, class _Tag = transfer_t>
+              requires sender_to<__connect_transform_sender_t<_Self, _Sched>, _Receiver>
+            friend auto tag_invoke(__connect_transform_t, _Sched __sched, _Self&& __self, _Receiver __rcvr)
+              -> connect_result_t<__connect_transform_sender_t<_Self, _Sched>, _Receiver> {
+              return connect(
+                tag_invoke(
+                  _Tag{},
+                  (_Sched&&) __sched,
+                  ((_Self&&) __self).__sndr_,
+                  ((_Self&&) __self).__sched_),
+                (_Receiver&&) __rcvr);
+            }
+
+          template <__decays_to<__t> _Self>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, no_env)
+              -> dependent_completion_signatures<no_env>;
+
+          template <__decays_to<__t> _Self, class _Env>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+              -> completion_signatures_of_t<__schedule_from_sender_t<_Self>, _Env>;
+
+          template <__decays_to<__t> _Self, class _Env>
+              requires __try_connect_transform<_Env>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+              -> completion_signatures_of_t<
+                  __connect_transform_sender_t<_Self, __scheduler_of_t<_Env>>,
+                  _Env>;
+
+          template <__one_of<set_value_t, set_stopped_t> _Tag>
+            friend _Scheduler tag_invoke(get_completion_scheduler_t<_Tag>, const __t& __self) noexcept {
+              return __self.__sched_;
+            }
+        };
+      };
+
+    template <class _Sender, class _Scheduler>
+      using __sender_t =
+        __t<__sender<__id<decay_t<_Sender>>, __id<_Scheduler>>>;
+
     struct transfer_t {
       template <sender _Sender, scheduler _Scheduler>
         requires __tag_invocable_with_completion_scheduler<transfer_t, set_value_t, _Sender, _Scheduler>
       tag_invoke_result_t<transfer_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Scheduler>
-      operator()(_Sender&& __sndr, _Scheduler&& __sched) const
+      operator()(_Sender&& __sndr, _Scheduler __sched) const
         noexcept(nothrow_tag_invocable<transfer_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Scheduler>) {
         auto csch = get_completion_scheduler<set_value_t>(__sndr);
         return tag_invoke(transfer_t{}, std::move(csch), (_Sender&&) __sndr, (_Scheduler&&) __sched);
@@ -4341,15 +4602,14 @@ namespace stdexec {
         requires (!__tag_invocable_with_completion_scheduler<transfer_t, set_value_t, _Sender, _Scheduler>) &&
           tag_invocable<transfer_t, _Sender, _Scheduler>
       tag_invoke_result_t<transfer_t, _Sender, _Scheduler>
-      operator()(_Sender&& __sndr, _Scheduler&& __sched) const noexcept(nothrow_tag_invocable<transfer_t, _Sender, _Scheduler>) {
+      operator()(_Sender&& __sndr, _Scheduler __sched) const noexcept(nothrow_tag_invocable<transfer_t, _Sender, _Scheduler>) {
         return tag_invoke(transfer_t{}, (_Sender&&) __sndr, (_Scheduler&&) __sched);
       }
-      // NOT TO SPEC: permit non-typed senders:
       template <sender _Sender, scheduler _Scheduler>
         requires (!__tag_invocable_with_completion_scheduler<transfer_t, set_value_t, _Sender, _Scheduler>) &&
           (!tag_invocable<transfer_t, _Sender, _Scheduler>)
-      auto operator()(_Sender&& __sndr, _Scheduler&& __sched) const {
-        return schedule_from((_Scheduler&&) __sched, (_Sender&&) __sndr);
+      __sender_t<_Sender, _Scheduler> operator()(_Sender&& __sndr, _Scheduler __sched) const {
+        return {(_Sender&&) __sndr, (_Scheduler&&) __sched};
       }
       template <scheduler _Scheduler>
       __binder_back<transfer_t, decay_t<_Scheduler>> operator()(_Scheduler&& __sched) const {
@@ -4383,9 +4643,13 @@ namespace stdexec {
               return __op_state_->__rcvr_;
             }
             auto get_env() const
-              -> __make_env_t<env_of_t<_Receiver>, __with_t<get_scheduler_t, _Scheduler>> {
+              -> __make_env_t<
+                  env_of_t<_Receiver>,
+                  __with_t<__use_connect_transform_t, __>,
+                  __with_t<get_scheduler_t, _Scheduler>> {
               return __make_env(
                 stdexec::get_env(this->base()),
+                __with(__use_connect_transform_t{}, __{}),
                 __with(get_scheduler, __op_state_->__scheduler_));
             }
           };
@@ -4529,16 +4793,9 @@ namespace stdexec {
       }
 
       template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
-        -> __t<__impl::__sender<stdexec::__id<decay_t<_Scheduler>>,
+      auto operator()(_Scheduler __sched, _Sender&& __sndr) const
+        -> __t<__impl::__sender<stdexec::__id<_Scheduler>,
                                 stdexec::__id<decay_t<_Sender>>>> {
-        // connect-based customization will remove the need for this check
-        using __has_customizations =
-          __call_result_t<__has_algorithm_customizations_t, _Scheduler>;
-        static_assert(
-          !__has_customizations{},
-          "For now the default stdexec::on implementation doesn't support scheduling "
-          "onto schedulers that customize algorithms.");
         return {(_Scheduler&&) __sched, (_Sender&&) __sndr};
       }
     };
@@ -4653,9 +4910,11 @@ namespace stdexec {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
 
+          friend auto tag_invoke(get_completion_signatures_t, __t&&, no_env)
+            -> dependent_completion_signatures<no_env>;
           template <class _Env>
-            friend auto tag_invoke(get_completion_signatures_t, __t&&, _Env) ->
-              __compl_sigs<_Env>;
+            friend auto tag_invoke(get_completion_signatures_t, __t&&, _Env)
+              -> __compl_sigs<_Env>;
 
          public:
           using __id = __sender;
@@ -4668,8 +4927,8 @@ namespace stdexec {
     struct into_variant_t {
       template <sender _Sender>
         auto operator()(_Sender&& __sndr) const
-          -> __t<__sender<stdexec::__id<remove_cvref_t<_Sender>>>> {
-          return __t<__sender<stdexec::__id<remove_cvref_t<_Sender>>>>{(_Sender&&) __sndr};
+          -> __t<__sender<stdexec::__id<decay_t<_Sender>>>> {
+          return __t<__sender<stdexec::__id<decay_t<_Sender>>>>{(_Sender&&) __sndr};
         }
       auto operator()() const noexcept {
         return __binder_back<into_variant_t>{};
@@ -5105,11 +5364,10 @@ namespace stdexec {
           return {{}, (_Receiver&&) __rcvr};
         }
 
+        friend auto tag_invoke(get_completion_signatures_t, __sender, no_env)
+          -> dependent_completion_signatures<no_env>;
         template <class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, __sender, _Env)
-            -> dependent_completion_signatures<_Env>;
-        template <__none_of<no_env> _Env>
-          friend auto tag_invoke(get_completion_signatures_t, __sender, _Env)
+          friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
             -> __completions_t<_Env>;
       };
 

@@ -12,12 +12,12 @@ struct simple_range {
 };
 
 template <class Iterator>
-auto begin(simple_range<Iterator>& rng) {
+auto begin(simple_range<Iterator> rng) {
   return rng.first;
 }
 
 template <class Iterator>
-auto end(simple_range<Iterator>& rng) {
+auto end(simple_range<Iterator> rng) {
   return rng.last;
 }
 

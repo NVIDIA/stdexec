@@ -133,7 +133,7 @@ namespace stdexec {
     concept __decays_to =
       same_as<decay_t<_T>, _U>;
 
-  template <class>
+  template <class...>
     concept __true = true;
 
   template <class _C>

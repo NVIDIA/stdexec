@@ -209,10 +209,6 @@ namespace nvexec {
         return {self.context_state_};
       }
 
-      friend std::true_type tag_invoke(stdexec::__has_algorithm_customizations_t, const stream_scheduler& self) noexcept {
-        return {};
-      }
-
       template <stdexec::sender S>
         friend auto
         tag_invoke(stdexec::this_thread::sync_wait_t, const stream_scheduler& self, S&& sndr) {

@@ -42,6 +42,13 @@ namespace exec {
         }
       };
 
+    template <class _Env>
+      struct __with_connect_transform_env : _Env {
+        friend std::true_type tag_invoke(__use_connect_transform_t, const __with_connect_transform_env&) noexcept {
+          return {};
+        }
+      };
+
     template <class _Scheduler>
       struct __with_sched_kernel : __default_kernel {
         _Scheduler __sched_;
@@ -127,6 +134,11 @@ namespace exec {
               return {};
             }
           }
+
+        template <class _Env>
+          __with_connect_transform_env<_Env> get_env(_Env __env) {
+            return {(_Env&&) __env};
+          }
       };
 
     template <class _SenderId, class _Scheduler>
@@ -147,13 +159,6 @@ namespace exec {
             requires constructible_from<decay_t<_Sender>, _Sender>
           auto operator()(_Scheduler __sched, _Sender&& __sndr) const
             -> __start_on_t<_Sender, _Scheduler> {
-            // connect-based customization will remove the need for this check
-            using __has_customizations =
-              __call_result_t<__has_algorithm_customizations_t, _Scheduler>;
-            static_assert(
-              !__has_customizations{},
-              "For now the default exec::on implementation doesn't support scheduling "
-              "onto schedulers that customize algorithms.");
             return {(_Sender&&) __sndr, (_Scheduler&&) __sched};
           }
       };

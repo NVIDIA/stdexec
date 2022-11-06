@@ -91,3 +91,16 @@ type alias `__id` that is an alias for the enclosing class template.
 When these guidelines are followed, we can ensure that the minimum number
 of class templates are instantiated, and the types of composite senders
 remains short, uncluttered, and readable.
+
+## Assorted tips and tricks
+
+* Data, including downstream receivers, are best stored in the operation
+  state. Receivers themselves should, in general, store nothing but a
+  pointer back to the operation state.
+* Assume that schedulers and receivers contain nothing but a pointer and
+  are cheap to copy. Take them by value.
+* All `tag_invoke` overloads _must_ be constrained.
+* Place concept checks on public interfaces. Only place concept checks
+  on implementation details if needed for correctness; otherwise, leave
+  them unconstrained. Use `static_assert` if you must, but don't bother
+  rechecking things that were already checked at the public interface.

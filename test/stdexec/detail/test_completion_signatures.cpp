@@ -82,12 +82,12 @@ TEST_CASE(
   using err_types_eptr = stdexec::__error_types_of_t<snd_eptr_t>;
   using err_types_ec = stdexec::__error_types_of_t<snd_ec_t>;
   using err_types_str = stdexec::__error_types_of_t<snd_str_t>;
-  using err_types_tr_just = stdexec::__error_types_of_t<snd_tr_just_t>;
+  using dep_types_tr_just = stdexec::completion_signatures_of_t<snd_tr_just_t>;
 
   static_assert(is_same_v<err_types_eptr, variant<exception_ptr>>);
   static_assert(is_same_v<err_types_ec, variant<error_code>>);
   static_assert(is_same_v<err_types_str, variant<string>>);
-  static_assert(is_same_v<err_types_tr_just, variant<exception_ptr>>);
+  static_assert(is_same_v<dep_types_tr_just, stdexec::dependent_completion_signatures<stdexec::no_env>>);
 }
 
 TEST_CASE("__error_types_of_t can also transform error types", "[detail][completion_signatures]") {
@@ -250,9 +250,9 @@ using my_error_types = Variant<exception_ptr>;
 
 TEST_CASE("error_types_of_t can be used to get error types",
     "[detail][completion_signatures]") {
-  using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
+  using snd_t = decltype(ex::just_error(1));
   using err_t = ex::error_types_of_t<snd_t, ex::no_env, stdexec::__types>;
-  static_assert(is_same_v<err_t, stdexec::__types<>>);
+  static_assert(is_same_v<err_t, stdexec::__types<int>>);
 }
 
 TEST_CASE(
@@ -260,8 +260,8 @@ TEST_CASE(
     "[detail][completion_signatures]") {
   using tr = stdexec::__transform<stdexec::__q<set_error_sig>>;
 
-  using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
+  using snd_t = decltype(ex::just_error(1));
   using err_t =
       ex::error_types_of_t<snd_t, ex::no_env, tr::template __f>;
-  static_assert(is_same_v<err_t, stdexec::__types<>>);
+  static_assert(is_same_v<err_t, stdexec::__types<ex::set_error_t(int)>>);
 }

@@ -244,7 +244,10 @@ TEST_CASE("sync_wait can be customized without scheduler", "[consumers][sync_wai
 using multi_value_impl_t = decltype(fallible_just{std::string{}} | ex::let_error(always(ex::just(0))));
 struct my_multi_value_sender_t {
   std::string str_;
-  using completion_signatures = ex::completion_signatures_of_t<multi_value_impl_t>;
+  using completion_signatures =
+    ex::completion_signatures<
+      ex::set_value_t(std::string),
+      ex::set_value_t(int)>;
 
   template <class Recv>
   friend auto tag_invoke(ex::connect_t, my_multi_value_sender_t&& self, Recv&& recv) {
@@ -276,7 +279,6 @@ optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> tag
 TEST_CASE("sync_wait_with_variant can be customized with scheduler", "[consumers][sync_wait_with_variant]") {
   // The customization will return a different value
   auto snd = ex::transfer(my_multi_value_sender_t{"hello_multi"}, inline_scheduler{});
-  auto snd2 = ex::transfer_just(inline_scheduler{}, std::string{"hello"});
   optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> res = sync_wait_with_variant(std::move(snd));
   CHECK(res.has_value());
   CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(std::string{"hallo_multi"}));
