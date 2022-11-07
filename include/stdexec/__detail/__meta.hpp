@@ -66,6 +66,11 @@ namespace stdexec {
   template <std::size_t _N>
     using __index = std::integral_constant<std::size_t, _N>;
 
+  template <class _Ty>
+    struct __mtype {
+      using __t = _Ty;
+    };
+
   // Some utilities for manipulating lists of types at compile time
   template <class...>
     struct __types;
@@ -91,10 +96,17 @@ namespace stdexec {
         using __g = _Fn<_Args...>;
     };
 
+#if !STDEXEC_NVHPC()
   template <template <class...> class _Fn, class... _Args>
     using __meval =
-      typename __i<(sizeof(__types<_Args...>*) == 0)>::
+      typename __i<(sizeof...(_Args) == ~0u)>::
         template __g<_Fn, _Args...>;
+#else
+  template <template <class...> class _Fn, class... _Args>
+    using __meval =
+      typename __i<(sizeof(__types<_Args...>*) == 0u)>::
+        template __g<_Fn, _Args...>;
+#endif
 
   template <class _Fn, class... _Args>
     using __minvoke =
@@ -356,31 +368,30 @@ namespace stdexec {
   template <class>
     void __declval() noexcept;
 
-  // For copying cvref from one type to another:
-  template <class _Member, class _Self>
-    _Member _Self::*__memptr(const _Self&);
+  template <class _Member, class _CvSelf, class _Self>
+    auto __member_(_CvSelf&& __self, const _Self&, long)
+      -> decltype(((_CvSelf&&) __self) .* ((_Member _Self::*) nullptr));
+
+  template <class _Member, class _CvSelf, class _Self, class = _CvSelf*>
+    auto __member_(_CvSelf&& __self, const _Self&, int)
+      -> _Member;
 
   template <typename _Self, typename _Member>
-    using __member_t = decltype(
-      (__declval<_Self>() .* __memptr<_Member>(__declval<_Self>())));
+    using __member_t =
+      decltype(__member_<_Member>(__declval<_Self>(), __declval<_Self>(), 0));
 
-  template <class... _As>
-    struct __front_;
-  template <class _A, class... _As>
-    struct __front_<_A, _As...> {
-      using __t = _A;
-    };
-  template <class... _As>
-      requires (sizeof...(_As) != 0)
-    using __front = __t<__front_<_As...>>;
+  struct __front {
+    template <class _A, class...>
+      using __f = _A;
+  };
   template <class... _As>
       requires (sizeof...(_As) == 1)
-    using __single = __front<_As...>;
+    using __single = __minvoke<__front, _As...>;
   template <class _Ty>
     struct __single_or {
       template <class... _As>
           requires (sizeof...(_As) <= 1)
-        using __f = __front<_As..., _Ty>;
+        using __f = __minvoke<__front, _As..., _Ty>;
     };
 
   // For hiding a template type parameter from ADL
@@ -403,7 +414,7 @@ namespace stdexec {
       requires {
         typename _Ty::__id;
       };
-  template <bool>
+  template <bool = true>
     struct __id_ {
       template <class _Ty>
         using __f = typename _Ty::__id;
@@ -597,7 +608,7 @@ namespace stdexec {
     using __mwhich_t =
       __minvoke<
         _Signatures,
-        __mfind_if<__q<__mrequires>, __q<__front>>,
+        __mfind_if<__q<__mrequires>, __mbind_front_q<__minvoke, __front>>,
         _Extra...>;
   template <class _Signatures, class... _Extra>
     using __mwhich_i =

@@ -26,6 +26,7 @@ template <class SenderId, class ReceiverId>
 struct op_state_t {
   using Sender = stdexec::__t<SenderId>;
   using Receiver = stdexec::__t<ReceiverId>;
+
   struct receiver_t : stream_receiver_base {
     op_state_t* op_state_;
 
@@ -56,7 +57,7 @@ struct op_state_t {
 struct submit_t {
   template <stdexec::receiver Receiver, stdexec::sender_to<Receiver> Sender>
   void operator()(Sender&& sndr, Receiver&& rcvr) const noexcept(false) {
-    stdexec::start((new op_state_t<stdexec::__x<Sender>, stdexec::__x<std::decay_t<Receiver>>>{
+    stdexec::start((new op_state_t<stdexec::__id<Sender>, stdexec::__id<std::decay_t<Receiver>>>{
         (Sender&&) sndr, (Receiver&&) rcvr})->op_state_);
   }
 };

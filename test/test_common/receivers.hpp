@@ -401,11 +401,9 @@ template <typename F>
 struct fun_receiver {
   F f_;
 
-  template <typename... Ts _NVCXX_CAPTURE_PACK(Ts)>
+  template <typename... Ts>
   friend void tag_invoke(ex::set_value_t, fun_receiver&& self, Ts... vals) noexcept try {
-    _NVCXX_EXPAND_PACK(Ts, vals,
-      std::move(self.f_)((Ts &&) vals...);
-    )
+    std::move(self.f_)((Ts &&) vals...);
   } catch(...) {
     ex::set_error(std::move(self), std::current_exception());
   }

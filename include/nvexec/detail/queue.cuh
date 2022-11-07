@@ -17,6 +17,7 @@
 
 #include "../../stdexec/execution.hpp"
 
+#include <memory_resource>
 #include <type_traits>
 
 #include "config.cuh"
@@ -61,9 +62,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
     struct host_deleter_t {
+      std::size_t bytes_{};
+      std::size_t alignment_{};
+      std::pmr::memory_resource* pinned_resource_{nullptr};
+
       template <class T>
       void operator()(T *ptr) {
-        STDEXEC_DBG_ERR(cudaFreeHost(ptr));
+        if (ptr) {
+          pinned_resource_->deallocate(ptr, bytes_, alignment_);
+        }
       }
     };
 
@@ -73,17 +80,22 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     using atom_task_ref = ::cuda::atomic_ref<task_base_t*, ::cuda::thread_scope_device>;
 
     template <class T, class... As>
-      host_ptr<T> make_host(cudaError_t &status, As&&... as) {
+      host_ptr<T> make_host(cudaError_t &status, std::pmr::memory_resource* pinned_resource, As&&... as) {
         T* ptr{};
 
+        const std::size_t bytes = sizeof(T);
+        const std::size_t alignment = std::alignment_of_v<T>;
+
         if (status == cudaSuccess) {
-          if (status = STDEXEC_DBG_ERR(cudaMallocHost(&ptr, sizeof(T))); status == cudaSuccess) {
+          try {
+            ptr = static_cast<T*>(pinned_resource->allocate(bytes, alignment));
             new (ptr) T((As&&)as...);
-            return host_ptr<T>(ptr);
+          } catch(...) {
+            status = cudaError_t::cudaErrorMemoryAllocation;
           }
         }
 
-        return host_ptr<T>();
+        return host_ptr<T>(ptr, host_deleter_t{bytes, alignment, pinned_resource});
       }
 
     struct producer_t {
@@ -130,8 +142,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::thread poller_;
       ::cuda::std::atomic_flag stopped_ = ATOMIC_FLAG_INIT;
 
-      poller_t(task_base_t* head) : head_(head) {
-        poller_ = std::thread([this] {
+      poller_t(int dev_id, task_base_t* head) : head_(head) {
+        poller_ = std::thread([dev_id, this] {
+          cudaSetDevice(dev_id);
+
           task_base_t* current = head_;
 
           while (true) {
@@ -163,10 +177,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       device_ptr<task_base_t*> tail_ptr_;
       poller_t poller_;
 
-      task_hub_t()
-        : head_(make_host<root_task_t>(status_))
+      task_hub_t(int dev_id, std::pmr::memory_resource* pinned_resource)
+        : head_(make_host<root_task_t>(status_, pinned_resource))
         , tail_ptr_(make_device<task_base_t*>(status_, head_.get()))
-        , poller_(head_.get()) {
+        , poller_(dev_id, head_.get()) {
       }
 
       producer_t producer() {

@@ -34,23 +34,26 @@ namespace bulk {
     }
 
   template <class ReceiverId, std::integral Shape, class Fun>
-    class receiver_t : public stream_receiver_base {
-      using Receiver = stdexec::__t<ReceiverId>;
+    struct receiver_t {
+      class __t : public stream_receiver_base {
+        using Receiver = stdexec::__t<ReceiverId>;
+        using Env = typename operation_state_base_t<ReceiverId>::env_t;
 
-      Shape shape_;
-      Fun f_;
+        Shape shape_;
+        Fun f_;
 
-      operation_state_base_t<ReceiverId>& op_state_;
+        operation_state_base_t<ReceiverId>& op_state_;
 
-    public:
-      template <class... As _NVCXX_CAPTURE_PACK(As)>
-        friend void tag_invoke(stdexec::set_value_t, receiver_t&& self, As&&... as)
-          noexcept requires stdexec::__callable<Fun, Shape, As...> {
-          operation_state_base_t<ReceiverId> &op_state = self.op_state_;
+      public:
+        using __id = receiver_t;
 
-          _NVCXX_EXPAND_PACK(As, as,
+        template <class... As>
+          friend void tag_invoke(stdexec::set_value_t, __t&& self, As&&... as)
+            noexcept requires stdexec::__callable<Fun, Shape, As...> {
+            operation_state_base_t<ReceiverId> &op_state = self.op_state_;
+
             if (self.shape_) {
-              cudaStream_t stream = op_state.stream_;
+              cudaStream_t stream = op_state.get_stream();
               constexpr int block_threads = 256;
               const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1) / block_threads;
               kernel
@@ -64,86 +67,86 @@ namespace bulk {
             } else {
               op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
-          );
-        }
+          }
 
-      template <stdexec::__one_of<stdexec::set_error_t,
-                                  stdexec::set_stopped_t> Tag, 
-                class... As _NVCXX_CAPTURE_PACK(As)>
-        friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-          _NVCXX_EXPAND_PACK(As, as,
+        template <stdexec::__one_of<stdexec::set_error_t,
+                                    stdexec::set_stopped_t> Tag, 
+                  class... As>
+          friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
             self.op_state_.propagate_completion_signal(tag, (As&&)as...);
-          );
+          }
+
+        friend Env tag_invoke(stdexec::get_env_t, const __t& self) noexcept {
+          return self.op_state_.make_env();
         }
 
-      friend stdexec::env_of_t<Receiver> tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-        return stdexec::get_env(self.op_state_.receiver_);
-      }
-
-      explicit receiver_t(Shape shape, Fun fun, operation_state_base_t<ReceiverId>& op_state)
-        : shape_(shape)
-        , f_((Fun&&) fun)
-        , op_state_(op_state)
-      {}
+        explicit __t(Shape shape, Fun fun, operation_state_base_t<ReceiverId>& op_state)
+          : shape_(shape)
+          , f_((Fun&&) fun)
+          , op_state_(op_state)
+        {}
+      };
     };
 }
 
-template <class SenderId, std::integral Shape, class FunId>
-  struct bulk_sender_t : stream_sender_base {
+template <class SenderId, std::integral Shape, class Fun>
+  struct bulk_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
 
-    Sender sndr_;
-    Shape shape_;
-    Fun fun_;
+    struct __t : stream_sender_base {
+      using __id = bulk_sender_t;
+      Sender sndr_;
+      Shape shape_;
+      Fun fun_;
 
-    using set_error_t =
-      stdexec::completion_signatures<
-        stdexec::set_error_t(cudaError_t)>;
+      using set_error_t =
+        stdexec::completion_signatures<
+          stdexec::set_error_t(cudaError_t)>;
 
-    template <class Receiver>
-      using receiver_t = bulk::receiver_t<stdexec::__x<Receiver>, Shape, Fun>;
+      template <class Receiver>
+        using receiver_t = stdexec::__t<bulk::receiver_t<stdexec::__id<Receiver>, Shape, Fun>>;
 
-    template <class... Tys>
-    using set_value_t =
-      stdexec::completion_signatures<
-        stdexec::set_value_t(Tys...)>;
+      template <class... Tys>
+      using set_value_t =
+        stdexec::completion_signatures<
+          stdexec::set_value_t(Tys...)>;
 
-    template <class Self, class Env>
-      using completion_signatures =
-        stdexec::__make_completion_signatures<
-          stdexec::__member_t<Self, Sender>,
-          Env,
-          set_error_t,
-          stdexec::__q<set_value_t>>;
+      template <class Self, class Env>
+        using completion_signatures =
+          stdexec::__make_completion_signatures<
+            stdexec::__member_t<Self, Sender>,
+            Env,
+            set_error_t,
+            stdexec::__q<set_value_t>>;
 
-    template <stdexec::__decays_to<bulk_sender_t> Self, stdexec::receiver Receiver>
-      requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-      -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<stdexec::__member_t<Self, Sender>>(
-            ((Self&&)self).sndr_,
-            (Receiver&&)rcvr,
-            [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
-              return receiver_t<Receiver>(self.shape_, self.fun_, stream_provider);
-            });
+      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
+        requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+        -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+          return stream_op_state<stdexec::__member_t<Self, Sender>>(
+              ((Self&&)self).sndr_,
+              (Receiver&&)rcvr,
+              [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider) -> receiver_t<Receiver> {
+                return receiver_t<Receiver>(self.shape_, self.fun_, stream_provider);
+              });
+        }
+
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> stdexec::dependent_completion_signatures<Env>;
+
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> completion_signatures<Self, Env> requires true;
+
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
+        requires stdexec::__callable<Tag, const Sender&, As...>
+      friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
+        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
+        return ((Tag&&) tag)(self.sndr_, (As&&) as...);
       }
-
-    template <stdexec::__decays_to<bulk_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> stdexec::dependent_completion_signatures<Env>;
-
-    template <stdexec::__decays_to<bulk_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env> requires true;
-
-    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-      requires stdexec::__callable<Tag, const Sender&, As...>
-    friend auto tag_invoke(Tag tag, const bulk_sender_t& self, As&&... as)
-      noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-      return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-    }
+    };
   };
 
 namespace multi_gpu_bulk {
@@ -162,40 +165,42 @@ namespace multi_gpu_bulk {
     struct operation_t;
 
   template <class SenderId, class ReceiverId, std::integral Shape, class Fun>
-    class receiver_t : public stream_receiver_base {
+    struct receiver_t {
       using Receiver = stdexec::__t<ReceiverId>;
 
-      Shape shape_;
-      Fun f_;
+      class __t : public stream_receiver_base {
+        Shape shape_;
+        Fun f_;
 
-      operation_t<SenderId, ReceiverId, Shape, Fun>& op_state_;
+        operation_t<SenderId, ReceiverId, Shape, Fun>& op_state_;
 
-      static std::pair<Shape, Shape>
-      even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
-        const auto avg_per_thread = n / size;
-        const auto n_big_share = avg_per_thread + 1;
-        const auto big_shares = n % size;
-        const auto is_big_share = rank < big_shares;
-        const auto begin = is_big_share ? n_big_share * rank
-                                        : n_big_share * big_shares +
-                                            (rank - big_shares) * avg_per_thread;
-        const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
+        static std::pair<Shape, Shape>
+        even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
+          const auto avg_per_thread = n / size;
+          const auto n_big_share = avg_per_thread + 1;
+          const auto big_shares = n % size;
+          const auto is_big_share = rank < big_shares;
+          const auto begin = is_big_share ? n_big_share * rank
+                                          : n_big_share * big_shares +
+                                              (rank - big_shares) * avg_per_thread;
+          const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
 
-        return std::make_pair(begin, end);
-      }
+          return std::make_pair(begin, end);
+        }
 
-    public:
-      template <class... As _NVCXX_CAPTURE_PACK(As)>
-        friend void tag_invoke(stdexec::set_value_t, receiver_t&& self, As&&... as)
-          noexcept requires stdexec::__callable<Fun, Shape, As...> {
-          operation_t<SenderId, ReceiverId, Shape, Fun> &op_state = self.op_state_;
+      public:
+        using __id = receiver_t;
 
-          // TODO Manage errors
-          // TODO Usual logic when there's only a single GPU
-          cudaStream_t baseline_stream = op_state.stream_;
-          cudaEventRecord(op_state.ready_to_launch_, baseline_stream);
+        template <class... As>
+          friend void tag_invoke(stdexec::set_value_t, __t&& self, As&&... as)
+            noexcept requires stdexec::__callable<Fun, Shape, As...> {
+            operation_t<SenderId, ReceiverId, Shape, Fun> &op_state = self.op_state_;
 
-          _NVCXX_EXPAND_PACK(As, as,
+            // TODO Manage errors
+            // TODO Usual logic when there's only a single GPU
+            cudaStream_t baseline_stream = op_state.get_stream();
+            cudaEventRecord(op_state.ready_to_launch_, baseline_stream);
+
             if (self.shape_) {
               constexpr int block_threads = 256;
               for (int dev = 0; dev < op_state.num_devices_; dev++) {
@@ -244,34 +249,32 @@ namespace multi_gpu_bulk {
             } else {
               op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
-          );
-        }
+          }
 
-      template <stdexec::__one_of<stdexec::set_error_t,
-                                  stdexec::set_stopped_t> Tag, 
-                class... As _NVCXX_CAPTURE_PACK(As)>
-        friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-          _NVCXX_EXPAND_PACK(As, as,
+        template <stdexec::__one_of<stdexec::set_error_t,
+                                    stdexec::set_stopped_t> Tag, 
+                  class... As>
+          friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
             self.op_state_.propagate_completion_signal(tag, (As&&)as...);
-          );
+          }
+
+        friend stdexec::env_of_t<Receiver> tag_invoke(stdexec::get_env_t, const __t& self) {
+          return stdexec::get_env(self.op_state_.receiver_);
         }
 
-      friend stdexec::env_of_t<Receiver> tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-        return stdexec::get_env(self.op_state_.receiver_);
-      }
-
-      explicit receiver_t(Shape shape, Fun fun, operation_t<SenderId, ReceiverId, Shape, Fun>& op_state)
-        : shape_(shape)
-        , f_((Fun&&) fun)
-        , op_state_(op_state)
-      {}
+        explicit __t(Shape shape, Fun fun, operation_t<SenderId, ReceiverId, Shape, Fun>& op_state)
+          : shape_(shape)
+          , f_((Fun&&) fun)
+          , op_state_(op_state)
+        {}
+      };
     };
 
   template <class SenderId, class ReceiverId, class Shape, class Fun>
     using operation_base_t =
       operation_state_t<
         SenderId,
-        stdexec::__x<receiver_t<SenderId, ReceiverId, Shape, Fun>>,
+        receiver_t<SenderId, ReceiverId, Shape, Fun>,
         ReceiverId>;
 
   template <class SenderId, class ReceiverId, class Shape, class Fun>
@@ -280,19 +283,14 @@ namespace multi_gpu_bulk {
       using Receiver = stdexec::__t<ReceiverId>;
 
       template <class _Receiver2>
-        operation_t(
-            int num_devices,
-            Sender&& __sndr, 
-            _Receiver2&& __rcvr, 
-            Shape shape, 
-            Fun fun)
+        operation_t(int num_devices, Sender&& __sndr, _Receiver2&& __rcvr, Shape shape, Fun fun, context_state_t context_state)
           : operation_base_t<SenderId, ReceiverId, Shape, Fun>(
               (Sender&&) __sndr,
-              stdexec::get_completion_scheduler<stdexec::set_value_t>(__sndr).hub_,
               (_Receiver2&&)__rcvr,
-              [&] (operation_state_base_t<stdexec::__x<_Receiver2>> &) -> receiver_t<SenderId, ReceiverId, Shape, Fun> {
-                return receiver_t<SenderId, ReceiverId, Shape, Fun>(shape, fun, *this);
-              })
+              [&] (operation_state_base_t<stdexec::__id<_Receiver2>> &) -> stdexec::__t<receiver_t<SenderId, ReceiverId, Shape, Fun>> {
+                return stdexec::__t<receiver_t<SenderId, ReceiverId, Shape, Fun>>(shape, fun, *this);
+              },
+              context_state)
           , num_devices_(num_devices)
           , streams_(new cudaStream_t[num_devices_]) 
           , ready_to_complete_(new cudaEvent_t[num_devices_]) {
@@ -328,65 +326,66 @@ namespace multi_gpu_bulk {
     };
 }
 
-template <class SenderId, std::integral Shape, class FunId>
-  struct multi_gpu_bulk_sender_t : stream_sender_base {
+template <class SenderId, std::integral Shape, class Fun>
+  struct multi_gpu_bulk_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
 
-    int num_devices_;
-    Sender sndr_;
-    Shape shape_;
-    Fun fun_;
+    struct __t : stream_sender_base {
+      using __id = multi_gpu_bulk_sender_t;
+      int num_devices_;
+      Sender sndr_;
+      Shape shape_;
+      Fun fun_;
 
-    using set_error_t =
-      stdexec::completion_signatures<
-        stdexec::set_error_t(cudaError_t)>;
-
-    template <class Receiver>
-      using receiver_t = multi_gpu_bulk::receiver_t<SenderId, stdexec::__x<Receiver>, Shape, Fun>;
-
-    template <class... Tys>
-      using set_value_t =
+      using set_error_t =
         stdexec::completion_signatures<
-          stdexec::set_value_t(Tys...)>;
+          stdexec::set_error_t(cudaError_t)>;
 
-    template <class Self, class Env>
-      using completion_signatures =
-        stdexec::__make_completion_signatures<
-          stdexec::__member_t<Self, Sender>,
-          Env,
-          set_error_t,
-          stdexec::__q<set_value_t>>;
+      template <class... Tys>
+        using set_value_t =
+          stdexec::completion_signatures<
+            stdexec::set_value_t(Tys...)>;
 
-    template <stdexec::__decays_to<multi_gpu_bulk_sender_t> Self, stdexec::receiver Receiver>
-        requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-        -> multi_gpu_bulk::operation_t<stdexec::__x<stdexec::__member_t<Self, Sender>>, stdexec::__x<Receiver>, Shape, Fun> {
-        return multi_gpu_bulk::operation_t<stdexec::__x<stdexec::__member_t<Self, Sender>>, stdexec::__x<Receiver>, Shape, Fun>(
-            self.num_devices_,
-            ((Self&&)self).sndr_,
-            (Receiver&&)rcvr,
-            self.shape_,
-            self.fun_);
-        }
+      template <class Self, class Env>
+        using completion_signatures =
+          stdexec::__make_completion_signatures<
+            stdexec::__member_t<Self, Sender>,
+            Env,
+            set_error_t,
+            stdexec::__q<set_value_t>>;
 
-    template <stdexec::__decays_to<multi_gpu_bulk_sender_t> Self, class Env>
+      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
+          requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+        friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+          -> multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__member_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun> {
+          auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(self.sndr_);
+          context_state_t context_state = sch.context_state_;
+          return multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__member_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun>(
+              self.num_devices_,
+              ((Self&&)self).sndr_,
+              (Receiver&&)rcvr,
+              self.shape_,
+              self.fun_,
+              context_state);
+          }
+
+      template <stdexec::__decays_to<__t> Self, class Env>
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+          -> stdexec::dependent_completion_signatures<Env>;
+
+      template <stdexec::__decays_to<__t> Self, class Env>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-        -> stdexec::dependent_completion_signatures<Env>;
+        -> completion_signatures<Self, Env> requires true;
 
-    template <stdexec::__decays_to<multi_gpu_bulk_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env> requires true;
-
-    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-        requires stdexec::__callable<Tag, const Sender&, As...>
-      friend auto tag_invoke(Tag tag, const multi_gpu_bulk_sender_t& self, As&&... as)
-        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, 
-                                      Tag, const Sender&, As...> {
-        return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-      }
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
+          requires stdexec::__callable<Tag, const Sender&, As...>
+        friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
+          noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+          -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, 
+                                        Tag, const Sender&, As...> {
+          return ((Tag&&) tag)(self.sndr_, (As&&) as...);
+        }
+    };
   };
-
 }
 

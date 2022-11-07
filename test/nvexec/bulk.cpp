@@ -126,7 +126,7 @@ TEST_CASE("bulk can succeed a sender", "[cuda][stream][adaptors][bulk]") {
                  return is_on_gpu();
                })
              | ex::bulk(2, [flags](int idx, bool a_sender_was_on_gpu) {
-                 if (a_sender_was_on_gpu * is_on_gpu()) {
+                 if (a_sender_was_on_gpu && is_on_gpu()) {
                    flags.set(idx);
                  }
                });

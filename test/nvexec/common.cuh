@@ -155,12 +155,12 @@ namespace detail::a_sender {
       Fun fun_;
 
       template <class Receiver>
-        using receiver_th = receiver_t<stdexec::__x<Receiver>, Fun>;
+        using receiver_th = receiver_t<stdexec::__id<Receiver>, Fun>;
 
       template <class Self, class Receiver>
         using op_t = operation_state_t<
           stdexec::__x<stdexec::__member_t<Self, Sender>>,
-          stdexec::__x<receiver_th<Receiver>>>;
+          stdexec::__id<receiver_th<Receiver>>>;
 
       template <class Self, class Env>
         using completion_signatures =
@@ -222,7 +222,7 @@ namespace detail::a_receiverless_sender {
       template <class Self, class Receiver>
         using op_t = operation_state_t<
           stdexec::__x<stdexec::__member_t<Self, Sender>>,
-          stdexec::__x<Receiver>>;
+          stdexec::__id<Receiver>>;
 
       template <class Self, class Env>
         using completion_signatures =
