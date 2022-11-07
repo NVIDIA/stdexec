@@ -42,7 +42,7 @@ as `N::S<A,B,C>::T` does _not_ inherit the associated entities of `A`,
 
 Stdexec provides some utilities that bundle up that technique, but it
 requires certain rules to be followed to get the full benefit. Rather
-that defining a sender adaptor as:
+than defining a sender adaptor as:
 
 ```c++
 template <class Sender, class Arg>
@@ -91,3 +91,19 @@ type alias `__id` that is an alias for the enclosing class template.
 When these guidelines are followed, we can ensure that the minimum number
 of class templates are instantiated, and the types of composite senders
 remains short, uncluttered, and readable.
+
+## Assorted tips and tricks
+
+* Data, including downstream receivers, are best stored in the operation
+  state. Receivers themselves should, in general, store nothing but a
+  pointer back to the operation state.
+* Assume that schedulers and receivers contain nothing but a pointer and
+  are cheap to copy. Take them by value.
+* All `tag_invoke` overloads _must_ be constrained.
+* In a sender adaptor, a reasonable way to constrain
+  `tag_invoke(connect_t, ThisSender<InnerSender>, OuterReceiver)` is by
+  requiring `sender_to<InnerSender, ThisReceiver<OuterReceiver>>`.
+* Place concept checks on public interfaces. Only place concept checks
+  on implementation details if needed for correctness; otherwise, leave
+  them unconstrained. Use `static_assert` if you must, but don't bother
+  rechecking things that were already checked at the public interface.
