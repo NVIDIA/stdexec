@@ -4646,8 +4646,8 @@ namespace stdexec {
               __value_types_of_t<
                 _Senders,
                 _Env,
-                __q<__types>,
-                __mcompose<__uncurry<__transform<__q<__decay_rvalue_ref>>>, __single_or<__types<>>>>...>;
+                __transform<__q<__decay_rvalue_ref>, __q<__types>>,
+                __single_or<__types<>>>...>;
 
           using __t =
             __if_c<
