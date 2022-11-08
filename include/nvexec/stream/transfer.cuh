@@ -46,7 +46,7 @@ namespace transfer {
 
           friend Env
           tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-            return self.operation_state_.make_env();
+            return self.op_state_.make_env();
           }
         };
 
@@ -117,8 +117,18 @@ template <class SenderId>
       context_state_t context_state_;
       Sender sndr_;
 
+      template <class Self, class Env>
+        using completion_signatures = 
+          stdexec::make_completion_signatures<
+            stdexec::__member_t<Self, Sender>,
+            Env,
+            stdexec::completion_signatures<
+              stdexec::set_stopped_t(),
+              stdexec::set_error_t(cudaError_t)
+            >>;
+
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-        requires stdexec::sender_to<stdexec::__member_t<Self, Sender>, Receiver>
+        requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
       friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
         -> op_state_th<Self, Receiver> {
         return op_state_th<Self, Receiver>{
@@ -131,16 +141,9 @@ template <class SenderId>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> stdexec::dependent_completion_signatures<Env>;
 
-      template <stdexec::__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
-          stdexec::make_completion_signatures<
-            stdexec::__member_t<_Self, Sender>,
-            _Env,
-            stdexec::completion_signatures<
-              stdexec::set_stopped_t(),
-              stdexec::set_error_t(cudaError_t)
-            >
-          > requires true;
+      template <stdexec::__decays_to<__t> Self, class Env>
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env) ->
+          completion_signatures<Self, Env> requires true;
 
       template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
         requires stdexec::__callable<Tag, const Sender&, As...>
