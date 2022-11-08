@@ -91,9 +91,12 @@ namespace stdexec {
         using __g = _Fn<_Args...>;
     };
 
+  template <class...>
+    concept __tru = true; // a dependent value
+
   template <template <class...> class _Fn, class... _Args>
     using __meval =
-      typename __i<(sizeof(__types<_Args...>*) == 0)>::
+      typename __i<__tru<_Args...>>::
         template __g<_Fn, _Args...>;
 
   template <class _Fn, class... _Args>
@@ -102,7 +105,7 @@ namespace stdexec {
 
   template <class _Ty, class... _Args>
     using __make_dependent_on =
-      typename __i<(sizeof...(_Args) == ~0u)>::
+      typename __i<__tru<_Args...>>::
         template __g<__midentity, _Ty>;
 
   template <template <class...> class _Fn>
@@ -350,38 +353,44 @@ namespace stdexec {
         using __f = _Return(_Args...);
     };
 
+  // A very simple std::declval replacement that doesn't handle void
   template <class _T>
-    _T&& __declval() noexcept requires true;
-
-  template <class>
-    void __declval() noexcept;
+    _T&& __declval() noexcept;
 
   // For copying cvref from one type to another:
-  template <class _Member, class _Self>
-    _Member _Self::*__memptr(const _Self&);
-
-  template <typename _Self, typename _Member>
-    using __member_t = decltype(
-      (__declval<_Self>() .* __memptr<_Member>(__declval<_Self>())));
-
-  template <class... _As>
-    struct __front_;
-  template <class _A, class... _As>
-    struct __front_<_A, _As...> {
-      using __t = _A;
+  template <bool _IsRef>
+    struct __cpcvr {
+      template <class _CvSelf, class _Member, class _Self>
+        static auto __f_(const _Self&)
+          -> decltype((((_CvSelf(*)()) nullptr)())
+                   .* ((_Member _Self::*) nullptr));
+      template <class _CvSelf, class _Member>
+        using __f =
+          decltype(__cpcvr::__f_<_CvSelf, _Member>(__declval<_CvSelf>()));
     };
+  template <>
+    struct __cpcvr<false> {
+      template <class, class _Member>
+        using __f = _Member;
+    };
+  template <class _Ty>
+    concept __nref =
+      requires {
+        ((_Ty*) nullptr);
+      };
+  template <class _CvSelf, class _Member>
+    using __member_t =
+      __minvoke<__cpcvr<!__nref<_CvSelf>>, _CvSelf, _Member>;
+
+  template <class _Ty, class...>
+    using __front_ = _Ty;
   template <class... _As>
-      requires (sizeof...(_As) != 0)
-    using __front = __t<__front_<_As...>>;
+    using __front = __meval<__front_, _As...>;
   template <class... _As>
       requires (sizeof...(_As) == 1)
     using __single = __front<_As...>;
   template <class _Ty>
-    struct __single_or {
-      template <class... _As>
-          requires (sizeof...(_As) <= 1)
-        using __f = __front<_As..., _Ty>;
-    };
+    using __single_or = __mbind_back_q<__front_, _Ty>;
 
   // For hiding a template type parameter from ADL
   template <class _Ty>

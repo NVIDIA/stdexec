@@ -84,9 +84,9 @@ namespace exec {
               | transfer(__old_sched);
           }
 
-        template <class _Sender, class _Receiver, class... _Ts>
+        template <class _Sender, class _Receiver>
           using __sender_t =
-            decltype(__declval<__self_t<_Sender, _Receiver, _Ts...>&>().transform_sender_(
+            decltype(__declval<__self_t<_Sender, _Receiver>&>().transform_sender_(
               __declval<_Sender>(),
               __declval<__call_result_t<get_scheduler_t, env_of_t<_Receiver>>>()));
 
@@ -153,9 +153,9 @@ namespace exec {
               | transfer(__old_sched);
           }
 
-        template <class _Sender, class _Receiver, class... _Ts>
+        template <class _Sender, class _Receiver>
           using __sender_t =
-            decltype(__declval<__self_t<_Sender, _Receiver, _Ts...>&>().transform_sender_(
+            decltype(__declval<__self_t<_Sender, _Receiver>&>().transform_sender_(
               __declval<_Sender>(),
               __declval<__call_result_t<get_scheduler_t, env_of_t<_Receiver>>>()));
 
