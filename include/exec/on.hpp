@@ -99,12 +99,17 @@ namespace exec {
       };
 
     template <class _SenderId, class _Scheduler>
-      struct __start_on
-        : __sender_facade<
-            __start_on<_SenderId, _Scheduler>,
-            __t<_SenderId>,
-            __start_on_kernel<_Scheduler>>
-      {};
+      struct __start_on {
+        using __base =
+          stdexec::__t<__sender_facade<
+              __start_on<_SenderId, _Scheduler>,
+              stdexec::__t<_SenderId>,
+              __start_on_kernel<_Scheduler>>>;
+
+        struct __t : __base {
+          using __base::__base;
+        };
+      };
 
     template <class _Sender, class _Scheduler>
       using __start_on_t =
@@ -168,12 +173,16 @@ namespace exec {
       };
 
     template <class _SenderId, class _Scheduler, class _Closure>
-      struct __continue_on
-        : __sender_facade<
+      struct __continue_on {
+        using __base =
+          stdexec::__t<__sender_facade<
             __continue_on<_SenderId, _Scheduler, _Closure>,
-            __t<_SenderId>,
-            __continue_on_kernel<_Scheduler, _Closure>>
-      {};
+            stdexec::__t<_SenderId>,
+            __continue_on_kernel<_Scheduler, _Closure>>>;
+        struct __t : __base {
+          using __base::__base;
+        };
+      };
 
     template <class _Sender, class _Scheduler, class _Closure>
       using __continue_on_t =
