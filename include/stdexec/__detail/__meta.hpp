@@ -374,7 +374,10 @@ namespace stdexec {
         using __f = _Member;
     };
   template <class _Ty>
-    concept __nref = __tru<_Ty*>;
+    concept __nref =
+      requires {
+        ((_Ty*) nullptr);
+      };
   template <class _CvSelf, class _Member>
     using __member_t =
       __minvoke<__cpcvr<!__nref<_CvSelf>>, _CvSelf, _Member>;
@@ -405,7 +408,10 @@ namespace stdexec {
     };
 
   template <class _Ty>
-    concept __has_id = __tru<typename _Ty::__id>;
+    concept __has_id =
+      requires {
+        typename _Ty::__id;
+      };
   template <bool>
     struct __id_ {
       template <class _Ty>
