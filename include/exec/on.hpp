@@ -175,9 +175,9 @@ namespace exec {
     template <class _SenderId, class _Scheduler, class _Closure>
       struct __continue_on {
         using __base =
-          __t<__sender_facade<
+          stdexec::__t<__sender_facade<
             __continue_on<_SenderId, _Scheduler, _Closure>,
-            __t<_SenderId>,
+            stdexec::__t<_SenderId>,
             __continue_on_kernel<_Scheduler, _Closure>>>;
         struct __t : __base {
           using __base::__base;
