@@ -131,7 +131,7 @@ namespace stdexec {
   // C++20 concepts
   template<class _T, class _U>
     concept __decays_to =
-      same_as<decay_t<_T>, _U>;
+      __same_as<decay_t<_T>, _U>;
 
   template <class>
     concept __true = true;
@@ -142,15 +142,15 @@ namespace stdexec {
 
   template <class _T, class... _As>
     concept __one_of =
-      (same_as<_T, _As> ||...);
+      (__same_as<_T, _As> ||...);
 
   template <class _T, class... _Us>
     concept __all_of =
-      (same_as<_T, _Us> &&...);
+      (__same_as<_T, _Us> &&...);
 
   template <class _T, class... _Us>
     concept __none_of =
-      ((!same_as<_T, _Us>) &&...);
+      ((!__same_as<_T, _Us>) &&...);
 
   // Not exactly right, but close.
   template <class _T>
