@@ -403,7 +403,7 @@ namespace stdexec {
       requires {
         typename _Ty::__id;
       };
-  template <bool>
+  template <bool = true>
     struct __id_ {
       template <class _Ty>
         using __f = typename _Ty::__id;
