@@ -222,29 +222,37 @@ TEST_CASE("when_all cancels remaining children if cancel is detected", "[adaptor
   CHECK(cancelled);
 }
 
-TEST_CASE("when_all has the values_type based on the children", "[adaptors][when_all]") {
-  check_val_types<type_array<type_array<int>>>(ex::when_all(ex::just(13)));
-  check_val_types<type_array<type_array<double>>>(ex::when_all(ex::just(3.14)));
-  check_val_types<type_array<type_array<int, double>>>(ex::when_all(ex::just(3, 0.14)));
+TEST_CASE("when_all has the values_type based on the children, decayed and as rvalue references", "[adaptors][when_all]") {
+  check_val_types<type_array<type_array<int&&>>>(ex::when_all(ex::just(13)));
+  check_val_types<type_array<type_array<double&&>>>(ex::when_all(ex::just(3.14)));
+  check_val_types<type_array<type_array<int&&, double&&>>>(ex::when_all(ex::just(3, 0.14)));
 
   check_val_types<type_array<type_array<>>>(ex::when_all(ex::just()));
 
-  check_val_types<type_array<type_array<int, double>>>(ex::when_all(ex::just(3), ex::just(0.14)));
-  check_val_types<type_array<type_array<int, double, int, double>>>( //
-      ex::when_all(                                                  //
-          ex::just(3),                                               //
-          ex::just(0.14),                                            //
-          ex::just(1, 0.4142)                                        //
-          )                                                          //
+  check_val_types<type_array<type_array<int&&, double&&>>>(ex::when_all(ex::just(3),
+  ex::just(0.14))); check_val_types<type_array<type_array<int&&, double&&, int&&, double&&>>>( //
+      ex::when_all(                                                                            //
+          ex::just(3),                                                                         //
+          ex::just(0.14),                                                                      //
+          ex::just(1, 0.4142)                                                                  //
+          )                                                                                    //
   );
 
   // if one child returns void, then the value is simply missing
-  check_val_types<type_array<type_array<int, double>>>( //
-      ex::when_all(                                     //
-          ex::just(3),                                  //
-          ex::just(),                                   //
-          ex::just(0.14)                                //
-          )                                             //
+  check_val_types<type_array<type_array<int&&, double&&>>>( //
+      ex::when_all(                                         //
+          ex::just(3),                                      //
+          ex::just(),                                       //
+          ex::just(0.14)                                    //
+          )                                                 //
+  );
+
+  // if children send references, they get decayed
+  check_val_types<type_array<type_array<int&&, double&&>>>( //
+      ex::when_all(                                         //
+          ex::split(ex::just(3)),                           //
+          ex::split(ex::just(0.14))                         //
+          )                                                 //
   );
 }
 

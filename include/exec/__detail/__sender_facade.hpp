@@ -264,6 +264,14 @@ namespace exec {
         };
       };
 
+    template <class _Self>
+      __minvoke<__id_<>, _Self> __is_derived_sender_(const _Self&);
+    template <class _Self, class _Derived>
+      concept __is_derived_sender =
+        requires (_Self&& __self) {
+          { __is_derived_sender_((_Self&&) __self) } -> same_as<_Derived>;
+        };
+
     template <class _Derived, class _Sender, class _Kernel>
       struct __sender {
         template <class _Self, class _Receiver>
@@ -286,7 +294,7 @@ namespace exec {
               , __kernel_{(_As&&) __as...}
             {}
 
-          template <__decays_to<__t> _Self, receiver _Receiver>
+          template <__is_derived_sender<_Derived> _Self, receiver _Receiver>
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
               -> __operation_t<_Self, _Receiver> {
               return {((_Self&&) __self).__sndr_,
@@ -294,7 +302,7 @@ namespace exec {
                       (_Receiver&&) __rcvr};
             }
 
-          template <__decays_to<__t> _Self, class _Env>
+          template <__is_derived_sender<_Derived> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) {
               using _Diagnostic = _FAILURE_TO_CONNECT_::_WHAT_<
                 _TYPE_IS_NOT_A_VALID_SENDER_WITH_CURRENT_ENVIRONMENT_::_WITH_<

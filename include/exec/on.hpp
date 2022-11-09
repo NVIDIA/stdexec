@@ -84,9 +84,9 @@ namespace exec {
               | transfer(__old_sched);
           }
 
-        template <class _Sender, class _Receiver, class... _Ts>
+        template <class _Sender, class _Receiver>
           using __sender_t =
-            decltype(__declval<__self_t<_Sender, _Receiver, _Ts...>&>().transform_sender_(
+            decltype(__declval<__self_t<_Sender, _Receiver>&>().transform_sender_(
               __declval<_Sender>(),
               __declval<__call_result_t<get_scheduler_t, env_of_t<_Receiver>>>()));
 
@@ -99,12 +99,17 @@ namespace exec {
       };
 
     template <class _SenderId, class _Scheduler>
-      struct __start_on
-        : __sender_facade<
-            __start_on<_SenderId, _Scheduler>,
-            __t<_SenderId>,
-            __start_on_kernel<_Scheduler>>
-      {};
+      struct __start_on {
+        using __base =
+          stdexec::__t<__sender_facade<
+              __start_on<_SenderId, _Scheduler>,
+              stdexec::__t<_SenderId>,
+              __start_on_kernel<_Scheduler>>>;
+
+        struct __t : __base {
+          using __base::__base;
+        };
+      };
 
     template <class _Sender, class _Scheduler>
       using __start_on_t =
@@ -148,16 +153,16 @@ namespace exec {
               | transfer(__old_sched);
           }
 
-        template <class _Sender, class _Receiver, class... _Ts>
-          using __new_sender_t =
-            decltype(__declval<__self_t<_Ts...>&>().transform_sender_(
+        template <class _Sender, class _Receiver>
+          using __sender_t =
+            decltype(__declval<__self_t<_Sender, _Receiver>&>().transform_sender_(
               __declval<_Sender>(),
               __declval<__call_result_t<get_scheduler_t, env_of_t<_Receiver>>>()));
 
         template <class _Sender, class _Receiver>
-            requires __valid<__new_sender_t, _Sender, _Receiver>
+            requires __valid<__sender_t, _Sender, _Receiver>
           auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr)
-              -> __new_sender_t<_Sender, _Receiver> {
+              -> __sender_t<_Sender, _Receiver> {
             auto __sched = get_scheduler(stdexec::get_env(__rcvr));
             return transform_sender_((_Sender&&) __sndr, __sched);
           }
@@ -175,12 +180,16 @@ namespace exec {
       };
 
     template <class _SenderId, class _Scheduler, class _Closure>
-      struct __continue_on
-        : __sender_facade<
+      struct __continue_on {
+        using __base =
+          stdexec::__t<__sender_facade<
             __continue_on<_SenderId, _Scheduler, _Closure>,
-            __t<_SenderId>,
-            __continue_on_kernel<_Scheduler, _Closure>>
-      {};
+            stdexec::__t<_SenderId>,
+            __continue_on_kernel<_Scheduler, _Closure>>>;
+        struct __t : __base {
+          using __base::__base;
+        };
+      };
 
     template <class _Sender, class _Scheduler, class _Closure>
       using __continue_on_t =
