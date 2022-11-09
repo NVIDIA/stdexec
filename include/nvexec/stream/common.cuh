@@ -186,7 +186,7 @@ namespace nvexec {
                   class... As>
             requires stdexec::__callable<Tag, const BaseEnv&, As...>
           friend auto tag_invoke(Tag tag, const Self& self, As&&... as) noexcept ->
-            stdexec::__call_result_t<Tag, const BaseEnv&, As...> {
+            stdexec::__call_result_if_t<stdexec::same_as<Self, stream_env>, Tag, const BaseEnv&, As...> {
             return ((Tag&&)tag)(self.base_env_, (As&&)as...);
           }
 
@@ -559,7 +559,7 @@ namespace nvexec {
         stdexec::sender<S> &&
         requires (const S& sndr) {
           { stdexec::get_completion_scheduler<stdexec::set_value_t>(sndr).context_state_ } -> 
-            std::same_as<context_state_t>;
+            stdexec::__decays_to<context_state_t>;
         };
 
     template <class R>
@@ -567,7 +567,7 @@ namespace nvexec {
         stdexec::receiver<R> &&
         requires (const R& rcvr) {
           { stdexec::get_scheduler(stdexec::get_env(rcvr)).context_state_ } -> 
-            std::same_as<context_state_t>;
+            stdexec::__decays_to<context_state_t>;
         };
 
     template <class InnerReceiverProvider, class OuterReceiver>
