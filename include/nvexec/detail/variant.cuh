@@ -126,8 +126,8 @@ namespace nvexec {
   template <class VisitorT, class V>
     void visit(VisitorT&& visitor, V&& v) {
       detail::visit_impl(
-          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{}, 
-          (VisitorT&&)visitor, 
+          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{},
+          (VisitorT&&)visitor,
           (V&&)v,
           v.index_);
     }
@@ -135,8 +135,8 @@ namespace nvexec {
   template <class VisitorT, class V>
     void visit(VisitorT&& visitor, V&& v, std::size_t index) {
       detail::visit_impl(
-          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{}, 
-          (VisitorT&&)visitor, 
+          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{},
+          (VisitorT&&)visitor,
           (V&&)v,
           index);
     }
@@ -152,9 +152,9 @@ namespace nvexec {
     using union_t = detail::static_storage_t<max_alignment, max_size>;
 
     template <detail::one_of<Ts...> T>
-      using index_of = 
+      using index_of =
         std::integral_constant<
-          index_t, 
+          index_t,
           detail::find_index<index_t, T, Ts...>()>;
 
     template <detail::one_of<Ts...> T>
@@ -181,11 +181,11 @@ namespace nvexec {
     }
 
     template <detail::one_of<Ts...> T, class... As>
-      void emplace(As&&... as) {
+      __host__ __device__ void emplace(As&&... as) {
         destroy();
         construct<T>((As&&)as...);
       }
-      
+
     template <detail::one_of<Ts...> T, class... As>
       void construct(As&&... as) {
         ::new(storage_.data_) T((As&&)as...);
