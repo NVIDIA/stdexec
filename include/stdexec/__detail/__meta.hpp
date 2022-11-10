@@ -96,17 +96,13 @@ namespace stdexec {
         using __g = _Fn<_Args...>;
     };
 
-#if !STDEXEC_NVHPC()
+  template <class...>
+    concept __tru = true; // a dependent value
+
   template <template <class...> class _Fn, class... _Args>
     using __meval =
-      typename __i<(sizeof...(_Args) == ~0u)>::
+      typename __i<__tru<_Args...>>::
         template __g<_Fn, _Args...>;
-#else
-  template <template <class...> class _Fn, class... _Args>
-    using __meval =
-      typename __i<(sizeof(__types<_Args...>*) == 0u)>::
-        template __g<_Fn, _Args...>;
-#endif
 
   template <class _Fn, class... _Args>
     using __minvoke =
@@ -114,7 +110,7 @@ namespace stdexec {
 
   template <class _Ty, class... _Args>
     using __make_dependent_on =
-      typename __i<(sizeof...(_Args) == ~0u)>::
+      typename __i<__tru<_Args...>>::
         template __g<__midentity, _Ty>;
 
   template <template <class...> class _Fn>
@@ -362,37 +358,44 @@ namespace stdexec {
         using __f = _Return(_Args...);
     };
 
+  // A very simple std::declval replacement that doesn't handle void
   template <class _T>
-    _T&& __declval() noexcept requires true;
+    _T&& __declval() noexcept;
 
-  template <class>
-    void __declval() noexcept;
-
-  template <class _Member, class _CvSelf, class _Self>
-    auto __member_(_CvSelf&& __self, const _Self&, long)
-      -> decltype(((_CvSelf&&) __self) .* ((_Member _Self::*) nullptr));
-
-  template <class _Member, class _CvSelf, class _Self, class = _CvSelf*>
-    auto __member_(_CvSelf&& __self, const _Self&, int)
-      -> _Member;
-
-  template <typename _Self, typename _Member>
+  // For copying cvref from one type to another:
+  template <bool _IsRef>
+    struct __cpcvr {
+      template <class _CvSelf, class _Member, class _Self>
+        static auto __f_(const _Self&)
+          -> decltype((((_CvSelf(*)()) nullptr)())
+                   .* ((_Member _Self::*) nullptr));
+      template <class _CvSelf, class _Member>
+        using __f =
+          decltype(__cpcvr::__f_<_CvSelf, _Member>(__declval<_CvSelf>()));
+    };
+  template <>
+    struct __cpcvr<false> {
+      template <class, class _Member>
+        using __f = _Member;
+    };
+  template <class _Ty>
+    concept __nref =
+      requires {
+        ((_Ty*) nullptr);
+      };
+  template <class _CvSelf, class _Member>
     using __member_t =
-      decltype(__member_<_Member>(__declval<_Self>(), __declval<_Self>(), 0));
+      __minvoke<__cpcvr<!__nref<_CvSelf>>, _CvSelf, _Member>;
 
-  struct __front {
-    template <class _A, class...>
-      using __f = _A;
-  };
+  template <class _Ty, class...>
+    using __front_ = _Ty;
+  template <class... _As>
+    using __front = __meval<__front_, _As...>;
   template <class... _As>
       requires (sizeof...(_As) == 1)
-    using __single = __minvoke<__front, _As...>;
+    using __single = __front<_As...>;
   template <class _Ty>
-    struct __single_or {
-      template <class... _As>
-          requires (sizeof...(_As) <= 1)
-        using __f = __minvoke<__front, _As..., _Ty>;
-    };
+    using __single_or = __mbind_back_q<__front_, _Ty>;
 
   // For hiding a template type parameter from ADL
   template <class _Ty>
@@ -608,7 +611,7 @@ namespace stdexec {
     using __mwhich_t =
       __minvoke<
         _Signatures,
-        __mfind_if<__q<__mrequires>, __mbind_front_q<__minvoke, __front>>,
+        __mfind_if<__q<__mrequires>, __q<__front>>,
         _Extra...>;
   template <class _Signatures, class... _Extra>
     using __mwhich_i =

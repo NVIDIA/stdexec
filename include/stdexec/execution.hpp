@@ -2042,9 +2042,10 @@ namespace stdexec {
     // A derived-to-base cast that works even when the base is not
     // accessible from derived.
     template <class _T, class _U>
-      __member_t<_U, _T> __c_cast(_U&& u) noexcept requires __decays_to<_T, _T> {
+      __member_t<_U&&, _T> __c_cast(_U&& u) noexcept requires __decays_to<_T, _T> {
+        static_assert(std::is_reference_v<__member_t<_U&&, _T>>);
         static_assert(std::is_base_of_v<_T, std::remove_reference_t<_U>>);
-        return (__member_t<_U, _T>&&) (_U&&) u;
+        return (__member_t<_U&&, _T>) (_U&&) u;
       }
     namespace __no {
       struct __nope {};
@@ -2385,6 +2386,14 @@ namespace stdexec {
         using __sender = __t<__sender<stdexec::__id<decay_t<_Sender>>, _Fun>>;
 
       template <sender _Sender, __movable_value _Fun>
+        requires
+          (!__tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>) &&
+          (!tag_invocable<then_t, _Sender, _Fun>) &&
+          sender<__sender<_Sender, _Fun>>
+      __sender<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
+        return __sender<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
+      }
+      template <sender _Sender, __movable_value _Fun>
         requires __tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>
       sender auto operator()(_Sender&& __sndr, _Fun __fun) const
         noexcept(nothrow_tag_invocable<then_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender, _Fun>) {
@@ -2397,14 +2406,6 @@ namespace stdexec {
       sender auto operator()(_Sender&& __sndr, _Fun __fun) const
         noexcept(nothrow_tag_invocable<then_t, _Sender, _Fun>) {
         return tag_invoke(then_t{}, (_Sender&&) __sndr, (_Fun&&) __fun);
-      }
-      template <sender _Sender, __movable_value _Fun>
-        requires
-          (!__tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>) &&
-          (!tag_invocable<then_t, _Sender, _Fun>) &&
-          sender<__sender<_Sender, _Fun>>
-      __sender<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
-        return __sender<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
       }
       template <class _Fun>
       __binder_back<then_t, _Fun> operator()(_Fun __fun) const {
