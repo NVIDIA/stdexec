@@ -186,7 +186,7 @@ namespace nvexec {
                   class... As>
             requires stdexec::__callable<Tag, const BaseEnv&, As...>
           friend auto tag_invoke(Tag tag, const Self& self, As&&... as) noexcept ->
-            stdexec::__call_result_t<Tag, const BaseEnv&, As...> {
+            stdexec::__call_result_if_t<stdexec::same_as<Self, stream_env>, Tag, const BaseEnv&, As...> {
             return ((Tag&&)tag)(self.base_env_, (As&&)as...);
           }
 
@@ -218,23 +218,14 @@ namespace nvexec {
       };
 
     template <class BaseEnv>
-      using make_stream_env_t = 
-        stdexec::__if_c<
-          std::is_base_of_v<stream_env_base, BaseEnv>,
-          BaseEnv,
-          stream_env<stdexec::__x<BaseEnv>>
-        >;
+      using make_stream_env_t = stream_env<stdexec::__x<BaseEnv>>;
 
     template <class BaseEnv>
       using make_terminal_stream_env_t = terminal_stream_env<stdexec::__x<BaseEnv>>;
 
     template <class BaseEnv>
       make_stream_env_t<BaseEnv> make_stream_env(BaseEnv base, cudaStream_t stream) noexcept {
-        if constexpr (std::is_base_of_v<stream_env_base, BaseEnv>) {
-          return make_stream_env_t<BaseEnv>{{stream}, base.base_env_};
-        } else {
-          return make_stream_env_t<BaseEnv>{{stream}, base};
-        }
+        return make_stream_env_t<BaseEnv>{{stream}, base};
       }
 
     template <class BaseEnv>
@@ -345,15 +336,27 @@ namespace nvexec {
         }
       };
 
+    template <class Env>
+        requires stdexec::tag_invocable<get_stream_t, const std::decay_t<Env>&>
+      constexpr bool borrows_stream_h() {
+        return true;
+      }
+
+    template <class Env>
+        requires (!stdexec::tag_invocable<get_stream_t, const std::decay_t<Env>>)
+      constexpr bool borrows_stream_h() {
+        return false;
+      }
+
     template <class OuterReceiverId>
       struct operation_state_base_ {
         using outer_receiver_t = stdexec::__t<OuterReceiverId>;
         using outer_env_t = stdexec::env_of_t<outer_receiver_t>;
+        static constexpr bool borrows_stream = borrows_stream_h<outer_env_t>();
 
         struct __t : stream_op_state_base {
           using __id = operation_state_base_;
           using env_t = make_stream_env_t<outer_env_t>;
-          static constexpr bool borrows_stream = std::is_base_of_v<stream_env_base, outer_env_t>;
 
           context_state_t context_state_;
           void *temp_storage_{nullptr};
@@ -556,7 +559,7 @@ namespace nvexec {
         stdexec::sender<S> &&
         requires (const S& sndr) {
           { stdexec::get_completion_scheduler<stdexec::set_value_t>(sndr).context_state_ } -> 
-            std::same_as<context_state_t>;
+            stdexec::__decays_to<context_state_t>;
         };
 
     template <class R>
@@ -564,7 +567,7 @@ namespace nvexec {
         stdexec::receiver<R> &&
         requires (const R& rcvr) {
           { stdexec::get_scheduler(stdexec::get_env(rcvr)).context_state_ } -> 
-            std::same_as<context_state_t>;
+            stdexec::__decays_to<context_state_t>;
         };
 
     template <class InnerReceiverProvider, class OuterReceiver>
