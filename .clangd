@@ -30,6 +30,7 @@ CompileFlags:
   Add:
     - "-x"
     - "cuda"
+    - "-D_NVHPC_CUDA"
     - "-Wno-unknown-cuda-version"
 
 ---
@@ -38,7 +39,6 @@ CompileFlags:
 CompileFlags:
   CompilationDatabase: .
   Add:
-    - "-D_NVHPC_CUDA"
     # report all errors
     - "-ferror-limit=0"
     - "-fmacro-backtrace-limit=0"
