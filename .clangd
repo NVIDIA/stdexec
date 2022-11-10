@@ -28,9 +28,9 @@ If:
 CompileFlags:
   Compiler: clang++
   Add:
-    - -x
-    - cuda
-    - -Wno-unknown-cuda-version
+    - "-x"
+    - "cuda"
+    - "-Wno-unknown-cuda-version"
 
 ---
 
@@ -38,13 +38,13 @@ CompileFlags:
 CompileFlags:
   CompilationDatabase: .
   Add:
-    - -D_NVHPC_CUDA
+    - "-D_NVHPC_CUDA"
     # report all errors
     - "-ferror-limit=0"
     - "-fmacro-backtrace-limit=0"
     - "-ftemplate-backtrace-limit=0"
   Remove:
-    - -stdpar
+    - "-stdpar*"
     # strip CUDA fatbin args
     - "-Xfatbin*"
     - "-gpu=*"
