@@ -135,13 +135,10 @@ namespace stdexec {
   // Avoid using libstdc++'s object concepts because they instantiate a
   // lot of templates.
   template <class _Ty>
-    inline constexpr bool __destructible2_ = false;
-  template <class _Ty>
-      requires requires (_Ty& __t) { { __t.~_Ty() } noexcept; }
-    inline constexpr bool __destructible2_<_Ty> = true;
-
-  template <class _Ty>
-    inline constexpr bool __destructible_ = __destructible2_<_Ty>;
+    inline constexpr bool __destructible_ =
+      requires {
+        { ((_Ty&&(*)() noexcept) nullptr)().~_Ty() } noexcept;
+      };
   template <class _Ty>
     inline constexpr bool __destructible_<_Ty&> = true;
   template <class _Ty>
