@@ -214,6 +214,8 @@ namespace exec {
       class basic_task {
         struct __promise;
        public:
+        using __t = basic_task;
+        using __id = basic_task;
         using promise_type = __promise;
 
         basic_task(basic_task&& __that) noexcept

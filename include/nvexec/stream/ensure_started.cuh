@@ -33,7 +33,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     using env_t = 
       make_stream_env_t<
         stdexec::__make_env_t<
-          stdexec::__with_t<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>>;
+          stdexec::__with<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>>;
 
     template <class SenderId, class SharedState>
       struct receiver_t {
@@ -135,7 +135,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         env_t make_env() const {
           return make_stream_env(
-              stdexec::__make_env(stdexec::__with(stdexec::get_stop_token, stop_source_.get_token())),
+              stdexec::__make_env(stdexec::__with_(stdexec::get_stop_token, stop_source_.get_token())),
               stream_);
         }
 

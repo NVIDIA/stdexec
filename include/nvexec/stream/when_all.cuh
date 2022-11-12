@@ -197,7 +197,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
               auto env = make_terminal_stream_env(
                   exec::make_env(
                     stdexec::get_env(base()),
-                    stdexec::__with(stdexec::get_stop_token, op_state_->stop_source_.get_token())),
+                    stdexec::__with_(stdexec::get_stop_token, op_state_->stop_source_.get_token())),
                   op_state_->streams_[Index]);
 
               return env;

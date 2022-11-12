@@ -24,18 +24,18 @@
 
 namespace exec {
   template <class _Tag, class _Value = stdexec::__none_such>
-    using with_t = stdexec::__with_t<_Tag, _Value>;
+    using with_t = stdexec::__with<_Tag, _Value>;
 
   namespace __detail {
     struct __with_t {
       template <class _Tag, class _Value>
         with_t<_Tag, _Value> operator()(_Tag, _Value&& __val) const {
-          return {{(_Value&&) __val}};
+          return {(_Value&&) __val};
         }
 
       template <class _Tag>
         with_t<_Tag> operator()(_Tag) const {
-          return {{}};
+          return {};
         }
     };
   } // namespace __detail
@@ -207,16 +207,16 @@ namespace exec {
       };
 
     struct __write_t {
-      template <__is_not_instance_of<__env::__with_> _Sender, class... _Withs>
+      template <__is_not_instance_of<__env::__with> _Sender, class... _Tags, class... _Values>
           requires sender<_Sender>
-        auto operator()(_Sender&& __sndr, __env::__with_<_Withs>... __withs) const
-          -> __sender<__x<decay_t<_Sender>>, __env::__with_<_Withs>...> {
+        auto operator()(_Sender&& __sndr, __env::__with<_Tags, _Values>... __withs) const
+          -> __sender<__x<decay_t<_Sender>>, __env::__with<_Tags, _Values>...> {
           return {(_Sender&&) __sndr, {std::move(__withs)...}};
         }
 
-      template <class... _Withs>
-        auto operator()(__env::__with_<_Withs>... __withs) const
-          -> __binder_back<__write_t, __env::__with_<_Withs>...> {
+      template <class... _Tags, class... _Values>
+        auto operator()(__env::__with<_Tags, _Values>... __withs) const
+          -> __binder_back<__write_t, __env::__with<_Tags, _Values>...> {
           return {{}, {}, {std::move(__withs)...}};
         }
     };

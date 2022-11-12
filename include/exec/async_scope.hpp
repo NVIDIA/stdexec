@@ -634,7 +634,6 @@ namespace exec {
           return __self.__start_();
         }
 
-        __env_t<_Env> __env_;
         connect_result_t<_Sender, __spawn_receiver_t<_Env>> __op_;
       };
 

@@ -49,6 +49,8 @@ namespace exec {
     ~static_thread_pool();
 
     struct scheduler {
+      using __t = scheduler;
+      using __id = scheduler;
       bool operator==(const scheduler&) const = default;
 
      private:
@@ -57,6 +59,8 @@ namespace exec {
 
       class sender {
        public:
+        using __t = sender;
+        using __id = sender;
         using completion_signatures =
           stdexec::completion_signatures<
             stdexec::set_value_t(),
