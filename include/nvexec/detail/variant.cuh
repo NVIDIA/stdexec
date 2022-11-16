@@ -106,14 +106,14 @@ namespace nvexec {
     };
 
     template <class VisitorT, class V>
-      void visit_impl(std::integral_constant<std::size_t, 0>, VisitorT&& visitor, V&& v, std::size_t index) {
+      __host__ __device__ void visit_impl(std::integral_constant<std::size_t, 0>, VisitorT&& visitor, V&& v, std::size_t index) {
         if (0 == index) {
           ((VisitorT&&)visitor)(v.template get<0>());
         }
       }
 
     template <std::size_t I, class VisitorT, class V>
-      void visit_impl(std::integral_constant<std::size_t, I>, VisitorT&& visitor, V&& v, std::size_t index) {
+      __host__ __device__ void visit_impl(std::integral_constant<std::size_t, I>, VisitorT&& visitor, V&& v, std::size_t index) {
         if (I == index) {
           ((VisitorT&&)visitor)(v.template get<I>());
           return;
@@ -124,7 +124,7 @@ namespace nvexec {
   }
 
   template <class VisitorT, class V>
-    void visit(VisitorT&& visitor, V&& v) {
+    __host__ __device__ void visit(VisitorT&& visitor, V&& v) {
       detail::visit_impl(
           std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{},
           (VisitorT&&)visitor,
@@ -158,13 +158,13 @@ namespace nvexec {
           detail::find_index<index_t, T, Ts...>()>;
 
     template <detail::one_of<Ts...> T>
-      T& get() noexcept {
+      __host__ __device__ T& get() noexcept {
         void* data = storage_.data_;
         return *static_cast<T*>(data);
       }
 
     template <std::size_t I>
-      detail::nth_type<I, Ts...>& get() noexcept {
+      __host__ __device__ detail::nth_type<I, Ts...>& get() noexcept {
         return get<detail::nth_type<I, Ts...>>();
       }
 
@@ -176,7 +176,7 @@ namespace nvexec {
       destroy();
     }
 
-    bool holds_alternative() const {
+    __host__ __device__ bool holds_alternative() const {
       return index_ != detail::npos<index_t>();
     }
 
@@ -187,12 +187,12 @@ namespace nvexec {
       }
 
     template <detail::one_of<Ts...> T, class... As>
-      void construct(As&&... as) {
+      __host__ __device__ void construct(As&&... as) {
         ::new(storage_.data_) T((As&&)as...);
         index_ = index_of<T>();
       }
 
-    void destroy() {
+    __host__ __device__ void destroy() {
       if (holds_alternative()) {
         visit([](auto& val) noexcept {
           using val_t = std::decay_t<decltype(val)>;
