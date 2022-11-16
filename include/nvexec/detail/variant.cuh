@@ -106,14 +106,16 @@ namespace nvexec {
     };
 
     template <class VisitorT, class V>
-      __host__ __device__ void visit_impl(std::integral_constant<std::size_t, 0>, VisitorT&& visitor, V&& v, std::size_t index) {
+      STDEXEC_CLANG_HOST_DEVICE
+      void visit_impl(std::integral_constant<std::size_t, 0>, VisitorT&& visitor, V&& v, std::size_t index) {
         if (0 == index) {
           ((VisitorT&&)visitor)(v.template get<0>());
         }
       }
 
     template <std::size_t I, class VisitorT, class V>
-      __host__ __device__ void visit_impl(std::integral_constant<std::size_t, I>, VisitorT&& visitor, V&& v, std::size_t index) {
+      STDEXEC_CLANG_HOST_DEVICE
+      void visit_impl(std::integral_constant<std::size_t, I>, VisitorT&& visitor, V&& v, std::size_t index) {
         if (I == index) {
           ((VisitorT&&)visitor)(v.template get<I>());
           return;
@@ -124,7 +126,8 @@ namespace nvexec {
   }
 
   template <class VisitorT, class V>
-    __host__ __device__ void visit(VisitorT&& visitor, V&& v) {
+    STDEXEC_CLANG_HOST_DEVICE
+    void visit(VisitorT&& visitor, V&& v) {
       detail::visit_impl(
           std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{},
           (VisitorT&&)visitor,
@@ -133,6 +136,7 @@ namespace nvexec {
     }
 
   template <class VisitorT, class V>
+    STDEXEC_CLANG_HOST_DEVICE
     void visit(VisitorT&& visitor, V&& v, std::size_t index) {
       detail::visit_impl(
           std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{},
@@ -158,13 +162,15 @@ namespace nvexec {
           detail::find_index<index_t, T, Ts...>()>;
 
     template <detail::one_of<Ts...> T>
-      __host__ __device__ T& get() noexcept {
+      STDEXEC_CLANG_HOST_DEVICE
+      T& get() noexcept {
         void* data = storage_.data_;
         return *static_cast<T*>(data);
       }
 
     template <std::size_t I>
-      __host__ __device__ detail::nth_type<I, Ts...>& get() noexcept {
+      STDEXEC_CLANG_HOST_DEVICE
+      detail::nth_type<I, Ts...>& get() noexcept {
         return get<detail::nth_type<I, Ts...>>();
       }
 
@@ -176,23 +182,27 @@ namespace nvexec {
       destroy();
     }
 
-    __host__ __device__ bool holds_alternative() const {
+    STDEXEC_CLANG_HOST_DEVICE
+    bool holds_alternative() const {
       return index_ != detail::npos<index_t>();
     }
 
     template <detail::one_of<Ts...> T, class... As>
-      __host__ __device__ void emplace(As&&... as) {
+      STDEXEC_CLANG_HOST_DEVICE
+      void emplace(As&&... as) {
         destroy();
         construct<T>((As&&)as...);
       }
 
     template <detail::one_of<Ts...> T, class... As>
-      __host__ __device__ void construct(As&&... as) {
+      STDEXEC_CLANG_HOST_DEVICE
+      void construct(As&&... as) {
         ::new(storage_.data_) T((As&&)as...);
         index_ = index_of<T>();
       }
 
-    __host__ __device__ void destroy() {
+    STDEXEC_CLANG_HOST_DEVICE
+    void destroy() {
       if (holds_alternative()) {
         visit([](auto& val) noexcept {
           using val_t = std::decay_t<decltype(val)>;
