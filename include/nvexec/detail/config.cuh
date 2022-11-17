@@ -24,7 +24,7 @@
 #define STDEXEC_STREAM_DETAIL_NS _strm
 
 #if STDEXEC_CLANG()
-#define STDEXEC_CLANG_HOST_DEVICE __host__ __device__
+#define STDEXEC_CUDACC_HOST_DEVICE __host__ __device__
 #else
-#define STDEXEC_CLANG_HOST_DEVICE
+#define STDEXEC_CUDACC_HOST_DEVICE
 #endif
