@@ -525,12 +525,12 @@ namespace stdexec {
               __v<__minvoke<__mfind_if<_Fn, __mcount>, _Args...>>)>;
     };
 
-  template <class... _Bools>
-    using __mand = __bool<(__v<_Bools> &&...)>;
-  template <class... _Bools>
-    using __mor = __bool<(__v<_Bools> ||...)>;
-  template <class _Bool>
-    using __mnot = __bool<!__v<_Bool>>;
+  template <class... _Booleans>
+    using __mand = __bool<(__v<_Booleans> &&...)>;
+  template <class... _Booleans>
+    using __mor = __bool<(__v<_Booleans> ||...)>;
+  template <class _Boolean>
+    using __mnot = __bool<!__v<_Boolean>>;
 
   template <class _Fn>
     struct __mall_of {
