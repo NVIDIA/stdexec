@@ -852,9 +852,9 @@ namespace stdexec {
       template <class _T>
         requires tag_invocable<__has_algorithm_customizations_t, __cref_t<_T>>
       constexpr __result_t<_T> operator()(_T&& __t) const noexcept(noexcept(__result_t<_T>{})) {
-        using _Bool = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
-        static_assert(_Bool{} ? true : true); // must be contextually convertible to bool
-        return _Bool{};
+        using _Boolean = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
+        static_assert(_Boolean{} ? true : true); // must be contextually convertible to bool
+        return _Boolean{};
       }
       constexpr std::false_type operator()(auto&&) const noexcept {
         return {};
