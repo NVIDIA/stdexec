@@ -191,62 +191,70 @@ namespace stdexec {
         using __f = __minvoke<_Continuation, __minvoke<_Fn, _Args>...>;
     };
 
-  template <class _Fn, class...>
-    struct __fold_right_ {};
-  template <class _Fn, class _State, class _Head, class... _Tail>
-      requires __minvocable<_Fn, _State, _Head>
-    struct __fold_right_<_Fn, _State, _Head, _Tail...>
-      : __fold_right_<_Fn, __minvoke<_Fn, _State, _Head>, _Tail...> {};
-  template <class _Fn, class _State>
-    struct __fold_right_<_Fn, _State> {
-      using __t = _State;
+  template <bool>
+    struct __mfold_right_ {
+      template <class _Fn, class _State, class _Head, class... _Tail>
+        using __f =
+          __minvoke<
+            __mfold_right_<sizeof...(_Tail) == 0>,
+            _Fn,
+            __minvoke<_Fn, _State, _Head>,
+            _Tail...>;
+    };
+  template <>
+    struct __mfold_right_<true> { // empty pack
+      template <class _Fn, class _State, class...>
+        using __f = _State;
     };
 
   template <class _Init, class _Fn>
-    struct __fold_right {
+    struct __mfold_right {
       template <class... _Args>
-        using __f = __t<__fold_right_<_Fn, _Init, _Args...>>;
+        using __f =
+          __minvoke<__mfold_right_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
     };
 
   template <class _Continuation, class...>
-    struct __concat_ {};
+    struct __mconcat_ {};
   template <class _Continuation, class... _As>
       requires (sizeof...(_As) == 0) &&
         __minvocable<_Continuation, _As...>
-    struct __concat_<_Continuation, _As...> {
+    struct __mconcat_<_Continuation, _As...> {
       using __t = __minvoke<_Continuation, _As...>;
     };
   template <class _Continuation, template <class...> class _A, class... _As>
       requires __minvocable<_Continuation, _As...>
-    struct __concat_<_Continuation, _A<_As...>> {
+    struct __mconcat_<_Continuation, _A<_As...>> {
       using __t = __minvoke<_Continuation, _As...>;
     };
   template <class _Continuation,
             template <class...> class _A, class... _As,
-            template <class...> class _B, class... _Bs,
-            class... _Tail>
-    struct __concat_<_Continuation, _A<_As...>, _B<_Bs...>, _Tail...>
-      : __concat_<_Continuation, __types<_As..., _Bs...>, _Tail...> {};
+            template <class...> class _B, class... _Bs>
+        requires __minvocable<_Continuation, _As..., _Bs...>
+    struct __mconcat_<_Continuation, _A<_As...>, _B<_Bs...>> {
+      using __t = __minvoke<_Continuation, _As..., _Bs...>;
+    };
   template <class _Continuation,
             template <class...> class _A, class... _As,
             template <class...> class _B, class... _Bs,
-            template <class...> class _C, class... _Cs,
-            class... _Tail>
-    struct __concat_<_Continuation, _A<_As...>, _B<_Bs...>, _C<_Cs...>, _Tail...>
-      : __concat_<_Continuation, __types<_As..., _Bs..., _Cs...>, _Tail...> {};
+            template <class...> class _C, class... _Cs>
+        requires __minvocable<_Continuation, _As..., _Bs..., _Cs...>
+    struct __mconcat_<_Continuation, _A<_As...>, _B<_Bs...>, _C<_Cs...>> {
+      using __t = __minvoke<_Continuation, _As..., _Bs..., _Cs...>;
+    };
   template <class _Continuation,
             template <class...> class _A, class... _As,
             template <class...> class _B, class... _Bs,
             template <class...> class _C, class... _Cs,
             template <class...> class _D, class... _Ds,
             class... _Tail>
-    struct __concat_<_Continuation, _A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
-      : __concat_<_Continuation, __types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
+    struct __mconcat_<_Continuation, _A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
+      : __mconcat_<_Continuation, __types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> {};
 
   template <class _Continuation = __q<__types>>
-    struct __concat {
+    struct __mconcat {
       template <class... _Args>
-        using __f = __t<__concat_<_Continuation, _Args...>>;
+        using __f = __t<__mconcat_<_Continuation, _Args...>>;
     };
 
   template <class _Fn>
@@ -319,7 +327,7 @@ namespace stdexec {
         using __f =
           __mapply<
             _Continuation,
-            __minvoke<__fold_right<__types<>, __push_back_unique<>>, _Ts...>>;
+            __minvoke<__mfold_right<__types<>, __push_back_unique<>>, _Ts...>>;
     };
 
   template <class...>
@@ -353,7 +361,7 @@ namespace stdexec {
       template <class... _Args>
         using __f =
           __minvoke<
-            __concat<_Continuation>,
+            __mconcat<_Continuation>,
             __if<std::is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
     };
 
