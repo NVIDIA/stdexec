@@ -48,5 +48,5 @@ void run_cpp(float dt, bool write_vtk, std::size_t n_iterations,
       writer();
     };
 
-  report_performance(grid.cells, n_iterations * n_iterations, method, action);
+  report_performance(grid.cells, n_iterations, method, action);
 }

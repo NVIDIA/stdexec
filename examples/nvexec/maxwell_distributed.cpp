@@ -18,6 +18,7 @@
 #include "nvexec/stream_context.cuh"
 
 #include <mpi.h>
+#include <vector>
 
 static std::pair<std::size_t, std::size_t>
 even_share(std::size_t n, std::uint32_t rank, std::uint32_t size) noexcept {
@@ -112,15 +113,14 @@ namespace distributed {
         return;
       }
 
-      std::unique_ptr<float[]> h_ez;
       float *ez = accessor_.get(field_id::ez);
+      std::vector<float> h_ez(accessor_.own_cells() + 2 * accessor_.n);
 
-      h_ez = std::make_unique<float[]>(accessor_.own_cells() + 2 * accessor_.n);
-      cudaMemcpy(h_ez.get(),
+      cudaMemcpy(h_ez.data(),
                  accessor_.get(field_id::ez),
-                 sizeof(float) * (accessor_.own_cells() + 2 * accessor_.n),
+                 sizeof(float) * h_ez.size(),
                  cudaMemcpyDefault);
-      ez = h_ez.get();
+      ez = h_ez.data();
 
       if (rank_ == 0) {
         printf("\twriting report #%d", (int)report_step_);
@@ -207,7 +207,7 @@ namespace distributed {
     }
   };
 
-  __host__ result_dumper_t 
+  __host__ result_dumper_t
   dump_vtk(bool write_results,
                        int rank,
                        std::size_t &report_step,
@@ -374,7 +374,7 @@ int main(int argc, char *argv[]) {
   int rank{};
   int size{1};
 
-  // Initialize MPI 
+  // Initialize MPI
   {
     int prov{};
 
@@ -477,16 +477,16 @@ int main(int argc, char *argv[]) {
   write();
 #else
   for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
-    auto compute_h = ex::just() 
+    auto compute_h = ex::just()
                    | exec::on(gpu, ex::bulk(accessor.own_cells(), distributed::update_h(accessor)))
                    | ex::then(exchange_hx);
 
-    auto compute_e = ex::just() 
+    auto compute_e = ex::just()
                    | exec::on(gpu, ex::bulk(accessor.own_cells(), distributed::update_e(time.get(), dt, accessor)))
                    | ex::then(exchange_ez);
 
-    stdexec::this_thread::sync_wait(std::move(compute_h)); 
-    stdexec::this_thread::sync_wait(std::move(compute_e)); 
+    stdexec::this_thread::sync_wait(std::move(compute_h));
+    stdexec::this_thread::sync_wait(std::move(compute_e));
   }
 
   write();
@@ -500,12 +500,11 @@ int main(int argc, char *argv[]) {
 
     report_header();
     report_performance(
-        grid.cells, 
-        n_iterations, 
-        "GPU (distributed)", 
+        grid.cells,
+        n_iterations,
+        "GPU (distributed)",
         std::chrono::duration<double>(end - begin).count());
   }
 
   MPI_Finalize();
 }
-

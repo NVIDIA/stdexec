@@ -129,7 +129,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             sync_wait_t, stdexec::set_value_t, Sender>) &&
           (!stdexec::tag_invocable<sync_wait_t, Sender>) &&
           stdexec::sender<Sender, __env> &&
-          stdexec::sender_to<Sender, receiver_t<Sender>>
+          stdexec::__receiver_from<receiver_t<Sender>, Sender>
       auto operator()(context_state_t context_state, Sender&& __sndr) const
         -> std::optional<sync_wait_result_t<Sender>> {
         using state_t = state_t<stdexec::__id<Sender>>;
@@ -138,8 +138,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         exit_operation_state_t<Sender, receiver_t<Sender>> __op_state =
           exit_op_state(
-              (Sender&&)__sndr, 
-              receiver_t<Sender>{{}, &state, &loop}, 
+              (Sender&&)__sndr,
+              receiver_t<Sender>{{}, &state, &loop},
               context_state);
         state.stream_ = __op_state.get_stream();
 
@@ -159,4 +159,3 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
   } // namespace stream_sync_wait
 }
-

@@ -31,7 +31,7 @@ int main() {
 
   nvexec::stream_context stream_ctx{};
 
-  auto snd = ex::transfer_just(stream_ctx.get_scheduler(), simple_range{first, last})
+  auto snd = ex::transfer_just(stream_ctx.get_scheduler(), simple_range<int*>{first, last})
            | nvexec::reduce();
 
   auto [result] = stdexec::sync_wait(std::move(snd)).value();

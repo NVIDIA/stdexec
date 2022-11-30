@@ -106,6 +106,7 @@ namespace nvexec {
     };
 
     template <class VisitorT, class V>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE
       void visit_impl(std::integral_constant<std::size_t, 0>, VisitorT&& visitor, V&& v, std::size_t index) {
         if (0 == index) {
           ((VisitorT&&)visitor)(v.template get<0>());
@@ -113,6 +114,7 @@ namespace nvexec {
       }
 
     template <std::size_t I, class VisitorT, class V>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE
       void visit_impl(std::integral_constant<std::size_t, I>, VisitorT&& visitor, V&& v, std::size_t index) {
         if (I == index) {
           ((VisitorT&&)visitor)(v.template get<I>());
@@ -124,19 +126,21 @@ namespace nvexec {
   }
 
   template <class VisitorT, class V>
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE
     void visit(VisitorT&& visitor, V&& v) {
       detail::visit_impl(
-          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{}, 
-          (VisitorT&&)visitor, 
+          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{},
+          (VisitorT&&)visitor,
           (V&&)v,
           v.index_);
     }
 
   template <class VisitorT, class V>
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE
     void visit(VisitorT&& visitor, V&& v, std::size_t index) {
       detail::visit_impl(
-          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{}, 
-          (VisitorT&&)visitor, 
+          std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{},
+          (VisitorT&&)visitor,
           (V&&)v,
           index);
     }
@@ -152,18 +156,20 @@ namespace nvexec {
     using union_t = detail::static_storage_t<max_alignment, max_size>;
 
     template <detail::one_of<Ts...> T>
-      using index_of = 
+      using index_of =
         std::integral_constant<
-          index_t, 
+          index_t,
           detail::find_index<index_t, T, Ts...>()>;
 
     template <detail::one_of<Ts...> T>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE
       T& get() noexcept {
         void* data = storage_.data_;
         return *static_cast<T*>(data);
       }
 
     template <std::size_t I>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE
       detail::nth_type<I, Ts...>& get() noexcept {
         return get<detail::nth_type<I, Ts...>>();
       }
@@ -176,22 +182,26 @@ namespace nvexec {
       destroy();
     }
 
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE
     bool holds_alternative() const {
       return index_ != detail::npos<index_t>();
     }
 
     template <detail::one_of<Ts...> T, class... As>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE
       void emplace(As&&... as) {
         destroy();
         construct<T>((As&&)as...);
       }
-      
+
     template <detail::one_of<Ts...> T, class... As>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE
       void construct(As&&... as) {
         ::new(storage_.data_) T((As&&)as...);
         index_ = index_of<T>();
       }
 
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE
     void destroy() {
       if (holds_alternative()) {
         visit([](auto& val) noexcept {

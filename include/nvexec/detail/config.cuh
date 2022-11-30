@@ -15,8 +15,16 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__config.hpp"
+
 #if !defined(_NVHPC_CUDA) && !defined(__CUDACC__)
 #error The NVIDIA schedulers and utilities require CUDA support
 #endif
 
 #define STDEXEC_STREAM_DETAIL_NS _strm
+
+#if STDEXEC_CLANG()
+#define STDEXEC_DETAIL_CUDACC_HOST_DEVICE __host__ __device__
+#else
+#define STDEXEC_DETAIL_CUDACC_HOST_DEVICE
+#endif
