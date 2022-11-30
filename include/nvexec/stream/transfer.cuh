@@ -111,7 +111,7 @@ template <class SenderId>
         using op_state_th = 
           stdexec::__t<
             transfer::operation_state_t<
-              stdexec::__id<stdexec::__member_t<Self, Sender>>, 
+              stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, 
               stdexec::__id<Receiver>>>;
 
       context_state_t context_state_;
@@ -120,7 +120,7 @@ template <class SenderId>
       template <class Self, class Env>
         using completion_signatures = 
           stdexec::make_completion_signatures<
-            stdexec::__member_t<Self, Sender>,
+            stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             stdexec::completion_signatures<
               stdexec::set_stopped_t(),

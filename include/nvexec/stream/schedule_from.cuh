@@ -64,7 +64,7 @@ namespace schedule_from {
     struct source_sender_t : stream_sender_base {
       template <stdexec::__decays_to<source_sender_t> Self, stdexec::receiver Receiver>
       friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-        -> stdexec::connect_result_t<stdexec::__member_t<Self, Sender>, Receiver> {
+        -> stdexec::connect_result_t<stdexec::__copy_cvref_t<Self, Sender>, Receiver> {
           return stdexec::connect(((Self&&)self).sender_, (Receiver&&)rcvr);
         }
 
@@ -79,7 +79,7 @@ namespace schedule_from {
       template <stdexec::__decays_to<source_sender_t> _Self, class _Env>
         friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
           stdexec::make_completion_signatures<
-            stdexec::__member_t<_Self, Sender>,
+            stdexec::__copy_cvref_t<_Self, Sender>,
             _Env>;
 
       Sender sender_;
@@ -100,14 +100,14 @@ template <class Scheduler, class SenderId>
         using receiver_t = 
           stdexec::__t<
             schedule_from::receiver_t<
-              stdexec::__id<stdexec::__member_t<Self, Sender>>, 
+              stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, 
               stdexec::__id<Receiver>>>;
 
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-        requires stdexec::sender_to<stdexec::__member_t<Self, source_sender_th>, Receiver>
+        requires stdexec::sender_to<stdexec::__copy_cvref_t<Self, source_sender_th>, Receiver>
       friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-        -> stream_op_state_t<stdexec::__member_t<Self, source_sender_th>, receiver_t<Self, Receiver>, Receiver> {
-          return stream_op_state<stdexec::__member_t<Self, source_sender_th>>(
+        -> stream_op_state_t<stdexec::__copy_cvref_t<Self, source_sender_th>, receiver_t<Self, Receiver>, Receiver> {
+          return stream_op_state<stdexec::__copy_cvref_t<Self, source_sender_th>>(
               ((Self&&)self).sndr_,
               (Receiver&&)rcvr,
               [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider) -> receiver_t<Self, Receiver> {
@@ -132,7 +132,7 @@ template <class Scheduler, class SenderId>
       template <stdexec::__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
           stdexec::make_completion_signatures<
-            stdexec::__member_t<_Self, Sender>,
+            stdexec::__copy_cvref_t<_Self, Sender>,
             _Env,
             stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>>;
 

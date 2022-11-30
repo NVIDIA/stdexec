@@ -103,11 +103,11 @@ namespace exec {
         template <class _Self, class _Receiver>
           using __when_empty_op_t =
             __when_empty_op<
-              __x<__member_t<_Self, _Constrained>>,
+              __x<__copy_cvref_t<_Self, _Constrained>>,
               __x<_Receiver>>;
 
         template <__decays_to<__when_empty_sender> _Self, receiver _Receiver>
-            requires sender_to<__member_t<_Self, _Constrained>, _Receiver>
+            requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
           [[nodiscard]] friend __when_empty_op_t<_Self, _Receiver>
           tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
             return __when_empty_op_t<_Self, _Receiver>{
@@ -118,7 +118,7 @@ namespace exec {
 
         template <__decays_to<__when_empty_sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> completion_signatures_of_t<__member_t<_Self, _Constrained>, __env_t<_Env>>;
+            -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
       };
 
     template <class _Constrained>
@@ -210,7 +210,7 @@ namespace exec {
           using __nest_receiver_t = __nest_rcvr<__x<_Receiver>>;
 
         template <__decays_to<__nest_sender> _Self, receiver _Receiver>
-            requires sender_to<__member_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
+            requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
           [[nodiscard]] friend __nest_operation_t<_Receiver>
           tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
             return __nest_operation_t<_Receiver>{
@@ -220,7 +220,7 @@ namespace exec {
           }
         template <__decays_to<__nest_sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> completion_signatures_of_t<__member_t<_Self, _Constrained>, __env_t<_Env>>;
+            -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
       };
 
     template <class _Constrained>

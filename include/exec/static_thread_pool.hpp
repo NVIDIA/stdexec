@@ -337,15 +337,15 @@ namespace exec {
           template <class Self, class Env>
             using completion_signatures =
               stdexec::__make_completion_signatures<
-                stdexec::__member_t<Self, Sender>,
+                stdexec::__copy_cvref_t<Self, Sender>,
                 Env,
-                with_error_invoke_t<Fun, stdexec::__member_t<Self, Sender>, Env>,
+                with_error_invoke_t<Fun, stdexec::__copy_cvref_t<Self, Sender>, Env>,
                 stdexec::__q<set_value_t>>;
 
           template <class Self, class Receiver>
             using bulk_op_state_t =
               bulk_op_state<
-                stdexec::__x<stdexec::__member_t<Self, Sender>>,
+                stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
                 stdexec::__x<std::remove_cvref_t<Receiver>>, Shape, Fun>;
 
           template <stdexec::__decays_to<bulk_sender> Self, stdexec::receiver Receiver>

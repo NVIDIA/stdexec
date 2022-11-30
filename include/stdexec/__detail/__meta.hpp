@@ -417,7 +417,7 @@ namespace stdexec {
     using __cpcvrfn = decltype(__cpcvr<_T>);
 
   template <class _From, class _To>
-    using __member_t = __minvoke<__cpcvref_fn<_From>, _To>;
+    using __copy_cvref_t = __minvoke<__cpcvrfn<_From>, _To>;
 
   template <class _Ty, class...>
     using __front_ = _Ty;

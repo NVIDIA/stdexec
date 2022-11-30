@@ -215,7 +215,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         template <class _Self, class _Receiver>
           using __operation_t =
             let_xxx::__operation<
-              stdexec::__id<stdexec::__member_t<_Self, _Sender>>,
+              stdexec::__id<stdexec::__copy_cvref_t<_Self, _Sender>>,
               stdexec::__id<std::remove_cvref_t<_Receiver>>,
               _Fun,
               _Set>;
@@ -223,7 +223,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           using __receiver_t =
             stdexec::__t<
               let_xxx::__receiver<
-                stdexec::__id<stdexec::__member_t<_Self, _Sender>>,
+                stdexec::__id<stdexec::__copy_cvref_t<_Self, _Sender>>,
                 stdexec::__id<std::remove_cvref_t<_Receiver>>,
                 _Fun,
                 _Set>>;
@@ -238,7 +238,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <stdexec::__decays_to<__t> _Self, stdexec::receiver _Receiver>
             requires
-              stdexec::sender_to<stdexec::__member_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
+              stdexec::sender_to<stdexec::__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
           friend auto tag_invoke(stdexec::connect_t, _Self&& __self, _Receiver&& __rcvr)
             -> __operation_t<_Self, _Receiver> {
             return __operation_t<_Self, _Receiver>{
@@ -261,7 +261,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             -> stdexec::dependent_completion_signatures<_Env>;
         template <stdexec::__decays_to<__t> _Self, class _Env>
           friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env)
-            -> __completions<stdexec::__member_t<_Self, _Sender>, _Env> requires true;
+            -> __completions<stdexec::__copy_cvref_t<_Self, _Sender>, _Env> requires true;
 
         _Sender __sndr_;
         _Fun __fun_;
