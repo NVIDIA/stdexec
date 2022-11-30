@@ -68,7 +68,7 @@ template <class Env, class... Senders>
           swallow_values>...>;
     using values =
       stdexec::__minvoke<
-        stdexec::__concat<stdexec::__qf<stdexec::set_value_t>>,
+        stdexec::__mconcat<stdexec::__qf<stdexec::set_value_t>>,
         stdexec::__value_types_of_t<
           Senders,
           Env,

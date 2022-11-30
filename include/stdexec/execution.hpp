@@ -424,7 +424,7 @@ namespace stdexec {
     struct __concat_completion_signatures<_Completions...> {
       using __t =
         __minvoke<
-          __concat<__munique<__q<completion_signatures>>>,
+          __mconcat<__munique<__q<completion_signatures>>>,
           _Completions...>;
     };
 
@@ -723,7 +723,7 @@ namespace stdexec {
       using __default_set_error = completion_signatures<set_error_t(_Error)>;
 
     template <__is_completion_signatures... _Sigs>
-      using __ensure_concat = __minvoke<__concat<__q<completion_signatures>>, _Sigs...>;
+      using __ensure_concat = __minvoke<__mconcat<__q<completion_signatures>>, _Sigs...>;
 
     template<class _Sender, class _Env, class _Sigs, class _SetValue, class _SetError, class _SetStopped>
       using __compl_sigs_t =
@@ -4156,7 +4156,7 @@ namespace stdexec {
       using __variant_for_t =
         __minvoke<
           __minvoke<
-            __fold_right<
+            __mfold_right<
               __nullable_variant_t,
               __mbind_front_q<__bind_completions_t, _Sender, _Env>>,
             set_value_t,
@@ -4811,7 +4811,7 @@ namespace stdexec {
           using __decay_rvalue_ref = decay_t<_T>&&;
         using __values =
           __minvoke<
-            __concat<__qf<set_value_t>>,
+            __mconcat<__qf<set_value_t>>,
             __value_types_of_t<
               _Senders,
               _Env,

@@ -169,7 +169,7 @@ namespace exec {
     template <class... _Completions>
       auto __all_completions(_Completions*...)
         -> __minvoke<
-            __concat<__munique<__q<completion_signatures>>>,
+            __mconcat<__munique<__q<completion_signatures>>>,
             _Completions...>;
 
     template <class _Kernel, class _Env, class... _Sigs>
