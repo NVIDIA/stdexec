@@ -301,7 +301,7 @@ namespace exec {
 
         // Make this task awaitable within a particular context:
         template <class _ParentPromise>
-            requires std::constructible_from<
+            requires stdexec::constructible_from<
                 awaiter_context_t<__promise, _ParentPromise>, __promise&, _ParentPromise&>
           friend __task_awaitable<_ParentPromise>
           tag_invoke(stdexec::as_awaitable_t, basic_task&& __self, _ParentPromise&) noexcept {

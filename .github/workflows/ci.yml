@@ -35,7 +35,7 @@ jobs:
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git;
 
-  build-nvcxx-22-7:
+  build-nvcxx-22-11:
     strategy:
       matrix:
         include:
@@ -51,7 +51,7 @@ jobs:
       - gpu-${{ matrix.GPU }}-${{ matrix.DRIVER }}-1
       - ${{ matrix.ARCH }}
     container:
-      image: ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-cuda11.7-nvhpc22.7
+      image: ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-cuda11.8-nvhpc22.11-ubuntu22.04
       env:
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
         INPUT_CC: "mpicc"
