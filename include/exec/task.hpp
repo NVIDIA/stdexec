@@ -26,8 +26,8 @@
 #include "../stdexec/__detail/__meta.hpp"
 #include "scope.hpp"
 
-_PRAGMA_PUSH()
-_PRAGMA_IGNORE("-Wundefined-inline")
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
 
 namespace exec {
   namespace __task {
@@ -214,6 +214,8 @@ namespace exec {
       class basic_task {
         struct __promise;
        public:
+        using __t = basic_task;
+        using __id = basic_task;
         using promise_type = __promise;
 
         basic_task(basic_task&& __that) noexcept
@@ -358,4 +360,4 @@ namespace exec {
       basic_task<_Ty, default_task_context<_Ty>>;
 } // namespace exec
 
-_PRAGMA_POP()
+STDEXEC_PRAGMA_POP()

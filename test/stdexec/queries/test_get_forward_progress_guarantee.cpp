@@ -18,6 +18,9 @@
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE("-Wunused-function")
+
 namespace ex = stdexec;
 
 namespace {
@@ -89,3 +92,5 @@ TEST_CASE("get_forward_progress_guarantee ", "[sched_queries][get_forward_progre
                      customized_scheduler<ex::forward_progress_guarantee::weakly_parallel>{}) ==
                  ex::forward_progress_guarantee::weakly_parallel);
 }
+
+STDEXEC_PRAGMA_POP()

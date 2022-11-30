@@ -64,7 +64,7 @@ namespace stdexec {
     using __bool = std::bool_constant<_B>;
 
   template <std::size_t _N>
-    using __index = std::integral_constant<std::size_t, _N>;
+    using __msize_t = std::integral_constant<std::size_t, _N>;
 
   template <class _Ty>
     struct __mtype {
@@ -96,17 +96,13 @@ namespace stdexec {
         using __g = _Fn<_Args...>;
     };
 
-#if !STDEXEC_NVHPC()
+  template <class...>
+    concept __tru = true; // a dependent value
+
   template <template <class...> class _Fn, class... _Args>
     using __meval =
-      typename __i<(sizeof...(_Args) == ~0u)>::
+      typename __i<__tru<_Args...>>::
         template __g<_Fn, _Args...>;
-#else
-  template <template <class...> class _Fn, class... _Args>
-    using __meval =
-      typename __i<(sizeof(__types<_Args...>*) == 0u)>::
-        template __g<_Fn, _Args...>;
-#endif
 
   template <class _Fn, class... _Args>
     using __minvoke =
@@ -114,7 +110,7 @@ namespace stdexec {
 
   template <class _Ty, class... _Args>
     using __make_dependent_on =
-      typename __i<(sizeof...(_Args) == ~0u)>::
+      typename __i<__tru<_Args...>>::
         template __g<__midentity, _Ty>;
 
   template <template <class...> class _Fn>
@@ -275,16 +271,21 @@ namespace stdexec {
     using __mapply =
       __minvoke<__uncurry<_Fn>, _List>;
 
-  struct __mcount {
+  struct __msize {
     template <class... _Ts>
-      using __f = std::integral_constant<std::size_t, sizeof...(_Ts)>;
+      using __f = __msize_t<sizeof...(_Ts)>;
   };
+
+  template <class _Ty>
+    struct __mcount {
+      template <class... _Ts>
+        using __f = __msize_t<(__v<std::is_same<_Ts, _Ty>> + ... + 0)>;
+    };
 
   template <class _Fn>
     struct __mcount_if {
       template <class... _Ts>
-        using __f =
-          std::integral_constant<std::size_t, (bool(__minvoke<_Fn, _Ts>::value) + ...)>;
+        using __f = __msize_t<(bool(__v<__minvoke<_Fn, _Ts>>) + ... + 0)>;
     };
 
   template <class _T>
@@ -362,36 +363,49 @@ namespace stdexec {
         using __f = _Return(_Args...);
     };
 
+  // A very simple std::declval replacement that doesn't handle void
   template <class _T>
-    _T&& __declval() noexcept requires true;
+    _T&& __declval() noexcept;
 
-  template <class>
-    void __declval() noexcept;
-
-  template <class _Member, class _CvSelf, class _Self>
-    auto __member_(_CvSelf&& __self, const _Self&, long)
-      -> decltype(((_CvSelf&&) __self) .* ((_Member _Self::*) nullptr));
-
-  template <class _Member, class _CvSelf, class _Self, class = _CvSelf*>
-    auto __member_(_CvSelf&& __self, const _Self&, int)
-      -> _Member;
-
-  template <typename _Self, typename _Member>
+  // For copying cvref from one type to another:
+  template <bool _IsRef>
+    struct __cpcvr {
+      template <class _CvSelf, class _Member, class _Self>
+        static auto __f_(const _Self&)
+          -> decltype((((_CvSelf(*)()) nullptr)())
+                   .* ((_Member _Self::*) nullptr));
+      template <class _CvSelf, class _Member>
+        using __f =
+          decltype(__cpcvr::__f_<_CvSelf, _Member>(__declval<_CvSelf>()));
+    };
+  template <>
+    struct __cpcvr<false> {
+      template <class, class _Member>
+        using __f = _Member;
+    };
+  template <class _Ty>
+    concept __nref =
+      requires {
+        ((_Ty*) nullptr);
+      };
+  template <class _CvSelf, class _Member>
     using __member_t =
-      decltype(__member_<_Member>(__declval<_Self>(), __declval<_Self>(), 0));
+      __minvoke<__cpcvr<!__nref<_CvSelf>>, _CvSelf, _Member>;
 
-  struct __front {
-    template <class _A, class...>
-      using __f = _A;
-  };
+  template <class _Ty, class...>
+    using __front_ = _Ty;
+  template <class... _As>
+    using __front = __meval<__front_, _As...>;
   template <class... _As>
       requires (sizeof...(_As) == 1)
-    using __single = __minvoke<__front, _As...>;
+    using __single = __front<_As...>;
   template <class _Ty>
-    struct __single_or {
-      template <class... _As>
-          requires (sizeof...(_As) <= 1)
-        using __f = __minvoke<__front, _As..., _Ty>;
+    using __single_or = __mbind_back_q<__front_, _Ty>;
+
+  template <class _Continuation = __q<__types>>
+    struct __pop_front {
+      template <class, class... _Ts>
+        using __f = __minvoke<_Continuation, _Ts...>;
     };
 
   // For hiding a template type parameter from ADL
@@ -491,7 +505,7 @@ namespace stdexec {
 
   template <std::size_t... _Indices>
     auto __mconvert_indices(std::index_sequence<_Indices...>)
-      -> __types<__index<_Indices>...>;
+      -> __types<__msize_t<_Indices>...>;
   template <std::size_t _N>
     using __mmake_index_sequence =
       decltype(__mconvert_indices(std::make_index_sequence<_N>{}));
@@ -522,17 +536,17 @@ namespace stdexec {
     struct __mfind_if_i {
       template <class... _Args>
         using __f =
-          __index<(
+          __msize_t<(
             sizeof...(_Args) -
-              __v<__minvoke<__mfind_if<_Fn, __mcount>, _Args...>>)>;
+              __v<__minvoke<__mfind_if<_Fn, __msize>, _Args...>>)>;
     };
 
-  template <class... _Bools>
-    using __mand = __bool<(__v<_Bools> &&...)>;
-  template <class... _Bools>
-    using __mor = __bool<(__v<_Bools> ||...)>;
-  template <class _Bool>
-    using __mnot = __bool<!__v<_Bool>>;
+  template <class... _Booleans>
+    using __mand = __bool<(__v<_Booleans> &&...)>;
+  template <class... _Booleans>
+    using __mor = __bool<(__v<_Booleans> ||...)>;
+  template <class _Boolean>
+    using __mnot = __bool<!__v<_Boolean>>;
 
   template <class _Fn>
     struct __mall_of {
@@ -608,15 +622,15 @@ namespace stdexec {
     using __mwhich_t =
       __minvoke<
         _Signatures,
-        __mfind_if<__q<__mrequires>, __mbind_front_q<__minvoke, __front>>,
+        __mfind_if<__q<__mrequires>, __q<__front>>,
         _Extra...>;
   template <class _Signatures, class... _Extra>
     using __mwhich_i =
-      __index<(
-        __v<__minvoke<_Signatures, __mcount, _Extra...>> -
+      __msize_t<(
+        __v<__minvoke<_Signatures, __msize, _Extra...>> -
         __v<__minvoke<
           _Signatures,
-          __mfind_if<__q<__mrequires>, __mcount>,
+          __mfind_if<__q<__mrequires>, __msize>,
           _Extra...>>)>;
   template <class _Ty, bool _Noexcept = true>
     struct __mconstruct {

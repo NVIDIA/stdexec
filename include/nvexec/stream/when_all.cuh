@@ -43,7 +43,7 @@ template <class...>
   using swallow_values = stdexec::completion_signatures<>;
 
 template <class Env, class... Senders>
-  struct traits {
+  struct completions {
     using __t = stdexec::dependent_completion_signatures<Env>;
   };
 
@@ -55,7 +55,7 @@ __global__ void copy_kernel(TupleT* tpl, As&&... as) {
 
 template <class Env, class... Senders>
     requires ((stdexec::__v<stdexec::__count_of<stdexec::set_value_t, Senders, Env>> <= 1) &&...)
-  struct traits<Env, Senders...> {
+  struct completions<Env, Senders...> {
     using non_values =
       stdexec::__concat_completion_signatures_t<
         stdexec::completion_signatures<
@@ -99,14 +99,18 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
       template <class CvrefEnv>
         using completion_sigs =
-          stdexec::__t<when_all::traits<
+          stdexec::__t<when_all::completions<
             when_all::env_t<std::remove_cvref_t<CvrefEnv>>,
             stdexec::__member_t<CvrefEnv, stdexec::__t<SenderIds>>...>>;
 
-      template <class Traits>
+      template <class Completions>
         using sends_values =
-          stdexec::__bool<stdexec::__v<typename Traits::template
-            __gather_sigs<stdexec::set_value_t, stdexec::__mconst<int>, stdexec::__mcount>> != 0>;
+          stdexec::__bool<stdexec::__v<
+            stdexec::__gather_signal<
+              stdexec::set_value_t,
+              Completions,
+              stdexec::__mconst<int>,
+              stdexec::__msize>> != 0>;
 
       template <class CvrefReceiverId>
         struct operation_t;
@@ -126,7 +130,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
                      , stream_receiver_base {
             using __id = receiver_t;
             using SenderId = nvexec::detail::nth_type<Index, SenderIds...>;
-            using Traits =
+            using Completions =
               completion_sigs<
                 stdexec::__member_t<CvrefReceiverId, stdexec::env_of_t<Receiver>>>;
 
@@ -152,7 +156,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
             template <class... Values>
               void set_value(Values&&... vals) && noexcept {
-                if constexpr (sends_values<Traits>::value) {
+                if constexpr (sends_values<Completions>::value) {
                   // We only need to bother recording the completion values
                   // if we're not already in the "error" or "stopped" state.
                   if (op_state_->state_ == when_all::started) {
@@ -193,7 +197,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
               auto env = make_terminal_stream_env(
                   exec::make_env(
                     stdexec::get_env(base()),
-                    stdexec::__with(stdexec::get_stop_token, op_state_->stop_source_.get_token())),
+                    stdexec::__with_(stdexec::get_stop_token, op_state_->stop_source_.get_token())),
                   op_state_->streams_[Index]);
 
               return env;
@@ -209,7 +213,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
           using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
           using Env = stdexec::env_of_t<Receiver>;
           using CvrefEnv = stdexec::__member_t<CvrefReceiverId, Env>;
-          using Traits = completion_sigs<CvrefEnv>;
+          using Completions = completion_sigs<CvrefEnv>;
 
           cudaError_t status_{cudaSuccess};
 
@@ -267,7 +271,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
               // All child operations have completed and arrived at the barrier.
               switch(state_.load(std::memory_order_relaxed)) {
               case when_all::started:
-                if constexpr (sends_values<Traits>::value) {
+                if constexpr (sends_values<Completions>::value) {
                   // All child operations completed successfully:
                   ::cuda::std::apply(
                     [this](auto&... opt_vals) -> void {
@@ -363,7 +367,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
           // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
           using child_values_tuple_t =
             stdexec::__if<
-              sends_values<Traits>,
+              sends_values<Completions>,
               stdexec::__minvoke<
                 stdexec::__q<::cuda::std::tuple>,
                 stdexec::__value_types_of_t<

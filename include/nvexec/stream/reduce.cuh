@@ -53,7 +53,7 @@ namespace reduce_ {
 
         template <class... Range>
           struct result_size_for {
-            using __t = stdexec::__index<
+            using __t = stdexec::__msize_t<
               sizeof(
                 ::cuda::std::decay_t<
                   ::cuda::std::invoke_result_t<
@@ -75,7 +75,7 @@ namespace reduce_ {
 
           static constexpr std::size_t value =
             stdexec::__v<
-              stdexec::__gather_sigs_t<
+              stdexec::__gather_completions_for<
                 stdexec::set_value_t, 
                 Sender,  
                 stdexec::env_of_t<Receiver>, 

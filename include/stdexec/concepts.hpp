@@ -106,7 +106,7 @@ namespace stdexec {
   // C++20 concepts
   template<class _T, class _U>
     concept __decays_to =
-      same_as<decay_t<_T>, _U>;
+      __same_as<decay_t<_T>, _U>;
 
   template <class...>
     concept __true = true;
@@ -117,15 +117,15 @@ namespace stdexec {
 
   template <class _T, class... _As>
     concept __one_of =
-      (same_as<_T, _As> ||...);
+      (__same_as<_T, _As> ||...);
 
   template <class _T, class... _Us>
     concept __all_of =
-      (same_as<_T, _Us> &&...);
+      (__same_as<_T, _Us> &&...);
 
   template <class _T, class... _Us>
     concept __none_of =
-      ((!same_as<_T, _Us>) &&...);
+      ((!__same_as<_T, _Us>) &&...);
 
   // Not exactly right, but close.
   template <class _T>
@@ -135,13 +135,10 @@ namespace stdexec {
   // Avoid using libstdc++'s object concepts because they instantiate a
   // lot of templates.
   template <class _Ty>
-    inline constexpr bool __destructible2_ = false;
-  template <class _Ty>
-      requires requires (_Ty& __t) { { __t.~_Ty() } noexcept; }
-    inline constexpr bool __destructible2_<_Ty> = true;
-
-  template <class _Ty>
-    inline constexpr bool __destructible_ = __destructible2_<_Ty>;
+    inline constexpr bool __destructible_ =
+      requires {
+        { ((_Ty&&(*)() noexcept) nullptr)().~_Ty() } noexcept;
+      };
   template <class _Ty>
     inline constexpr bool __destructible_<_Ty&> = true;
   template <class _Ty>

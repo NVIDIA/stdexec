@@ -61,6 +61,7 @@ struct my_sender_int {
 
   friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&& r) { return {}; }
 };
+
 TEST_CASE("my_sender_int is a sender & sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender_int>);
   REQUIRE(ex::sender<my_sender_int, empty_env>);

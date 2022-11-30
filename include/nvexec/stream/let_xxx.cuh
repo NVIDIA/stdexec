@@ -47,13 +47,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       struct __max_sender_size {
         template <class... _As>
           struct __sender_size_for_ {
-            using __t = stdexec::__index<sizeof(stdexec::__minvoke<__result_sender<_Fun>, _As...>)>;
+            using __t = stdexec::__msize_t<sizeof(stdexec::__minvoke<__result_sender<_Fun>, _As...>)>;
           };
         template <class... _As>
           using __sender_size_for_t = stdexec::__t<__sender_size_for_<_As...>>;
 
         static constexpr std::size_t value =
-          stdexec::__v<stdexec::__gather_sigs_t<_SetTag, _Sender, stdexec::env_of_t<_Receiver>, stdexec::__q<__sender_size_for_t>, stdexec::__q<max_in_pack>>>;
+          stdexec::__v<stdexec::__gather_completions_for<_SetTag, _Sender, stdexec::env_of_t<_Receiver>, stdexec::__q<__sender_size_for_t>, stdexec::__q<max_in_pack>>>;
       };
 
     template <class _Receiver, class _Fun>
@@ -158,7 +158,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
       using __receiver =
         stdexec::__t<
-          stdexec::__gather_sigs_t<
+          stdexec::__gather_completions_for<
             _Let,
             stdexec::__t<_SenderId>,
             stdexec::env_of_t<stdexec::__t<_ReceiverId>>,
