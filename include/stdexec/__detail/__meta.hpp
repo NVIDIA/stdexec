@@ -376,29 +376,48 @@ namespace stdexec {
     _T&& __declval() noexcept;
 
   // For copying cvref from one type to another:
-  template <bool _IsRef>
-    struct __cpcvr {
-      template <class _CvSelf, class _Member, class _Self>
-        static auto __f_(const _Self&)
-          -> decltype((((_CvSelf(*)()) nullptr)())
-                   .* ((_Member _Self::*) nullptr));
-      template <class _CvSelf, class _Member>
-        using __f =
-          decltype(__cpcvr::__f_<_CvSelf, _Member>(__declval<_CvSelf>()));
-    };
-  template <>
-    struct __cpcvr<false> {
-      template <class, class _Member>
-        using __f = _Member;
-    };
-  template <class _Ty>
-    concept __nref =
-      requires {
-        ((_Ty*) nullptr);
-      };
-  template <class _CvSelf, class _Member>
-    using __member_t =
-      __minvoke<__cpcvr<!__nref<_CvSelf>>, _CvSelf, _Member>;
+  struct __cp {
+    template <class _T>
+      using __f = _T;
+  };
+  struct __cpc {
+    template <class _T>
+      using __f = const _T;
+  };
+  struct __cplr {
+    template <class _T>
+      using __f = _T&;
+  };
+  struct __cprr {
+    template <class _T>
+      using __f = _T&&;
+  };
+  struct __cpclr {
+    template <class _T>
+      using __f = const _T&;
+  };
+  struct __cpcrr {
+    template <class _T>
+      using __f = const _T&&;
+  };
+
+  template <class>
+    extern __cp __cpcvr;
+  template <class _T>
+    extern __cpc __cpcvr<const _T>;
+  template <class _T>
+    extern __cplr __cpcvr<_T&>;
+  template <class _T>
+    extern __cprr __cpcvr<_T&&>;
+  template <class _T>
+    extern __cpclr __cpcvr<const _T&>;
+  template <class _T>
+    extern __cpcrr __cpcvr<const _T&&>;
+  template <class _T>
+    using __cpcvrfn = decltype(__cpcvr<_T>);
+
+  template <class _From, class _To>
+    using __member_t = __minvoke<__cpcvref_fn<_From>, _To>;
 
   template <class _Ty, class...>
     using __front_ = _Ty;
