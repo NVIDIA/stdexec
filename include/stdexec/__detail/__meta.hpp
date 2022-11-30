@@ -64,7 +64,12 @@ namespace stdexec {
     using __bool = std::bool_constant<_B>;
 
   template <std::size_t _N>
-    using __index = std::integral_constant<std::size_t, _N>;
+    using __msize_t = std::integral_constant<std::size_t, _N>;
+
+  template <class _Ty>
+    struct __mtype {
+      using __t = _Ty;
+    };
 
   // Some utilities for manipulating lists of types at compile time
   template <class...>
@@ -266,16 +271,21 @@ namespace stdexec {
     using __mapply =
       __minvoke<__uncurry<_Fn>, _List>;
 
-  struct __mcount {
+  struct __msize {
     template <class... _Ts>
-      using __f = std::integral_constant<std::size_t, sizeof...(_Ts)>;
+      using __f = __msize_t<sizeof...(_Ts)>;
   };
+
+  template <class _Ty>
+    struct __mcount {
+      template <class... _Ts>
+        using __f = __msize_t<(__v<std::is_same<_Ts, _Ty>> + ... + 0)>;
+    };
 
   template <class _Fn>
     struct __mcount_if {
       template <class... _Ts>
-        using __f =
-          std::integral_constant<std::size_t, (bool(__minvoke<_Fn, _Ts>::value) + ...)>;
+        using __f = __msize_t<(bool(__v<__minvoke<_Fn, _Ts>>) + ... + 0)>;
     };
 
   template <class _T>
@@ -392,6 +402,12 @@ namespace stdexec {
   template <class _Ty>
     using __single_or = __mbind_back_q<__front_, _Ty>;
 
+  template <class _Continuation = __q<__types>>
+    struct __pop_front {
+      template <class, class... _Ts>
+        using __f = __minvoke<_Continuation, _Ts...>;
+    };
+
   // For hiding a template type parameter from ADL
   template <class _Ty>
     struct _X {
@@ -489,7 +505,7 @@ namespace stdexec {
 
   template <std::size_t... _Indices>
     auto __mconvert_indices(std::index_sequence<_Indices...>)
-      -> __types<__index<_Indices>...>;
+      -> __types<__msize_t<_Indices>...>;
   template <std::size_t _N>
     using __mmake_index_sequence =
       decltype(__mconvert_indices(std::make_index_sequence<_N>{}));
@@ -520,9 +536,9 @@ namespace stdexec {
     struct __mfind_if_i {
       template <class... _Args>
         using __f =
-          __index<(
+          __msize_t<(
             sizeof...(_Args) -
-              __v<__minvoke<__mfind_if<_Fn, __mcount>, _Args...>>)>;
+              __v<__minvoke<__mfind_if<_Fn, __msize>, _Args...>>)>;
     };
 
   template <class... _Booleans>
@@ -610,11 +626,11 @@ namespace stdexec {
         _Extra...>;
   template <class _Signatures, class... _Extra>
     using __mwhich_i =
-      __index<(
-        __v<__minvoke<_Signatures, __mcount, _Extra...>> -
+      __msize_t<(
+        __v<__minvoke<_Signatures, __msize, _Extra...>> -
         __v<__minvoke<
           _Signatures,
-          __mfind_if<__q<__mrequires>, __mcount>,
+          __mfind_if<__q<__mrequires>, __msize>,
           _Extra...>>)>;
   template <class _Ty, bool _Noexcept = true>
     struct __mconstruct {

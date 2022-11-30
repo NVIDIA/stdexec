@@ -24,6 +24,21 @@
 #endif
 
 namespace exec {
+  struct _FAILURE_TO_CONNECT_ {
+    template <class... _Message>
+      struct _WHAT_ {
+        friend _WHAT_ tag_invoke(stdexec::get_completion_signatures_t, _WHAT_, stdexec::__ignore) noexcept {
+          return {};
+        }
+      };
+  };
+
+  struct _TYPE_IS_NOT_A_VALID_SENDER_WITH_CURRENT_ENVIRONMENT_ {
+    template <class _Sender, class _Env>
+      struct _WITH_
+      {};
+  };
+
   namespace __stl {
     using namespace stdexec;
 
@@ -58,6 +73,22 @@ namespace exec {
             __declval<_Receiver&>(),
             (_Completions*) nullptr));
 
+    struct __with_dummy_transform_sender {
+      int transform_sender;
+    };
+    template <class _Kernel>
+      struct __test_for_transform_sender
+        : _Kernel
+        , __with_dummy_transform_sender
+      {};
+
+    template <class _Kernel>
+      concept __lacks_transform_sender =
+        requires {
+          { &__test_for_transform_sender<_Kernel>::transform_sender }
+            -> same_as<int __test_for_transform_sender<_Kernel>::*>;
+        };
+
     template <class _Kernel, class _Sender, class _Env>
       using __tfx_sender_ =
         decltype(
@@ -67,24 +98,49 @@ namespace exec {
             __declval<__receiver_placeholder<_Env>&>()));
 
     struct __dependent_sender {
+      using __t = __dependent_sender;
       friend auto tag_invoke(get_completion_signatures_t, __dependent_sender, no_env)
         -> dependent_completion_signatures<no_env>;
     };
 
-    template <class, class, class _Env>
-        requires same_as<_Env, no_env>
-      using __or_dependent_ = __dependent_sender;
+    struct __sender_transform_failed {
+      using __t = __sender_transform_failed;
+    };
 
     template <class _Kernel, class _Sender, class _Env>
-      using __sender_t =
-        __minvoke<
-          __if_c<
-            __minvocable<__q<__tfx_sender_>, _Kernel, _Sender, _Env>,
-            __q<__tfx_sender_>,
-            __q<__or_dependent_>>,
-          _Kernel,
-          _Sender,
-          _Env>;
+      auto __transform_sender_t_() {
+        if constexpr (__lacks_transform_sender<_Kernel>) {
+          return __mtype<_Sender>{};
+        } else {
+          if constexpr (__valid<__tfx_sender_, _Kernel, _Sender, _Env>) {
+            return __mtype<__tfx_sender_<_Kernel, _Sender, _Env>>{};
+          } else if constexpr (same_as<_Env, no_env>) {
+            return __dependent_sender{};
+          } else {
+            return __sender_transform_failed{};
+          }
+        }
+        #if __has_builtin(__builtin_unreachable)
+        __builtin_unreachable();
+        #endif
+      }
+
+    template <class _Kernel, class _Sender, class _Data, class _Receiver>
+      auto __transform_sender(_Kernel& __kernel, _Sender&& __sndr, _Data& __data, _Receiver& __rcvr) {
+        static_assert(!same_as<env_of_t<_Receiver>, no_env>);
+        if constexpr (__lacks_transform_sender<_Kernel>) {
+          return (_Sender&&) __sndr;
+        } else {
+          return __kernel.transform_sender((_Sender&&) __sndr, __data, __rcvr);
+        }
+        #if __has_builtin(__builtin_unreachable)
+        __builtin_unreachable();
+        #endif
+      }
+
+    template <class _Kernel, class _Sender, class _Env>
+      using __transform_sender_t =
+        stdexec::__t<decltype(__transform_sender_t_<_Kernel, _Sender, _Env>())>;
 
     template <class _Kernel, class _Receiver, class _Tag, class... _As>
       using __set_result_t =
@@ -122,9 +178,9 @@ namespace exec {
           __all_completions(
             __completions_from_sig<_Kernel, _Env>((_Sigs*) nullptr)...));
 
-    template <class _Kernel, same_as<no_env>>
-      auto __compute_completions_(dependent_completion_signatures<no_env>*)
-        -> dependent_completion_signatures<no_env>;
+    template <class _Kernel, class _Env, class _NoCompletions>
+      auto __compute_completions_(_NoCompletions*)
+        -> _NoCompletions;
 
     template <class _Kernel, class _Env, class _Completions>
       using __compute_completions_t =
@@ -152,13 +208,11 @@ namespace exec {
 
           template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag,
                     same_as<__t> _Self,
-                    class... _As _NVCXX_CAPTURE_PACK(_As)>
+                    class... _As>
               requires __valid<__set_result_t, _Kernel, _Receiver, _Tag, _As...>
             friend void tag_invoke(_Tag __tag, _Self __self, _As&&... __as) noexcept {
-              _NVCXX_EXPAND_PACK(_As, __as,
-                __state& __st = *__self.__state_;
-                (void) __st.__kernel_.set_result(__tag, __st.__data_, __st.__rcvr_, (_As&&) __as...);
-              )
+              __state& __st = *__self.__state_;
+              (void) __st.__kernel_.set_result(__tag, __st.__data_, __st.__rcvr_, (_As&&) __as...);
             }
 
           template <same_as<get_env_t> _Tag, same_as<__t> _Self>
@@ -174,7 +228,7 @@ namespace exec {
         using _Receiver = stdexec::__t<_ReceiverId>;
 
         using __env_t = __stl::__env_t<_Kernel, env_of_t<_Receiver>>;
-        using __sender_t = __stl::__sender_t<_Kernel, _Sender, env_of_t<_Receiver>>;
+        using __sender_t = __transform_sender_t<_Kernel, _Sender, env_of_t<_Receiver>>;
         using __base_completions_t = completion_signatures_of_t<__sender_t, __env_t>;
         using __completions_t = __compute_completions_t<_Kernel, __env_t, __base_completions_t>;
         using __data_t = __stl::__data_t<_Kernel, _Receiver, __completions_t>;
@@ -191,7 +245,8 @@ namespace exec {
             : __state_{(_Kernel&&) __kernel, (_Receiver&&) __rcvr, (__completions_t*) nullptr}
             , __op_(
                 connect(
-                  __state_.__kernel_.transform_sender(
+                  __stl::__transform_sender(
+                    __state_.__kernel_,
                     (_Sender&&) __sndr,
                     __state_.__data_,
                     __state_.__rcvr_),
@@ -217,15 +272,6 @@ namespace exec {
 
     template <class _Derived, class _Sender, class _Kernel>
       struct __sender {
-        template <class _Self, class _Env>
-          using __completions_t =
-            __compute_completions_t<
-              _Kernel,
-              __env_t<_Kernel, _Env>,
-              completion_signatures_of_t<
-                __sender_t<_Kernel, __member_t<_Self, _Sender>, _Env>,
-                __env_t<_Kernel, _Env>>>;
-
         template <class _Self, class _Receiver>
           using __operation_t =
             stdexec::__t<
@@ -255,19 +301,51 @@ namespace exec {
             }
 
           template <__is_derived_sender<_Derived> _Self, class _Env>
-            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-              -> __completions_t<_Self, _Env>;
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) {
+              using _Diagnostic = _FAILURE_TO_CONNECT_::_WHAT_<
+                _TYPE_IS_NOT_A_VALID_SENDER_WITH_CURRENT_ENVIRONMENT_::_WITH_<
+                  _Derived, _Env>>;
+              using _NewSender =
+                __transform_sender_t<_Kernel, __member_t<_Self, _Sender>, _Env>;
+              if constexpr (sender<_NewSender>) {
+                using _NewEnv = __env_t<_Kernel, _Env>;
+                if constexpr (__callable<get_completion_signatures_t, _NewSender, _NewEnv>) {
+                  using _PreCompletions =
+                    __call_result_t<get_completion_signatures_t, _NewSender, _NewEnv>;
+                  using _Completions =
+                    __compute_completions_t<_Kernel, _NewEnv, _PreCompletions>;
+                  if constexpr (__valid_completion_signatures<_Completions, _Env>) {
+                    return _Completions{};
+                  } else if constexpr (same_as<no_env, _Env>) {
+                    return dependent_completion_signatures<no_env>{};
+                  } else {
+                    return _Completions{}; // assume this is an error message and return it directly
+                  }
+                } else if constexpr (same_as<no_env, _Env>) {
+                  return dependent_completion_signatures<no_env>{};
+                } else {
+                  return _Diagnostic{};
+                }
+              } else if constexpr (same_as<no_env, _Env>) {
+                return dependent_completion_signatures<no_env>{};
+              } else if constexpr (same_as<_NewSender, __sender_transform_failed>) {
+                return _Diagnostic{};
+              } else {
+                return _NewSender{}; // assume this is an error message and return it directly
+              }
+              #if __has_builtin(__builtin_unreachable)
+              __builtin_unreachable();
+              #endif
+            }
 
           // forward sender queries:
           template <tag_category<forwarding_sender_query> _Tag,
-                    class... _As _NVCXX_CAPTURE_PACK(_As)>
+                    class... _As>
               requires __callable<_Tag, const _Sender&, _As...>
             friend auto tag_invoke(_Tag __tag, const __t& __self, _As&&... __as)
               noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-              _NVCXX_EXPAND_PACK_RETURN(_As, __as,
-                return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-              )
+              return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
         };
       };

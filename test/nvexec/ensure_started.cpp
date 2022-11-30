@@ -39,13 +39,13 @@ TEST_CASE("ensure_started propagates values", "[cuda][stream][adaptors][ensure_s
   auto snd1 = 
     ex::ensure_started(
              ex::schedule(stream_ctx.get_scheduler())
-           | ex::then([]() -> int {
+           | ex::then([]() -> bool {
                return is_on_gpu(); 
              }));
 
   auto snd2 = std::move(snd1)
-            | ex::then([](int val) -> int {
-                return val * is_on_gpu();
+            | ex::then([](bool prev_on_gpu) -> int {
+                return prev_on_gpu && is_on_gpu();
               });
 
   auto [v] = stdexec::sync_wait(std::move(snd2)).value();
@@ -110,7 +110,7 @@ TEST_CASE("ensure_started can succeed a sender", "[cuda][stream][adaptors][ensur
                    return is_on_gpu();
                  }))
              | ex::then([flags](bool a_sender_was_on_gpu) {
-                 if (a_sender_was_on_gpu * is_on_gpu()) {
+                 if (a_sender_was_on_gpu && is_on_gpu()) {
                    flags.set();
                  }
                });

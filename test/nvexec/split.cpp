@@ -87,7 +87,7 @@ TEST_CASE("split can succeed a sender", "[cuda][stream][adaptors][split]") {
                })
              | ex::split()
              | ex::then([flags](bool a_sender_was_on_gpu) {
-                 if (a_sender_was_on_gpu * is_on_gpu()) {
+                 if (a_sender_was_on_gpu && is_on_gpu()) {
                    flags.set();
                  }
                });

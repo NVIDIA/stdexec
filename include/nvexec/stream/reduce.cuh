@@ -46,190 +46,192 @@ namespace reduce_ {
 
 
   template <class SenderId, class ReceiverId, class Fun>
-    class receiver_t : public stream_receiver_base {
-      using Sender = stdexec::__t<SenderId>;
-      using Receiver = stdexec::__t<ReceiverId>;
+    struct receiver_t {
+      class __t : public stream_receiver_base {
+        using Sender = stdexec::__t<SenderId>;
+        using Receiver = stdexec::__t<ReceiverId>;
 
-      template <class... Range>
-        struct result_size_for {
-          using __t = stdexec::__index<
-            sizeof(
-              ::cuda::std::decay_t<
-                ::cuda::std::invoke_result_t<
-                  Fun, 
-                  range_value_t<Range...>, 
-                  range_value_t<Range...>
-                >
-              >)>;
+        template <class... Range>
+          struct result_size_for {
+            using __t = stdexec::__msize_t<
+              sizeof(
+                ::cuda::std::decay_t<
+                  ::cuda::std::invoke_result_t<
+                    Fun, 
+                    range_value_t<Range...>, 
+                    range_value_t<Range...>
+                  >
+                >)>;
+          };
+
+        template <class... Sizes>
+          struct max_in_pack {
+            static constexpr std::size_t value = std::max({std::size_t{}, stdexec::__v<Sizes>...});
+          };
+
+        struct max_result_size {
+          template <class... _As>
+            using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
+
+          static constexpr std::size_t value =
+            stdexec::__v<
+              stdexec::__gather_completions_for<
+                stdexec::set_value_t, 
+                Sender,  
+                stdexec::env_of_t<Receiver>, 
+                stdexec::__q<result_size_for_t>, 
+                stdexec::__q<max_in_pack>>>;
         };
 
-      template <class... Sizes>
-        struct max_in_pack {
-          static constexpr std::size_t value = std::max({std::size_t{}, stdexec::__v<Sizes>...});
-        };
+        Fun f_;
+        operation_state_base_t<ReceiverId> &op_state_;
 
-      struct max_result_size {
-        template <class... _As>
-          using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
+      public:
+        using __id = receiver_t;
 
-        static constexpr std::size_t value =
-          stdexec::__v<
-            stdexec::__gather_sigs_t<
-              stdexec::set_value_t, 
-              Sender,  
-              stdexec::env_of_t<Receiver>, 
-              stdexec::__q<result_size_for_t>, 
-              stdexec::__q<max_in_pack>>>;
-      };
+        constexpr static std::size_t memory_allocation_size = max_result_size::value;
 
-      Fun f_;
-      operation_state_base_t<ReceiverId> &op_state_;
+        template <class Range>
+        friend void tag_invoke(stdexec::set_value_t, __t&& self, Range&& range) noexcept {
+          cudaStream_t stream = self.op_state_.get_stream();
 
-    public:
+          using Result = ::cuda::std::decay_t<
+            ::cuda::std::invoke_result_t<Fun, decltype(*begin(std::declval<Range>())),
+                                              decltype(*begin(std::declval<Range>()))>>;
 
-      constexpr static std::size_t memory_allocation_size = max_result_size::value;
+          using value_t = Result;
+          value_t *d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
 
-      template <class Range>
-      friend void tag_invoke(stdexec::set_value_t, receiver_t&& self, Range&& range) noexcept {
-        cudaStream_t stream = self.op_state_.stream_;
+          void *d_temp_storage{};
+          std::size_t temp_storage_size{};
 
-        using Result = ::cuda::std::decay_t<
-          ::cuda::std::invoke_result_t<Fun, decltype(*begin(std::declval<Range>())),
-                                            decltype(*begin(std::declval<Range>()))>
-        >;
+          auto first = begin(range);
+          auto last = end(range);
 
-        using value_t = Result;
-        value_t *d_out = reinterpret_cast<value_t*>(self.op_state_.temp_storage_);
+          std::size_t num_items = std::distance(first, last);
 
-        void *d_temp_storage{};
-        std::size_t temp_storage_size{};
+          cudaError_t status;
 
-        auto first = begin(range);
-        auto last = end(range);
+          do {
+            if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+                    d_temp_storage, temp_storage_size, first, d_out, num_items,
+                    self.f_, value_t{}, stream));
+                status != cudaSuccess) {
+              break;
+            }
 
-        std::size_t num_items = std::distance(first, last);
+            if (status = STDEXEC_DBG_ERR(cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
+                status != cudaSuccess) {
+              break;
+            }
 
-        cudaError_t status;
+            if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+                    d_temp_storage, temp_storage_size, first, d_out, num_items,
+                    self.f_, value_t{}, stream));
+                status != cudaSuccess) {
+              break;
+            }
 
-        do {
-          if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
-                  d_temp_storage, temp_storage_size, first, d_out, num_items,
-                  self.f_, value_t{}, stream));
-              status != cudaSuccess) {
-            break;
+            status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
+          } while(false);
+
+          if (status == cudaSuccess) {
+            self.op_state_.propagate_completion_signal(stdexec::set_value, *d_out);
+          } else {
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
-
-          if (status = STDEXEC_DBG_ERR(cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
-              status != cudaSuccess) {
-            break;
-          }
-
-          if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
-                  d_temp_storage, temp_storage_size, first, d_out, num_items,
-                  self.f_, value_t{}, stream));
-              status != cudaSuccess) {
-            break;
-          }
-
-          status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
-        } while(false);
-
-        if (status == cudaSuccess) {
-          self.op_state_.propagate_completion_signal(stdexec::set_value, *d_out);
-        } else {
-          self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
         }
-      }
 
-      template <stdexec::__one_of<stdexec::set_error_t,
-                              stdexec::set_stopped_t> Tag,
-                class... As _NVCXX_CAPTURE_PACK(As)>
-        friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-          _NVCXX_EXPAND_PACK(As, as,
+        template <stdexec::__one_of<stdexec::set_error_t,
+                                stdexec::set_stopped_t> Tag,
+                  class... As>
+          friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
             self.op_state_.propagate_completion_signal(tag, (As&&)as...);
-          );
+          }
+
+        friend stdexec::env_of_t<Receiver> tag_invoke(stdexec::get_env_t, const __t& self) {
+          return stdexec::get_env(self.op_state_.receiver_);
         }
 
-      friend stdexec::env_of_t<Receiver> tag_invoke(stdexec::get_env_t, const receiver_t& self) {
-        return stdexec::get_env(self.op_state_.receiver_);
-      }
-
-      receiver_t(Fun fun, operation_state_base_t<ReceiverId> &op_state)
-        : f_((Fun&&) fun)
-        , op_state_(op_state)
-      {}
+        __t(Fun fun, operation_state_base_t<ReceiverId> &op_state)
+          : f_((Fun&&) fun)
+          , op_state_(op_state)
+        {}
+      };
     };
 }
 
-template <class SenderId, class FunId>
-  struct reduce_sender_t : stream_sender_base {
+template <class SenderId, class Fun>
+  struct reduce_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
 
-    Sender sndr_;
-    Fun fun_;
+    struct __t : stream_sender_base {
+      using __id = reduce_sender_t;
 
-    template <class Receiver>
-      using receiver_t = reduce_::receiver_t<
-          SenderId, 
-          stdexec::__x<Receiver>, 
-          Fun>;
+      Sender sndr_;
+      Fun fun_;
 
-    template <class... Range>
-        requires (sizeof...(Range) == 1)
-      using set_value_t =
-        stdexec::completion_signatures<stdexec::set_value_t(
-          std::add_lvalue_reference_t<
-            ::cuda::std::decay_t<
-              ::cuda::std::invoke_result_t<Fun, decltype(*__begin(std::declval<Range>())), decltype(*__begin(std::declval<Range>()))>
-            >
-          >...
-        )>;
+      template <class Receiver>
+        using receiver_t = 
+          stdexec::__t<
+            reduce_::receiver_t<
+              SenderId, 
+              stdexec::__id<Receiver>, 
+              Fun>>;
 
-    template <class Self, class Env>
-      using completion_signatures =
-        stdexec::make_completion_signatures<
-          stdexec::__member_t<Self, Sender>,
-          Env,
-          stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
-          set_value_t
-          >;
+      template <class... Range>
+          requires (sizeof...(Range) == 1)
+        using set_value_t =
+          stdexec::completion_signatures<stdexec::set_value_t(
+            std::add_lvalue_reference_t<
+              ::cuda::std::decay_t<
+                ::cuda::std::invoke_result_t<Fun, decltype(*__begin(std::declval<Range>())), decltype(*__begin(std::declval<Range>()))>
+              >
+            >...
+          )>;
 
-    template <stdexec::__decays_to<reduce_sender_t> Self, stdexec::receiver Receiver>
-      requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-      -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<stdexec::__member_t<Self, Sender>>(
-          ((Self&&)self).sndr_,
-          (Receiver&&)rcvr,
-          [&](operation_state_base_t<stdexec::__x<Receiver>>& stream_provider) -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.fun_, stream_provider);
-          });
-    }
+      template <class Self, class Env>
+        using completion_signatures =
+          stdexec::make_completion_signatures<
+            stdexec::__member_t<Self, Sender>,
+            Env,
+            stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
+            set_value_t
+            >;
 
-    template <stdexec::__decays_to<reduce_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> stdexec::dependent_completion_signatures<Env>;
+      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
+        requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+        -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+          return stream_op_state<stdexec::__member_t<Self, Sender>>(
+            ((Self&&)self).sndr_,
+            (Receiver&&)rcvr,
+            [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider) -> receiver_t<Receiver> {
+              return receiver_t<Receiver>(self.fun_, stream_provider);
+            });
+      }
 
-    template <stdexec::__decays_to<reduce_sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env> requires true;
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> stdexec::dependent_completion_signatures<Env>;
 
-    template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-      requires stdexec::__callable<Tag, const Sender&, As...>
-    friend auto tag_invoke(Tag tag, const reduce_sender_t& self, As&&... as)
-      noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-      -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-      return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-    }
+      template <stdexec::__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> completion_signatures<Self, Env> requires true;
+
+      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
+        requires stdexec::__callable<Tag, const Sender&, As...>
+      friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
+        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
+        return ((Tag&&) tag)(self.sndr_, (As&&) as...);
+      }
+    };
   };
 
 struct reduce_t {
   template <class Sender, class Fun>
-    using __sender =
-      reduce_sender_t<
-        stdexec::__x<std::remove_cvref_t<Sender>>,
-        stdexec::__x<std::remove_cvref_t<Fun>>>;
+    using __sender = stdexec::__t<reduce_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
 
   template <stdexec::sender Sender, stdexec::__movable_value Fun>
     __sender<Sender, Fun> operator()(Sender&& __sndr, Fun __fun) const {

@@ -104,12 +104,12 @@ namespace exec {
           using __when_empty_op_t =
             __when_empty_op<
               __x<__member_t<_Self, _Constrained>>,
-              __x<remove_cvref_t<_Receiver>>>;
+              __x<_Receiver>>;
 
         template <__decays_to<__when_empty_sender> _Self, receiver _Receiver>
             requires sender_to<__member_t<_Self, _Constrained>, _Receiver>
           [[nodiscard]] friend __when_empty_op_t<_Self, _Receiver>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
+          tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
             return __when_empty_op_t<_Self, _Receiver>{
               __self.__scope_,
               ((_Self&&) __self).__c_,
@@ -157,13 +157,11 @@ namespace exec {
 
         template <
             __one_of<set_value_t, set_error_t, set_stopped_t> _Tag,
-            class... _As _NVCXX_CAPTURE_PACK(_As)>
+            class... _As>
             requires __callable<_Tag, _Receiver, _As...>
           friend void tag_invoke(_Tag, __nest_rcvr&& __self, _As&&... __as) noexcept {
             auto __scope = __self.__op_->__scope_;
-            _NVCXX_EXPAND_PACK(_As, __as,
-              _Tag{}(std::move(__self.__op_->__rcvr_), (_As&&) __as...);
-            )
+            _Tag{}(std::move(__self.__op_->__rcvr_), (_As&&) __as...);
             // do not access __op_
             // do not access this
             __complete(__scope);
@@ -207,14 +205,14 @@ namespace exec {
         [[no_unique_address]] _Constrained __c_;
       private:
         template <class _Receiver>
-          using __nest_operation_t = __nest_op<_ConstrainedId, __x<remove_cvref_t<_Receiver>>>;
+          using __nest_operation_t = __nest_op<_ConstrainedId, __x<_Receiver>>;
         template <class _Receiver>
           using __nest_receiver_t = __nest_rcvr<__x<_Receiver>>;
 
         template <__decays_to<__nest_sender> _Self, receiver _Receiver>
             requires sender_to<__member_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
           [[nodiscard]] friend __nest_operation_t<_Receiver>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
+          tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
             return __nest_operation_t<_Receiver>{
               __self.__scope_,
               ((_Self&&) __self).__c_,
@@ -487,15 +485,13 @@ namespace exec {
 
         template <
             __one_of<set_value_t, set_error_t, set_stopped_t> _Tag,
-            __movable_value... _As _NVCXX_CAPTURE_PACK(_As)>
+            __movable_value... _As>
           friend void tag_invoke(_Tag, __future_rcvr&& __self, _As&&... __as) noexcept {
             auto& __state = *__self.__state_;
             try {
               std::unique_lock __guard{__state.__mutex_};
-              _NVCXX_EXPAND_PACK(_As, __as,
-                using _Tuple = __decayed_tuple<_Tag, _As...>;
-                __state.__data_.template emplace<_Tuple>(_Tag{}, (_As&&) __as...);
-              )
+              using _Tuple = __decayed_tuple<_Tag, _As...>;
+              __state.__data_.template emplace<_Tuple>(_Tag{}, (_As&&) __as...);
               __guard.unlock();
               __self.__dispatch_result_();
             } catch(...) {
@@ -561,9 +557,9 @@ namespace exec {
 
         template <__decays_to<__future> _Self, receiver _Receiver>
             requires receiver_of<_Receiver, __completions_t<_Self>>
-          friend __future_op<_SenderId, _EnvId, __x<decay_t<_Receiver>>>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
-            return __future_op<_SenderId, _EnvId, __x<decay_t<_Receiver>>>{
+          friend __future_op<_SenderId, _EnvId, __x<_Receiver>>
+          tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
+            return __future_op<_SenderId, _EnvId, __x<_Receiver>>{
                 (_Receiver &&) __rcvr,
                 std::move(__self.__state_)};
           }
@@ -638,7 +634,6 @@ namespace exec {
           return __self.__start_();
         }
 
-        __env_t<_Env> __env_;
         connect_result_t<_Sender, __spawn_receiver_t<_Env>> __op_;
       };
 

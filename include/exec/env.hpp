@@ -24,18 +24,18 @@
 
 namespace exec {
   template <class _Tag, class _Value = stdexec::__none_such>
-    using with_t = stdexec::__with_t<_Tag, _Value>;
+    using with_t = stdexec::__with<_Tag, _Value>;
 
   namespace __detail {
     struct __with_t {
       template <class _Tag, class _Value>
         with_t<_Tag, _Value> operator()(_Tag, _Value&& __val) const {
-          return {{(_Value&&) __val}};
+          return {(_Value&&) __val};
         }
 
       template <class _Tag>
         with_t<_Tag> operator()(_Tag) const {
-          return {{}};
+          return {};
         }
     };
   } // namespace __detail
@@ -92,9 +92,9 @@ namespace exec {
 
         template <__decays_to<__sender> _Self, class _Receiver>
           requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          noexcept(std::is_nothrow_constructible_v<decay_t<_Receiver>, _Receiver>)
-          -> __operation<_Tag, __x<__default_t<env_of_t<_Receiver>>>, __x<decay_t<_Receiver>>> {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+          noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
+          -> __operation<_Tag, __x<__default_t<env_of_t<_Receiver>>>, __x<_Receiver>> {
           return {{}, ((_Self&&) __self).__default_, (_Receiver&&) __rcvr};
         }
 
@@ -183,9 +183,9 @@ namespace exec {
         std::tuple<_Withs...> __withs_;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
-          requires sender_to<__member_t<_Self, _Sender>, __receiver_t<__x<decay_t<_Receiver>>>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
-          -> __operation_t<_Self, __x<decay_t<_Receiver>>> {
+          requires sender_to<__member_t<_Self, _Sender>, __receiver_t<__x<_Receiver>>>
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+          -> __operation_t<_Self, __x<_Receiver>> {
           return {((_Self&&) __self).__sndr_,
                   (_Receiver&&) __rcvr,
                   ((_Self&&) __self).__withs_};
@@ -201,22 +201,22 @@ namespace exec {
 
         template <__decays_to<__sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-            -> make_completion_signatures<
+            -> completion_signatures_of_t<
                 __member_t<_Self, _Sender>,
                 make_env_t<_Env, _Withs...>>;
       };
 
     struct __write_t {
-      template <__is_not_instance_of<__env::__with_> _Sender, class... _Withs>
+      template <__is_not_instance_of<__env::__with> _Sender, class... _Tags, class... _Values>
           requires sender<_Sender>
-        auto operator()(_Sender&& __sndr, __env::__with_<_Withs>... __withs) const
-          -> __sender<__x<decay_t<_Sender>>, __env::__with_<_Withs>...> {
+        auto operator()(_Sender&& __sndr, __env::__with<_Tags, _Values>... __withs) const
+          -> __sender<__x<decay_t<_Sender>>, __env::__with<_Tags, _Values>...> {
           return {(_Sender&&) __sndr, {std::move(__withs)...}};
         }
 
-      template <class... _Withs>
-        auto operator()(__env::__with_<_Withs>... __withs) const
-          -> __binder_back<__write_t, __env::__with_<_Withs>...> {
+      template <class... _Tags, class... _Values>
+        auto operator()(__env::__with<_Tags, _Values>... __withs) const
+          -> __binder_back<__write_t, __env::__with<_Tags, _Values>...> {
           return {{}, {}, {std::move(__withs)...}};
         }
     };

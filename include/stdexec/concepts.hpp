@@ -58,10 +58,6 @@ namespace stdexec::__std_concepts {
   using std::derived_from;
   using std::convertible_to;
   using std::equality_comparable;
-  using std::destructible;
-  using std::constructible_from;
-  using std::move_constructible;
-  using std::copy_constructible;
 
 #else
 
@@ -86,27 +82,6 @@ namespace stdexec::__std_concepts {
         { __t == __t } -> convertible_to<bool>;
         { __t != __t } -> convertible_to<bool>;
       };
-
-  template<class _T>
-    concept destructible = std::is_nothrow_destructible_v<_T>;
-
-#if __has_builtin(__is_constructible)
-  template<class _T, class... _As>
-    concept constructible_from =
-      destructible<_T> && __is_constructible(_T, _As...);
-#else
-  template<class _T, class... _As>
-    concept constructible_from =
-      destructible<_T> && is_constructible_v<_T, _As...>;
-#endif
-
-  template<class _T>
-    concept move_constructible = constructible_from<_T, _T>;
-
-  template<class _T>
-    concept copy_constructible =
-      move_constructible<_T> &&
-      constructible_from<_T, _T const&>;
 #endif
 } // namespace stdexec::__std_concepts
 
@@ -133,7 +108,7 @@ namespace stdexec {
     concept __decays_to =
       __same_as<decay_t<_T>, _U>;
 
-  template <class>
+  template <class...>
     concept __true = true;
 
   template <class _C>
@@ -156,6 +131,41 @@ namespace stdexec {
   template <class _T>
     concept __boolean_testable_ =
       convertible_to<_T, bool>;
+
+  // Avoid using libstdc++'s object concepts because they instantiate a
+  // lot of templates.
+  template <class _Ty>
+    inline constexpr bool __destructible_ =
+      requires {
+        { ((_Ty&&(*)() noexcept) nullptr)().~_Ty() } noexcept;
+      };
+  template <class _Ty>
+    inline constexpr bool __destructible_<_Ty&> = true;
+  template <class _Ty>
+    inline constexpr bool __destructible_<_Ty&&> = true;
+  template <class _Ty, std::size_t _N>
+    inline constexpr bool __destructible_<_Ty[_N]> = __destructible_<_Ty>;
+
+  template<class T>
+    concept destructible = __destructible_<T>;
+
+#if __has_builtin(__is_constructible)
+  template<class _T, class... _As>
+    concept constructible_from =
+      destructible<_T> && __is_constructible(_T, _As...);
+#else
+  template<class _T, class... _As>
+    concept constructible_from =
+      destructible<_T> && is_constructible_v<_T, _As...>;
+#endif
+
+  template<class _T>
+    concept move_constructible = constructible_from<_T, _T>;
+
+  template<class _T>
+    concept copy_constructible =
+      move_constructible<_T> &&
+      constructible_from<_T, _T const&>;
 
   template <class _T>
     concept __movable_value =

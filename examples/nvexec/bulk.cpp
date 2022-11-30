@@ -23,11 +23,15 @@ int main() {
     };
   };
 
+  auto fork = ex::schedule(sch) 
+            | ex::then(then_fn(0)) 
+            | ex::split();
+
   auto snd = ex::transfer_when_all(
                sch,
-               ex::schedule(sch) | ex::bulk(4, bulk_fn(1)),
-               ex::schedule(sch) | ex::then(then_fn(1)),
-               ex::schedule(sch) | ex::bulk(4, bulk_fn(2)))
+               fork | ex::bulk(4, bulk_fn(1)),
+               fork | ex::then(then_fn(1)),
+               fork | ex::bulk(4, bulk_fn(2)))
            | ex::then(then_fn(2));
 
   stdexec::sync_wait(std::move(snd));

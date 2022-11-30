@@ -28,95 +28,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         new (result) ResultSenderT(fn((As&&)as...));
       }
 
-    template <class... _Ts>
-      struct __as_tuple {
-        stdexec::__decayed_tuple<_Ts...> operator()(_Ts...) const;
-      };
+    template <class _T>
+      using __decay_ref = stdexec::decay_t<_T>&;
+
+    template <class _Fun>
+      using __result_sender =
+        stdexec::__transform<
+          stdexec::__q<__decay_ref>,
+          stdexec::__mbind_front_q<stdexec::__call_result_t, _Fun>>;
 
     template <class... Sizes>
       struct max_in_pack {
         static constexpr std::size_t value = std::max({std::size_t{}, stdexec::__v<Sizes>...});
-      };
-
-    template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
-      struct __receiver;
-
-    template <class... _Ts>
-      struct __which_tuple_ : _Ts... {
-        using _Ts::operator()...;
-      };
-
-    struct __which_tuple_base {
-      template <class... _Ts>
-        stdexec::__decayed_tuple<_Ts...> operator()(_Ts&&...) const;
-    };
-
-    template <stdexec::sender, class, class>
-      struct __which_tuple : __which_tuple_base {};
-
-    template <class _Sender, class _Env>
-        requires stdexec::sender<_Sender, _Env>
-      struct __which_tuple<_Sender, _Env, stdexec::set_value_t>
-        : stdexec::value_types_of_t<_Sender, _Env, __as_tuple, __which_tuple_> {};
-
-    template <class _Sender, class _Env>
-        requires stdexec::sender<_Sender, _Env>
-      struct __which_tuple<_Sender, _Env, stdexec::set_error_t>
-        : stdexec::__error_types_of_t<
-            _Sender,
-            _Env,
-            stdexec::__transform<stdexec::__q<__as_tuple>, stdexec::__q<__which_tuple_>>> {};
-
-    template <class _Fun>
-      struct __applyable_fn {
-        template <class... _As>
-          stdexec::__ operator()(_As&&...) const;
-
-        template <class... _As>
-            requires std::invocable<_Fun, _As...>
-          std::invoke_result_t<_Fun, _As...> operator()(_As&&...) const {
-            std::terminate(); // this is never called; but we need a body
-          }
-      };
-
-    template <class _Fun, class _Tuple>
-      concept __applyable =
-        requires (__applyable_fn<_Fun> __fun, _Tuple&& __tupl) {
-          {std::apply(__fun, (_Tuple&&) __tupl)} -> stdexec::__none_of<stdexec::__>;
-        };
-    template <class _Fun, class _Tuple>
-        requires __applyable<_Fun, _Tuple>
-      using __apply_result_t =
-        decltype(std::apply(__applyable_fn<_Fun>{}, stdexec::__declval<_Tuple>()));
-
-    template <class _T>
-      using __decay_ref = std::decay_t<_T>&;
-
-    template <class _Fun, class... _As>
-      using __result_sender_t = std::decay_t<stdexec::__call_result_t<_Fun, __decay_ref<_As>...>>;
-
-    template <class _Sender, class _Receiver, class _Fun, class _SetTag>
-        requires stdexec::sender<_Sender, stdexec::env_of_t<_Receiver>>
-      struct __storage {
-        template <class... _As>
-          struct __op_state_for_ {
-            using __t =
-              stdexec::connect_result_t<
-                __result_sender_t<_Fun, _As...>,
-                propagate_receiver_t<stdexec::__x<_Receiver>>>;
-          };
-        template <class... _As>
-          using __op_state_for_t = stdexec::__t<__op_state_for_<_As...>>;
-
-        // Compute a variant of tuples to hold all the values of the input
-        // sender:
-        using __args_t =
-          stdexec::__gather_sigs_t<_SetTag, _Sender, stdexec::env_of_t<_Receiver>, stdexec::__q<stdexec::__decayed_tuple>, stdexec::__nullable_variant_t>;
-
-        // Compute a variant of operation states:
-        using __op_state3_t =
-          stdexec::__gather_sigs_t<_SetTag, _Sender, stdexec::env_of_t<_Receiver>, stdexec::__q<__op_state_for_t>, stdexec::__nullable_variant_t>;
-        __op_state3_t __op_state3_;
       };
 
     template <class _Sender, class _Receiver, class _Fun, class _SetTag>
@@ -124,89 +47,80 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       struct __max_sender_size {
         template <class... _As>
           struct __sender_size_for_ {
-            using __t = stdexec::__index<sizeof(__result_sender_t<_Fun, _As...>)>;
+            using __t = stdexec::__msize_t<sizeof(stdexec::__minvoke<__result_sender<_Fun>, _As...>)>;
           };
         template <class... _As>
           using __sender_size_for_t = stdexec::__t<__sender_size_for_<_As...>>;
 
         static constexpr std::size_t value =
-          stdexec::__v<stdexec::__gather_sigs_t<_SetTag, _Sender, stdexec::env_of_t<_Receiver>, stdexec::__q<__sender_size_for_t>, stdexec::__q<max_in_pack>>>;
+          stdexec::__v<stdexec::__gather_completions_for<_SetTag, _Sender, stdexec::env_of_t<_Receiver>, stdexec::__q<__sender_size_for_t>, stdexec::__q<max_in_pack>>>;
+      };
+
+    template <class _Receiver, class _Fun>
+      using __op_state_for =
+        stdexec::__mcompose<
+          stdexec::__mbind_back_q<
+            stdexec::connect_result_t, 
+            stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>>>>,
+          __result_sender<_Fun>>;
+
+    template <class _Set, class _Sig>
+      struct __tfx_signal_ {
+        template <class, class>
+          using __f = stdexec::completion_signatures<_Sig>;
+      };
+
+    template <class _Set, class... _Args>
+      struct __tfx_signal_<_Set, _Set(_Args...)> {
+        template <class _Env, class _Fun>
+          using __f =
+            stdexec::make_completion_signatures<
+              stdexec::__minvoke<__result_sender<_Fun>, _Args...>,
+              _Env,
+              stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>>;
       };
 
     template <class _Env, class _Fun, class _Set, class _Sig>
-      struct __tfx_signal_impl {};
+      using __tfx_signal_t =
+        stdexec::__minvoke<__tfx_signal_<_Set, _Sig>, _Env, _Fun>;
 
-    template <class _Env, class _Fun, class _Set, class _Ret, class... _Args>
-        requires (!std::same_as<_Set, _Ret>)
-      struct __tfx_signal_impl<_Env, _Fun, _Set, _Ret(_Args...)> {
-        using __t = stdexec::completion_signatures<_Ret(_Args...)>;
-      };
-
-    template <class _Env, class _Fun, class _Set, class... _Args>
-        requires std::invocable<_Fun, __decay_ref<_Args>...> &&
-          stdexec::sender<std::invoke_result_t<_Fun, __decay_ref<_Args>...>, _Env>
-      struct __tfx_signal_impl<_Env, _Fun, _Set, _Set(_Args...)> {
-        using __t =
-          stdexec::make_completion_signatures<
-            __result_sender_t<_Fun, _Args...>,
-            _Env,
-            // because we don't know if connect-ing the result sender will throw:
-            stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>>;
-      };
-
-    template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
+    template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
       struct __operation;
 
-    template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
-      struct __receiver : public stream_receiver_base {
+    template <class _SenderId, class _ReceiverId, class _Fun, class _Let, class... _Tuples>
+      struct __receiver_ {
         using _Sender = stdexec::__t<_SenderId>;
         using _Receiver = stdexec::__t<_ReceiverId>;
-        using _Fun = stdexec::__t<_FunId>;
-        using _Env = stdexec::env_of_t<_Receiver>;
+        using _Env = typename operation_state_base_t<_ReceiverId>::env_t;
 
-        constexpr static std::size_t memory_allocation_size = 
-          stdexec::__v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
+        struct __t : public stream_receiver_base {
+          using __id = __receiver_;
 
-        template <class... _As>
-          using __which_tuple_t =
-            stdexec::__call_result_t<__which_tuple<_Sender, _Env, _Let>, _As...>;
+          constexpr static std::size_t memory_allocation_size = 
+            stdexec::__v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
 
-        template <class... _As>
-          using __op_state_for_t =
-            stdexec::__minvoke<stdexec::__q<stdexec::connect_result_t>, __result_sender_t<_Fun, _As...>, propagate_receiver_t<_ReceiverId>>;
+          template <stdexec::__one_of<_Let> _Tag, class... _As>
+              requires stdexec::__minvocable<__result_sender<_Fun>, _As...> &&
+                stdexec::sender_to<stdexec::__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
+            friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
+              using result_sender_t = stdexec::__minvoke<__result_sender<_Fun>, _As...>;
+              using __tuple_t = stdexec::__decayed_tuple<_As...>;
+              using __op_state_t = stdexec::__minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
-        // handle the case when let_error is used with an input sender that
-        // never completes with set_error(exception_ptr)
-        template <stdexec::__decays_to<std::exception_ptr> _Error>
-            requires std::same_as<_Let, stdexec::set_error_t> &&
-              (!stdexec::__v<stdexec::__error_types_of_t<_Sender, _Env, stdexec::__transform<stdexec::__q<std::decay_t>, stdexec::__contains<std::exception_ptr>>>>)
-          friend void tag_invoke(stdexec::set_error_t, __receiver&& __self, _Error&& __err) noexcept {
-            __self.__op_state_->propagate_completion_signal(stdexec::set_error, (_Error&&) __err);
-          }
+              cudaStream_t stream = __self.__op_state_->get_stream();
 
-        template <stdexec::__one_of<_Let> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
-            requires __applyable<_Fun, __which_tuple_t<_As...>&> &&
-              stdexec::sender_to<__apply_result_t<_Fun, __which_tuple_t<_As...>&>, _Receiver>
-          friend void tag_invoke(_Tag, __receiver&& __self, _As&&... __as) noexcept {
-            _NVCXX_EXPAND_PACK(_As, __as,
-              using __tuple_t = __which_tuple_t<_As...>;
-              using __op_state_t = stdexec::__mapply<stdexec::__q<__op_state_for_t>, __tuple_t>;
-              using result_sender_t = __result_sender_t<_Fun, _As...>;
-
-              cudaStream_t stream = __self.__op_state_->stream_;
-
-              result_sender_t* result_sender = reinterpret_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
+              result_sender_t* result_sender = static_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
               kernel_with_result
                 <std::decay_t<_Fun>, result_sender_t, _As...>
                   <<<1, 1, 0, stream>>>(
                     __self.__op_state_->__fun_, result_sender, (_As&&)__as...);
 
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status == cudaSuccess) {
-                auto& __op = __self.__op_state_->__storage_.__op_state3_.template emplace<__op_state_t>(
+                auto& __op = __self.__op_state_->__op_state3_.template emplace<__op_state_t>(
                   stdexec::__conv{[&] {
                     return stdexec::connect(
                         *result_sender,
-                        propagate_receiver_t<_ReceiverId>{
+                        stdexec::__t<propagate_receiver_t<_ReceiverId>>{
                           {},
                           static_cast<operation_state_base_t<_ReceiverId>&>(
                               *__self.__op_state_)});
@@ -217,130 +131,141 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 __self.__op_state_->propagate_completion_signal(
                     stdexec::set_error, std::move(status));
               }
-            )
-          }
+            }
 
-        template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
-            requires stdexec::__none_of<_Tag, _Let> && stdexec::__callable<_Tag, _Receiver, _As...>
-          friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
-            _NVCXX_EXPAND_PACK(_As, __as,
+          template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> _Tag, class... _As>
+              requires stdexec::__none_of<_Tag, _Let> && stdexec::__callable<_Tag, _Receiver, _As...>
+            friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
               static_assert(stdexec::__nothrow_callable<_Tag, _Receiver, _As...>);
               __self.__op_state_->propagate_completion_signal(_Tag{}, (_As&&)__as...);
-            )
+            }
+
+          friend _Env tag_invoke(stdexec::get_env_t, const __t& __self) {
+            return __self.__op_state_->make_env();
           }
 
-        friend auto tag_invoke(stdexec::get_env_t, const __receiver& __self)
-          -> stdexec::env_of_t<_Receiver> {
-          return stdexec::get_env(__self.__op_state_->receiver_);
-        }
+          using __op_state_variant_t =
+            stdexec::__minvoke<
+              stdexec::__transform<
+                stdexec::__uncurry<__op_state_for<_Receiver, _Fun>>,
+                stdexec::__nullable_variant_t>,
+              _Tuples...>;
 
-        __operation<_SenderId, _ReceiverId, _FunId, _Let>* __op_state_;
+          __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
+        };
       };
 
-    template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
+    template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      using __receiver =
+        stdexec::__t<
+          stdexec::__gather_completions_for<
+            _Let,
+            stdexec::__t<_SenderId>,
+            stdexec::env_of_t<stdexec::__t<_ReceiverId>>,
+            stdexec::__q<stdexec::__decayed_tuple>,
+            stdexec::__munique<
+              stdexec::__mbind_front_q<
+                __receiver_, 
+                _SenderId,
+                _ReceiverId, 
+                _Fun, 
+                _Let>>>>;
+
+    template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
       using __operation_base =
         operation_state_t<
           _SenderId,
-          stdexec::__x<__receiver<_SenderId, _ReceiverId, _FunId, _Let>>,
+          stdexec::__id<__receiver<_SenderId, _ReceiverId, _Fun, _Let>>,
           _ReceiverId>;
 
-    template <class _SenderId, class _ReceiverId, class _FunId, class _Let>
-      struct __operation : __operation_base<_SenderId, _ReceiverId, _FunId, _Let> {
+    template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+      struct __operation : __operation_base<_SenderId, _ReceiverId, _Fun, _Let> {
         using _Sender = stdexec::__t<_SenderId>;
         using _Receiver = stdexec::__t<_ReceiverId>;
-        using _Fun = stdexec::__t<_FunId>;
-        using __receiver_t = __receiver<_SenderId, _ReceiverId, _FunId, _Let>;
+        using __receiver_t = stdexec::__t<__receiver<_SenderId, _ReceiverId, _Fun, _Let>>;
+        using __op_state_variant_t = typename __receiver_t::__op_state_variant_t;
 
         template <class _Receiver2>
           __operation(_Sender&& __sndr, _Receiver2&& __rcvr, _Fun __fun)
-            : __operation_base<_SenderId, _ReceiverId, _FunId, _Let>(
+            : __operation_base<_SenderId, _ReceiverId, _Fun, _Let>(
                 (_Sender&&) __sndr,
-                stdexec::get_completion_scheduler<stdexec::set_value_t>(__sndr).hub_,
                 (_Receiver2&&)__rcvr,
-                [this] (operation_state_base_t<stdexec::__x<_Receiver2>> &) -> __receiver_t {
+                [this] (operation_state_base_t<stdexec::__id<_Receiver2>> &) -> __receiver_t {
                   return __receiver_t{{}, this};
-                })
+                },
+                stdexec::get_completion_scheduler<stdexec::set_value_t>(__sndr).context_state_)
             , __fun_((_Fun&&) __fun)
           {}
         STDEXEC_IMMOVABLE(__operation);
 
         _Fun __fun_;
-        __storage<_Sender, _Receiver, _Fun, _Let> __storage_;
+        
+        __op_state_variant_t __op_state3_;
       };
   } // namespace let_xxx
 
-  template <class _SenderId, class _FunId, class _SetId>
-    struct let_sender_t : stream_sender_base {
+  template <class _SenderId, class _Fun, class _SetId>
+    struct let_sender_t {
       using _Sender = stdexec::__t<_SenderId>;
-      using _Fun = stdexec::__t<_FunId>;
       using _Set = stdexec::__t<_SetId>;
-      template <class _Self, class _Receiver>
-        using __operation_t =
-          let_xxx::__operation<
-            stdexec::__x<stdexec::__member_t<_Self, _Sender>>,
-            stdexec::__x<std::remove_cvref_t<_Receiver>>,
-            _FunId,
-            _Set>;
-      template <class _Self, class _Receiver>
-        using __receiver_t =
-          let_xxx::__receiver<
-            stdexec::__x<stdexec::__member_t<_Self, _Sender>>,
-            stdexec::__x<std::remove_cvref_t<_Receiver>>,
-            _FunId,
-            _Set>;
 
-      template <class _Env, class _Sig>
-        using __tfx_signal_t = stdexec::__t<let_xxx::__tfx_signal_impl<_Env, _Fun, _Set, _Sig>>;
+      struct __t : stream_sender_base {
+        using __id = let_sender_t;
 
-      template <class _Env>
-        using __tfx_signal = stdexec::__mbind_front_q<__tfx_signal_t, _Env>;
+        template <class _Self, class _Receiver>
+          using __operation_t =
+            let_xxx::__operation<
+              stdexec::__id<stdexec::__member_t<_Self, _Sender>>,
+              stdexec::__id<std::remove_cvref_t<_Receiver>>,
+              _Fun,
+              _Set>;
+        template <class _Self, class _Receiver>
+          using __receiver_t =
+            stdexec::__t<
+              let_xxx::__receiver<
+                stdexec::__id<stdexec::__member_t<_Self, _Sender>>,
+                stdexec::__id<std::remove_cvref_t<_Receiver>>,
+                _Fun,
+                _Set>>;
 
-      template <class _Sender, class _Env>
-        using __with_error =
-          stdexec::__if_c<
-            stdexec::__sends<_Set, _Sender, _Env>,
-            stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
-            stdexec::completion_signatures<>>;
+        template <class _Sender, class _Env>
+          using __completions =
+            stdexec::__mapply<
+              stdexec::__transform<
+                stdexec::__mbind_front_q<let_xxx::__tfx_signal_t, _Env, _Fun, _Set>,
+                stdexec::__q<stdexec::__concat_completion_signatures_t>>,
+              stdexec::completion_signatures_of_t<_Sender, _Env>>;
 
-      template <class _Sender, class _Env>
-        using __completions =
-          stdexec::__mapply<
-            stdexec::__transform<
-              __tfx_signal<_Env>,
-              stdexec::__mbind_front_q<stdexec::__concat_completion_signatures_t, __with_error<_Sender, _Env>>>,
-            stdexec::completion_signatures_of_t<_Sender, _Env>>;
+        template <stdexec::__decays_to<__t> _Self, stdexec::receiver _Receiver>
+            requires
+              stdexec::sender_to<stdexec::__member_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
+          friend auto tag_invoke(stdexec::connect_t, _Self&& __self, _Receiver&& __rcvr)
+            -> __operation_t<_Self, _Receiver> {
+            return __operation_t<_Self, _Receiver>{
+                ((_Self&&) __self).__sndr_,
+                (_Receiver&&) __rcvr,
+                ((_Self&&) __self).__fun_
+            };
+          }
 
-      template <stdexec::__decays_to<let_sender_t> _Self, stdexec::receiver _Receiver>
-          requires
-            stdexec::sender_to<stdexec::__member_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
-        friend auto tag_invoke(stdexec::connect_t, _Self&& __self, _Receiver&& __rcvr)
-          -> __operation_t<_Self, _Receiver> {
-          return __operation_t<_Self, _Receiver>{
-              ((_Self&&) __self).__sndr_,
-              (_Receiver&&) __rcvr,
-              ((_Self&&) __self).__fun_
-          };
-        }
-
-      template <stdexec::tag_category<stdexec::forwarding_sender_query> _Tag, class... _As _NVCXX_CAPTURE_PACK(_As)>
-          requires stdexec::__callable<_Tag, const _Sender&, _As...>
-        friend auto tag_invoke(_Tag __tag, const let_sender_t& __self, _As&&... __as)
-          noexcept(stdexec::__nothrow_callable<_Tag, const _Sender&, _As...>)
-          -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, stdexec::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-          _NVCXX_EXPAND_PACK_RETURN(_As, __as,
+        template <stdexec::tag_category<stdexec::forwarding_sender_query> _Tag, class... _As>
+            requires stdexec::__callable<_Tag, const _Sender&, _As...>
+          friend auto tag_invoke(_Tag __tag, const __t& __self, _As&&... __as)
+            noexcept(stdexec::__nothrow_callable<_Tag, const _Sender&, _As...>)
+            -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, stdexec::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-          )
-        }
+          }
 
-      template <stdexec::__decays_to<let_sender_t> _Self, class _Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env)
-          -> stdexec::dependent_completion_signatures<_Env>;
-      template <stdexec::__decays_to<let_sender_t> _Self, class _Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env)
-          -> __completions<stdexec::__member_t<_Self, _Sender>, _Env> requires true;
+        template <stdexec::__decays_to<__t> _Self, class _Env>
+          friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env)
+            -> stdexec::dependent_completion_signatures<_Env>;
+        template <stdexec::__decays_to<__t> _Self, class _Env>
+          friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env)
+            -> __completions<stdexec::__member_t<_Self, _Sender>, _Env> requires true;
 
-      _Sender __sndr_;
-      _Fun __fun_;
+        _Sender __sndr_;
+        _Fun __fun_;
+      };
     };
 }
 
