@@ -43,7 +43,7 @@ CompileFlags:
     - "-D_NVHPC_CUDA=1"
     - "-ftemplate-backtrace-limit=0"
   Remove:
-    - -stdpar
+    - -stdpar*
     # strip CUDA fatbin args
     - "-Xfatbin*"
     - "-gpu=*"
