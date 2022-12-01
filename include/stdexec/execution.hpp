@@ -579,8 +579,6 @@ namespace stdexec {
       requires (_Sender&& __sndr, _Env&& __env) {
         typename __completion_signatures_of_t<_Sender, no_env>;
         typename __completion_signatures_of_t<_Sender, _Env>;
-        get_completion_signatures((_Sender&&) __sndr, no_env{});
-        get_completion_signatures((_Sender&&) __sndr, (_Env&&) __env);
       } &&
       __valid_completion_signatures<__completion_signatures_of_t<_Sender, no_env>, no_env> &&
       __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env> &&
