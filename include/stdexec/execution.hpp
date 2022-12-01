@@ -382,6 +382,9 @@ namespace stdexec {
 
   template <__compl_sigs::__completion_signature... _Sigs>
     struct completion_signatures {
+      // Uncomment this to see where completion_signatures is
+      // erroneously getting instantiated:
+      //static_assert(sizeof...(_Sigs) == -1u);
     };
 
   namespace __compl_sigs {
@@ -509,43 +512,50 @@ namespace stdexec {
   namespace __get_completion_signatures {
     template <class _Sender, class _Env>
       concept __with_tag_invoke =
-        tag_invocable<get_completion_signatures_t, _Sender, _Env>;
+        __valid<tag_invoke_result_t, get_completion_signatures_t, _Sender, _Env>;
+
+    template <class _Sender, class...>
+      using __member_alias_t =
+        typename remove_cvref_t<_Sender>::completion_signatures;
 
     template <class _Sender>
       concept __with_member_alias =
-        requires {
-          typename remove_cvref_t<_Sender>::completion_signatures;
-        };
+        __valid<__member_alias_t, _Sender>;
 
     struct get_completion_signatures_t {
-      template <class _Sender, class _Env = no_env>
-        requires (__with_tag_invoke<_Sender, _Env> ||
-                  __with_member_alias<_Sender> ||
-                  __awaitable<_Sender, _Env>)
-      constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept {
-        static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
-        static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
-        if constexpr (__with_tag_invoke<_Sender, _Env>) {
-          using _Completions =
-            tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
-          return _Completions{};
-        } else if constexpr (__with_member_alias<_Sender>) {
-          using _Completions =
-            typename remove_cvref_t<_Sender>::completion_signatures;
-          return _Completions{};
-        } else {
-          // awaitables go here
-          using _Result = __await_result_t<_Sender, _Env>;
-          if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
-            return dependent_completion_signatures<no_env>{};
-          } else {
-            return completion_signatures<
-                // set_value_t() or set_value_t(T)
-                __minvoke<__remove<void, __qf<set_value_t>>, _Result>,
-                set_error_t(std::exception_ptr)>{};
+      template <class _Sender, class _Env>
+        static auto __impl() {
+          static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
+          static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
+          if constexpr (__with_tag_invoke<_Sender, _Env>) {
+            return __mbind_front_q<tag_invoke_result_t, get_completion_signatures_t>{};
+          } else if constexpr (__with_member_alias<_Sender>) {
+            return __q<__member_alias_t>{};
+          } else if constexpr (__awaitable<_Sender, _Env>) {
+            using _Result = __await_result_t<_Sender, _Env>;
+            if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
+              return __mconst<dependent_completion_signatures<no_env>>{};
+            } else {
+              return __mconst<
+                  completion_signatures<
+                  // set_value_t() or set_value_t(T)
+                  __minvoke<__remove<void, __qf<set_value_t>>, _Result>,
+                  set_error_t(std::exception_ptr)>>{};
+            }
           }
         }
-      }
+
+      template <class _Sender, class _Env>
+        using __impl_fn = decltype(__impl<_Sender, _Env>());
+
+      template <class _Sender, class _Env = no_env>
+          requires (__with_tag_invoke<_Sender, _Env> ||
+                    __with_member_alias<_Sender> ||
+                    __awaitable<_Sender, _Env>)
+        constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept
+          -> __minvoke<__impl_fn<_Sender, _Env>, _Sender, _Env> {
+          return {};
+        }
     };
   } // namespace __get_completion_signatures
 
@@ -567,6 +577,8 @@ namespace stdexec {
   template <class _Sender, class _Env = no_env>
     concept sender =
       requires (_Sender&& __sndr, _Env&& __env) {
+        typename __completion_signatures_of_t<_Sender, no_env>;
+        typename __completion_signatures_of_t<_Sender, _Env>;
         get_completion_signatures((_Sender&&) __sndr, no_env{});
         get_completion_signatures((_Sender&&) __sndr, (_Env&&) __env);
       } &&
