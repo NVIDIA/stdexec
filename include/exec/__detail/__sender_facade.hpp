@@ -140,7 +140,7 @@ namespace exec {
 
     template <class _Kernel, class _Sender, class _Env>
       using __transform_sender_t =
-        stdexec::__t<decltype(__transform_sender_t_<_Kernel, _Sender, _Env>())>;
+        stdexec::__t<decltype(__stl::__transform_sender_t_<_Kernel, _Sender, _Env>())>;
 
     template <class _Kernel, class _Receiver, class _Tag, class... _As>
       using __set_result_t =
@@ -166,6 +166,10 @@ namespace exec {
       auto __completions_from_sig(_Tag(*)(_As...))
         -> __set_result_t<_Kernel, __receiver_placeholder<_Env>, _Tag, _As...>;
 
+    template <class _Kernel, class _Env, class _Sig>
+      using __completions_from_sig_t =
+        decltype(__stl::__completions_from_sig((_Sig*) nullptr));
+
     template <class... _Completions>
       auto __all_completions(_Completions*...)
         -> __minvoke<
@@ -175,8 +179,8 @@ namespace exec {
     template <class _Kernel, class _Env, class... _Sigs>
       auto __compute_completions_(completion_signatures<_Sigs...>*)
         -> decltype(
-          __all_completions(
-            __completions_from_sig<_Kernel, _Env>((_Sigs*) nullptr)...));
+          __stl::__all_completions(
+            (__completions_from_sig_t<_Kernel, _Env, _Sigs>) nullptr...));
 
     template <class _Kernel, class _Env, class _NoCompletions>
       auto __compute_completions_(_NoCompletions*)
@@ -184,7 +188,7 @@ namespace exec {
 
     template <class _Kernel, class _Env, class _Completions>
       using __compute_completions_t =
-        decltype(__compute_completions_<_Kernel, _Env>((_Completions*) nullptr));
+        decltype(__stl::__compute_completions_<_Kernel, _Env>((_Completions*) nullptr));
 
     template <class _Kernel, class _Data, class _ReceiverId>
       struct __receiver {
@@ -300,43 +304,73 @@ namespace exec {
                       (_Receiver&&) __rcvr};
             }
 
-          template <__is_derived_sender<_Derived> _Self, class _Env>
-            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) {
-              using _Diagnostic = _FAILURE_TO_CONNECT_::_WHAT_<
+          template <class _Self, class _Env>
+            using __new_sender_t =
+              __transform_sender_t<_Kernel, __copy_cvref_t<_Self, _Sender>, _Env>;
+
+          template <class _Env>
+            using __new_env_t =
+              __env_t<_Kernel, _Env>;
+
+          template <class _NewSender, class _NewEnv>
+            using __pre_completions_t =
+              __call_result_t<get_completion_signatures_t, _NewSender, _NewEnv>;
+
+          template <class _NewEnv, class _PreCompletions>
+            using __completions_t =
+              __compute_completions_t<_Kernel, _NewEnv, _PreCompletions>;
+
+          struct __completions_or_error {
+            template <class _Self, class _Env, class _NewEnv>
+              using __f_ =
+                __completions_t<
+                  _NewEnv,
+                  __pre_completions_t<__new_sender_t<_Self, _Env>, _NewEnv>>;
+            template <class _Self, class _Env>
+              using __f = __f_<_Self, _Env, __new_env_t<_Env>>;
+          };
+
+          template <class _Env>
+            using __diagnostic_t =
+              _FAILURE_TO_CONNECT_::_WHAT_<
                 _TYPE_IS_NOT_A_VALID_SENDER_WITH_CURRENT_ENVIRONMENT_::_WITH_<
                   _Derived, _Env>>;
-              using _NewSender =
-                __transform_sender_t<_Kernel, __copy_cvref_t<_Self, _Sender>, _Env>;
+
+          template <class _Self, class _Env>
+            static auto __impl() {
+              using _NewSender = __new_sender_t<_Self, _Env>;
               if constexpr (sender<_NewSender>) {
-                using _NewEnv = __env_t<_Kernel, _Env>;
-                if constexpr (__callable<get_completion_signatures_t, _NewSender, _NewEnv>) {
-                  using _PreCompletions =
-                    __call_result_t<get_completion_signatures_t, _NewSender, _NewEnv>;
+                using _NewEnv = __new_env_t<_Env>;
+                if constexpr (__valid<__pre_completions_t, _NewSender, _NewEnv>) {
                   using _Completions =
-                    __compute_completions_t<_Kernel, _NewEnv, _PreCompletions>;
+                    __completions_t<_NewEnv, __pre_completions_t<_NewSender, _NewEnv>>;
                   if constexpr (__valid_completion_signatures<_Completions, _Env>) {
-                    return _Completions{};
+                    return __completions_or_error{};
                   } else if constexpr (same_as<no_env, _Env>) {
-                    return dependent_completion_signatures<no_env>{};
+                    return __mconst<dependent_completion_signatures<no_env>>{};
                   } else {
-                    return _Completions{}; // assume this is an error message and return it directly
+                    return __completions_or_error{}; // assume this is an error message and return it directly
                   }
                 } else if constexpr (same_as<no_env, _Env>) {
-                  return dependent_completion_signatures<no_env>{};
+                  return __mconst<dependent_completion_signatures<no_env>>{};
                 } else {
-                  return _Diagnostic{};
+                  return __mconst<__diagnostic_t<_Env>>{};
                 }
               } else if constexpr (same_as<no_env, _Env>) {
-                return dependent_completion_signatures<no_env>{};
+                return __mconst<dependent_completion_signatures<no_env>>{};
               } else if constexpr (same_as<_NewSender, __sender_transform_failed>) {
-                return _Diagnostic{};
+                return __mconst<__diagnostic_t<_Env>>{};
               } else {
-                return _NewSender{}; // assume this is an error message and return it directly
+                return __mconst<_NewSender>{}; // assume this is an error message and return it directly
               }
-              #if __has_builtin(__builtin_unreachable)
-              __builtin_unreachable();
-              #endif
             }
+
+          template <class _Self, class _Env>
+            using __impl_fn = decltype(__impl<_Self, _Env>());
+
+          template <__is_derived_sender<_Derived> _Self, class _Env>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+              -> __minvoke<__impl_fn<_Self, _Env>, _Self, _Env>;
 
           // forward sender queries:
           template <tag_category<forwarding_sender_query> _Tag,

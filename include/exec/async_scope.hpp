@@ -274,7 +274,7 @@ namespace exec {
           STDEXEC_ASSERT(__state != nullptr);
           std::unique_lock __guard{__state->__mutex_};
           // either the future is still in use or it has passed ownership to __state->__no_future_
-          if (__state->__no_future_ != nullptr || __state->__step_ != __future_step::__future) {
+          if (__state->__no_future_.get() != nullptr || __state->__step_ != __future_step::__future) {
             // invalid state - there is a code bug in the state machine
             std::terminate();
           } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
@@ -468,7 +468,7 @@ namespace exec {
           std::unique_lock __guard{__state.__mutex_};
           auto __local = std::move(__state.__subscribers_);
           __state.__forward_scope_ = std::nullopt;
-          if (!!__state.__no_future_) {
+          if (__state.__no_future_.get() != nullptr) {
             // nobody is waiting for the results
             // delete this and return
             __state.__step_from_to_(__guard, __future_step::__no_future, __future_step::__deleted);

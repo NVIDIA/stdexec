@@ -67,7 +67,7 @@ private:
 };
 
 template <typename Signatures, typename Awaiter>
-void test_awaitable_sender1(Signatures&&, Awaiter&&) {
+void test_awaitable_sender1(Signatures*, Awaiter&&) {
   static_assert(ex::sender<awaitable_sender_1<Awaiter>>);
   static_assert(stdexec::__awaitable<awaitable_sender_1<Awaiter>>);
 
@@ -78,7 +78,7 @@ void test_awaitable_sender1(Signatures&&, Awaiter&&) {
 }
 
 template <typename Signatures>
-void test_awaitable_sender2(Signatures) {
+void test_awaitable_sender2(Signatures*) {
   static_assert(ex::sender<awaitable_sender_2>);
   static_assert(ex::sender<awaitable_sender_2, promise<__coro::suspend_always>>);
 
@@ -97,7 +97,7 @@ void test_awaitable_sender2(Signatures) {
 }
 
 template <typename Signatures>
-void test_awaitable_sender3(Signatures) {
+void test_awaitable_sender3(Signatures*) {
   static_assert(ex::sender<awaitable_sender_3>);
   static_assert(ex::sender<awaitable_sender_3, promise<awaiter>>);
 
@@ -118,24 +118,24 @@ void test_awaitable_sender3(Signatures) {
 
 template <typename Error, typename... Values>
 auto signature_error_values(Error, Values...)
-    -> ex::completion_signatures<ex::set_value_t(Values...), ex::set_error_t(Error)> {
+    -> ex::completion_signatures<ex::set_value_t(Values...), ex::set_error_t(Error)>* {
   return {};
 }
 
 TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]") {
-  test_awaitable_sender1(
+  ::test_awaitable_sender1(
     signature_error_values(std::exception_ptr()), __coro::suspend_always{});
-  test_awaitable_sender1(
+  ::test_awaitable_sender1(
     signature_error_values(
       std::exception_ptr(),
       stdexec::__await_result_t<awaitable_sender_1<awaiter>>()),
     awaiter{});
 
-  test_awaitable_sender2(
+  ::test_awaitable_sender2(
     signature_error_values(
       std::exception_ptr()));
 
-  test_awaitable_sender3(
+  ::test_awaitable_sender3(
     signature_error_values(
       std::exception_ptr(),
       stdexec::__await_result_t<awaitable_sender_3, promise<awaiter>>()));

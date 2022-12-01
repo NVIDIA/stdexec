@@ -55,15 +55,15 @@ namespace exec {
         }
       };
 
-    template <class _Sigs, class _Fun, class _ArgsId>
+    template <class _Fun, class _ArgsId, class... _Sigs>
       struct __sender {
         using _Args = __t<_ArgsId>;
-        using completion_signatures = _Sigs;
+        using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
         _Fun __fun_;
         _Args __args_;
 
-        template <__decays_to<__sender> _Self, receiver_of<_Sigs> _Receiver>
+        template <__decays_to<__sender> _Self, receiver_of<completion_signatures> _Receiver>
           requires __callable<_Fun, __context<_Receiver, _Args>&> &&
             constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>> &&
             constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
@@ -76,13 +76,11 @@ namespace exec {
 
     template <__completion_signature... _Sigs>
       struct __create_t {
-        using __compl_sigs = completion_signatures<_Sigs...>;
-
         template <class _Fun, class... _Args>
             requires move_constructible<_Fun> &&
               constructible_from<__decayed_tuple<_Args...>, _Args...>
           auto operator()(_Fun __fun, _Args&&... __args) const
-            -> __sender<__compl_sigs, _Fun, __x<__decayed_tuple<_Args...>>> {
+            -> __sender<_Fun, __x<__decayed_tuple<_Args...>>, _Sigs...> {
             return {(_Fun&&) __fun, {(_Args&&) __args...}};
           }
       };
