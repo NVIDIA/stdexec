@@ -114,7 +114,7 @@ template <class SenderId, std::integral Shape, class Fun>
       template <class Self, class Env>
         using completion_signatures =
           stdexec::__make_completion_signatures<
-            stdexec::__member_t<Self, Sender>,
+            stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             set_error_t,
             stdexec::__q<set_value_t>>;
@@ -122,8 +122,8 @@ template <class SenderId, std::integral Shape, class Fun>
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
         requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
       friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-        -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-          return stream_op_state<stdexec::__member_t<Self, Sender>>(
+        -> stream_op_state_t<stdexec::__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+          return stream_op_state<stdexec::__copy_cvref_t<Self, Sender>>(
               ((Self&&)self).sndr_,
               (Receiver&&)rcvr,
               [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider) -> receiver_t<Receiver> {
@@ -349,7 +349,7 @@ template <class SenderId, std::integral Shape, class Fun>
       template <class Self, class Env>
         using completion_signatures =
           stdexec::__make_completion_signatures<
-            stdexec::__member_t<Self, Sender>,
+            stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             set_error_t,
             stdexec::__q<set_value_t>>;
@@ -357,10 +357,10 @@ template <class SenderId, std::integral Shape, class Fun>
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
           requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
         friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-          -> multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__member_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun> {
+          -> multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun> {
           auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(self.sndr_);
           context_state_t context_state = sch.context_state_;
-          return multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__member_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun>(
+          return multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun>(
               self.num_devices_,
               ((Self&&)self).sndr_,
               (Receiver&&)rcvr,

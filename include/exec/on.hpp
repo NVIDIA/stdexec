@@ -99,7 +99,7 @@ namespace exec {
 
         template <class _Sender>
           using __on_sender_t =
-            __member_t<_Sender, __start_on<__pretty_print<decay_t<_Sender>>, _Scheduler>>;
+            __copy_cvref_t<_Sender, __start_on<__pretty_print<decay_t<_Sender>>, _Scheduler>>;
 
         template <class _Sender, class _Receiver>
           using __diagnostic_t =
@@ -183,7 +183,7 @@ namespace exec {
             using __sender_t = __t<__with_sched<__id<decay_t<_Sender>>, _OldScheduler>>;
             return __sender_t{(_Sender&&) __sndr, __old_sched}
               | transfer(__sched_)
-              | (__member_t<_Sender, _Closure>&&) __closure_
+              | (__copy_cvref_t<_Sender, _Closure>&&) __closure_
               | transfer(__old_sched);
           }
 
@@ -195,7 +195,7 @@ namespace exec {
 
         template <class _Sender>
           using __on_sender_t =
-            __member_t<_Sender, __continue_on<__pretty_print<decay_t<_Sender>>, _Scheduler, _Closure>>;
+            __copy_cvref_t<_Sender, __continue_on<__pretty_print<decay_t<_Sender>>, _Scheduler, _Closure>>;
 
         template <class _Sender, class _Receiver>
           using __diagnostic_t =

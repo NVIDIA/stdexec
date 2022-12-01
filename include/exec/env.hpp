@@ -177,13 +177,13 @@ namespace exec {
             __receiver<_ReceiverId, _Withs...>;
         template <class _Self, class _ReceiverId>
           using __operation_t =
-            __operation<__x<__member_t<_Self, _Sender>>, _ReceiverId, _Withs...>;
+            __operation<__x<__copy_cvref_t<_Self, _Sender>>, _ReceiverId, _Withs...>;
 
         _Sender __sndr_;
         std::tuple<_Withs...> __withs_;
 
         template <__decays_to<__sender> _Self, receiver _Receiver>
-          requires sender_to<__member_t<_Self, _Sender>, __receiver_t<__x<_Receiver>>>
+          requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<__x<_Receiver>>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
           -> __operation_t<_Self, __x<_Receiver>> {
           return {((_Self&&) __self).__sndr_,
@@ -202,7 +202,7 @@ namespace exec {
         template <__decays_to<__sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<
-                __member_t<_Self, _Sender>,
+                __copy_cvref_t<_Self, _Sender>,
                 make_env_t<_Env, _Withs...>>;
       };
 

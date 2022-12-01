@@ -159,13 +159,13 @@ namespace detail::a_sender {
 
       template <class Self, class Receiver>
         using op_t = operation_state_t<
-          stdexec::__x<stdexec::__member_t<Self, Sender>>,
+          stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
           stdexec::__id<receiver_th<Receiver>>>;
 
       template <class Self, class Env>
         using completion_signatures =
           stdexec::__make_completion_signatures<
-            stdexec::__member_t<Self, Sender>,
+            stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             stdexec::completion_signatures<>,
             stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>>;
@@ -221,13 +221,13 @@ namespace detail::a_receiverless_sender {
 
       template <class Self, class Receiver>
         using op_t = operation_state_t<
-          stdexec::__x<stdexec::__member_t<Self, Sender>>,
+          stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
           stdexec::__id<Receiver>>;
 
       template <class Self, class Env>
         using completion_signatures =
           stdexec::__make_completion_signatures<
-            stdexec::__member_t<Self, Sender>,
+            stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             stdexec::completion_signatures<>>;
 

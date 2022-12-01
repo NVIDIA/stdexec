@@ -276,7 +276,7 @@ namespace exec {
           using __operation_t =
             stdexec::__t<
               __operation<
-                __member_t<_Self, _Sender>,
+                __copy_cvref_t<_Self, _Sender>,
                 _Kernel,
                 stdexec::__id<_Receiver>>>;
 
@@ -306,7 +306,7 @@ namespace exec {
                 _TYPE_IS_NOT_A_VALID_SENDER_WITH_CURRENT_ENVIRONMENT_::_WITH_<
                   _Derived, _Env>>;
               using _NewSender =
-                __transform_sender_t<_Kernel, __member_t<_Self, _Sender>, _Env>;
+                __transform_sender_t<_Kernel, __copy_cvref_t<_Self, _Sender>, _Env>;
               if constexpr (sender<_NewSender>) {
                 using _NewEnv = __env_t<_Kernel, _Env>;
                 if constexpr (__callable<get_completion_signatures_t, _NewSender, _NewEnv>) {

@@ -101,7 +101,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         using completion_sigs =
           stdexec::__t<when_all::completions<
             when_all::env_t<std::remove_cvref_t<CvrefEnv>>,
-            stdexec::__member_t<CvrefEnv, stdexec::__t<SenderIds>>...>>;
+            stdexec::__copy_cvref_t<CvrefEnv, stdexec::__t<SenderIds>>...>>;
 
       template <class Completions>
         using sends_values =
@@ -117,7 +117,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
       template <class CvrefReceiverId, std::size_t Index>
         struct receiver_t {
-          using WhenAll = stdexec::__member_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
+          using WhenAll = stdexec::__copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
           using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
           using Env = make_terminal_stream_env_t<
                         exec::make_env_t<
@@ -132,7 +132,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
             using SenderId = nvexec::detail::nth_type<Index, SenderIds...>;
             using Completions =
               completion_sigs<
-                stdexec::__member_t<CvrefReceiverId, stdexec::env_of_t<Receiver>>>;
+                stdexec::__copy_cvref_t<CvrefReceiverId, stdexec::env_of_t<Receiver>>>;
 
             Receiver&& base() && noexcept {
               return (Receiver&&) op_state_->recvr_;
@@ -209,10 +209,10 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
       template <class CvrefReceiverId>
         struct operation_t : stream_op_state_base {
-          using WhenAll = stdexec::__member_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
+          using WhenAll = stdexec::__copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
           using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
           using Env = stdexec::env_of_t<Receiver>;
-          using CvrefEnv = stdexec::__member_t<CvrefReceiverId, Env>;
+          using CvrefEnv = stdexec::__copy_cvref_t<CvrefReceiverId, Env>;
           using Completions = completion_sigs<CvrefEnv>;
 
           cudaError_t status_{cudaSuccess};
@@ -393,13 +393,13 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
         friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-          -> operation_t<stdexec::__member_t<Self, stdexec::__id<std::decay_t<Receiver>>>> {
+          -> operation_t<stdexec::__copy_cvref_t<Self, stdexec::__id<std::decay_t<Receiver>>>> {
           return {(Self&&) self, (Receiver&&) rcvr};
         }
 
       template <stdexec::__decays_to<__t> Self, class Env>
         friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-          -> completion_sigs<stdexec::__member_t<Self, Env>>;
+          -> completion_sigs<stdexec::__copy_cvref_t<Self, Env>>;
 
       template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> _Tag>
           requires WithCompletionScheduler

@@ -150,7 +150,7 @@ template <class SenderId, class Fun>
       template <class Self, class Env>
         using completion_signatures =
           stdexec::__make_completion_signatures<
-            stdexec::__member_t<Self, Sender>,
+            stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
             stdexec::__q<stdexec::__compl_sigs::__default_set_value>,
@@ -159,8 +159,8 @@ template <class SenderId, class Fun>
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
         requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
       friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-        -> stream_op_state_t<stdexec::__member_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-          return stream_op_state<stdexec::__member_t<Self, Sender>>(
+        -> stream_op_state_t<stdexec::__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+          return stream_op_state<stdexec::__copy_cvref_t<Self, Sender>>(
               ((Self&&)self).sndr_,
               (Receiver&&)rcvr,
               [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider) -> receiver_t<Receiver> {

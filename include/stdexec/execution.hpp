@@ -2108,10 +2108,10 @@ namespace stdexec {
     // A derived-to-base cast that works even when the base is not
     // accessible from derived.
     template <class _T, class _U>
-      __member_t<_U&&, _T> __c_cast(_U&& u) noexcept requires __decays_to<_T, _T> {
-        static_assert(std::is_reference_v<__member_t<_U&&, _T>>);
+      __copy_cvref_t<_U&&, _T> __c_cast(_U&& u) noexcept requires __decays_to<_T, _T> {
+        static_assert(std::is_reference_v<__copy_cvref_t<_U&&, _T>>);
         static_assert(std::is_base_of_v<_T, std::remove_reference_t<_U>>);
-        return (__member_t<_U&&, _T>) (_U&&) u;
+        return (__copy_cvref_t<_U&&, _T>) (_U&&) u;
       }
     namespace __no {
       struct __nope {};
@@ -2193,7 +2193,7 @@ namespace stdexec {
           using __get_base_t =
             __if_c<
               __has_base,
-              __mbind_back_q<__member_t, _Base>,
+              __mbind_back_q<__copy_cvref_t, _Base>,
               __q<__base_from_derived_t>>;
 
           template <class _D>
@@ -2402,7 +2402,7 @@ namespace stdexec {
           using __receiver = stdexec::__t<__receiver<stdexec::__id<_Receiver>, _Fun>>;
         template <class _Self, class _Receiver>
           using __operation =
-            stdexec::__t<__operation<__member_t<_Self, _Sender>, stdexec::__id<_Receiver>, _Fun>>;
+            stdexec::__t<__operation<__copy_cvref_t<_Self, _Sender>, stdexec::__id<_Receiver>, _Fun>>;
 
         struct __t {
           using __id = __sender;
@@ -2412,13 +2412,13 @@ namespace stdexec {
           template <class _Self, class _Env>
             using __completion_signatures =
               __make_completion_signatures<
-                __member_t<_Self, _Sender>,
+                __copy_cvref_t<_Self, _Sender>,
                 _Env,
-                __with_error_invoke_t<set_value_t, _Fun, __member_t<_Self, _Sender>, _Env>,
+                __with_error_invoke_t<set_value_t, _Fun, __copy_cvref_t<_Self, _Sender>, _Env>,
                 __mbind_front_q<__set_value_invoke_t, _Fun>>;
 
           template <__decays_to<__t> _Self, receiver _Receiver>
-            requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
+            requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
             -> __operation<_Self, _Receiver> {
             return {
@@ -2531,17 +2531,17 @@ namespace stdexec {
           template <class _Self, class _Env>
             using __completion_signatures =
               __make_completion_signatures<
-                __member_t<_Self, _Sender>,
+                __copy_cvref_t<_Self, _Sender>,
                 _Env,
-                __with_error_invoke_t<set_error_t, _Fun, __member_t<_Self, _Sender>, _Env>,
+                __with_error_invoke_t<set_error_t, _Fun, __copy_cvref_t<_Self, _Sender>, _Env>,
                 __q<__compl_sigs::__default_set_value>,
                 __mbind_front_q<__set_value_invoke_t, _Fun>>;
 
           template <__decays_to<__t> _Self, receiver _Receiver>
-            requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
+            requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-            noexcept(__nothrow_connectable<__member_t<_Self, _Sender>, __receiver<_Receiver>>)
-            -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
+            noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>)
+            -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>> {
             return stdexec::connect(
                 ((_Self&&) __self).__sndr_,
                 __receiver<_Receiver>{(_Receiver&&) __rcvr, ((_Self&&) __self).__fun_});
@@ -2643,19 +2643,19 @@ namespace stdexec {
           template <class _Self, class _Env>
             using __completion_signatures =
               __make_completion_signatures<
-                __member_t<_Self, _Sender>,
+                __copy_cvref_t<_Self, _Sender>,
                 _Env,
-                __with_error_invoke_t<set_stopped_t, _Fun, __member_t<_Self, _Sender>, _Env>,
+                __with_error_invoke_t<set_stopped_t, _Fun, __copy_cvref_t<_Self, _Sender>, _Env>,
                 __q<__compl_sigs::__default_set_value>,
                 __q<__compl_sigs::__default_set_error>,
                 __set_value_invoke_t<_Fun>>;
 
           template <__decays_to<__t> _Self, receiver _Receiver>
             requires __receiver_of_invoke_result<_Receiver, _Fun> &&
-              sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
+              sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
             noexcept(__nothrow_connectable<_Sender, __receiver<_Receiver>>)
-            -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
+            -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>> {
             return stdexec::connect(
                 ((_Self&&) __self).__sndr_,
                 __receiver<_Receiver>{(_Receiver&&) __rcvr, ((_Self&&) __self).__fun_});
@@ -2787,15 +2787,15 @@ namespace stdexec {
           template <class _Self, class _Env>
             using __completion_signatures =
               __make_completion_signatures<
-                __member_t<_Self, _Sender>,
+                __copy_cvref_t<_Self, _Sender>,
                 _Env,
-                __with_error_invoke_t<__member_t<_Self, _Sender>, _Env>>;
+                __with_error_invoke_t<__copy_cvref_t<_Self, _Sender>, _Env>>;
 
           template <__decays_to<__t> _Self, receiver _Receiver>
-            requires sender_to<__member_t<_Self, _Sender>, __receiver<_Receiver>>
+            requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-            noexcept(__nothrow_connectable<__member_t<_Self, _Sender>, __receiver<_Receiver>>)
-            -> connect_result_t<__member_t<_Self, _Sender>, __receiver<_Receiver>> {
+            noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>)
+            -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>> {
             return stdexec::connect(
                 ((_Self&&) __self).__sndr_,
                 __receiver<_Receiver>{
@@ -3687,14 +3687,14 @@ namespace stdexec {
           template <class _Self, class _Receiver>
             using __operation_t =
               stdexec::__t<__operation<
-                stdexec::__id<__member_t<_Self, _Sender>>,
+                stdexec::__id<__copy_cvref_t<_Self, _Sender>>,
                 stdexec::__id<_Receiver>,
                 _Fun,
                 _Set>>;
           template <class _Self, class _Receiver>
             using __receiver_t =
               __receiver<
-                stdexec::__id<__member_t<_Self, _Sender>>,
+                stdexec::__id<__copy_cvref_t<_Self, _Sender>>,
                 stdexec::__id<_Receiver>,
                 _Fun,
                 _Set>;
@@ -3709,7 +3709,7 @@ namespace stdexec {
 
           template <__decays_to<__t> _Self, receiver _Receiver>
               requires
-                sender_to<__member_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
+                sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
               -> __operation_t<_Self, _Receiver> {
               return __operation_t<_Self, _Receiver>{
@@ -3732,7 +3732,7 @@ namespace stdexec {
               -> dependent_completion_signatures<_Env>;
           template <__decays_to<__t> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-              -> __completions<__member_t<_Self, _Sender>, _Env> requires true;
+              -> __completions<__copy_cvref_t<_Self, _Sender>, _Env> requires true;
 
           _Sender __sndr_;
           _Fun __fun_;
@@ -3862,14 +3862,14 @@ namespace stdexec {
 
           template <class _Self, class _Receiver>
             using __operation_t =
-              stdexec::__t<__operation<stdexec::__id<__member_t<_Self, _Sender>>, stdexec::__id<_Receiver>>>;
+              stdexec::__t<__operation<stdexec::__id<__copy_cvref_t<_Self, _Sender>>, stdexec::__id<_Receiver>>>;
           template <class _Self, class _Receiver>
             using __receiver_t =
-              stdexec::__t<__receiver<stdexec::__id<__member_t<_Self, _Sender>>, stdexec::__id<_Receiver>>>;
+              stdexec::__t<__receiver<stdexec::__id<__copy_cvref_t<_Self, _Sender>>, stdexec::__id<_Receiver>>>;
 
           template <__decays_to<__t> _Self, receiver _Receiver>
-              requires __single_typed_sender<__member_t<_Self, _Sender>, env_of_t<_Receiver>> &&
-                sender_to<__member_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
+              requires __single_typed_sender<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>> &&
+                sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
               -> __operation_t<_Self, _Receiver> {
               return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
@@ -3895,7 +3895,7 @@ namespace stdexec {
           template <__decays_to<__t> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
               make_completion_signatures<
-                __member_t<_Self, _Sender>,
+                __copy_cvref_t<_Self, _Sender>,
                 _Env,
                 completion_signatures<set_error_t(std::exception_ptr)>,
                 __set_value_t,
@@ -4320,9 +4320,9 @@ namespace stdexec {
           _Sender __sndr_;
 
           template <__decays_to<__t> _Self, class _Receiver>
-            requires sender_to<__member_t<_Self, _Sender>, _Receiver>
+            requires sender_to<__copy_cvref_t<_Self, _Sender>, _Receiver>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-              -> stdexec::__t<__operation1<_SchedulerId, stdexec::__id<__member_t<_Self, _Sender>>, stdexec::__id<_Receiver>>> {
+              -> stdexec::__t<__operation1<_SchedulerId, stdexec::__id<__copy_cvref_t<_Self, _Sender>>, stdexec::__id<_Receiver>>> {
             return {__self.__sched_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
           }
 
@@ -4361,7 +4361,7 @@ namespace stdexec {
           template <__decays_to<__t> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) ->
               __make_completion_signatures<
-                __member_t<_Self, _Sender>,
+                __copy_cvref_t<_Self, _Sender>,
                 _Env,
                 __scheduler_completions_t<_Env>,
                 __decay_signature<set_value_t>,
@@ -4545,7 +4545,7 @@ namespace stdexec {
           _Sender __sndr_;
 
           template <__decays_to<__t> _Self, receiver _Receiver>
-            requires constructible_from<_Sender, __member_t<_Self, _Sender>> &&
+            requires constructible_from<_Sender, __copy_cvref_t<_Self, _Sender>> &&
               sender_to<schedule_result_t<_Scheduler>,
                         __receiver_t<stdexec::__id<_Receiver>>> &&
               sender_to<_Sender, __receiver_ref_t<stdexec::__id<_Receiver>>>
@@ -4573,7 +4573,7 @@ namespace stdexec {
               schedule_result_t<_Scheduler>,
               _Env,
               make_completion_signatures<
-                __member_t<_Self, _Sender>,
+                __copy_cvref_t<_Self, _Sender>,
                 __make_env_t<_Env, __with<get_scheduler_t, _Scheduler>>,
                 completion_signatures<set_error_t(std::exception_ptr)>>,
               __value_t>;
@@ -4840,7 +4840,7 @@ namespace stdexec {
             using __completion_sigs =
               stdexec::__t<__completions<
                 __env_t<remove_cvref_t<_CvrefEnv>>,
-                __member_t<_CvrefEnv, stdexec::__t<_SenderIds>>...>>;
+                __copy_cvref_t<_CvrefEnv, stdexec::__t<_SenderIds>>...>>;
 
           template <class _Completions>
             using __sends_values =
@@ -4855,11 +4855,11 @@ namespace stdexec {
 
           template <class _CvrefReceiverId, std::size_t _Index>
             struct __receiver {
-              using _WhenAll = __member_t<_CvrefReceiverId, __sender::__t>;
+              using _WhenAll = __copy_cvref_t<_CvrefReceiverId, __sender::__t>;
               using _Receiver = stdexec::__t<decay_t<_CvrefReceiverId>>;
               using _Completions =
                 __completion_sigs<
-                  __member_t<_CvrefReceiverId, env_of_t<_Receiver>>>;
+                  __copy_cvref_t<_CvrefReceiverId, env_of_t<_Receiver>>>;
 
               struct __t : receiver_adaptor<__t> {
                 using __id = __receiver;
@@ -4924,10 +4924,10 @@ namespace stdexec {
 
           template <class _CvrefReceiverId>
             struct __operation {
-              using _WhenAll = __member_t<_CvrefReceiverId, __sender::__t>;
+              using _WhenAll = __copy_cvref_t<_CvrefReceiverId, __sender::__t>;
               using _Receiver = stdexec::__t<decay_t<_CvrefReceiverId>>;
               using _Env = env_of_t<_Receiver>;
-              using _CvrefEnv = __member_t<_CvrefReceiverId, _Env>;
+              using _CvrefEnv = __copy_cvref_t<_CvrefReceiverId, _Env>;
               using _Completions = __completion_sigs<_CvrefEnv>;
               using _ErrTypes = error_types_of_t<__sender::__t, __env_t<_Env>, __variant>;
 
@@ -4937,7 +4937,7 @@ namespace stdexec {
                 template <class _Sender, class _Index>
                   using __child_op_state_t =
                     connect_result_t<
-                      __member_t<_WhenAll, _Sender>,
+                      __copy_cvref_t<_WhenAll, _Sender>,
                       stdexec::__t<__receiver<_CvrefReceiverId, __v<_Index>>>>;
 
                 using _Indices = std::index_sequence_for<_SenderIds...>;
@@ -5063,13 +5063,13 @@ namespace stdexec {
 
           template <__decays_to<__t> _Self, receiver _Receiver>
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-              -> stdexec::__t<__operation<__member_t<_Self, stdexec::__id<_Receiver>>>> {
+              -> stdexec::__t<__operation<__copy_cvref_t<_Self, stdexec::__id<_Receiver>>>> {
               return {(_Self&&) __self, (_Receiver&&) __rcvr};
             }
 
           template <__decays_to<__t> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-              -> __completion_sigs<__member_t<_Self, _Env>>;
+              -> __completion_sigs<__copy_cvref_t<_Self, _Env>>;
 
           std::tuple<stdexec::__t<_SenderIds>...> __sndrs_;
         };
