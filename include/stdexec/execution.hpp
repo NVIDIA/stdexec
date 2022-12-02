@@ -1152,7 +1152,7 @@ namespace stdexec {
 
     template <class _ReceiverId>
       struct __promise {
-        using _Receiver = __t<_ReceiverId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
 
         struct __t : __promise_base {
           using __id = __promise;
@@ -1573,7 +1573,7 @@ namespace stdexec {
 
     template <class _PromiseId, class _Value>
       struct __receiver {
-        using _Promise = __t<_PromiseId>;
+        using _Promise = stdexec::__t<_PromiseId>;
         struct __t : __receiver_base<_Value> {
           using __id = __receiver;
           friend void tag_invoke(set_stopped_t, __t&& __self) noexcept {
@@ -1630,9 +1630,9 @@ namespace stdexec {
 
     template <class _PromiseId, class _SenderId>
       struct __sender_awaitable {
-        using _Promise = __t<_PromiseId>;
-        using _Sender = __t<_SenderId>;
-        using __value = __value_t<__t<_SenderId>, __t<_PromiseId>>;
+        using _Promise = stdexec::__t<_PromiseId>;
+        using _Sender = stdexec::__t<_SenderId>;
+        using __value = __value_t<stdexec::__t<_SenderId>, stdexec::__t<_PromiseId>>;
         struct __t : __sender_awaitable_base<__value> {
           __t(_Sender&& sndr, __coro::coroutine_handle<_Promise> __hcoro)
               noexcept(__nothrow_connectable<_Sender, __receiver>)
@@ -1752,8 +1752,8 @@ namespace stdexec {
   namespace __submit_ {
     template <class _SenderId, class _ReceiverId>
       struct __operation {
-        using _Sender = __t<_SenderId>;
-        using _Receiver = __t<_ReceiverId>;
+        using _Sender = stdexec::__t<_SenderId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
         struct __t;
 
         struct __receiver {
@@ -1839,7 +1839,7 @@ namespace stdexec {
   namespace __start_detached {
     template <class _EnvId>
       struct __detached_receiver {
-        using _Env = __t<_EnvId>;
+        using _Env = stdexec::__t<_EnvId>;
         struct __t {
           using __id = __detached_receiver;
           [[no_unique_address]] _Env __env_;
