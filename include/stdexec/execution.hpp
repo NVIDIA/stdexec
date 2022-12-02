@@ -4854,250 +4854,283 @@ namespace stdexec {
             __non_values>;
       };
 
+    template <class _Env, class... _Senders>
+      using __completion_t = __t<__completions<_Env, _Senders...>>;
+
+    template <class _Completions>
+      using __sends_values =
+        __bool<__v<
+          __compl_sigs::__for_all_sigs<
+            _Completions,
+            __q<__front>, // the tag type without the arguments
+            __mcount<set_value_t>>> != 0>;
+
+    template <class _Receiver, class _ValuesTuple>
+      void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
+        std::apply(
+          [&](auto&... __opt_vals) noexcept -> void {
+            std::apply(
+              [&](auto&... __all_vals) noexcept -> void {
+                stdexec::set_value(
+                    (_Receiver&&) __rcvr, std::move(__all_vals)...);
+              },
+              std::tuple_cat(
+                std::apply(
+                  [](auto&... __vals) noexcept { return std::tie(__vals...); },
+                  *__opt_vals
+                )...
+              )
+            );
+          },
+          __values
+        );
+      }
+
+    template <class _Receiver, class _ErrorsVariant>
+      void __set_error(_Receiver& __rcvr, _ErrorsVariant& __errors) noexcept {
+        std::visit(
+          [&](auto& __err) noexcept {
+            stdexec::set_error((_Receiver&&) __rcvr, std::move(__err));
+          },
+          __errors);
+      }
+
+    template <class _ReceiverId, class _ValuesTuple, class _ErrorsVariant>
+      struct __operation_base : __immovable {
+        using _Receiver = stdexec::__t<_ReceiverId>;
+
+        void __arrive() noexcept {
+          if (0 == --__count_) {
+            __complete();
+          }
+        }
+
+        void __complete() noexcept {
+          // Stop callback is no longer needed. Destroy it.
+          __on_stop_.reset();
+          // All child operations have completed and arrived at the barrier.
+          switch(__state_.load(std::memory_order_relaxed)) {
+          case __started:
+            if constexpr (!same_as<_ValuesTuple, __ignore>) {
+              // All child operations completed successfully:
+              __when_all::__set_values(__recvr_, __values_);
+            }
+            break;
+          case __error:
+            __when_all::__set_error(__recvr_, __errors_);
+            break;
+          case __stopped:
+            stdexec::set_stopped((_Receiver&&) __recvr_);
+            break;
+          default:
+            ;
+          }
+        }
+
+        _Receiver __recvr_;
+        std::atomic<std::size_t> __count_;
+        in_place_stop_source __stop_source_{};
+        // Could be non-atomic here and atomic_ref everywhere except __completion_fn
+        std::atomic<__state_t> __state_{__started};
+        _ErrorsVariant __errors_{};
+        [[no_unique_address]] _ValuesTuple __values_{};
+        std::optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template
+            callback_type<__on_stop_requested>> __on_stop_{};
+      };
+
+    template <std::size_t _Index, class _ReceiverId, class _ValuesTuple, class _ErrorsVariant>
+      struct __receiver {
+        using _Receiver = stdexec::__t<_ReceiverId>;
+
+        struct __t : receiver_adaptor<__t> {
+          using __id = __receiver;
+          _Receiver&& base() && noexcept {
+            return (_Receiver&&) __op_state_->__recvr_;
+          }
+          const _Receiver& base() const & noexcept {
+            return __op_state_->__recvr_;
+          }
+          template <class _Error>
+            void __set_error(_Error&& __err) noexcept {
+              // TODO: What memory orderings are actually needed here?
+              if (__error != __op_state_->__state_.exchange(__error)) {
+                __op_state_->__stop_source_.request_stop();
+                // We won the race, free to write the error into the operation
+                // state without worry.
+                try {
+                  __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
+                } catch(...) {
+                  __op_state_->__errors_.template emplace<std::exception_ptr>(std::current_exception());
+                }
+              }
+            }
+          template <class... _Values>
+            void set_value(_Values&&... __vals) && noexcept {
+              if constexpr (!same_as<_ValuesTuple, __ignore>) {
+                // We only need to bother recording the completion values
+                // if we're not already in the "error" or "stopped" state.
+                if (__op_state_->__state_ == __started) {
+                  try {
+                    std::get<_Index>(__op_state_->__values_).emplace(
+                        (_Values&&) __vals...);
+                  } catch(...) {
+                    __set_error(std::current_exception());
+                  }
+                }
+              }
+              __op_state_->__arrive();
+            }
+          template <class _Error>
+              requires tag_invocable<set_error_t, _Receiver, std::decay_t<_Error>&&>
+            void set_error(_Error&& __err) && noexcept {
+              __set_error((_Error&&) __err);
+              __op_state_->__arrive();
+            }
+          void set_stopped() && noexcept {
+            __state_t __expected = __started;
+            // Transition to the "stopped" state if and only if we're in the
+            // "started" state. (If this fails, it's because we're in an
+            // error state, which trumps cancellation.)
+            if (__op_state_->__state_.compare_exchange_strong(__expected, __stopped)) {
+              __op_state_->__stop_source_.request_stop();
+            }
+            __op_state_->__arrive();
+          }
+          __env_t<env_of_t<_Receiver>> get_env() const {
+            return {stdexec::get_env(base()), __op_state_->__stop_source_.get_token()};
+          }
+          __operation_base<_ReceiverId, _ValuesTuple, _ErrorsVariant>* __op_state_;
+        };
+      };
+
+    template <class _CvrefReceiverId, class... _SenderIds>
+      struct __operation {
+        using _ReceiverId = std::remove_cvref_t<_CvrefReceiverId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        using _Env = __env_t<env_of_t<_Receiver>>;
+        using _Indices = std::index_sequence_for<_SenderIds...>;
+
+        template <class _SenderId>
+          using __cvref_sender_t =
+            __copy_cvref_t<_CvrefReceiverId, stdexec::__t<_SenderId>>;
+
+        using _Completions =
+          __completion_t<_Env, __cvref_sender_t<_SenderIds>...>;
+
+        template <class _SenderId>
+          using __values_opt_tuple_t =
+            __value_types_of_t<
+              __cvref_sender_t<_SenderId>,
+              _Env,
+              __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
+              __single_or<void>>;
+
+        // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
+        using _ValuesTuple =
+          __if<
+            __sends_values<_Completions>,
+            __minvoke<__q<std::tuple>, __values_opt_tuple_t<_SenderIds>...>,
+            __ignore>;
+
+        using _ErrorsVariant =
+          __minvoke<
+            __mconcat<__q<__variant>>,
+            __types<std::exception_ptr>,
+            error_types_of_t<__cvref_sender_t<_SenderIds>, _Env, __types>...>;
+
+        using __operation_base_t =
+          __operation_base<_ReceiverId, _ValuesTuple, _ErrorsVariant>;
+
+        template <std::size_t _Index>
+          using __receiver_t =
+            stdexec::__t<
+              __receiver<_Index, _ReceiverId, _ValuesTuple, _ErrorsVariant>>;
+
+        template <class _Sender, class _Index>
+          using __op_state_t =
+            connect_result_t<
+              __copy_cvref_t<_CvrefReceiverId, _Sender>,
+              __receiver_t<__v<_Index>>>;
+
+        using __op_states_tuple_t =
+          __minvoke<
+            __mzip_with2<__q<__op_state_t>, __q<std::tuple>>,
+            __types<__cvref_sender_t<_SenderIds>...>,
+            __mindex_sequence_for<_SenderIds...>>;
+
+        struct __t : __operation_base_t {
+          using __id = __operation;
+
+          template <class _SendersTuple, std::size_t... _Is>
+            __t(_SendersTuple&& __sndrs, _Receiver __rcvr, std::index_sequence<_Is...>)
+              : __operation_base_t{{}, (_Receiver&&) __rcvr, {sizeof...(_Is)}}
+              , __op_states_{
+                  __conv{[&__sndrs, this]() {
+                    return stdexec::connect(
+                        std::get<_Is>((_SendersTuple&&) __sndrs),
+                        __receiver_t<_Is>{{}, this});
+                  }}...
+                }
+            {}
+          template <class _SendersTuple>
+            __t(_SendersTuple&& __sndrs, _Receiver __rcvr)
+              : __t((_SendersTuple&&) __sndrs, (_Receiver&&) __rcvr, _Indices{})
+            {}
+
+          friend void tag_invoke(start_t, __t& __self) noexcept {
+            // register stop callback:
+            __self.__on_stop_.emplace(
+                get_stop_token(get_env(__self.__recvr_)),
+                __on_stop_requested{__self.__stop_source_});
+            if (__self.__stop_source_.stop_requested()) {
+              // Stop has already been requested. Don't bother starting
+              // the child operations.
+              stdexec::set_stopped((_Receiver&&) __self.__recvr_);
+            } else {
+              std::apply(
+                [](auto&... __child_ops) noexcept -> void {
+                  (stdexec::start(__child_ops), ...);
+                },
+                __self.__op_states_);
+              if constexpr (sizeof...(_SenderIds) == 0) {
+                __self.__complete();
+              }
+            }
+          }
+
+          __op_states_tuple_t __op_states_;
+        };
+      };
+
     template <class... _SenderIds>
       struct __sender {
+        template <class _Self, class _SenderId>
+          using __cvref_sender_t =
+            __copy_cvref_t<_Self, stdexec::__t<_SenderId>>;
+
         struct __t {
           using __id = __sender;
           template <class... _Sndrs>
-            explicit __t(_Sndrs&&... __sndrs)
+            explicit(sizeof...(_Sndrs) == 1) __t(_Sndrs&&... __sndrs)
               : __sndrs_((_Sndrs&&) __sndrs...)
             {}
 
          private:
-          template <class _CvrefEnv>
-            using __completion_sigs =
-              stdexec::__t<__completions<
-                __env_t<remove_cvref_t<_CvrefEnv>>,
-                __copy_cvref_t<_CvrefEnv, stdexec::__t<_SenderIds>>...>>;
-
-          template <class _Completions>
-            using __sends_values =
-              __bool<__v<
-                __compl_sigs::__for_all_sigs<
-                  _Completions,
-                  __q<__front>, // the tag type without the arguments
-                  __mcount<set_value_t>>> != 0>;
-
-          template <class _CvrefReceiverId>
-            struct __operation;
-
-          template <class _CvrefReceiverId, std::size_t _Index>
-            struct __receiver {
-              using _WhenAll = __copy_cvref_t<_CvrefReceiverId, __sender::__t>;
-              using _Receiver = stdexec::__t<decay_t<_CvrefReceiverId>>;
-              using _Completions =
-                __completion_sigs<
-                  __copy_cvref_t<_CvrefReceiverId, env_of_t<_Receiver>>>;
-
-              struct __t : receiver_adaptor<__t> {
-                using __id = __receiver;
-                _Receiver&& base() && noexcept {
-                  return (_Receiver&&) __op_state_->__recvr_;
-                }
-                const _Receiver& base() const & noexcept {
-                  return __op_state_->__recvr_;
-                }
-                template <class _Error>
-                  void __set_error(_Error&& __err, __state_t __expected) noexcept {
-                    // TODO: _What memory orderings are actually needed here?
-                    if (__op_state_->__state_.compare_exchange_strong(__expected, __error)) {
-                      __op_state_->__stop_source_.request_stop();
-                      // We won the race, free to write the error into the operation
-                      // state without worry.
-                      try {
-                        __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
-                      } catch(...) {
-                        __op_state_->__errors_.template emplace<std::exception_ptr>(std::current_exception());
-                      }
-                    }
-                    __op_state_->__arrive();
-                  }
-                template <class... _Values>
-                  void set_value(_Values&&... __vals) && noexcept {
-                    if constexpr (__sends_values<_Completions>::value) {
-                      // We only need to bother recording the completion values
-                      // if we're not already in the "error" or "stopped" state.
-                      if (__op_state_->__state_ == __started) {
-                        try {
-                          std::get<_Index>(__op_state_->__values_).emplace(
-                              (_Values&&) __vals...);
-                        } catch(...) {
-                          __set_error(std::current_exception(), __started);
-                        }
-                      }
-                    }
-                    __op_state_->__arrive();
-                  }
-                template <class _Error>
-                    requires tag_invocable<set_error_t, _Receiver, _Error>
-                  void set_error(_Error&& __err) && noexcept {
-                    __set_error((_Error&&) __err, __started);
-                  }
-                void set_stopped() && noexcept {
-                  __state_t __expected = __started;
-                  // Transition to the "stopped" state if and only if we're in the
-                  // "started" state. (If this fails, it's because we're in an
-                  // error state, which trumps cancellation.)
-                  if (__op_state_->__state_.compare_exchange_strong(__expected, __stopped)) {
-                    __op_state_->__stop_source_.request_stop();
-                  }
-                  __op_state_->__arrive();
-                }
-                __env_t<env_of_t<_Receiver>> get_env() const {
-                  return {stdexec::get_env(base()), __op_state_->__stop_source_.get_token()};
-                }
-                stdexec::__t<__operation<_CvrefReceiverId>>* __op_state_;
-              };
-            };
-
-          template <class _CvrefReceiverId>
-            struct __operation {
-              using _WhenAll = __copy_cvref_t<_CvrefReceiverId, __sender::__t>;
-              using _Receiver = stdexec::__t<decay_t<_CvrefReceiverId>>;
-              using _Env = env_of_t<_Receiver>;
-              using _CvrefEnv = __copy_cvref_t<_CvrefReceiverId, _Env>;
-              using _Completions = __completion_sigs<_CvrefEnv>;
-              using _ErrTypes = error_types_of_t<__sender::__t, __env_t<_Env>, __variant>;
-
-              struct __t {
-                using __id = __operation;
-
-                template <class _Sender, class _Index>
-                  using __child_op_state_t =
-                    connect_result_t<
-                      __copy_cvref_t<_WhenAll, _Sender>,
-                      stdexec::__t<__receiver<_CvrefReceiverId, __v<_Index>>>>;
-
-                using _Indices = std::index_sequence_for<_SenderIds...>;
-
-                template <size_t... _Is>
-                  static auto __connect_children_(std::index_sequence<_Is...>)
-                    -> std::tuple<__child_op_state_t<stdexec::__t<_SenderIds>, __msize_t<_Is>>...>;
-
-                using __child_op_states_tuple_t =
-                    decltype(__t::__connect_children_(_Indices{}));
-
-                void __arrive() noexcept {
-                  if (0 == --__count_) {
-                    __complete();
-                  }
-                }
-
-                void __complete() noexcept {
-                  // Stop callback is no longer needed. Destroy it.
-                  __on_stop_.reset();
-                  // All child operations have completed and arrived at the barrier.
-                  switch(__state_.load(std::memory_order_relaxed)) {
-                  case __started:
-                    if constexpr (__sends_values<_Completions>::value) {
-                      // All child operations completed successfully:
-                      std::apply(
-                        [this](auto&... __opt_vals) -> void {
-                          std::apply(
-                            [this](auto&... __all_vals) -> void {
-                              try {
-                                stdexec::set_value(
-                                    (_Receiver&&) __recvr_, std::move(__all_vals)...);
-                              } catch(...) {
-                                stdexec::set_error(
-                                    (_Receiver&&) __recvr_, std::current_exception());
-                              }
-                            },
-                            std::tuple_cat(
-                              std::apply(
-                                [](auto&... __vals) { return std::tie(__vals...); },
-                                *__opt_vals
-                              )...
-                            )
-                          );
-                        },
-                        __values_
-                      );
-                    }
-                    break;
-                  case __error:
-                    std::visit([this](auto& __err) noexcept {
-                      stdexec::set_error((_Receiver&&) __recvr_, std::move(__err));
-                    }, __errors_);
-                    break;
-                  case __stopped:
-                    stdexec::set_stopped((_Receiver&&) __recvr_);
-                    break;
-                  default:
-                    ;
-                  }
-                }
-
-                template <size_t... _Is>
-                  __t(_WhenAll&& __when_all, _Receiver __rcvr, std::index_sequence<_Is...>)
-                    : __recvr_((_Receiver&&) __rcvr)
-                    , __child_states_{
-                        __conv{[&__when_all, this]() {
-                          return stdexec::connect(
-                              std::get<_Is>(((_WhenAll&&) __when_all).__sndrs_),
-                              stdexec::__t<__receiver<_CvrefReceiverId, _Is>>{{}, this});
-                        }}...
-                      }
-                  {}
-                __t(_WhenAll&& __when_all, _Receiver __rcvr)
-                  : __t((_WhenAll&&) __when_all, (_Receiver&&) __rcvr, _Indices{})
-                {}
-                STDEXEC_IMMOVABLE(__t);
-
-                friend void tag_invoke(start_t, __t& __self) noexcept {
-                  // register stop callback:
-                  __self.__on_stop_.emplace(
-                      get_stop_token(get_env(__self.__recvr_)),
-                      __on_stop_requested{__self.__stop_source_});
-                  if (__self.__stop_source_.stop_requested()) {
-                    // Stop has already been requested. Don't bother starting
-                    // the child operations.
-                    stdexec::set_stopped((_Receiver&&) __self.__recvr_);
-                  } else {
-                    apply([](auto&&... __child_ops) noexcept -> void {
-                      (stdexec::start(__child_ops), ...);
-                    }, __self.__child_states_);
-                    if constexpr (sizeof...(_SenderIds) == 0) {
-                      __self.__complete();
-                    }
-                  }
-                }
-
-                // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
-                using __child_values_tuple_t =
-                  __if<
-                    __sends_values<_Completions>,
-                    __minvoke<
-                      __q<std::tuple>,
-                      __value_types_of_t<
-                        stdexec::__t<_SenderIds>,
-                        __env_t<_Env>,
-                        __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
-                        __single_or<void>>...>,
-                    __>;
-
-                in_place_stop_source __stop_source_{};
-                _Receiver __recvr_;
-                std::atomic<std::size_t> __count_{sizeof...(_SenderIds)};
-                // Could be non-atomic here and atomic_ref everywhere except __completion_fn
-                std::atomic<__state_t> __state_{__started};
-                _ErrTypes __errors_{};
-                [[no_unique_address]] __child_values_tuple_t __values_{};
-                std::optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template
-                    callback_type<__on_stop_requested>> __on_stop_{};
-                __child_op_states_tuple_t __child_states_;
-              };
-            };
+          template <class _Self, class _Receiver>
+            using __operation_t =
+              stdexec::__t<__operation<
+                __copy_cvref_t<_Self, stdexec::__id<_Receiver>>,
+                _SenderIds...>>;
 
           template <__decays_to<__t> _Self, receiver _Receiver>
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-              -> stdexec::__t<__operation<__copy_cvref_t<_Self, stdexec::__id<_Receiver>>>> {
-              return {(_Self&&) __self, (_Receiver&&) __rcvr};
+              -> __operation_t<_Self, _Receiver> {
+              return {((_Self&&) __self).__sndrs_, (_Receiver&&) __rcvr};
             }
 
           template <__decays_to<__t> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-              -> __completion_sigs<__copy_cvref_t<_Self, _Env>>;
+              -> __completion_t<__env_t<_Env>, __cvref_sender_t<_Self, _SenderIds>...>;
 
           std::tuple<stdexec::__t<_SenderIds>...> __sndrs_;
         };

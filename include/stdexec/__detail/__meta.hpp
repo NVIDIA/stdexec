@@ -27,7 +27,7 @@ namespace stdexec {
 
   struct __ignore {
     __ignore() = default;
-    __ignore(auto&&) noexcept {}
+    constexpr __ignore(auto&&...) noexcept {}
   };
 
     // Before gcc-12, gcc really didn't like tuples or variants of immovable types
@@ -535,7 +535,7 @@ namespace stdexec {
       -> __types<__msize_t<_Indices>...>;
   template <std::size_t _N>
     using __mmake_index_sequence =
-      decltype(__mconvert_indices(std::make_index_sequence<_N>{}));
+      decltype(stdexec::__mconvert_indices(std::make_index_sequence<_N>{}));
   template <class... _Ts>
     using __mindex_sequence_for =
       __mmake_index_sequence<sizeof...(_Ts)>;
