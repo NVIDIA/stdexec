@@ -1143,59 +1143,65 @@ namespace stdexec {
       struct __promise;
 
     template <class _ReceiverId>
-      struct __operation : __operation_base {
-        using promise_type = __promise<_ReceiverId>;
-        using __operation_base::__operation_base;
+      struct __operation {
+        struct __t : __operation_base {
+          using promise_type = stdexec::__t<__promise<_ReceiverId>>;
+          using __operation_base::__operation_base;
+        };
       };
 
     template <class _ReceiverId>
-      struct __promise : __promise_base {
-        using _Receiver = __t<_ReceiverId>;
+      struct __promise {
+        using _Receiver = stdexec::__t<_ReceiverId>;
 
-        explicit __promise(auto&, _Receiver& __rcvr) noexcept
-          : __rcvr_(__rcvr)
-        {}
+        struct __t : __promise_base {
+          using __id = __promise;
 
-        __coro::coroutine_handle<> unhandled_stopped() noexcept {
-          set_stopped(std::move(__rcvr_));
-          // Returning noop_coroutine here causes the __connect_awaitable
-          // coroutine to never resume past the point where it co_await's
-          // the awaitable.
-          return __coro::noop_coroutine();
-        }
+          explicit __t(auto&, _Receiver& __rcvr) noexcept
+            : __rcvr_(__rcvr)
+          {}
 
-        __operation<_ReceiverId> get_return_object() noexcept {
-          return __operation<_ReceiverId>{
-            __coro::coroutine_handle<__promise>::from_promise(*this)};
-        }
+          __coro::coroutine_handle<> unhandled_stopped() noexcept {
+            set_stopped(std::move(__rcvr_));
+            // Returning noop_coroutine here causes the __connect_awaitable
+            // coroutine to never resume past the point where it co_await's
+            // the awaitable.
+            return __coro::noop_coroutine();
+          }
 
-        template <class _Awaitable>
-        _Awaitable&& await_transform(_Awaitable&& __await) noexcept {
-          return (_Awaitable&&) __await;
-        }
+          stdexec::__t<__operation<_ReceiverId>> get_return_object() noexcept {
+            return stdexec::__t<__operation<_ReceiverId>>{
+              __coro::coroutine_handle<__t>::from_promise(*this)};
+          }
 
-        template <class _Awaitable>
-          requires tag_invocable<as_awaitable_t, _Awaitable, __promise&>
-        auto await_transform(_Awaitable&& __await)
-            noexcept(nothrow_tag_invocable<as_awaitable_t, _Awaitable, __promise&>)
-            -> tag_invoke_result_t<as_awaitable_t, _Awaitable, __promise&> {
-          return tag_invoke(as_awaitable, (_Awaitable&&) __await, *this);
-        }
+          template <class _Awaitable>
+          _Awaitable&& await_transform(_Awaitable&& __await) noexcept {
+            return (_Awaitable&&) __await;
+          }
 
-        // Pass through the get_env receiver query
-        friend auto tag_invoke(get_env_t, const __promise& __self)
-          -> env_of_t<_Receiver> {
-          return get_env(__self.__rcvr_);
-        }
+          template <class _Awaitable>
+            requires tag_invocable<as_awaitable_t, _Awaitable, __t&>
+          auto await_transform(_Awaitable&& __await)
+              noexcept(nothrow_tag_invocable<as_awaitable_t, _Awaitable, __t&>)
+              -> tag_invoke_result_t<as_awaitable_t, _Awaitable, __t&> {
+            return tag_invoke(as_awaitable, (_Awaitable&&) __await, *this);
+          }
 
-        _Receiver& __rcvr_;
+          // Pass through the get_env receiver query
+          friend auto tag_invoke(get_env_t, const __t& __self)
+            -> env_of_t<_Receiver> {
+            return get_env(__self.__rcvr_);
+          }
+
+          _Receiver& __rcvr_;
+        };
       };
 
     template <receiver _Receiver>
-      using __promise_t = __promise<__x<_Receiver>>;
+      using __promise_t = __t<__promise<__id<_Receiver>>>;
 
     template <receiver _Receiver>
-      using __operation_t = __operation<__x<_Receiver>>;
+      using __operation_t = __t<__operation<__id<_Receiver>>>;
 
     struct __connect_awaitable_t {
      private:
@@ -1566,12 +1572,11 @@ namespace stdexec {
       };
 
     template <class _PromiseId, class _Value>
-      struct __sender_awaitable_base {
-        using _Promise = __t<_PromiseId>;
-        struct __receiver : __receiver_base<_Value> {
-          using __t = __receiver;
+      struct __receiver {
+        using _Promise = stdexec::__t<_PromiseId>;
+        struct __t : __receiver_base<_Value> {
           using __id = __receiver;
-          friend void tag_invoke(set_stopped_t, __receiver&& __self) noexcept {
+          friend void tag_invoke(set_stopped_t, __t&& __self) noexcept {
             auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
               __self.__continuation_.address());
             __coro::coroutine_handle<> __stopped_continuation =
@@ -1580,64 +1585,72 @@ namespace stdexec {
           }
 
           // Forward get_env query to the coroutine promise
-          friend auto tag_invoke(get_env_t, const __receiver& __self)
+          friend auto tag_invoke(get_env_t, const __t& __self)
             -> env_of_t<_Promise> {
             auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
               __self.__continuation_.address());
             return get_env(__continuation.promise());
           }
         };
+      };
 
-      bool await_ready() const noexcept {
-        return false;
-      }
+    template <class _Sender, class _Promise>
+      using __value_t =
+        __single_sender_value_t<_Sender, env_of_t<_Promise>>;
 
-      _Value await_resume() {
-        switch (__result_.index()) {
-        case 0: // receiver contract not satisfied
-          STDEXEC_ASSERT(!"_Should never get here");
-          break;
-        case 1: // set_value
-          if constexpr (!std::is_void_v<_Value>)
-            return (_Value&&) std::get<1>(__result_);
-          else
-            return;
-        case 2: // set_error
-          std::rethrow_exception(std::get<2>(__result_));
+    template <class _Sender, class _Promise>
+      using __receiver_t =
+        __t<__receiver<__id<_Promise>, __value_t<_Sender, _Promise>>>;
+
+    template <class _Value>
+      struct __sender_awaitable_base {
+        bool await_ready() const noexcept {
+          return false;
         }
-        std::terminate();
-      }
+
+        _Value await_resume() {
+          switch (__result_.index()) {
+          case 0: // receiver contract not satisfied
+            STDEXEC_ASSERT(!"_Should never get here");
+            break;
+          case 1: // set_value
+            if constexpr (!std::is_void_v<_Value>)
+              return (_Value&&) std::get<1>(__result_);
+            else
+              return;
+          case 2: // set_error
+            std::rethrow_exception(std::get<2>(__result_));
+          }
+          std::terminate();
+        }
 
       protected:
-      __expected_t<_Value> __result_;
-    };
+        __expected_t<_Value> __result_;
+      };
 
     template <class _PromiseId, class _SenderId>
-    struct __sender_awaitable
-      : __sender_awaitable_base<
-          _PromiseId,
-          __single_sender_value_t<__t<_SenderId>, env_of_t<__t<_PromiseId>>>> {
-      private:
-      using _Promise = __t<_PromiseId>;
-      using _Sender = __t<_SenderId>;
-      using _Env = env_of_t<_Promise>;
-      using _Value = __single_sender_value_t<_Sender, _Env>;
-      using _Base = __sender_awaitable_base<_PromiseId, _Value>;
-      using __receiver = typename _Base::__receiver;
-      connect_result_t<_Sender, __receiver> __op_state_;
-      public:
-      __sender_awaitable(_Sender&& sender, __coro::coroutine_handle<_Promise> __hcoro)
-          noexcept(__nothrow_connectable<_Sender, __receiver>)
-        : __op_state_(connect((_Sender&&)sender, __receiver{{&this->__result_, __hcoro}}))
-      {}
+      struct __sender_awaitable {
+        using _Promise = stdexec::__t<_PromiseId>;
+        using _Sender = stdexec::__t<_SenderId>;
+        using __value = __value_t<stdexec::__t<_SenderId>, stdexec::__t<_PromiseId>>;
+        struct __t : __sender_awaitable_base<__value> {
+          __t(_Sender&& sndr, __coro::coroutine_handle<_Promise> __hcoro)
+              noexcept(__nothrow_connectable<_Sender, __receiver>)
+            : __op_state_(connect((_Sender&&) sndr, __receiver{{&this->__result_, __hcoro}}))
+          {}
 
-      void await_suspend(__coro::coroutine_handle<_Promise>) noexcept {
-        start(__op_state_);
-      }
-    };
+          void await_suspend(__coro::coroutine_handle<_Promise>) noexcept {
+            start(__op_state_);
+          }
+        private:
+          using __receiver = __receiver_t<_Sender, _Promise>;
+          connect_result_t<_Sender, __receiver> __op_state_;
+        };
+      };
+
     template <class _Promise, class _Sender>
       using __sender_awaitable_t =
-        __sender_awaitable<__x<_Promise>, __x<_Sender>>;
+        __t<__sender_awaitable<__id<_Promise>, __id<_Sender>>>;
 
     template <class _T, class _Promise>
       concept __custom_tag_invoke_awaiter =
@@ -1645,16 +1658,9 @@ namespace stdexec {
         __awaitable<tag_invoke_result_t<as_awaitable_t, _T, _Promise&>, _Promise>;
 
     template <class _Sender, class _Promise>
-      using __receiver =
-        typename __sender_awaitable_base<
-          __x<_Promise>,
-          __single_sender_value_t<_Sender, env_of_t<_Promise>>
-        >::__receiver;
-
-    template <class _Sender, class _Promise>
       concept __awaitable_sender =
         __single_typed_sender<_Sender, env_of_t<_Promise>> &&
-        sender_to<_Sender, __receiver<_Sender, _Promise>> &&
+        sender_to<_Sender, __receiver_t<_Sender, _Promise>> &&
         requires (_Promise& __promise) {
           { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;
         };
@@ -1746,17 +1752,21 @@ namespace stdexec {
   namespace __submit_ {
     template <class _SenderId, class _ReceiverId>
       struct __operation {
-        using _Sender = __t<_SenderId>;
-        using _Receiver = __t<_ReceiverId>;
+        using _Sender = stdexec::__t<_SenderId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        struct __t;
+
         struct __receiver {
-          __operation* __op_state_;
+          using __t = __receiver;
+          using __id = __receiver;
+          __operation::__t* __op_state_;
           // Forward all the receiver ops, and delete the operation state.
           template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
             requires __callable<_Tag, _Receiver, _As...>
           friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as)
               noexcept(__nothrow_callable<_Tag, _Receiver, _As...>) {
             // Delete the state as cleanup:
-            std::unique_ptr<__operation> __g{__self.__op_state_};
+            std::unique_ptr<__operation::__t> __g{__self.__op_state_};
             return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
           }
           // Forward all receiever queries.
@@ -1765,18 +1775,22 @@ namespace stdexec {
             return get_env((const _Receiver&) __self.__op_state_->__rcvr_);
           }
         };
-        _Receiver __rcvr_;
-        connect_result_t<_Sender, __receiver> __op_state_;
-        __operation(_Sender&& __sndr, _Receiver&& __rcvr)
-          : __rcvr_((_Receiver&&) __rcvr)
-          , __op_state_(connect((_Sender&&) __sndr, __receiver{this}))
-        {}
+
+        struct __t {
+          using __id = __operation;
+          _Receiver __rcvr_;
+          connect_result_t<_Sender, __receiver> __op_state_;
+          __t(_Sender&& __sndr, _Receiver&& __rcvr)
+            : __rcvr_((_Receiver&&) __rcvr)
+            , __op_state_(connect((_Sender&&) __sndr, __receiver{this}))
+          {}
+        };
       };
 
     struct __submit_t {
       template <receiver _Receiver, sender_to<_Receiver> _Sender>
       void operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(false) {
-        start((new __operation<__x<_Sender>, __x<_Receiver>>{
+        start((new __t<__operation<__id<_Sender>, __id<_Receiver>>>{
             (_Sender&&) __sndr, (_Receiver&&) __rcvr})->__op_state_);
       }
     };
@@ -1825,25 +1839,29 @@ namespace stdexec {
   namespace __start_detached {
     template <class _EnvId>
       struct __detached_receiver {
-        using _Env = __t<_EnvId>;
-        [[no_unique_address]] _Env __env_;
-        template <class... _As>
-          friend void tag_invoke(set_value_t, __detached_receiver&&, _As&&...) noexcept
+        using _Env = stdexec::__t<_EnvId>;
+        struct __t {
+          using __id = __detached_receiver;
+          [[no_unique_address]] _Env __env_;
+          template <class... _As>
+            friend void tag_invoke(set_value_t, __t&&, _As&&...) noexcept
+            {}
+          template <class _Error>
+            [[noreturn]]
+            friend void tag_invoke(set_error_t, __t&&, _Error&&) noexcept {
+              std::terminate();
+            }
+          friend void tag_invoke(set_stopped_t, __t&&) noexcept
           {}
-        template <class _Error>
-          [[noreturn]]
-          friend void tag_invoke(set_error_t, __detached_receiver&&, _Error&&) noexcept {
-            std::terminate();
+          friend const _Env& tag_invoke(get_env_t, const __t& __self) noexcept {
+            // BUGBUG NOT TO SPEC
+            return __self.__env_;
           }
-        friend void tag_invoke(set_stopped_t, __detached_receiver&&) noexcept
-        {}
-        friend const _Env& tag_invoke(get_env_t, const __detached_receiver& __self) noexcept {
-          // BUGBUG NOT TO SPEC
-          return __self.__env_;
-        }
+        };
       };
     template <class _Env>
-      __detached_receiver(_Env) -> __detached_receiver<__x<_Env>>;
+      using __detached_receiver_t =
+        __t<__detached_receiver<__id<remove_cvref_t<_Env>>>>;
 
     struct start_detached_t;
 
@@ -1870,7 +1888,7 @@ namespace stdexec {
     struct start_detached_t {
       template <sender _Sender, class _Env = __empty_env>
           requires
-            sender_to<_Sender, __detached_receiver<__x<remove_cvref_t<_Env>>>> ||
+            sender_to<_Sender, __detached_receiver_t<_Env>> ||
             __is_start_detached_customized<_Sender, _Env>
         void operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
           noexcept(__mnoexcept_v<__which_t<_Sender, _Env>>) {
@@ -1888,7 +1906,7 @@ namespace stdexec {
             auto __sched = get_scheduler(__env);
             tag_invoke(start_detached_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
           } else {
-            __submit((_Sender&&) __sndr, __detached_receiver{(_Env&&) __env});
+            __submit((_Sender&&) __sndr, __detached_receiver_t<_Env>{(_Env&&) __env});
           }
         }
     };
