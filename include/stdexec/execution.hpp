@@ -5282,29 +5282,30 @@ namespace stdexec {
     };
 
     // What should sync_wait(just_stopped()) return?
-    template <class _Sender>
-        requires stdexec::sender<_Sender, __env>
-      using __sync_wait_result_t =
-        stdexec::value_types_of_t<
+    template <class _Sender, class _Continuation>
+      using __sync_wait_result_impl =
+        __value_types_of_t<
           _Sender,
           __env,
-          stdexec::__decayed_tuple,
-          __single>;
+          __transform<__q<decay_t>, _Continuation>,
+          __q<__single>>;
+
+    template <stdexec::sender<__env> _Sender>
+      using __sync_wait_result_t =
+        __sync_wait_result_impl<_Sender, __q<std::tuple>>;
 
     template <class _Sender>
       using __sync_wait_with_variant_result_t =
         __sync_wait_result_t<__into_variant_result_t<_Sender>>;
 
-    template <class _Sender>
+    template <class... _Values>
       struct __state;
 
-    template <class _SenderId>
+    template <class... _Values>
       struct __receiver {
-        using _Sender = stdexec::__t<_SenderId>;
-
         struct __t {
           using __id = __receiver;
-          __state<_Sender>* __state_;
+          __state<_Values...>* __state_;
           stdexec::run_loop* __loop_;
           template <class _Error>
           void __set_error(_Error __err) noexcept {
@@ -5316,8 +5317,8 @@ namespace stdexec {
               __state_->__data_.template emplace<2>(std::make_exception_ptr((_Error&&) __err));
             __loop_->finish();
           }
-          template <class _Sender2 = _Sender, class... _As>
-            requires constructible_from<__sync_wait_result_t<_Sender2>, _As...>
+          template <class... _As>
+            requires constructible_from<std::tuple<_Values...>, _As...>
           friend void tag_invoke(stdexec::set_value_t, __t&& __rcvr, _As&&... __as) noexcept try {
             __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
             __rcvr.__loop_->finish();
@@ -5339,10 +5340,10 @@ namespace stdexec {
         };
       };
 
-    template <class _Sender>
+    template <class... _Values>
       struct __state {
-        using _Tuple = __sync_wait_result_t<_Sender>;
-        std::variant<std::monostate, _Tuple, std::exception_ptr, stdexec::set_stopped_t> __data_{};
+        using _Tuple = std::tuple<_Values...>;
+        std::variant<std::monostate, _Tuple, std::exception_ptr, set_stopped_t> __data_{};
       };
 
     template <class _Sender>
@@ -5352,30 +5353,33 @@ namespace stdexec {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
+      template <class _Sender>
+        using __receiver_t = __t<__sync_wait_result_impl<_Sender, __q<__receiver>>>;
+
       // TODO: constrain on return type
-      template <stdexec::__single_value_variant_sender<__env> _Sender> // NOT TO SPEC
+      template <__single_value_variant_sender<__env> _Sender> // NOT TO SPEC
         requires
-          stdexec::__tag_invocable_with_completion_scheduler<
-            sync_wait_t, stdexec::set_value_t, _Sender>
+          __tag_invocable_with_completion_scheduler<
+            sync_wait_t, set_value_t, _Sender>
       tag_invoke_result_t<
         sync_wait_t,
-        stdexec::__completion_scheduler_for<_Sender, stdexec::set_value_t>,
+        __completion_scheduler_for<_Sender, set_value_t>,
         _Sender>
       operator()(_Sender&& __sndr) const noexcept(
         nothrow_tag_invocable<
           sync_wait_t,
-          stdexec::__completion_scheduler_for<_Sender, stdexec::set_value_t>,
+          __completion_scheduler_for<_Sender, set_value_t>,
           _Sender>) {
         auto __sched =
-          stdexec::get_completion_scheduler<stdexec::set_value_t>(__sndr);
+          get_completion_scheduler<set_value_t>(__sndr);
         return tag_invoke(sync_wait_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
 
       // TODO: constrain on return type
-      template <stdexec::__single_value_variant_sender<__env> _Sender> // NOT TO SPEC
+      template <__single_value_variant_sender<__env> _Sender> // NOT TO SPEC
         requires
-          (!stdexec::__tag_invocable_with_completion_scheduler<
-            sync_wait_t, stdexec::set_value_t, _Sender>) &&
+          (!__tag_invocable_with_completion_scheduler<
+            sync_wait_t, set_value_t, _Sender>) &&
           tag_invocable<sync_wait_t, _Sender>
       tag_invoke_result_t<sync_wait_t, _Sender>
       operator()(_Sender&& __sndr) const noexcept(
@@ -5383,32 +5387,30 @@ namespace stdexec {
         return tag_invoke(sync_wait_t{}, (_Sender&&) __sndr);
       }
 
-      template <stdexec::__single_value_variant_sender<__env> _Sender>
+      template <__single_value_variant_sender<__env> _Sender>
         requires
-          (!stdexec::__tag_invocable_with_completion_scheduler<
-            sync_wait_t, stdexec::set_value_t, _Sender>) &&
+          (!__tag_invocable_with_completion_scheduler<
+            sync_wait_t, set_value_t, _Sender>) &&
           (!tag_invocable<sync_wait_t, _Sender>) &&
-          stdexec::sender<_Sender, __env> &&
-          stdexec::sender_to<_Sender, __t<__receiver<stdexec::__id<_Sender>>>>
+          sender<_Sender, __env> &&
+          sender_to<_Sender, __receiver_t<_Sender>>
       auto operator()(_Sender&& __sndr) const
         -> std::optional<__sync_wait_result_t<_Sender>> {
-        using state_t = __state<_Sender>;
+        using state_t = __sync_wait_result_impl<_Sender, __q<__state>>;
         state_t __state {};
-        stdexec::run_loop __loop;
+        run_loop __loop;
 
         // Launch the sender with a continuation that will fill in a variant
         // and notify a condition variable.
         auto __op_state =
-          stdexec::connect(
-            (_Sender&&) __sndr,
-            __t<__receiver<stdexec::__id<_Sender>>>{&__state, &__loop});
-        stdexec::start(__op_state);
+          connect((_Sender&&) __sndr, __receiver_t<_Sender>{&__state, &__loop});
+        start(__op_state);
 
         // Wait for the variant to be filled in.
         __loop.run();
 
         if (__state.__data_.index() == 2)
-          rethrow_exception(std::get<2>(__state.__data_));
+          std::rethrow_exception(std::get<2>(__state.__data_));
 
         if (__state.__data_.index() == 3)
           return std::nullopt;
@@ -5420,38 +5422,38 @@ namespace stdexec {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
-      template <stdexec::sender<__env> _Sender>
+      template <sender<__env> _Sender>
         requires
-          stdexec::__tag_invocable_with_completion_scheduler<
-            sync_wait_with_variant_t, stdexec::set_value_t, _Sender>
+          __tag_invocable_with_completion_scheduler<
+            sync_wait_with_variant_t, set_value_t, _Sender>
       tag_invoke_result_t<
         sync_wait_with_variant_t,
-        stdexec::__completion_scheduler_for<_Sender, stdexec::set_value_t>,
+        __completion_scheduler_for<_Sender, set_value_t>,
         _Sender>
       operator()(_Sender&& __sndr) const noexcept(
         nothrow_tag_invocable<
           sync_wait_with_variant_t,
-          stdexec::__completion_scheduler_for<_Sender, stdexec::set_value_t>,
+          __completion_scheduler_for<_Sender, set_value_t>,
           _Sender>) {
 
         static_assert(std::is_same_v<
           tag_invoke_result_t<
             sync_wait_with_variant_t,
-            stdexec::__completion_scheduler_for<_Sender, stdexec::set_value_t>,
+            __completion_scheduler_for<_Sender, set_value_t>,
             _Sender>,
           std::optional<__sync_wait_with_variant_result_t<_Sender>>>,
-          "The type of tag_invoke(stdexec::sync_wait_with_variant, stdexec::get_completion_scheduler, S) "
+          "The type of tag_invoke(sync_wait_with_variant, get_completion_scheduler, S) "
           "must be sync-wait-with-variant-type<S, sync-wait-env>");
 
         auto __sched =
-          stdexec::get_completion_scheduler<stdexec::set_value_t>(__sndr);
+          get_completion_scheduler<set_value_t>(__sndr);
         return tag_invoke(
           sync_wait_with_variant_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
-      template <stdexec::sender<__env> _Sender>
+      template <sender<__env> _Sender>
         requires
-          (!stdexec::__tag_invocable_with_completion_scheduler<
-            sync_wait_with_variant_t, stdexec::set_value_t, _Sender>) &&
+          (!__tag_invocable_with_completion_scheduler<
+            sync_wait_with_variant_t, set_value_t, _Sender>) &&
           tag_invocable<sync_wait_with_variant_t, _Sender>
       tag_invoke_result_t<sync_wait_with_variant_t, _Sender>
       operator()(_Sender&& __sndr) const noexcept(
@@ -5460,20 +5462,20 @@ namespace stdexec {
         static_assert(std::is_same_v<
           tag_invoke_result_t<sync_wait_with_variant_t, _Sender>,
           std::optional<__sync_wait_with_variant_result_t<_Sender>>>,
-          "The type of tag_invoke(stdexec::sync_wait_with_variant, S) "
+          "The type of tag_invoke(sync_wait_with_variant, S) "
           "must be sync-wait-with-variant-type<S, sync-wait-env>");
 
         return tag_invoke(sync_wait_with_variant_t{}, (_Sender&&) __sndr);
       }
-      template <stdexec::sender<__env> _Sender>
+      template <sender<__env> _Sender>
         requires
-          (!stdexec::__tag_invocable_with_completion_scheduler<
-            sync_wait_with_variant_t, stdexec::set_value_t, _Sender>) &&
+          (!__tag_invocable_with_completion_scheduler<
+            sync_wait_with_variant_t, set_value_t, _Sender>) &&
           (!tag_invocable<sync_wait_with_variant_t, _Sender>) &&
           invocable<sync_wait_t, __into_variant_result_t<_Sender>>
       std::optional<__sync_wait_with_variant_result_t<_Sender>>
       operator()(_Sender&& __sndr) const {
-        return sync_wait_t{}(stdexec::into_variant((_Sender&&) __sndr));
+        return sync_wait_t{}(into_variant((_Sender&&) __sndr));
       }
     };
   } // namespace __sync_wait
