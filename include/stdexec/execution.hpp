@@ -5299,7 +5299,10 @@ namespace stdexec {
         __sync_wait_result_t<__into_variant_result_t<_Sender>>;
 
     template <class... _Values>
-      struct __state;
+      struct __state {
+        using _Tuple = std::tuple<_Values...>;
+        std::variant<std::monostate, _Tuple, std::exception_ptr, set_stopped_t> __data_{};
+      };
 
     template <class... _Values>
       struct __receiver {
@@ -5338,12 +5341,6 @@ namespace stdexec {
             return {__rcvr.__loop_->get_scheduler()};
           }
         };
-      };
-
-    template <class... _Values>
-      struct __state {
-        using _Tuple = std::tuple<_Values...>;
-        std::variant<std::monostate, _Tuple, std::exception_ptr, set_stopped_t> __data_{};
       };
 
     template <class _Sender>
