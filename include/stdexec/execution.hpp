@@ -5200,9 +5200,9 @@ namespace stdexec {
       }
 
       template <sender... _Senders>
-          requires (!tag_invocable<when_all_t, _Senders...>)
-      auto operator()(_Senders&&... __sndrs) const
-        -> __sender_t<_Senders...> {
+          requires (!tag_invocable<when_all_t, _Senders...>) &&
+            sender<__sender_t<_Senders...>>
+      __sender_t<_Senders...> operator()(_Senders&&... __sndrs) const {
         return __sender_t<_Senders...>{(_Senders&&) __sndrs...};
       }
     };
