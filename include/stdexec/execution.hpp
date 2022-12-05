@@ -574,16 +574,17 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   // NOT TO SPEC (YET)
-  template <class _Sender, class _Env = no_env>
-    concept sender =
-      requires (_Sender&& __sndr, _Env&& __env) {
-        typename __completion_signatures_of_t<_Sender, no_env>;
-        typename __completion_signatures_of_t<_Sender, _Env>;
-      } &&
-      __valid_completion_signatures<__completion_signatures_of_t<_Sender, no_env>, no_env> &&
+  template <class _Sender, class _Env>
+    concept __sender =
+      __valid<__completion_signatures_of_t, _Sender, _Env> &&
       __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env> &&
       move_constructible<remove_cvref_t<_Sender>> &&
       constructible_from<remove_cvref_t<_Sender>, _Sender>;
+
+  template <class _Sender, class _Env = no_env>
+    concept sender =
+      __sender<_Sender, no_env> &&
+      __sender<_Sender, _Env>;
 
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender<S, Ctx> are both true, then they
@@ -4781,10 +4782,6 @@ namespace stdexec {
       }
     };
 
-    template <class _Env>
-      using __base_env_t =
-        __make_env_t<_Env, __with<get_stop_token_t, in_place_stop_token>>;
-
     template <class _EnvId>
       struct __env {
         using _Env = stdexec::__t<_EnvId>;
@@ -4814,56 +4811,46 @@ namespace stdexec {
       using __env_t =
         __t<__if_c<same_as<_Env, no_env>, no_env, __env<__id<_Env>>>>;
 
-    template <class...>
-      using __swallow_values = completion_signatures<>;
+    template <class _T>
+      using __decay_rvalue_ref = decay_t<_T>&&;
+
+    template <class _Sender, class _Env>
+      concept __max_one_value_sender =
+        sender<_Sender, _Env> &&
+        __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __single_or<void>>;
+
+    template <class _Env, class _Sender>
+      using __single_values_of_t =
+        __value_types_of_t<
+          _Sender,
+          _Env,
+          __transform<__q<__decay_rvalue_ref>, __q<__types>>,
+          __q<__single>>;
 
     template <class _Env, class... _Senders>
-      struct __completions {
-        using __t = dependent_completion_signatures<_Env>;
-      };
-
-    template <class _Env, class... _Senders>
-        requires ((__v<__count_of<set_value_t, _Senders, _Env>> <= 1) &&...)
-      struct __completions<_Env, _Senders...> {
-        using __non_values =
-          __concat_completion_signatures_t<
-            completion_signatures<
-              set_error_t(std::exception_ptr),
-              set_stopped_t()>,
-            make_completion_signatures<
-              _Senders,
-              _Env,
-              completion_signatures<>,
-              __swallow_values>...>;
-        template <class _T>
-          using __decay_rvalue_ref = decay_t<_T>&&;
-        using __values =
+      using __set_values_sig_t =
+        completion_signatures<
           __minvoke<
             __mconcat<__qf<set_value_t>>,
-            __value_types_of_t<
-              _Senders,
-              _Env,
-              __transform<__q<__decay_rvalue_ref>, __q<__types>>,
-              __single_or<__types<>>>...>;
+            __single_values_of_t<_Env, _Senders>...>>;
 
-        using __t =
-          __if_c<
-            (__sends<set_value_t, _Senders, _Env> &&...),
-            __minvoke<
-              __push_back<__q<completion_signatures>>, __non_values, __values>,
-            __non_values>;
-      };
-
-    template <class _Env, class... _Senders>
-      using __completion_t = __t<__completions<_Env, _Senders...>>;
-
-    template <class _Completions>
-      using __sends_values =
-        __bool<__v<
-          __compl_sigs::__for_all_sigs<
-            _Completions,
-            __q<__front>, // the tag type without the arguments
-            __mcount<set_value_t>>> != 0>;
+    template <class _Env, __max_one_value_sender<_Env>... _Senders>
+      using __completions_t =
+        __concat_completion_signatures_t<
+          completion_signatures<
+            set_error_t(std::exception_ptr&&), // TODO add this only if the copies can fail
+            set_stopped_t()>,
+          __minvoke<
+            __with_default<
+              __mbind_front_q<__set_values_sig_t, _Env>,
+              completion_signatures<>>,
+            _Senders...>,
+          __make_completion_signatures<
+            _Senders,
+            _Env,
+            completion_signatures<>,
+            __mconst<completion_signatures<>>,
+            __mcompose<__q<completion_signatures>, __qf<set_error_t>, __q<__decay_rvalue_ref>>>...>;
 
     template <class _Receiver, class _ValuesTuple>
       void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
@@ -4942,14 +4929,8 @@ namespace stdexec {
       struct __receiver {
         using _Receiver = stdexec::__t<_ReceiverId>;
 
-        struct __t : receiver_adaptor<__t> {
+        struct __t {
           using __id = __receiver;
-          _Receiver&& base() && noexcept {
-            return (_Receiver&&) __op_state_->__recvr_;
-          }
-          const _Receiver& base() const & noexcept {
-            return __op_state_->__recvr_;
-          }
           template <class _Error>
             void __set_error(_Error&& __err) noexcept {
               // TODO: What memory orderings are actually needed here?
@@ -4965,98 +4946,136 @@ namespace stdexec {
               }
             }
           template <class... _Values>
-            void set_value(_Values&&... __vals) && noexcept {
+            friend void tag_invoke(set_value_t, __t&& __self, _Values&&... __vals) noexcept {
               if constexpr (!same_as<_ValuesTuple, __ignore>) {
+                using _TupleType =
+                  typename std::tuple_element_t<_Index, _ValuesTuple>::value_type;
+                static_assert(
+                  same_as<_TupleType, std::tuple<decay_t<_Values>...>>,
+                  "One of the senders in this when_all() is fibbing about what types it sends");
                 // We only need to bother recording the completion values
                 // if we're not already in the "error" or "stopped" state.
-                if (__op_state_->__state_ == __started) {
+                if (__self.__op_state_->__state_ == __started) {
                   try {
-                    std::get<_Index>(__op_state_->__values_).emplace(
+                    std::get<_Index>(__self.__op_state_->__values_).emplace(
                         (_Values&&) __vals...);
                   } catch(...) {
-                    __set_error(std::current_exception());
+                    __self.__set_error(std::current_exception());
                   }
                 }
               }
-              __op_state_->__arrive();
+              __self.__op_state_->__arrive();
             }
           template <class _Error>
-              requires tag_invocable<set_error_t, _Receiver, std::decay_t<_Error>&&>
-            void set_error(_Error&& __err) && noexcept {
-              __set_error((_Error&&) __err);
-              __op_state_->__arrive();
+            friend void tag_invoke(set_error_t, __t&& __self, _Error&& __err) noexcept {
+              __self.__set_error((_Error&&) __err);
+              __self.__op_state_->__arrive();
             }
-          void set_stopped() && noexcept {
+          friend void tag_invoke(set_stopped_t, __t&& __self) noexcept {
             __state_t __expected = __started;
             // Transition to the "stopped" state if and only if we're in the
             // "started" state. (If this fails, it's because we're in an
             // error state, which trumps cancellation.)
-            if (__op_state_->__state_.compare_exchange_strong(__expected, __stopped)) {
-              __op_state_->__stop_source_.request_stop();
+            if (__self.__op_state_->__state_.compare_exchange_strong(__expected, __stopped)) {
+              __self.__op_state_->__stop_source_.request_stop();
             }
-            __op_state_->__arrive();
+            __self.__op_state_->__arrive();
           }
-          __env_t<env_of_t<_Receiver>> get_env() const {
-            return {stdexec::get_env(base()), __op_state_->__stop_source_.get_token()};
+          friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) {
+            return {
+              stdexec::get_env(__self.__op_state_->__recvr_),
+              __self.__op_state_->__stop_source_.get_token()
+            };
           }
           __operation_base<_ReceiverId, _ValuesTuple, _ErrorsVariant>* __op_state_;
         };
       };
 
-    template <class _CvrefReceiverId, class... _SenderIds>
-      struct __operation {
-        using _ReceiverId = std::remove_cvref_t<_CvrefReceiverId>;
-        using _Receiver = stdexec::__t<_ReceiverId>;
-        using _Env = __env_t<env_of_t<_Receiver>>;
-        using _Indices = std::index_sequence_for<_SenderIds...>;
+    template <class... _SenderIds>
+      struct __traits {
+        template <class _Cvref, class _Id>
+          using __cvref_id = __minvoke<_Cvref, __t<_Id>>;
 
-        template <class _SenderId>
-          using __cvref_sender_t =
-            __copy_cvref_t<_CvrefReceiverId, stdexec::__t<_SenderId>>;
+        template <class _Cvref, class _Env>
+          using __completions =
+            __completions_t<__env_t<__id<_Env>>, __cvref_id<_Cvref, _SenderIds>...>;
 
-        using _Completions =
-          __completion_t<_Env, __cvref_sender_t<_SenderIds>...>;
-
-        template <class _SenderId>
+        template <class _Cvref, class _Receiver, class _SenderId>
           using __values_opt_tuple_t =
             __value_types_of_t<
-              __cvref_sender_t<_SenderId>,
-              _Env,
+              __cvref_id<_Cvref, _SenderId>,
+              __env_t<__id<env_of_t<_Receiver>>>,
               __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
-              __single_or<void>>;
+              __q<__single>>;
 
         // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
-        using _ValuesTuple =
-          __if<
-            __sends_values<_Completions>,
-            __minvoke<__q<std::tuple>, __values_opt_tuple_t<_SenderIds>...>,
-            __ignore>;
+        template <class _Cvref, class _Receiver>
+          using __values_tuple =
+            __minvoke<
+              __with_default<
+                __transform<
+                  __mbind_front_q<__values_opt_tuple_t, _Cvref, _Receiver>,
+                  __q<std::tuple>>,
+                __ignore>,
+              _SenderIds...>;
 
-        using _ErrorsVariant =
-          __minvoke<
-            __mconcat<__q<__variant>>,
-            __types<std::exception_ptr>,
-            error_types_of_t<__cvref_sender_t<_SenderIds>, _Env, __types>...>;
+        template <class _Cvref, class _Receiver>
+          using __errors_variant =
+            __minvoke<
+              __mconcat<__q<__variant>>,
+              __types<std::exception_ptr>,
+              error_types_of_t<
+                __cvref_id<_Cvref, _SenderIds>,
+                __env_t<__id<env_of_t<_Receiver>>>,
+                __types>...>;
+
+        template <class _Cvref, class _Receiver>
+          using __operation_base =
+            __operation_base<
+              __id<_Receiver>,
+              __values_tuple<_Cvref, _Receiver>,
+              __errors_variant<_Cvref, _Receiver>>;
+
+        template <class _Cvref, class _Receiver, std::size_t _Index>
+          using __receiver =
+            __t<
+              __when_all::__receiver<
+                _Index,
+                __id<_Receiver>,
+                __values_tuple<_Cvref, _Receiver>,
+                __errors_variant<_Cvref, _Receiver>>>;
+
+        template <class _Cvref, class _Receiver, class _SenderId, class _Index>
+          using __op_state =
+            connect_result_t<
+              __cvref_id<_Cvref, _SenderId>,
+              __receiver<_Cvref, _Receiver, __v<_Index>>>;
+
+        template <class _Cvref, class _Receiver>
+          using __op_states_tuple =
+            __minvoke<
+              __mzip_with2<
+                __mbind_front_q<__op_state, _Cvref, _Receiver>,
+                __q<std::tuple>>,
+              __types<_SenderIds...>,
+              __mindex_sequence_for<_SenderIds...>>;
+      };
+
+    template <class _Cvref, class _ReceiverId, class... _SenderIds>
+      struct __operation {
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        using _Traits = __traits<_SenderIds...>;
+        using _Indices = std::index_sequence_for<_SenderIds...>;
 
         using __operation_base_t =
-          __operation_base<_ReceiverId, _ValuesTuple, _ErrorsVariant>;
+          typename _Traits::template __operation_base<_Cvref, _Receiver>;
+
+        using __op_states_tuple_t =
+          typename _Traits::template __op_states_tuple<_Cvref, _Receiver>;
 
         template <std::size_t _Index>
           using __receiver_t =
-            stdexec::__t<
-              __receiver<_Index, _ReceiverId, _ValuesTuple, _ErrorsVariant>>;
-
-        template <class _Sender, class _Index>
-          using __op_state_t =
-            connect_result_t<
-              __copy_cvref_t<_CvrefReceiverId, _Sender>,
-              __receiver_t<__v<_Index>>>;
-
-        using __op_states_tuple_t =
-          __minvoke<
-            __mzip_with2<__q<__op_state_t>, __q<std::tuple>>,
-            __types<__cvref_sender_t<_SenderIds>...>,
-            __mindex_sequence_for<_SenderIds...>>;
+            typename _Traits::template __receiver<_Cvref, _Receiver, _Index>;
 
         struct __t : __operation_base_t {
           using __id = __operation;
@@ -5068,7 +5087,7 @@ namespace stdexec {
                   __conv{[&__sndrs, this]() {
                     return stdexec::connect(
                         std::get<_Is>((_SendersTuple&&) __sndrs),
-                        __receiver_t<_Is>{{}, this});
+                        __receiver_t<_Is>{this});
                   }}...
                 }
             {}
@@ -5102,27 +5121,47 @@ namespace stdexec {
         };
       };
 
-    template <class... _SenderIds>
-      struct __sender {
+    template <class _Indices, class... _SenderIds>
+      struct __sender;
+
+    template <std::size_t... _Indices, class... _SenderIds>
+      struct __sender<std::index_sequence<_Indices...>, _SenderIds...> {
+        using __traits_t = __traits<_SenderIds...>;
+
         template <class _Self, class _SenderId>
-          using __cvref_sender_t =
-            __copy_cvref_t<_Self, stdexec::__t<_SenderId>>;
+          using __sender_t = __copy_cvref_t<_Self, stdexec::__t<_SenderId>>;
+
+        template <class _Self, class _Env>
+          using __completions_t =
+            typename __traits_t::template
+              __completions<__copy_cvref_fn<_Self>, _Env>;
+
+        template <class _Self, class _Receiver, std::size_t _Index>
+          using __receiver_t =
+            typename __traits_t::template
+              __receiver<__copy_cvref_fn<_Self>, _Receiver, _Index>;
+
+        template <class _Self, class _Receiver>
+          using __operation_t =
+            stdexec::__t<__operation<
+              __copy_cvref_fn<_Self>,
+              stdexec::__id<_Receiver>,
+              _SenderIds...>>;
 
         struct __t {
           using __id = __sender;
+
           template <class... _Sndrs>
             explicit(sizeof...(_Sndrs) == 1) __t(_Sndrs&&... __sndrs)
               : __sndrs_((_Sndrs&&) __sndrs...)
             {}
 
          private:
-          template <class _Self, class _Receiver>
-            using __operation_t =
-              stdexec::__t<__operation<
-                __copy_cvref_t<_Self, stdexec::__id<_Receiver>>,
-                _SenderIds...>>;
-
           template <__decays_to<__t> _Self, receiver _Receiver>
+              requires
+                (sender_to<
+                  __sender_t<_Self, _SenderIds>,
+                  __receiver_t<_Self, _Receiver, _Indices>> &&...)
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
               -> __operation_t<_Self, _Receiver> {
               return {((_Self&&) __self).__sndrs_, (_Receiver&&) __rcvr};
@@ -5130,7 +5169,11 @@ namespace stdexec {
 
           template <__decays_to<__t> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-              -> __completion_t<__env_t<_Env>, __cvref_sender_t<_Self, _SenderIds>...>;
+              -> dependent_completion_signatures<_Env>;
+          template <__decays_to<__t> _Self, class _Env>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+              -> __completions_t<_Self, _Env>
+                requires true;
 
           std::tuple<stdexec::__t<_SenderIds>...> __sndrs_;
         };
@@ -5141,6 +5184,12 @@ namespace stdexec {
         decltype(into_variant(__declval<_Sender>()));
 
     struct when_all_t {
+      template <class... _Senders>
+        using __sender_t =
+          __t<__sender<
+            std::index_sequence_for<_Senders...>,
+            __id<decay_t<_Senders>>...>>;
+
       template <sender... _Senders>
         requires tag_invocable<when_all_t, _Senders...> &&
           sender<tag_invoke_result_t<when_all_t, _Senders...>>
@@ -5153,9 +5202,8 @@ namespace stdexec {
       template <sender... _Senders>
           requires (!tag_invocable<when_all_t, _Senders...>)
       auto operator()(_Senders&&... __sndrs) const
-        -> __t<__sender<stdexec::__id<decay_t<_Senders>>...>> {
-        return __t<__sender<stdexec::__id<decay_t<_Senders>>...>> {
-            (_Senders&&) __sndrs...};
+        -> __sender_t<_Senders...> {
+        return __sender_t<_Senders...>{(_Senders&&) __sndrs...};
       }
     };
 

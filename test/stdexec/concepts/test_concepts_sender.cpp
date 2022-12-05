@@ -128,3 +128,40 @@ TEST_CASE("check completion signatures for sender that also supports error codes
   check_sends_stopped<false>(ec_sender{});
   REQUIRE(ex::sender_of<ec_sender, ex::set_value_t()>);
 }
+
+#if !STDEXEC_NVHPC()
+// nvc++ doesn't yet implement subsumption correctly
+struct not_a_sender_tag {};
+struct sender_no_env_tag {};
+struct sender_env_tag {};
+struct sender_of_tag {};
+
+template <class T>
+not_a_sender_tag test_subsumption(T&&) {
+  return {};
+}
+template <ex::sender T>
+sender_no_env_tag test_subsumption(T&&) {
+  return {};
+}
+template <ex::sender<empty_env> T>
+sender_env_tag test_subsumption(T&&) {
+  return {};
+}
+template <ex::sender_of<ex::set_value_t(), empty_env> T>
+sender_of_tag test_subsumption(T&&) {
+  return {};
+}
+
+template <class Expected, class T>
+void has_type(T&&) {
+  REQUIRE(ex::same_as<T, Expected>);
+}
+
+TEST_CASE("check for subsumption relationships between the sender concepts", "[concepts][sender]") {
+  ::has_type<not_a_sender_tag>(::test_subsumption(42));
+  ::has_type<sender_no_env_tag>(::test_subsumption(ex::get_scheduler()));
+  ::has_type<sender_env_tag>(::test_subsumption(ex::just(42)));
+  ::has_type<sender_of_tag>(::test_subsumption(ex::just()));
+}
+#endif
