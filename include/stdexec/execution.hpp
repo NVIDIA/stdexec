@@ -5043,7 +5043,7 @@ namespace stdexec {
                 __errors_variant>>;
 
         using __operation_base =
-          __operation_base<__id<_Receiver>, __values_tuple, __errors_variant>;
+          __when_all::__operation_base<__id<_Receiver>, __values_tuple, __errors_variant>;
 
         template <class _Sender, class _Index>
           using __op_state =
@@ -5061,7 +5061,7 @@ namespace stdexec {
     template <class _Cvref, class _ReceiverId, class... _SenderIds>
       struct __operation {
         using _Receiver = stdexec::__t<_ReceiverId>;
-        using _Traits = __traits<_Receiver, __minvoke<_Cvref, __t<_SenderIds>>...>;
+        using _Traits = __traits<_Receiver, __minvoke<_Cvref, stdexec::__t<_SenderIds>>...>;
         using _Indices = std::index_sequence_for<_SenderIds...>;
 
         using __operation_base_t = typename _Traits::__operation_base;
