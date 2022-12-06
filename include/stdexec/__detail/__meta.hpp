@@ -27,7 +27,7 @@ namespace stdexec {
 
   struct __ignore {
     __ignore() = default;
-    __ignore(auto&&) noexcept {}
+    constexpr __ignore(auto&&...) noexcept {}
   };
 
     // Before gcc-12, gcc really didn't like tuples or variants of immovable types
@@ -63,9 +63,6 @@ namespace stdexec {
   template <bool _B>
     using __bool = std::bool_constant<_B>;
 
-  template <std::size_t _N>
-    using __msize_t = std::integral_constant<std::size_t, _N>;
-
   template <class _Ty>
     struct __mtype {
       using __t = _Ty;
@@ -78,6 +75,9 @@ namespace stdexec {
   template <class _T>
     using __midentity = _T;
 
+  template <std::size_t _N>
+    using __msize_t = char[_N+1];
+
   template <class _T>
     inline constexpr auto __v = _T::value;
 
@@ -89,6 +89,9 @@ namespace stdexec {
 
   template <class _T, _T _I>
     inline constexpr _T __v<std::integral_constant<_T, _I>> = _I;
+
+  template <std::size_t _I>
+    inline constexpr std::size_t __v<char[_I]> = _I-1;
 
   template <bool>
     struct __i {
@@ -146,6 +149,13 @@ namespace stdexec {
   template <class _Fn, class... _Args>
     concept __minvocable =
       __valid<_Fn::template __f, _Args...>;
+
+  template <class _Fn, class... _Args>
+    struct __force_minvoke_ {
+      using __t = __minvoke<_Fn, _Args...>;
+    };
+  template <class _Fn, class... _Args>
+    using __force_minvoke = __t<__force_minvoke_<_Fn, _Args...>>;
 
   template <bool>
     struct __if_ {
@@ -414,10 +424,10 @@ namespace stdexec {
   template <class _T>
     extern __cpcrr __cpcvr<const _T&&>;
   template <class _T>
-    using __cpcvrfn = decltype(__cpcvr<_T>);
+    using __copy_cvref_fn = decltype(__cpcvr<_T>);
 
   template <class _From, class _To>
-    using __copy_cvref_t = __minvoke<__cpcvrfn<_From>, _To>;
+    using __copy_cvref_t = __minvoke<__copy_cvref_fn<_From>, _To>;
 
   template <class _Ty, class...>
     using __front_ = _Ty;
@@ -530,12 +540,22 @@ namespace stdexec {
         using __f = __t<__mzip_with2_<_Fn, _Continuation, _C, _D>>;
     };
 
+#if STDEXEC_GCC() && (__GNUC__ < 12)
+  template <class>
+    extern int __mconvert_indices;
   template <std::size_t... _Indices>
-    auto __mconvert_indices(std::index_sequence<_Indices...>)
-      -> __types<__msize_t<_Indices>...>;
+    extern __types<__msize_t<_Indices>...> __mconvert_indices<std::index_sequence<_Indices...>>;
   template <std::size_t _N>
     using __mmake_index_sequence =
-      decltype(__mconvert_indices(std::make_index_sequence<_N>{}));
+      decltype(stdexec::__mconvert_indices<std::make_index_sequence<_N>>);
+#else
+  template <std::size_t... _Indices>
+    __types<__msize_t<_Indices>...> __mconvert_indices(std::index_sequence<_Indices...>*);
+  template <std::size_t _N>
+    using __mmake_index_sequence =
+      decltype(stdexec::__mconvert_indices((std::make_index_sequence<_N>*) nullptr));
+#endif
+
   template <class... _Ts>
     using __mindex_sequence_for =
       __mmake_index_sequence<sizeof...(_Ts)>;
