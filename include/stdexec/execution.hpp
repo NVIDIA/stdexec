@@ -4815,7 +4815,7 @@ namespace stdexec {
       using __decay_rvalue_ref = decay_t<_T>&&;
 
     template <class _Sender, class _Env>
-      concept __max_one_value_sender =
+      concept __max1_sender =
         sender<_Sender, _Env> &&
         __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __single_or<void>>;
 
@@ -4834,7 +4834,7 @@ namespace stdexec {
             __mconcat<__qf<set_value_t>>,
             __single_values_of_t<_Env, _Senders>...>>;
 
-    template <class _Env, __max_one_value_sender<_Env>... _Senders>
+    template <class _Env, class... _Senders>
       using __completions_t =
         __concat_completion_signatures_t<
           completion_signatures<
@@ -4852,6 +4852,13 @@ namespace stdexec {
             __mconst<completion_signatures<>>,
             __mcompose<__q<completion_signatures>, __qf<set_error_t>, __q<__decay_rvalue_ref>>>...>;
 
+    struct __tie {
+      template <class... _Ty>
+        std::tuple<_Ty&...> operator()(_Ty&... __vals) noexcept {
+          return std::tuple<_Ty&...>{__vals...};
+        }
+    };
+
     template <class _Receiver, class _ValuesTuple>
       void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
         std::apply(
@@ -4861,12 +4868,7 @@ namespace stdexec {
                 stdexec::set_value(
                     (_Receiver&&) __rcvr, std::move(__all_vals)...);
               },
-              std::tuple_cat(
-                std::apply(
-                  [](auto&... __vals) noexcept { return std::tie(__vals...); },
-                  *__opt_vals
-                )...
-              )
+              std::tuple_cat(std::apply(__tie{}, *__opt_vals)...)
             );
           },
           __values
@@ -4991,91 +4993,83 @@ namespace stdexec {
         };
       };
 
-    template <class... _SenderIds>
-      struct __traits {
-        template <class _Cvref, class _Id>
-          using __cvref_id = __minvoke<_Cvref, __t<_Id>>;
+    template <class _Env, class _Sender>
+      using __values_opt_tuple_t =
+        __value_types_of_t<
+          _Sender,
+          __env_t<__id<_Env>>,
+          __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
+          __q<__single>>;
 
-        template <class _Cvref, class _Env>
-          using __completions =
-            __completions_t<__env_t<__id<_Env>>, __cvref_id<_Cvref, _SenderIds>...>;
-
-        template <class _Cvref, class _Receiver, class _SenderId>
-          using __values_opt_tuple_t =
-            __value_types_of_t<
-              __cvref_id<_Cvref, _SenderId>,
-              __env_t<__id<env_of_t<_Receiver>>>,
-              __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
-              __q<__single>>;
+    template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
+      struct __traits_ {
+        using __completions =
+          __completions_t<__env_t<_Env>, _Senders...>;
 
         // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
-        template <class _Cvref, class _Receiver>
-          using __values_tuple =
-            __minvoke<
-              __with_default<
-                __transform<
-                  __mbind_front_q<__values_opt_tuple_t, _Cvref, _Receiver>,
-                  __q<std::tuple>>,
-                __ignore>,
-              _SenderIds...>;
+        using __values_tuple =
+          __minvoke<
+            __with_default<
+              __transform<
+                __mbind_front_q<__values_opt_tuple_t, _Env>,
+                __q<std::tuple>>,
+              __ignore>,
+            _Senders...>;
 
-        template <class _Cvref, class _Receiver>
-          using __errors_variant =
-            __minvoke<
-              __mconcat<__q<__variant>>,
-              __types<std::exception_ptr>,
-              error_types_of_t<
-                __cvref_id<_Cvref, _SenderIds>,
-                __env_t<__id<env_of_t<_Receiver>>>,
-                __types>...>;
+        using __errors_variant =
+          __minvoke<
+            __mconcat<__q<__variant>>,
+            __types<std::exception_ptr>,
+            error_types_of_t<
+              _Senders,
+              __env_t<__id<_Env>>,
+              __types>...>;
+      };
 
-        template <class _Cvref, class _Receiver>
-          using __operation_base =
-            __operation_base<
-              __id<_Receiver>,
-              __values_tuple<_Cvref, _Receiver>,
-              __errors_variant<_Cvref, _Receiver>>;
+    template <receiver _Receiver, __max1_sender<__env_t<env_of_t<_Receiver>>>... _Senders>
+      struct __traits : __traits_<env_of_t<_Receiver>, _Senders...> {
+        using _Traits = __traits_<env_of_t<_Receiver>, _Senders...>;
+        using typename _Traits::__completions;
+        using typename _Traits::__values_tuple;
+        using typename _Traits::__errors_variant;
 
-        template <class _Cvref, class _Receiver, std::size_t _Index>
+        template <std::size_t _Index>
           using __receiver =
             __t<
               __when_all::__receiver<
                 _Index,
                 __id<_Receiver>,
-                __values_tuple<_Cvref, _Receiver>,
-                __errors_variant<_Cvref, _Receiver>>>;
+                __values_tuple,
+                __errors_variant>>;
 
-        template <class _Cvref, class _Receiver, class _SenderId, class _Index>
+        using __operation_base =
+          __operation_base<__id<_Receiver>, __values_tuple, __errors_variant>;
+
+        template <class _Sender, class _Index>
           using __op_state =
-            connect_result_t<
-              __cvref_id<_Cvref, _SenderId>,
-              __receiver<_Cvref, _Receiver, __v<_Index>>>;
+            connect_result_t<_Sender, __receiver<__v<_Index>>>;
 
-        template <class _Cvref, class _Receiver>
-          using __op_states_tuple =
-            __minvoke<
-              __mzip_with2<
-                __mbind_front_q<__op_state, _Cvref, _Receiver>,
-                __q<std::tuple>>,
-              __types<_SenderIds...>,
-              __mindex_sequence_for<_SenderIds...>>;
+        using __op_states_tuple =
+          __minvoke<
+            __mzip_with2<
+              __q<__op_state>,
+              __q<std::tuple>>,
+            __types<_Senders...>,
+            __mindex_sequence_for<_Senders...>>;
       };
 
     template <class _Cvref, class _ReceiverId, class... _SenderIds>
       struct __operation {
         using _Receiver = stdexec::__t<_ReceiverId>;
-        using _Traits = __traits<_SenderIds...>;
+        using _Traits = __traits<_Receiver, __minvoke<_Cvref, __t<_SenderIds>>...>;
         using _Indices = std::index_sequence_for<_SenderIds...>;
 
-        using __operation_base_t =
-          typename _Traits::template __operation_base<_Cvref, _Receiver>;
-
-        using __op_states_tuple_t =
-          typename _Traits::template __op_states_tuple<_Cvref, _Receiver>;
+        using __operation_base_t = typename _Traits::__operation_base;
+        using __op_states_tuple_t = typename _Traits::__op_states_tuple;
 
         template <std::size_t _Index>
           using __receiver_t =
-            typename _Traits::template __receiver<_Cvref, _Receiver, _Index>;
+            typename _Traits::template __receiver<_Index>;
 
         struct __t : __operation_base_t {
           using __id = __operation;
@@ -5121,25 +5115,22 @@ namespace stdexec {
         };
       };
 
+    template <class _From, class _ToId>
+      using __cvref_id = __copy_cvref_t<_From, __t<_ToId>>;
+
     template <class _Indices, class... _SenderIds>
       struct __sender;
 
     template <std::size_t... _Indices, class... _SenderIds>
       struct __sender<std::index_sequence<_Indices...>, _SenderIds...> {
-        using __traits_t = __traits<_SenderIds...>;
-
-        template <class _Self, class _SenderId>
-          using __sender_t = __copy_cvref_t<_Self, stdexec::__t<_SenderId>>;
-
         template <class _Self, class _Env>
           using __completions_t =
-            typename __traits_t::template
-              __completions<__copy_cvref_fn<_Self>, _Env>;
+            typename __traits_<_Env, __cvref_id<_Self, _SenderIds>...>::__completions;
 
         template <class _Self, class _Receiver, std::size_t _Index>
           using __receiver_t =
-            typename __traits_t::template
-              __receiver<__copy_cvref_fn<_Self>, _Receiver, _Index>;
+            typename __traits<_Receiver, __cvref_id<_Self, _SenderIds>...>
+              ::template __receiver<_Index>;
 
         template <class _Self, class _Receiver>
           using __operation_t =
@@ -5160,7 +5151,7 @@ namespace stdexec {
           template <__decays_to<__t> _Self, receiver _Receiver>
               requires
                 (sender_to<
-                  __sender_t<_Self, _SenderIds>,
+                  __cvref_id<_Self, _SenderIds>,
                   __receiver_t<_Self, _Receiver, _Indices>> &&...)
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
               -> __operation_t<_Self, _Receiver> {
@@ -5191,74 +5182,74 @@ namespace stdexec {
             __id<decay_t<_Senders>>...>>;
 
       template <sender... _Senders>
-        requires tag_invocable<when_all_t, _Senders...> &&
-          sender<tag_invoke_result_t<when_all_t, _Senders...>>
-      auto operator()(_Senders&&... __sndrs) const
-        noexcept(nothrow_tag_invocable<when_all_t, _Senders...>)
-        -> tag_invoke_result_t<when_all_t, _Senders...> {
-        return tag_invoke(*this, (_Senders&&) __sndrs...);
-      }
+          requires tag_invocable<when_all_t, _Senders...> &&
+            sender<tag_invoke_result_t<when_all_t, _Senders...>>
+        auto operator()(_Senders&&... __sndrs) const
+          noexcept(nothrow_tag_invocable<when_all_t, _Senders...>)
+          -> tag_invoke_result_t<when_all_t, _Senders...> {
+          return tag_invoke(*this, (_Senders&&) __sndrs...);
+        }
 
       template <sender... _Senders>
           requires (!tag_invocable<when_all_t, _Senders...>) &&
             sender<__sender_t<_Senders...>>
-      __sender_t<_Senders...> operator()(_Senders&&... __sndrs) const {
-        return __sender_t<_Senders...>{(_Senders&&) __sndrs...};
-      }
+        __sender_t<_Senders...> operator()(_Senders&&... __sndrs) const {
+          return __sender_t<_Senders...>{(_Senders&&) __sndrs...};
+        }
     };
 
     struct when_all_with_variant_t {
       template <sender... _Senders>
-        requires tag_invocable<when_all_with_variant_t, _Senders...> &&
-          sender<tag_invoke_result_t<when_all_with_variant_t, _Senders...>>
-      auto operator()(_Senders&&... __sndrs) const
-        noexcept(nothrow_tag_invocable<when_all_with_variant_t, _Senders...>)
-        -> tag_invoke_result_t<when_all_with_variant_t, _Senders...> {
-        return tag_invoke(*this, (_Senders&&) __sndrs...);
-      }
+          requires tag_invocable<when_all_with_variant_t, _Senders...> &&
+            sender<tag_invoke_result_t<when_all_with_variant_t, _Senders...>>
+        auto operator()(_Senders&&... __sndrs) const
+          noexcept(nothrow_tag_invocable<when_all_with_variant_t, _Senders...>)
+          -> tag_invoke_result_t<when_all_with_variant_t, _Senders...> {
+          return tag_invoke(*this, (_Senders&&) __sndrs...);
+        }
 
       template <sender... _Senders>
-        requires (!tag_invocable<when_all_with_variant_t, _Senders...>) &&
-          (__callable<into_variant_t, _Senders> &&...)
-      auto operator()(_Senders&&... __sndrs) const {
-          return when_all_t{}(into_variant((_Senders&&) __sndrs)...);
-      }
+          requires (!tag_invocable<when_all_with_variant_t, _Senders...>) &&
+            (__callable<into_variant_t, _Senders> &&...)
+        auto operator()(_Senders&&... __sndrs) const {
+            return when_all_t{}(into_variant((_Senders&&) __sndrs)...);
+        }
     };
 
     struct transfer_when_all_t {
       template <scheduler _Sched, sender... _Senders>
-        requires tag_invocable<transfer_when_all_t, _Sched, _Senders...> &&
-          sender<tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...>>
-      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const
-        noexcept(nothrow_tag_invocable<transfer_when_all_t, _Sched, _Senders...>)
-        -> tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...> {
-        return tag_invoke(*this, (_Sched&&) __sched, (_Senders&&) __sndrs...);
-      }
+          requires tag_invocable<transfer_when_all_t, _Sched, _Senders...> &&
+            sender<tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...>>
+        auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const
+          noexcept(nothrow_tag_invocable<transfer_when_all_t, _Sched, _Senders...>)
+          -> tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...> {
+          return tag_invoke(*this, (_Sched&&) __sched, (_Senders&&) __sndrs...);
+        }
 
       template <scheduler _Sched, sender... _Senders>
-        requires ((!tag_invocable<transfer_when_all_t, _Sched, _Senders...>) ||
-          (!sender<tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...>>))
-      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
-        return transfer(when_all_t{}((_Senders&&) __sndrs...), (_Sched&&) __sched);
-      }
+          requires ((!tag_invocable<transfer_when_all_t, _Sched, _Senders...>) ||
+            (!sender<tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...>>))
+        auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
+          return transfer(when_all_t{}((_Senders&&) __sndrs...), (_Sched&&) __sched);
+        }
     };
 
     struct transfer_when_all_with_variant_t {
       template <scheduler _Sched, sender... _Senders>
-        requires tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...> &&
-          sender<tag_invoke_result_t<transfer_when_all_with_variant_t, _Sched, _Senders...>>
-      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const
-        noexcept(nothrow_tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>)
-        -> tag_invoke_result_t<transfer_when_all_with_variant_t, _Sched, _Senders...> {
-        return tag_invoke(*this, (_Sched&&) __sched, (_Senders&&) __sndrs...);
-      }
+          requires tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...> &&
+            sender<tag_invoke_result_t<transfer_when_all_with_variant_t, _Sched, _Senders...>>
+        auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const
+          noexcept(nothrow_tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>)
+          -> tag_invoke_result_t<transfer_when_all_with_variant_t, _Sched, _Senders...> {
+          return tag_invoke(*this, (_Sched&&) __sched, (_Senders&&) __sndrs...);
+        }
 
       template <scheduler _Sched, sender... _Senders>
-        requires (!tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>) &&
-          (__callable<into_variant_t, _Senders> &&...)
-      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
-        return transfer_when_all_t{}((_Sched&&) __sched, into_variant((_Senders&&) __sndrs)...);
-      }
+          requires (!tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>) &&
+            (__callable<into_variant_t, _Senders> &&...)
+        auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
+          return transfer_when_all_t{}((_Sched&&) __sched, into_variant((_Senders&&) __sndrs)...);
+        }
     };
   } // namespace __when_all
   using __when_all::when_all_t;
