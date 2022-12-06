@@ -1,0 +1,59 @@
+{
+  "image": "ghcr.io/trxcllnt/devcontainer-images/cmake-ninja-sccache-llvm-cuda-nvhpc:latest",
+  "capAdd": ["SYS_PTRACE"],
+  // "runArgs": ["--gpus", "all"],
+  "securityOpt": ["seccomp=unconfined"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "twxs.cmake",
+        "xaver.clang-format",
+        "cschlosser.doxdocgen",
+        "ms-vscode.cpptools",
+        "nvidia.nsight-vscode-edition",
+        "llvm-vs-code-extensions.vscode-clangd"
+      ],
+      "settings": {
+        "C_Cpp.vcpkg.enabled": false,
+        "C_Cpp.formatting": "Disabled",
+        "C_Cpp.autocomplete": "Disabled",
+        "C_Cpp.errorSquiggles": "Disabled",
+        "C_Cpp.intelliSenseEngine": "Disabled",
+        "C_Cpp.configurationWarnings": "Disabled",
+        "C_Cpp.autoAddFileAssociations": false,
+        "debug.toolBarLocation": "docked",
+        "editor.hover.delay": 500,
+        "editor.hover.sticky": true,
+        "editor.inlayHints.enabled": "off",
+        "files.autoSave": "off",
+        "files.trimFinalNewlines": true,
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true,
+        "files.associations": {
+          "*.cu": "cuda-cpp",
+          "*.cuh": "cuda-cpp",
+          "**/libcudacxx/include/**/*": "cpp",
+          "**/libcudacxx-src/include/**/*": "cpp"
+        },
+        "[c]": {
+          "editor.tabSize": 2,
+          "editor.formatOnSave": false,
+          "editor.formatOnSaveMode": "file",
+          "editor.defaultFormatter": "xaver.clang-format"
+        },
+        "[cpp]": {
+          "editor.tabSize": 2,
+          "editor.formatOnSave": false,
+          "editor.formatOnSaveMode": "file",
+          "editor.defaultFormatter": "xaver.clang-format"
+        },
+        "[cuda-cpp]": {
+          "editor.tabSize": 2,
+          "editor.formatOnSave": false,
+          "editor.formatOnSaveMode": "file",
+          "editor.defaultFormatter": "xaver.clang-format"
+        }
+      }
+    }
+  }
+}
