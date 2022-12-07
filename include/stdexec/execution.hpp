@@ -4852,36 +4852,36 @@ namespace stdexec {
             __mconst<completion_signatures<>>,
             __mcompose<__q<completion_signatures>, __qf<set_error_t>, __q<__decay_rvalue_ref>>>...>;
 
-    struct __tie {
+    struct __tie_fn {
       template <class... _Ty>
         std::tuple<_Ty&...> operator()(_Ty&... __vals) noexcept {
           return std::tuple<_Ty&...>{__vals...};
         }
     };
 
+    template <class _Tag, class _Receiver>
+      struct __complete_fn {
+        _Receiver& __rcvr_;
+        __complete_fn(_Tag, _Receiver& __rcvr) noexcept
+          : __rcvr_(__rcvr)
+        {}
+        template <class... _Ts>
+          void operator()(_Ts&&... __ts) const noexcept {
+            _Tag{}((_Receiver&&) __rcvr_, (_Ts&&) __ts...);
+          }
+      };
+
     template <class _Receiver, class _ValuesTuple>
       void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
         std::apply(
           [&](auto&... __opt_vals) noexcept -> void {
             std::apply(
-              [&](auto&... __all_vals) noexcept -> void {
-                stdexec::set_value(
-                    (_Receiver&&) __rcvr, std::move(__all_vals)...);
-              },
-              std::tuple_cat(std::apply(__tie{}, *__opt_vals)...)
+              __complete_fn{set_value, __rcvr},
+              std::tuple_cat(std::apply(__tie_fn{}, *__opt_vals)...)
             );
           },
           __values
         );
-      }
-
-    template <class _Receiver, class _ErrorsVariant>
-      void __set_error(_Receiver& __rcvr, _ErrorsVariant& __errors) noexcept {
-        std::visit(
-          [&](auto& __err) noexcept {
-            stdexec::set_error((_Receiver&&) __rcvr, std::move(__err));
-          },
-          __errors);
       }
 
     template <class _ReceiverId, class _ValuesTuple, class _ErrorsVariant>
@@ -4906,7 +4906,7 @@ namespace stdexec {
             }
             break;
           case __error:
-            __when_all::__set_error(__recvr_, __errors_);
+            std::visit(__complete_fn{set_error, __recvr_}, __errors_);
             break;
           case __stopped:
             stdexec::set_stopped((_Receiver&&) __recvr_);
