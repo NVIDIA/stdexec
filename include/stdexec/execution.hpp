@@ -686,7 +686,7 @@ namespace stdexec {
     using __count_of =
       __compl_sigs::__for_all_sigs<
         completion_signatures_of_t<_Sender, _Env>,
-        __q<__front>,
+        __q<__mfront>,
         __mcount<_Tag>>;
 
   template <class _Tag, class _Sender, class _Env = no_env>
@@ -701,11 +701,11 @@ namespace stdexec {
 
   template <class _Sender, class _Env = no_env>
     using __single_sender_value_t =
-      __value_types_of_t<_Sender, _Env, __single_or<void>, __q<__single>>;
+      __value_types_of_t<_Sender, _Env, __msingle_or<void>, __q<__msingle>>;
 
   template <class _Sender, class _Env = no_env>
     using __single_value_variant_sender_t =
-      value_types_of_t<_Sender, _Env, __types, __single>;
+      value_types_of_t<_Sender, _Env, __types, __msingle>;
 
   template <class _Sender, class _Env = no_env>
     concept __single_typed_sender =
@@ -4817,7 +4817,7 @@ namespace stdexec {
     template <class _Sender, class _Env>
       concept __max1_sender =
         sender<_Sender, _Env> &&
-        __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __single_or<void>>;
+        __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
 
     template <class _Env, class _Sender>
       using __single_values_of_t =
@@ -4825,7 +4825,7 @@ namespace stdexec {
           _Sender,
           _Env,
           __transform<__q<__decay_rvalue_ref>, __q<__types>>,
-          __q<__single>>;
+          __q<__msingle>>;
 
     template <class _Env, class... _Senders>
       using __set_values_sig_t =
@@ -4999,7 +4999,7 @@ namespace stdexec {
           _Sender,
           __env_t<__id<_Env>>,
           __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
-          __q<__single>>;
+          __q<__msingle>>;
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
       struct __traits_ {
@@ -5360,7 +5360,7 @@ namespace stdexec {
           _Sender,
           __env,
           __transform<__q<decay_t>, _Continuation>,
-          __q<__single>>;
+          __q<__msingle>>;
 
     template <stdexec::sender<__env> _Sender>
       using __sync_wait_result_t =
