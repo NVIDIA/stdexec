@@ -49,7 +49,7 @@ int main()
     auto [i, j, k] = stdexec::sync_wait(std::move(work)).value();
 
     // Print the results:
-    std::printf("%d %d %d", i, j, k
+    std::printf("%d %d %d\n", i, j, k);
 }
 ```
 
@@ -90,7 +90,7 @@ GPU features additionally require specifying `-stdpar=gpu`. For more details, se
 
 ### GitHub
 
-As a header-only C++, technically all one needs to do is add the `stdexec` root to your include path as `-I<stdexec root>` in addition to specifying any necessary compile options.
+As a header-only C++ library, technically all one needs to do is add the `stdexec` `include/` directory to your include path as `-I<stdexec root>/include` in addition to specifying any necessary compile options.
 
 `stdexec` also provides [CMake targets](#cmake) that encapsulate the necessary configuration options. We recommend using these CMake targets to simplify using `stdexec` in your poject.
 
