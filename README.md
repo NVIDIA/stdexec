@@ -71,12 +71,13 @@ This library is header-only, so all the source code can be found in the `include
 
 ## How to get `stdexec`
 
-There are two primary options for getting the code for `stdexec`:
+There are a few ways to get `stdexec`:
 1. Clone from GitHub
    - `git clone https://github.com/NVIDIA/stdexec.git`
 2. Download the [NVIDIA HPC SDK starting with 22.11](https://developer.nvidia.com/nvidia-hpc-sdk-releases)
+3. (Recommended) Use [CMake Package Manager (CPM)](https://github.com/cpm-cmake/CPM.cmake) to automatically pull `stdexec` as part of your CMake project. [See below](#cmake-package-manager-cpm) for more information.
 
-You can also try it directly on [godbolt.org](https://godbolt.org/z/acaE93xq3) where it is available as a C++ library or via nvc++ 22.11.
+You can also try it directly on [godbolt.org](https://godbolt.org/z/acaE93xq3) where it is available as a C++ library or via the nvc++ compiler starting with version 22.11 ([see below](#nvhpc-sdk) for more details).
 
 ## Using `stdexec`
 
@@ -92,7 +93,7 @@ GPU features additionally require specifying `-stdpar=gpu`. For more details, se
 
 As a header-only C++ library, technically all one needs to do is add the `stdexec` `include/` directory to your include path as `-I<stdexec root>/include` in addition to specifying any necessary compile options.
 
-`stdexec` also provides [CMake targets](#cmake) that encapsulate the necessary configuration options. We recommend using these CMake targets to simplify using `stdexec` in your poject.
+For simplicity, we reocmmend using the [CMake targets](#cmake) that `stdexec` provides as they encapsulate the necessary configuration.
 
 #### cmake
 
@@ -101,26 +102,39 @@ If your project uses CMake, then after cloning `stdexec` simply add the followin
 add_subdirectory(<stdexec root>)
 ```
 
-This will make the following targets available:
-- `stdexec::cpu`
-   - Enables use of CPU-only schedulers
-   - Supported Compilers: gcc, clang, nvc++
-- `stdexec::gpu`
-   - Enables use of both GPU and CPU schedulers (implies `stdexec::cpu`)
-   - Supported Compilers: nvc++
+This will make the `stdexec::stdexec` target available for linking to your project as:
 
-With either of these targets, all one needs to do is:
 ```
-target_link_libraries(my_project PRIVATE stdexec::cpu)
+target_link_libraries(my_project PRIVATE stdexec::stdexec)
 ```
-or
-```
-target_link_libraries(my_project PRIVATE stdexec::gpu)
-```
+
+This target encapsulates all of the necessary configuration and compiler flags for using `stdexec`.
+
 
 #### CMake Package Manager (CPM)
 
-TODO
+To further simplify obtaining and including `stdexec` in your CMake project, we recommend using [CMake Package Manager (CPM)](https://github.com/cpm-cmake/CPM.cmake) to fetch and configure `stdexec`.
+
+Complete example:
+```
+cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+
+project(stdexecExample)
+
+# Get CPM
+# For more information on how to add CPM to your project, see: https://github.com/cpm-cmake/CPM.cmake#adding-cpm
+include(CPM.cmake)
+
+CPMAddPackage(
+  NAME stdexec
+  GITHUB_REPOSITORY NVIDIA/stdexec
+  GIT_TAG main # This will always pull the latest code from the `main` branch. You may also use a specific release version or tag
+)
+
+add_executable(main example.cpp)
+
+target_link_libraries(main stdexec::stdexec)
+```
 
 ### GPU Support
 
