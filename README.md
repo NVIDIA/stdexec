@@ -92,7 +92,7 @@ How you configure your environment to use `stdexec` depends on how you got `stde
 
 ### NVHPC SDK
 
-Starting with the 22.11 release of the [NVHPC SDK](https://developer.nvidia.com/nvidia-hpc-sdk-releases), `stdexec` is available as an experimental, opt-in feature. Using `stdexec` requires specifying the `--experimental-stdpar` flag to `nvc++` to make the `stdexec` headers available on the include path. You can then include any `stdexec` header as normal: `#include <stdexec/...>`, `#include <nvexec/...>`.  See [godbolt example](https://godbolt.org/z/qc1h3sqEv).
+Starting with the 22.11 release of the [NVHPC SDK](https://developer.nvidia.com/nvidia-hpc-sdk-releases), `stdexec` is available as an experimental, opt-in feature. Specifying the `--experimental-stdpar` flag to `nvc++` makes the `stdexec` headers available on the include path. You can then include any `stdexec` header as normal: `#include <stdexec/...>`, `#include <nvexec/...>`.  See [godbolt example](https://godbolt.org/z/qc1h3sqEv).
 
 GPU features additionally require specifying `-stdpar=gpu`. For more details, see [GPU Support](#gpu-support).
 
@@ -109,7 +109,7 @@ If your project uses CMake, then after cloning `stdexec` simply add the followin
 add_subdirectory(<stdexec root>)
 ```
 
-This will make the `stdexec::stdexec` target available for linking to your project as:
+This will make the `stdexec::stdexec` target available to link with your project:
 
 ```
 target_link_libraries(my_project PRIVATE stdexec::stdexec)
