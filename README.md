@@ -81,6 +81,13 @@ You can also try it directly on [godbolt.org](https://godbolt.org/z/acaE93xq3) w
 
 ## Using `stdexec`
 
+### Requirements
+
+`stdexec` requires compiling with C++20 (`-std=c++20`) but otherwise does not have any dependencies and only requires a sufficiently new compiler:
+- clang 12+
+- gcc 11+
+- [nvc++ 22.11+](https://developer.nvidia.com/nvidia-hpc-sdk-releases) (required for GPU support)
+
 How you configure your environment to use `stdexec` depends on how you got `stdexec`.
 
 ### NVHPC SDK
