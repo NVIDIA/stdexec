@@ -145,7 +145,17 @@ target_link_libraries(main stdexec::stdexec)
 
 ### GPU Support
 
-TODO
+`stdexec` provides schedulers that enable execution on NVIDIA GPUs:
+- `nvexec::stream_scheduler`
+   - Single GPU scheduler that executes on the first available GPU (device 0)
+   - Defined in [`<nvexec/stream_context.cuh>`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream_context.cuh)
+- `nvexec::multi_gpu_stream_scheduler`
+   - Executes on all visible GPUs
+   - Defined in [`<nvexec/multi_gpu_context.cuh>`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/multi_gpu_context.cuh)
+
+These schedulers are only supported when using the `nvc++` compiler with `-stdpar=gpu`.
+
+Example: https://godbolt.org/z/4cEMqY8r9
 
 
 ## Building
