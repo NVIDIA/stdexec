@@ -430,14 +430,14 @@ namespace stdexec {
     using __copy_cvref_t = __minvoke<__copy_cvref_fn<_From>, _To>;
 
   template <class _Ty, class...>
-    using __front_ = _Ty;
+    using __mfront_ = _Ty;
   template <class... _As>
-    using __front = __meval<__front_, _As...>;
+    using __mfront = __meval<__mfront_, _As...>;
   template <class... _As>
       requires (sizeof...(_As) == 1)
-    using __single = __front<_As...>;
+    using __msingle = __mfront<_As...>;
   template <class _Ty>
-    using __single_or = __mbind_back_q<__front_, _Ty>;
+    using __msingle_or = __mbind_back_q<__mfront_, _Ty>;
 
   template <class _Continuation = __q<__types>>
     struct __pop_front {
@@ -669,7 +669,7 @@ namespace stdexec {
     using __mwhich_t =
       __minvoke<
         _Signatures,
-        __mfind_if<__q<__mrequires>, __q<__front>>,
+        __mfind_if<__q<__mrequires>, __q<__mfront>>,
         _Extra...>;
   template <class _Signatures, class... _Extra>
     using __mwhich_i =

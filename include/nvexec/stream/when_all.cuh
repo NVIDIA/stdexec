@@ -73,7 +73,7 @@ template <class Env, class... Senders>
           Senders,
           Env,
           stdexec::__q<stdexec::__types>,
-          stdexec::__single_or<stdexec::__types<>>>...>;
+          stdexec::__msingle_or<stdexec::__types<>>>...>;
     using __t =
       stdexec::__if_c<
         (stdexec::__sends<stdexec::set_value_t, Senders, Env> &&...),
@@ -374,7 +374,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
                   stdexec::__t<SenderIds>,
                   when_all::env_t<Env>,
                   stdexec::__q<decayed_tuple>,
-                  stdexec::__single_or<void>>...>,
+                  stdexec::__msingle_or<void>>...>,
               stdexec::__>;
 
           Receiver recvr_;
