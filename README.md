@@ -100,7 +100,7 @@ GPU features additionally require specifying `-stdpar=gpu`. For more details, se
 
 As a header-only C++ library, technically all one needs to do is add the `stdexec` `include/` directory to your include path as `-I<stdexec root>/include` in addition to specifying any necessary compile options.
 
-For simplicity, we reocmmend using the [CMake targets](#cmake) that `stdexec` provides as they encapsulate the necessary configuration.
+For simplicity, we recommend using the [CMake targets](#cmake) that `stdexec` provides as they encapsulate the necessary configuration.
 
 #### cmake
 
