@@ -1,7 +1,7 @@
 {
   "image": "ghcr.io/trxcllnt/devcontainer-images/cmake-ninja-sccache-llvm-cuda-nvhpc:latest",
   "capAdd": ["SYS_PTRACE"],
-  // "runArgs": ["--gpus", "all"],
+  "hostRequirements": { "gpu": true },
   "securityOpt": ["seccomp=unconfined"],
   "customizations": {
     "vscode": {
@@ -15,11 +15,11 @@
       ],
       "settings": {
         "C_Cpp.vcpkg.enabled": false,
-        "C_Cpp.formatting": "Disabled",
-        "C_Cpp.autocomplete": "Disabled",
-        "C_Cpp.errorSquiggles": "Disabled",
-        "C_Cpp.intelliSenseEngine": "Disabled",
-        "C_Cpp.configurationWarnings": "Disabled",
+        "C_Cpp.formatting": "disabled",
+        "C_Cpp.autocomplete": "disabled",
+        "C_Cpp.errorSquiggles": "disabled",
+        "C_Cpp.intelliSenseEngine": "disabled",
+        "C_Cpp.configurationWarnings": "disabled",
         "C_Cpp.autoAddFileAssociations": false,
         "debug.toolBarLocation": "docked",
         "editor.hover.delay": 500,
