@@ -540,14 +540,16 @@ namespace stdexec {
         using __f = __t<__mzip_with2_<_Fn, _Continuation, _C, _D>>;
     };
 
-#if STDEXEC_GCC() && (__GNUC__ < 12)
-  template <class>
-    extern int __mconvert_indices;
-  template <std::size_t... _Indices>
-    extern __types<__msize_t<_Indices>...> __mconvert_indices<std::index_sequence<_Indices...>>;
+#if __has_builtin(__integer_pack)
+  template <std::size_t... _Is>
+    using __mmake_index_sequence_ = __types<__msize_t<_Is>...>;
   template <std::size_t _N>
-    using __mmake_index_sequence =
-      decltype(stdexec::__mconvert_indices<std::make_index_sequence<_N>>);
+    using __mmake_index_sequence = __mmake_index_sequence_<__integer_pack(_N)...>;
+#elif __has_builtin(__make_integer_seq)
+  template <class, std::size_t... _Is>
+    using __mmake_index_sequence_ = __types<__msize_t<_Is>...>;
+  template <std::size_t _N>
+    using __mmake_index_sequence = __make_integer_seq<__mmake_index_sequence_, std::size_t, _N>;
 #else
   template <std::size_t... _Indices>
     __types<__msize_t<_Indices>...> __mconvert_indices(std::index_sequence<_Indices...>*);
