@@ -675,9 +675,9 @@ namespace stdexec {
     }
   template <std::size_t _N, class... _Ts>
     constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
-      return [&]<std::size_t... _Is>(std::index_sequence<_Is...>) noexcept -> decltype(auto) {
+      return [&]<std::size_t... _Is>(std::index_sequence<_Is...>*) noexcept -> decltype(auto) {
         return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
-      }(std::make_index_sequence<_N>());
+      }((std::make_index_sequence<_N>*) nullptr);
     }
 
   template <class _Ty>
