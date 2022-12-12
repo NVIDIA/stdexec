@@ -1868,23 +1868,29 @@ namespace stdexec {
 
     // When looking for user-defined customizations of start_detached, these
     // are the signatures to test against, in order:
-    template <class _Sender, class _Env>
-      using __cust_sigs =
-        __msignatures<
-          tag_invoke_t(start_detached_t, _Sender),
-          tag_invoke_t(start_detached_t, _Sender, _Env),
-          tag_invoke_t(start_detached_t, get_scheduler_t(_Env&), _Sender),
-          tag_invoke_t(start_detached_t, get_scheduler_t(_Env&), _Sender, _Env)>;
+    using _Sender = __0;
+    using _Env = __1;
+    using __cust_sigs =
+      __types<
+        tag_invoke_t(start_detached_t, _Sender),
+        tag_invoke_t(start_detached_t, _Sender, _Env),
+        tag_invoke_t(start_detached_t, get_scheduler_t(_Env&), _Sender),
+        tag_invoke_t(start_detached_t, get_scheduler_t(_Env&), _Sender, _Env)>;
 
     template <class _Sender, class _Env>
       inline constexpr bool __is_start_detached_customized =
-        __v<__many_well_formed<__cust_sigs<_Sender, _Env>>>;
+        __minvocable<__which<__cust_sigs>, _Sender, _Env>;
+
+    struct __submit_detached {
+      template <class _Sender, class _Env>
+        void operator()(_Sender&& __sndr, _Env&& __env) const {
+          __submit((_Sender&&) __sndr, __detached_receiver_t<_Env>{(_Env&&) __env});
+        }
+    };
 
     template <class _Sender, class _Env>
-      using __which_t = __mwhich_t<__cust_sigs<_Sender, _Env>, __mconstruct<void, false>()>;
-
-    template <class _Sender, class _Env>
-      using __which_i = __mwhich_i<__cust_sigs<_Sender, _Env>, __mconstruct<void, false>()>;
+      using __dispatcher_for =
+        __make_dispatcher<__cust_sigs, __mconst<__submit_detached>, _Sender, _Env>;
 
     struct start_detached_t {
       template <sender _Sender, class _Env = __empty_env>
@@ -1892,23 +1898,11 @@ namespace stdexec {
             sender_to<_Sender, __detached_receiver_t<_Env>> ||
             __is_start_detached_customized<_Sender, _Env>
         void operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
-          noexcept(__mnoexcept_v<__which_t<_Sender, _Env>>) {
-          // The selected customization should return void
-          static_assert(same_as<void, __mtypeof<__which_t<_Sender, _Env>>>);
-          constexpr auto __idx = __v<__which_i<_Sender, _Env>>;
-          // Dispatch to the correct implementation:
-          if constexpr (__idx == 0) {
-            tag_invoke(start_detached_t{}, (_Sender&&) __sndr);
-          } else if constexpr (__idx == 1) {
-            tag_invoke(start_detached_t{}, (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 2) {
-            tag_invoke(start_detached_t{}, get_scheduler(__env), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 3) {
-            auto __sched = get_scheduler(__env);
-            tag_invoke(start_detached_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else {
-            __submit((_Sender&&) __sndr, __detached_receiver_t<_Env>{(_Env&&) __env});
-          }
+          noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>) {
+          using _Dispatcher = __dispatcher_for<_Sender, _Env>;
+          // The selected implementation should return void
+          static_assert(same_as<void, __call_result_t<_Dispatcher, _Sender, _Env>>);
+          _Dispatcher{}((_Sender&&) __sndr, (_Env&&) __env);
         }
     };
   } // namespace __start_detached
@@ -3145,19 +3139,20 @@ namespace stdexec {
 
     // When looking for user-defined customizations of split, these
     // are the signatures to test against, in order:
-    template <class _Sender, class _Env>
-      using __cust_sigs =
-        __msignatures<
-          tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender),
-          tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender, _Env),
-          tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender),
-          tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender, _Env),
-          tag_invoke_t(split_t, _Sender),
-          tag_invoke_t(split_t, _Sender, _Env)>;
+    using _Sender = __0;
+    using _Env = __1;
+    using __cust_sigs =
+      __types<
+        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender),
+        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender, _Env),
+        tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender),
+        tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender, _Env),
+        tag_invoke_t(split_t, _Sender),
+        tag_invoke_t(split_t, _Sender, _Env)>;
 
     template <class _Sender, class _Env>
       inline constexpr bool __is_split_customized =
-        __v<__many_well_formed<__cust_sigs<_Sender, _Env>>>;
+        __minvocable<__which<__cust_sigs>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
       using __sender_t = __t<__sender<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
@@ -3166,14 +3161,8 @@ namespace stdexec {
       using __receiver_t = __t<__receiver<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
 
     template <class _Sender, class _Env>
-      using __construct_sender =
-        __mconstruct<__sender_t<_Sender, _Env>>(_Sender, _Env);
-
-    template <class _Sender, class _Env>
-      using __which_t = __mwhich_t<__cust_sigs<_Sender, _Env>, __construct_sender<_Sender, _Env>>;
-
-    template <class _Sender, class _Env>
-      using __which_i = __mwhich_i<__cust_sigs<_Sender, _Env>, __construct_sender<_Sender, _Env>>;
+      using __dispatcher_for =
+        __make_dispatcher<__cust_sigs, __mconstructor_for<__sender_t>, _Sender, _Env>;
 
     struct split_t {
       template <sender _Sender, class _Env = __empty_env>
@@ -3182,28 +3171,9 @@ namespace stdexec {
              sender_to<_Sender&, __receiver_t<_Sender, _Env>>) ||
             __is_split_customized<_Sender, _Env>
         auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
-          noexcept(__mnoexcept_v<__which_t<_Sender, _Env>>)
-          -> __mtypeof<__which_t<_Sender, _Env>> {
-          constexpr auto __idx = __v<__which_i<_Sender, _Env>>;
-          // Dispatch to the correct implementation:
-          if constexpr (__idx == 0) {
-            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
-            return tag_invoke(split_t{}, std::move(__sched), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 1) {
-            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
-            return tag_invoke(split_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 2) {
-            return tag_invoke(split_t{}, get_scheduler(__env), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 3) {
-            auto __sched = get_scheduler(__env);
-            return tag_invoke(split_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 4) {
-            return tag_invoke(split_t{}, (_Sender&&) __sndr);
-          } else if constexpr (__idx == 5) {
-            return tag_invoke(split_t{}, (_Sender&&) __sndr, (_Env&&) __env);
-          } else {
-            return __sender_t<_Sender, _Env>{(_Sender&&) __sndr, (_Env&&) __env};
-          }
+          noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
+          -> __call_result_t<__dispatcher_for<_Sender, _Env>, _Sender, _Env> {
+          return __dispatcher_for<_Sender, _Env>{}((_Sender&&) __sndr, (_Env&&) __env);
         }
 
       __binder_back<split_t> operator()() const {
@@ -3489,19 +3459,20 @@ namespace stdexec {
 
     // When looking for user-defined customizations of split, these
     // are the signatures to test against, in order:
-    template <class _Sender, class _Env>
-      using __cust_sigs =
-        __msignatures<
-          tag_invoke_t(ensure_started_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender),
-          tag_invoke_t(ensure_started_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender, _Env),
-          tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender),
-          tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender, _Env),
-          tag_invoke_t(ensure_started_t, _Sender),
-          tag_invoke_t(ensure_started_t, _Sender, _Env)>;
+    using _Sender = __0;
+    using _Env = __1;
+    using __cust_sigs =
+      __types<
+        tag_invoke_t(ensure_started_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender),
+        tag_invoke_t(ensure_started_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender, _Env),
+        tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender),
+        tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender, _Env),
+        tag_invoke_t(ensure_started_t, _Sender),
+        tag_invoke_t(ensure_started_t, _Sender, _Env)>;
 
     template <class _Sender, class _Env>
       inline constexpr bool __is_ensure_started_customized =
-        __v<__many_well_formed<__cust_sigs<_Sender, _Env>>>;
+        __minvocable<__which<__cust_sigs>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
       using __sender_t = __t<__sender<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
@@ -3510,14 +3481,8 @@ namespace stdexec {
       using __receiver_t = __t<__receiver<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
 
     template <class _Sender, class _Env>
-      using __construct_sender =
-        __mconstruct<__sender_t<_Sender, _Env>>(_Sender, _Env);
-
-    template <class _Sender, class _Env>
-      using __which_t = __mwhich_t<__cust_sigs<_Sender, _Env>, __construct_sender<_Sender, _Env>>;
-
-    template <class _Sender, class _Env>
-      using __which_i = __mwhich_i<__cust_sigs<_Sender, _Env>, __construct_sender<_Sender, _Env>>;
+      using __dispatcher_for =
+        __make_dispatcher<__cust_sigs, __mconstructor_for<__sender_t>, _Sender, _Env>;
 
     struct ensure_started_t {
       template <sender _Sender, class _Env = __empty_env>
@@ -3526,30 +3491,12 @@ namespace stdexec {
              sender_to<_Sender&, __receiver_t<_Sender, _Env>>) ||
             __is_ensure_started_customized<_Sender, _Env>
         auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
-          noexcept(__mnoexcept_v<__which_t<_Sender, _Env>>)
-          { //-> __mtypeof<__which_t<_Sender, _Env>> {
-          constexpr auto __idx = __v<__which_i<_Sender, _Env>>;
-          // Dispatch to the correct implementation:
-          if constexpr (__idx == 0) {
-            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
-            return tag_invoke(ensure_started_t{}, std::move(__sched), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 1) {
-            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
-            return tag_invoke(ensure_started_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 2) {
-            return tag_invoke(ensure_started_t{}, get_scheduler(__env), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 3) {
-            auto __sched = get_scheduler(__env);
-            return tag_invoke(ensure_started_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 4) {
-            return tag_invoke(ensure_started_t{}, (_Sender&&) __sndr);
-          } else if constexpr (__idx == 5) {
-            return tag_invoke(ensure_started_t{}, (_Sender&&) __sndr, (_Env&&) __env);
-          } else {
-            return __sender_t<_Sender, _Env>{(_Sender&&) __sndr, (_Env&&) __env};
-          }
+          noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
+          -> __call_result_t<__dispatcher_for<_Sender, _Env>, _Sender, _Env> {
+          return __dispatcher_for<_Sender, _Env>{}((_Sender&&) __sndr, (_Env&&) __env);
         }
 
+      // BUGBUG this will never match
       template <class _SenderId, class _EnvId>
         __t<__sender<_SenderId, _EnvId>> operator()(__t<__sender<_SenderId, _EnvId>> __sndr) const {
           return std::move(__sndr);
@@ -3683,7 +3630,7 @@ namespace stdexec {
         typename __receiver<_SenderId, _ReceiverId, _Fun, _Let>::__operation_base_t;
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
-      struct __operation { 
+      struct __operation {
         using _Sender = stdexec::__t<_SenderId>;
 
         struct __t : __operation_base<_SenderId, _ReceiverId, _Fun, _Let> {

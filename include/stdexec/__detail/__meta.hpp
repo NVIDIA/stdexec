@@ -560,23 +560,28 @@ namespace stdexec {
     using __mindex_sequence_for =
       __mmake_index_sequence<sizeof...(_Ts)>;
 
-  template <class _Fn, class _Continuation, class... _Args>
+  template <bool>
     struct __mfind_if_ {
-      using __t = __minvoke<_Continuation, _Args...>;
-    };
-  template <class _Fn, class _Continuation, class _Head, class... _Tail>
-    struct __mfind_if_<_Fn, _Continuation, _Head, _Tail...>
-      : __mfind_if_<_Fn, _Continuation, _Tail...>
-    {};
-  template <class _Fn, class _Continuation, class _Head, class... _Tail>
-      requires __v<__minvoke<_Fn, _Head>>
-    struct __mfind_if_<_Fn, _Continuation, _Head, _Tail...> {
-      using __t = __minvoke<_Continuation, _Head, _Tail...>;
-    };
+      template <class _Fn, class _Continuation, class _Head, class... _Tail>
+        using __f =
+          __minvoke<
+            __if_c<
+              __v<__minvoke<_Fn, _Head>>,
+              __mbind_front<_Continuation, _Head>,
+              __mbind_front<__mfind_if_<(sizeof...(_Tail) != 0)>, _Fn, _Continuation>>,
+            _Tail...>;
+      };
+  template <>
+    struct __mfind_if_<false> {
+      template <class _Fn, class _Continuation>
+        using __f = __minvoke<_Continuation>;
+      };
+
   template <class _Fn, class _Continuation = __q<__types>>
     struct __mfind_if {
       template <class... _Args>
-        using __f = __t<__mfind_if_<_Fn, _Continuation, _Args...>>;
+        using __f =
+          __minvoke<__mfind_if_<(sizeof...(_Args) != 0)>, _Fn, _Continuation, _Args...>;
     };
 
   template <class _Fn>
@@ -611,79 +616,161 @@ namespace stdexec {
         using __f = __mor<__minvoke<_Fn, _Args>...>;
     };
 
-  template <class _Ty>
-    struct __mtypeof__ {
-      using __t = _Ty;
-    };
-  template <class _Ty>
-    using __mtypeof__t = __t<__mtypeof__<_Ty>>;
-  template <class _Ret, class... _Args>
-      requires __callable<_Ret, __mtypeof__t<_Args>...>
-    struct __mtypeof__<_Ret(*)(_Args...)> {
-      using __t = __call_result_t<_Ret, __mtypeof__t<_Args>...>;
-    };
-  template <class _Ty>
-    struct __mtypeof_
-    {};
-  template <class _Ret, class... _Args>
-      requires __callable<_Ret, __mtypeof__t<_Args>...>
-    struct __mtypeof_<_Ret(_Args...)> {
-      using __t = __call_result_t<_Ret, __mtypeof__t<_Args>...>;
-    };
-  template <class _Ty>
-    using __mtypeof = __t<__mtypeof_<_Ty>>;
+#if __has_builtin(__type_pack_element)
+  template <std::size_t _N, class... _Ts>
+    using __m_at = __type_pack_element<_N, _Ts...>;
+#else
+  template <std::size_t>
+    using __void_ptr = void*;
 
   template <class _Ty>
-    using __mrequires =
-      __bool<__valid<__mtypeof, _Ty>>;
-  template <class _Ty>
-    concept __mrequires_v =
-      __valid<__mtypeof, _Ty>;
+    using __mtype_ptr = __mtype<_Ty>*;
 
   template <class _Ty>
-    inline constexpr bool __mnoexcept__ = true;
-  template <class _Ret, class... _Args>
-      requires __callable<_Ret, __mtypeof__t<_Args>...>
-    inline constexpr bool __mnoexcept__<_Ret(*)(_Args...)> =
-      (__mnoexcept__<_Args> &&...) &&
-      __nothrow_callable<_Ret, __mtypeof__t<_Args>...>;
-  template <class _Ty>
-    inline constexpr bool __mnoexcept_v = false;
-  template <class _Ret, class... _Args>
-      requires __callable<_Ret, __mtypeof__t<_Args>...>
-    inline constexpr bool __mnoexcept_v<_Ret(_Args...)> =
-      (__mnoexcept__<_Args> &&...) &&
-      __nothrow_callable<_Ret, __mtypeof__t<_Args>...>;
-  template <class _Ty>
-    using __mnoexcept = __bool<__mnoexcept_v<_Ty>>;
+    struct __m_at_;
 
-  template <class... _Sigs>
-    struct __msignatures {
-      template <class _Continuation, class... _Extra>
-        using __f = __minvoke<_Continuation, _Sigs..., _Extra...>;
+  template <std::size_t ..._Is>
+    struct __m_at_<std::index_sequence<_Is...>> {
+      template <class _U, class ..._Us>
+        static _U __f_(__void_ptr<_Is>..., _U*, _Us*...);
+      template <class... _Ts>
+        using __f = __t<decltype(__m_at_::__f_(__mtype_ptr<_Ts>()...))>;
     };
-  template <class _Signatures>
-    using __many_well_formed =
-      __minvoke<_Signatures, __many_of<__q<__mrequires>>>;
-  template <class _Signatures, class... _Extra>
-    using __mwhich_t =
-      __minvoke<
-        _Signatures,
-        __mfind_if<__q<__mrequires>, __q<__mfront>>,
-        _Extra...>;
-  template <class _Signatures, class... _Extra>
-    using __mwhich_i =
-      __msize_t<(
-        __v<__minvoke<_Signatures, __msize, _Extra...>> -
-        __v<__minvoke<
-          _Signatures,
-          __mfind_if<__q<__mrequires>, __msize>,
-          _Extra...>>)>;
-  template <class _Ty, bool _Noexcept = true>
+
+  template <std::size_t _N, class... _Ts>
+    using __m_at =
+      __minvoke<__m_at_<std::make_index_sequence<_N>>, _Ts...>;
+#endif
+
+  template <std::size_t _N>
+    struct __placeholder_;
+  template <std::size_t _N>
+    using __placeholder = __placeholder_<_N>*;
+
+  using __0 = __placeholder<0>;
+  using __1 = __placeholder<1>;
+  using __2 = __placeholder<2>;
+  using __3 = __placeholder<3>;
+
+  template <class _Ty, class _Noexcept = __bool<true>>
     struct __mconstruct {
       template <class... _As>
         auto operator()(_As&&... __as) const
-          noexcept(_Noexcept && noexcept(_Ty((_As&&) __as...)))
-          -> decltype(_Ty((_As&&) __as...));
+          noexcept(__v<_Noexcept> && noexcept(_Ty((_As&&) __as...)))
+          -> decltype(_Ty((_As&&) __as...)) {
+          return _Ty((_As&&) __as...);
+        }
     };
-}
+
+  template <template <class...> class _C, class _Noexcept = __bool<true>>
+    using __mconstructor_for =
+      __mcompose<__q<__mconstruct>, __q<_C>>;
+
+  template <std::size_t>
+    using __ignore_t = __ignore;
+
+  template <std::size_t... _Is, class _Ty, class... _Us>
+    _Ty&& __nth_pack_element_(__ignore_t<_Is>..., _Ty&& __t, _Us&&...) noexcept {
+      return (_Ty&&) __t;
+    }
+  template <std::size_t _N, class... _Ts>
+    constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
+      return [&]<std::size_t... _Is>(std::index_sequence<_Is...>*) noexcept -> decltype(auto) {
+        return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
+      }((std::make_index_sequence<_N>*) nullptr);
+    }
+
+  template <class _Ty>
+    struct __mdispatch_ {
+      template <class... _Ts>
+        _Ty operator()(_Ts&&...) const noexcept(noexcept(_Ty{})) {
+          return _Ty{};
+        }
+    };
+  template <std::size_t _N>
+    struct __mdispatch_<__placeholder<_N>> {
+      template <class... _Ts>
+        decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+          return stdexec::__nth_pack_element<_N>((_Ts&&) __ts...);
+        }
+    };
+  template <std::size_t _N>
+    struct __mdispatch_<__placeholder<_N>&> {
+      template <class... _Ts>
+        decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+          return stdexec::__nth_pack_element<_N>(__ts...);
+        }
+    };
+  template <std::size_t _N>
+    struct __mdispatch_<__placeholder<_N>&&> {
+      template <class... _Ts>
+        decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+          return std::move(stdexec::__nth_pack_element<_N>(__ts...));
+        }
+    };
+  template <std::size_t _N>
+    struct __mdispatch_<const __placeholder<_N>&> {
+      template <class... _Ts>
+        decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+          return std::as_const(stdexec::__nth_pack_element<_N>(__ts...));
+        }
+    };
+  template <class _Ret, class... _Args>
+    struct __mdispatch_<_Ret(*)(_Args...)> {
+      template <class... _Ts>
+          requires (__callable<__mdispatch_<_Args>, _Ts...> &&...) &&
+            __callable<_Ret, __call_result_t<__mdispatch_<_Args>, _Ts...>...>
+        auto operator()(_Ts&&... __ts) const
+          noexcept(__nothrow_callable<_Ret, __call_result_t<__mdispatch_<_Args>, _Ts...>...>)
+          -> __call_result_t<_Ret, __call_result_t<__mdispatch_<_Args>, _Ts...>...> {
+          return _Ret{}(__mdispatch_<_Args>{}((_Ts&&) __ts...)...);
+        }
+    };
+
+  template <class _Ty>
+    struct __mdispatch
+    {};
+  template <class _Ret, class... _Args>
+    struct __mdispatch<_Ret(_Args...)> {
+      template <class... _Ts>
+          requires (__callable<__mdispatch_<_Args>, _Ts...> &&...) &&
+            __callable<_Ret, __call_result_t<__mdispatch_<_Args>, _Ts...>...>
+        auto operator()(_Ts&&... __ts) const
+          noexcept(__nothrow_callable<_Ret, __call_result_t<__mdispatch_<_Args>, _Ts...>...>)
+          -> __call_result_t<_Ret, __call_result_t<__mdispatch_<_Args>, _Ts...>...> {
+          return _Ret{}(__mdispatch_<_Args>{}((_Ts&&) __ts...)...);
+        }
+    };
+  template <class _Ty, class... _Ts>
+    concept __dispatchable = __callable<__mdispatch<_Ty>, _Ts...>;
+
+  template <class _Ty, class... _Ts>
+    concept __nothrow_dispatchable = __nothrow_callable<__mdispatch<_Ty>, _Ts...>;
+
+  template <class _Ty, class... _Ts>
+    using __dispatch_result_t = __call_result_t<__mdispatch<_Ty>, _Ts...>;
+
+  template <class _Signature, class... _Args>
+    using __try_dispatch_ =
+      __bool<__dispatchable<_Signature, _Args...>>;
+  template <class _Signatures, class _Continuation = __q<__mfront>>
+    struct __which
+    {};
+  template <template <class...> class _C, class... _Signatures, class _Continuation>
+    struct __which<_C<_Signatures...>, _Continuation> {
+      template <class... _Args>
+        using __f =
+          __minvoke<
+            __mfind_if<__mbind_back_q<__try_dispatch_, _Args...>, _Continuation>,
+            _Signatures...>;
+    };
+
+  template <class _Signatures, class _DefaultFn, class... _Args>
+    using __make_dispatcher =
+      __minvoke<
+        __if_c<
+          __minvocable<__which<_Signatures>, _Args...>,
+          __mcompose<__q<__mdispatch>, __which<_Signatures>>,
+          _DefaultFn>,
+        _Args...>;
+} // namespace stdexec
