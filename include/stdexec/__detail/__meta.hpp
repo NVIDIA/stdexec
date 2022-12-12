@@ -620,34 +620,26 @@ namespace stdexec {
   template <std::size_t _N, class... _Ts>
     using __m_at = __type_pack_element<_N, _Ts...>;
 #else
-  template <unsigned _N>
-    struct __m_at_ {
-      template <class, class, class, class, class... _Ts>
-        using __f = __minvoke<__m_at_<_N-4>, _Ts...>;
-    };
-  template <>
-    struct __m_at_<0> {
-      template <class _Ty, class...>
-        using __f = _Ty;
-    };
-  template <>
-    struct __m_at_<1> {
-      template <class, class _Ty, class...>
-        using __f = _Ty;
-    };
-  template <>
-    struct __m_at_<2> {
-      template <class, class, class _Ty, class...>
-        using __f = _Ty;
-    };
-  template <>
-    struct __m_at_<3> {
-      template <class, class, class, class _Ty, class...>
-        using __f = _Ty;
+  template <std::size_t>
+    using __void_ptr = void*;
+
+  template <class _Ty>
+    using __mtype_ptr = __mtype<_Ty>*;
+
+  template <class _Ty>
+    struct __m_at_;
+
+  template <std::size_t ..._Is>
+    struct __m_at_<std::index_sequence<_Is...>> {
+      template <class _U, class ..._Us>
+        static _U __f_(__void_ptr<_Is>..., _U*, _Us*...);
+      template <class... _Ts>
+        using __f = __t<decltype(__m_at_::__f_(__mtype_ptr<_Ts>()...))>;
     };
 
-  template <unsigned _N, class... _Ts>
-    using __m_at = __minvoke<__m_at_<_N>, _Ts...>;
+  template <std::size_t _N, class... _Ts>
+    using __m_at =
+      __minvoke<__m_at_<std::make_index_sequence<_N>>, _Ts...>;
 #endif
 
   template <std::size_t _N>
