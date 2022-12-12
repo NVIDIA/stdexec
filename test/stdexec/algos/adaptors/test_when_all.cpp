@@ -68,14 +68,6 @@ TEST_CASE("when_all with just one sender", "[adaptors][when_all]") {
   wait_for_value(std::move(snd), 2);
 }
 
-TEST_CASE("when_all with move-only types", "[adaptors][when_all]") {
-  ex::sender auto snd = ex::when_all( //
-      ex::just(movable(2))            //
-  );
-  auto op = ex::connect(std::move(snd), expect_error_receiver{});
-  wait_for_value(std::move(snd), movable(2));
-}
-
 TEST_CASE("when_all with no senders", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all();
   wait_for_value(std::move(snd));
