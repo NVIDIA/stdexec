@@ -4866,7 +4866,7 @@ namespace stdexec {
           : __rcvr_(__rcvr)
         {}
         template <class... _Ts>
-          void operator()(_Ts&&... __ts) const noexcept {
+          void operator()(_Ts&... __ts) const noexcept {
             _Tag{}((_Receiver&&) __rcvr_, (_Ts&&) __ts...);
           }
       };
