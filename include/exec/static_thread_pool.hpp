@@ -448,9 +448,10 @@ namespace exec {
         this->__execute = [](task_base* t, std::uint32_t /* tid */) noexcept {
           auto& op = *static_cast<operation*>(t);
           auto stoken =
-            stdexec::get_stop_token(
-              stdexec::get_env(op.receiver_));
-          if (stoken.stop_requested()) {
+            stdexec::get_stop_token(stdexec::get_env(op.receiver_));
+          if constexpr (std::unstoppable_token<decltype(stoken)>) {
+            stdexec::set_value((Receiver &&) op.receiver_);
+          } else if (stoken.stop_requested()) {
             stdexec::set_stopped((Receiver &&) op.receiver_);
           } else {
             stdexec::set_value((Receiver &&) op.receiver_);
