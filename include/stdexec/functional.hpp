@@ -65,6 +65,32 @@ namespace stdexec {
   template <auto _Fun>
   inline constexpr __fun_c_t<_Fun> __fun_c{};
 
+  template <class _Fun0, class _Fun1>
+  struct __composed {
+    STDEXEC_NO_UNIQUE_ADDRESS _Fun0 __t0_;
+    STDEXEC_NO_UNIQUE_ADDRESS _Fun1 __t1_;
+
+    template <class... _Ts>
+      requires __callable<_Fun1, _Ts...> && __callable<_Fun0, __call_result_t<_Fun1, _Ts...>>
+    __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> operator()(_Ts&&... __ts) && {
+      return ((_Fun0&&) __t0_)(((_Fun1&&) __t1_)((_Ts&&) __ts...));
+    }
+
+    template <class... _Ts>
+      requires __callable<const _Fun1&, _Ts...>
+            && __callable<const _Fun0&, __call_result_t<const _Fun1&, _Ts...>>
+    __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> operator()(_Ts&&... __ts) const & {
+      return __t0_(__t1_((_Ts&&) __ts...));
+    }
+  };
+
+  inline constexpr struct __compose_t {
+    template <class _Fun0, class _Fun1>
+    __composed<_Fun0, _Fun1> operator()(_Fun0 __fun0, _Fun1 __fun1) const {
+      return {(_Fun0&&) __fun0, (_Fun1&&) __fun1};
+    }
+  } __compose{};
+
   // [func.tag_invoke], tag_invoke
   namespace __tag_invoke {
     void tag_invoke();

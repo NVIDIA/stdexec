@@ -141,7 +141,7 @@ namespace exec {
         }
 
         auto get_env() const noexcept -> __env::__env_join_t<const _Env&, env_of_t<_Receiver>> {
-          return __env::__join_env(__op_->__env_, stdexec::get_env(base()));
+          return __join_env(__op_->__env_, stdexec::get_env(base()));
         }
 
         __operation_base<_ReceiverId, _Env>* __op_;
@@ -211,7 +211,7 @@ namespace exec {
         requires sender<_Sender>
       auto operator()(_Sender&& __sndr, __env::__env_fn<_Funs>... __withs) const
         -> __sender_t<_Sender, _Funs...> {
-        return {(_Sender&&) __sndr, __env::__join_env(std::move(__withs)...)};
+        return {(_Sender&&) __sndr, __join_env(std::move(__withs)...)};
       }
 
       template <class... _Funs>

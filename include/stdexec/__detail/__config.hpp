@@ -26,6 +26,7 @@
 #endif
 
 #include <cassert>
+#include <version>
 
 #define STDEXEC_CAT_(_XP, ...) _XP##__VA_ARGS__
 #define STDEXEC_CAT(_XP, ...) STDEXEC_CAT_(_XP, __VA_ARGS__)
@@ -112,6 +113,16 @@
 #define STDEXEC_IS_CONVERTIBLE_TO(...) __is_convertible(__VA_ARGS__)
 #else
 #define STDEXEC_IS_CONVERTIBLE_TO(...) std::is_convertible_v<__VA_ARGS__>
+#endif
+
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
+#define STDEXEC_UNREACHABLE() std::unreachable()
+#elif STDEXEC_HAS_BUILTIN(__builtin_unreachable)
+#define STDEXEC_UNREACHABLE() __builtin_unreachable()
+#elif STDEXEC_MSVC()
+#define STDEXEC_UNREACHABLE(...) __assume(false)
+#else
+#define STDEXEC_UNREACHABLE(...) std::terminate()
 #endif
 
 // Before gcc-12, gcc really didn't like tuples or variants of immovable types
