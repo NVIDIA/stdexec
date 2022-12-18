@@ -540,7 +540,7 @@ namespace exec {
       class __future {
         using _Sender = __t<_SenderId>;
         using _Env = __t<_EnvId>;
-        friend struct async_scope;
+        friend struct __nester;
       public:
         using is_sender = void;
 
@@ -661,6 +661,47 @@ namespace exec {
         __spawn_op<__x<_Sender>, __x<_Env>>;
 
     ////////////////////////////////////////////////////////////////////////////
+    // __nester
+    struct __nester {
+      template <sender _Constrained>
+        using nest_result_t = __nest_sender_t<_Constrained>;
+
+      template <sender _Constrained>
+        [[nodiscard]] nest_result_t<_Constrained>
+        nest(_Constrained&& __c) {
+          return nest_result_t<_Constrained>{__impl_, (_Constrained&&) __c};
+        }
+
+      template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>
+          requires sender_to<nest_result_t<_Sender>, __spawn_receiver_t<_Env>>
+        void spawn(_Sender&& __sndr, _Env __env = {}) {
+          using __op_t = __spawn_operation_t<nest_result_t<_Sender>, _Env>;
+          // start is noexcept so we can assume that the operation will complete
+          // after this, which means we can rely on its self-ownership to ensure
+          // that it is eventually deleted
+          stdexec::start(*new __op_t{nest((_Sender&&) __sndr), (_Env&&) __env, __impl_});
+        }
+
+      template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>
+        __future_t<_Sender, _Env> spawn_future(_Sender&& __sndr, _Env __env = {}) {
+          using __state_t = __future_state<nest_result_t<_Sender>, _Env>;
+          auto __state =
+            std::make_unique<__state_t>(nest((_Sender&&) __sndr), (_Env&&) __env, __impl_);
+          stdexec::start(__state->__op_);
+          return __future_t<_Sender, _Env>{std::move(__state)};
+        }
+
+      in_place_stop_token get_stop_token() const noexcept {
+        return __impl_->__stop_source_.get_token();
+      }
+
+    private:
+      friend struct async_scope;
+      __nester(__impl* __impl) noexcept : __impl_(__impl) {}
+      __impl* __impl_;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
     // async_scope
     struct async_scope : __immovable {
       async_scope() = default;
@@ -674,33 +715,9 @@ namespace exec {
         return when_empty(just());
       }
 
-      template <sender _Constrained>
-        using nest_result_t = __nest_sender_t<_Constrained>;
-
-      template <sender _Constrained>
-        [[nodiscard]] nest_result_t<_Constrained>
-        nest(_Constrained&& __c) {
-          return nest_result_t<_Constrained>{&__impl_, (_Constrained&&) __c};
-        }
-
-      template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>
-          requires sender_to<nest_result_t<_Sender>, __spawn_receiver_t<_Env>>
-        void spawn(_Sender&& __sndr, _Env __env = {}) {
-          using __op_t = __spawn_operation_t<nest_result_t<_Sender>, _Env>;
-          // start is noexcept so we can assume that the operation will complete
-          // after this, which means we can rely on its self-ownership to ensure
-          // that it is eventually deleted
-          stdexec::start(*new __op_t{nest((_Sender&&) __sndr), (_Env&&) __env, &__impl_});
-        }
-
-      template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>
-        __future_t<_Sender, _Env> spawn_future(_Sender&& __sndr, _Env __env = {}) {
-          using __state_t = __future_state<nest_result_t<_Sender>, _Env>;
-          auto __state =
-            std::make_unique<__state_t>(nest((_Sender&&) __sndr), (_Env&&) __env, &__impl_);
-          stdexec::start(__state->__op_);
-          return __future_t<_Sender, _Env>{std::move(__state)};
-        }
+      __nester get_nester() const noexcept {
+        return {const_cast<__impl*>(&__impl_)};
+      }
 
       in_place_stop_source& get_stop_source() noexcept {
         return __impl_.__stop_source_;

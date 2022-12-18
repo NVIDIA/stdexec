@@ -16,14 +16,15 @@ TEST_CASE("async_scope destruction after spawning work into it", "[async_scope][
   ex::scheduler auto sch = pool.get_scheduler();
   std::atomic<int> counter{0};
   {
-    async_scope scope;
+    async_scope context;
+    auto scope = context.get_nester();
 
     // Add some work into the scope
     for (int i = 0; i < 10; i++)
       scope.spawn(ex::on(sch, ex::just() | ex::then([&] { counter++; })));
 
     // Wait on the work, before calling destructor
-    sync_wait(scope.on_empty());
+    sync_wait(context.on_empty());
   }
   // We should have all the work executed
   REQUIRE(counter == 10);

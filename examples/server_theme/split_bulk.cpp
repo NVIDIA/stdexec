@@ -152,7 +152,8 @@ ex::sender auto handle_multi_blur_request(const http_request& req) {
 int main() {
   // Create a thread pool and get a scheduler from it
   exec::static_thread_pool pool{8};
-  exec::async_scope scope;
+  exec::async_scope context;
+  auto scope = context.get_nester();
   ex::scheduler auto sched = pool.get_scheduler();
 
   // Fake a couple of edge_detect requests
@@ -189,6 +190,6 @@ int main() {
     scope.spawn(ex::on(sched, std::move(action)));
   }
 
-  stdexec::sync_wait(scope.on_empty());
+  stdexec::sync_wait(context.on_empty());
   pool.request_stop();
 }

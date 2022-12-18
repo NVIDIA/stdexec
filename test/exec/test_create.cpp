@@ -33,16 +33,16 @@ namespace {
 
   struct create_test_fixture {
     exec::static_thread_pool pool_{2};
-    exec::async_scope scope_;
+    exec::async_scope context_;
 
     ~create_test_fixture() {
-      stdexec::sync_wait(scope_.on_empty());
+      stdexec::sync_wait(context_.on_empty());
     }
 
     void anIntAPI(int a, int b, void* context, void (*completed)(void* context, int result)) {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
-      scope_.spawn(
+      context_.get_nester().spawn(
         ex::on(
           pool_.get_scheduler(),
           ex::then(ex::just(), [=]() noexcept {
@@ -56,7 +56,7 @@ namespace {
     void aVoidAPI(void* context, void (*completed)(void* context)) {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
-      scope_.spawn(
+      context_.get_nester().spawn(
         ex::on(
           pool_.get_scheduler(),
           ex::then(ex::just(), [=]() noexcept {

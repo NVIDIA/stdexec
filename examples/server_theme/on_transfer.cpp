@@ -89,7 +89,8 @@ int main() {
 
   std::array<std::byte, 16*1024> buffer;
 
-  exec::async_scope scope;
+  exec::async_scope context;
+  auto scope = context.get_nester();
 
   // Fake a couple of requests
   for (int i = 0; i < 10; i++) {
@@ -113,7 +114,7 @@ int main() {
     scope.spawn(std::move(snd));
   }
 
-  (void) stdexec::sync_wait(scope.on_empty());
+  (void) stdexec::sync_wait(context.on_empty());
 
   return 0;
 }

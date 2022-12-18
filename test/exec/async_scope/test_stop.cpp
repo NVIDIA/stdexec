@@ -27,7 +27,8 @@ TEST_CASE("cancelling the associated stop_source will cancel the async_scope obj
 
   {
     impulse_scheduler sch;
-    async_scope scope;
+    async_scope context;
+    auto scope = context.get_nester();
     bool called = false;
 
     // put work in the scope
@@ -38,12 +39,12 @@ TEST_CASE("cancelling the associated stop_source will cancel the async_scope obj
     // start a thread waiting on when the scope is empty:
     exec::single_thread_context thread;
     auto thread_sch = thread.get_scheduler();
-    ex::start_detached(ex::on(thread_sch, scope.on_empty())
+    ex::start_detached(ex::on(thread_sch, context.on_empty())
                      | ex::then([&]{ empty = true; }));
     REQUIRE_FALSE(empty);
 
     // request the scope stop
-    scope.get_stop_source().request_stop();
+    context.request_stop();
 
     // execute the work in the scope
     sch.start_next();

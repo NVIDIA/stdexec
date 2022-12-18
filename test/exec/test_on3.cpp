@@ -40,19 +40,21 @@ TEST_CASE("Can pass exec::on sender to ensure_started", "[adaptors][exec::on]") 
 }
 
 TEST_CASE("Can pass exec::on sender to async_scope::spawn", "[adaptors][exec::on]") {
-  exec::async_scope scope;
+  exec::async_scope context;
+  auto scope = context.get_nester();
   impulse_scheduler sched;
   scope.spawn(exec::on(sched, ex::just()), env);
   sched.start_next();
-  stdexec::sync_wait(scope.on_empty());
+  stdexec::sync_wait(context.on_empty());
 }
 
 TEST_CASE("Can pass exec::on sender to async_scope::spawn_future", "[adaptors][exec::on]") {
-  exec::async_scope scope;
+  exec::async_scope context;
+  auto scope = context.get_nester();
   impulse_scheduler sched;
   auto fut = scope.spawn_future(exec::on(sched, ex::just(42)), env);
   sched.start_next();
   auto [i] = stdexec::sync_wait(std::move(fut)).value();
   CHECK(i == 42);
-  stdexec::sync_wait(scope.on_empty());
+  stdexec::sync_wait(context.on_empty());
 }
