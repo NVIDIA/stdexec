@@ -157,6 +157,18 @@ namespace stdexec {
   template <class _Fn, class... _Args>
     using __force_minvoke = __t<__force_minvoke_<_Fn, _Args...>>;
 
+  template <class _Fn, class... _Args>
+    struct __mdefer_ {};
+  template <class _Fn, class... _Args>
+      requires __minvocable<_Fn, _Args...>
+    struct __mdefer_<_Fn, _Args...> {
+      using __t = __minvoke<_Fn, _Args...>;
+    };
+  template <class _Fn, class... _Args>
+    struct __mdefer
+      : __mdefer_<_Fn, _Args...>
+    {};
+
   template <bool>
     struct __if_ {
       template <class _True, class...>
@@ -489,8 +501,19 @@ namespace stdexec {
       requires (_Fun&& __fun, _As&&... __as) {
         { ((_Fun&&) __fun)((_As&&) __as...) } noexcept;
       };
+
+#if STDEXEC_NVHPC()
+  // nvc++ doesn't cache the results of alias template specializations.
+  // To avoid repeated computation of the same function return type,
+  // cache the result ourselves in a class template specialization.
+  template <class _Fun, class... _As>
+    using __call_result_ = decltype(__declval<_Fun>()(__declval<_As>()...));
+  template <class _Fun, class... _As>
+    using __call_result_t = __t<__mdefer<__q<__call_result_>, _Fun, _As...>>;
+#else
   template <class _Fun, class... _As>
     using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
+#endif
 
   // For working around clang's lack of support for CWG#2369:
   // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369
