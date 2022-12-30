@@ -207,7 +207,7 @@ namespace exec {
           using __f =
             __mapply<
               _Continuation,
-              __minvoke<__fold_right<__types<>, __push_back_flatten<__q<__types>>>, _Ts...>>;
+              __minvoke<__mfold_right<__types<>, __push_back_flatten<__q<__types>>>, _Ts...>>;
       };
 
     template <class _Continuation>

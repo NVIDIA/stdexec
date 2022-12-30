@@ -63,8 +63,8 @@ struct ATailReceiver {
   int* called;
   friend void tag_invoke(ex::set_value_t, ATailReceiver&& __self, auto&&...) noexcept { ++*__self.called; }
   friend void tag_invoke(ex::set_stopped_t, ATailReceiver&& __self) noexcept { ++*__self.called; }
-  friend ex::__debug_env_t<ex::__empty_env> tag_invoke(ex::get_env_t, const ATailReceiver&) {
-    return {{}};
+  friend ex::__empty_env tag_invoke(ex::get_env_t, const ATailReceiver&) {
+    return {};
   }
 };
 
@@ -83,8 +83,8 @@ struct ANestTailReceiver {
     ++*__self.called;
     return __self.nested_tail_sender;
   }
-  friend ex::__debug_env_t<ex::__empty_env> tag_invoke(ex::get_env_t, const ANestTailReceiver&) {
-    return {{}};
+  friend ex::__empty_env tag_invoke(ex::get_env_t, const ANestTailReceiver&) {
+    return {};
   }
 };
 
