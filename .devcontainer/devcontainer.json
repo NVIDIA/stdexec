@@ -1,8 +1,13 @@
 {
-  "image": "ghcr.io/trxcllnt/devcontainer-images/cmake-ninja-sccache-llvm-cuda-nvhpc:latest",
+  "image": "ghcr.io/trxcllnt/devcontainer-images:cmake-ninja-sccache-llvmdev-cuda11.8-nvhpc22.11",
   "capAdd": ["SYS_PTRACE"],
   "hostRequirements": { "gpu": true },
   "securityOpt": ["seccomp=unconfined"],
+  "initializeCommand": "mkdir -p .cache",
+  "updateContentCommand": "sed -i -re 's/^(HIST(FILE)?SIZE=).*$/\\1/g' ~/.bashrc",
+  "containerEnv": {
+    "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history"
+  },
   "customizations": {
     "vscode": {
       "extensions": [
