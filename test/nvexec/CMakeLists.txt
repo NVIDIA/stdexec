@@ -6,8 +6,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC" OR STDEXEC_ENABLE_CUDA)
 
     add_executable(test.CUDA ${TEST_SOURCES})
 
-    target_include_directories(test.CUDA PRIVATE test)
+    target_include_directories(test.CUDA PRIVATE ${STDEXEC_SOURCE_DIR}/test)
     target_link_libraries(test.CUDA CUDASchedulers Catch2::Catch2)
     catch_discover_tests(test.CUDA)
 endif()
-
