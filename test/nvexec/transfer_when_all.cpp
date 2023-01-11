@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <test_common/type_helpers.hpp>
+#include <test_common/receivers.hpp>
 
 #include <exec/inline_scheduler.hpp>
 #include <nvexec/stream_context.cuh>
@@ -40,12 +41,19 @@ TEST_CASE("transfer_when_all with environment returns a sender",
   (void)snd;
 }
 
+// Hangs in `sync_wait`
+// TEST_CASE("transfer_when_all with no senders", "[cuda][stream][adaptors][transfer_when_all]") {
+//   nvexec::stream_context stream_ctx{};
+//   auto gpu = stream_ctx.get_scheduler();
+//   auto snd = ex::transfer_when_all(gpu);
+//   wait_for_value(std::move(snd));
+// }
+
 TEST_CASE("transfer_when_all one sender", "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
   auto snd = ex::transfer_when_all(gpu, ex::just(3.1415));
-  auto [res] = ex::sync_wait(std::move(snd)).value();
-  REQUIRE(res == 3.1415);
+  wait_for_value(std::move(snd), 3.1415);
 }
 
 TEST_CASE("transfer_when_all two senders", "[cuda][stream][adaptors][transfer_when_all]") {
@@ -53,8 +61,7 @@ TEST_CASE("transfer_when_all two senders", "[cuda][stream][adaptors][transfer_wh
   auto gpu = stream_ctx.get_scheduler();
   auto snd1 = ex::transfer_when_all(gpu, ex::just(3), ex::just(0.1415));
   auto snd2 = std::move(snd1) | ex::then([](int x, double y) { return x + y; });
-  auto [res] = ex::sync_wait(std::move(snd2)).value();
-  REQUIRE(res == 3.1415);
+  wait_for_value(std::move(snd2), 3.1415);
 }
 
 TEST_CASE("transfer_when_all two senders on same scheduler",
@@ -63,6 +70,37 @@ TEST_CASE("transfer_when_all two senders on same scheduler",
   auto gpu = stream_ctx.get_scheduler();
   auto snd1 = ex::transfer_when_all(gpu, ex::transfer_just(gpu, 3), ex::transfer_just(gpu, 0.1415));
   auto snd2 = std::move(snd1) | ex::then([](int x, double y) { return x + y; });
-  auto [res] = ex::sync_wait(std::move(snd2)).value();
-  REQUIRE(res == 3.1415);
+  wait_for_value(std::move(snd2), 3.1415);
+}
+
+TEST_CASE("transfer_when_all_with_variant returns a sender",
+    "[cuda][stream][adaptors][transfer_when_all_with_variant]") {
+  nvexec::stream_context stream_ctx{};
+  auto gpu = stream_ctx.get_scheduler();
+  auto snd = ex::transfer_when_all_with_variant(gpu, ex::just(3), ex::just(0.1415));
+  static_assert(ex::sender<decltype(snd)>);
+  (void)snd;
+}
+
+TEST_CASE("transfer_when_all_with_variant with environment returns a sender",
+    "[cuda][stream][adaptors][transfer_when_all_with_variant]") {
+  nvexec::stream_context stream_ctx{};
+  auto gpu = stream_ctx.get_scheduler();
+  auto snd = ex::transfer_when_all_with_variant(gpu, ex::just(3), ex::just(0.1415));
+  static_assert(ex::sender<decltype(snd), empty_env>);
+  (void)snd;
+}
+
+TEST_CASE("transfer_when_all_with_variant basic example",
+    "[cuda][stream][adaptors][transfer_when_all_with_variant]") {
+  nvexec::stream_context stream_ctx{};
+  auto gpu = stream_ctx.get_scheduler();
+  ex::sender auto snd = ex::transfer_when_all_with_variant( //
+      gpu,                                                  //
+      ex::just(2),                                          //
+      ex::just(3.14)                                        //
+  );
+  wait_for_value(std::move(snd),        //
+      std::variant<std::tuple<int>>{2}, //
+      std::variant<std::tuple<double>>{3.14});
 }
