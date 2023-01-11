@@ -189,13 +189,13 @@ namespace nvexec {
           return upon_stopped_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&)fun};
         }
 
-      template <stdexec::sender... Senders>
+      template <stream_completing_sender... Senders>
         friend auto
         tag_invoke(stdexec::transfer_when_all_t, const stream_scheduler& sch, Senders&&... sndrs) noexcept {
           return transfer_when_all_sender_th<stream_scheduler, Senders...>(sch.context_state_, (Senders&&)sndrs...);
         }
 
-      template <stdexec::sender... Senders>
+      template <stream_completing_sender... Senders>
         friend auto
         tag_invoke(stdexec::transfer_when_all_with_variant_t, const stream_scheduler& sch, Senders&&... sndrs) noexcept {
           return 
