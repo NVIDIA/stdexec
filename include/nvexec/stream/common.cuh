@@ -369,7 +369,7 @@ namespace nvexec {
               context_state_t context_state,
               bool defer_stream_destruction)
             : context_state_(context_state)
-            , receiver_(receiver)
+            , receiver_((outer_receiver_t&&) receiver)
             , defer_stream_destruction_(defer_stream_destruction) {
             if constexpr(!borrows_stream) {
               std::tie(own_stream_, status_) = create_stream_with_priority(context_state_.priority_);
