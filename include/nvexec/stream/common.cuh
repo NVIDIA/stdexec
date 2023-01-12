@@ -263,12 +263,14 @@ namespace nvexec {
                                       stdexec::set_error_t,
                                       stdexec::set_stopped_t> Tag,
                     class... As>
+            STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
             friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
               self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, std::move(as)...);
               self.producer_(self.task_);
             }
 
           template <stdexec::__decays_to<std::exception_ptr> E>
+            STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
             friend void tag_invoke(stdexec::set_error_t, __t&& self, E&& e) noexcept {
               // What is `exception_ptr` but death pending
               self.variant_->template emplace<decayed_tuple<stdexec::set_error_t, cudaError_t>>(stdexec::set_error, cudaErrorUnknown);
@@ -292,7 +294,7 @@ namespace nvexec {
 
     template <class Receiver, class Tag, class... As>
       __launch_bounds__(1) __global__ void continuation_kernel(Receiver receiver, Tag tag, As&&... as) {
-        tag(std::move(receiver), (As&&)as...);
+        tag(::cuda::std::move(receiver), (As&&)as...);
       }
 
     template <class Receiver, class Variant>

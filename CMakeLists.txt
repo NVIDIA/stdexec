@@ -162,11 +162,6 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -Xclang=-fcuda-allow-variadic-functions>
                        )
 
-target_compile_definitions(stdexec_executable_flags INTERFACE
-                           # $<$<AND:$<CXX_COMPILER_ID:Clang>,$<COMPILE_LANGUAGE:CXX>>:_NVHPC_CUDA>
-                           $<$<AND:$<CUDA_COMPILER_ID:Clang>,$<COMPILE_LANGUAGE:CUDA>>:_NVHPC_CUDA>
-                           )
-
 # Set up CUDASchedulers library
 option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")

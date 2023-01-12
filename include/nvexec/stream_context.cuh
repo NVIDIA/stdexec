@@ -125,7 +125,8 @@ namespace nvexec {
               return self.make_scheduler();
             }
 
-          __t(context_state_t context_state) noexcept
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+          inline __t(context_state_t context_state) noexcept
             : context_state_(context_state) {
           }
 
@@ -217,7 +218,8 @@ namespace nvexec {
           return split_sender_th<S>(sch.context_state_, (S&&)sndr);
         }
 
-      friend sender_t tag_invoke(stdexec::schedule_t, const stream_scheduler& self) noexcept {
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      friend inline sender_t tag_invoke(stdexec::schedule_t, const stream_scheduler& self) noexcept {
         return {self.context_state_};
       }
 

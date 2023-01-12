@@ -101,7 +101,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct producer_t {
       task_base_t** tail_;
 
-      void operator()(task_base_t* task) {
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      inline void operator()(task_base_t* task) {
         atom_task_ref tail_ref(*tail_);
         task_base_t* old_tail = tail_ref.load(::cuda::memory_order_acquire);
 

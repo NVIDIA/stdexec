@@ -79,17 +79,20 @@ public:
   }
 
   flags_storage_t() {
-    THROW_ON_CUDA_ERROR(cudaMallocHost(&flags_, sizeof(int) * N));
-    memset(flags_, 0, sizeof(int) * N);
+    THROW_ON_CUDA_ERROR(cudaMalloc(&flags_, sizeof(int) * N));
+    THROW_ON_CUDA_ERROR(cudaMemset(flags_, 0, sizeof(int) * N));
   }
 
   ~flags_storage_t() {
-    THROW_ON_CUDA_ERROR(cudaFreeHost(flags_));
+    THROW_ON_CUDA_ERROR(cudaFree(flags_));
     flags_ = nullptr;
   }
 
   bool is_set_n_times(int n) {
-    return std::count(flags_, flags_ + N, n) == N;
+    int host_flags[N];
+    THROW_ON_CUDA_ERROR(cudaMemcpy(host_flags, flags_, sizeof(int) * N, cudaMemcpyDeviceToHost));
+
+    return std::count(host_flags, host_flags + N, n) == N;
   }
 
   bool all_set_once() {
@@ -127,6 +130,7 @@ namespace detail::a_sender {
       Fun f_;
 
       template <class... As>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE
       void set_value(As&&... as) && noexcept
         requires stdexec::__callable<Fun, As&&...> {
         using result_t = std::invoke_result_t<Fun, As&&...>;
@@ -294,24 +298,24 @@ struct move_only_t {
   static constexpr int invalid = -42;
 
   move_only_t() = delete;
-  move_only_t(int data) 
+  __host__ __device__ move_only_t(int data) 
     : data_(data)
     , self_(this) {
   }
 
-  move_only_t(move_only_t&& other) 
+  __host__ __device__ move_only_t(move_only_t&& other) 
     : data_(other.data_)
     , self_(this) {
   }
 
-  ~move_only_t() {
+  __host__ __device__ ~move_only_t() {
     if (this != self_) {
       // TODO Trap
       std::printf("Error: move_only_t::~move_only_t failed\n");
     }
   }
 
-  bool contains(int val) {
+  __host__ __device__ bool contains(int val) {
     if (this != self_) {
       return false;
     }

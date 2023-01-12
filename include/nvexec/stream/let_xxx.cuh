@@ -237,8 +237,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               stdexec::completion_signatures_of_t<_Sender, _Env>>;
 
         template <stdexec::__decays_to<__t> _Self, stdexec::receiver _Receiver>
-            requires
-              stdexec::sender_to<stdexec::__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
+            requires stdexec::receiver_of<_Receiver, __completions<_Self, stdexec::env_of_t<_Receiver>>>
           friend auto tag_invoke(stdexec::connect_t, _Self&& __self, _Receiver&& __rcvr)
             -> __operation_t<_Self, _Receiver> {
             return __operation_t<_Self, _Receiver>{

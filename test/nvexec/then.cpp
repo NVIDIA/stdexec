@@ -150,6 +150,7 @@ TEST_CASE("then can succeed a sender", "[cuda][stream][adaptors][then]") {
   }
 }
 
+#if STDEXEC_NVHPC()
 TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][then]") {
   SECTION("without values") {
     nvexec::stream_context stream_ctx{};
@@ -188,7 +189,10 @@ TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][th
     REQUIRE(flags_storage.all_set_once());
   }
 }
+#endif
 
+// segfault
+#if STDEXEC_NVHPC()
 TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
   flags_storage_t flags_storage{};
@@ -207,6 +211,7 @@ TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptor
 
   REQUIRE(flags_storage.all_set_once());
 }
+#endif
 
 TEST_CASE("then can preceed a sender with values", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};

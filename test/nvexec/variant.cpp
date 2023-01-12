@@ -70,26 +70,27 @@ __global__ void kernel(V* v, T alt) {
 
 TEST_CASE("variant emplaces alternative from GPU", "[cuda][stream][containers][variant]") {
   using variant_t = variant_t<int, double>;
-  variant_t v{};
-  THROW_ON_CUDA_ERROR(cudaHostRegister(&v, sizeof(variant_t), cudaHostRegisterDefault));
+  variant_t *v{};
+  THROW_ON_CUDA_ERROR(cudaMallocManaged(&v, sizeof(variant_t)));
+  new (v) variant_t();
 
-  REQUIRE(v.index_ == 0);
+  REQUIRE(v->index_ == 0);
 
-  kernel<<<1, 1>>>(&v, 4.2);
+  kernel<<<1, 1>>>(v, 4.2);
   THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
 
   visit([](auto alt) {
       REQUIRE(alt == 4.2);
-  }, v);
+  }, *v);
 
-  kernel<<<1, 1>>>(&v, 42);
+  kernel<<<1, 1>>>(v, 42);
   THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
 
   visit([](auto alt) {
       REQUIRE(alt == 42);
-  }, v);
+  }, *v);
 
-  THROW_ON_CUDA_ERROR(cudaHostUnregister(&v));
+  THROW_ON_CUDA_ERROR(cudaFree(v));
 }
 
 TEST_CASE("variant works with cuda tuple", "[cuda][stream][containers][variant]") {

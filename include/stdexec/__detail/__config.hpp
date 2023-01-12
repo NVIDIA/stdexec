@@ -54,6 +54,12 @@
 #define STDEXEC_MSVC() 1
 #endif
 
+#if STDEXEC_CLANG() && defined(__CUDACC__)
+#define STDEXEC_DETAIL_CUDACC_HOST_DEVICE __host__ __device__
+#else
+#define STDEXEC_DETAIL_CUDACC_HOST_DEVICE
+#endif
+
 #ifndef STDEXEC_NVHPC
 #define STDEXEC_NVHPC() 0
 #endif

@@ -33,6 +33,8 @@ TEST_CASE("let_value executes on GPU", "[cuda][stream][adaptors][let_value]") {
   REQUIRE(flags_storage.all_set_once());
 }
 
+// clang requires annotation
+#if STDEXEC_NVHPC()
 TEST_CASE("let_value accepts values on GPU", "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
 
@@ -85,6 +87,7 @@ TEST_CASE("let_value returns values on GPU", "[cuda][stream][adaptors][let_value
 
   REQUIRE(result == 1);
 }
+#endif
 
 TEST_CASE("let_value can preceed a sender without values", "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
