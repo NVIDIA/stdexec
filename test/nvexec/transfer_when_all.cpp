@@ -41,13 +41,12 @@ TEST_CASE("transfer_when_all with environment returns a sender",
   (void)snd;
 }
 
-// Hangs in `sync_wait`
-// TEST_CASE("transfer_when_all with no senders", "[cuda][stream][adaptors][transfer_when_all]") {
-//   nvexec::stream_context stream_ctx{};
-//   auto gpu = stream_ctx.get_scheduler();
-//   auto snd = ex::transfer_when_all(gpu);
-//   wait_for_value(std::move(snd));
-// }
+TEST_CASE("transfer_when_all with no senders", "[cuda][stream][adaptors][transfer_when_all]") {
+  nvexec::stream_context stream_ctx{};
+  auto gpu = stream_ctx.get_scheduler();
+  auto snd = ex::transfer_when_all(gpu);
+  wait_for_value(std::move(snd));
+}
 
 TEST_CASE("transfer_when_all one sender", "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};

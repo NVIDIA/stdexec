@@ -359,9 +359,13 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
               // the child operations.
               stdexec::set_stopped((Receiver&&) self.recvr_);
             } else {
-              std::apply([](auto&&... __child_ops) noexcept -> void {
-                (stdexec::start(__child_ops), ...);
-              }, self.child_states_);
+              if constexpr (sizeof...(SenderIds) == 0) {
+                self.complete();
+              } else {
+                std::apply([](auto&&... __child_ops) noexcept -> void {
+                  (stdexec::start(__child_ops), ...);
+                }, self.child_states_);
+              }
             }
           }
 
