@@ -142,7 +142,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           , stream_(create_stream(status_, context_state_))
           , data_(malloc_managed<variant_t>(status_))
           , op_state2_(stdexec::connect((Sender&&) sndr, inner_receiver_t{*this}))
-          , started_(ATOMIC_FLAG_INIT) {
+          , started_ ATOMIC_FLAG_INIT {
           if (status_ == cudaSuccess) {
             status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_));
           }
@@ -161,7 +161,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                   data_, 
                   task_, 
                   context_state.hub_->producer()})) 
-          , started_(ATOMIC_FLAG_INIT) {
+          , started_ ATOMIC_FLAG_INIT {
         }
 
         ~sh_state_t() {

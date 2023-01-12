@@ -81,7 +81,7 @@ namespace transfer {
           , context_state_(context_state)
           , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
           , task_(queue::make_host<task_t>(this->status_, context_state.pinned_resource_, receiver_t{*this}, storage_.get(), this->get_stream(), context_state.pinned_resource_).release())
-          , started_(ATOMIC_FLAG_INIT)
+          , started_ ATOMIC_FLAG_INIT
           , inner_op_{
               stdexec::connect(
                   (Sender&&)sender,

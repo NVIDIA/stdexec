@@ -54,7 +54,7 @@ namespace nvexec {
   }
 #endif
 
-  inline bool is_on_gpu() {
+  inline STDEXEC_DETAIL_CUDACC_HOST_DEVICE bool is_on_gpu() {
     return get_device_type() == device_type::device;
   }
 }
@@ -496,7 +496,7 @@ namespace nvexec {
               : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver, context_state, true)
               , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
               , task_(queue::make_host<task_t>(this->status_, context_state.pinned_resource_, receiver_provider(*this), storage_.get(), this->get_stream(), context_state.pinned_resource_).release())
-              , started_(ATOMIC_FLAG_INIT)
+              , started_ ATOMIC_FLAG_INIT
               , inner_op_{
                   stdexec::connect(
                       (sender_t&&)sender,

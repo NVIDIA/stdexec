@@ -104,7 +104,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 stdexec::sender_to<stdexec::__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
             friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
               using result_sender_t = stdexec::__minvoke<__result_sender<_Fun>, _As...>;
-              using __tuple_t = stdexec::__decayed_tuple<_As...>;
+              // using __tuple_t = stdexec::__decayed_tuple<_As...>;
               using __op_state_t = stdexec::__minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
               cudaStream_t stream = __self.__op_state_->get_stream();

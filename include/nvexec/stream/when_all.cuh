@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include "../../exec/env.hpp"
 #include "../../stdexec/execution.hpp"
 #include <type_traits>
 
@@ -124,7 +125,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
                           stdexec::env_of_t<Receiver>, 
                           exec::with_t<
                             stdexec::get_stop_token_t, 
-                            std::in_place_stop_token>>>;
+                            stdexec::in_place_stop_token>>>;
 
           struct __t : stdexec::receiver_adaptor<__t>
                      , stream_receiver_base {
