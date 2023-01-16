@@ -18,6 +18,7 @@
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 namespace ex = stdexec;
@@ -125,6 +126,12 @@ TEST_CASE("then advertises completion schedulers", "[adaptors][then]") {
     ex::sender auto snd = ex::just_stopped() | ex::transfer(sched) | ex::then([]{});
     REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(snd) == sched);
   }
+}
+
+TEST_CASE("then forwards attrs", "[adaptors][then]") {
+  auto sndr = just_with_attrs<value_attrs, int>{value_attrs{100}, {0}} | ex::then([]{});
+  value_attrs attrs = ex::get_attrs(sndr);
+  CHECK(attrs.value == 100);
 }
 
 TEST_CASE("then has the values_type corresponding to the given values", "[adaptors][then]") {

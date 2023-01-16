@@ -55,3 +55,39 @@ struct fallible_just {
 
 template <class... Values>
 fallible_just(Values...) -> fallible_just<Values...>;
+
+struct value_attrs {
+  int value;
+};
+
+template <class Attrs, class... Values>
+struct just_with_attrs {
+  Attrs attrs_;
+  std::tuple<Values...> values_;
+  using completion_signatures =
+    ex::completion_signatures<ex::set_value_t(Values...)>;
+
+  template <class Receiver>
+  struct operation : immovable {
+    std::tuple<Values...> values_;
+    Receiver rcvr_;
+
+    friend void tag_invoke(ex::start_t, operation& self) noexcept {
+      std::apply(
+        [&](Values&... ts) {
+          ex::set_value(std::move(self.rcvr_), std::move(ts)...);
+        },
+        self.values_);
+    }
+  };
+
+  template <class Receiver>
+  friend auto tag_invoke(ex::connect_t, just_with_attrs&& self, Receiver&& rcvr) ->
+      operation<std::decay_t<Receiver>> {
+    return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
+  }
+
+  friend Attrs tag_invoke(ex::get_attrs_t, const just_with_attrs& self) noexcept {
+    return self.attrs_;
+  }
+};
