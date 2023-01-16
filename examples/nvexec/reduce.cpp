@@ -1,6 +1,8 @@
 #include <nvexec/stream_context.cuh>
 #include <stdexec/execution.hpp>
 
+// CUB relies on __reduce_add_sync which Clang CUDA doesn't provide
+#if !STDEXEC_CLANG()
 #include <thrust/device_vector.h>
 
 #include <cstdio>
@@ -38,3 +40,7 @@ int main() {
 
   std::cout << "result: " << result << std::endl;
 }
+#else 
+int main() {
+}
+#endif
