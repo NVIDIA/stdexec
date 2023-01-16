@@ -260,36 +260,54 @@ namespace detail::a_receiverless_sender {
     };
 }
 
-struct a_sender_t {
-  template <class _Sender, class _Fun>
-    using sender_th = detail::a_sender::sender_t<
-      stdexec::__x<std::remove_cvref_t<_Sender>>,
-      stdexec::__x<std::remove_cvref_t<_Fun>>>;
+enum class a_sender_kind {
+  then,
+  receiverless
+};
 
-  template <class _Sender>
-    using receiverless_sender_th = detail::a_receiverless_sender::sender_t<
-      stdexec::__x<std::remove_cvref_t<_Sender>>>;
+template <a_sender_kind kind>
+  struct a_sender_helper_t;
 
-  template <stdexec::sender _Sender, class _Fun>
-      requires stdexec::sender<sender_th<_Sender, _Fun>>
-    sender_th<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
-      return sender_th<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
+template <>
+  struct a_sender_helper_t<a_sender_kind::then> {
+    template <class _Sender, class _Fun>
+      using sender_th = detail::a_sender::sender_t<
+        stdexec::__x<std::remove_cvref_t<_Sender>>,
+        stdexec::__x<std::remove_cvref_t<_Fun>>>;
+
+    template <stdexec::sender _Sender, class _Fun>
+        requires stdexec::sender<sender_th<_Sender, _Fun>>
+      sender_th<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
+        return sender_th<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
+      }
+
+    template <class _Fun>
+      stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun> operator()(_Fun __fun) const {
+        return {{}, {}, {(_Fun&&) __fun}};
+    };
+  };
+
+template <>
+  struct a_sender_helper_t<a_sender_kind::receiverless> {
+    template <class _Sender>
+      using receiverless_sender_th = detail::a_receiverless_sender::sender_t<
+        stdexec::__x<std::remove_cvref_t<_Sender>>>;
+
+    template <stdexec::sender _Sender>
+        requires stdexec::sender<receiverless_sender_th<_Sender>>
+      receiverless_sender_th<_Sender> operator()(_Sender&& __sndr) const {
+        return receiverless_sender_th<_Sender>{(_Sender&&) __sndr};
+      }
+
+    stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> operator()() const {
+      return {{}, {}, {}};
     }
+  };
 
-  template <class _Fun>
-    stdexec::__binder_back<a_sender_t, _Fun> operator()(_Fun __fun) const {
-      return {{}, {}, {(_Fun&&) __fun}};
-    }
-
-  template <stdexec::sender _Sender>
-      requires stdexec::sender<receiverless_sender_th<_Sender>>
-    receiverless_sender_th<_Sender> operator()(_Sender&& __sndr) const {
-      return receiverless_sender_th<_Sender>{(_Sender&&) __sndr};
-    }
-
-  stdexec::__binder_back<a_sender_t> operator()() const {
-    return {{}, {}, {}};
-  }
+struct a_sender_t : a_sender_helper_t<a_sender_kind::then> 
+                  , a_sender_helper_t<a_sender_kind::receiverless> { 
+  using a_sender_helper_t<a_sender_kind::then>::operator();
+  using a_sender_helper_t<a_sender_kind::receiverless>::operator();
 };
 
 constexpr a_sender_t a_sender;
