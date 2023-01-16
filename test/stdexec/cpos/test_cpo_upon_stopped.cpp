@@ -43,7 +43,7 @@ TEST_CASE("upon_stopped is customizable", "[cpo][cpo_upon_stopped]") {
     }
 
     {
-      ex::get_completion_scheduler<ex::set_stopped_t>(snd);
+      ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_attrs(snd));
       constexpr scope_t scope = decltype(ex::upon_stopped(snd, f))::scope;
       STATIC_REQUIRE(scope == scope_t::scheduler);
     }

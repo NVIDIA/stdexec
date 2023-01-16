@@ -24,6 +24,14 @@
 
 namespace ex = stdexec;
 
+template <class S>
+struct scheduler_attrs {
+  template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
+  friend S tag_invoke(ex::get_completion_scheduler_t<CPO>, const scheduler_attrs&) noexcept {
+    return {};
+  }
+};
+
 //! Scheduler that will send impulses on user's request.
 //! One can obtain senders from this, connect them to receivers and start the operation states.
 //! Until the scheduler is told to start the next operation, the actions in the operation states are
@@ -81,8 +89,7 @@ struct impulse_scheduler {
       return {self.shared_data_, (R &&) r};
     }
 
-    friend impulse_scheduler tag_invoke(
-        ex::get_completion_scheduler_t<ex::set_value_t>, my_sender) {
+    friend scheduler_attrs<impulse_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -136,8 +143,7 @@ struct inline_scheduler {
       return {{}, (R &&) r};
     }
 
-    template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
-    friend inline_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) noexcept {
+    friend scheduler_attrs<inline_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -174,7 +180,7 @@ struct error_scheduler {
       return {{}, (R &&) r, (E &&) self.err_};
     }
 
-    friend error_scheduler tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, my_sender) {
+    friend scheduler_attrs<error_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -205,8 +211,7 @@ struct stopped_scheduler {
       return {{}, (R &&) r};
     }
 
-    template <typename CPO>
-    friend stopped_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
+    friend scheduler_attrs<stopped_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
       return {};
     }
   };

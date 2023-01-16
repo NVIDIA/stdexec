@@ -97,10 +97,15 @@ struct custom_sender {
 
 struct custom_scheduler {
   struct sender : ex::schedule_result_t<inline_scheduler> {
-    template <class Tag>
-      friend custom_scheduler tag_invoke(ex::get_completion_scheduler_t<Tag>, sender) noexcept {
-        return {};
-      }
+    struct attrs {
+      template <class Tag>
+        friend custom_scheduler tag_invoke(ex::get_completion_scheduler_t<Tag>, const attrs&) noexcept {
+          return {};
+        }
+    };
+    friend attrs tag_invoke(ex::get_attrs_t, const sender&) noexcept {
+      return {};
+    }
   };
   friend sender tag_invoke(ex::schedule_t, custom_scheduler) noexcept {
     return {};

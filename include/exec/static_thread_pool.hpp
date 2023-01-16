@@ -72,20 +72,29 @@ namespace exec {
           return operation<stdexec::__x<std::decay_t<Receiver>>>{pool_, (Receiver &&) r};
         }
 
-        static_thread_pool::scheduler make_scheduler_() const {
-          return static_thread_pool::scheduler{pool_};
-        }
-
         template <class Receiver>
         friend operation<stdexec::__x<std::decay_t<Receiver>>>
         tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
           return s.make_operation_((Receiver &&) r);
         }
 
-        template <class CPO>
-        friend static_thread_pool::scheduler
-        tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender s) noexcept {
-          return s.make_scheduler_();
+        struct attrs {
+          static_thread_pool& pool_;
+
+          template <class CPO>
+          friend static_thread_pool::scheduler tag_invoke(
+              stdexec::get_completion_scheduler_t<CPO>,
+              const attrs& self) noexcept {
+            return self.make_scheduler_();
+          }
+
+          static_thread_pool::scheduler make_scheduler_() const {
+            return static_thread_pool::scheduler{pool_};
+          }
+        };
+
+        friend attrs tag_invoke(stdexec::get_attrs_t, const sender& self) noexcept {
+          return attrs{self.pool_};
         }
 
         friend struct static_thread_pool::scheduler;

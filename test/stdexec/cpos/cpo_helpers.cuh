@@ -45,15 +45,19 @@ struct free_standing_sender_t {
 
 template <class CPO, class... CompletionSignals>
 struct scheduler_t {
+  struct attrs_t {
+    template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
+    friend scheduler_t tag_invoke(ex::get_completion_scheduler_t<Tag>, const attrs_t&) noexcept {
+      return {};
+    }
+  };
   struct sender_t {
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
         ex::set_error_t(std::exception_ptr),                 //
         ex::set_stopped_t()>;
 
-    template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
-    friend scheduler_t tag_invoke(
-        ex::get_completion_scheduler_t<Tag>, const sender_t&) noexcept {
+    friend attrs_t tag_invoke(ex::get_attrs_t, const sender_t&) noexcept {
       return {};
     }
   };
