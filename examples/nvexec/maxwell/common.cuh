@@ -28,7 +28,7 @@
 
 #include <math.h>
 
-#ifdef __CUDACC__
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
 #define STDEXEC_STDERR
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #endif
@@ -38,11 +38,11 @@ struct deleter_t {
 
   template <class T>
   void operator()(T *ptr) {
-#ifdef __CUDACC__
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
     if (on_gpu) {
       STDEXEC_DBG_ERR(cudaFree(ptr));
     }
-    else 
+    else
 #endif
     {
       free(ptr);
@@ -55,11 +55,11 @@ inline std::unique_ptr<T, deleter_t>
 allocate_on(bool gpu, std::size_t elements = 1) {
   T *ptr{};
 
-#ifdef __CUDACC__
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
   if (gpu) {
     STDEXEC_DBG_ERR(cudaMallocManaged(&ptr, elements * sizeof(T)));
-  } 
-  else 
+  }
+  else
 #endif
   {
     ptr = reinterpret_cast<T *>(malloc(elements * sizeof(T)));
@@ -141,7 +141,7 @@ struct grid_initializer_t {
   float dt;
   fields_accessor accessor;
 
-  [[nodiscard]] STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+  STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
   void operator()(std::size_t cell_id) const {
     const std::size_t row = cell_id / accessor.n;
     const std::size_t column = cell_id % accessor.n;
@@ -250,7 +250,7 @@ struct e_field_calculator_t {
     return gaussian_pulse(t, t_0, tau);
   }
 
-  [[nodiscard]] STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+  STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
   void operator()(std::size_t cell_id) const __attribute__((always_inline)) {
     const std::size_t N = accessor.n;
     const std::size_t column = cell_id % N;
@@ -481,4 +481,3 @@ value(const std::map<std::string_view, std::size_t> &params,
   }
   return default_value;
 }
-
