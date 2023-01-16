@@ -30,7 +30,6 @@ CompileFlags:
   Add:
     - "-x"
     - "cuda"
-    - "-D_NVHPC_CUDA"
     - "-Wno-unknown-cuda-version"
 
 ---
