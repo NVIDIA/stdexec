@@ -27,7 +27,7 @@ namespace then {
 template <class Fun, class... As>
   __launch_bounds__(1)
   __global__ void kernel(Fun fn, As... as) {
-    fn(std::move(as)...);
+    ::cuda::std::move(fn)(std::move(as)...);
   }
 
 template <class Fun, class ResultT, class... As>
