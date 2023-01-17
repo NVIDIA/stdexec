@@ -62,7 +62,7 @@ struct value_attrs {
 
 template <class Attrs, class... Values>
 struct just_with_attrs {
-  Attrs attrs_;
+  std::remove_cvref_t<Attrs> attrs_;
   std::tuple<Values...> values_;
   using completion_signatures =
     ex::completion_signatures<ex::set_value_t(Values...)>;

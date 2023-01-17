@@ -129,9 +129,17 @@ TEST_CASE("then advertises completion schedulers", "[adaptors][then]") {
 }
 
 TEST_CASE("then forwards attrs", "[adaptors][then]") {
-  auto sndr = just_with_attrs<value_attrs, int>{value_attrs{100}, {0}} | ex::then([]{});
-  value_attrs attrs = ex::get_attrs(sndr);
-  CHECK(attrs.value == 100);
+  SECTION("returns attrs by value") {
+    auto snd = just_with_attrs<value_attrs, int>{value_attrs{100}, {0}} | ex::then([]{});
+    static_assert(std::same_as<decltype(ex::get_attrs(snd)), value_attrs>);
+    CHECK(ex::get_attrs(snd).value == 100);
+  }
+
+  SECTION("returns attrs by reference") {
+    auto snd = just_with_attrs<const value_attrs&, int>{value_attrs{100}, {0}} | ex::then([]{});
+    static_assert(std::same_as<decltype(ex::get_attrs(snd)), const value_attrs&>);
+    CHECK(ex::get_attrs(snd).value == 100);
+  }
 }
 
 TEST_CASE("then has the values_type corresponding to the given values", "[adaptors][then]") {

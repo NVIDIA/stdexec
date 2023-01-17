@@ -2534,7 +2534,16 @@ namespace stdexec {
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
-          friend auto tag_invoke(get_attrs_t, const __t& __self) noexcept {
+
+          // TODO: Until all senders provide get_attrs, the senders returned by
+          // sender adaptors define the tag_invoke(get_attrs) as a constrainted
+          // templated function. We can remove this when all senders provide
+          // get_attrs.
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
         };
@@ -2654,7 +2663,11 @@ namespace stdexec {
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _Error> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_Error&&) __err);
           }
-          friend auto tag_invoke(get_attrs_t, const __t& __self) noexcept {
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
         };
@@ -2771,7 +2784,11 @@ namespace stdexec {
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&> {
             return ((_Tag&&) __tag)(__self.__sndr_);
           }
-          friend auto tag_invoke(get_attrs_t, const __t& __self) noexcept {
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
         };
@@ -2918,7 +2935,11 @@ namespace stdexec {
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
-          friend auto tag_invoke(get_attrs_t, const __t& __self) noexcept {
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
         };
@@ -3781,7 +3802,11 @@ namespace stdexec {
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
-          friend auto tag_invoke(get_attrs_t, const __t& __self) noexcept {
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
 
@@ -3940,7 +3965,11 @@ namespace stdexec {
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
-          friend auto tag_invoke(get_attrs_t, const __t& __self) noexcept {
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
 
@@ -4624,7 +4653,11 @@ namespace stdexec {
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
-          friend auto tag_invoke(get_attrs_t, const __t& __self) noexcept {
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
 
@@ -4777,7 +4810,11 @@ namespace stdexec {
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
-          friend auto tag_invoke(get_attrs_t, const __t& __self) noexcept {
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
 
