@@ -22,7 +22,7 @@ namespace ex = stdexec;
 
 namespace {
 // Two dummy properties:
-constexpr struct Foo {
+constexpr struct Foo : ex::forwarding_query_t {
   template <class Env>
     requires std::tag_invocable<Foo, Env>
   auto operator()(const Env& e) const {
@@ -31,6 +31,9 @@ constexpr struct Foo {
 } foo {};
 
 constexpr struct Bar {
+  friend constexpr bool tag_invoke(ex::forwarding_query_t, const Bar&) noexcept {
+    return true;
+  }
   template <class Env>
     requires std::tag_invocable<Bar, Env>
   auto operator()(const Env& e) const {

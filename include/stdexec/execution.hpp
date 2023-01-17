@@ -72,7 +72,7 @@ namespace stdexec {
   concept queryable = destructible<T>;
 
   // [exec.fwd_env]
-  namespace __forwarding_query {
+  namespace __fwding_query {
     struct forwarding_query_t {
       template <class _Query>
       constexpr bool operator()(_Query __query) const noexcept {
@@ -86,8 +86,12 @@ namespace stdexec {
       }
     };
   }
-  inline constexpr __forwarding_query::forwarding_query_t forwarding_query{};
-  using __forwarding_query::forwarding_query_t;
+  inline constexpr __fwding_query::forwarding_query_t forwarding_query{};
+  using __fwding_query::forwarding_query_t;
+
+  template <class _Tag>
+    concept __forwarding_query =
+      forwarding_query(_Tag{});
 
   // [execution.schedulers.queries], scheduler queries
   namespace __scheduler_queries {
@@ -197,11 +201,9 @@ namespace stdexec {
           [[no_unique_address]] _BaseEnv __base_env_{};
 
           // Forward the receiver queries:
-          template <
-              __none_of<__tag_of<_WithIds>..., get_completion_signatures_t> _Tag,
-              same_as<__t> _Self,
-              class... _As>
-              requires __callable<_Tag, const __base_env_of<_Self>&, _As...>
+          template <__forwarding_query _Tag, same_as<__t> _Self, class... _As>
+              requires __none_of<_Tag, __tag_of<_WithIds>...> &&
+                __callable<_Tag, const __base_env_of<_Self>&, _As...>
             friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as) noexcept
               -> __call_result_if_t<same_as<_Self, __t>, _Tag, const __base_env_of<_Self>&, _As...> {
               return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
@@ -1404,6 +1406,10 @@ namespace stdexec {
 
   namespace __debug {
     struct __is_debug_env_t {
+      friend constexpr bool tag_invoke(
+        forwarding_query_t, const __is_debug_env_t&) noexcept {
+        return true;
+      }
       template <class _Env>
           requires tag_invocable<__is_debug_env_t, _Env>
         void operator()(_Env&&) const noexcept;
@@ -5644,6 +5650,124 @@ namespace stdexec {
   inline constexpr sync_wait_t sync_wait{};
   using __sync_wait::sync_wait_with_variant_t;
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
+
+  namespace __any {
+    namespace __rec {
+      template <class _Sig>
+        struct __rcvr_vfun;
+
+      template <class _Sig>
+        struct __query_vfun;
+
+      template <class _Sigs, class... _Queries>
+        struct __vtable;
+
+      template <class _Sigs, class... _Queries>
+        struct __ref;
+
+      template <class _Tag, class... _As>
+        struct __rcvr_vfun<_Tag(_As...)> {
+          void (*__fn_)(void*, _As...) noexcept;
+        };
+
+      template <class _Tag, class _Ret, class... _As>
+        struct __query_vfun<_Tag(_Ret(*)(_As...))> {
+          _Ret (*__fn_)(void*, _As...);
+          _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const {
+            return __fn_(__rcvr, (_As&&) __as...);
+          }
+        };
+
+      template <class _Tag, class _Ret, class... _As>
+        struct __query_vfun<_Tag(_Ret(*)(_As...) noexcept)> {
+          _Ret (*__fn_)(void*, _As...) noexcept;
+          _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const noexcept {
+            return __fn_(__rcvr, (_As&&) __as...);
+          }
+        };
+
+      template <class... _Sigs, class... _Queries>
+        struct __vtable<completion_signatures<_Sigs...>, _Queries...>
+          : __rcvr_vfun<_Sigs>..., __query_vfun<_Queries>... {
+          using __query_vfun<_Queries>::operator()...;
+        };
+
+      template <class _Rcvr>
+        struct __rcvr_vfun_fn {
+          template <class _Tag, class... _As>
+            constexpr void (*operator()(_Tag(*)(_As...)) const noexcept)(void*, _As...) noexcept {
+            return +[](void* __rcvr, _As... __as) noexcept -> void {
+              _Tag{}((_Rcvr&&) *(_Rcvr*) __rcvr, (_As&&) __as...);
+            };
+          }
+        };
+      template <class _Rcvr>
+        struct __query_vfun_fn {
+          template <class _Tag, class _Ret, class... _As>
+              requires __callable<_Tag, env_of_t<const _Rcvr&>, _As...>
+            constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...))) const noexcept)(void*, _As...) {
+            return +[](void* __rcvr, _As... __as) -> _Ret {
+              return _Tag{}(get_env(*(const _Rcvr*) __rcvr), (_As&&) __as...);
+            };
+          }
+          template <class _Tag, class _Ret, class... _As>
+              requires __callable<_Tag, env_of_t<const _Rcvr&>, _As...>
+            constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
+            return +[](void* __rcvr, _As... __as) noexcept -> _Ret {
+              static_assert(__nothrow_callable<_Tag, const _Rcvr&, _As...>);
+              return _Tag{}(get_env(*(const _Rcvr*) __rcvr), (_As&&) __as...);
+            };
+          }
+        };
+
+      template <class _Rcvr, class _Sigs, class... _Queries>
+        extern const __vtable<_Sigs, _Queries...> __vtbl;
+
+      template <class _Rcvr, class... _Sigs, class... _Queries>
+        inline constexpr __vtable<completion_signatures<_Sigs...>, _Queries...>
+          __vtbl<_Rcvr, completion_signatures<_Sigs...>, _Queries...> {
+            {__rcvr_vfun_fn<_Rcvr>{}((_Sigs*) nullptr)}...,
+            {__query_vfun_fn<_Rcvr>{}((_Queries*) nullptr)}...
+          };
+
+      template <class... _Sigs, class... _Queries>
+        struct __ref<completion_signatures<_Sigs...>, _Queries...> {
+         private:
+          using __vtable_t = __vtable<completion_signatures<_Sigs...>, _Queries...>;
+          struct __env_t {
+            const __vtable_t* __vtable_;
+            void* __rcvr_;
+
+            template <class _Tag, class... _As>
+                requires __callable<const __vtable_t&, _Tag, void*, _As...>
+              friend auto tag_invoke(_Tag, const __env_t& __self, _As&&... __as)
+                noexcept(__nothrow_callable<const __vtable_t&, _Tag, void*, _As...>)
+                -> __call_result_t<const __vtable_t&, _Tag, void*, _As...> {
+                return (*__self.__vtable_)(_Tag{}, __self.__rcvr_, (_As&&) __as...);
+              }
+          } __env_;
+         public:
+          template <__none_of<__ref, const __ref, __env_t, const __env_t> _Rcvr>
+              requires receiver_of<_Rcvr, completion_signatures<_Sigs...>> &&
+                (__callable<__query_vfun_fn<_Rcvr>, _Queries*> &&...)
+            __ref(_Rcvr& __rcvr) noexcept
+              : __env_{&__vtbl<_Rcvr, completion_signatures<_Sigs...>, _Queries...>, &__rcvr}
+            {}
+          template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+              requires __one_of<_Tag(_As...), _Sigs...>
+            friend void tag_invoke(_Tag, __ref&& __self, _As&&... __as) noexcept {
+              (*static_cast<const __rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__fn_)(
+                __self.__env_.__rcvr_,
+                (_As&&) __as...);
+            }
+          friend const __env_t& tag_invoke(get_env_t, const __ref& __self) noexcept {
+            return __self.__env_;
+          }
+        };
+
+    } // __rec
+
+  } // __any
 } // namespace stdexec
 
 #include "__detail/__p2300.hpp"
