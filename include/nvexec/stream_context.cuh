@@ -302,9 +302,6 @@ namespace nvexec {
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
         return this == &other;
       }
-        
-    private:
-      std::pmr::memory_resource* _upstream;
     };
 
     struct gpu_resource : public std::pmr::memory_resource {
@@ -325,9 +322,6 @@ namespace nvexec {
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
         return this == &other;
       }
-        
-    private:
-      std::pmr::memory_resource* _upstream;
     };
 
     struct managed_resource : public std::pmr::memory_resource {
@@ -348,9 +342,6 @@ namespace nvexec {
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
         return this == &other;
       }
-        
-    private:
-      std::pmr::memory_resource* _upstream;
     };
 
     template <class UnderlyingResource>

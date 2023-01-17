@@ -264,7 +264,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
                   }
                 }
               } else {
-                std::apply([this](auto&... ops) { (sync(ops), ...); }, child_states_);
+                std::apply([](auto&... ops) { (sync(ops), ...); }, child_states_);
               }
             }
 

@@ -82,8 +82,6 @@ TEST_CASE("transfer changes context from GPU", "[cuda][stream][adaptors][transfe
 
 TEST_CASE("transfer_just changes context to GPU", "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
-
-  exec::inline_scheduler cpu{};
   nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
   auto snd = ex::transfer_just(gpu, 42)

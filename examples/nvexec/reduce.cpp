@@ -40,7 +40,7 @@ int main() {
 
   std::cout << "result: " << result << std::endl;
 }
-#else 
+#else
 int main() {
 }
 #endif
