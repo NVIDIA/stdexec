@@ -142,6 +142,13 @@ namespace stdexec {
           return tag_invoke(*this, __sender);
         }
 
+      template <class _Sender>
+        requires (!tag_invocable<get_attrs_t, const _Sender&>) && __awaitable<_Sender>
+        constexpr auto operator()(const _Sender& __sender) const
+          noexcept -> __empty_attrs {
+          return {};
+        }
+
     };
   } // namespace __attrs
   inline constexpr __attrs::get_attrs_t get_attrs{};

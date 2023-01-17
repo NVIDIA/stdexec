@@ -21,6 +21,8 @@
 #include <tuple>
 #include <variant>
 
+#include <test_common/type_helpers.hpp>
+
 #if !_STD_NO_COROUTINES_
 
 namespace ex = stdexec;
@@ -139,6 +141,21 @@ TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]")
     signature_error_values(
       std::exception_ptr(),
       stdexec::__await_result_t<awaitable_sender_3, promise<awaiter>>()));
+}
+
+struct awaitable_attrs {};
+template <typename Awaiter>
+struct awaitable_with_get_attrs {
+  Awaiter operator co_await();
+  friend awaitable_attrs tag_invoke(ex::get_attrs_t, const awaitable_with_get_attrs&) noexcept {
+    return {};
+  }
+};
+
+TEST_CASE("get_attrs for awaitables", "[sndtraits][awaitables]") {
+  check_attrs_type<ex::__empty_attrs>(awaitable_sender_1<awaiter>{});
+  check_attrs_type<ex::__empty_attrs>(awaitable_sender_3{});
+  check_attrs_type<awaitable_attrs>(awaitable_with_get_attrs<awaiter>{});
 }
 
 #endif // !_STD_NO_COROUTINES_
