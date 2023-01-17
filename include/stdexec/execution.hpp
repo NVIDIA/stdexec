@@ -68,7 +68,7 @@ namespace stdexec {
 
   // [exec.queries.queryable]
   template <class T>
-  concept queryable = std::destructible<T>;
+  concept queryable = destructible<T>;
 
   // [exec.fwd_env]
   namespace __forwarding_query {
