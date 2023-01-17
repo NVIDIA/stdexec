@@ -194,10 +194,7 @@ namespace repeat_n_detail {
         }
 
       friend void tag_invoke(ex::set_value_t, receiver_t&& __self) noexcept {
-        using inner_op_state_t = typename OpT::inner_op_state_t;
-
         OpT &op_state = __self.op_state_;
-        auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.receiver_));
 
         for (std::size_t i = 0; i < op_state.n_; i++) {
           stdexec::sync_wait(ex::schedule(exec::inline_scheduler{}) | op_state.closure_);

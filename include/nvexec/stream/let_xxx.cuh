@@ -182,7 +182,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       struct __operation : __operation_base<_SenderId, _ReceiverId, _Fun, _Let> {
         using _Sender = stdexec::__t<_SenderId>;
         using _Receiver = stdexec::__t<_ReceiverId>;
-        using __receiver_t = stdexec::__t<__receiver<_SenderId, _ReceiverId, _Fun, _Let>>;
+        using __receiver_t = __receiver<_SenderId, _ReceiverId, _Fun, _Let>;
         using __op_state_variant_t = typename __receiver_t::__op_state_variant_t;
 
         template <class _Receiver2>

@@ -225,7 +225,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               noexcept(std::is_nothrow_move_constructible_v<Receiver>)
             : operation_base_t{nullptr, notify}
             , operation_state_base_t<ReceiverId>((Receiver&&)rcvr, shared_state->context_state_, false)
-            , shared_state_(move(shared_state)) {
+            , shared_state_(std::move(shared_state)) {
           }
           STDEXEC_IMMOVABLE(__t);
 
