@@ -117,59 +117,59 @@ namespace exec {
           using Receiver = stdexec::__t<ReceiverId>;
 
           struct bulk_task : task_base {
-              bulk_shared_state *sh_state_;
+            bulk_shared_state *sh_state_;
 
-              bulk_task(bulk_shared_state *sh_state)
-                : sh_state_(sh_state) {
-                this->__execute = [](task_base* t, std::uint32_t tid) noexcept {
-                  auto& sh_state = *static_cast<bulk_task*>(t)->sh_state_;
-                  auto total_threads = sh_state.num_agents_required();
+            bulk_task(bulk_shared_state *sh_state)
+              : sh_state_(sh_state) {
+              this->__execute = [](task_base* t, std::uint32_t tid) noexcept {
+                auto& sh_state = *static_cast<bulk_task*>(t)->sh_state_;
+                auto total_threads = sh_state.num_agents_required();
 
-                  auto computation = [&](auto&... args) {
-                    auto [begin, end] = even_share(sh_state.shape_, tid, total_threads);
-                    for (Shape i = begin; i < end; ++i) {
-                      sh_state.fn_(i, args...);
-                    }
-                  };
+                auto computation = [&](auto&... args) {
+                  auto [begin, end] = even_share(sh_state.shape_, tid, total_threads);
+                  for (Shape i = begin; i < end; ++i) {
+                    sh_state.fn_(i, args...);
+                  }
+                };
 
-                  auto completion = [&](auto&... args) {
-                    stdexec::set_value((Receiver&&)sh_state.receiver_, std::move(args)...);
-                  };
+                auto completion = [&](auto&... args) {
+                  stdexec::set_value((Receiver&&)sh_state.receiver_, std::move(args)...);
+                };
 
-                  if constexpr (MayThrow) {
-                    try {
-                      sh_state.apply(computation);
-                    } catch(...) {
-                      std::uint32_t expected = total_threads;
-
-                      if (sh_state.thread_with_exception_.compare_exchange_strong(
-                              expected, tid,
-                              std::memory_order_relaxed,
-                              std::memory_order_relaxed)) {
-                        sh_state.exception_ = std::current_exception();
-                      }
-                    }
-
-                    const bool is_last_thread = sh_state.finished_threads_.fetch_add(1) == (total_threads - 1);
-
-                    if (is_last_thread) {
-                      if (sh_state.exception_) {
-                        stdexec::set_error((Receiver&&)sh_state.receiver_, sh_state.exception_);
-                      } else {
-                        sh_state.apply(completion);
-                      }
-                    }
-                  } else {
+                if constexpr (MayThrow) {
+                  try {
                     sh_state.apply(computation);
+                  } catch(...) {
+                    std::uint32_t expected = total_threads;
 
-                    const bool is_last_thread = sh_state.finished_threads_.fetch_add(1) == (total_threads - 1);
+                    if (sh_state.thread_with_exception_.compare_exchange_strong(
+                            expected, tid,
+                            std::memory_order_relaxed,
+                            std::memory_order_relaxed)) {
+                      sh_state.exception_ = std::current_exception();
+                    }
+                  }
 
-                    if (is_last_thread) {
+                  const bool is_last_thread = sh_state.finished_threads_.fetch_add(1) == (total_threads - 1);
+
+                  if (is_last_thread) {
+                    if (sh_state.exception_) {
+                      stdexec::set_error((Receiver&&)sh_state.receiver_, sh_state.exception_);
+                    } else {
                       sh_state.apply(completion);
                     }
                   }
-                };
-              }
+                } else {
+                  sh_state.apply(computation);
+
+                  const bool is_last_thread = sh_state.finished_threads_.fetch_add(1) == (total_threads - 1);
+
+                  if (is_last_thread) {
+                    sh_state.apply(completion);
+                  }
+                }
+              };
+            }
           };
 
           using variant_t =
