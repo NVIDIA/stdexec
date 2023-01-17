@@ -278,7 +278,6 @@ set(test_sourceFiles
 add_executable(test.stdexec ${test_sourceFiles})
 
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
-# target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test.stdexec PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2)
 
 # Discover the Catch2 test built by the application
@@ -290,7 +289,6 @@ catch_discover_tests(test.stdexec)
 function(def_example target sourceFile)
     add_executable(${target} ${sourceFile})
     target_link_libraries(${target} PRIVATE STDEXEC::stdexec stdexec_executable_flags)
-    # target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()
 
 def_example(clangd.helper "examples/_clangd_helper_file.cpp")
