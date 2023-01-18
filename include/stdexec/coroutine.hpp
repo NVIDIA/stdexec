@@ -30,25 +30,25 @@ namespace __coro = std::experimental;
 
 namespace stdexec {
 #if !_STD_NO_COROUTINES_
-  // Defined some concepts and utilities for working with awaitables
-  template <class _Promise, class _Awaiter>
-  decltype(auto) __await_suspend(_Awaiter& __await) {
-    if constexpr (!same_as<_Promise, void>) {
-      return __await.await_suspend(__coro::coroutine_handle<_Promise>{});
-    }
-  }
-
+  // Define some concepts and utilities for working with awaitables
   template <class _T>
     concept __await_suspend_result =
       __one_of<_T, void, bool> || __is_instance_of<_T, __coro::coroutine_handle>;
+
+  template <class _Awaiter, class _Promise>
+    concept __with_await_suspend =
+      same_as<_Promise, void> ||
+      requires (_Awaiter& __await, __coro::coroutine_handle<_Promise> __h) {
+        { __await.await_suspend(__h) } -> __await_suspend_result;
+      };
 
   template <class _Awaiter, class _Promise = void>
     concept __awaiter =
       requires (_Awaiter& __await) {
         __await.await_ready() ? 1 : 0;
-        { (__await_suspend<_Promise>)(__await) } -> __await_suspend_result;
         __await.await_resume();
-      };
+      } &&
+      __with_await_suspend<_Awaiter, _Promise>;
 
   template <class _Awaitable>
   decltype(auto) __get_awaiter(_Awaitable&& __await, void*) {
