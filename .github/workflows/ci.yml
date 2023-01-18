@@ -63,6 +63,7 @@ jobs:
       - ${{ matrix.arch }}
     container:
       image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
+      options: -u coder --gpus all
       env:
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
         # CMAKE_CUDA_COMPILER_LAUNCHER: /usr/bin/sccache
@@ -78,9 +79,9 @@ jobs:
         shell: bash
         run: |
           set -x;
-          # cd ..;
-          # cp -ar stdexec /workspaces/;
-          # cd /workspaces/stdexec/;
+          cd ..;
+          cp -ar stdexec /workspaces/;
+          cd /workspaces/stdexec/;
 
           cmake -S . -B build \
             -GNinja \
