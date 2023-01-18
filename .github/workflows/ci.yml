@@ -77,11 +77,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test GPU schedulers
-        shell: /bin/bash -e -l {0}
-        env:
-          CUDA_VISIBLE_DEVICES: all
-          NVIDIA_VISIBLE_DEVICES: all
-          NVIDIA_DRIVER_CAPABILITIES: all
+        shell: bash
         run: |
           source $BASH_ENV;
 
@@ -89,8 +85,9 @@ jobs:
           sudo cp -ar . /workspaces/stdexec;
           cd /workspaces/stdexec/;
 
+          nvidia-smi;
+
           cmake -S . -B build \
-            --trace \
             -GNinja \
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CUDA_ARCHITECTURES=native \
