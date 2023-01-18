@@ -19,6 +19,8 @@ endif()
 include(${CMAKE_BINARY_DIR}/RAPIDS.cmake)
 # utilities for generating export set package metadata
 include(rapids-export)
+# utilities for finding packages
+include(rapids-find)
 # utilities for defining project defaults
 include(rapids-cmake)
 # utilities for using CPM
@@ -81,7 +83,10 @@ rapids_cpm_find(Catch2 ${Catch2_VERSION}
 
 # Ensure that we link with the threading library
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-find_package(Threads REQUIRED)
+rapids_find_package(Threads REQUIRED
+  BUILD_EXPORT_SET stdexec-exports
+  INSTALL_EXPORT_SET stdexec-exports
+)
 
 ##############################################################################
 # - Main library targets -----------------------------------------------------
