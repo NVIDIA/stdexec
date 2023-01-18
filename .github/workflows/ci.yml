@@ -77,11 +77,14 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test GPU schedulers
-        shell: /bin/bash -lix {0}
+        shell: /bin/bash -e -l {0}
+        env:
+          CUDA_VISIBLE_DEVICES: all
+          NVIDIA_VISIBLE_DEVICES: all
+          NVIDIA_DRIVER_CAPABILITIES: all
         run: |
-          if [[ -n "$NVHPC_ROOT" ]]; then
-            export NVHPC_CUDA_HOME="$NVHPC_ROOT/cuda";
-          fi
+          source $BASH_ENV;
+
           sudo mkdir -p /workspaces/stdexec;
           sudo cp -ar . /workspaces/stdexec;
           cd /workspaces/stdexec/;
