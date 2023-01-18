@@ -52,9 +52,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "nvc++ 22.11, CUDA 11.8", cxx: "mpic++",  cxxflags: ""              , tag: "nvhpc22.11",       gpu: "v100", driver: "495", arch: "amd64" }
           - { name: "clang 16, CUDA 11.8",    cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda11.8", gpu: "v100", driver: "495", arch: "amd64" }
         # - { name: "clang 16, CUDA 12.0",    cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "495", arch: "amd64" }
+          - { name: "nvc++ 22.11, CUDA 11.8", cxx: "mpic++",  cxxflags: ""              , tag: "nvhpc22.11",       gpu: "v100", driver: "495", arch: "amd64" }
 
     runs-on:
       - self-hosted
@@ -63,7 +63,7 @@ jobs:
       - ${{ matrix.arch }}
     container:
       image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
-      options: -u root -w /workspaces
+      options: -u root
       env:
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
         # CMAKE_CUDA_COMPILER_LAUNCHER: /usr/bin/sccache
@@ -79,9 +79,9 @@ jobs:
         shell: bash
         run: |
           set -x;
-          cd ..;
-          cp -ar stdexec /workspaces/;
-          cd /workspaces/stdexec/;
+          # cd ..;
+          # cp -ar stdexec /workspaces/;
+          # cd /workspaces/stdexec/;
 
           cmake -S . -B build \
             -GNinja \
