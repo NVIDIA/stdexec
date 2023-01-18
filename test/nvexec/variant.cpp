@@ -18,6 +18,7 @@
 #include <stdexec/execution.hpp>
 
 #include <cuda/std/tuple>
+#include <thrust/universal_vector.h>
 
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #include "nvexec/detail/variant.cuh"
@@ -70,9 +71,8 @@ __global__ void kernel(V* v, T alt) {
 
 TEST_CASE("variant emplaces alternative from GPU", "[cuda][stream][containers][variant]") {
   using variant_t = variant_t<int, double>;
-  variant_t *v{};
-  THROW_ON_CUDA_ERROR(cudaMallocManaged(&v, sizeof(variant_t)));
-  new (v) variant_t();
+  thrust::universal_vector<variant_t> variant_storage(1);
+  variant_t *v = thrust::raw_pointer_cast(variant_storage.data());
 
   REQUIRE(v->index_ == 0);
 
@@ -89,8 +89,6 @@ TEST_CASE("variant emplaces alternative from GPU", "[cuda][stream][containers][v
   visit([](auto alt) {
       REQUIRE(alt == 42);
   }, *v);
-
-  THROW_ON_CUDA_ERROR(cudaFree(v));
 }
 
 TEST_CASE("variant works with cuda tuple", "[cuda][stream][containers][variant]") {
