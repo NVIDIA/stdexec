@@ -17,6 +17,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <concepts>
 #include <condition_variable>
 #include <stdexcept>
 #include <memory>
@@ -122,38 +123,6 @@ namespace stdexec {
     struct get_completion_signatures_t;
   }
   using __get_completion_signatures::get_completion_signatures_t;
-
-  /////////////////////////////////////////////////////////////////////////////
-  // get_attrs
-  namespace __attrs {
-
-    struct __empty_attrs {
-      using __t = __empty_attrs;
-      using __id = __empty_attrs;
-    };
-
-    struct get_attrs_t {
-      template <class _Sender>
-        requires tag_invocable<get_attrs_t, const _Sender&>
-        constexpr auto operator()(const _Sender& __sender) const
-          noexcept(nothrow_tag_invocable<get_attrs_t, const _Sender&>)
-          -> tag_invoke_result_t<get_attrs_t, const _Sender&> {
-          static_assert(queryable<tag_invoke_result_t<get_attrs_t, const _Sender&>>);
-          return tag_invoke(*this, __sender);
-        }
-
-      template <class _Sender>
-        requires (!tag_invocable<get_attrs_t, const _Sender&>) && __awaitable<_Sender>
-        constexpr auto operator()(const _Sender& __sender) const
-          noexcept -> __empty_attrs {
-          return {};
-        }
-
-    };
-  } // namespace __attrs
-  inline constexpr __attrs::get_attrs_t get_attrs{};
-  using __attrs::get_attrs_t;
-  using __attrs::__empty_attrs;
 
   /////////////////////////////////////////////////////////////////////////////
   // env_of
@@ -372,6 +341,12 @@ namespace stdexec {
       }
   } __try_call {};
 
+  namespace __as_awaitable {
+    struct as_awaitable_t;
+  }
+  using __as_awaitable::as_awaitable_t;
+  extern const as_awaitable_t as_awaitable;
+
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   namespace __compl_sigs {
@@ -405,11 +380,31 @@ namespace stdexec {
       __types<> __test(...);
     #endif
 
+    // To be kept in sync with the promise type used in __connect_awaitable
+    template <class _Env>
+      struct __env_promise {
+        template <class _Ty>
+          _Ty&& await_transform(_Ty&& __value) noexcept {
+            return (_Ty&&) __value;
+          }
+
+        template <class _Ty>
+            requires tag_invocable<as_awaitable_t, _Ty, __env_promise&>
+          auto await_transform(_Ty&& __value)
+            noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, __env_promise&>)
+            -> tag_invoke_result_t<as_awaitable_t, _Ty, __env_promise&> {
+            return tag_invoke(as_awaitable, (_Ty&&) __value, *this);
+          }
+
+        friend auto tag_invoke(get_env_t, const __env_promise&) noexcept
+          -> const _Env&;
+      };
+
     // BUGBUG not to spec!
     struct __dependent {
 #if !_STD_NO_COROUTINES_
       bool await_ready();
-      void await_suspend(const __coro::coroutine_handle<no_env>&);
+      void await_suspend(const __coro::coroutine_handle<__env_promise<no_env>>&);
       __dependent await_resume();
 #endif
     };
@@ -433,6 +428,8 @@ namespace stdexec {
 #endif
   } // namespace __compl_sigs
   using __compl_sigs::__completion_signature;
+  using __compl_sigs::__env_promise;
+  using no_env_promise = __env_promise<no_env>;
 
   template <same_as<no_env>>
     using dependent_completion_signatures =
@@ -471,6 +468,37 @@ namespace stdexec {
             (_TaggedTuple*) nullptr,
             (_Variant*) nullptr))>;
   } // namespace __compl_sigs
+
+  /////////////////////////////////////////////////////////////////////////////
+  // get_attrs
+  namespace __attrs {
+    struct __empty_attrs {
+      using __t = __empty_attrs;
+      using __id = __empty_attrs;
+    };
+
+    struct get_attrs_t {
+      template <class _Sender>
+        requires tag_invocable<get_attrs_t, const _Sender&>
+        constexpr auto operator()(const _Sender& __sender) const
+          noexcept(nothrow_tag_invocable<get_attrs_t, const _Sender&>)
+          -> tag_invoke_result_t<get_attrs_t, const _Sender&> {
+          static_assert(queryable<tag_invoke_result_t<get_attrs_t, const _Sender&>>);
+          return tag_invoke(*this, __sender);
+        }
+
+      template <class _Sender>
+        requires (!tag_invocable<get_attrs_t, const _Sender&>) &&
+          __awaitable<_Sender, no_env_promise>
+        constexpr auto operator()(const _Sender& __sender) const
+          noexcept -> __empty_attrs {
+          return {};
+        }
+    };
+  } // namespace __attrs
+  inline constexpr __attrs::get_attrs_t get_attrs{};
+  using __attrs::get_attrs_t;
+  using __attrs::__empty_attrs;
 
   template <class _Ty>
     concept __is_completion_signatures =
@@ -589,12 +617,13 @@ namespace stdexec {
             return __mbind_front_q<tag_invoke_result_t, get_completion_signatures_t>{};
           } else if constexpr (__with_member_alias<_Sender>) {
             return __q<__member_alias_t>{};
-          } else if constexpr (__awaitable<_Sender, _Env>) {
-            using _Result = __await_result_t<_Sender, _Env>;
+          } else if constexpr (__awaitable<_Sender, __env_promise<_Env>>) {
+            using _Result = __await_result_t<_Sender, __env_promise<_Env>>;
             if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
               return __mconst<dependent_completion_signatures<no_env>>{};
             } else {
-              return __mconst<
+              return
+                __mconst<
                   completion_signatures<
                   // set_value_t() or set_value_t(T)
                   __minvoke<__remove<void, __qf<set_value_t>>, _Result>,
@@ -609,7 +638,7 @@ namespace stdexec {
       template <class _Sender, class _Env = no_env>
           requires (__with_tag_invoke<_Sender, _Env> ||
                     __with_member_alias<_Sender> ||
-                    __awaitable<_Sender, _Env>)
+                    __awaitable<_Sender, __env_promise<_Env>>)
         constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept
           -> __minvoke<__impl_fn<_Sender, _Env>, _Sender, _Env> {
           return {};
@@ -1151,12 +1180,6 @@ namespace stdexec {
       };
 
 #if !_STD_NO_COROUTINES_
-  namespace __as_awaitable {
-    struct as_awaitable_t;
-  }
-  using __as_awaitable::as_awaitable_t;
-  extern const as_awaitable_t as_awaitable;
-
   /////////////////////////////////////////////////////////////////////////////
   // __connect_awaitable_
   namespace __connect_awaitable_ {
@@ -1622,6 +1645,9 @@ namespace stdexec {
     template <class _Value>
       using __expected_t =
         std::variant<std::monostate, __value_or_void_t<_Value>, std::exception_ptr>;
+    template <class _Promise>
+      using __env_t =
+        __minvoke<__with_default<__q<__call_result_t>, __empty_env>, get_env_t, _Promise>;
 
     template <class _Value>
       struct __receiver_base {
@@ -1664,18 +1690,21 @@ namespace stdexec {
           }
 
           // Forward get_env query to the coroutine promise
-          friend auto tag_invoke(get_env_t, const __t& __self)
-            -> env_of_t<_Promise> {
-            auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
-              __self.__continuation_.address());
-            return get_env(__continuation.promise());
+          friend __env_t<_Promise&> tag_invoke(get_env_t, const __t& __self) {
+            if constexpr (__callable<get_env_t, _Promise&>) {
+              auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
+                __self.__continuation_.address());
+              return get_env(__continuation.promise());
+            } else {
+              return __empty_env{};
+            }
           }
         };
       };
 
     template <class _Sender, class _Promise>
       using __value_t =
-        __single_sender_value_t<_Sender, env_of_t<_Promise>>;
+        __single_sender_value_t<_Sender, __env_t<_Promise>>;
 
     template <class _Sender, class _Promise>
       using __receiver_t =
@@ -1711,7 +1740,7 @@ namespace stdexec {
       struct __sender_awaitable {
         using _Promise = stdexec::__t<_PromiseId>;
         using _Sender = stdexec::__t<_SenderId>;
-        using __value = __value_t<stdexec::__t<_SenderId>, stdexec::__t<_PromiseId>>;
+        using __value = __value_t<_Sender, _Promise>;
         struct __t : __sender_awaitable_base<__value> {
           __t(_Sender&& sndr, __coro::coroutine_handle<_Promise> __hcoro)
               noexcept(__nothrow_connectable<_Sender, __receiver>)
@@ -1731,14 +1760,9 @@ namespace stdexec {
       using __sender_awaitable_t =
         __t<__sender_awaitable<__id<_Promise>, __id<_Sender>>>;
 
-    template <class _T, class _Promise>
-      concept __custom_tag_invoke_awaiter =
-        tag_invocable<as_awaitable_t, _T, _Promise&> &&
-        __awaitable<tag_invoke_result_t<as_awaitable_t, _T, _Promise&>, _Promise>;
-
     template <class _Sender, class _Promise>
       concept __awaitable_sender =
-        __single_typed_sender<_Sender, env_of_t<_Promise>> &&
+        __single_typed_sender<_Sender, __env_t<_Promise>> &&
         sender_to<_Sender, __receiver_t<_Sender, _Promise>> &&
         requires (_Promise& __promise) {
           { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;
@@ -1747,9 +1771,9 @@ namespace stdexec {
     struct as_awaitable_t {
       template <class _T, class _Promise>
       static constexpr bool __is_noexcept() noexcept {
-        if constexpr (__custom_tag_invoke_awaiter<_T, _Promise>) {
+        if constexpr (tag_invocable<as_awaitable_t, _T, _Promise&>) {
           return nothrow_tag_invocable<as_awaitable_t, _T, _Promise&>;
-        } else if constexpr (__awaitable<_T>) {
+        } else if constexpr (__awaitable<_T>) { // NOT __awaitable<_T, _Promise> !!
           return true;
         } else if constexpr (__awaitable_sender<_T, _Promise>) {
           using _Sender = __sender_awaitable_t<_Promise, _T>;
@@ -1761,9 +1785,11 @@ namespace stdexec {
       template <class _T, class _Promise>
       decltype(auto) operator()(_T&& __t, _Promise& __promise) const
           noexcept(__is_noexcept<_T, _Promise>()) {
-        if constexpr (__custom_tag_invoke_awaiter<_T, _Promise>) {
+        if constexpr (tag_invocable<as_awaitable_t, _T, _Promise&>) {
+          using _Result = tag_invoke_result_t<as_awaitable_t, _T, _Promise&>;
+          static_assert(__awaitable<_Result, _Promise>);
           return tag_invoke(*this, (_T&&) __t, __promise);
-        } else if constexpr (__awaitable<_T>) {
+        } else if constexpr (__awaitable<_T>) { // NOT __awaitable<_T, _Promise> !!
           return (_T&&) __t;
         } else if constexpr (__awaitable_sender<_T, _Promise>) {
           auto __hcoro = __coro::coroutine_handle<_Promise>::from_promise(__promise);
