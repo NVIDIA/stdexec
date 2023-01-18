@@ -63,7 +63,6 @@ jobs:
       - ${{ matrix.arch }}
     container:
       image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
-      options: -u root
       env:
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
         # CMAKE_CUDA_COMPILER_LAUNCHER: /usr/bin/sccache
