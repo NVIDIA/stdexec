@@ -11,7 +11,7 @@ jobs:
 
   build-cpu-gcc11:
     runs-on: ubuntu-latest
-    name: C++ (gcc 11)
+    name: CPU (gcc 11)
     steps:
       - name: Checkout stdexec
         uses: actions/checkout@v3
@@ -20,15 +20,14 @@ jobs:
       - name: Build and test CPU schedulers
         uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu20.04
         with:
-          checks: build test
           cc: gcc-11
-          cxxflags: ""
+          checks: build test
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git;
 
   build-cpu-clang12:
     runs-on: ubuntu-latest
-    name: C++ (clang 12)
+    name: CPU (clang 12)
     steps:
       - name: Checkout stdexec
         uses: actions/checkout@v3
@@ -37,8 +36,8 @@ jobs:
       - name: Build and test CPU schedulers
         uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12-ubuntu20.04
         with:
-          checks: build test
           cc: clang-12
+          checks: build test
           cxxflags: "-stdlib=libc++"
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git;
@@ -47,13 +46,10 @@ jobs:
     name: GPU (${{ matrix.name }})
     strategy:
       matrix:
-        gpu: ["v100"]
-        driver: ["495"]
-        arch: ["amd64"]
         include:
-          - { name: "nvc++ 22.11", cuda: "11.8", compiler: "mpic++",  cxxflags: ""  }
-          - { name: "clang 16",    cuda: "11.8", compiler: "clang++", cxxflags: "-stdlib=libc++" }
-          - { name: "clang 16",    cuda: "12.0", compiler: "clang++", cxxflags: "-stdlib=libc++" }
+          - { name: "nvc++ 22.11", cuda: "11.8", cxx: "mpic++",  gpu: "v100", driver: "495", arch: "amd64", cxxflags: "",              }
+          - { name: "clang 16",    cuda: "11.8", cxx: "clang++", gpu: "v100", driver: "495", arch: "amd64", cxxflags: "-stdlib=libc++" }
+          - { name: "clang 16",    cuda: "12.0", cxx: "clang++", gpu: "v100", driver: "495", arch: "amd64", cxxflags: "-stdlib=libc++" }
     runs-on:
       - self-hosted
       - linux
@@ -88,8 +84,8 @@ jobs:
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CUDA_ARCHITECTURES=native \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
-            -DCMAKE_CXX_COMPILER=$(which ${{ matrix.compiler }}) \
-            -DCMAKE_CUDA_COMPILER=$(which ${{ matrix.compiler }});
+            -DCMAKE_CXX_COMPILER=$(which ${{ matrix.cxx }}) \
+            -DCMAKE_CUDA_COMPILER=$(which ${{ matrix.cxx }});
 
           cmake --build build;
 
@@ -98,35 +94,6 @@ jobs:
             --test-dir build \
             --output-on-failure \
             --force-new-ctest-process;
-
-#   build-gcc-11:
-#     runs-on: ubuntu-latest
-#     name: C++ Schedulers (gcc 11)
-#     steps:
-#       - uses: actions/checkout@v3
-#         with:
-#           persist-credentials: false
-#       - uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu22.04
-#         with:
-#           cc: gcc-11
-#           checks: build test
-#           prebuild_command: |
-#             apt update && apt install -y --no-install-recommends git;
-
-#   build-clang-12:
-#     runs-on: ubuntu-latest
-#     name: C++ Schedulers (clang 12)
-#     steps:
-#       - uses: actions/checkout@v3
-#         with:
-#           persist-credentials: false
-#       - uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12-ubuntu20.04
-#         with:
-#           cc: clang-12
-#           checks: build test
-#           cxxflags: -stdlib=libc++
-#           prebuild_command: |
-#             apt update && apt install -y --no-install-recommends git;
 
 #  build-clang-13:
 #    runs-on: ubuntu-latest
