@@ -174,10 +174,12 @@ namespace nvexec {
         return get<detail::nth_type<I, Ts...>>();
       }
 
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE
     variant_t() {
       emplace<detail::front<Ts...>>();
     }
 
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE
     ~variant_t() {
       destroy();
     }

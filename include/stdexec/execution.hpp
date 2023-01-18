@@ -253,7 +253,6 @@ namespace stdexec {
       template <class _Fn, class... _Args>
         using __f = __minvoke<_Fn, _Args...>;
 
-      // TODO Extract annotation
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
