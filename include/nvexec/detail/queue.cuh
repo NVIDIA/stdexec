@@ -141,7 +141,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct poller_t {
       task_base_t *head_;
       std::thread poller_;
-      ::cuda::std::atomic_flag stopped_ = ATOMIC_FLAG_INIT;
+      ::cuda::std::atomic_flag stopped_{};
 
       poller_t(int dev_id, task_base_t* head) : head_(head) {
         poller_ = std::thread([dev_id, this] {
