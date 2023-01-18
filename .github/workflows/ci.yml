@@ -97,11 +97,11 @@ jobs:
             -DCMAKE_CUDA_COMPILER=$(which ${{ matrix.cxx }}) \
             --trace --debug-output --debug-trycompile \
             --trace-redirect="/workspaces/stdexec/stdexec-cmake-trace.txt" \
-          || configure_failed=1 \
+            || configure_failed=1 \
           ;
 
-          if [[ ${configure_failed:-} == "1" ]]; then
-            tar --exclude-vcs -czf $HOME/build.tgz -C /workspaces/stdexec .;
+          if [[ "${configure_failed:-}" == "1" ]]; then
+            tar --exclude-vcs -czf /github/home/build.tgz -C /workspaces/stdexec .;
             exit 1;
           fi;
 
@@ -119,7 +119,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: build-${{ matrix.tag }}.tgz
-          path: ${{ env.HOME }}/build.tgz
+          path: /github/home/build.tgz
 
 #  build-clang-13:
 #    runs-on: ubuntu-latest
