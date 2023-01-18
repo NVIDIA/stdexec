@@ -34,7 +34,18 @@ if(NOT EXISTS ${CMAKE_BINARY_DIR}/execution.bs)
 endif()
 file(STRINGS "${CMAKE_BINARY_DIR}/execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
 string(REGEX REPLACE "Revision: ([0-9]+)" "\\1" STD_EXECUTION_BS_REVISION ${STD_EXECUTION_BS_REVISION_LINE})
+
+# nvc++ isn't supported by (s)ccache yet, so unset these before the `project()`
+# call so CMake's CXX compiler detection doesn't throw attempting to use it
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/CompilerHelpers.cmake)
+
+disable_compiler_launcher(LANG CXX VAR _cxx_launcher)
+disable_compiler_launcher(LANG CUDA VAR _cuda_launcher)
+
 project(STDEXEC VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
+
+enable_compiler_launcher(LANG CXX VAR _cxx_launcher)
+enable_compiler_launcher(LANG CUDA VAR _cuda_launcher)
 
 # Print CMake configuration
 message(STATUS "System           : ${CMAKE_SYSTEM}")
@@ -166,30 +177,15 @@ target_compile_options(stdexec_executable_flags INTERFACE
 option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
     set(STDEXEC_ENABLE_CUDA ON)
+    # Unset these if using nvc++
+    disable_compiler(LANG CUDA)
+    disable_compiler_launcher(LANG CXX)
+    disable_compiler_launcher(LANG CUDA)
 endif()
 
 if (STDEXEC_ENABLE_CUDA)
-    include(rapids-cuda)
-    # Needs to run before `enable_language(CUDA)`
-    rapids_cuda_init_architectures(STDEXEC)
-    enable_language(CUDA)
-    # Since stdexec only enables CUDA optionally we need to manually include
-    # the file that rapids_cuda_init_architectures relies on `project` calling
-    if(CMAKE_PROJECT_STDEXEC_INCLUDE)
-        include("${CMAKE_PROJECT_STDEXEC_INCLUDE}")
-    endif()
-
-    # Must come after enable_language(CUDA)
-    # Use `-isystem <path>` instead of `-isystem=<path>`
-    # because the former works with clangd intellisense
-    set(CMAKE_INCLUDE_SYSTEM_FLAG_CUDA "-isystem ")
 
     file(GLOB_RECURSE SCHED_SOURCES include/nvexec/*.cuh)
-
-    if (NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
-        set_source_files_properties(${SCHED_SOURCES} PROPERTIES LANGUAGE CUDA)
-    endif()
-
     add_library(CUDASchedulers INTERFACE ${SCHED_SOURCES})
     target_link_libraries(CUDASchedulers INTERFACE stdexec stdexec_executable_flags)
 
@@ -198,22 +194,39 @@ if (STDEXEC_ENABLE_CUDA)
     target_link_options(CUDASchedulers INTERFACE
       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged>)
 
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
+        include(rapids-cuda)
+        # Needs to run before `enable_language(CUDA)`
+        rapids_cuda_init_architectures(STDEXEC)
+        enable_language(CUDA)
+        # Since stdexec only enables CUDA optionally we need to manually include
+        # the file that rapids_cuda_init_architectures relies on `project` calling
+        if(CMAKE_PROJECT_STDEXEC_INCLUDE)
+            include("${CMAKE_PROJECT_STDEXEC_INCLUDE}")
+        endif()
+        # Must come after enable_language(CUDA)
+        # Use `-isystem <path>` instead of `-isystem=<path>`
+        # because the former works with clangd intellisense
+        set(CMAKE_INCLUDE_SYSTEM_FLAG_CUDA "-isystem ")
+
+        set_source_files_properties(${SCHED_SOURCES} PROPERTIES LANGUAGE CUDA)
+
         include(rapids-find)
         rapids_find_package(
             CUDAToolkit REQUIRED
             BUILD_EXPORT_SET stdexec-exports
             INSTALL_EXPORT_SET stdexec-exports
         )
+
         target_link_libraries(CUDASchedulers INTERFACE CUDA::cudart)
+
+        include(${rapids-cmake-dir}/cpm/libcudacxx.cmake)
+        rapids_cpm_libcudacxx(
+            BUILD_EXPORT_SET stdexec-exports
+            INSTALL_EXPORT_SET stdexec-exports)
+
+        target_link_libraries(stdexec INTERFACE libcudacxx::libcudacxx)
     endif()
-
-    include(${rapids-cmake-dir}/cpm/libcudacxx.cmake)
-    rapids_cpm_libcudacxx(
-        BUILD_EXPORT_SET stdexec-exports
-        INSTALL_EXPORT_SET stdexec-exports)
-
-    target_link_libraries(stdexec INTERFACE libcudacxx::libcudacxx)
 endif()
 
 # Now, set up test executable
