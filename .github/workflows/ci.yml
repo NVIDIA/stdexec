@@ -52,9 +52,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "clang 16, CUDA 11.8",    cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda11.8", gpu: "v100", driver: "495", arch: "amd64" }
-        # - { name: "clang 16, CUDA 12.0",    cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "495", arch: "amd64" }
-          - { name: "nvc++ 22.11, CUDA 11.8", cxx: "mpic++",  cxxflags: ""              , tag: "nvhpc22.11",       gpu: "v100", driver: "495", arch: "amd64" }
+          - { name: "clang 16, CUDA 11.8",    cxx: "clang++", tag: "llvmdev-cuda11.8", gpu: "v100", driver: "495", arch: "amd64", cxxflags: "-stdlib=libc++ -Wno-unknown-cuda-version" }
+        # - { name: "clang 16, CUDA 12.0",    cxx: "clang++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "495", arch: "amd64", cxxflags: "-stdlib=libc++ -Wno-unknown-cuda-version" }
+          - { name: "nvc++ 22.11, CUDA 11.8", cxx: "mpic++",  tag: "nvhpc22.11",       gpu: "v100", driver: "495", arch: "amd64", cxxflags: "",                                        }
 
     runs-on:
       - self-hosted
@@ -68,6 +68,7 @@ jobs:
       env:
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
         # CMAKE_CUDA_COMPILER_LAUNCHER: /usr/bin/sccache
+        CUDA_VERSION: "11.8"
         NVIDIA_DRIVER_CAPABILITIES: all
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     steps:
@@ -82,6 +83,9 @@ jobs:
         run: |
           source $BASH_ENV;
 
+          sudo ldconfig -p | grep libcuda.so;
+          sudo find / -type f -name 'libcuda.so*';
+
           sudo mkdir -p /workspaces/stdexec/;
           sudo cp -ar . /workspaces/stdexec/;
           sudo chown -R $(id -u):$(id -g) /workspaces;
@@ -95,8 +99,6 @@ jobs:
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
             -DCMAKE_CXX_COMPILER=$(which ${{ matrix.cxx }}) \
             -DCMAKE_CUDA_COMPILER=$(which ${{ matrix.cxx }}) \
-            --trace --debug-output --debug-trycompile \
-            --trace-redirect="/workspaces/stdexec/stdexec-cmake-trace.txt" \
             || configure_failed=1 \
           ;
 
