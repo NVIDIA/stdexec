@@ -62,8 +62,9 @@ jobs:
       - gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
       - ${{ matrix.arch }}
     container:
-      image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
-      options: -u coder --gpus all
+      # image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
+      image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-llvmdev-cuda11.8-nvhpc22.11
+      options: -u coder
       env:
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
         # CMAKE_CUDA_COMPILER_LAUNCHER: /usr/bin/sccache
@@ -78,6 +79,7 @@ jobs:
       - name: Build and test GPU schedulers
         shell: bash
         run: |
+          source $BASH_ENV;
           set -x;
           cd ..;
           cp -ar stdexec /workspaces/;
