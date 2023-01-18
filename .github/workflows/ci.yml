@@ -82,13 +82,13 @@ jobs:
         run: |
           source $BASH_ENV;
 
-          sudo mkdir -p /workspaces/stdexec;
-          sudo cp -ar . /workspaces/stdexec;
-          cd /workspaces/stdexec/;
+          sudo mkdir -p /workspaces/stdexec/;
+          sudo cp -ar . /workspaces/stdexec/;
+          sudo chown -R $(id -u):$(id -g) /workspaces;
 
-          nvidia-smi;
-
-          cmake -S . -B build \
+          cmake \
+            -S /workspaces/stdexec \
+            -B /workspaces/stdexec/build \
             -GNinja \
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CUDA_ARCHITECTURES=native \
@@ -96,21 +96,24 @@ jobs:
             -DCMAKE_CXX_COMPILER=$(which ${{ matrix.cxx }}) \
             -DCMAKE_CUDA_COMPILER=$(which ${{ matrix.cxx }}) \
             --trace --debug-output --debug-trycompile \
-            --trace-redirect=build/stdexec-cmake-trace.txt \
-          || configure_failed=1;
+            --trace-redirect="/workspaces/stdexec/stdexec-cmake-trace.txt" \
+          || configure_failed=1 \
+          ;
 
           if [[ ${configure_failed:-} == "1" ]]; then
-            tar --exclude-vcs -czf $HOME/build.tgz .;
+            tar --exclude-vcs -czf $HOME/build.tgz -C /workspaces/stdexec .;
             exit 1;
           fi;
 
-          cmake --build build;
+          cmake --build /workspaces/stdexec/build;
 
           ctest \
             --verbose \
-            --test-dir build \
             --output-on-failure \
-            --force-new-ctest-process;
+            --force-new-ctest-process \
+            --test-dir /workspaces/stdexec/build \
+            ;
+
       - name: Upload build context on failure
         if: failure()
         uses: actions/upload-artifact@v3
