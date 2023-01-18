@@ -96,7 +96,13 @@ jobs:
             -DCMAKE_CXX_COMPILER=$(which ${{ matrix.cxx }}) \
             -DCMAKE_CUDA_COMPILER=$(which ${{ matrix.cxx }}) \
             --trace --debug-output --debug-trycompile \
-            --trace-redirect=build/stdexec-cmake-trace.txt;
+            --trace-redirect=build/stdexec-cmake-trace.txt \
+          || configure_failed=1;
+
+          if [[ ${configure_failed:-} == "1" ]]; then
+            tar --exclude-vcs -czf ${{ runner.temp }}/build.tgz .;
+            exit 1;
+          fi;
 
           cmake --build build;
 
@@ -109,8 +115,8 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v3
         with:
-          name: stdexec-build-context
-          path: /workspaces/stdexec
+          name: build-${{ matrix.tag }}.tgz
+          path: ${{ runner.temp }}/build.tgz
 
 #  build-clang-13:
 #    runs-on: ubuntu-latest
