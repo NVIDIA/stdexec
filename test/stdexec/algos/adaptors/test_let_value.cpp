@@ -230,21 +230,21 @@ TEST_CASE("let_value exposes a parameter that is destructed when the main operat
 
 TEST_CASE("let_value works when changing threads", "[adaptors][let_value]") {
   exec::static_thread_pool pool{2};
-  bool called{false};
+  std::atomic<bool> called{false};
   {
     // lunch some work on the thread pool
     ex::sender auto snd = ex::transfer_just(pool.get_scheduler(), 7)                 //
                           | ex::let_value([](int& x) { return ex::just(x * 2 - 1); }) //
                           | ex::then([&](int x) {
                               CHECK(x == 13);
-                              called = true;
+                              called.store(true);
                             });
     ex::start_detached(std::move(snd));
   }
   // wait for the work to be executed, with timeout
   // perform a poor-man's sync
   // NOTE: it's a shame that the `join` method in static_thread_pool is not public
-  for (int i = 0; i < 1000 && !called; i++)
+  for (int i = 0; i < 1000 && !called.load(); i++)
     std::this_thread::sleep_for(1ms);
   // the work should be executed
   REQUIRE(called);

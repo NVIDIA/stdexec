@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <atomic>
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -49,16 +50,17 @@ TEST_CASE("execute works with schedulers that need to be triggered manually", "[
 
 TEST_CASE("execute works on a thread pool", "[other][execute]") {
   exec::static_thread_pool pool{2};
-  bool called{false};
+  std::atomic<bool> called{false};
   {
     // launch some work on the thread pool
-    ex::execute(pool.get_scheduler(), [&] { called = true; });
+    ex::execute(pool.get_scheduler(), [&] { called.store(true, std::memory_order_relaxed); });
   }
   // wait for the work to be executed, with timeout
   // perform a poor-man's sync
   // NOTE: it's a shame that the `join` method in static_thread_pool is not public
-  for (int i = 0; i < 1000 && !called; i++)
+  for (int i = 0; i < 1000 && !called.load(std::memory_order_relaxed); i++) {
     std::this_thread::sleep_for(1ms);
+  }
   // the work should be executed
   REQUIRE(called);
 }
