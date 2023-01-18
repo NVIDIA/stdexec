@@ -7,6 +7,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
 
   build-cpu-gcc11:
@@ -57,7 +61,7 @@ jobs:
       - ${{ matrix.arch }}
     container:
       image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-llvmdev-cuda${{ matrix.cuda }}-nvhpc22.11
-      options: --user root --workdir /workspaces
+      options: -u root -w /workspaces
       env:
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
         # CMAKE_CUDA_COMPILER_LAUNCHER: /usr/bin/sccache
@@ -74,10 +78,16 @@ jobs:
         run: |
           set -x;
 
+          echo "HOME: $HOME";
           echo "cwd: $(pwd)";
-          find . -type d;
+          find . -type d -exec realpath -m {} \;
 
-          cd stdexec;
+          cd ..;
+          mv stdexec /workspaces/;
+          cd /workspaces/stdexec/;
+
+          echo "cwd: $(pwd)";
+          find . -type d -exec realpath -m {} \;
 
           cmake -S . -B build \
             -GNinja \
