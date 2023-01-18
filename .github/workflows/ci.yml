@@ -77,11 +77,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test GPU schedulers
-        shell: bash
+        shell: /bin/bash -lix {0}
         run: |
-          source $BASH_ENV;
-          set -x;
-
           if [[ -n "$NVHPC_ROOT" ]]; then
             export NVHPC_CUDA_HOME="$NVHPC_ROOT/cuda";
           fi
@@ -90,6 +87,7 @@ jobs:
           cd /workspaces/stdexec/;
 
           cmake -S . -B build \
+            --trace \
             -GNinja \
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CUDA_ARCHITECTURES=native \
