@@ -62,12 +62,12 @@ jobs:
       - gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
       - ${{ matrix.arch }}
     container:
-      # image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
-      image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-llvmdev-cuda11.8-nvhpc22.11
+      image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
       options: -u coder
       env:
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
         # CMAKE_CUDA_COMPILER_LAUNCHER: /usr/bin/sccache
+        NVIDIA_DRIVER_CAPABILITIES: all
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     steps:
       - name: Run nvidia-smi to make sure GPU is working
@@ -81,8 +81,12 @@ jobs:
         run: |
           source $BASH_ENV;
           set -x;
-          cd ..;
-          cp -ar stdexec /workspaces/;
+
+          if [[ -n "$NVHPC_ROOT" ]]; then
+            export NVHPC_CUDA_HOME="$NVHPC_ROOT/cuda";
+          fi
+          sudo mkdir -p /workspaces/stdexec;
+          sudo cp -ar . /workspaces/stdexec;
           cd /workspaces/stdexec/;
 
           cmake -S . -B build \
