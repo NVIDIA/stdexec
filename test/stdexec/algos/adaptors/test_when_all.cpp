@@ -363,3 +363,7 @@ TEST_CASE(
   );
   wait_for_value(std::move(snd), std::string{"first program"});
 }
+
+TEST_CASE("when_all returns empty attrs", "[adaptors][when_all]") {
+  check_attrs_type<ex::__empty_attrs>(ex::when_all(ex::just(), ex::just()));
+}

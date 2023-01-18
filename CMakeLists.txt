@@ -200,6 +200,7 @@ set(test_sourceFiles
     test/stdexec/algos/factories/test_transfer_just.cpp
     test/stdexec/algos/factories/test_just_error.cpp
     test/stdexec/algos/factories/test_just_stopped.cpp
+    test/stdexec/algos/factories/test_read.cpp
     test/stdexec/algos/adaptors/test_on.cpp
     test/stdexec/algos/adaptors/test_transfer.cpp
     test/stdexec/algos/adaptors/test_schedule_from.cpp
@@ -223,6 +224,7 @@ set(test_sourceFiles
     test/stdexec/detail/test_completion_signatures.cpp
     test/stdexec/detail/test_utility.cpp
     test/stdexec/queries/test_get_forward_progress_guarantee.cpp
+    test/stdexec/queries/test_forwarding_queries.cpp
     test/exec/test_type_async_scope.cpp
     test/exec/test_create.cpp
     test/exec/test_env.cpp
