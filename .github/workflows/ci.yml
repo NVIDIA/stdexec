@@ -63,6 +63,7 @@ jobs:
       - ${{ matrix.arch }}
     container:
       image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
+      # image: ghcr.io/trxcllnt/devcontainer-images:cmake-ninja-sccache-${{ matrix.tag }}-${{ matrix.arch }}
       options: -u coder
       env:
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
@@ -93,7 +94,9 @@ jobs:
             -DCMAKE_CUDA_ARCHITECTURES=native \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
             -DCMAKE_CXX_COMPILER=$(which ${{ matrix.cxx }}) \
-            -DCMAKE_CUDA_COMPILER=$(which ${{ matrix.cxx }});
+            -DCMAKE_CUDA_COMPILER=$(which ${{ matrix.cxx }}) \
+            --trace --debug-output --debug-trycompile \
+            --trace-redirect=build/stdexec-cmake-trace.txt;
 
           cmake --build build;
 
@@ -102,6 +105,12 @@ jobs:
             --test-dir build \
             --output-on-failure \
             --force-new-ctest-process;
+      - name: Upload build context on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: stdexec-build-context
+          path: /workspaces/stdexec
 
 #  build-clang-13:
 #    runs-on: ubuntu-latest
