@@ -49,18 +49,20 @@ jobs:
   build-gpu:
     name: GPU (${{ matrix.name }})
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - { name: "nvc++ 22.11", cuda: "11.8", cxx: "mpic++",  gpu: "v100", driver: "495", arch: "amd64", cxxflags: "",              }
-          - { name: "clang 16",    cuda: "11.8", cxx: "clang++", gpu: "v100", driver: "495", arch: "amd64", cxxflags: "-stdlib=libc++" }
-          - { name: "clang 16",    cuda: "12.0", cxx: "clang++", gpu: "v100", driver: "495", arch: "amd64", cxxflags: "-stdlib=libc++" }
+          - { name: "nvc++ 22.11, CUDA 11.8", cxx: "mpic++",  cxxflags: ""              , tag: "nvhpc22.11",       gpu: "v100", driver: "495", arch: "amd64" }
+          - { name: "clang 16, CUDA 11.8",    cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda11.8", gpu: "v100", driver: "495", arch: "amd64" }
+        # - { name: "clang 16, CUDA 12.0",    cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "495", arch: "amd64" }
+
     runs-on:
       - self-hosted
       - linux
       - gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
       - ${{ matrix.arch }}
     container:
-      image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-llvmdev-cuda${{ matrix.cuda }}-nvhpc22.11
+      image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
       options: -u root -w /workspaces
       env:
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
@@ -77,17 +79,9 @@ jobs:
         shell: bash
         run: |
           set -x;
-
-          echo "HOME: $HOME";
-          echo "cwd: $(pwd)";
-          find . -type d -exec realpath -m {} \;
-
           cd ..;
-          mv stdexec /workspaces/;
+          cp -ar stdexec /workspaces/;
           cd /workspaces/stdexec/;
-
-          echo "cwd: $(pwd)";
-          find . -type d -exec realpath -m {} \;
 
           cmake -S . -B build \
             -GNinja \
