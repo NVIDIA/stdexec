@@ -100,7 +100,7 @@ jobs:
           || configure_failed=1;
 
           if [[ ${configure_failed:-} == "1" ]]; then
-            tar --exclude-vcs -czf ${{ runner.temp }}/build.tgz .;
+            tar --exclude-vcs -czf $HOME/build.tgz .;
             exit 1;
           fi;
 
@@ -116,7 +116,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: build-${{ matrix.tag }}.tgz
-          path: ${{ runner.temp }}/build.tgz
+          path: ${{ env.HOME }}/build.tgz
 
 #  build-clang-13:
 #    runs-on: ubuntu-latest
