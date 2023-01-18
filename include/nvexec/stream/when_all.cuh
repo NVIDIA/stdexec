@@ -87,16 +87,27 @@ template <class Env, class... Senders>
 template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
   struct when_all_sender_t {
     struct __t : stream_sender_base {
+    private:
+      struct attrs {
+        context_state_t context_state_;
+
+      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> _Tag>
+          requires WithCompletionScheduler
+        friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const attrs& self) noexcept {
+          return Scheduler(self.context_state_);
+        }
+      };
+    public:
       using __id = when_all_sender_t;
 
       template <class... Sndrs>
         explicit __t(context_state_t context_state, Sndrs&&... __sndrs)
-          : context_state_(context_state)
+          : attrs_{context_state}
           , sndrs_((Sndrs&&) __sndrs...)
         {}
 
      private:
-      context_state_t context_state_;
+      attrs attrs_;
 
       template <class CvrefEnv>
         using completion_sigs =
@@ -314,7 +325,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
               , child_states_{
                   stdexec::__conv{[&when_all, this]() {
                     operation_t* parent_op = this;
-                    auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(std::get<Is>(when_all.sndrs_));
+                    auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(std::get<Is>(when_all.sndrs_)));
                     context_state_t context_state = sch.context_state_;
                     STDEXEC_DBG_ERR(cudaStreamCreate(&this->streams_[Is]));
 
@@ -406,11 +417,9 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
           -> completion_sigs<stdexec::__copy_cvref_t<Self, Env>>;
 
-      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> _Tag>
-          requires WithCompletionScheduler
-        friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const __t& __self) noexcept {
-          return Scheduler(__self.context_state_);
-        }
+      friend const attrs& tag_invoke(stdexec::get_attrs_t, const __t& __self) noexcept {
+        return __self.attrs_;
+      }
 
       std::tuple<stdexec::__t<SenderIds>...> sndrs_;
     };

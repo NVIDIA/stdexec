@@ -165,7 +165,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& receiver, std::size_t n)
           : operation_state_base_t<ReceiverId>(
               (Receiver&&)receiver, 
-              stdexec::get_completion_scheduler<stdexec::set_value_t>(pred_sender).context_state_,
+              stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(pred_sender)).context_state_,
               false)
           , pred_sender_{(PredSender&&)pred_sender}
           , closure_(closure)
@@ -295,10 +295,12 @@ struct repeat_n_t {
       }
 #endif
 
-      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... Ts>
-        requires stdexec::tag_invocable<Tag, Sender, Ts...> friend decltype(auto)
-      tag_invoke(Tag tag, const repeat_n_sender_t &s, Ts &&...ts) noexcept {
-        return tag(s.sender_, std::forward<Ts>(ts)...);
+      template <stdexec::same_as<stdexec::get_attrs_t> _Tag>
+        requires stdexec::__callable<_Tag, const Sender&>
+      friend auto tag_invoke(_Tag, const repeat_n_sender_t& s)
+        noexcept(stdexec::__nothrow_callable<_Tag, const Sender&>)
+        -> stdexec::__call_result_t<_Tag, const Sender&> {
+        return stdexec::get_attrs(s.sender_);
       }
     };
 

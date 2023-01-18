@@ -74,6 +74,22 @@ namespace nvexec {
         };
 
       struct sender_t : stream_sender_base {
+
+        struct attrs {
+          int num_devices_;
+          context_state_t context_state_;
+
+          template <class CPO>
+          friend multi_gpu_stream_scheduler
+          tag_invoke(stdexec::get_completion_scheduler_t<CPO>, const attrs& self) noexcept {
+            return self.make_scheduler();
+          }
+
+          multi_gpu_stream_scheduler make_scheduler() const {
+            return multi_gpu_stream_scheduler{num_devices_, context_state_};
+          }
+        };
+
         using completion_signatures =
           stdexec::completion_signatures<
             stdexec::set_value_t(),
@@ -86,23 +102,15 @@ namespace nvexec {
             return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec);
           }
 
-        multi_gpu_stream_scheduler make_scheduler() const {
-          return multi_gpu_stream_scheduler{num_devices_, context_state_};
-        }
-
-        template <class CPO>
-        friend multi_gpu_stream_scheduler
-        tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender_t self) noexcept {
-          return self.make_scheduler();
+        friend const attrs& tag_invoke(stdexec::get_attrs_t, const sender_t& self) noexcept {
+          return self.attrs_;
         }
 
         sender_t(int num_devices, context_state_t context_state) noexcept
-          : num_devices_(num_devices)
-          , context_state_(context_state) {
+          : attrs_{num_devices, context_state} {
         }
 
-        int num_devices_;
-        context_state_t context_state_;
+        attrs attrs_;
       };
 
       template <stdexec::sender S>

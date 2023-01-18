@@ -310,14 +310,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                                           self.shared_state_};
           }
 
-        template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-            requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, stdexec::get_completion_scheduler_t>) && 
-              stdexec::__callable<Tag, const Sender&, As...>
-          friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
-            noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-            -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-            return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-          }
+        template <stdexec::same_as<stdexec::get_attrs_t> _Tag>
+          requires stdexec::__callable<_Tag, const Sender&>
+        friend auto tag_invoke(_Tag, const __t& self)
+          noexcept(stdexec::__nothrow_callable<_Tag, const Sender&>)
+          -> stdexec::__call_result_t<_Tag, const Sender&> {
+          return stdexec::get_attrs(self.sndr_);
+        }
 
         template <class... Tys>
           using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(const std::decay_t<Tys>&...)>;

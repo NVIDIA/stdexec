@@ -139,12 +139,12 @@ template <class SenderId, std::integral Shape, class Fun>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> completion_signatures<Self, Env> requires true;
 
-      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-        requires stdexec::__callable<Tag, const Sender&, As...>
-      friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
-        noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-        -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-        return ((Tag&&) tag)(self.sndr_, (As&&) as...);
+      template <stdexec::same_as<stdexec::get_attrs_t> _Tag>
+        requires stdexec::__callable<_Tag, const Sender&>
+      friend auto tag_invoke(_Tag, const __t& self)
+        noexcept(stdexec::__nothrow_callable<_Tag, const Sender&>)
+        -> stdexec::__call_result_t<_Tag, const Sender&> {
+        return stdexec::get_attrs(self.sndr_);
       }
     };
   };
@@ -358,7 +358,7 @@ template <class SenderId, std::integral Shape, class Fun>
           requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
         friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
           -> multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun> {
-          auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(self.sndr_);
+          auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(self.sndr_));
           context_state_t context_state = sch.context_state_;
           return multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun>(
               self.num_devices_,
@@ -377,14 +377,13 @@ template <class SenderId, std::integral Shape, class Fun>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> completion_signatures<Self, Env> requires true;
 
-      template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-          requires stdexec::__callable<Tag, const Sender&, As...>
-        friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
-          noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-          -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, 
-                                        Tag, const Sender&, As...> {
-          return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-        }
+      template <stdexec::same_as<stdexec::get_attrs_t> _Tag>
+        requires stdexec::__callable<_Tag, const Sender&>
+      friend auto tag_invoke(_Tag, const __t& self)
+        noexcept(stdexec::__nothrow_callable<_Tag, const Sender&>)
+        -> stdexec::__call_result_t<_Tag, const Sender&> {
+        return stdexec::get_attrs(self.sndr_);
+      }
     };
   };
 }

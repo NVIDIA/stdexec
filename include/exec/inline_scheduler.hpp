@@ -47,8 +47,14 @@ namespace exec {
           return {(R&&) rec};
         }
 
-      friend inline_scheduler
-      tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, __sender) noexcept {
+      struct __attrs {
+        friend inline_scheduler
+        tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, const __attrs&) noexcept {
+          return {};
+        }
+      };
+
+      friend __attrs tag_invoke(stdexec::get_attrs_t, const __sender&) noexcept {
         return {};
       }
     };

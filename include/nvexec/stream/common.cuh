@@ -559,7 +559,7 @@ namespace nvexec {
       concept stream_completing_sender =
         stdexec::sender<S> &&
         requires (const S& sndr) {
-          { stdexec::get_completion_scheduler<stdexec::set_value_t>(sndr).context_state_ } -> 
+          { stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(sndr)).context_state_ } ->
             stdexec::__decays_to<context_state_t>;
         };
 
@@ -585,7 +585,7 @@ namespace nvexec {
     template <stream_completing_sender Sender, class OuterReceiver, class ReceiverProvider>
       stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
       stream_op_state(Sender&& sndr, OuterReceiver&& out_receiver, ReceiverProvider receiver_provider) {
-        auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(sndr);
+        auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(sndr));
         context_state_t context_state = sch.context_state_;
 
         return stream_op_state_t<

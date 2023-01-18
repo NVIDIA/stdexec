@@ -5521,7 +5521,15 @@ namespace stdexec {
           (!__tag_invocable_with_completion_scheduler<
             sync_wait_t, set_value_t, _Sender>) &&
           tag_invocable<sync_wait_t, _Sender>
-      tag_invoke_result_t<sync_wait_t, _Sender>
+      // TODO - for reasons I cannot figure out, the move_only_t test in
+      // test/nvexec/then.cpp appears to instantiate this version of
+      // operator(), even though the complation scheduler overload above is
+      // what actually is called. This leads the compilation to fail when
+      // computing tag_invoke_result_t in the return type.
+      // Using decltype(auto) avoids the tag_invoke_result_t expansion.
+      // Why does the compiler not respect the requires clause and avoid
+      // expanding the tag_invoke_result_t?
+      decltype(auto)
       operator()(_Sender&& __sndr) const noexcept(
         nothrow_tag_invocable<sync_wait_t, _Sender>) {
         return tag_invoke(sync_wait_t{}, (_Sender&&) __sndr);
