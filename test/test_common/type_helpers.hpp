@@ -54,14 +54,21 @@ struct empty_env {};
 template <typename ExpectedValType, typename Env = empty_env, typename S>
 inline void check_val_types(S snd) {
   using t = typename ex::value_types_of_t<S, Env, type_array, type_array>;
-  static_assert(std::is_same<t, ExpectedValType>::value);
+  static_assert(std::same_as<t, ExpectedValType>);
+}
+
+//! Check that the attrs of a sender matches the expected type
+template <typename ExpectedAttrsType, typename S>
+inline void check_attrs_type(S snd) {
+  using t = decltype(ex::get_attrs(snd));
+  static_assert(std::same_as<t, ExpectedAttrsType>);
 }
 
 //! Check that the error_types of a sender matches the expected type
 template <typename ExpectedValType, typename Env = empty_env, typename S>
 inline void check_err_types(S snd) {
   using t = ex::error_types_of_t<S, Env, type_array>;
-  static_assert(std::is_same<t, ExpectedValType>::value);
+  static_assert(std::same_as<t, ExpectedValType>);
 }
 
 //! Check that the sends_stopped of a sender matches the expected value
