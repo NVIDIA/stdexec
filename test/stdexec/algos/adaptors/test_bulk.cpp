@@ -234,5 +234,20 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
 
     CHECK_THROWS_AS(stdexec::sync_wait(std::move(snd)), std::runtime_error);
   }
+
+  SECTION("With concurrent enqueueing") {
+    constexpr int n = 4;
+    std::vector<int> counters_1(n, 0);
+    std::vector<int> counters_2(n, 0);
+
+    stdexec::sender auto snd = stdexec::when_all(
+      stdexec::schedule(sch) | stdexec::bulk(n, [&](int id) { counters_1[id]++; }),
+      stdexec::schedule(sch) | stdexec::bulk(n, [&](int id) { counters_2[id]++; }));
+
+    stdexec::sync_wait(std::move(snd));
+
+    CHECK(std::count(counters_1.begin(), counters_1.end(), 1) == n);
+    CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == n);
+  }
 }
 

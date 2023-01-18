@@ -146,32 +146,32 @@ TEST_CASE("sync_wait_with_variant accepts single-value senders", "[consumers][sy
 }
 
 TEST_CASE("sync_wait works if signaled from a different thread", "[consumers][sync_wait]") {
-  bool thread_started{false};
-  bool thread_stopped{false};
+  std::atomic<bool> thread_started{false};
+  std::atomic<bool> thread_stopped{false};
   impulse_scheduler sched;
 
   // Thread that calls `sync_wait`
   auto waiting_thread = std::thread{[&] {
-    thread_started = true;
+    thread_started.store(true);
 
     // Wait for a result that is triggered by the impulse scheduler
     optional<tuple<int>> res = sync_wait(ex::transfer_just(sched, 49));
     CHECK(res.has_value());
     CHECK(std::get<0>(res.value()) == 49);
 
-    thread_stopped = true;
+    thread_stopped.store(true);
   }};
   // Wait for the thread to start (poor-man's sync)
-  for (int i = 0; i < 10'000 && !thread_started; i++)
+  for (int i = 0; i < 10'000 && !thread_started.load(); i++)
     std::this_thread::sleep_for(100us);
 
   // The thread should be waiting on the impulse
-  CHECK_FALSE(thread_stopped);
+  CHECK_FALSE(thread_stopped.load());
   sched.start_next();
 
   // Now, the thread should exit
   waiting_thread.join();
-  CHECK(thread_stopped);
+  CHECK(thread_stopped.load());
 }
 
 TEST_CASE(
