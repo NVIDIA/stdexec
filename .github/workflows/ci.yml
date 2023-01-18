@@ -9,24 +9,37 @@ on:
 
 jobs:
 
-  build-cpu:
+  build-cpu-gcc11:
     runs-on: ubuntu-latest
-    name: C++ (${{ matrix.name }})
-    strategy:
-      matrix:
-        include:
-          - { name: "gcc 11",   compiler: "gcc-11",   cxxflags: "" }
-          - { name: "clang 12", compiler: "clang-12", cxxflags: "-stdlib=libc++" }
+    name: C++ (gcc 11)
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
-      - name: Build and test stdexec CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:${{ matrix.compiler == 'gcc-11' && 'gcc11' || 'clang12' }}-ubuntu20.04
+      - name: Build and test CPU schedulers
+        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu20.04
         with:
           checks: build test
-          cc: "${{ matrix.compiler }}"
-          cxxflags: "${{ matrix.cxxflags }}"
+          cc: gcc-11
+          cxxflags: ""
+          prebuild_command: |
+            apt update && apt install -y --no-install-recommends git;
+
+  build-cpu-clang12:
+    runs-on: ubuntu-latest
+    name: C++ (clang 12)
+    steps:
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Build and test CPU schedulers
+        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12-ubuntu20.04
+        with:
+          checks: build test
+          cc: clang-12
+          cxxflags: "-stdlib=libc++"
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git;
 
@@ -60,7 +73,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           persist-credentials: false
-      - name: Build and test stdexec GPU schedulers
+      - name: Build and test GPU schedulers
         shell: bash
         run: |
           set -x;
