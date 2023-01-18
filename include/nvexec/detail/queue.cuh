@@ -101,6 +101,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct producer_t {
       task_base_t** tail_;
 
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
       void operator()(task_base_t* task) {
         atom_task_ref tail_ref(*tail_);
         task_base_t* old_tail = tail_ref.load(::cuda::memory_order_acquire);
@@ -140,7 +141,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct poller_t {
       task_base_t *head_;
       std::thread poller_;
-      ::cuda::std::atomic_flag stopped_ = ATOMIC_FLAG_INIT;
+      ::cuda::std::atomic_flag stopped_{};
 
       poller_t(int dev_id, task_base_t* head) : head_(head) {
         poller_ = std::thread([dev_id, this] {

@@ -67,6 +67,12 @@
 #define STDEXEC_MSVC() 0
 #endif
 
+#if STDEXEC_CLANG() && defined(__CUDACC__)
+#define STDEXEC_DETAIL_CUDACC_HOST_DEVICE __host__ __device__
+#else
+#define STDEXEC_DETAIL_CUDACC_HOST_DEVICE
+#endif
+
 #ifdef STDEXEC_ASSERT
 #error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif

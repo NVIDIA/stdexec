@@ -125,7 +125,8 @@ namespace nvexec {
               return self.make_scheduler();
             }
 
-          __t(context_state_t context_state) noexcept
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+          inline __t(context_state_t context_state) noexcept
             : context_state_(context_state) {
           }
 
@@ -217,7 +218,8 @@ namespace nvexec {
           return split_sender_th<S>(sch.context_state_, (S&&)sndr);
         }
 
-      friend sender_t tag_invoke(stdexec::schedule_t, const stream_scheduler& self) noexcept {
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      friend inline sender_t tag_invoke(stdexec::schedule_t, const stream_scheduler& self) noexcept {
         return {self.context_state_};
       }
 
@@ -300,9 +302,6 @@ namespace nvexec {
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
         return this == &other;
       }
-        
-    private:
-      std::pmr::memory_resource* _upstream;
     };
 
     struct gpu_resource : public std::pmr::memory_resource {
@@ -323,9 +322,6 @@ namespace nvexec {
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
         return this == &other;
       }
-        
-    private:
-      std::pmr::memory_resource* _upstream;
     };
 
     struct managed_resource : public std::pmr::memory_resource {
@@ -346,9 +342,6 @@ namespace nvexec {
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
         return this == &other;
       }
-        
-    private:
-      std::pmr::memory_resource* _upstream;
     };
 
     template <class UnderlyingResource>

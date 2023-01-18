@@ -18,6 +18,7 @@
 #include <stdexec/execution.hpp>
 
 #include <cuda/std/tuple>
+#include <thrust/universal_vector.h>
 
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #include "nvexec/detail/variant.cuh"
@@ -70,26 +71,24 @@ __global__ void kernel(V* v, T alt) {
 
 TEST_CASE("variant emplaces alternative from GPU", "[cuda][stream][containers][variant]") {
   using variant_t = variant_t<int, double>;
-  variant_t v{};
-  THROW_ON_CUDA_ERROR(cudaHostRegister(&v, sizeof(variant_t), cudaHostRegisterDefault));
+  thrust::universal_vector<variant_t> variant_storage(1);
+  variant_t *v = thrust::raw_pointer_cast(variant_storage.data());
 
-  REQUIRE(v.index_ == 0);
+  REQUIRE(v->index_ == 0);
 
-  kernel<<<1, 1>>>(&v, 4.2);
+  kernel<<<1, 1>>>(v, 4.2);
   THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
 
   visit([](auto alt) {
       REQUIRE(alt == 4.2);
-  }, v);
+  }, *v);
 
-  kernel<<<1, 1>>>(&v, 42);
+  kernel<<<1, 1>>>(v, 42);
   THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
 
   visit([](auto alt) {
       REQUIRE(alt == 42);
-  }, v);
-
-  THROW_ON_CUDA_ERROR(cudaHostUnregister(&v));
+  }, *v);
 }
 
 TEST_CASE("variant works with cuda tuple", "[cuda][stream][containers][variant]") {

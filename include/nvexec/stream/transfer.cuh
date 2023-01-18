@@ -58,7 +58,7 @@ namespace transfer {
         queue::host_ptr<variant_t> storage_;
         task_t *task_;
 
-        ::cuda::std::atomic_flag started_;
+        ::cuda::std::atomic_flag started_{};
 
         using enqueue_receiver = stdexec::__t<stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>>;
         using inner_op_state_t = stdexec::connect_result_t<Sender, enqueue_receiver>;
@@ -81,7 +81,6 @@ namespace transfer {
           , context_state_(context_state)
           , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
           , task_(queue::make_host<task_t>(this->status_, context_state.pinned_resource_, receiver_t{*this}, storage_.get(), this->get_stream(), context_state.pinned_resource_).release())
-          , started_(ATOMIC_FLAG_INIT)
           , inner_op_{
               stdexec::connect(
                   (Sender&&)sender,

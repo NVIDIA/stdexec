@@ -198,7 +198,7 @@ TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptor
            | ex::then([]() -> move_only_t {
                return move_only_t{42};
              })
-           | ex::then([flags](move_only_t val) {
+           | ex::then([flags](move_only_t &&val) {
                if (val.contains(42)) {
                  flags.set();
                }

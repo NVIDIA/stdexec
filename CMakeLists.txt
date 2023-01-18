@@ -68,7 +68,7 @@ rapids_cmake_build_type(Release)
 # - Dependencies -------------------------------------------------------------
 
 # Initialize CPM
-rapids_cpm_init()
+rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
 
 # Add Catch2
 set(Catch2_VERSION 2.13.6)
@@ -147,7 +147,9 @@ target_compile_options(stdexec_executable_flags INTERFACE
 
 # Template backtrace limit
 target_compile_options(stdexec_executable_flags INTERFACE
-                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
+                       -ferror-limit=0
+                       -fmacro-backtrace-limit=0
                        -ftemplate-backtrace-limit=0>
                        )
 
@@ -158,28 +160,65 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:GNU>:-fdiagnostics-color=always>
                        )
 
-# Set up CUDASchedulers library
-option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" NO)
+# Clang CUDA options
+target_compile_options(stdexec_executable_flags INTERFACE
+                       $<$<AND:$<CUDA_COMPILER_ID:Clang>,$<COMPILE_LANGUAGE:CUDA>>:
+                       -Wno-unknown-cuda-version
+                       -Xclang=-fcuda-allow-variadic-functions>
+                       )
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC" OR STDEXEC_ENABLE_CUDA)
+# Set up CUDASchedulers library
+option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
+    set(STDEXEC_ENABLE_CUDA ON)
+endif()
+
+if (STDEXEC_ENABLE_CUDA)
+    include(rapids-cuda)
+    # Needs to run before `enable_language(CUDA)`
+    rapids_cuda_init_architectures(STDEXEC)
+    enable_language(CUDA)
+    # Since stdexec only enables CUDA optionally we need to manually include
+    # the file that rapids_cuda_init_architectures relies on `project` calling
+    if(CMAKE_PROJECT_STDEXEC_INCLUDE)
+        include("${CMAKE_PROJECT_STDEXEC_INCLUDE}")
+    endif()
+
+    # Must come after enable_language(CUDA)
+    # Use `-isystem <path>` instead of `-isystem=<path>`
+    # because the former works with clangd intellisense
+    set(CMAKE_INCLUDE_SYSTEM_FLAG_CUDA "-isystem ")
+
     file(GLOB_RECURSE SCHED_SOURCES include/nvexec/*.cuh)
+
+    if (NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
+        set_source_files_properties(${SCHED_SOURCES} PROPERTIES LANGUAGE CUDA)
+    endif()
+
     add_library(CUDASchedulers INTERFACE ${SCHED_SOURCES})
     target_link_libraries(CUDASchedulers INTERFACE stdexec stdexec_executable_flags)
-    target_include_directories(CUDASchedulers INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-    target_compile_features(CUDASchedulers INTERFACE cxx_std_20)
+
+    target_compile_options(CUDASchedulers INTERFACE
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged>)
+    target_link_options(CUDASchedulers INTERFACE
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged>)
 
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-      target_compile_options(CUDASchedulers INTERFACE -x cu -Wno-unknown-cuda-version)
-      foreach(arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
-        target_compile_options(CUDASchedulers INTERFACE --cuda-gpu-arch=sm_${arch})
-      endforeach()
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
-      target_compile_options(CUDASchedulers INTERFACE -stdpar -gpu=nomanaged)
-      target_link_options(CUDASchedulers INTERFACE -stdpar -gpu=nomanaged)
-      foreach(arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
-        target_compile_options(CUDASchedulers INTERFACE -gpu=cc${arch})
-      endforeach()
+        include(rapids-find)
+        rapids_find_package(
+            CUDAToolkit REQUIRED
+            BUILD_EXPORT_SET stdexec-exports
+            INSTALL_EXPORT_SET stdexec-exports
+        )
+        target_link_libraries(CUDASchedulers INTERFACE CUDA::cudart)
     endif()
+
+    include(${rapids-cmake-dir}/cpm/libcudacxx.cmake)
+    rapids_cpm_libcudacxx(
+        BUILD_EXPORT_SET stdexec-exports
+        INSTALL_EXPORT_SET stdexec-exports)
+
+    target_link_libraries(stdexec INTERFACE libcudacxx::libcudacxx)
 endif()
 
 # Now, set up test executable
@@ -245,7 +284,7 @@ set(test_sourceFiles
 
 add_executable(test.stdexec ${test_sourceFiles})
 
-target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
 target_link_libraries(test.stdexec PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2)
 
 # Discover the Catch2 test built by the application
@@ -257,7 +296,6 @@ catch_discover_tests(test.stdexec)
 function(def_example target sourceFile)
     add_executable(${target} ${sourceFile})
     target_link_libraries(${target} PRIVATE STDEXEC::stdexec stdexec_executable_flags)
-    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()
 
 def_example(clangd.helper "examples/_clangd_helper_file.cpp")
