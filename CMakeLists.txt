@@ -110,13 +110,13 @@ target_link_libraries(stdexec INTERFACE Threads::Threads)
 # Use C++20 standard
 target_compile_features(stdexec INTERFACE cxx_std_20)
 
-# Enable GPU compilation when using NVHPC compiler
-target_compile_options(stdexec INTERFACE
-                       $<$<COMPILE_LANG_AND_ID:CXX,NVHPC>:-stdpar=gpu>
-                       )
-target_link_options(stdexec INTERFACE
-                       $<$<LINK_LANG_AND_ID:CXX,NVHPC>:-stdpar=gpu>
-                       )
+# # Enable GPU compilation when using NVHPC compiler
+# target_compile_options(stdexec INTERFACE
+#                        $<$<COMPILE_LANG_AND_ID:CXX,NVHPC>:-stdpar=gpu>
+#                        )
+# target_link_options(stdexec INTERFACE
+#                        $<$<LINK_LANG_AND_ID:CXX,NVHPC>:-stdpar=gpu>
+#                        )
 
 # Enable coroutines for GCC
 target_compile_options(stdexec INTERFACE
