@@ -7,6 +7,7 @@
   "updateContentCommand": "sed -i -re 's/^(HIST(FILE)?SIZE=).*$/\\1/g' ~/.bashrc",
   "postAttachCommand": ["/opt/devcontainer/bin/post-attach-command.sh"],
   "containerEnv": {
+    "VAULT_HOST": "https://vault.ops.k8s.rapids.ai",
     "CMAKE_CXX_COMPILER_LAUNCHER": "/usr/bin/sccache",
     "CMAKE_CUDA_COMPILER_LAUNCHER": "/usr/bin/sccache",
     "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history",
