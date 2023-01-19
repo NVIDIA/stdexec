@@ -107,7 +107,7 @@ target_compile_features(stdexec INTERFACE cxx_std_20)
 
 # Enable coroutines for GCC
 target_compile_options(stdexec INTERFACE
-                       $<$<CXX_COMPILER_ID:GNU>:-fcoroutines>
+                       $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU>>:-fcoroutines>
                        )
 
 add_library(STDEXEC::stdexec ALIAS stdexec)
