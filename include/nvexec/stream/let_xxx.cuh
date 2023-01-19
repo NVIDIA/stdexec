@@ -104,8 +104,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 stdexec::sender_to<stdexec::__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
             friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
               using result_sender_t = stdexec::__minvoke<__result_sender<_Fun>, _As...>;
-              using __tuple_t = stdexec::__decayed_tuple<_As...>;
-              using __op_state_t = stdexec::__minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
+              using op_state_t = stdexec::__minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
               cudaStream_t stream = __self.__op_state_->get_stream();
 
@@ -116,7 +115,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                     __self.__op_state_->__fun_, result_sender, (_As&&)__as...);
 
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status == cudaSuccess) {
-                auto& __op = __self.__op_state_->__op_state3_.template emplace<__op_state_t>(
+                auto& __op = __self.__op_state_->__op_state3_.template emplace<op_state_t>(
                   stdexec::__conv{[&] {
                     return stdexec::connect(
                         *result_sender,
@@ -182,7 +181,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       struct __operation : __operation_base<_SenderId, _ReceiverId, _Fun, _Let> {
         using _Sender = stdexec::__t<_SenderId>;
         using _Receiver = stdexec::__t<_ReceiverId>;
-        using __receiver_t = stdexec::__t<__receiver<_SenderId, _ReceiverId, _Fun, _Let>>;
+        using __receiver_t = __receiver<_SenderId, _ReceiverId, _Fun, _Let>;
         using __op_state_variant_t = typename __receiver_t::__op_state_variant_t;
 
         template <class _Receiver2>
@@ -237,8 +236,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               stdexec::completion_signatures_of_t<_Sender, _Env>>;
 
         template <stdexec::__decays_to<__t> _Self, stdexec::receiver _Receiver>
-            requires
-              stdexec::sender_to<stdexec::__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
+            requires stdexec::receiver_of<                //
+              _Receiver,                                  //
+              __completions<                              //
+                stdexec::__copy_cvref_t<_Self, _Sender>,  //
+                stdexec::env_of_t<_Receiver>>>            //
           friend auto tag_invoke(stdexec::connect_t, _Self&& __self, _Receiver&& __rcvr)
             -> __operation_t<_Self, _Receiver> {
             return __operation_t<_Self, _Receiver>{

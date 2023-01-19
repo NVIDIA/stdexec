@@ -79,17 +79,20 @@ public:
   }
 
   flags_storage_t() {
-    THROW_ON_CUDA_ERROR(cudaMallocHost(&flags_, sizeof(int) * N));
-    memset(flags_, 0, sizeof(int) * N);
+    THROW_ON_CUDA_ERROR(cudaMalloc(&flags_, sizeof(int) * N));
+    THROW_ON_CUDA_ERROR(cudaMemset(flags_, 0, sizeof(int) * N));
   }
 
   ~flags_storage_t() {
-    THROW_ON_CUDA_ERROR(cudaFreeHost(flags_));
+    THROW_ON_CUDA_ERROR(cudaFree(flags_));
     flags_ = nullptr;
   }
 
   bool is_set_n_times(int n) {
-    return std::count(flags_, flags_ + N, n) == N;
+    int host_flags[N];
+    THROW_ON_CUDA_ERROR(cudaMemcpy(host_flags, flags_, sizeof(int) * N, cudaMemcpyDeviceToHost));
+
+    return std::count(host_flags, host_flags + N, n) == N;
   }
 
   bool all_set_once() {
@@ -127,6 +130,7 @@ namespace detail::a_sender {
       Fun f_;
 
       template <class... As>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE
       void set_value(As&&... as) && noexcept
         requires stdexec::__callable<Fun, As&&...> {
         using result_t = std::invoke_result_t<Fun, As&&...>;
@@ -256,36 +260,54 @@ namespace detail::a_receiverless_sender {
     };
 }
 
-struct a_sender_t {
-  template <class _Sender, class _Fun>
-    using sender_th = detail::a_sender::sender_t<
-      stdexec::__x<std::remove_cvref_t<_Sender>>,
-      stdexec::__x<std::remove_cvref_t<_Fun>>>;
+enum class a_sender_kind {
+  then,
+  receiverless
+};
 
-  template <class _Sender>
-    using receiverless_sender_th = detail::a_receiverless_sender::sender_t<
-      stdexec::__x<std::remove_cvref_t<_Sender>>>;
+template <a_sender_kind kind>
+  struct a_sender_helper_t;
 
-  template <stdexec::sender _Sender, class _Fun>
-      requires stdexec::sender<sender_th<_Sender, _Fun>>
-    sender_th<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
-      return sender_th<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
+template <>
+  struct a_sender_helper_t<a_sender_kind::then> {
+    template <class _Sender, class _Fun>
+      using sender_th = detail::a_sender::sender_t<
+        stdexec::__x<std::remove_cvref_t<_Sender>>,
+        stdexec::__x<std::remove_cvref_t<_Fun>>>;
+
+    template <stdexec::sender _Sender, class _Fun>
+        requires stdexec::sender<sender_th<_Sender, _Fun>>
+      sender_th<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
+        return sender_th<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
+      }
+
+    template <class _Fun>
+      stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun> operator()(_Fun __fun) const {
+        return {{}, {}, {(_Fun&&) __fun}};
+    };
+  };
+
+template <>
+  struct a_sender_helper_t<a_sender_kind::receiverless> {
+    template <class _Sender>
+      using receiverless_sender_th = detail::a_receiverless_sender::sender_t<
+        stdexec::__x<std::remove_cvref_t<_Sender>>>;
+
+    template <stdexec::sender _Sender>
+        requires stdexec::sender<receiverless_sender_th<_Sender>>
+      receiverless_sender_th<_Sender> operator()(_Sender&& __sndr) const {
+        return receiverless_sender_th<_Sender>{(_Sender&&) __sndr};
+      }
+
+    stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> operator()() const {
+      return {{}, {}, {}};
     }
+  };
 
-  template <class _Fun>
-    stdexec::__binder_back<a_sender_t, _Fun> operator()(_Fun __fun) const {
-      return {{}, {}, {(_Fun&&) __fun}};
-    }
-
-  template <stdexec::sender _Sender>
-      requires stdexec::sender<receiverless_sender_th<_Sender>>
-    receiverless_sender_th<_Sender> operator()(_Sender&& __sndr) const {
-      return receiverless_sender_th<_Sender>{(_Sender&&) __sndr};
-    }
-
-  stdexec::__binder_back<a_sender_t> operator()() const {
-    return {{}, {}, {}};
-  }
+struct a_sender_t : a_sender_helper_t<a_sender_kind::then> 
+                  , a_sender_helper_t<a_sender_kind::receiverless> { 
+  using a_sender_helper_t<a_sender_kind::then>::operator();
+  using a_sender_helper_t<a_sender_kind::receiverless>::operator();
 };
 
 constexpr a_sender_t a_sender;
@@ -294,24 +316,24 @@ struct move_only_t {
   static constexpr int invalid = -42;
 
   move_only_t() = delete;
-  move_only_t(int data) 
+  __host__ __device__ move_only_t(int data) 
     : data_(data)
     , self_(this) {
   }
 
-  move_only_t(move_only_t&& other) 
+  __host__ __device__ move_only_t(move_only_t&& other) 
     : data_(other.data_)
     , self_(this) {
   }
 
-  ~move_only_t() {
+  __host__ __device__ ~move_only_t() {
     if (this != self_) {
       // TODO Trap
       std::printf("Error: move_only_t::~move_only_t failed\n");
     }
   }
 
-  bool contains(int val) {
+  __host__ __device__ bool contains(int val) {
     if (this != self_) {
       return false;
     }

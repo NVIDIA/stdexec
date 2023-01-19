@@ -112,9 +112,65 @@ namespace exec {
           >;
 
       template <class SenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
-        struct bulk_shared_state : task_base {
+        struct bulk_shared_state {
           using Sender = stdexec::__t<SenderId>;
           using Receiver = stdexec::__t<ReceiverId>;
+
+          struct bulk_task : task_base {
+            bulk_shared_state *sh_state_;
+
+            bulk_task(bulk_shared_state *sh_state)
+              : sh_state_(sh_state) {
+              this->__execute = [](task_base* t, std::uint32_t tid) noexcept {
+                auto& sh_state = *static_cast<bulk_task*>(t)->sh_state_;
+                auto total_threads = sh_state.num_agents_required();
+
+                auto computation = [&](auto&... args) {
+                  auto [begin, end] = even_share(sh_state.shape_, tid, total_threads);
+                  for (Shape i = begin; i < end; ++i) {
+                    sh_state.fn_(i, args...);
+                  }
+                };
+
+                auto completion = [&](auto&... args) {
+                  stdexec::set_value((Receiver&&)sh_state.receiver_, std::move(args)...);
+                };
+
+                if constexpr (MayThrow) {
+                  try {
+                    sh_state.apply(computation);
+                  } catch(...) {
+                    std::uint32_t expected = total_threads;
+
+                    if (sh_state.thread_with_exception_.compare_exchange_strong(
+                            expected, tid,
+                            std::memory_order_relaxed,
+                            std::memory_order_relaxed)) {
+                      sh_state.exception_ = std::current_exception();
+                    }
+                  }
+
+                  const bool is_last_thread = sh_state.finished_threads_.fetch_add(1) == (total_threads - 1);
+
+                  if (is_last_thread) {
+                    if (sh_state.exception_) {
+                      stdexec::set_error((Receiver&&)sh_state.receiver_, sh_state.exception_);
+                    } else {
+                      sh_state.apply(completion);
+                    }
+                  }
+                } else {
+                  sh_state.apply(computation);
+
+                  const bool is_last_thread = sh_state.finished_threads_.fetch_add(1) == (total_threads - 1);
+
+                  if (is_last_thread) {
+                    sh_state.apply(completion);
+                  }
+                }
+              };
+            }
+          };
 
           using variant_t =
             stdexec::__value_types_of_t<
@@ -132,6 +188,7 @@ namespace exec {
           std::atomic<std::uint32_t> finished_threads_{0};
           std::atomic<std::uint32_t> thread_with_exception_{0};
           std::exception_ptr exception_;
+          std::vector<bulk_task> tasks_;
 
           // Splits `n` into `size` chunks distributing `n % size` evenly between ranks.
           // Returns `[begin, end)` range in `n` for a given `rank`.
@@ -172,60 +229,12 @@ namespace exec {
           bulk_shared_state(
               static_thread_pool& pool,
               Receiver receiver, Shape shape, Fun fn)
-            : pool_(pool)
+            : pool_{pool}
             , receiver_{(Receiver&&)receiver}
             , shape_{shape}
             , fn_{fn}
             , thread_with_exception_{num_agents_required()}
-          {
-            this->__execute = [](task_base* t, std::uint32_t tid) noexcept {
-              auto& self = *static_cast<bulk_shared_state*>(t);
-              auto total_threads = self.num_agents_required();
-
-              auto computation = [&](auto&... args) {
-                auto [begin, end] = even_share(self.shape_, tid, total_threads);
-                for (Shape i = begin; i < end; ++i) {
-                  self.fn_(i, args...);
-                }
-              };
-
-              auto completion = [&](auto&... args) {
-                stdexec::set_value((Receiver&&)self.receiver_, std::move(args)...);
-              };
-
-              if constexpr (MayThrow) {
-                try {
-                  self.apply(computation);
-                } catch(...) {
-                  std::uint32_t expected = total_threads;
-
-                  if (self.thread_with_exception_.compare_exchange_strong(
-                          expected, tid,
-                          std::memory_order_relaxed,
-                          std::memory_order_relaxed)) {
-                    self.exception_ = std::current_exception();
-                  }
-                }
-
-                const bool is_last_thread = self.finished_threads_.fetch_add(1) == (total_threads - 1);
-
-                if (is_last_thread) {
-                  if (self.exception_) {
-                    stdexec::set_error((Receiver&&)self.receiver_, self.exception_);
-                  } else {
-                    self.apply(completion);
-                  }
-                }
-              } else {
-                self.apply(computation);
-
-                const bool is_last_thread = self.finished_threads_.fetch_add(1) == (total_threads - 1);
-
-                if (is_last_thread) {
-                  self.apply(completion);
-                }
-              }
-            };
+            , tasks_{num_agents_required(), {this}} {
           }
         };
 
@@ -239,7 +248,7 @@ namespace exec {
           shared_state& shared_state_;
 
           void enqueue() noexcept {
-            shared_state_.pool_.bulk_enqueue(&shared_state_, shared_state_.num_agents_required());
+            shared_state_.pool_.bulk_enqueue(shared_state_.tasks_.data(), shared_state_.num_agents_required());
           }
 
           template <class... As>
@@ -426,7 +435,9 @@ namespace exec {
     void join() noexcept;
 
     void enqueue(task_base* task) noexcept;
-    void bulk_enqueue(task_base* task, std::uint32_t n_threads) noexcept;
+
+    template <std::derived_from<task_base> TaskT>
+      void bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept;
 
     std::uint32_t threadCount_;
     std::vector<std::thread> threads_;
@@ -448,9 +459,10 @@ namespace exec {
         this->__execute = [](task_base* t, std::uint32_t /* tid */) noexcept {
           auto& op = *static_cast<operation*>(t);
           auto stoken =
-            stdexec::get_stop_token(
-              stdexec::get_env(op.receiver_));
-          if (stoken.stop_requested()) {
+            stdexec::get_stop_token(stdexec::get_env(op.receiver_));
+          if constexpr (std::unstoppable_token<decltype(stoken)>) {
+            stdexec::set_value((Receiver &&) op.receiver_);
+          } else if (stoken.stop_requested()) {
             stdexec::set_stopped((Receiver &&) op.receiver_);
           } else {
             stdexec::set_value((Receiver &&) op.receiver_);
@@ -555,11 +567,12 @@ namespace exec {
     threadStates_[startIndex].push(task);
   }
 
-  inline void static_thread_pool::bulk_enqueue(task_base* task, std::uint32_t n_threads) noexcept {
-    for (std::size_t i = 0; i < n_threads; ++i) {
-      threadStates_[i % available_parallelism()].push(task);
+  template <std::derived_from<task_base> TaskT>
+    inline void static_thread_pool::bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept {
+      for (std::size_t i = 0; i < n_threads; ++i) {
+        threadStates_[i % available_parallelism()].push(task + i);
+      }
     }
-  }
 
   inline task_base* static_thread_pool::thread_state::try_pop() {
     std::unique_lock lk{mut_, std::try_to_lock};

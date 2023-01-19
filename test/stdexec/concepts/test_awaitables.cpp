@@ -21,9 +21,18 @@
 #include <tuple>
 #include <variant>
 
+#include <test_common/type_helpers.hpp>
+
 #if !_STD_NO_COROUTINES_
 
 namespace ex = stdexec;
+
+template <class Sender>
+  concept sender_with_attrs =
+    ex::sender<Sender> &&
+    requires (const Sender& s) {
+      ex::get_attrs(s);
+    };
 
 template <typename Awaiter>
 struct promise {
@@ -66,53 +75,118 @@ private:
   friend dependent operator co_await(awaitable_sender_3);
 };
 
+struct awaitable_sender_4 {
+  using promise_type = promise<__coro::suspend_always>;
+private:
+  template <class Promise>
+  friend awaiter tag_invoke(ex::as_awaitable_t, awaitable_sender_4, Promise&) {
+    return {};
+  }
+  friend dependent tag_invoke(ex::as_awaitable_t, awaitable_sender_4, ex::no_env_promise&) {
+    return {};
+  }
+};
+
+struct awaitable_sender_5 {
+private:
+  template <class Promise>
+  friend awaiter tag_invoke(ex::as_awaitable_t, awaitable_sender_5, Promise&) {
+    return {};
+  }
+};
+
 template <typename Signatures, typename Awaiter>
 void test_awaitable_sender1(Signatures*, Awaiter&&) {
   static_assert(ex::sender<awaitable_sender_1<Awaiter>>);
-  static_assert(stdexec::__awaitable<awaitable_sender_1<Awaiter>>);
+  static_assert(sender_with_attrs<awaitable_sender_1<Awaiter>>);
+  static_assert(ex::__awaitable<awaitable_sender_1<Awaiter>>);
 
   static_assert(
-    !stdexec::__get_completion_signatures::__with_member_alias<awaitable_sender_1<Awaiter>>);
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_1<Awaiter>>);
   static_assert(
-      std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_1<Awaiter>>, Signatures>);
+    std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_1<Awaiter>>, Signatures>);
 }
 
-template <typename Signatures>
-void test_awaitable_sender2(Signatures*) {
+void test_awaitable_sender2() {
   static_assert(ex::sender<awaitable_sender_2>);
-  static_assert(ex::sender<awaitable_sender_2, promise<__coro::suspend_always>>);
+  static_assert(sender_with_attrs<awaitable_sender_2>);
+  static_assert(!ex::sender<awaitable_sender_2, ex::__empty_env>);
 
-  static_assert(stdexec::__awaitable<awaitable_sender_2>);
-  static_assert(stdexec::__awaitable<awaitable_sender_2, promise<__coro::suspend_always>>);
+  static_assert(ex::__awaitable<awaitable_sender_2>);
+  static_assert(ex::__awaitable<awaitable_sender_2, promise<__coro::suspend_always>>);
 
   static_assert(
-    !stdexec::__get_completion_signatures::__with_member_alias<awaitable_sender_2>);
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_2>);
 
   static_assert(std::is_same_v<
       ex::completion_signatures_of_t<awaitable_sender_2>,
       dependent>);
-  static_assert(std::is_same_v<
-      ex::completion_signatures_of_t<awaitable_sender_2, promise<__coro::suspend_always>>,
-      Signatures>);
 }
 
-template <typename Signatures>
-void test_awaitable_sender3(Signatures*) {
+void test_awaitable_sender3() {
   static_assert(ex::sender<awaitable_sender_3>);
-  static_assert(ex::sender<awaitable_sender_3, promise<awaiter>>);
+  static_assert(sender_with_attrs<awaitable_sender_3>);
+  static_assert(!ex::sender<awaitable_sender_3, ex::__empty_env>);
 
-  static_assert(stdexec::__awaiter<awaiter>);
-  static_assert(stdexec::__awaitable<awaitable_sender_3>);
-  static_assert(stdexec::__awaitable<awaitable_sender_3, promise<awaiter>>);
+  static_assert(ex::__awaiter<awaiter>);
+  static_assert(ex::__awaitable<awaitable_sender_3>);
+  static_assert(ex::__awaitable<awaitable_sender_3, promise<awaiter>>);
 
   static_assert(
-    !stdexec::__get_completion_signatures::__with_member_alias<awaitable_sender_3>);
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_3>);
 
   static_assert(std::is_same_v<
       ex::completion_signatures_of_t<awaitable_sender_3>,
       dependent>);
+}
+
+template <class Signatures>
+void test_awaitable_sender4(Signatures*) {
+  static_assert(ex::sender<awaitable_sender_4>);
+  static_assert(sender_with_attrs<awaitable_sender_4>);
+  static_assert(ex::sender<awaitable_sender_4, ex::__empty_env>);
+
+  static_assert(ex::__awaiter<awaiter>);
+  static_assert(!ex::__awaitable<awaitable_sender_4>);
+  static_assert(ex::__awaitable<awaitable_sender_4, promise<awaiter>>);
+  static_assert(ex::__awaitable<awaitable_sender_4, ex::no_env_promise>);
+  static_assert(ex::__awaitable<awaitable_sender_4, ex::__env_promise<ex::__empty_env>>);
+
+  static_assert(
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_4>);
+
   static_assert(std::is_same_v<
-      ex::completion_signatures_of_t<awaitable_sender_3, promise<awaiter>>,
+      ex::completion_signatures_of_t<awaitable_sender_4>,
+      dependent>);
+  static_assert(std::is_same_v<
+      ex::completion_signatures_of_t<awaitable_sender_4, ex::__empty_env>,
+      Signatures>);
+}
+
+struct connect_awaitable_promise
+  : ex::with_awaitable_senders<connect_awaitable_promise>
+{};
+
+template <class Signatures>
+void test_awaitable_sender5(Signatures*) {
+  static_assert(ex::sender<awaitable_sender_5>);
+  static_assert(sender_with_attrs<awaitable_sender_5>);
+  static_assert(ex::sender<awaitable_sender_5, ex::__empty_env>);
+
+  static_assert(ex::__awaiter<awaiter>);
+  static_assert(!ex::__awaitable<awaitable_sender_5>);
+  static_assert(ex::__awaitable<awaitable_sender_5, promise<awaiter>>);
+  static_assert(ex::__awaitable<awaitable_sender_5, ex::no_env_promise>);
+  static_assert(ex::__awaitable<awaitable_sender_5, ex::__env_promise<ex::__empty_env>>);
+
+  static_assert(
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_5>);
+
+  static_assert(std::is_same_v<
+      ex::completion_signatures_of_t<awaitable_sender_5>,
+      Signatures>);
+  static_assert(std::is_same_v<
+      ex::completion_signatures_of_t<awaitable_sender_5, ex::__empty_env>,
       Signatures>);
 }
 
@@ -128,17 +202,37 @@ TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]")
   ::test_awaitable_sender1(
     signature_error_values(
       std::exception_ptr(),
-      stdexec::__await_result_t<awaitable_sender_1<awaiter>>()),
+      ex::__await_result_t<awaitable_sender_1<awaiter>>()),
     awaiter{});
 
-  ::test_awaitable_sender2(
-    signature_error_values(
-      std::exception_ptr()));
+  ::test_awaitable_sender2();
 
-  ::test_awaitable_sender3(
+  ::test_awaitable_sender3();
+
+  ::test_awaitable_sender4(
     signature_error_values(
       std::exception_ptr(),
-      stdexec::__await_result_t<awaitable_sender_3, promise<awaiter>>()));
+      ex::__await_result_t<awaitable_sender_4, promise<awaiter>>()));
+
+  ::test_awaitable_sender5(
+    signature_error_values(
+      std::exception_ptr(),
+      ex::__await_result_t<awaitable_sender_5, connect_awaitable_promise>()));
+}
+
+struct awaitable_attrs {};
+template <typename Awaiter>
+struct awaitable_with_get_attrs {
+  Awaiter operator co_await();
+  friend awaitable_attrs tag_invoke(ex::get_attrs_t, const awaitable_with_get_attrs&) noexcept {
+    return {};
+  }
+};
+
+TEST_CASE("get_attrs for awaitables", "[sndtraits][awaitables]") {
+  check_attrs_type<ex::__empty_attrs>(awaitable_sender_1<awaiter>{});
+  check_attrs_type<ex::__empty_attrs>(awaitable_sender_3{});
+  check_attrs_type<awaitable_attrs>(awaitable_with_get_attrs<awaiter>{});
 }
 
 #endif // !_STD_NO_COROUTINES_
