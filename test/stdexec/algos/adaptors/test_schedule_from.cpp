@@ -87,18 +87,19 @@ TEST_CASE("schedule_from calls the given sender when the scheduler dictates",
 
 TEST_CASE("schedule_from works when changing threads", "[adaptors][schedule_from]") {
   exec::static_thread_pool pool{2};
-  bool called{false};
+  std::atomic<bool> called{false};
   {
     // lunch some work on the thread pool
     ex::sender auto snd = ex::schedule_from(pool.get_scheduler(), ex::just()) //
-                          | ex::then([&] { called = true; });
+                          | ex::then([&] { called.store(true); });
     ex::start_detached(std::move(snd));
   }
   // wait for the work to be executed, with timeout
   // perform a poor-man's sync
   // NOTE: it's a shame that the `join` method in static_thread_pool is not public
-  for (int i = 0; i < 1000 && !called; i++)
+  for (int i = 0; i < 1000 && !called.load(); i++) {
     std::this_thread::sleep_for(1ms);
+  }
   // the work should be executed
   REQUIRE(called);
 }

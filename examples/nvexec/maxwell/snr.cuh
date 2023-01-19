@@ -20,7 +20,7 @@
 #include "exec/on.hpp"
 
 
-#ifdef _NVHPC_CUDA
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #include <nvexec/stream_context.cuh>
 #include <nvexec/multi_gpu_context.cuh>
@@ -45,7 +45,7 @@ namespace nvexec {
 
 namespace ex = stdexec;
 
-#ifdef _NVHPC_CUDA
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace repeat_n {
     template <class OpT>
@@ -194,10 +194,7 @@ namespace repeat_n_detail {
         }
 
       friend void tag_invoke(ex::set_value_t, receiver_t&& __self) noexcept {
-        using inner_op_state_t = typename OpT::inner_op_state_t;
-
         OpT &op_state = __self.op_state_;
-        auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.receiver_));
 
         for (std::size_t i = 0; i < op_state.n_; i++) {
           stdexec::sync_wait(ex::schedule(exec::inline_scheduler{}) | op_state.closure_);
@@ -259,7 +256,7 @@ struct repeat_n_t {
       Closure closure_;
       std::size_t n_{};
 
-#ifdef _NVHPC_CUDA
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
       template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
         requires (stdexec::tag_invocable<stdexec::connect_t, Sender, Receiver>) &&
                  (!nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)

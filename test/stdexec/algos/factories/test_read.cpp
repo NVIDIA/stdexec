@@ -1,6 +1,4 @@
 /*
- * Copyright (c) 2022 NVIDIA Corporation
- *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,12 +11,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
+#include <catch2/catch.hpp>
+#include <stdexec/execution.hpp>
+#include <test_common/type_helpers.hpp>
 
-#if !defined(_NVHPC_CUDA) && !defined(__CUDACC__)
-#error The NVIDIA schedulers and utilities require CUDA support
-#endif
+namespace ex = stdexec;
 
-#define STDEXEC_STREAM_DETAIL_NS _strm
+TEST_CASE("read returns empty attrs", "[factories][read]") {
+  check_attrs_type<ex::__empty_attrs>(ex::read(ex::get_allocator));
+}

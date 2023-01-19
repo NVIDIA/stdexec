@@ -17,6 +17,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <concepts>
 #include <condition_variable>
 #include <stdexcept>
 #include <memory>
@@ -65,6 +66,28 @@ namespace stdexec {
   namespace this_thread = stdexec;
 
   using std::remove_cvref_t;
+
+  // [exec.queries.queryable]
+  template <class T>
+  concept queryable = destructible<T>;
+
+  // [exec.fwd_env]
+  namespace __forwarding_query {
+    struct forwarding_query_t {
+      template <class _Query>
+      constexpr bool operator()(_Query __query) const noexcept {
+        if constexpr (tag_invocable<forwarding_query_t, _Query>) {
+          return tag_invoke(*this, (_Query&&) __query);
+        } else if constexpr (std::derived_from<_Query, forwarding_query_t>) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+    };
+  }
+  inline constexpr __forwarding_query::forwarding_query_t forwarding_query{};
+  using __forwarding_query::forwarding_query_t;
 
   // [execution.schedulers.queries], scheduler queries
   namespace __scheduler_queries {
@@ -219,6 +242,7 @@ namespace stdexec {
         constexpr auto operator()(const _EnvProvider& __with_env) const
           noexcept(nothrow_tag_invocable<get_env_t, const _EnvProvider&>)
           -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
+          static_assert(queryable<tag_invoke_result_t<get_env_t, const _EnvProvider&> >);
           return tag_invoke(*this, __with_env);
         }
     };
@@ -255,6 +279,7 @@ namespace stdexec {
 
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
       void operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
@@ -268,6 +293,7 @@ namespace stdexec {
 
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
       void operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
@@ -281,6 +307,7 @@ namespace stdexec {
 
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
       void operator()(_Receiver&& __rcvr) const noexcept {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
         (void) tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
@@ -313,6 +340,12 @@ namespace stdexec {
         }
       }
   } __try_call {};
+
+  namespace __as_awaitable {
+    struct as_awaitable_t;
+  }
+  using __as_awaitable::as_awaitable_t;
+  extern const as_awaitable_t as_awaitable;
 
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
@@ -347,11 +380,31 @@ namespace stdexec {
       __types<> __test(...);
     #endif
 
+    // To be kept in sync with the promise type used in __connect_awaitable
+    template <class _Env>
+      struct __env_promise {
+        template <class _Ty>
+          _Ty&& await_transform(_Ty&& __value) noexcept {
+            return (_Ty&&) __value;
+          }
+
+        template <class _Ty>
+            requires tag_invocable<as_awaitable_t, _Ty, __env_promise&>
+          auto await_transform(_Ty&& __value)
+            noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, __env_promise&>)
+            -> tag_invoke_result_t<as_awaitable_t, _Ty, __env_promise&> {
+            return tag_invoke(as_awaitable, (_Ty&&) __value, *this);
+          }
+
+        friend auto tag_invoke(get_env_t, const __env_promise&) noexcept
+          -> const _Env&;
+      };
+
     // BUGBUG not to spec!
     struct __dependent {
 #if !_STD_NO_COROUTINES_
       bool await_ready();
-      void await_suspend(const __coro::coroutine_handle<no_env>&);
+      void await_suspend(const __coro::coroutine_handle<__env_promise<no_env>>&);
       __dependent await_resume();
 #endif
     };
@@ -375,6 +428,8 @@ namespace stdexec {
 #endif
   } // namespace __compl_sigs
   using __compl_sigs::__completion_signature;
+  using __compl_sigs::__env_promise;
+  using no_env_promise = __env_promise<no_env>;
 
   template <same_as<no_env>>
     using dependent_completion_signatures =
@@ -413,6 +468,37 @@ namespace stdexec {
             (_TaggedTuple*) nullptr,
             (_Variant*) nullptr))>;
   } // namespace __compl_sigs
+
+  /////////////////////////////////////////////////////////////////////////////
+  // get_attrs
+  namespace __attrs {
+    struct __empty_attrs {
+      using __t = __empty_attrs;
+      using __id = __empty_attrs;
+    };
+
+    struct get_attrs_t {
+      template <class _Sender>
+        requires tag_invocable<get_attrs_t, const _Sender&>
+        constexpr auto operator()(const _Sender& __sender) const
+          noexcept(nothrow_tag_invocable<get_attrs_t, const _Sender&>)
+          -> tag_invoke_result_t<get_attrs_t, const _Sender&> {
+          static_assert(queryable<tag_invoke_result_t<get_attrs_t, const _Sender&>>);
+          return tag_invoke(*this, __sender);
+        }
+
+      template <class _Sender>
+        requires (!tag_invocable<get_attrs_t, const _Sender&>) &&
+          __awaitable<_Sender, no_env_promise>
+        constexpr auto operator()(const _Sender& __sender) const
+          noexcept -> __empty_attrs {
+          return {};
+        }
+    };
+  } // namespace __attrs
+  inline constexpr __attrs::get_attrs_t get_attrs{};
+  using __attrs::get_attrs_t;
+  using __attrs::__empty_attrs;
 
   template <class _Ty>
     concept __is_completion_signatures =
@@ -531,12 +617,13 @@ namespace stdexec {
             return __mbind_front_q<tag_invoke_result_t, get_completion_signatures_t>{};
           } else if constexpr (__with_member_alias<_Sender>) {
             return __q<__member_alias_t>{};
-          } else if constexpr (__awaitable<_Sender, _Env>) {
-            using _Result = __await_result_t<_Sender, _Env>;
+          } else if constexpr (__awaitable<_Sender, __env_promise<_Env>>) {
+            using _Result = __await_result_t<_Sender, __env_promise<_Env>>;
             if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
               return __mconst<dependent_completion_signatures<no_env>>{};
             } else {
-              return __mconst<
+              return
+                __mconst<
                   completion_signatures<
                   // set_value_t() or set_value_t(T)
                   __minvoke<__remove<void, __qf<set_value_t>>, _Result>,
@@ -551,7 +638,7 @@ namespace stdexec {
       template <class _Sender, class _Env = no_env>
           requires (__with_tag_invoke<_Sender, _Env> ||
                     __with_member_alias<_Sender> ||
-                    __awaitable<_Sender, _Env>)
+                    __awaitable<_Sender, __env_promise<_Env>>)
         constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept
           -> __minvoke<__impl_fn<_Sender, _Env>, _Sender, _Env> {
           return {};
@@ -686,7 +773,7 @@ namespace stdexec {
     using __count_of =
       __compl_sigs::__for_all_sigs<
         completion_signatures_of_t<_Sender, _Env>,
-        __q<__front>,
+        __q<__mfront>,
         __mcount<_Tag>>;
 
   template <class _Tag, class _Sender, class _Env = no_env>
@@ -701,11 +788,11 @@ namespace stdexec {
 
   template <class _Sender, class _Env = no_env>
     using __single_sender_value_t =
-      __value_types_of_t<_Sender, _Env, __single_or<void>, __q<__single>>;
+      __value_types_of_t<_Sender, _Env, __msingle_or<void>, __q<__msingle>>;
 
   template <class _Sender, class _Env = no_env>
     using __single_value_variant_sender_t =
-      value_types_of_t<_Sender, _Env, __types, __single>;
+      value_types_of_t<_Sender, _Env, __types, __msingle>;
 
   template <class _Sender, class _Env = no_env>
     concept __single_typed_sender =
@@ -873,6 +960,7 @@ namespace stdexec {
       template <class _Scheduler>
         requires tag_invocable<schedule_t, _Scheduler> &&
           sender<tag_invoke_result_t<schedule_t, _Scheduler>>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
       auto operator()(_Scheduler&& __sched) const
         noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
         return tag_invoke(schedule_t{}, (_Scheduler&&) __sched);
@@ -977,6 +1065,10 @@ namespace stdexec {
       concept __allocator = true;
 
     struct get_scheduler_t {
+      friend constexpr bool tag_invoke(
+        forwarding_query_t, const get_scheduler_t&) noexcept {
+        return true;
+      }
       template <__none_of<no_env> _Env>
         requires tag_invocable<get_scheduler_t, const _Env&> &&
           scheduler<tag_invoke_result_t<get_scheduler_t, const _Env&>>
@@ -989,6 +1081,10 @@ namespace stdexec {
     };
 
     struct get_delegatee_scheduler_t {
+      friend constexpr bool tag_invoke(
+        forwarding_query_t, const get_delegatee_scheduler_t&) noexcept {
+        return true;
+      }
       template <class _T>
         requires nothrow_tag_invocable<get_delegatee_scheduler_t, __cref_t<_T>> &&
           scheduler<tag_invoke_result_t<get_delegatee_scheduler_t, __cref_t<_T>>>
@@ -1001,6 +1097,10 @@ namespace stdexec {
     };
 
     struct get_allocator_t {
+      friend constexpr bool tag_invoke(
+        forwarding_query_t, const get_allocator_t&) noexcept {
+        return true;
+      }
       template <__none_of<no_env> _Env>
         requires nothrow_tag_invocable<get_allocator_t, const _Env&> &&
           __allocator<tag_invoke_result_t<get_allocator_t, const _Env&>>
@@ -1013,6 +1113,10 @@ namespace stdexec {
     };
 
     struct get_stop_token_t {
+      friend constexpr bool tag_invoke(
+        forwarding_query_t, const get_stop_token_t&) noexcept {
+        return true;
+      }
       template <__none_of<no_env> _Env>
       never_stop_token operator()(const _Env&) const noexcept {
         return {};
@@ -1076,12 +1180,6 @@ namespace stdexec {
       };
 
 #if !_STD_NO_COROUTINES_
-  namespace __as_awaitable {
-    struct as_awaitable_t;
-  }
-  using __as_awaitable::as_awaitable_t;
-  extern const as_awaitable_t as_awaitable;
-
   /////////////////////////////////////////////////////////////////////////////
   // __connect_awaitable_
   namespace __connect_awaitable_ {
@@ -1500,6 +1598,9 @@ namespace stdexec {
         friend constexpr bool tag_invoke(forwarding_sender_query_t, const get_completion_scheduler_t &) noexcept {
           return true;
         }
+        friend constexpr bool tag_invoke(forwarding_query_t, const get_completion_scheduler_t&) noexcept {
+          return true;
+        }
 
         template <sender _Sender>
           requires tag_invocable<get_completion_scheduler_t, const _Sender&> &&
@@ -1544,6 +1645,9 @@ namespace stdexec {
     template <class _Value>
       using __expected_t =
         std::variant<std::monostate, __value_or_void_t<_Value>, std::exception_ptr>;
+    template <class _Promise>
+      using __env_t =
+        __minvoke<__with_default<__q<__call_result_t>, __empty_env>, get_env_t, _Promise>;
 
     template <class _Value>
       struct __receiver_base {
@@ -1586,18 +1690,21 @@ namespace stdexec {
           }
 
           // Forward get_env query to the coroutine promise
-          friend auto tag_invoke(get_env_t, const __t& __self)
-            -> env_of_t<_Promise> {
-            auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
-              __self.__continuation_.address());
-            return get_env(__continuation.promise());
+          friend __env_t<_Promise&> tag_invoke(get_env_t, const __t& __self) {
+            if constexpr (__callable<get_env_t, _Promise&>) {
+              auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
+                __self.__continuation_.address());
+              return get_env(__continuation.promise());
+            } else {
+              return __empty_env{};
+            }
           }
         };
       };
 
     template <class _Sender, class _Promise>
       using __value_t =
-        __single_sender_value_t<_Sender, env_of_t<_Promise>>;
+        __single_sender_value_t<_Sender, __env_t<_Promise>>;
 
     template <class _Sender, class _Promise>
       using __receiver_t =
@@ -1633,7 +1740,7 @@ namespace stdexec {
       struct __sender_awaitable {
         using _Promise = stdexec::__t<_PromiseId>;
         using _Sender = stdexec::__t<_SenderId>;
-        using __value = __value_t<stdexec::__t<_SenderId>, stdexec::__t<_PromiseId>>;
+        using __value = __value_t<_Sender, _Promise>;
         struct __t : __sender_awaitable_base<__value> {
           __t(_Sender&& sndr, __coro::coroutine_handle<_Promise> __hcoro)
               noexcept(__nothrow_connectable<_Sender, __receiver>)
@@ -1653,14 +1760,9 @@ namespace stdexec {
       using __sender_awaitable_t =
         __t<__sender_awaitable<__id<_Promise>, __id<_Sender>>>;
 
-    template <class _T, class _Promise>
-      concept __custom_tag_invoke_awaiter =
-        tag_invocable<as_awaitable_t, _T, _Promise&> &&
-        __awaitable<tag_invoke_result_t<as_awaitable_t, _T, _Promise&>, _Promise>;
-
     template <class _Sender, class _Promise>
       concept __awaitable_sender =
-        __single_typed_sender<_Sender, env_of_t<_Promise>> &&
+        __single_typed_sender<_Sender, __env_t<_Promise>> &&
         sender_to<_Sender, __receiver_t<_Sender, _Promise>> &&
         requires (_Promise& __promise) {
           { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;
@@ -1669,9 +1771,9 @@ namespace stdexec {
     struct as_awaitable_t {
       template <class _T, class _Promise>
       static constexpr bool __is_noexcept() noexcept {
-        if constexpr (__custom_tag_invoke_awaiter<_T, _Promise>) {
+        if constexpr (tag_invocable<as_awaitable_t, _T, _Promise&>) {
           return nothrow_tag_invocable<as_awaitable_t, _T, _Promise&>;
-        } else if constexpr (__awaitable<_T>) {
+        } else if constexpr (__awaitable<_T>) { // NOT __awaitable<_T, _Promise> !!
           return true;
         } else if constexpr (__awaitable_sender<_T, _Promise>) {
           using _Sender = __sender_awaitable_t<_Promise, _T>;
@@ -1683,9 +1785,11 @@ namespace stdexec {
       template <class _T, class _Promise>
       decltype(auto) operator()(_T&& __t, _Promise& __promise) const
           noexcept(__is_noexcept<_T, _Promise>()) {
-        if constexpr (__custom_tag_invoke_awaiter<_T, _Promise>) {
+        if constexpr (tag_invocable<as_awaitable_t, _T, _Promise&>) {
+          using _Result = tag_invoke_result_t<as_awaitable_t, _T, _Promise&>;
+          static_assert(__awaitable<_Result, _Promise>);
           return tag_invoke(*this, (_T&&) __t, __promise);
-        } else if constexpr (__awaitable<_T>) {
+        } else if constexpr (__awaitable<_T>) { // NOT __awaitable<_T, _Promise> !!
           return (_T&&) __t;
         } else if constexpr (__awaitable_sender<_T, _Promise>) {
           auto __hcoro = __coro::coroutine_handle<_Promise>::from_promise(__promise);
@@ -1868,23 +1972,29 @@ namespace stdexec {
 
     // When looking for user-defined customizations of start_detached, these
     // are the signatures to test against, in order:
-    template <class _Sender, class _Env>
-      using __cust_sigs =
-        __msignatures<
-          tag_invoke_t(start_detached_t, _Sender),
-          tag_invoke_t(start_detached_t, _Sender, _Env),
-          tag_invoke_t(start_detached_t, get_scheduler_t(_Env&), _Sender),
-          tag_invoke_t(start_detached_t, get_scheduler_t(_Env&), _Sender, _Env)>;
+    using _Sender = __0;
+    using _Env = __1;
+    using __cust_sigs =
+      __types<
+        tag_invoke_t(start_detached_t, _Sender),
+        tag_invoke_t(start_detached_t, _Sender, _Env),
+        tag_invoke_t(start_detached_t, get_scheduler_t(_Env&), _Sender),
+        tag_invoke_t(start_detached_t, get_scheduler_t(_Env&), _Sender, _Env)>;
 
     template <class _Sender, class _Env>
       inline constexpr bool __is_start_detached_customized =
-        __v<__many_well_formed<__cust_sigs<_Sender, _Env>>>;
+        __minvocable<__which<__cust_sigs>, _Sender, _Env>;
+
+    struct __submit_detached {
+      template <class _Sender, class _Env>
+        void operator()(_Sender&& __sndr, _Env&& __env) const {
+          __submit((_Sender&&) __sndr, __detached_receiver_t<_Env>{(_Env&&) __env});
+        }
+    };
 
     template <class _Sender, class _Env>
-      using __which_t = __mwhich_t<__cust_sigs<_Sender, _Env>, __mconstruct<void, false>()>;
-
-    template <class _Sender, class _Env>
-      using __which_i = __mwhich_i<__cust_sigs<_Sender, _Env>, __mconstruct<void, false>()>;
+      using __dispatcher_for =
+        __make_dispatcher<__cust_sigs, __mconst<__submit_detached>, _Sender, _Env>;
 
     struct start_detached_t {
       template <sender _Sender, class _Env = __empty_env>
@@ -1892,23 +2002,11 @@ namespace stdexec {
             sender_to<_Sender, __detached_receiver_t<_Env>> ||
             __is_start_detached_customized<_Sender, _Env>
         void operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
-          noexcept(__mnoexcept_v<__which_t<_Sender, _Env>>) {
-          // The selected customization should return void
-          static_assert(same_as<void, __mtypeof<__which_t<_Sender, _Env>>>);
-          constexpr auto __idx = __v<__which_i<_Sender, _Env>>;
-          // Dispatch to the correct implementation:
-          if constexpr (__idx == 0) {
-            tag_invoke(start_detached_t{}, (_Sender&&) __sndr);
-          } else if constexpr (__idx == 1) {
-            tag_invoke(start_detached_t{}, (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 2) {
-            tag_invoke(start_detached_t{}, get_scheduler(__env), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 3) {
-            auto __sched = get_scheduler(__env);
-            tag_invoke(start_detached_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else {
-            __submit((_Sender&&) __sndr, __detached_receiver_t<_Env>{(_Env&&) __env});
-          }
+          noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>) {
+          using _Dispatcher = __dispatcher_for<_Sender, _Env>;
+          // The selected implementation should return void
+          static_assert(same_as<void, __call_result_t<_Dispatcher, _Sender, _Env>>);
+          _Dispatcher{}((_Sender&&) __sndr, (_Env&&) __env);
         }
     };
   } // namespace __start_detached
@@ -1988,6 +2086,7 @@ namespace stdexec {
 
     inline constexpr struct __just_t {
       template <__movable_value... _Ts>
+        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         __t<__sender<decay_t<_Ts>...>> operator()(_Ts&&... __ts) const
           noexcept((std::is_nothrow_constructible_v<decay_t<_Ts>, _Ts> &&...)) {
           return {{{(_Ts&&) __ts...}}};
@@ -1996,6 +2095,7 @@ namespace stdexec {
 
     inline constexpr struct __just_error_t {
       template <__movable_value _Error>
+        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         __t<__error_sender<decay_t<_Error>>> operator()(_Error&& __err) const
           noexcept(std::is_nothrow_constructible_v<decay_t<_Error>, _Error>) {
           return {{{(_Error&&) __err}}};
@@ -2003,6 +2103,7 @@ namespace stdexec {
     } just_error {};
 
     inline constexpr struct __just_stopped_t {
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
       __stopped_sender operator()() const noexcept {
         return {{}};
       }
@@ -2137,6 +2238,7 @@ namespace stdexec {
     // A derived-to-base cast that works even when the base is not
     // accessible from derived.
     template <class _T, class _U>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
       __copy_cvref_t<_U&&, _T> __c_cast(_U&& u) noexcept requires __decays_to<_T, _T> {
         static_assert(std::is_reference_v<__copy_cvref_t<_U&&, _T>>);
         static_assert(std::is_base_of_v<_T, std::remove_reference_t<_U>>);
@@ -2163,8 +2265,13 @@ namespace stdexec {
           [[no_unique_address]] _Base __base_;
 
          protected:
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           _Base& base() & noexcept { return __base_; }
+
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           const _Base& base() const & noexcept { return __base_; }
+
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           _Base&& base() && noexcept { return (_Base&&) __base_; }
         };
       };
@@ -2181,6 +2288,7 @@ namespace stdexec {
     // but 'int(type::existing_member_function)' is an error (as desired).
     #define _DISPATCH_MEMBER(_TAG) \
       template <class _Self, class... _Ts> \
+        STDEXEC_DETAIL_CUDACC_HOST_DEVICE \
         static auto __call_ ## _TAG(_Self&& __self, _Ts&&... __ts) \
           noexcept(noexcept(((_Self&&) __self)._TAG((_Ts&&) __ts...))) -> \
           decltype(((_Self&&) __self)._TAG((_Ts&&) __ts...)) { \
@@ -2229,6 +2337,7 @@ namespace stdexec {
             using __base_t = __minvoke<__get_base_t, _D&&>;
 
           template <class _D>
+            STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
             static __base_t<_D> __get_base(_D&& __self) noexcept {
               if constexpr (__has_base) {
                 return __c_cast<__t>((_D&&) __self).base();
@@ -2238,6 +2347,7 @@ namespace stdexec {
             }
 
           template <same_as<set_value_t> _SetValue, class... _As>
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept
             -> decltype(_CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...)) {
             static_assert(noexcept(_CALL_MEMBER(set_value, (_Derived &&) __self, (_As&&) __as...)));
@@ -2247,11 +2357,13 @@ namespace stdexec {
           template <same_as<set_value_t> _SetValue, class _D = _Derived, class... _As>
             requires _MISSING_MEMBER(_D, set_value) &&
               tag_invocable<set_value_t, __base_t<_D>, _As...>
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
             stdexec::set_value(__get_base((_D&&) __self), (_As&&) __as...);
           }
 
           template <same_as<set_error_t> _SetError, class _Error>
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept
             -> decltype(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err)) {
             static_assert(noexcept(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err)));
@@ -2261,11 +2373,13 @@ namespace stdexec {
           template <same_as<set_error_t> _SetError, class _Error, class _D = _Derived>
             requires _MISSING_MEMBER(_D, set_error) &&
               tag_invocable<set_error_t, __base_t<_D>, _Error>
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend void tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
             stdexec::set_error(__get_base((_Derived&&) __self), (_Error&&) __err);
           }
 
           template <same_as<set_stopped_t> _SetStopped, class _D = _Derived>
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto tag_invoke(_SetStopped, _Derived&& __self) noexcept
             -> decltype(_CALL_MEMBER(set_stopped, (_D&&) __self)) {
             static_assert(noexcept(_CALL_MEMBER(set_stopped, (_Derived&&) __self)));
@@ -2275,12 +2389,14 @@ namespace stdexec {
           template <same_as<set_stopped_t> _SetStopped, class _D = _Derived>
             requires _MISSING_MEMBER(_D, set_stopped) &&
               tag_invocable<set_stopped_t, __base_t<_D>>
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend void tag_invoke(_SetStopped, _Derived&& __self) noexcept {
             stdexec::set_stopped(__get_base((_Derived&&) __self));
           }
 
           // Pass through the get_env receiver query
           template <same_as<get_env_t> _GetEnv, class _D = _Derived>
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto tag_invoke(_GetEnv, const _Derived& __self)
             -> decltype(_CALL_MEMBER(get_env, (const _D&) __self)) {
             return _CALL_MEMBER(get_env, __self);
@@ -2288,6 +2404,7 @@ namespace stdexec {
 
           template <same_as<get_env_t> _GetEnv, class _D = _Derived>
             requires _MISSING_MEMBER(_D, get_env)
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto tag_invoke(_GetEnv, const _Derived& __self)
             -> __call_result_t<get_env_t, __base_t<const _D&>> {
             return stdexec::get_env(__get_base(__self));
@@ -2473,6 +2590,18 @@ namespace stdexec {
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
+
+          // TODO: Until all senders provide get_attrs, the senders returned by
+          // sender adaptors define the tag_invoke(get_attrs) as a constrainted
+          // templated function. We can remove this when all senders provide
+          // get_attrs.
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
+            return get_attrs(__self.__sndr_);
+          }
         };
       };
 
@@ -2590,6 +2719,13 @@ namespace stdexec {
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _Error> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_Error&&) __err);
           }
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
+            return get_attrs(__self.__sndr_);
+          }
         };
       };
 
@@ -2703,6 +2839,13 @@ namespace stdexec {
             noexcept(__nothrow_callable<_Tag, const _Sender&>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&> {
             return ((_Tag&&) __tag)(__self.__sndr_);
+          }
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
+            return get_attrs(__self.__sndr_);
           }
         };
       };
@@ -2847,6 +2990,13 @@ namespace stdexec {
             noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
+          }
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
+            return get_attrs(__self.__sndr_);
           }
         };
       };
@@ -3145,19 +3295,20 @@ namespace stdexec {
 
     // When looking for user-defined customizations of split, these
     // are the signatures to test against, in order:
-    template <class _Sender, class _Env>
-      using __cust_sigs =
-        __msignatures<
-          tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender),
-          tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender, _Env),
-          tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender),
-          tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender, _Env),
-          tag_invoke_t(split_t, _Sender),
-          tag_invoke_t(split_t, _Sender, _Env)>;
+    using _Sender = __0;
+    using _Env = __1;
+    using __cust_sigs =
+      __types<
+        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender),
+        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender, _Env),
+        tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender),
+        tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender, _Env),
+        tag_invoke_t(split_t, _Sender),
+        tag_invoke_t(split_t, _Sender, _Env)>;
 
     template <class _Sender, class _Env>
       inline constexpr bool __is_split_customized =
-        __v<__many_well_formed<__cust_sigs<_Sender, _Env>>>;
+        __minvocable<__which<__cust_sigs>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
       using __sender_t = __t<__sender<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
@@ -3166,14 +3317,8 @@ namespace stdexec {
       using __receiver_t = __t<__receiver<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
 
     template <class _Sender, class _Env>
-      using __construct_sender =
-        __mconstruct<__sender_t<_Sender, _Env>>(_Sender, _Env);
-
-    template <class _Sender, class _Env>
-      using __which_t = __mwhich_t<__cust_sigs<_Sender, _Env>, __construct_sender<_Sender, _Env>>;
-
-    template <class _Sender, class _Env>
-      using __which_i = __mwhich_i<__cust_sigs<_Sender, _Env>, __construct_sender<_Sender, _Env>>;
+      using __dispatcher_for =
+        __make_dispatcher<__cust_sigs, __mconstructor_for<__sender_t>, _Sender, _Env>;
 
     struct split_t {
       template <sender _Sender, class _Env = __empty_env>
@@ -3182,28 +3327,9 @@ namespace stdexec {
              sender_to<_Sender&, __receiver_t<_Sender, _Env>>) ||
             __is_split_customized<_Sender, _Env>
         auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
-          noexcept(__mnoexcept_v<__which_t<_Sender, _Env>>)
-          -> __mtypeof<__which_t<_Sender, _Env>> {
-          constexpr auto __idx = __v<__which_i<_Sender, _Env>>;
-          // Dispatch to the correct implementation:
-          if constexpr (__idx == 0) {
-            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
-            return tag_invoke(split_t{}, std::move(__sched), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 1) {
-            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
-            return tag_invoke(split_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 2) {
-            return tag_invoke(split_t{}, get_scheduler(__env), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 3) {
-            auto __sched = get_scheduler(__env);
-            return tag_invoke(split_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 4) {
-            return tag_invoke(split_t{}, (_Sender&&) __sndr);
-          } else if constexpr (__idx == 5) {
-            return tag_invoke(split_t{}, (_Sender&&) __sndr, (_Env&&) __env);
-          } else {
-            return __sender_t<_Sender, _Env>{(_Sender&&) __sndr, (_Env&&) __env};
-          }
+          noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
+          -> __call_result_t<__dispatcher_for<_Sender, _Env>, _Sender, _Env> {
+          return __dispatcher_for<_Sender, _Env>{}((_Sender&&) __sndr, (_Env&&) __env);
         }
 
       __binder_back<split_t> operator()() const {
@@ -3489,19 +3615,20 @@ namespace stdexec {
 
     // When looking for user-defined customizations of split, these
     // are the signatures to test against, in order:
-    template <class _Sender, class _Env>
-      using __cust_sigs =
-        __msignatures<
-          tag_invoke_t(ensure_started_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender),
-          tag_invoke_t(ensure_started_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender, _Env),
-          tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender),
-          tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender, _Env),
-          tag_invoke_t(ensure_started_t, _Sender),
-          tag_invoke_t(ensure_started_t, _Sender, _Env)>;
+    using _Sender = __0;
+    using _Env = __1;
+    using __cust_sigs =
+      __types<
+        tag_invoke_t(ensure_started_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender),
+        tag_invoke_t(ensure_started_t, get_completion_scheduler_t<set_value_t>(_Sender&), _Sender, _Env),
+        tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender),
+        tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender, _Env),
+        tag_invoke_t(ensure_started_t, _Sender),
+        tag_invoke_t(ensure_started_t, _Sender, _Env)>;
 
     template <class _Sender, class _Env>
       inline constexpr bool __is_ensure_started_customized =
-        __v<__many_well_formed<__cust_sigs<_Sender, _Env>>>;
+        __minvocable<__which<__cust_sigs>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
       using __sender_t = __t<__sender<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
@@ -3510,14 +3637,8 @@ namespace stdexec {
       using __receiver_t = __t<__receiver<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
 
     template <class _Sender, class _Env>
-      using __construct_sender =
-        __mconstruct<__sender_t<_Sender, _Env>>(_Sender, _Env);
-
-    template <class _Sender, class _Env>
-      using __which_t = __mwhich_t<__cust_sigs<_Sender, _Env>, __construct_sender<_Sender, _Env>>;
-
-    template <class _Sender, class _Env>
-      using __which_i = __mwhich_i<__cust_sigs<_Sender, _Env>, __construct_sender<_Sender, _Env>>;
+      using __dispatcher_for =
+        __make_dispatcher<__cust_sigs, __mconstructor_for<__sender_t>, _Sender, _Env>;
 
     struct ensure_started_t {
       template <sender _Sender, class _Env = __empty_env>
@@ -3526,30 +3647,12 @@ namespace stdexec {
              sender_to<_Sender&, __receiver_t<_Sender, _Env>>) ||
             __is_ensure_started_customized<_Sender, _Env>
         auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
-          noexcept(__mnoexcept_v<__which_t<_Sender, _Env>>)
-          { //-> __mtypeof<__which_t<_Sender, _Env>> {
-          constexpr auto __idx = __v<__which_i<_Sender, _Env>>;
-          // Dispatch to the correct implementation:
-          if constexpr (__idx == 0) {
-            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
-            return tag_invoke(ensure_started_t{}, std::move(__sched), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 1) {
-            auto __sched = get_completion_scheduler<set_value_t>(__sndr);
-            return tag_invoke(ensure_started_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 2) {
-            return tag_invoke(ensure_started_t{}, get_scheduler(__env), (_Sender&&) __sndr);
-          } else if constexpr (__idx == 3) {
-            auto __sched = get_scheduler(__env);
-            return tag_invoke(ensure_started_t{}, std::move(__sched), (_Sender&&) __sndr, (_Env&&) __env);
-          } else if constexpr (__idx == 4) {
-            return tag_invoke(ensure_started_t{}, (_Sender&&) __sndr);
-          } else if constexpr (__idx == 5) {
-            return tag_invoke(ensure_started_t{}, (_Sender&&) __sndr, (_Env&&) __env);
-          } else {
-            return __sender_t<_Sender, _Env>{(_Sender&&) __sndr, (_Env&&) __env};
-          }
+          noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
+          -> __call_result_t<__dispatcher_for<_Sender, _Env>, _Sender, _Env> {
+          return __dispatcher_for<_Sender, _Env>{}((_Sender&&) __sndr, (_Env&&) __env);
         }
 
+      // BUGBUG this will never match
       template <class _SenderId, class _EnvId>
         __t<__sender<_SenderId, _EnvId>> operator()(__t<__sender<_SenderId, _EnvId>> __sndr) const {
           return std::move(__sndr);
@@ -3683,7 +3786,7 @@ namespace stdexec {
         typename __receiver<_SenderId, _ReceiverId, _Fun, _Let>::__operation_base_t;
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
-      struct __operation { 
+      struct __operation {
         using _Sender = stdexec::__t<_SenderId>;
 
         struct __t : __operation_base<_SenderId, _ReceiverId, _Fun, _Let> {
@@ -3755,6 +3858,13 @@ namespace stdexec {
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
+            return get_attrs(__self.__sndr_);
+          }
 
           template <__decays_to<__t> _Self, class _Env>
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
@@ -3911,6 +4021,13 @@ namespace stdexec {
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
+            return get_attrs(__self.__sndr_);
+          }
 
           template <class... _Tys>
               requires (sizeof...(_Tys) == 1)
@@ -4592,6 +4709,13 @@ namespace stdexec {
             -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
             return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
           }
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
+            return get_attrs(__self.__sndr_);
+          }
 
           template <class...>
             using __value_t = completion_signatures<>;
@@ -4742,6 +4866,13 @@ namespace stdexec {
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
+          template <same_as<get_attrs_t> _Tag>
+              requires __callable<_Tag, const _Sender&>
+          friend auto tag_invoke(_Tag, const __t& __self)
+            noexcept(__nothrow_callable<_Tag, const _Sender&>)
+            -> __call_result_t<_Tag, const _Sender&> {
+            return get_attrs(__self.__sndr_);
+          }
 
           template <class _Env>
             friend auto tag_invoke(get_completion_signatures_t, __t&&, _Env) ->
@@ -4817,7 +4948,7 @@ namespace stdexec {
     template <class _Sender, class _Env>
       concept __max1_sender =
         sender<_Sender, _Env> &&
-        __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __single_or<void>>;
+        __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
 
     template <class _Env, class _Sender>
       using __single_values_of_t =
@@ -4825,7 +4956,7 @@ namespace stdexec {
           _Sender,
           _Env,
           __transform<__q<__decay_rvalue_ref>, __q<__types>>,
-          __q<__single>>;
+          __q<__msingle>>;
 
     template <class _Env, class... _Senders>
       using __set_values_sig_t =
@@ -4852,36 +4983,36 @@ namespace stdexec {
             __mconst<completion_signatures<>>,
             __mcompose<__q<completion_signatures>, __qf<set_error_t>, __q<__decay_rvalue_ref>>>...>;
 
-    struct __tie {
+    struct __tie_fn {
       template <class... _Ty>
         std::tuple<_Ty&...> operator()(_Ty&... __vals) noexcept {
           return std::tuple<_Ty&...>{__vals...};
         }
     };
 
+    template <class _Tag, class _Receiver>
+      struct __complete_fn {
+        _Receiver& __rcvr_;
+        __complete_fn(_Tag, _Receiver& __rcvr) noexcept
+          : __rcvr_(__rcvr)
+        {}
+        template <class... _Ts>
+          void operator()(_Ts&... __ts) const noexcept {
+            _Tag{}((_Receiver&&) __rcvr_, (_Ts&&) __ts...);
+          }
+      };
+
     template <class _Receiver, class _ValuesTuple>
       void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
         std::apply(
           [&](auto&... __opt_vals) noexcept -> void {
             std::apply(
-              [&](auto&... __all_vals) noexcept -> void {
-                stdexec::set_value(
-                    (_Receiver&&) __rcvr, std::move(__all_vals)...);
-              },
-              std::tuple_cat(std::apply(__tie{}, *__opt_vals)...)
+              __complete_fn{set_value, __rcvr},
+              std::tuple_cat(std::apply(__tie_fn{}, *__opt_vals)...)
             );
           },
           __values
         );
-      }
-
-    template <class _Receiver, class _ErrorsVariant>
-      void __set_error(_Receiver& __rcvr, _ErrorsVariant& __errors) noexcept {
-        std::visit(
-          [&](auto& __err) noexcept {
-            stdexec::set_error((_Receiver&&) __rcvr, std::move(__err));
-          },
-          __errors);
       }
 
     template <class _ReceiverId, class _ValuesTuple, class _ErrorsVariant>
@@ -4906,7 +5037,7 @@ namespace stdexec {
             }
             break;
           case __error:
-            __when_all::__set_error(__recvr_, __errors_);
+            std::visit(__complete_fn{set_error, __recvr_}, __errors_);
             break;
           case __stopped:
             stdexec::set_stopped((_Receiver&&) __recvr_);
@@ -4999,7 +5130,7 @@ namespace stdexec {
           _Sender,
           __env_t<__id<_Env>>,
           __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
-          __q<__single>>;
+          __q<__msingle>>;
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
       struct __traits_ {
@@ -5166,6 +5297,10 @@ namespace stdexec {
               -> __completions_t<_Self, _Env>
                 requires true;
 
+          friend __empty_attrs tag_invoke(get_attrs_t, const __t& __self) noexcept {
+            return {};
+          }
+
           std::tuple<stdexec::__t<_SenderIds>...> __sndrs_;
         };
       };
@@ -5302,6 +5437,10 @@ namespace stdexec {
         template <__none_of<no_env> _Env>
           friend auto tag_invoke(get_completion_signatures_t, __sender, _Env)
             -> __completions_t<_Env>;
+
+        friend __empty_attrs tag_invoke(get_attrs_t, const __t& __self) noexcept {
+          return {};
+        }
       };
 
     struct __read_t {
@@ -5360,7 +5499,7 @@ namespace stdexec {
           _Sender,
           __env,
           __transform<__q<decay_t>, _Continuation>,
-          __q<__single>>;
+          __q<__msingle>>;
 
     template <stdexec::sender<__env> _Sender>
       using __sync_wait_result_t =

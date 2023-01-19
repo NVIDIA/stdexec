@@ -16,6 +16,7 @@
 #pragma once
 
 #include "__detail/__meta.hpp"
+#include "__detail/__config.hpp"
 #include "concepts.hpp"
 
 #include <functional>
@@ -100,6 +101,7 @@ namespace stdexec {
     struct tag_invoke_t {
       template <class _Tag, class... _Args>
           requires tag_invocable<_Tag, _Args...>
+        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         constexpr auto operator()(_Tag __tag, _Args&&... __args) const
           noexcept(nothrow_tag_invocable<_Tag, _Args...>)
           -> tag_invoke_result_t<_Tag, _Args...> {

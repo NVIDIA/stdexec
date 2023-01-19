@@ -27,13 +27,13 @@ namespace then {
 template <class Fun, class... As>
   __launch_bounds__(1)
   __global__ void kernel(Fun fn, As... as) {
-    fn(std::move(as)...);
+    ::cuda::std::move(fn)(std::move(as)...);
   }
 
 template <class Fun, class ResultT, class... As>
   __launch_bounds__(1)
   __global__ void kernel_with_result(Fun fn, ResultT* result, As... as) {
-    new (result) ResultT(std::move(fn)(std::move(as)...));
+    new (result) ResultT(::cuda::std::move(fn)(::cuda::std::move(as)...));
   }
 
 template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>

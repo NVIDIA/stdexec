@@ -47,7 +47,7 @@ namespace schedule_from {
           storage->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&)as...);
 
           visit([&](auto& tpl) noexcept {
-            apply([&](auto tag, auto&... tas) noexcept {
+            ::cuda::std::apply([&](auto tag, auto&... tas) noexcept {
               self.operation_state_.template propagate_completion_signal(tag, tas...);
             }, tpl);
           }, *storage);

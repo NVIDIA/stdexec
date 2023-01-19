@@ -134,15 +134,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         task_t *task_{nullptr}; 
         cudaEvent_t event_;
         inner_op_state_t op_state2_;
-        ::cuda::std::atomic_flag started_;
+        ::cuda::std::atomic_flag started_{};
 
         explicit sh_state_t(Sender& sndr, context_state_t context_state)
           requires (stream_sender<Sender>)
           : context_state_(context_state)
           , stream_(create_stream(status_, context_state_))
           , data_(malloc_managed<variant_t>(status_))
-          , op_state2_(stdexec::connect((Sender&&) sndr, inner_receiver_t{*this}))
-          , started_(ATOMIC_FLAG_INIT) {
+          , op_state2_(stdexec::connect((Sender&&) sndr, inner_receiver_t{*this})) {
           if (status_ == cudaSuccess) {
             status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_));
           }
@@ -160,8 +159,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                   make_env(), 
                   data_, 
                   task_, 
-                  context_state.hub_->producer()})) 
-          , started_(ATOMIC_FLAG_INIT) {
+                  context_state.hub_->producer()})) {
         }
 
         ~sh_state_t() {
@@ -225,7 +223,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               noexcept(std::is_nothrow_move_constructible_v<Receiver>)
             : operation_base_t{nullptr, notify}
             , operation_state_base_t<ReceiverId>((Receiver&&)rcvr, shared_state->context_state_, false)
-            , shared_state_(move(shared_state)) {
+            , shared_state_(std::move(shared_state)) {
           }
           STDEXEC_IMMOVABLE(__t);
 
