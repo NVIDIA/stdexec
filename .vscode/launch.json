@@ -1,0 +1,89 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C++ Tests (lldb)",
+            "type": "lldb",
+            "request": "launch",
+            "stdio": null,
+            "stopOnEntry": false,
+            "terminal": "console",
+            "console": "internalConsole",
+            "sourceLanguages": ["cpp", "cuda"],
+            "internalConsoleOptions": "neverOpen",
+            "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+            "relativePathBase": "${workspaceFolder}/${input:BUILD_DIR}",
+            "program": "${workspaceFolder}/${input:BUILD_DIR}/${input:CXX_TEST_SUITE}",
+            "initCommands": ["settings set target.disable-aslr false"],
+            "args": ["-v", "normal", "${input:CXX_TEST_TAGS}"],
+        },
+        {
+            "name": "CUDA Tests (cuda-gdb)",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "stopAtEntry": false,
+            "breakOnLaunch": false,
+            "internalConsoleOptions": "neverOpen",
+            "program": "${workspaceFolder}/${input:BUILD_DIR}/${input:CUDA_TEST_SUITE}",
+            "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+            "args": "-v normal ${input:CUDA_TEST_TAGS}",
+        },
+    ],
+    "inputs": [
+        {
+            "type": "command",
+            "id": "BUILD_DIR",
+            "command": "shellCommand.execute",
+            "args": {
+                "cwd": "${workspaceFolder}",
+                "description": "The build directory to use",
+                "command": "find . -maxdepth 3 -type f -name CMakeCache.txt -exec dirname {} \\;"
+            }
+        },
+        {
+            "id": "CXX_TEST_SUITE",
+            "type": "command",
+            "command": "shellCommand.execute",
+            "args": {
+                "useFirstResult": true,
+                "description": "Path to Test Suite",
+                "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+                "command": "find . -type f -name test.stdexec"
+            }
+        },
+        {
+            "id": "CUDA_TEST_SUITE",
+            "type": "command",
+            "command": "shellCommand.execute",
+            "args": {
+                "useFirstResult": true,
+                "description": "Path to Test Suite",
+                "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+                "command": "find . -type f -name test.CUDA"
+            }
+        },
+        {
+            "type": "command",
+            "id": "CXX_TEST_TAGS",
+            "command": "shellCommand.execute",
+            "args": {
+                "description": "Select test tags to filter",
+                "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+                "command": "./${input:CXX_TEST_SUITE} --list-tags | tail -n +2 | head -n -2 | tr -s ' '' ' | cut -d' ' -f3",
+            }
+        },
+        {
+            "type": "command",
+            "id": "CUDA_TEST_TAGS",
+            "command": "shellCommand.execute",
+            "args": {
+                "description": "Select test tags to filter",
+                "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+                "command": "./${input:CUDA_TEST_SUITE} --list-tags | tail -n +2 | head -n -2 | tr -s ' '' ' | cut -d' ' -f3",
+            }
+        },
+    ],
+}

@@ -23,7 +23,6 @@ int main(int argc, char *argv[]) {
   if (value(params, "help") || value(params, "h")) {
     std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
               << "\t--write-vtk\n"
-              << "\t--write-results\n"
               << "\t--iterations\n"
               << "\t--N\n"
               << std::endl;
@@ -31,7 +30,6 @@ int main(int argc, char *argv[]) {
   }
 
   const bool write_vtk = value(params, "write-vtk");
-  const bool write_results = value(params, "write-results");
   const std::size_t n_iterations = value(params, "iterations", 100);
   const std::size_t N = value(params, "N", 512);
 

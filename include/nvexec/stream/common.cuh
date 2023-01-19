@@ -54,7 +54,7 @@ namespace nvexec {
   }
 #endif
 
-  inline bool is_on_gpu() {
+  inline STDEXEC_DETAIL_CUDACC_HOST_DEVICE bool is_on_gpu() {
     return get_device_type() == device_type::device;
   }
 }
@@ -263,12 +263,14 @@ namespace nvexec {
                                       stdexec::set_error_t,
                                       stdexec::set_stopped_t> Tag,
                     class... As>
+            STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
             friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
               self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, std::move(as)...);
               self.producer_(self.task_);
             }
 
           template <stdexec::__decays_to<std::exception_ptr> E>
+            STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
             friend void tag_invoke(stdexec::set_error_t, __t&& self, E&& e) noexcept {
               // What is `exception_ptr` but death pending
               self.variant_->template emplace<decayed_tuple<stdexec::set_error_t, cudaError_t>>(stdexec::set_error, cudaErrorUnknown);
@@ -292,7 +294,7 @@ namespace nvexec {
 
     template <class Receiver, class Tag, class... As>
       __launch_bounds__(1) __global__ void continuation_kernel(Receiver receiver, Tag tag, As&&... as) {
-        tag(std::move(receiver), (As&&)as...);
+        tag(::cuda::std::move(receiver), (As&&)as...);
       }
 
     template <class Receiver, class Variant>
@@ -496,7 +498,6 @@ namespace nvexec {
               : operation_state_base_t<OuterReceiverId>((outer_receiver_t&&)out_receiver, context_state, true)
               , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
               , task_(queue::make_host<task_t>(this->status_, context_state.pinned_resource_, receiver_provider(*this), storage_.get(), this->get_stream(), context_state.pinned_resource_).release())
-              , started_(ATOMIC_FLAG_INIT)
               , inner_op_{
                   stdexec::connect(
                       (sender_t&&)sender,
@@ -524,7 +525,7 @@ namespace nvexec {
 
           queue::host_ptr<variant_t> storage_;
           task_t *task_{};
-          ::cuda::std::atomic_flag started_;
+          ::cuda::std::atomic_flag started_{};
 
           inner_op_state_t inner_op_;
         };

@@ -40,6 +40,13 @@ namespace __detail {
 
   __device__ void __atomic_signal_fence_cuda(memory_order __order);
 
+  #if STDEXEC_CLANG()
+  template <class _Tag>
+    __device__ void __atomic_thread_fence_cuda(int __memorder, _Tag);
+
+  __device__ void __atomic_signal_fence_cuda(int __order);
+  #endif
+
   template<class _Type, class _Tag>
     __device__ _Type __atomic_load_n_cuda(const volatile _Type *__ptr, memory_order __memorder, _Tag);
 

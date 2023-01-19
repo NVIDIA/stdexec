@@ -125,7 +125,8 @@ namespace nvexec {
               return self.make_scheduler();
             }
 
-          __t(context_state_t context_state) noexcept
+          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+          inline __t(context_state_t context_state) noexcept
             : context_state_(context_state) {
           }
 
@@ -189,13 +190,13 @@ namespace nvexec {
           return upon_stopped_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&)fun};
         }
 
-      template <stdexec::sender... Senders>
+      template <stream_completing_sender... Senders>
         friend auto
         tag_invoke(stdexec::transfer_when_all_t, const stream_scheduler& sch, Senders&&... sndrs) noexcept {
           return transfer_when_all_sender_th<stream_scheduler, Senders...>(sch.context_state_, (Senders&&)sndrs...);
         }
 
-      template <stdexec::sender... Senders>
+      template <stream_completing_sender... Senders>
         friend auto
         tag_invoke(stdexec::transfer_when_all_with_variant_t, const stream_scheduler& sch, Senders&&... sndrs) noexcept {
           return 
@@ -217,7 +218,8 @@ namespace nvexec {
           return split_sender_th<S>(sch.context_state_, (S&&)sndr);
         }
 
-      friend sender_t tag_invoke(stdexec::schedule_t, const stream_scheduler& self) noexcept {
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      friend inline sender_t tag_invoke(stdexec::schedule_t, const stream_scheduler& self) noexcept {
         return {self.context_state_};
       }
 
@@ -300,9 +302,6 @@ namespace nvexec {
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
         return this == &other;
       }
-        
-    private:
-      std::pmr::memory_resource* _upstream;
     };
 
     struct gpu_resource : public std::pmr::memory_resource {
@@ -323,9 +322,6 @@ namespace nvexec {
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
         return this == &other;
       }
-        
-    private:
-      std::pmr::memory_resource* _upstream;
     };
 
     struct managed_resource : public std::pmr::memory_resource {
@@ -346,9 +342,6 @@ namespace nvexec {
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
         return this == &other;
       }
-        
-    private:
-      std::pmr::memory_resource* _upstream;
     };
 
     template <class UnderlyingResource>
