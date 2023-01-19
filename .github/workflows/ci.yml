@@ -47,14 +47,20 @@ jobs:
             apt update && apt install -y --no-install-recommends git;
 
   build-gpu:
-    name: GPU (${{ matrix.name }})
+    name: GPU (${{ matrix.name }}, CUDA ${{ matrix.cuda }})
     strategy:
       fail-fast: false
       matrix:
+        gpu: ["v100"]
+        driver: ["520"]
+        arch: ["amd64"]
+        cuda: ["11.8"]
+        cxx: ["mpic++"]
+        name: ["nvc++ 22.11"]
+        tag: ["nvhpc22.11"]
         include:
-          - { name: "clang 16, CUDA 11.8",    cxx: "clang++", tag: "llvmdev-cuda11.8", gpu: "v100", driver: "520", arch: "amd64", cxxflags: "-stdlib=libc++ -Wno-unknown-cuda-version" }
-        # - { name: "clang 16, CUDA 12.0",    cxx: "clang++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "520", arch: "amd64", cxxflags: "-stdlib=libc++ -Wno-unknown-cuda-version" }
-          - { name: "nvc++ 22.11, CUDA 11.8", cxx: "mpic++",  tag: "nvhpc22.11",       gpu: "v100", driver: "520", arch: "amd64", cxxflags: "",                                        }
+          - { gpu: "v100", name: "clang 16", cuda: "11.8", cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda11.8" }
+          - { gpu: "v100", name: "clang 16", cuda: "12.0", cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda12.0" }
 
     runs-on:
       - self-hosted
@@ -62,14 +68,12 @@ jobs:
       - gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
       - ${{ matrix.arch }}
     container:
-      image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
-      # image: ghcr.io/trxcllnt/devcontainer-images:cmake-ninja-sccache-${{ matrix.tag }}-${{ matrix.arch }}
       options: -u coder
+      image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
       env:
+        CUDA_VERSION: ${{ matrix.cuda }}
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
         # CMAKE_CUDA_COMPILER_LAUNCHER: /usr/bin/sccache
-        CUDA_VERSION: "11.8"
-        NVIDIA_DRIVER_CAPABILITIES: all
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     steps:
       - name: Run nvidia-smi to make sure GPU is working
@@ -80,47 +84,46 @@ jobs:
           persist-credentials: false
       - name: Build and test GPU schedulers
         shell: bash
+        env:
+          cxx: "${{ matrix.cxx }}"
+          cxxflags: "${{ matrix.cxxflags }}"
+          GH_TOKEN: "${{ github.token }}"
         run: |
           source $BASH_ENV;
+
+          gh_scopes="$(GITHUB_TOKEN=                \
+              gh api -i -X GET --silent rate_limit  \
+              2>/dev/null                           \
+            | grep -i 'x-oauth-scopes:'             \
+          )";
+
+          echo "GH_TOKEN scopes: '$gh_scopes'";
+
+          set -x;
 
           sudo mkdir -p /workspaces/stdexec/;
           sudo cp -ar . /workspaces/stdexec/;
           sudo chown -R $(id -u):$(id -g) /workspaces;
+          cd /workspaces/stdexec;
 
-          cmake \
-            -S /workspaces/stdexec \
-            -B /workspaces/stdexec/build \
-            -GNinja \
+          # Configure
+          cmake -S . -B build -GNinja \
             -DSTDEXEC_ENABLE_CUDA=ON \
-            -DCMAKE_CUDA_ARCHITECTURES=native \
-            -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
-            -DCMAKE_CXX_COMPILER=$(which ${{ matrix.cxx }}) \
-            -DCMAKE_CUDA_COMPILER=$(which ${{ matrix.cxx }}) \
-            || configure_failed=1 \
-          ;
+            -DCMAKE_CXX_COMPILER="$cxx" \
+            -DCMAKE_CUDA_COMPILER="$cxx" \
+            -DCMAKE_CXX_FLAGS="$cxxflags" \
+            -DCMAKE_CUDA_ARCHITECTURES=native;
 
-          if [[ "${configure_failed:-}" == "1" ]]; then
-            tar --exclude-vcs -czf /github/home/build.tgz -C /workspaces/stdexec .;
-            exit 1;
-          fi;
+          # Compile
+          cmake --build build;
 
-          cmake --build /workspaces/stdexec/build;
+          # Tests
+          ctest --test-dir build --verbose --output-on-failure;
 
-          ctest \
-            --verbose \
-            --output-on-failure \
-            --force-new-ctest-process \
-            --test-dir /workspaces/stdexec/build \
-            ;
-
-      - name: Upload build context on failure
-        if: failure()
-        uses: actions/upload-artifact@v3
-        env:
-          ACTIONS_STEP_DEBUG: "true"
-        with:
-          name: build-${{ matrix.tag }}.tgz
-          path: /github/home/build.tgz
+          # Examples
+          ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
+          ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar
+          ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler
 
 #  build-clang-13:
 #    runs-on: ubuntu-latest
