@@ -19,7 +19,7 @@
 #include "maxwell/stdpar.cuh"
 #include "maxwell/cpp.cuh"
 
-#ifdef _NVHPC_CUDA
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
 #include "maxwell/cuda.cuh"
 #endif
 

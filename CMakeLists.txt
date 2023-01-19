@@ -188,7 +188,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
     disable_compiler_launcher(LANG CUDA)
 endif()
 
-if (STDEXEC_ENABLE_CUDA)
+if(STDEXEC_ENABLE_CUDA)
 
     file(GLOB_RECURSE SCHED_SOURCES include/nvexec/*.cuh)
     add_library(CUDASchedulers INTERFACE ${SCHED_SOURCES})

@@ -17,7 +17,7 @@
 
 #include "common.cuh"
 
-#ifdef _NVHPC_CUDA
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
 #include "nvexec/stream/common.cuh"
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 #endif
@@ -30,7 +30,7 @@
 
 template <class Policy>
 bool is_gpu_policy(Policy&& policy) {
-#ifdef _NVHPC_CUDA
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
   bool* flag{};
   STDEXEC_DBG_ERR(cudaMallocHost(&flag, sizeof(bool)));
   std::for_each(policy, flag, flag + 1, [](bool& f) {
