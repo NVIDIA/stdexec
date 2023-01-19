@@ -52,9 +52,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "clang 16", cuda: "11.8",    cxx: "clang++", tag: "llvmdev-cuda11.8", gpu: "v100", driver: "520", arch: "amd64", cxxflags: "-stdlib=libc++" }
-          - { name: "clang 16", cuda: "12.0",    cxx: "clang++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "520", arch: "amd64", cxxflags: "-stdlib=libc++" }
           - { name: "nvc++ 22.11", cuda: "11.8", cxx: "mpic++",  tag: "nvhpc22.11",       gpu: "v100", driver: "520", arch: "amd64", cxxflags: "",              }
+          - { name: "clang 16", cuda: "11.8",    cxx: "clang++", tag: "llvmdev-cuda11.8", gpu: "v100", driver: "520", arch: "amd64", cxxflags: "-stdlib=libc++" }
+        # - { name: "clang 16", cuda: "12.0",    cxx: "clang++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "525", arch: "amd64", cxxflags: "-stdlib=libc++" }
     runs-on:
       - self-hosted
       - linux
@@ -84,15 +84,15 @@ jobs:
         run: |
           source $BASH_ENV;
 
+          set -x;
+
           gh_scopes="$(GITHUB_TOKEN=                \
               gh api -i -X GET --silent rate_limit  \
-              2>/dev/null                           \
             | grep -i 'x-oauth-scopes:'             \
+           || echo ''                               \
           )";
 
           echo "GH_TOKEN scopes: '$gh_scopes'";
-
-          set -x;
 
           sudo mkdir -p /workspaces/stdexec/;
           sudo cp -ar . /workspaces/stdexec/;
