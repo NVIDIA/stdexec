@@ -1,12 +1,16 @@
 {
-  "image": "ghcr.io/trxcllnt/devcontainer-images:cmake-ninja-sccache-llvmdev-cuda11.8-nvhpc22.11",
+  "image": "docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-llvmdev-cuda11.8-nvhpc22.11",
   "capAdd": ["SYS_PTRACE"],
   "hostRequirements": { "gpu": true },
   "securityOpt": ["seccomp=unconfined"],
   "initializeCommand": "mkdir -p .cache",
   "updateContentCommand": "sed -i -re 's/^(HIST(FILE)?SIZE=).*$/\\1/g' ~/.bashrc",
+  "postAttachCommand": ["/opt/devcontainer/bin/post-attach-command.sh"],
   "containerEnv": {
-    "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history"
+    "VAULT_HOST": "https://vault.ops.k8s.rapids.ai",
+    "CMAKE_CXX_COMPILER_LAUNCHER": "/usr/bin/sccache",
+    "CMAKE_CUDA_COMPILER_LAUNCHER": "/usr/bin/sccache",
+    "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history",
   },
   "customizations": {
     "vscode": {
@@ -16,7 +20,9 @@
         "cschlosser.doxdocgen",
         "ms-vscode.cpptools",
         "nvidia.nsight-vscode-edition",
-        "llvm-vs-code-extensions.vscode-clangd"
+        "augustocdias.tasks-shell-input",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "vadimcn.vscode-lldb"
       ],
       "settings": {
         "C_Cpp.vcpkg.enabled": false,
