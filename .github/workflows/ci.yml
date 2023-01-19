@@ -51,17 +51,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gpu: ["v100"]
-        driver: ["520"]
-        arch: ["amd64"]
-        cuda: ["11.8"]
-        cxx: ["mpic++"]
-        name: ["nvc++ 22.11"]
-        tag: ["nvhpc22.11"]
         include:
-          - { gpu: "v100", name: "clang 16", cuda: "11.8", cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda11.8" }
-          - { gpu: "v100", name: "clang 16", cuda: "12.0", cxx: "clang++", cxxflags: "-stdlib=libc++", tag: "llvmdev-cuda12.0" }
-
+          - { name: "clang 16", cuda: "11.8",    cxx: "clang++", tag: "llvmdev-cuda11.8", gpu: "v100", driver: "520", arch: "amd64", cxxflags: "-stdlib=libc++" }
+          - { name: "clang 16", cuda: "12.0",    cxx: "clang++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "520", arch: "amd64", cxxflags: "-stdlib=libc++" }
+          - { name: "nvc++ 22.11", cuda: "11.8", cxx: "mpic++",  tag: "nvhpc22.11",       gpu: "v100", driver: "520", arch: "amd64", cxxflags: "",              }
     runs-on:
       - self-hosted
       - linux
@@ -71,10 +64,10 @@ jobs:
       options: -u coder
       image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
       env:
-        CUDA_VERSION: ${{ matrix.cuda }}
+        CUDA_VERSION: "${{ matrix.cuda }}"
         # CMAKE_CXX_COMPILER_LAUNCHER: /usr/bin/sccache
         # CMAKE_CUDA_COMPILER_LAUNCHER: /usr/bin/sccache
-        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+        NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
     steps:
       - name: Run nvidia-smi to make sure GPU is working
         run: nvidia-smi
