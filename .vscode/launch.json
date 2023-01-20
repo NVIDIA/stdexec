@@ -40,7 +40,7 @@
             "args": {
                 "cwd": "${workspaceFolder}",
                 "description": "The build directory to use",
-                "command": "find . -maxdepth 3 -type f -name CMakeCache.txt -exec dirname {} \\;"
+                "command": "find . -type f -name CMakeCache.txt ! -wholename '*/test_package/*' ! -wholename '*/_deps/*' -exec dirname {} \\;"
             }
         },
         {
@@ -62,7 +62,7 @@
                 "useFirstResult": true,
                 "description": "Path to Test Suite",
                 "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
-                "command": "find . -type f -name test.CUDA"
+                "command": "find . -type f -name test.nvexec"
             }
         },
         {
