@@ -87,7 +87,7 @@ namespace stdexec {
         void push_back(_Item* __item) noexcept {
           STDEXEC_ASSERT(__item != nullptr);
           __item->*_Next = nullptr;
-          if (__tail_ == nullptr) {
+          if (empty()) {
             __head_ = __item;
           } else {
             __tail_->*_Next = __item;
