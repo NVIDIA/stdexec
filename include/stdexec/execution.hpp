@@ -2080,6 +2080,10 @@ namespace stdexec {
               -> __operation_t<_Receiver> {
               return {{}, ((__t&&) __sndr).__vals_, (_Receiver&&) __rcvr};
             }
+
+          friend __empty_attrs tag_invoke(get_attrs_t, const __t&) noexcept {
+            return {};
+          }
         };
       };
 

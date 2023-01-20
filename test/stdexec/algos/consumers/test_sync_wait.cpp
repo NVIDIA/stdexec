@@ -218,6 +218,10 @@ struct my_other_string_sender_t {
   friend auto tag_invoke(ex::connect_t, const my_other_string_sender_t& self, Recv&& recv) {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const my_other_string_sender_t&) noexcept {
+    return {};
+  }
 };
 
 optional<tuple<std::string>> tag_invoke(decltype(sync_wait), my_other_string_sender_t s) {
@@ -253,6 +257,10 @@ struct my_multi_value_sender_t {
   template <class Recv>
   friend auto tag_invoke(ex::connect_t, const my_multi_value_sender_t& self, Recv&& recv) {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
+  }
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const my_multi_value_sender_t&) noexcept {
+    return {};
   }
 };
 

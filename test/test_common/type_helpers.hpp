@@ -47,6 +47,9 @@ struct type_printer;
 template <typename... Ts>
 struct type_array {};
 
+//! Used as a default empty attributes
+struct empty_attrs {};
+
 //! Used as a default empty context
 struct empty_env {};
 

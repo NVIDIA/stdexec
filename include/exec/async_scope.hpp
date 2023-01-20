@@ -119,6 +119,10 @@ namespace exec {
         template <__decays_to<__when_empty_sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
+
+        friend __empty_attrs tag_invoke(get_attrs_t, const __when_empty_sender& __self) noexcept {
+          return {};
+        }
       };
 
     template <class _Constrained>
@@ -221,6 +225,10 @@ namespace exec {
         template <__decays_to<__nest_sender> _Self, class _Env>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
+
+        friend __empty_attrs tag_invoke(get_attrs_t, const __nest_sender& __self) noexcept {
+          return {};
+        }
       };
 
     template <class _Constrained>
@@ -567,6 +575,10 @@ namespace exec {
         template <__decays_to<__future> _Self, class _OtherEnv>
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv)
             -> __completions_t<_Self>;
+
+        friend __empty_attrs tag_invoke(get_attrs_t, const __future& __self) noexcept {
+          return {};
+        }
 
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
       };

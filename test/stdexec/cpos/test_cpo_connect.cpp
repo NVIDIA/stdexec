@@ -41,6 +41,10 @@ struct my_sender  {
   friend op_state<R> tag_invoke(ex::connect_t, my_sender&& s, R&& r) {
     return {{}, s.value_, (R &&) r};
   }
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    return {};
+  }
 };
 
 struct my_sender_unconstrained {
@@ -52,6 +56,10 @@ struct my_sender_unconstrained {
   template <class R> // accept any type here
   friend op_state<R> tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) {
     return {{}, s.value_, (R &&) r};
+  }
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const my_sender_unconstrained&) noexcept {
+    return {};
   }
 };
 

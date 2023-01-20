@@ -381,6 +381,13 @@ namespace exec {
               -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
               return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
             }
+
+          friend auto tag_invoke(stdexec::get_attrs_t, const __t& __self)
+            noexcept(__nothrow_callable<stdexec::get_attrs_t, const _Sender&>)
+            -> __call_result_t<stdexec::get_attrs_t, const _Sender&> {
+            return stdexec::get_attrs(__self.__sndr_);
+          }
+
         };
       };
   } // namespace __stl

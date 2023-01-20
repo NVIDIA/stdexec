@@ -72,6 +72,10 @@ namespace exec {
           static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
           return {{(_Receiver&&) __rcvr, ((_Self&&) __self).__args_}, ((_Self&&) __self).__fun_};
         }
+
+        friend __empty_attrs tag_invoke(get_attrs_t, const __sender&) noexcept {
+          return {};
+        }
       };
 
     template <__completion_signature... _Sigs>
