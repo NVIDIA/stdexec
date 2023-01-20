@@ -102,8 +102,12 @@ rapids_find_package(Threads REQUIRED
 ##############################################################################
 # - Main library targets -----------------------------------------------------
 
+set(stdexec_export_targets)
+
 # Define the main library
 add_library(stdexec INTERFACE)
+
+list(APPEND stdexec_export_targets stdexec)
 
 # Set library version
 set_target_properties(stdexec PROPERTIES
@@ -200,6 +204,7 @@ if(STDEXEC_ENABLE_CUDA)
 
     file(GLOB_RECURSE nvexec_sources include/nvexec/*.cuh)
     add_library(nvexec INTERFACE ${nvexec_sources})
+    list(APPEND stdexec_export_targets nvexec)
     add_library(STDEXEC::nvexec ALIAS nvexec)
 
     target_compile_features(nvexec INTERFACE cuda_std_20)
@@ -292,18 +297,18 @@ set(code_string "")
 
 # Install side of the export set
 rapids_export(
-  INSTALL stdexec
+  INSTALL ${stdexec_export_targets}
   EXPORT_SET stdexec-exports
-  GLOBAL_TARGETS stdexec
+  GLOBAL_TARGETS ${stdexec_export_targets}
   NAMESPACE STDEXEC::
   FINAL_CODE_BLOCK code_string
 )
 
 # Build side of the export set so a user can use the build dir as a CMake package root
 rapids_export(
-  BUILD stdexec
+  BUILD ${stdexec_export_targets}
   EXPORT_SET stdexec-exports
-  GLOBAL_TARGETS stdexec
+  GLOBAL_TARGETS ${stdexec_export_targets}
   NAMESPACE STDEXEC::
   FINAL_CODE_BLOCK code_string
 )
