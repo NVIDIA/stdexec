@@ -69,7 +69,7 @@ namespace stdexec {
         [[nodiscard]] _Item* pop_front() noexcept {
           STDEXEC_ASSERT(!empty());
           _Item* __item = std::exchange(__head_, __head_->*_Next);
-          if (__head_ == nullptr) {
+          if (__item->*_Next == nullptr) {
             __tail_ = nullptr;
           }
           return __item;
@@ -87,7 +87,7 @@ namespace stdexec {
         void push_back(_Item* __item) noexcept {
           STDEXEC_ASSERT(__item != nullptr);
           __item->*_Next = nullptr;
-          if (empty()) {
+          if (__tail_ == nullptr) {
             __head_ = __item;
           } else {
             __tail_->*_Next = __item;
