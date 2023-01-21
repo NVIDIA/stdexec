@@ -469,37 +469,6 @@ namespace stdexec {
             (_Variant*) nullptr))>;
   } // namespace __compl_sigs
 
-  /////////////////////////////////////////////////////////////////////////////
-  // get_attrs
-  namespace __attrs {
-    struct __empty_attrs {
-      using __t = __empty_attrs;
-      using __id = __empty_attrs;
-    };
-
-    struct get_attrs_t {
-      template <class _Sender>
-        requires tag_invocable<get_attrs_t, const _Sender&>
-        constexpr auto operator()(const _Sender& __sender) const
-          noexcept(nothrow_tag_invocable<get_attrs_t, const _Sender&>)
-          -> tag_invoke_result_t<get_attrs_t, const _Sender&> {
-          static_assert(queryable<tag_invoke_result_t<get_attrs_t, const _Sender&>>);
-          return tag_invoke(*this, __sender);
-        }
-
-      template <class _Sender>
-        requires (!tag_invocable<get_attrs_t, const _Sender&>) &&
-          __awaitable<_Sender, no_env_promise>
-        constexpr auto operator()(const _Sender& __sender) const
-          noexcept -> __empty_attrs {
-          return {};
-        }
-    };
-  } // namespace __attrs
-  inline constexpr __attrs::get_attrs_t get_attrs{};
-  using __attrs::get_attrs_t;
-  using __attrs::__empty_attrs;
-
   template <class _Ty>
     concept __is_completion_signatures =
       __is_instance_of<_Ty, completion_signatures>;
@@ -668,6 +637,51 @@ namespace stdexec {
       move_constructible<remove_cvref_t<_Sender>> &&
       constructible_from<remove_cvref_t<_Sender>, _Sender>;
 
+  /////////////////////////////////////////////////////////////////////////////
+  // get_attrs
+  namespace __attrs {
+    struct __empty_attrs {
+      using __t = __empty_attrs;
+      using __id = __empty_attrs;
+    };
+
+    struct get_attrs_t {
+      template <class _Sender>
+        requires tag_invocable<get_attrs_t, const _Sender&>
+        constexpr auto operator()(const _Sender& __sender) const
+          noexcept(nothrow_tag_invocable<get_attrs_t, const _Sender&>)
+          -> tag_invoke_result_t<get_attrs_t, const _Sender&> {
+          static_assert(queryable<tag_invoke_result_t<get_attrs_t, const _Sender&>>);
+          return tag_invoke(*this, __sender);
+        }
+
+      template <class _Sender>
+        requires (!tag_invocable<get_attrs_t, const _Sender&>) &&
+          __awaitable<_Sender, no_env_promise>
+        constexpr auto operator()(const _Sender& __sender) const
+          noexcept -> __empty_attrs {
+          return {};
+        }
+
+      // NOT TO SPEC
+      // For backwards compatibility, get_attrs returns a reference
+      // to the passed in sender. This will be removed eventually in favor
+      // of all sender types defining get_attrs.
+      template <class _Sender>
+        requires (!tag_invocable<get_attrs_t, const _Sender&>) &&
+          (!__awaitable<_Sender, no_env_promise>) && __sender<_Sender, no_env>
+        constexpr auto operator()(const _Sender& __sender) const
+          noexcept -> const _Sender& {
+          return __sender;
+        }
+    };
+  } // namespace __attrs
+  inline constexpr __attrs::get_attrs_t get_attrs{};
+  using __attrs::get_attrs_t;
+  using __attrs::__empty_attrs;
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders]
   template <class _Sender, class _Env = no_env>
     concept sender =
       __sender<_Sender, no_env> &&

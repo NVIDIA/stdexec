@@ -140,6 +140,8 @@ TEST_CASE(
 }
 
 struct sched_no_attrs {
+
+  // P2300R5 senders defined sender queries on the sender itself.
   struct my_sender {
     using completion_signatures =
       ex::completion_signatures<             //
@@ -147,6 +149,11 @@ struct sched_no_attrs {
         ex::set_error_t(std::exception_ptr), //
         ex::set_stopped_t()>;
 
+    template <typename CPO>
+    friend sched_no_attrs tag_invoke(
+                ex::get_completion_scheduler_t<CPO>, my_sender) {
+      return {};
+    }
   };
 
   friend my_sender tag_invoke(ex::schedule_t, sched_no_attrs) { return {}; }
@@ -156,7 +163,7 @@ struct sched_no_attrs {
 };
 
 TEST_CASE(
-    "not a scheduler if the returned object is not a sender (missing get_attr)",
-    "[concepts][scheduler]") {
-  REQUIRE(!ex::scheduler<sched_no_attrs>);
+    "type without sender get_attrs is still a scheduler",
+    "[concepts][scheduler][r5_backwards_compatibility]") {
+  REQUIRE(ex::scheduler<sched_no_attrs>);
 }
