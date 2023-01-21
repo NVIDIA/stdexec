@@ -102,8 +102,12 @@ rapids_find_package(Threads REQUIRED
 ##############################################################################
 # - Main library targets -----------------------------------------------------
 
+set(stdexec_export_targets)
+
 # Define the main library
 add_library(stdexec INTERFACE)
+
+list(APPEND stdexec_export_targets stdexec)
 
 # Set library version
 set_target_properties(stdexec PROPERTIES
@@ -131,7 +135,7 @@ target_compile_features(stdexec INTERFACE cxx_std_20)
 
 # Enable coroutines for GCC
 target_compile_options(stdexec INTERFACE
-                       $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU>>:-fcoroutines>
+                       $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>
                        )
 
 add_library(STDEXEC::stdexec ALIAS stdexec)
@@ -181,12 +185,12 @@ target_compile_options(stdexec_executable_flags INTERFACE
 
 # Clang CUDA options
 target_compile_options(stdexec_executable_flags INTERFACE
-                       $<$<AND:$<CUDA_COMPILER_ID:Clang>,$<COMPILE_LANGUAGE:CUDA>>:
+                       $<$<COMPILE_LANG_AND_ID:CUDA,Clang>:
                        -Wno-unknown-cuda-version
                        -Xclang=-fcuda-allow-variadic-functions>
                        )
 
-# Set up CUDASchedulers library
+# Set up nvexec library
 option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
     set(STDEXEC_ENABLE_CUDA ON)
@@ -198,13 +202,17 @@ endif()
 
 if(STDEXEC_ENABLE_CUDA)
 
-    file(GLOB_RECURSE SCHED_SOURCES include/nvexec/*.cuh)
-    add_library(CUDASchedulers INTERFACE ${SCHED_SOURCES})
-    target_link_libraries(CUDASchedulers INTERFACE stdexec stdexec_executable_flags)
+    file(GLOB_RECURSE nvexec_sources include/nvexec/*.cuh)
+    add_library(nvexec INTERFACE ${nvexec_sources})
+    list(APPEND stdexec_export_targets nvexec)
+    add_library(STDEXEC::nvexec ALIAS nvexec)
 
-    target_compile_options(CUDASchedulers INTERFACE
+    target_compile_features(nvexec INTERFACE cuda_std_20)
+    target_link_libraries(nvexec INTERFACE STDEXEC::stdexec)
+
+    target_compile_options(nvexec INTERFACE
       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged>)
-    target_link_options(CUDASchedulers INTERFACE
+    target_link_options(nvexec INTERFACE
       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged>)
 
     if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
@@ -222,7 +230,7 @@ if(STDEXEC_ENABLE_CUDA)
         # because the former works with clangd intellisense
         set(CMAKE_INCLUDE_SYSTEM_FLAG_CUDA "-isystem ")
 
-        set_source_files_properties(${SCHED_SOURCES} PROPERTIES LANGUAGE CUDA)
+        set_source_files_properties(${nvexec_sources} PROPERTIES LANGUAGE CUDA)
 
         include(rapids-find)
         rapids_find_package(
@@ -231,7 +239,7 @@ if(STDEXEC_ENABLE_CUDA)
             INSTALL_EXPORT_SET stdexec-exports
         )
 
-        target_link_libraries(CUDASchedulers INTERFACE CUDA::cudart)
+        target_link_libraries(nvexec INTERFACE CUDA::cudart)
 
         include(${rapids-cmake-dir}/cpm/libcudacxx.cmake)
         rapids_cpm_libcudacxx(
@@ -242,93 +250,27 @@ if(STDEXEC_ENABLE_CUDA)
     endif()
 endif()
 
-# Now, set up test executable
-enable_testing()
+option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
+option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
+option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
 
-set(test_sourceFiles
-    test/test_main.cpp
-    test/stdexec/cpos/test_cpo_bulk.cpp
-    test/stdexec/cpos/test_cpo_ensure_started.cpp
-    test/stdexec/cpos/test_cpo_receiver.cpp
-    test/stdexec/cpos/test_cpo_start.cpp
-    test/stdexec/cpos/test_cpo_connect.cpp
-    test/stdexec/cpos/test_cpo_schedule.cpp
-    test/stdexec/cpos/test_cpo_split.cpp
-    test/stdexec/cpos/test_cpo_upon_error.cpp
-    test/stdexec/cpos/test_cpo_upon_stopped.cpp
-    test/stdexec/concepts/test_concept_scheduler.cpp
-    test/stdexec/concepts/test_concepts_receiver.cpp
-    test/stdexec/concepts/test_concept_operation_state.cpp
-    test/stdexec/concepts/test_concepts_sender.cpp
-    test/stdexec/concepts/test_awaitables.cpp
-    test/stdexec/algos/factories/test_just.cpp
-    test/stdexec/algos/factories/test_transfer_just.cpp
-    test/stdexec/algos/factories/test_just_error.cpp
-    test/stdexec/algos/factories/test_just_stopped.cpp
-    test/stdexec/algos/factories/test_read.cpp
-    test/stdexec/algos/adaptors/test_on.cpp
-    test/stdexec/algos/adaptors/test_transfer.cpp
-    test/stdexec/algos/adaptors/test_schedule_from.cpp
-    test/stdexec/algos/adaptors/test_then.cpp
-    test/stdexec/algos/adaptors/test_upon_error.cpp
-    test/stdexec/algos/adaptors/test_upon_stopped.cpp
-    test/stdexec/algos/adaptors/test_let_value.cpp
-    test/stdexec/algos/adaptors/test_let_error.cpp
-    test/stdexec/algos/adaptors/test_let_stopped.cpp
-    test/stdexec/algos/adaptors/test_bulk.cpp
-    test/stdexec/algos/adaptors/test_split.cpp
-    test/stdexec/algos/adaptors/test_when_all.cpp
-    test/stdexec/algos/adaptors/test_transfer_when_all.cpp
-    test/stdexec/algos/adaptors/test_into_variant.cpp
-    test/stdexec/algos/adaptors/test_stopped_as_optional.cpp
-    test/stdexec/algos/adaptors/test_stopped_as_error.cpp
-    test/stdexec/algos/adaptors/test_ensure_started.cpp
-    test/stdexec/algos/consumers/test_start_detached.cpp
-    test/stdexec/algos/consumers/test_sync_wait.cpp
-    test/stdexec/algos/other/test_execute.cpp
-    test/stdexec/detail/test_completion_signatures.cpp
-    test/stdexec/detail/test_utility.cpp
-    test/stdexec/queries/test_get_forward_progress_guarantee.cpp
-    test/stdexec/queries/test_forwarding_queries.cpp
-    test/exec/test_type_async_scope.cpp
-    test/exec/test_create.cpp
-    test/exec/test_env.cpp
-    test/exec/test_on.cpp
-    test/exec/test_on2.cpp
-    test/exec/test_on3.cpp
-    test/exec/async_scope/test_dtor.cpp
-    test/exec/async_scope/test_spawn.cpp
-    test/exec/async_scope/test_spawn_future.cpp
-    test/exec/async_scope/test_empty.cpp
-    test/exec/async_scope/test_stop.cpp
-    )
+# Don't build tests if configuring stdexec as a submodule of another
+# CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE
+if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR STDEXEC_BUILD_TESTS)
+    # CTest automatically calls enable_testing() if BUILD_TESTING is ON
+    # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
+    include(CTest)
+endif()
 
-add_executable(test.stdexec ${test_sourceFiles})
+# Configure test executables
+if(BUILD_TESTING)
+    add_subdirectory(test)
+endif()
 
-target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
-target_link_libraries(test.stdexec PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2)
-
-# Discover the Catch2 test built by the application
-include(CTest)
-include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
-catch_discover_tests(test.stdexec)
-
-# Set up examples
-function(def_example target sourceFile)
-    add_executable(${target} ${sourceFile})
-    target_link_libraries(${target} PRIVATE STDEXEC::stdexec stdexec_executable_flags)
-endfunction()
-
-def_example(clangd.helper "examples/_clangd_helper_file.cpp")
-def_example(example.hello_world "examples/hello_world.cpp")
-def_example(example.hello_coro "examples/hello_coro.cpp")
-def_example(example.scope "examples/scope.cpp")
-def_example(example.retry "examples/retry.cpp")
-def_example(example.then "examples/then.cpp")
-def_example(example.server_theme.let_value "examples/server_theme/let_value.cpp")
-def_example(example.server_theme.on_transfer "examples/server_theme/on_transfer.cpp")
-def_example(example.server_theme.then_upon "examples/server_theme/then_upon.cpp")
-def_example(example.server_theme.split_bulk "examples/server_theme/split_bulk.cpp")
+# Configure example executables
+if(STDEXEC_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
 
 ##############################################################################
 # Install targets ------------------------------------------------------------
@@ -355,22 +297,18 @@ set(code_string "")
 
 # Install side of the export set
 rapids_export(
-  INSTALL stdexec
+  INSTALL ${stdexec_export_targets}
   EXPORT_SET stdexec-exports
-  GLOBAL_TARGETS stdexec
+  GLOBAL_TARGETS ${stdexec_export_targets}
   NAMESPACE STDEXEC::
   FINAL_CODE_BLOCK code_string
 )
 
 # Build side of the export set so a user can use the build dir as a CMake package root
 rapids_export(
-  BUILD stdexec
+  BUILD ${stdexec_export_targets}
   EXPORT_SET stdexec-exports
-  GLOBAL_TARGETS stdexec
+  GLOBAL_TARGETS ${stdexec_export_targets}
   NAMESPACE STDEXEC::
   FINAL_CODE_BLOCK code_string
 )
-
-# TODO
-add_subdirectory(examples/nvexec)
-add_subdirectory(test/nvexec)

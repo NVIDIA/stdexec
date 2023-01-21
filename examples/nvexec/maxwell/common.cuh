@@ -51,6 +51,7 @@ struct deleter_t {
 };
 
 template <class T>
+STDEXEC_DETAIL_CUDACC_HOST_DEVICE
 inline std::unique_ptr<T, deleter_t>
 allocate_on(bool gpu, std::size_t elements = 1) {
   T *ptr{};
