@@ -43,7 +43,7 @@ TEST_CASE("upon_error is customizable", "[cpo][cpo_upon_error]") {
     }
 
     {
-      ex::get_completion_scheduler<ex::set_error_t>(snd);
+      ex::get_completion_scheduler<ex::set_error_t>(ex::get_attrs(snd));
       constexpr scope_t scope = decltype(ex::upon_error(snd, f))::scope;
       STATIC_REQUIRE(scope == scope_t::scheduler);
     }

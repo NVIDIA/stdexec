@@ -192,7 +192,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 [this] (operation_state_base_t<stdexec::__id<_Receiver2>> &) -> __receiver_t {
                   return __receiver_t{{}, this};
                 },
-                stdexec::get_completion_scheduler<stdexec::set_value_t>(__sndr).context_state_)
+                stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(__sndr)).context_state_)
             , __fun_((_Fun&&) __fun)
           {}
         STDEXEC_IMMOVABLE(__operation);
@@ -250,13 +250,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             };
           }
 
-        template <stdexec::tag_category<stdexec::forwarding_sender_query> _Tag, class... _As>
-            requires stdexec::__callable<_Tag, const _Sender&, _As...>
-          friend auto tag_invoke(_Tag __tag, const __t& __self, _As&&... __as)
-            noexcept(stdexec::__nothrow_callable<_Tag, const _Sender&, _As...>)
-            -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, stdexec::forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-            return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-          }
+        friend auto tag_invoke(stdexec::get_attrs_t, const __t& __self)
+          noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const _Sender&>)
+          -> stdexec::__call_result_t<stdexec::get_attrs_t, const _Sender&> {
+          return stdexec::get_attrs(__self.__sndr_);
+        }
 
         template <stdexec::__decays_to<__t> _Self, class _Env>
           friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env)

@@ -19,6 +19,14 @@
 
 namespace ex = stdexec;
 
+template <class Scheduler>
+struct default_attrs {
+  template <typename CPO>
+  friend Scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, const default_attrs&) {
+    return {};
+  }
+};
+
 struct my_scheduler {
   struct my_sender  {
     using completion_signatures =
@@ -27,10 +35,10 @@ struct my_scheduler {
         ex::set_error_t(std::exception_ptr), //
         ex::set_stopped_t()>;
 
-    template <typename CPO>
-    friend my_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
+    friend default_attrs<my_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
       return {};
     }
+
   };
 
   friend my_sender tag_invoke(ex::schedule_t, my_scheduler) { return {}; }
@@ -60,8 +68,7 @@ struct my_scheduler_except {
         ex::set_error_t(std::exception_ptr), //
         ex::set_stopped_t()>;
 
-    template <typename CPO>
-    friend my_scheduler_except tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
+    friend default_attrs<my_scheduler_except> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -87,8 +94,7 @@ struct noeq_sched {
         ex::set_error_t(std::exception_ptr), //
         ex::set_stopped_t()>;
 
-    template <typename CPO>
-    friend noeq_sched tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
+    friend default_attrs<noeq_sched> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -108,10 +114,17 @@ struct sched_no_completion {
         ex::set_error_t(std::exception_ptr), //
         ex::set_stopped_t()>;
 
-    friend sched_no_completion tag_invoke(
-        ex::get_completion_scheduler_t<ex::set_error_t>, my_sender) {
+    struct attrs {
+      friend sched_no_completion tag_invoke(
+        ex::get_completion_scheduler_t<ex::set_error_t>, const attrs&) noexcept {
+        return {};
+      }
+    };
+
+    friend attrs tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
       return {};
     }
+
   };
 
   friend my_sender tag_invoke(ex::schedule_t, sched_no_completion) { return {}; }
@@ -123,5 +136,34 @@ struct sched_no_completion {
 TEST_CASE(
     "not a scheduler if the returned sender doesn't have get_completion_scheduler of set_value",
     "[concepts][scheduler]") {
-  REQUIRE(!ex::scheduler<noeq_sched>);
+  REQUIRE(!ex::scheduler<sched_no_completion>);
+}
+
+struct sched_no_attrs {
+
+  // P2300R5 senders defined sender queries on the sender itself.
+  struct my_sender {
+    using completion_signatures =
+      ex::completion_signatures<             //
+        ex::set_value_t(),                   //
+        ex::set_error_t(std::exception_ptr), //
+        ex::set_stopped_t()>;
+
+    template <typename CPO>
+    friend sched_no_attrs tag_invoke(
+                ex::get_completion_scheduler_t<CPO>, my_sender) {
+      return {};
+    }
+  };
+
+  friend my_sender tag_invoke(ex::schedule_t, sched_no_attrs) { return {}; }
+
+  friend bool operator==(sched_no_attrs, sched_no_attrs) noexcept { return true; }
+  friend bool operator!=(sched_no_attrs, sched_no_attrs) noexcept { return false; }
+};
+
+TEST_CASE(
+    "type without sender get_attrs is still a scheduler",
+    "[concepts][scheduler][r5_backwards_compatibility]") {
+  REQUIRE(ex::scheduler<sched_no_attrs>);
 }

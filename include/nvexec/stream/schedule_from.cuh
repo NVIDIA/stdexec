@@ -68,12 +68,11 @@ namespace schedule_from {
           return stdexec::connect(((Self&&)self).sender_, (Receiver&&)rcvr);
         }
 
-      template <stdexec::tag_category<stdexec::forwarding_sender_query> _Tag, class... _As>
-        requires stdexec::__callable<_Tag, const Sender&, _As...>
-      friend auto tag_invoke(_Tag __tag, const source_sender_t& __self, _As&&... __as)
-        noexcept(stdexec::__nothrow_callable<_Tag, const Sender&, _As...>)
-        -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, stdexec::forwarding_sender_query>, _Tag, const Sender&, _As...> {
-        return ((_Tag&&) __tag)(__self.sender_, (_As&&) __as...);
+      friend auto tag_invoke(stdexec::get_attrs_t, const source_sender_t& self)
+        noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
+        -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
+        // TODO - this code is not exercised by any test
+        return stdexec::get_attrs(self.sndr_);
       }
 
       template <stdexec::__decays_to<source_sender_t> _Self, class _Env>
@@ -91,9 +90,18 @@ template <class Scheduler, class SenderId>
     using Sender = stdexec::__t<SenderId>;
     using source_sender_th = schedule_from::source_sender_t<Sender>;
 
+    struct __attrs {
+      context_state_t context_state_;
+
+      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t, stdexec::set_error_t> _Tag>
+        friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const __attrs& __self) noexcept {
+          return {__self.context_state_};
+        }
+    };
+
     struct __t : stream_sender_base {
       using __id = schedule_from_sender_t;
-      context_state_t context_state_;
+      __attrs attrs_;
       source_sender_th sndr_;
 
       template <class Self, class Receiver>
@@ -113,21 +121,12 @@ template <class Scheduler, class SenderId>
               [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider) -> receiver_t<Self, Receiver> {
                 return receiver_t<Self, Receiver>{{}, stream_provider};
               },
-              self.context_state_);
+              self.attrs_.context_state_);
       }
 
-      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t, stdexec::set_error_t> _Tag>
-        friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const __t& __self) noexcept {
-          return {__self.context_state_};
-        }
-
-      template <stdexec::tag_category<stdexec::forwarding_sender_query> _Tag, class... _As>
-          requires stdexec::__callable<_Tag, const Sender&, _As...>
-        friend auto tag_invoke(_Tag __tag, const __t& __self, _As&&... __as)
-          noexcept(stdexec::__nothrow_callable<_Tag, const Sender&, _As...>)
-          -> stdexec::__call_result_if_t<stdexec::tag_category<_Tag, stdexec::forwarding_sender_query>, _Tag, const Sender&, _As...> {
-          return ((_Tag&&) __tag)(__self.sndr_, (_As&&) __as...);
-        }
+      friend const __attrs& tag_invoke(stdexec::get_attrs_t, const __t& __self) noexcept {
+        return __self.attrs_;
+      }
 
       template <stdexec::__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env) ->
@@ -137,7 +136,7 @@ template <class Scheduler, class SenderId>
             stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>>;
 
       __t(context_state_t context_state, Sender sndr)
-        : context_state_(context_state)
+        : attrs_{context_state}
         , sndr_{{}, (Sender&&)sndr} {
       }
     };

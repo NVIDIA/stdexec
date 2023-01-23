@@ -319,14 +319,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                                           std::move(self).shared_state_};
           }
 
-        template <stdexec::tag_category<stdexec::forwarding_sender_query> Tag, class... As>
-            requires // Always complete on GPU, so no need in (!stdexec::__is_instance_of<Tag, stdexec::get_completion_scheduler_t>) &&
-              stdexec::__callable<Tag, const Sender&, As...>
-          friend auto tag_invoke(Tag tag, const __t& self, As&&... as)
-            noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-            -> stdexec::__call_result_if_t<stdexec::tag_category<Tag, stdexec::forwarding_sender_query>, Tag, const Sender&, As...> {
-            return ((Tag&&) tag)(self.sndr_, (As&&) as...);
-          }
+        friend auto tag_invoke(stdexec::get_attrs_t, const __t& self)
+          noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
+          -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
+          return stdexec::get_attrs(self.sndr_);
+        }
 
         template <class... Tys>
           using set_value_t = 

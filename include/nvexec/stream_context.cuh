@@ -100,6 +100,20 @@ namespace nvexec {
       template <class ReceiverId>
         using operation_state_t = stdexec::__t<operation_state_<ReceiverId>>;
 
+      struct attrs {
+        context_state_t context_state_;
+
+        stream_scheduler make_scheduler() const {
+          return stream_scheduler{context_state_};
+        }
+
+        template <class CPO>
+          friend stream_scheduler
+          tag_invoke(stdexec::get_completion_scheduler_t<CPO>, const attrs& self) noexcept {
+            return self.make_scheduler();
+          }
+      };
+
       struct sender_ {
         struct __t : stream_sender_base {
           using __id = sender_;
@@ -112,25 +126,19 @@ namespace nvexec {
             friend auto tag_invoke(stdexec::connect_t, const __t& self, R&& rec)
               noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
               -> operation_state_t<stdexec::__id<std::remove_cvref_t<R>>> {
-              return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec, self.context_state_);
+              return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec, self.attrs_.context_state_);
             }
 
-          stream_scheduler make_scheduler() const {
-            return stream_scheduler{context_state_};
-          }
-
-          template <class CPO>
-            friend stream_scheduler
-            tag_invoke(stdexec::get_completion_scheduler_t<CPO>, __t self) noexcept {
-              return self.make_scheduler();
-            }
+          friend const attrs& tag_invoke(stdexec::get_attrs_t, const __t& self) noexcept {
+            return self.attrs_;
+          };
 
           STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           inline __t(context_state_t context_state) noexcept
-            : context_state_(context_state) {
+            : attrs_{context_state} {
           }
 
-          context_state_t context_state_;
+          attrs attrs_;
         };
       };
 
