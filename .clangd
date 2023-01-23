@@ -30,6 +30,7 @@ CompileFlags:
   Add:
     - "-x"
     - "cuda"
+    - "-std=gnu++20"
     - "-Wno-unknown-cuda-version"
 
 ---
