@@ -687,8 +687,8 @@ namespace stdexec {
       // NOT TO SPEC:
       // The sender related concepts are temporarily "in flight" being
       // upgraded from P2300R5 to the get_attrs aware version of P2300.
-      requires (const remove_cvref_t<_Sender>& __sender) {
-        { get_attrs(__sender) } -> queryable;
+      requires (const remove_cvref_t<_Sender>& __sndr) {
+        { get_attrs(__sndr) } -> queryable;
       } &&
       __sender<_Sender, no_env> &&
       __sender<_Sender, _Env>;
