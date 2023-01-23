@@ -3601,6 +3601,14 @@ namespace stdexec {
       using __dispatcher_for =
         __make_dispatcher<__cust_sigs, __mconstructor_for<__sender_t>, _Sender, _Env>;
 
+    template <class _SenderId, class _EnvId>
+    void __test_ensure_started_sender(__sender<_SenderId, _EnvId> const& __sndr2){};
+
+    template <class _Sender>
+    concept __ensure_started_sender = requires(typename _Sender::__id __sndr1) {
+      __test_ensure_started_sender(__sndr1);
+    };
+
     struct ensure_started_t {
       template <sender _Sender, class _Env = __empty_env>
           requires
@@ -3613,9 +3621,8 @@ namespace stdexec {
           return __dispatcher_for<_Sender, _Env>{}((_Sender&&) __sndr, (_Env&&) __env);
         }
 
-      // BUGBUG this will never match
-      template <class _SenderId, class _EnvId>
-        __t<__sender<_SenderId, _EnvId>> operator()(__t<__sender<_SenderId, _EnvId>> __sndr) const {
+      template <__ensure_started_sender _Sender>
+        _Sender operator()(_Sender __sndr) const {
           return std::move(__sndr);
         }
 
