@@ -191,14 +191,6 @@ namespace exec {
                   ((_Self&&) __self).__withs_};
         }
 
-        template <tag_category<forwarding_sender_query> _Tag, class... _As>
-          requires __callable<_Tag, const _Sender&, _As...>
-        friend auto tag_invoke(_Tag __tag, const __sender& __self, _As&&... __as)
-          noexcept(__nothrow_callable<_Tag, const _Sender&, _As...>)
-          -> __call_result_if_t<tag_category<_Tag, forwarding_sender_query>, _Tag, const _Sender&, _As...> {
-          return ((_Tag&&) __tag)(__self.__sndr_, (_As&&) __as...);
-        }
-
         friend auto tag_invoke(stdexec::get_attrs_t, const __sender& __self)
           noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const _Sender&>)
           -> stdexec::__call_result_t<stdexec::get_attrs_t, const _Sender&> {
