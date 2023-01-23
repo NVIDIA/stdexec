@@ -71,6 +71,7 @@ namespace stdexec {
           _Item* __item = std::exchange(__head_, __head_->*_Next);
           // This should test if __head_ == nullptr, but due to a bug in
           // nvc++'s optimization, `__head_` isn't assigned until later.
+          // Filed as NVBug#3952534.
           if (__item->*_Next == nullptr) {
             __tail_ = nullptr;
           }
