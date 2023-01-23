@@ -316,6 +316,10 @@ struct my_string_sender_t {
   friend auto tag_invoke(ex::connect_t, const my_string_sender_t& self, Recv&& recv) {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const my_string_sender_t&) noexcept {
+    return{};
+  }
 };
 
 auto tag_invoke(ex::when_all_t, my_string_sender_t, my_string_sender_t) {

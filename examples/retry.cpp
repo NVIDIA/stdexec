@@ -46,6 +46,11 @@ struct fail_some {
   friend op<R> tag_invoke(stdexec::connect_t, fail_some, R r) {
     return {std::move(r)};
   }
+
+  struct empty_attrs {};
+  friend empty_attrs tag_invoke(stdexec::get_attrs_t, const fail_some&) noexcept {
+    return {};
+  }
 };
 
 int main() {

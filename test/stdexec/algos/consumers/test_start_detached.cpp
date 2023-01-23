@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
+#include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <exec/env.hpp>
 
@@ -92,6 +93,10 @@ struct custom_sender {
 
   friend void tag_invoke(ex::start_detached_t, custom_sender sndr) {
     *sndr.called = true;
+  }
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const custom_sender&) noexcept {
+    return {};
   }
 };
 

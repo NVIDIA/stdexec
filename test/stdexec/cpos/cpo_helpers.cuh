@@ -15,6 +15,7 @@
  */
 
 #include <stdexec/execution.hpp>
+#include <test_common/type_helpers.hpp>
 
 namespace ex = stdexec;
 
@@ -28,6 +29,10 @@ struct cpo_t {
       ex::set_value_t(),                                   //
       ex::set_error_t(std::exception_ptr),                 //
       ex::set_stopped_t()>;
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const cpo_t&) noexcept {
+    return {};
+  }
 };
 
 template <class CPO>
@@ -40,6 +45,10 @@ struct free_standing_sender_t {
   template <class... Ts>
   friend auto tag_invoke(CPO, const free_standing_sender_t& self, Ts&&...) noexcept {
     return cpo_t<scope_t::free_standing>{};
+  }
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const free_standing_sender_t&) noexcept {
+    return {};
   }
 };
 

@@ -78,6 +78,11 @@ struct _then_sender {
       return stdexec::connect(
         (S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
   }
+
+  friend auto tag_invoke(stdexec::get_attrs_t, const _then_sender& self)
+    noexcept(noexcept(stdexec::get_attrs(self.s_))) -> std::invoke_result_t<stdexec::get_attrs_t, S> {
+    return stdexec::get_attrs(self.s_);
+  }
 };
 
 template<stdexec::sender S, class F>

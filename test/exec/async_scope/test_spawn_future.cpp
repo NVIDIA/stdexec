@@ -3,6 +3,7 @@
 #include <exec/env.hpp>
 #include "test_common/schedulers.hpp"
 #include "test_common/receivers.hpp"
+#include "test_common/type_helpers.hpp"
 
 namespace ex = stdexec;
 using exec::async_scope;
@@ -39,6 +40,10 @@ struct throwing_sender {
       -> operation<std::decay_t<Receiver>> {
     throw std::logic_error("cannot connect");
     return {std::forward<Receiver>(rcvr)};
+  }
+
+  friend empty_attrs tag_invoke(stdexec::get_attrs_t, const throwing_sender&) noexcept {
+    return {};
   }
 };
 

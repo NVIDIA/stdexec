@@ -16,6 +16,7 @@
 
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
+#include <test_common/type_helpers.hpp>
 
 namespace ex = stdexec;
 
@@ -27,6 +28,10 @@ struct my_sender {
       ex::set_stopped_t()>;
 
   bool from_scheduler_{false};
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    return {};
+  }
 };
 
 struct my_scheduler {

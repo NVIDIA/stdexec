@@ -51,6 +51,10 @@ struct fallible_just {
       operation<std::decay_t<Receiver>> {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
+
+  friend empty_attrs tag_invoke(ex::get_attrs_t, const fallible_just&) noexcept {
+    return {};
+  }
 };
 
 template <class... Values>
