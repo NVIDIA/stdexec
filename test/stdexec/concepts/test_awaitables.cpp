@@ -230,8 +230,19 @@ struct awaitable_with_get_attrs {
 };
 
 TEST_CASE("get_attrs for awaitables", "[sndtraits][awaitables]") {
+#if 0
+  // NOT TO SPEC
+  // When the __awaitable constrained get_attrs overload is enabled, enable
+  // these checks inside this path of the 'if' directive. get_attrs returns
+  // __empty_attrs for awaitables by default.
+
   check_attrs_type<ex::__empty_attrs>(awaitable_sender_1<awaiter>{});
   check_attrs_type<ex::__empty_attrs>(awaitable_sender_3{});
+#else
+  // And delete these two lines
+  check_attrs_type<const awaitable_sender_1<awaiter>&>(awaitable_sender_1<awaiter>{});
+  check_attrs_type<const awaitable_sender_3&>(awaitable_sender_3{});
+#endif
   check_attrs_type<awaitable_attrs>(awaitable_with_get_attrs<awaiter>{});
 }
 

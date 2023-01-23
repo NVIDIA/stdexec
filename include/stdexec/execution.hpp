@@ -655,6 +655,11 @@ namespace stdexec {
           return tag_invoke(*this, __sender);
         }
 
+      // NOT TO SPEC
+      // This overload is subsumed by the __sender constrained overload
+      // below, which is provided for backwards compatibility. We'll enable
+      // this one when removing the compatibility overload.
+#if 0
       template <class _Sender>
         requires (!tag_invocable<get_attrs_t, const _Sender&>) &&
           __awaitable<_Sender, no_env_promise>
@@ -662,6 +667,7 @@ namespace stdexec {
           noexcept -> __empty_attrs {
           return {};
         }
+#endif
 
       // NOT TO SPEC
       // For backwards compatibility, get_attrs returns a reference
@@ -669,7 +675,7 @@ namespace stdexec {
       // of all sender types defining get_attrs.
       template <class _Sender>
         requires (!tag_invocable<get_attrs_t, const _Sender&>) &&
-          (!__awaitable<_Sender, no_env_promise>) && __sender<_Sender, no_env>
+          __sender<_Sender, no_env>
         constexpr auto operator()(const _Sender& __sender) const
           noexcept -> const _Sender& {
           return __sender;
@@ -684,7 +690,7 @@ namespace stdexec {
   // [execution.senders]
   template <class _Sender, class _Env = no_env>
     concept sender =
-      // NOT TO SPEC:
+      // NOT TO SPEC
       // The sender related concepts are temporarily "in flight" being
       // upgraded from P2300R5 to the get_attrs aware version of P2300.
       requires (const remove_cvref_t<_Sender>& __sndr) {
