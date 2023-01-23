@@ -319,11 +319,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                                           std::move(self).shared_state_};
           }
 
-        template <stdexec::same_as<stdexec::get_attrs_t> _Tag>
-          requires stdexec::__callable<_Tag, const Sender&>
-        friend auto tag_invoke(_Tag, const __t& self)
-          noexcept(stdexec::__nothrow_callable<_Tag, const Sender&>)
-          -> stdexec::__call_result_t<_Tag, const Sender&> {
+        friend auto tag_invoke(stdexec::get_attrs_t, const __t& self)
+          noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
+          -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
           return stdexec::get_attrs(self.sndr_);
         }
 

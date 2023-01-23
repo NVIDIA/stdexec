@@ -684,6 +684,12 @@ namespace stdexec {
   // [execution.senders]
   template <class _Sender, class _Env = no_env>
     concept sender =
+      // NOT TO SPEC:
+      // The sender related concepts are temporarily "in flight" being
+      // upgraded from P2300R5 to the get_attrs aware version of P2300.
+      requires (const remove_cvref_t<_Sender>& __sender) {
+        { get_attrs(__sender) } -> queryable;
+      } &&
       __sender<_Sender, no_env> &&
       __sender<_Sender, _Env>;
 
@@ -2591,15 +2597,9 @@ namespace stdexec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> __completion_signatures<_Self, _Env> requires true;
 
-          // TODO: Until all senders provide get_attrs, the senders returned by
-          // sender adaptors define the tag_invoke(get_attrs) as a constrainted
-          // templated function. We can remove this when all senders provide
-          // get_attrs.
-          template <same_as<get_attrs_t> _Tag>
-              requires __callable<_Tag, const _Sender&>
-          friend auto tag_invoke(_Tag, const __t& __self)
-            noexcept(__nothrow_callable<_Tag, const _Sender&>)
-            -> __call_result_t<_Tag, const _Sender&> {
+          friend auto tag_invoke(get_attrs_t, const __t& __self)
+            noexcept(__nothrow_callable<get_attrs_t, const _Sender&>)
+            -> __call_result_t<get_attrs_t, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
         };
@@ -2712,11 +2712,9 @@ namespace stdexec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> __completion_signatures<_Self, _Env> requires true;
 
-          template <same_as<get_attrs_t> _Tag>
-              requires __callable<_Tag, const _Sender&>
-          friend auto tag_invoke(_Tag, const __t& __self)
-            noexcept(__nothrow_callable<_Tag, const _Sender&>)
-            -> __call_result_t<_Tag, const _Sender&> {
+          friend auto tag_invoke(get_attrs_t, const __t& __self)
+            noexcept(__nothrow_callable<get_attrs_t, const _Sender&>)
+            -> __call_result_t<get_attrs_t, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
         };
@@ -2826,11 +2824,9 @@ namespace stdexec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> __completion_signatures<_Self, _Env> requires true;
 
-          template <same_as<get_attrs_t> _Tag>
-              requires __callable<_Tag, const _Sender&>
-          friend auto tag_invoke(_Tag, const __t& __self)
-            noexcept(__nothrow_callable<_Tag, const _Sender&>)
-            -> __call_result_t<_Tag, const _Sender&> {
+          friend auto tag_invoke(get_attrs_t, const __t& __self)
+            noexcept(__nothrow_callable<get_attrs_t, const _Sender&>)
+            -> __call_result_t<get_attrs_t, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
         };
@@ -2970,11 +2966,9 @@ namespace stdexec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> __completion_signatures<_Self, _Env> requires true;
 
-          template <same_as<get_attrs_t> _Tag>
-              requires __callable<_Tag, const _Sender&>
-          friend auto tag_invoke(_Tag, const __t& __self)
-            noexcept(__nothrow_callable<_Tag, const _Sender&>)
-            -> __call_result_t<_Tag, const _Sender&> {
+          friend auto tag_invoke(get_attrs_t, const __t& __self)
+            noexcept(__nothrow_callable<get_attrs_t, const _Sender&>)
+            -> __call_result_t<get_attrs_t, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
         };
@@ -3812,11 +3806,9 @@ namespace stdexec {
               };
             }
 
-          template <same_as<get_attrs_t> _Tag>
-              requires __callable<_Tag, const _Sender&>
-          friend auto tag_invoke(_Tag, const __t& __self)
-            noexcept(__nothrow_callable<_Tag, const _Sender&>)
-            -> __call_result_t<_Tag, const _Sender&> {
+          friend auto tag_invoke(get_attrs_t, const __t& __self)
+            noexcept(__nothrow_callable<get_attrs_t, const _Sender&>)
+            -> __call_result_t<get_attrs_t, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
 
@@ -3968,11 +3960,9 @@ namespace stdexec {
               return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
             }
 
-          template <same_as<get_attrs_t> _Tag>
-              requires __callable<_Tag, const _Sender&>
-          friend auto tag_invoke(_Tag, const __t& __self)
-            noexcept(__nothrow_callable<_Tag, const _Sender&>)
-            -> __call_result_t<_Tag, const _Sender&> {
+          friend auto tag_invoke(get_attrs_t, const __t& __self)
+            noexcept(__nothrow_callable<get_attrs_t, const _Sender&>)
+            -> __call_result_t<get_attrs_t, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
 
@@ -4666,11 +4656,9 @@ namespace stdexec {
                     (_Receiver&&) __rcvr};
           }
 
-          template <same_as<get_attrs_t> _Tag>
-              requires __callable<_Tag, const _Sender&>
-          friend auto tag_invoke(_Tag, const __t& __self)
-            noexcept(__nothrow_callable<_Tag, const _Sender&>)
-            -> __call_result_t<_Tag, const _Sender&> {
+          friend auto tag_invoke(get_attrs_t, const __t& __self)
+            noexcept(__nothrow_callable<get_attrs_t, const _Sender&>)
+            -> __call_result_t<get_attrs_t, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
 
@@ -4816,11 +4804,9 @@ namespace stdexec {
                 __receiver_t<_Receiver>{(_Receiver&&) __rcvr});
           }
 
-          template <same_as<get_attrs_t> _Tag>
-              requires __callable<_Tag, const _Sender&>
-          friend auto tag_invoke(_Tag, const __t& __self)
-            noexcept(__nothrow_callable<_Tag, const _Sender&>)
-            -> __call_result_t<_Tag, const _Sender&> {
+          friend auto tag_invoke(get_attrs_t, const __t& __self)
+            noexcept(__nothrow_callable<get_attrs_t, const _Sender&>)
+            -> __call_result_t<get_attrs_t, const _Sender&> {
             return get_attrs(__self.__sndr_);
           }
 

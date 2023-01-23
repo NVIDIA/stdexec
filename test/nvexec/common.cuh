@@ -189,11 +189,9 @@ namespace detail::a_sender {
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> completion_signatures<Self, Env> requires true;
 
-      template <stdexec::same_as<stdexec::get_attrs_t> _Tag>
-        requires stdexec::__callable<_Tag, const Sender&>
-      friend auto tag_invoke(_Tag, const sender_t& self)
-        noexcept(stdexec::__nothrow_callable<_Tag, const Sender&>)
-        -> stdexec::__call_result_t<_Tag, const Sender&> {
+      friend auto tag_invoke(stdexec::get_attrs_t, const sender_t& self)
+        noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
+        -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
         return stdexec::get_attrs(self.sndr_);
       }
     };
@@ -250,11 +248,9 @@ namespace detail::a_receiverless_sender {
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> completion_signatures<Self, Env> requires true;
 
-      template <stdexec::same_as<stdexec::get_attrs_t> _Tag>
-        requires stdexec::__callable<_Tag, const Sender&>
-      friend auto tag_invoke(_Tag, const sender_t& self)
-        noexcept(stdexec::__nothrow_callable<_Tag, const Sender&>)
-        -> stdexec::__call_result_t<_Tag, const Sender&> {
+      friend auto tag_invoke(stdexec::get_attrs_t, const sender_t& self)
+        noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
+        -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
         return stdexec::get_attrs(self.sndr_);
       }
     };
