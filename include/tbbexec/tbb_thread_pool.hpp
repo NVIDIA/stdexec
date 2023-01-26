@@ -1,8 +1,7 @@
-#include <cassert>
-#include <iostream>
-#include <map>
+#pragma once
 
 #include <tbb/task_arena.h>
+
 #include <exec/static_thread_pool.hpp>
 #include <exec/inline_scheduler.hpp>
 
@@ -14,6 +13,14 @@ class operation;
 
 using task_base = exec::task_base;
 
+//! This is a P2300-style thread pool wrapping tbb::task_arena, which its docs describe as "A class that represents an
+//! explicit, user-managed task scheduler arena."
+//! Once set up, a tbb::task_arena has
+//! * template<F> void enqueue(F &&f)
+//! and
+//! * template<F> auto execute(F &&f) -> decltype(f())
+//!
+//! See https://spec.oneapi.io/versions/1.0-rev-3/elements/oneTBB/source/task_scheduler/task_arena/task_arena_cls.html
 class tbb_thread_pool {
     template <typename ReceiverId>
     friend class operation;

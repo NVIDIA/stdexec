@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma clang optimize off
+
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -23,6 +23,8 @@
 #include <tbbexec/tbb_thread_pool.hpp>
 
 #include <fmt/format.h>
+
+#include <map>
 
 namespace ex = stdexec;
 
@@ -78,7 +80,7 @@ TEST_CASE("more tbb_thread_pool") {
   // Get a handle to the thread pool:
   auto tbb_sched = pool.get_scheduler();
 
-  exec::inline_scheduler inline_sched;
+  [[maybe_unused]] exec::inline_scheduler inline_sched;
 
   // Describe some work
   std::mutex mutex;
