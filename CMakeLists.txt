@@ -7,6 +7,13 @@ if(POLICY CMP0135)
   set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
 endif()
 
+# if (APPLE)
+    set (CMAKE_OSX_DEPLOYMENT_TARGET 12.0) # CACHE STRING "Minimum supported version of OS X")
+# endif ()
+find_package (TBB REQUIRED)
+find_package (fmt REQUIRED)
+
+
 ##############################################################################
 # - Download and initialize RAPIDS CMake helpers -----------------------------
 
@@ -98,6 +105,9 @@ rapids_find_package(Threads REQUIRED
   BUILD_EXPORT_SET stdexec-exports
   INSTALL_EXPORT_SET stdexec-exports
 )
+
+find_package(fmt REQUIRED)
+find_package(tbb REQUIRED)
 
 ##############################################################################
 # - Main library targets -----------------------------------------------------
