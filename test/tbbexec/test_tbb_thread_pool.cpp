@@ -68,8 +68,8 @@ TEST_CASE("more tbb_thread_pool") {
   compute(1);
   // Declare a pool of 1 worker threads (godbolt won't let us have more):
 
-  // tbbexec::tbb_thread_pool pool(1);
-  exec::static_thread_pool pool(1);
+  tbbexec::tbb_thread_pool pool(1);
+  // exec::static_thread_pool pool(1);
 
   // Declare a pool of 8 worker threads:
   exec::static_thread_pool other_pool(1);
@@ -106,7 +106,7 @@ TEST_CASE("more tbb_thread_pool") {
   std::this_thread::sleep_for(1ms);
 
   using namespace stdexec;
-  auto work = when_all( //
+  [[maybe_unused]] auto work = when_all( //
       schedule(tbb_sched) | then([] { return 1; }) | then(fun("a tbb_sched")) |
           then(fun("b tbb_sched")),
       schedule(inline_sched) | then([] { return 0; }) | then(fun("c inline_sched")) |
@@ -116,10 +116,21 @@ TEST_CASE("more tbb_thread_pool") {
           then(fun("g tbb_sched")));
 
   // Launch the work and wait for the result:
-  [[maybe_unused]] auto [i, j, k] = stdexec::sync_wait(std::move(work)).value();
+  //[[maybe_unused]] auto [i, j, k] = stdexec::sync_wait(std::move(work)).value();
 
-  // Print the results:
+  // clang-format off
+  //auto j = -1;
+  auto [i,j] = stdexec::sync_wait(
+      when_all(schedule(tbb_sched)    | then([] { return 1; })
+              ,schedule(tbb_sched) | then([] { return 2; })//,schedule(inline_sched) | then([] { return 0; })
+              )
+      ).value();
+               //schedule(tbb_sched)    | then([] { return 2; }))).value();
+  // clang-format on
+  auto k = -1;
   fmt::print("{}, {}, {}", i, j, k);
+  // Print the results:
+  // fmt::print("{}, {}, {}", i, j, k);
 }
 
 /*
