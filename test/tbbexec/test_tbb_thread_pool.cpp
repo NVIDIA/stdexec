@@ -69,7 +69,6 @@ TEST_CASE("more tbb_thread_pool") {
   // Declare a pool of 1 worker threads (godbolt won't let us have more):
 
   tbbexec::tbb_thread_pool pool(1);
-  // exec::static_thread_pool pool(1);
 
   // Declare a pool of 8 worker threads:
   exec::static_thread_pool other_pool(1);
@@ -81,10 +80,15 @@ TEST_CASE("more tbb_thread_pool") {
 
   exec::inline_scheduler inline_sched;
 
-  // Describe some work:
-  auto fun = [](auto x) {
-    return [x](int i) {
-      // std::ignore = x;
+  // Describe some work
+  std::mutex mutex;
+  std::map<std::string, std::size_t> log;
+  auto fun = [&](auto x) {
+    return [&, x](int i) {
+      {
+        std::lock_guard lock{mutex};
+        log.emplace(x, legible_thread_id());
+      }
       fmt::print("thread {}: x = {}\n", legible_thread_id(), x);
       return compute(i);
     };
@@ -106,21 +110,30 @@ TEST_CASE("more tbb_thread_pool") {
   std::this_thread::sleep_for(1ms);
 
   using namespace stdexec;
-  [[maybe_unused]] auto work = when_all( //
+
+  // Something's weird: If I start one chain with schedule(inline_scheduler) it crashes.
+
+  auto work = when_all( //
       schedule(tbb_sched) | then([] { return 1; }) | then(fun("a tbb_sched")) |
           then(fun("b tbb_sched")),
-      schedule(inline_sched) | then([] { return 0; }) | then(fun("c inline_sched")) |
+      schedule(other_sched) | then([] { return 0; }) | then(fun("c other_sched")) |
           transfer(tbb_sched) | then(fun("d tbb_sched")),
       schedule(tbb_sched) | then([] { return 2; }) | then(fun("e tbb_sched")) |
           transfer(other_sched) | then(fun("f other_sched")) | transfer(tbb_sched) |
           then(fun("g tbb_sched")));
 
   // Launch the work and wait for the result:
-  //[[maybe_unused]] auto [i, j, k] = stdexec::sync_wait(std::move(work)).value();
-
+  auto [i, j, k] = stdexec::sync_wait(std::move(work)).value();
+  CHECK(i == 3);
+  CHECK(j == 2);
+  CHECK(k == 5);
+  fmt::print("{}, {}, {}", i, j, k);
+  CHECK(
+      log == decltype(log){{"a tbb_sched", 3}, {"b tbb_sched", 3}, {"c other_sched", 2},
+                 {"d tbb_sched", 3}, {"e tbb_sched", 3}, {"f other_sched", 2}, {"g tbb_sched", 3}});
   // clang-format off
   //auto j = -1;
-  auto [i,j] = stdexec::sync_wait(
+  /*(auto [i,j] = stdexec::sync_wait(
       when_all(schedule(tbb_sched)    | then([] { return 1; })
               ,schedule(tbb_sched) | then([] { return 2; })//,schedule(inline_sched) | then([] { return 0; })
               )
@@ -128,7 +141,7 @@ TEST_CASE("more tbb_thread_pool") {
                //schedule(tbb_sched)    | then([] { return 2; }))).value();
   // clang-format on
   auto k = -1;
-  fmt::print("{}, {}, {}", i, j, k);
+  fmt::print("{}, {}, {}", i, j, k);*/
   // Print the results:
   // fmt::print("{}, {}, {}", i, j, k);
 }
