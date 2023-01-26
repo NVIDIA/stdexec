@@ -18,6 +18,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/env.hpp>
@@ -406,4 +407,17 @@ TEST_CASE("split advertises completion scheduler via its attrs", "[adaptors][spl
   static_assert(!stdexec::__has_completion_scheduler<snd_t, ex::set_error_t>);
   static_assert(stdexec::__has_completion_scheduler<snd_t, ex::set_stopped_t>);
   (void)snd;
+}
+TEST_CASE("split copies attrs of input sender", "[adaptors][split]") {
+  auto attrs = value_attrs{100};
+  auto snd = just_with_attrs<value_attrs, move_only_type>{attrs, move_only_type{0}} | ex::split();
+  static_assert(std::same_as<decltype(ex::get_attrs(snd)), const value_attrs&>);
+  CHECK(ex::get_attrs(snd).value == 100);
+  attrs.value = 99;
+  CHECK(ex::get_attrs(snd).value == 100);
+
+  auto snd2 = ex::then(snd, [](const move_only_type&) { });
+  static_assert(std::same_as<decltype(ex::get_attrs(snd2)), const value_attrs&>);
+  CHECK(ex::get_attrs(snd).value == 100);
+  CHECK(ex::get_attrs(snd2).value == 100);
 }

@@ -3301,8 +3301,8 @@ namespace stdexec {
     using _Env = __1;
     using __cust_sigs =
       __types<
-        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(get_attrs_t(_Sender&)), _Sender),
-        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(get_attrs_t(_Sender&)), _Sender, _Env),
+        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(get_attrs_t(const _Sender&)), _Sender),
+        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(get_attrs_t(const _Sender&)), _Sender, _Env),
         tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender),
         tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender, _Env),
         tag_invoke_t(split_t, _Sender),
