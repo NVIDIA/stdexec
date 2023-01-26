@@ -51,7 +51,9 @@ TEST_CASE("split executes predecessor sender once", "[adaptors][split]") {
     auto snd = ex::split(ex::just() | ex::then([&]{ counter++; return counter; }));
     auto op1 = ex::connect(snd, expect_value_receiver{1});
     auto op2 = ex::connect(snd, expect_value_receiver{1});
+    REQUIRE( counter == 0 );
     ex::start(op1);
+    REQUIRE( counter == 1 );
     ex::start(op2);
     // The receiver will ensure that the right value is produced
 
@@ -293,6 +295,84 @@ TEST_CASE("split can be an rvalue", "[adaptors][split]") {
 
   REQUIRE( val == 42 );
 }
+struct move_only_type {
+  move_only_type(int v) : val(v) {}
+  move_only_type(move_only_type&&) = default;
+  int val;
+};
+struct copy_and_movable_type {
+  copy_and_movable_type(int v) : val(v) {}
+  int val;
+};
+
+TEST_CASE("split into then", "[adaptors][split]") {
+  SECTION("rvalue split move only sender") {
+    auto snd = ex::split(ex::just(move_only_type{0})) | ex::then([](const move_only_type&) { });
+    ex::sync_wait(snd);
+  }
+
+  SECTION("rvalue split copyable sender") {
+    auto snd = ex::split(ex::just(copy_and_movable_type{0})) | ex::then([](const copy_and_movable_type&) { });
+    ex::sync_wait(snd);
+  }
+
+  SECTION("lvalue split move only sender") {
+    auto multishot = ex::split(ex::just(move_only_type{0}));
+    auto snd = multishot | ex::then([](const move_only_type&) { });
+
+    REQUIRE( ex::sender_of<decltype(multishot), ex::set_value_t(const move_only_type&)> );
+    REQUIRE( !ex::sender_of<decltype(multishot), ex::set_value_t(move_only_type)> );
+    REQUIRE( !ex::sender_of<decltype(multishot), ex::set_value_t(move_only_type&)> );
+    REQUIRE( !ex::sender_of<decltype(multishot), ex::set_value_t(move_only_type&&)> );
+
+    ex::sync_wait(snd);
+  }
+
+  SECTION("lvalue split copyable sender") {
+    auto multishot = ex::split(ex::just(copy_and_movable_type{0}));
+    ex::get_completion_signatures_t{}(multishot);
+    auto snd = multishot | ex::then([](const copy_and_movable_type&) { });
+
+    REQUIRE( ex::sender_of<decltype(multishot), ex::set_value_t(const copy_and_movable_type&)> );
+    REQUIRE( !ex::sender_of<decltype(multishot), ex::set_value_t(copy_and_movable_type)> );
+    REQUIRE( !ex::sender_of<decltype(multishot), ex::set_value_t(copy_and_movable_type&)> );
+    REQUIRE( !ex::sender_of<decltype(multishot), ex::set_value_t(copy_and_movable_type&&)> );
+
+    ex::sync_wait(snd);
+  }
+}
+TEMPLATE_TEST_CASE("split move-only and copyable senders", "[adaptors][split]", move_only_type, copy_and_movable_type) {
+  int called = 0;
+  auto multishot = 
+      ex::just(TestType(10)) |
+      ex::then([&](TestType obj) { ++called; return TestType(obj.val+1); }) |
+      ex::split();
+  auto wa =
+    ex::when_all(
+        ex::then(multishot, [](const TestType& obj) { return obj.val; }),
+        ex::then(multishot, [](const TestType& obj) { return obj.val * 2; }),
+        ex::then(multishot, [](const TestType& obj) { return obj.val * 3; })
+      );
+
+  auto [v1, v2, v3] = stdexec::sync_wait(std::move(wa)).value();
+
+  REQUIRE( called == 1 );
+  REQUIRE( v1 == 11 );
+  REQUIRE( v2 == 22 );
+  REQUIRE( v3 == 33 );
+}
+TEST_CASE("split into when_all", "[adaptors][split]") {
+  int counter{};
+  auto snd = ex::split(ex::just() | ex::then([&]{ counter++; return counter; }));
+  auto wa = ex::when_all(
+    snd | ex::then([](auto) { return 10; }),
+    snd | ex::then([](auto) { return 20; }));
+  REQUIRE( counter == 0 );
+  auto [v1, v2] = stdexec::sync_wait(std::move(wa)).value();
+  REQUIRE( counter == 1 );
+  REQUIRE( v1 == 10 );
+  REQUIRE( v2 == 20 );
+}
 TEST_CASE("split can nest", "[adaptors][split]") {
   auto split_1 = ex::just(42) | ex::split();
   auto split_2 = split_1 | ex::split();
@@ -317,13 +397,13 @@ TEST_CASE("split can nest", "[adaptors][split]") {
   REQUIRE( v2 == 2 );
   REQUIRE( v3 == 1 );
 }
-TEST_CASE("split doesn't advertise completion scheduler", "[adaptors][split]") {
+TEST_CASE("split advertises completion scheduler via its attrs", "[adaptors][split]") {
   inline_scheduler sched;
 
   auto snd = ex::transfer_just(sched, 42) | ex::split();
   using snd_t = decltype(snd);
-  static_assert(!stdexec::__has_completion_scheduler<snd_t, ex::set_value_t>);
+  static_assert(stdexec::__has_completion_scheduler<snd_t, ex::set_value_t>);
   static_assert(!stdexec::__has_completion_scheduler<snd_t, ex::set_error_t>);
-  static_assert(!stdexec::__has_completion_scheduler<snd_t, ex::set_stopped_t>);
+  static_assert(stdexec::__has_completion_scheduler<snd_t, ex::set_stopped_t>);
   (void)snd;
 }

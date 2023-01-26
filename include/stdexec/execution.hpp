@@ -267,6 +267,9 @@ namespace stdexec {
   template <class _EnvProvider>
     concept environment_provider =
       requires (_EnvProvider& __ep) {
+        { get_env(std::as_const(__ep)) } -> queryable;
+        // NOT TO SPEC: Remove the following line when we deprecate all
+        // R5 entities.
         { get_env(std::as_const(__ep)) } -> __none_of<no_env, void>;
       };
 
@@ -688,6 +691,9 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
+  template <class _T>
+    using attrs_of_t = decltype(get_attrs(__declval<_T>()));
+
   template <class _Sender, class _Env = no_env>
     concept sender =
       // NOT TO SPEC
@@ -698,6 +704,12 @@ namespace stdexec {
       } &&
       __sender<_Sender, no_env> &&
       __sender<_Sender, _Env>;
+
+  template <class _Sender, class _Env>
+    concept sender_in =
+      sender<_Sender> &&
+      __valid<__completion_signatures_of_t, _Sender, _Env> &&
+      __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env>;
 
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender<S, Ctx> are both true, then they
@@ -3110,11 +3122,14 @@ namespace stdexec {
           __variant_t __data_;
           std::atomic<void*> __head_{nullptr};
           __env_t<_Env> __env_;
-          connect_result_t<_Sender&, __receiver_> __op_state2_;
+          decay_t<attrs_of_t<_Sender>> __attrs_;
+          connect_result_t<_Sender, __receiver_> __op_state2_;
 
-          explicit __t(_Sender& __sndr, _Env __env)
+          template <class _Sender2>
+          explicit __t(_Sender2&& __sndr, _Env __env)
             : __env_(__make_env((_Env&&) __env, __with_(get_stop_token, __stop_source_.get_token())))
-            , __op_state2_(connect(__sndr, __receiver_{*this})) {
+            , __attrs_(get_attrs(__sndr))
+            , __op_state2_(connect((_Sender2&&)__sndr, __receiver_{*this})) {
           }
 
           void __notify() noexcept {
@@ -3233,14 +3248,23 @@ namespace stdexec {
           template <class _Self>
           using __completions_t =
             make_completion_signatures<
-              _Sender&,
+              // NOT TO SPEC:
+              // The spec says this should be copy_cvref, but the
+              // 'lvalue split move only sender' test fails if copy_cvref
+              // is used. E.g., in
+              //
+              //   auto snd = just(move_only_type{});
+              //   auto snd2 = split(snd);
+              //
+              // the lvalue 'snd2' does not satisfy the 'sender' concept since
+              // just(move_only_type{}) is move only.
+              _Sender,
               __env_t<__make_dependent_on<_Env, _Self>>,
               completion_signatures<set_error_t(const std::exception_ptr&),
                                     set_stopped_t()>, // NOT TO SPEC
               __set_value_t,
               __set_error_t>;
 
-          _Sender __sndr_;
           std::shared_ptr<__sh_state_> __shared_state_;
 
         public:
@@ -3258,9 +3282,13 @@ namespace stdexec {
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv)
               -> __completions_t<_Self>;
 
-          explicit __t(_Sender __sndr, _Env __env)
-            : __sndr_((_Sender&&) __sndr)
-            , __shared_state_{std::make_shared<__sh_state_>(__sndr_, (_Env&&) __env)} {
+          friend auto tag_invoke(get_attrs_t, const __t& __self) noexcept -> const decay_t<attrs_of_t<_Sender>>& {
+            return __self.__shared_state_->__attrs_;
+          }
+
+          template <class _Sender2>
+          explicit __t(_Sender2&& __sndr, _Env __env)
+            : __shared_state_{std::make_shared<__sh_state_>((_Sender2&&)__sndr, (_Env&&) __env)} {
           }
         };
       };
@@ -3297,9 +3325,8 @@ namespace stdexec {
     struct split_t {
       template <sender _Sender, class _Env = __empty_env>
           requires
-            (copy_constructible<remove_cvref_t<_Sender>> &&
-             sender_to<_Sender&, __receiver_t<_Sender, _Env>>) ||
-            __is_split_customized<_Sender, _Env>
+             (sender_in<_Sender, _Env> && constructible_from<decay_t<attrs_of_t<_Sender>>, attrs_of_t<_Sender>>) ||
+             __is_split_customized<_Sender, _Env>
         auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
           noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
           -> __call_result_t<__dispatcher_for<_Sender, _Env>, _Sender, _Env> {
