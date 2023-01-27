@@ -89,6 +89,14 @@ namespace stdexec {
   inline constexpr __forwarding_query::forwarding_query_t forwarding_query{};
   using __forwarding_query::forwarding_query_t;
 
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders]
+  template <class _Sender>
+    inline constexpr bool enable_sender =
+      requires {
+        typename _Sender::is_sender;
+      };
+
   // [execution.schedulers.queries], scheduler queries
   namespace __scheduler_queries {
     template <class _Ty>
@@ -244,6 +252,13 @@ namespace stdexec {
           -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
           static_assert(queryable<tag_invoke_result_t<get_env_t, const _EnvProvider&> >);
           return tag_invoke(*this, __with_env);
+        }
+
+      template <class _EnvProvider>
+          requires (!tag_invocable<get_env_t, const _EnvProvider&>)
+        constexpr auto operator()(const _EnvProvider& __with_env) const
+          noexcept -> __empty_env {
+          return {};
         }
     };
   } // namespace __env
@@ -638,63 +653,15 @@ namespace stdexec {
       constructible_from<remove_cvref_t<_Sender>, _Sender>;
 
   /////////////////////////////////////////////////////////////////////////////
-  // get_attrs
-  namespace __attrs {
-    struct __empty_attrs {
-      using __t = __empty_attrs;
-      using __id = __empty_attrs;
-    };
-
-    struct get_attrs_t {
-      template <class _Sender>
-        requires tag_invocable<get_attrs_t, const _Sender&>
-        constexpr auto operator()(const _Sender& __sender) const
-          noexcept(nothrow_tag_invocable<get_attrs_t, const _Sender&>)
-          -> tag_invoke_result_t<get_attrs_t, const _Sender&> {
-          static_assert(queryable<tag_invoke_result_t<get_attrs_t, const _Sender&>>);
-          return tag_invoke(*this, __sender);
-        }
-
-      // NOT TO SPEC
-      // This overload is subsumed by the __sender constrained overload
-      // below, which is provided for backwards compatibility. We'll enable
-      // this one when removing the compatibility overload.
-#if 0
-      template <class _Sender>
-        requires (!tag_invocable<get_attrs_t, const _Sender&>) &&
-          __awaitable<_Sender, no_env_promise>
-        constexpr auto operator()(const _Sender& __sender) const
-          noexcept -> __empty_attrs {
-          return {};
-        }
-#endif
-
-      // NOT TO SPEC
-      // For backwards compatibility, get_attrs returns a reference
-      // to the passed in sender. This will be removed eventually in favor
-      // of all sender types defining get_attrs.
-      template <class _Sender>
-        requires (!tag_invocable<get_attrs_t, const _Sender&>) &&
-          __sender<_Sender, no_env>
-        constexpr auto operator()(const _Sender& __sender) const
-          noexcept -> const _Sender& {
-          return __sender;
-        }
-    };
-  } // namespace __attrs
-  inline constexpr __attrs::get_attrs_t get_attrs{};
-  using __attrs::get_attrs_t;
-  using __attrs::__empty_attrs;
-
-  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   template <class _Sender, class _Env = no_env>
     concept sender =
       // NOT TO SPEC
       // The sender related concepts are temporarily "in flight" being
-      // upgraded from P2300R5 to the get_attrs aware version of P2300.
+      // upgraded from P2300R5 to the get_env / enable_sender aware version
+      // in P2300R7.
       requires (const remove_cvref_t<_Sender>& __sndr) {
-        { get_attrs(__sndr) } -> queryable;
+        { get_env(__sndr) } -> queryable;
       } &&
       __sender<_Sender, no_env> &&
       __sender<_Sender, _Env>;
