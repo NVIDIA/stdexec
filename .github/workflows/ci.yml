@@ -74,7 +74,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test GPU schedulers
-        shell: bash -lec '{0}'
+        shell: bash -l {0}
         env:
           cxx: "${{ matrix.cxx }}"
         run: |
