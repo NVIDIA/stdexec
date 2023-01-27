@@ -144,6 +144,18 @@ TEST_CASE("check completion signatures for sender that also supports error codes
   check_sends_stopped<false>(ec_sender{});
   REQUIRE(ex::sender_of<ec_sender, ex::set_value_t()>);
 }
+struct my_r5_sender0 {
+  using completion_signatures =
+    ex::completion_signatures<             //
+      ex::set_value_t(),                   //
+      ex::set_error_t(std::exception_ptr), //
+      ex::set_stopped_t()>;
+
+  friend oper tag_invoke(ex::connect_t, my_r5_sender0, empty_recv::recv0&& r) { return {}; }
+};
+TEST_CASE("r5 sender emits deprecated diagnostics", "[concepts][sender]") {
+  ex::get_env(my_r5_sender0{});
+}
 
 #if !STDEXEC_NVHPC()
 // nvc++ doesn't yet implement subsumption correctly
