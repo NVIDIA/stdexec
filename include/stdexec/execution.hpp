@@ -318,8 +318,7 @@ namespace stdexec {
             (!tag_invocable<get_env_t, const _EnvProvider&>) &&
             // NOT TO SPEC: Remove the R5/R7 sender checks when
             // deprecating R5 support.
-            (!__r5_sender<_EnvProvider>) &&
-            __r7_sender<_EnvProvider>
+            (!__r5_sender<_EnvProvider>)
         constexpr auto operator()(const _EnvProvider& __with_env) const
           noexcept -> __empty_env {
           return {};
@@ -2095,6 +2094,8 @@ namespace stdexec {
         struct __t {
           using __id = __basic_sender;
           using completion_signatures = __completion_signatures_<_Tag, _Ts...>;
+          using is_sender = void;
+
           std::tuple<_Ts...> __vals_;
 
           template <receiver_of<completion_signatures> _Receiver>
