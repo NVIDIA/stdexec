@@ -74,7 +74,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test GPU schedulers
-        shell: bash -eou pipefail
+        shell: bash -eou pipefail {0}
         env:
           cxx: "${{ matrix.cxx }}"
         run: |
