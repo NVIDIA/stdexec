@@ -63,7 +63,7 @@ inline void check_val_types(S snd) {
 //! Check that the attrs of a sender matches the expected type
 template <typename ExpectedAttrsType, typename S>
 inline void check_attrs_type(S snd) {
-  using t = decltype(ex::get_attrs(snd));
+  using t = decltype(ex::get_env(snd));
   static_assert(std::same_as<t, ExpectedAttrsType>);
 }
 

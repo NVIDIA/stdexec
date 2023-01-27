@@ -68,11 +68,11 @@ namespace schedule_from {
           return stdexec::connect(((Self&&)self).sender_, (Receiver&&)rcvr);
         }
 
-      friend auto tag_invoke(stdexec::get_attrs_t, const source_sender_t& self)
-        noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
-        -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
+      friend auto tag_invoke(stdexec::get_env_t, const source_sender_t& self)
+        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
+        -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
         // TODO - this code is not exercised by any test
-        return stdexec::get_attrs(self.sndr_);
+        return stdexec::get_env(self.sndr_);
       }
 
       template <stdexec::__decays_to<source_sender_t> _Self, class _Env>
@@ -124,7 +124,7 @@ template <class Scheduler, class SenderId>
               self.attrs_.context_state_);
       }
 
-      friend const __attrs& tag_invoke(stdexec::get_attrs_t, const __t& __self) noexcept {
+      friend const __attrs& tag_invoke(stdexec::get_env_t, const __t& __self) noexcept {
         return __self.attrs_;
       }
 

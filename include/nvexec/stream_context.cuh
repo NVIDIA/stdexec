@@ -129,7 +129,7 @@ namespace nvexec {
               return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec, self.attrs_.context_state_);
             }
 
-          friend const attrs& tag_invoke(stdexec::get_attrs_t, const __t& self) noexcept {
+          friend const attrs& tag_invoke(stdexec::get_env_t, const __t& self) noexcept {
             return self.attrs_;
           };
 

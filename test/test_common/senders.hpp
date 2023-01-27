@@ -52,7 +52,7 @@ struct fallible_just {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
 
-  friend empty_attrs tag_invoke(ex::get_attrs_t, const fallible_just&) noexcept {
+  friend empty_attrs tag_invoke(ex::get_env_t, const fallible_just&) noexcept {
     return {};
   }
 };
@@ -91,7 +91,7 @@ struct just_with_attrs {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
 
-  friend Attrs tag_invoke(ex::get_attrs_t, const just_with_attrs& self) noexcept {
+  friend Attrs tag_invoke(ex::get_env_t, const just_with_attrs& self) noexcept {
     return self.attrs_;
   }
 };

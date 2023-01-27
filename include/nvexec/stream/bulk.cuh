@@ -139,10 +139,10 @@ template <class SenderId, std::integral Shape, class Fun>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> completion_signatures<Self, Env> requires true;
 
-      friend auto tag_invoke(stdexec::get_attrs_t, const __t& self)
-        noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
-        -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
-        return stdexec::get_attrs(self.sndr_);
+      friend auto tag_invoke(stdexec::get_env_t, const __t& self)
+        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
+        -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
+        return stdexec::get_env(self.sndr_);
       }
     };
   };
@@ -356,7 +356,7 @@ template <class SenderId, std::integral Shape, class Fun>
           requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
         friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
           -> multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun> {
-          auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(self.sndr_));
+          auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(self.sndr_));
           context_state_t context_state = sch.context_state_;
           return multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun>(
               self.num_devices_,
@@ -375,10 +375,10 @@ template <class SenderId, std::integral Shape, class Fun>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> completion_signatures<Self, Env> requires true;
 
-      friend auto tag_invoke(stdexec::get_attrs_t, const __t& self)
-        noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
-        -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
-        return stdexec::get_attrs(self.sndr_);
+      friend auto tag_invoke(stdexec::get_env_t, const __t& self)
+        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
+        -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
+        return stdexec::get_env(self.sndr_);
       }
     };
   };

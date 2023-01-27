@@ -95,7 +95,7 @@ struct custom_sender {
     *sndr.called = true;
   }
 
-  friend empty_attrs tag_invoke(ex::get_attrs_t, const custom_sender&) noexcept {
+  friend empty_attrs tag_invoke(ex::get_env_t, const custom_sender&) noexcept {
     return {};
   }
 };
@@ -108,7 +108,7 @@ struct custom_scheduler {
           return {};
         }
     };
-    friend attrs tag_invoke(ex::get_attrs_t, const sender&) noexcept {
+    friend attrs tag_invoke(ex::get_env_t, const sender&) noexcept {
       return {};
     }
   };

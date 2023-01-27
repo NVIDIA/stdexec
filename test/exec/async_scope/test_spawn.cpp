@@ -28,7 +28,7 @@ struct throwing_sender {
     return {std::forward<Receiver>(rcvr)};
   }
 
-  friend empty_attrs tag_invoke(stdexec::get_attrs_t, const throwing_sender&) noexcept {
+  friend empty_attrs tag_invoke(stdexec::get_env_t, const throwing_sender&) noexcept {
     return {};
   }
 };

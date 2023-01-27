@@ -317,7 +317,7 @@ struct my_string_sender_t {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
 
-  friend empty_attrs tag_invoke(ex::get_attrs_t, const my_string_sender_t&) noexcept {
+  friend empty_attrs tag_invoke(ex::get_env_t, const my_string_sender_t&) noexcept {
     return{};
   }
 };
@@ -369,5 +369,5 @@ TEST_CASE(
 }
 
 TEST_CASE("when_all returns empty attrs", "[adaptors][when_all]") {
-  check_attrs_type<ex::__empty_attrs>(ex::when_all(ex::just(), ex::just()));
+  check_attrs_type<ex::__empty_env>(ex::when_all(ex::just(), ex::just()));
 }

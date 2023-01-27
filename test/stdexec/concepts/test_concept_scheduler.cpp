@@ -35,7 +35,7 @@ struct my_scheduler {
         ex::set_error_t(std::exception_ptr), //
         ex::set_stopped_t()>;
 
-    friend default_attrs<my_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    friend default_attrs<my_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
       return {};
     }
 
@@ -68,7 +68,7 @@ struct my_scheduler_except {
         ex::set_error_t(std::exception_ptr), //
         ex::set_stopped_t()>;
 
-    friend default_attrs<my_scheduler_except> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    friend default_attrs<my_scheduler_except> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -94,7 +94,7 @@ struct noeq_sched {
         ex::set_error_t(std::exception_ptr), //
         ex::set_stopped_t()>;
 
-    friend default_attrs<noeq_sched> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    friend default_attrs<noeq_sched> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -121,7 +121,7 @@ struct sched_no_completion {
       }
     };
 
-    friend attrs tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    friend attrs tag_invoke(ex::get_env_t, const my_sender&) noexcept {
       return {};
     }
 

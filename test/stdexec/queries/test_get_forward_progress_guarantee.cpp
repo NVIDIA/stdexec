@@ -44,7 +44,7 @@ struct uncustomized_scheduler {
       }
     };
 
-    friend attrs tag_invoke(ex::get_attrs_t, const sender&) noexcept {
+    friend attrs tag_invoke(ex::get_env_t, const sender&) noexcept {
       return {};
     }
   };
@@ -75,7 +75,7 @@ struct customized_scheduler {
       }
     };
 
-    friend attrs tag_invoke(ex::get_attrs_t, const sender&) noexcept {
+    friend attrs tag_invoke(ex::get_env_t, const sender&) noexcept {
       return {};
     }
   };

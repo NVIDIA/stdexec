@@ -30,7 +30,7 @@ struct cpo_t {
       ex::set_error_t(std::exception_ptr),                 //
       ex::set_stopped_t()>;
 
-  friend empty_attrs tag_invoke(ex::get_attrs_t, const cpo_t&) noexcept {
+  friend empty_attrs tag_invoke(ex::get_env_t, const cpo_t&) noexcept {
     return {};
   }
 };
@@ -47,7 +47,7 @@ struct free_standing_sender_t {
     return cpo_t<scope_t::free_standing>{};
   }
 
-  friend empty_attrs tag_invoke(ex::get_attrs_t, const free_standing_sender_t&) noexcept {
+  friend empty_attrs tag_invoke(ex::get_env_t, const free_standing_sender_t&) noexcept {
     return {};
   }
 };
@@ -66,7 +66,7 @@ struct scheduler_t {
         ex::set_error_t(std::exception_ptr),                 //
         ex::set_stopped_t()>;
 
-    friend attrs_t tag_invoke(ex::get_attrs_t, const sender_t&) noexcept {
+    friend attrs_t tag_invoke(ex::get_env_t, const sender_t&) noexcept {
       return {};
     }
   };

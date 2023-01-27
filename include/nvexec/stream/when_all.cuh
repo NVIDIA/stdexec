@@ -325,7 +325,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
               , child_states_{
                   stdexec::__conv{[&when_all, this]() {
                     operation_t* parent_op = this;
-                    auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(std::get<Is>(when_all.sndrs_)));
+                    auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(std::get<Is>(when_all.sndrs_)));
                     context_state_t context_state = sch.context_state_;
                     STDEXEC_DBG_ERR(cudaStreamCreate(&this->streams_[Is]));
 
@@ -417,7 +417,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
           -> completion_sigs<stdexec::__copy_cvref_t<Self, Env>>;
 
-      friend const attrs& tag_invoke(stdexec::get_attrs_t, const __t& __self) noexcept {
+      friend const attrs& tag_invoke(stdexec::get_env_t, const __t& __self) noexcept {
         return __self.attrs_;
       }
 

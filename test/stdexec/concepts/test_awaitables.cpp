@@ -31,7 +31,7 @@ template <class Sender>
   concept sender_with_attrs =
     ex::sender<Sender> &&
     requires (const Sender& s) {
-      ex::get_attrs(s);
+      ex::get_env(s);
     };
 
 template <typename Awaiter>
@@ -224,7 +224,7 @@ struct awaitable_attrs {};
 template <typename Awaiter>
 struct awaitable_with_get_attrs {
   Awaiter operator co_await();
-  friend awaitable_attrs tag_invoke(ex::get_attrs_t, const awaitable_with_get_attrs&) noexcept {
+  friend awaitable_attrs tag_invoke(ex::get_env_t, const awaitable_with_get_attrs&) noexcept {
     return {};
   }
 };

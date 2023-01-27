@@ -54,7 +54,7 @@ namespace exec {
         }
       };
 
-      friend __attrs tag_invoke(stdexec::get_attrs_t, const __sender&) noexcept {
+      friend __attrs tag_invoke(stdexec::get_env_t, const __sender&) noexcept {
         return {};
       }
     };
