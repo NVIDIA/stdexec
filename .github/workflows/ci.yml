@@ -80,18 +80,6 @@ jobs:
         run: |
           set -x;
 
-          # Check that NVHPC modules and paths are set
-          type module;
-          if type module &> /dev/null; then
-            module list;
-          fi
-          echo "NVHPC_CUDA_HOME=$NVHPC_CUDA_HOME";
-          echo "NVHPC_VERSION=$NVHPC_VERSION";
-          echo "NVHPC_ROOT=$NVHPC_ROOT";
-          echo "NVHPC=$NVHPC";
-          echo "PATH=$PATH";
-          echo "cxx=$(which $cxx)";
-
           sudo mkdir -p /workspaces/stdexec/;
           sudo cp -ar . /workspaces/stdexec/;
           sudo chown -R $(id -u):$(id -g) /workspaces;
