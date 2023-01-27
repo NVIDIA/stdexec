@@ -626,6 +626,12 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
   template <class _Receiver>
+    inline constexpr bool enable_receiver =
+      requires {
+        typename _Receiver::is_receiver;
+      };
+
+  template <class _Receiver>
     concept receiver =
       environment_provider<__cref_t<_Receiver>> &&
       move_constructible<remove_cvref_t<_Receiver>> &&
