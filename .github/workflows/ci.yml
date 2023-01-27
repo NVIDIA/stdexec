@@ -78,9 +78,15 @@ jobs:
         env:
           cxx: "${{ matrix.cxx }}"
         run: |
-          source $BASH_ENV;
-
           set -x;
+
+          # Check that NVHPC modules and paths are set
+          module list;
+          echo "NVHPC_CUDA_HOME=$NVHPC_CUDA_HOME";
+          echo "NVHPC_VERSION=$NVHPC_VERSION";
+          echo "NVHPC_ROOT=$NVHPC_ROOT";
+          echo "NVHPC=$NVHPC";
+          echo "PATH=$PATH";
 
           sudo mkdir -p /workspaces/stdexec/;
           sudo cp -ar . /workspaces/stdexec/;
@@ -90,9 +96,9 @@ jobs:
           # Configure
           cmake -S . -B build -GNinja \
             -DSTDEXEC_ENABLE_CUDA=ON \
-            -DCMAKE_CXX_COMPILER="$cxx" \
-            -DCMAKE_CUDA_COMPILER="$cxx" \
-            -DCMAKE_CUDA_ARCHITECTURES=native;
+            -DCMAKE_CUDA_ARCHITECTURES=native \
+            -DCMAKE_CXX_COMPILER="$(which $cxx)" \
+            -DCMAKE_CUDA_COMPILER="$(which $cxx)";
 
           # Compile
           cmake --build build;
