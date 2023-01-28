@@ -3125,11 +3125,10 @@ namespace stdexec {
           decay_t<attrs_of_t<_Sender>> __attrs_;
           connect_result_t<_Sender, __receiver_> __op_state2_;
 
-          template <class _Sender2>
-          explicit __t(_Sender2&& __sndr, _Env __env)
+          explicit __t(_Sender __sndr, _Env __env)
             : __env_(__make_env((_Env&&) __env, __with_(get_stop_token, __stop_source_.get_token())))
             , __attrs_(get_attrs(__sndr))
-            , __op_state2_(connect((_Sender2&&)__sndr, __receiver_{*this})) {
+            , __op_state2_(connect((_Sender&&)__sndr, __receiver_{*this})) {
           }
 
           void __notify() noexcept {
@@ -3286,9 +3285,8 @@ namespace stdexec {
             return __self.__shared_state_->__attrs_;
           }
 
-          template <class _Sender2>
-          explicit __t(_Sender2&& __sndr, _Env __env)
-            : __shared_state_{std::make_shared<__sh_state_>((_Sender2&&)__sndr, (_Env&&) __env)} {
+          explicit __t(_Sender __sndr, _Env __env)
+            : __shared_state_{std::make_shared<__sh_state_>((_Sender&&)__sndr, (_Env&&) __env)} {
           }
         };
       };
@@ -3313,10 +3311,7 @@ namespace stdexec {
         __minvocable<__which<__cust_sigs>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
-      using __sender_t = __t<__sender<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
-
-    template <class _Sender, class _Env>
-      using __receiver_t = __t<__receiver<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
+      using __sender_t = __t<__sender<stdexec::__id<_Sender>, stdexec::__id<remove_cvref_t<_Env>>>>;
 
     template <class _Sender, class _Env>
       using __dispatcher_for =
