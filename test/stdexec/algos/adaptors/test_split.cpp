@@ -362,6 +362,14 @@ TEMPLATE_TEST_CASE("split move-only and copyable senders", "[adaptors][split]", 
   REQUIRE( v2 == 22 );
   REQUIRE( v3 == 33 );
 }
+template <class T>
+concept can_split_lvalue_of = requires (T t) {
+  ex::split(t);
+};
+TEST_CASE("split can only accept copyable lvalue input senders", "[adaptors][split]") {
+  static_assert(!can_split_lvalue_of<decltype(ex::just(move_only_type{0}))>);
+  static_assert(can_split_lvalue_of<decltype(ex::just(copy_and_movable_type{0}))>);
+}
 TEST_CASE("split into when_all", "[adaptors][split]") {
   int counter{};
   auto snd = ex::split(ex::just() | ex::then([&]{ counter++; return counter; }));
