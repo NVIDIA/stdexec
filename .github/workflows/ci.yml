@@ -74,12 +74,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test GPU schedulers
-        shell: bash
+        shell: bash -l {0}
         env:
           cxx: "${{ matrix.cxx }}"
         run: |
-          source $BASH_ENV;
-
           set -x;
 
           sudo mkdir -p /workspaces/stdexec/;
