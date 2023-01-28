@@ -58,8 +58,10 @@
 
 #ifdef STDEXEC_ENABLE_R5_DEPRECATIONS
 #define R5_SENDER_DEPR_WARNING [[deprecated("Deprecated sender type detected. Please update the type for to satisfy the sender concept in P2300R7")]]
+#define R5_RECEIVER_DEPR_WARNING [[deprecated("Deprecated receiver type detected. Please update the type for to satisfy the receiver concept in P2300R7")]]
 #else
 #define R5_SENDER_DEPR_WARNING
+#define R5_RECEIVER_DEPR_WARNING
 #endif
 
 STDEXEC_PRAGMA_PUSH()
@@ -94,6 +96,14 @@ namespace stdexec {
   }
   inline constexpr __forwarding_query::forwarding_query_t forwarding_query{};
   using __forwarding_query::forwarding_query_t;
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.receivers]
+  template <class _Receiver>
+    inline constexpr bool enable_receiver =
+      requires {
+        typename _Receiver::is_receiver;
+      };
 
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
@@ -188,9 +198,21 @@ namespace stdexec {
       }
     }
 
+    template <class _T>
+    R5_RECEIVER_DEPR_WARNING
+    void __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait() { }
+
+    template <class _T>
+    void __check_receiver_version() {
+      if constexpr (!enable_receiver<_T>) {
+        __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait<_T>();
+      }
+    }
+
   } // namespace __r5_support
   using __r5_support::__r5_sender;
   using __r5_support::__check_sender_version;
+  using __r5_support::__check_receiver_version;
 
   /////////////////////////////////////////////////////////////////////////////
   // env_of
@@ -628,11 +650,6 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
-  template <class _Receiver>
-    inline constexpr bool enable_receiver =
-      requires {
-        typename _Receiver::is_receiver;
-      };
 
   template <class _Receiver>
     concept receiver =
@@ -1528,7 +1545,7 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
           noexcept(__nothrow_connect<_Sender, _Receiver>()) {
         __check_sender_version<_Sender>();
-        //__check_receiver_version<_Receiver>();
+        __check_receiver_version<_Receiver>();
         if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
