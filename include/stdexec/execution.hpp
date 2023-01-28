@@ -3325,7 +3325,7 @@ namespace stdexec {
     struct split_t {
       template <sender _Sender, class _Env = __empty_env>
           requires
-             (sender_in<_Sender, _Env> && constructible_from<decay_t<attrs_of_t<_Sender>>, attrs_of_t<_Sender>>) ||
+             (sender_in<_Sender, _Env> && __decay_copyable<attrs_of_t<_Sender>>) ||
              __is_split_customized<_Sender, _Env>
         auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
           noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
