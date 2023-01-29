@@ -653,6 +653,21 @@ namespace stdexec {
 
   template <class _Receiver>
     concept receiver =
+      // NOT TO SPEC:
+      // As we upgrade the receiver related entities from R5 to R7,
+      // here we explicitly keep the requirement that a type still
+      // must explicitly provide a 'get_env' tag invocable friend
+      // function. Receivers in R5 world always did this, so throughout
+      // the upgrade lifecycle, we'll keep that requirement in place
+      // temporarily. This is important since in R7 world, 'get_env'
+      // provides a default version that returns empty_env. Keeping
+      // the extra constraint ensures types like 'no_env' (which are
+      // deprecated) do not automatically become receivers.
+      tag_invocable<get_env_t, __cref_t<_Receiver>> &&
+      // NOT TO SPEC:
+      // This needs more investigation - I'm not sure why I had to explicitly
+      // add the check below.
+      !same_as<__env_promise<__empty_env>, _Receiver> &&
       environment_provider<__cref_t<_Receiver>> &&
       move_constructible<remove_cvref_t<_Receiver>> &&
       constructible_from<remove_cvref_t<_Receiver>, _Receiver>;
