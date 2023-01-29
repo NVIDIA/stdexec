@@ -155,6 +155,10 @@ struct my_r5_sender0 {
 };
 TEST_CASE("r5 sender emits deprecated diagnostics", "[concepts][sender]") {
   ex::get_env(my_r5_sender0{});
+  static_assert(ex::sender<my_r5_sender0>);
+  static_assert(std::same_as<
+      decltype(ex::get_completion_signatures(my_r5_sender0{}, ex::no_env{})),
+      my_r5_sender0::completion_signatures>);
 }
 
 #if !STDEXEC_NVHPC()

@@ -57,8 +57,8 @@
 #endif
 
 #ifdef STDEXEC_ENABLE_R5_DEPRECATIONS
-#define R5_SENDER_DEPR_WARNING [[deprecated("Deprecated sender type detected. Please update the type for to satisfy the sender concept in P2300R7")]]
-#define R5_RECEIVER_DEPR_WARNING [[deprecated("Deprecated receiver type detected. Please update the type for to satisfy the receiver concept in P2300R7")]]
+#define R5_SENDER_DEPR_WARNING [[deprecated("Deprecated sender type detected. Please update the type to satisfy the boolean stdexec::enable_sender<S> trait. Defining a member type alias named 'is_sender' is one way to do this.")]]
+#define R5_RECEIVER_DEPR_WARNING [[deprecated("Deprecated receiver type detected. Please update the type for to satisfy the boolean stdexec::enable_receiver<R> trait. Defining a member type alias named 'is_receiver' is one way to do this.")]]
 #else
 #define R5_SENDER_DEPR_WARNING
 #define R5_RECEIVER_DEPR_WARNING
@@ -2498,6 +2498,8 @@ namespace stdexec {
          public:
           __t() = default;
           using __adaptor_base<_Base>::__adaptor_base;
+
+          using is_receiver = void;
         };
       };
   } // namespace __adaptors

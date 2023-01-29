@@ -46,8 +46,6 @@ class _then_receiver
   _then_receiver(R r, F f)
    : stdexec::receiver_adaptor<_then_receiver, R>{std::move(r)}
    , f_(std::move(f)) {}
-
-  using is_receiver = void;
 };
 
 template<stdexec::sender S, class F>
