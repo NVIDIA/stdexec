@@ -1467,19 +1467,29 @@ namespace stdexec {
 
     template <class _Sender, class _Receiver>
       concept __connectable_with_tag_invoke =
+        receiver<_Receiver> &&
         sender<_Sender, env_of_t<_Receiver>> &&
         __receiver_from<_Receiver, _Sender> &&
         tag_invocable<connect_t, _Sender, _Receiver>;
 
     struct connect_t {
       template <class _Sender, class _Receiver>
-      static constexpr bool __nothrow_connect() noexcept {
+      static constexpr auto __select_impl() noexcept {
         if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
-          return nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
+          using _Result = tag_invoke_result_t<connect_t, _Sender, _Receiver>;
+          constexpr bool _Nothrow = nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
+          return static_cast<_Result(*)() noexcept(_Nothrow)>(nullptr);
+        } else if constexpr (__callable<__connect_awaitable_t, _Sender, _Receiver>) {
+          using _Result = __call_result_t<__connect_awaitable_t, _Sender, _Receiver>;
+          return static_cast<_Result(*)()>(nullptr);
         } else {
-          return false;
+          return static_cast<void(*)() noexcept>(nullptr);
         }
       }
+
+      template <class _Sender, class _Receiver>
+        using __select_impl_t =
+          decltype(__select_impl<_Sender, _Receiver>());
 
       template <class _Sender, class _Receiver>
         requires
@@ -1487,7 +1497,8 @@ namespace stdexec {
           __callable<__connect_awaitable_t, _Sender, _Receiver> ||
           tag_invocable<__is_debug_env_t, env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
-          noexcept(__nothrow_connect<_Sender, _Receiver>()) {
+          noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
+          -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
         if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
@@ -1500,7 +1511,7 @@ namespace stdexec {
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
           using __tag_invoke::tag_invoke;
-          return tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+          tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
         }
       }
 
@@ -1593,6 +1604,7 @@ namespace stdexec {
   // [exec.snd]
   template <class _Sender, class _Receiver>
     concept sender_to =
+      receiver<_Receiver> &&
       sender<_Sender, env_of_t<_Receiver>> &&
       __receiver_from<_Receiver, _Sender> &&
       requires (_Sender&& __sndr, _Receiver&& __rcvr) {
@@ -5014,6 +5026,13 @@ namespace stdexec {
     template <std::size_t _Index, class _ReceiverId, class _ValuesTuple, class _ErrorsVariant>
       struct __receiver {
         using _Receiver = stdexec::__t<_ReceiverId>;
+        template <class _Tuple>
+          using __tuple_type =
+            typename std::tuple_element_t<_Index, _Tuple>::value_type;
+        using _TupleType =
+          __minvoke<
+            __with_default<__q<__tuple_type>, __ignore>,
+            _ValuesTuple>;
 
         struct __t {
           using __id = __receiver;
@@ -5032,10 +5051,10 @@ namespace stdexec {
               }
             }
           template <class... _Values>
+              requires same_as<_ValuesTuple, __ignore> ||
+                constructible_from<_TupleType, _Values...>
             friend void tag_invoke(set_value_t, __t&& __self, _Values&&... __vals) noexcept {
               if constexpr (!same_as<_ValuesTuple, __ignore>) {
-                using _TupleType =
-                  typename std::tuple_element_t<_Index, _ValuesTuple>::value_type;
                 static_assert(
                   same_as<_TupleType, std::tuple<decay_t<_Values>...>>,
                   "One of the senders in this when_all() is fibbing about what types it sends");
@@ -5053,11 +5072,15 @@ namespace stdexec {
               __self.__op_state_->__arrive();
             }
           template <class _Error>
+              requires requires (_ErrorsVariant& __errors, _Error&& __err) {
+                __errors.template emplace<decay_t<_Error>>((_Error&&) __err);
+              }
             friend void tag_invoke(set_error_t, __t&& __self, _Error&& __err) noexcept {
               __self.__set_error((_Error&&) __err);
               __self.__op_state_->__arrive();
             }
-          friend void tag_invoke(set_stopped_t, __t&& __self) noexcept {
+          friend void tag_invoke(set_stopped_t, __t&& __self) noexcept
+              requires receiver_of<_Receiver, completion_signatures<set_stopped_t()>> {
             __state_t __expected = __started;
             // Transition to the "stopped" state if and only if we're in the
             // "started" state. (If this fails, it's because we're in an
@@ -5133,23 +5156,34 @@ namespace stdexec {
           using __op_state =
             connect_result_t<_Sender, __receiver<__v<_Index>>>;
 
-        using __op_states_tuple =
-          __minvoke<
-            __mzip_with2<
-              __q<__op_state>,
-              __q<std::tuple>>,
-            __types<_Senders...>,
-            __mindex_sequence_for<_Senders...>>;
+        template <class _Tuple = __q<std::tuple>>
+          using __op_states_tuple =
+            __minvoke<
+              __mzip_with2<__q<__op_state>, _Tuple>,
+              __types<_Senders...>,
+              __mindex_sequence_for<_Senders...>>;
       };
 
     template <class _Cvref, class _ReceiverId, class... _SenderIds>
+      using __traits_ex =
+        __traits<__t<_ReceiverId>, __minvoke<_Cvref, __t<_SenderIds>>...>;
+
+    template <class _Cvref, class _ReceiverId, class... _SenderIds>
+      using __op_states_tuple_ex =
+        typename __traits_ex<_Cvref, _ReceiverId, _SenderIds...>::
+            template __op_states_tuple<>;
+
+    template <class _Cvref, class _ReceiverId, class... _SenderIds>
+        requires __valid<__op_states_tuple_ex, _Cvref, _ReceiverId, _SenderIds...>
       struct __operation {
         using _Receiver = stdexec::__t<_ReceiverId>;
-        using _Traits = __traits<_Receiver, __minvoke<_Cvref, stdexec::__t<_SenderIds>>...>;
+        using _Traits = __traits_ex<_Cvref, _ReceiverId, _SenderIds...>;
         using _Indices = std::index_sequence_for<_SenderIds...>;
 
-        using __operation_base_t = typename _Traits::__operation_base;
-        using __op_states_tuple_t = typename _Traits::__op_states_tuple;
+        using __operation_base_t =
+          typename _Traits::__operation_base;
+        using __op_states_tuple_t =
+          __op_states_tuple_ex<_Cvref, _ReceiverId, _SenderIds...>;
 
         template <std::size_t _Index>
           using __receiver_t =

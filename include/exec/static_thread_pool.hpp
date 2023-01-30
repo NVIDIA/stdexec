@@ -72,7 +72,7 @@ namespace exec {
           return operation<stdexec::__x<std::decay_t<Receiver>>>{pool_, (Receiver &&) r};
         }
 
-        template <class Receiver>
+        template <stdexec::receiver Receiver>
         friend operation<stdexec::__x<std::decay_t<Receiver>>>
         tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
           return s.make_operation_((Receiver &&) r);
