@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include <exec/static_thread_pool.hpp>
 #include <stdexec/coroutine.hpp>
 #include <tuple>
 #include <variant>
@@ -245,6 +246,16 @@ TEST_CASE("get_attrs for awaitables", "[sndtraits][awaitables]") {
   check_attrs_type<const awaitable_sender_3&>(awaitable_sender_3{});
 #endif
   check_attrs_type<awaitable_attrs>(awaitable_with_get_attrs<awaiter>{});
+}
+
+TEST_CASE("env_promise bug when CWG 2369 is fixed", "[sndtraits][awaitables]") {
+  exec::static_thread_pool ctx{1};
+  ex::scheduler auto sch = ctx.get_scheduler();
+  ex::sender auto snd = ex::when_all(ex::then(ex::schedule(sch), [](){}));
+
+  using _Awaitable = decltype(snd);
+  using _Promise = ex::__env_promise<ex::__empty_env>;
+  static_assert(!ex::__awaitable<_Awaitable, _Promise>);
 }
 
 #endif // !_STD_NO_COROUTINES_
