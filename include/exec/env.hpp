@@ -191,10 +191,10 @@ namespace exec {
                   ((_Self&&) __self).__withs_};
         }
 
-        friend auto tag_invoke(stdexec::get_attrs_t, const __sender& __self)
-          noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const _Sender&>)
-          -> stdexec::__call_result_t<stdexec::get_attrs_t, const _Sender&> {
-          return stdexec::get_attrs(__self.__sndr_);
+        friend auto tag_invoke(stdexec::get_env_t, const __sender& __self)
+          noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const _Sender&>)
+          -> stdexec::__call_result_t<stdexec::get_env_t, const _Sender&> {
+          return stdexec::get_env(__self.__sndr_);
         }
 
         template <__decays_to<__sender> _Self, class _Env>

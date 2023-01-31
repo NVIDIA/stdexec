@@ -39,6 +39,7 @@ TEST_CASE("just returns a sender", "[factories][just]") {
   using t = decltype(ex::just(1));
   static_assert(ex::sender<t>, "ex::just must return a sender");
   REQUIRE(ex::sender<t>);
+  REQUIRE(ex::enable_sender<t>);
 }
 
 TEST_CASE("just can handle multiple values", "[factories][just]") {

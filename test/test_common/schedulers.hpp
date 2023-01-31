@@ -25,9 +25,9 @@
 namespace ex = stdexec;
 
 template <class S>
-struct scheduler_attrs {
+struct scheduler_env {
   template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
-  friend S tag_invoke(ex::get_completion_scheduler_t<CPO>, const scheduler_attrs&) noexcept {
+  friend S tag_invoke(ex::get_completion_scheduler_t<CPO>, const scheduler_env&) noexcept {
     return {};
   }
 };
@@ -89,7 +89,7 @@ struct impulse_scheduler {
       return {self.shared_data_, (R &&) r};
     }
 
-    friend scheduler_attrs<impulse_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    friend scheduler_env<impulse_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -143,7 +143,7 @@ struct inline_scheduler {
       return {{}, (R &&) r};
     }
 
-    friend scheduler_attrs<inline_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    friend scheduler_env<inline_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -180,7 +180,7 @@ struct error_scheduler {
       return {{}, (R &&) r, (E &&) self.err_};
     }
 
-    friend scheduler_attrs<error_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    friend scheduler_env<error_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
       return {};
     }
   };
@@ -211,7 +211,7 @@ struct stopped_scheduler {
       return {{}, (R &&) r};
     }
 
-    friend scheduler_attrs<stopped_scheduler> tag_invoke(ex::get_attrs_t, const my_sender&) noexcept {
+    friend scheduler_env<stopped_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
       return {};
     }
   };

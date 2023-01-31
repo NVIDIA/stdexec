@@ -95,20 +95,20 @@ struct custom_sender {
     *sndr.called = true;
   }
 
-  friend empty_attrs tag_invoke(ex::get_attrs_t, const custom_sender&) noexcept {
+  friend empty_env tag_invoke(ex::get_env_t, const custom_sender&) noexcept {
     return {};
   }
 };
 
 struct custom_scheduler {
   struct sender : ex::schedule_result_t<inline_scheduler> {
-    struct attrs {
+    struct env {
       template <class Tag>
-        friend custom_scheduler tag_invoke(ex::get_completion_scheduler_t<Tag>, const attrs&) noexcept {
+        friend custom_scheduler tag_invoke(ex::get_completion_scheduler_t<Tag>, const env&) noexcept {
           return {};
         }
     };
-    friend attrs tag_invoke(ex::get_attrs_t, const sender&) noexcept {
+    friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
       return {};
     }
   };

@@ -18,6 +18,6 @@
 
 namespace ex = stdexec;
 
-TEST_CASE("read returns empty attrs", "[factories][read]") {
-  check_attrs_type<ex::__empty_attrs>(ex::read(ex::get_allocator));
+TEST_CASE("read returns empty env", "[factories][read]") {
+  check_env_type<ex::__empty_env>(ex::read(ex::get_allocator));
 }

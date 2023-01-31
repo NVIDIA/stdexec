@@ -189,10 +189,10 @@ template <class SenderId, class Fun>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> completion_signatures<Self, Env> requires true;
 
-      friend auto tag_invoke(stdexec::get_attrs_t, const __t& self)
-        noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
-        -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
-        return stdexec::get_attrs(self.sndr_);
+      friend auto tag_invoke(stdexec::get_env_t, const __t& self)
+        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
+        -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
+        return stdexec::get_env(self.sndr_);
       }
     };
   };

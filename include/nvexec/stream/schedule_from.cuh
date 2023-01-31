@@ -53,7 +53,7 @@ namespace schedule_from {
           }, *storage);
         }
 
-        friend Env 
+        friend Env
         tag_invoke(stdexec::get_env_t, const __t& self) {
           return self.operation_state_.make_env();
         }
@@ -68,11 +68,11 @@ namespace schedule_from {
           return stdexec::connect(((Self&&)self).sender_, (Receiver&&)rcvr);
         }
 
-      friend auto tag_invoke(stdexec::get_attrs_t, const source_sender_t& self)
-        noexcept(stdexec::__nothrow_callable<stdexec::get_attrs_t, const Sender&>)
-        -> stdexec::__call_result_t<stdexec::get_attrs_t, const Sender&> {
+      friend auto tag_invoke(stdexec::get_env_t, const source_sender_t& self)
+        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
+        -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
         // TODO - this code is not exercised by any test
-        return stdexec::get_attrs(self.sndr_);
+        return stdexec::get_env(self.sndr_);
       }
 
       template <stdexec::__decays_to<source_sender_t> _Self, class _Env>
@@ -90,25 +90,25 @@ template <class Scheduler, class SenderId>
     using Sender = stdexec::__t<SenderId>;
     using source_sender_th = schedule_from::source_sender_t<Sender>;
 
-    struct __attrs {
+    struct __env {
       context_state_t context_state_;
 
       template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t, stdexec::set_error_t> _Tag>
-        friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const __attrs& __self) noexcept {
+        friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const __env& __self) noexcept {
           return {__self.context_state_};
         }
     };
 
     struct __t : stream_sender_base {
       using __id = schedule_from_sender_t;
-      __attrs attrs_;
+      __env env_;
       source_sender_th sndr_;
 
       template <class Self, class Receiver>
-        using receiver_t = 
+        using receiver_t =
           stdexec::__t<
             schedule_from::receiver_t<
-              stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, 
+              stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>,
               stdexec::__id<Receiver>>>;
 
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
@@ -121,11 +121,11 @@ template <class Scheduler, class SenderId>
               [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider) -> receiver_t<Self, Receiver> {
                 return receiver_t<Self, Receiver>{{}, stream_provider};
               },
-              self.attrs_.context_state_);
+              self.env_.context_state_);
       }
 
-      friend const __attrs& tag_invoke(stdexec::get_attrs_t, const __t& __self) noexcept {
-        return __self.attrs_;
+      friend const __env& tag_invoke(stdexec::get_env_t, const __t& __self) noexcept {
+        return __self.env_;
       }
 
       template <stdexec::__decays_to<__t> _Self, class _Env>
@@ -136,10 +136,9 @@ template <class Scheduler, class SenderId>
             stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>>;
 
       __t(context_state_t context_state, Sender sndr)
-        : attrs_{context_state}
+        : env_{context_state}
         , sndr_{{}, (Sender&&)sndr} {
       }
     };
   };
 }
-
