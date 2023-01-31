@@ -334,7 +334,7 @@ namespace stdexec {
 
       // NOT TO SPEC: The overloads below check the non-standard
       // __r5_sender concept to determine whether to provide backwards
-      // compatibile behavior for R5 version sender types. When we
+      // compatible behavior for R5 version sender types. When we
       // deprecate R5 support, we can bring this overload in line with
       // the spec.
       template <class _EnvProvider>
@@ -655,15 +655,11 @@ namespace stdexec {
     concept receiver =
       // NOT TO SPEC:
       // As we upgrade the receiver related entities from R5 to R7,
-      // here we explicitly keep the requirement that a type still
-      // must explicitly provide a 'get_env' tag invocable friend
-      // function. Receivers in R5 world always did this, so throughout
-      // the upgrade lifecycle, we'll keep that requirement in place
-      // temporarily. This is important since in R7 world, 'get_env'
-      // provides a default version that returns empty_env. Keeping
-      // the extra constraint ensures types like 'no_env' (which are
-      // deprecated) do not automatically become receivers.
-      tag_invocable<get_env_t, __cref_t<_Receiver>> &&
+      // we allow types that do not yet satisfy enable_receiver to
+      // still satisfy the receiver concept if the type provides an
+      // explicit get_env. All R5 receivers provided an explicit get_env,
+      // so this is backwards compatible.
+      (enable_receiver<_Receiver> || tag_invocable<get_env_t, __cref_t<_Receiver>>) &&
       environment_provider<__cref_t<_Receiver>> &&
       move_constructible<remove_cvref_t<_Receiver>> &&
       constructible_from<remove_cvref_t<_Receiver>, _Receiver>;
