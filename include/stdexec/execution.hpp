@@ -4017,9 +4017,9 @@ namespace stdexec {
         };
       };
 
-    template <class _CvrefSenderId>
+    template <class _SenderId>
       struct __sender {
-        using _Sender = stdexec::__cvref_t<_CvrefSenderId>;
+        using _Sender = stdexec::__t<_SenderId>;
 
         struct __t {
           using __id = __sender;
