@@ -468,15 +468,22 @@ namespace stdexec {
     using __x = __t<_X<_Ty>>;
 
   template <class _Ty>
-    struct _Y {
-      using __t = _Ty;
-    };
-
-  template <class _Ty>
     concept __has_id =
       requires {
         typename _Ty::__id;
       };
+
+  template <class _Ty>
+    struct _Y {
+      using __t = _Ty;
+
+      // Uncomment the line below to find any code that likely misuses the
+      // ADL isolation mechanism. In particular, '__id<T>' when T is a
+      // reference is a likely misuse. The static_assert below will trigger
+      // when the type passed to the __id alias template is a reference to
+      // a type that is setup to use ADL isolation.
+      //static_assert(!__has_id<std::remove_cvref_t<_Ty>>);
+    };
   template <bool = true>
     struct __id_ {
       template <class _Ty>
