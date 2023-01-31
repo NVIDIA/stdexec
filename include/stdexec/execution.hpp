@@ -1873,21 +1873,29 @@ namespace stdexec {
 
     struct as_awaitable_t {
       template <class _T, class _Promise>
-      static constexpr bool __is_noexcept() noexcept {
+      static constexpr auto __select_impl_() noexcept {
         if constexpr (tag_invocable<as_awaitable_t, _T, _Promise&>) {
-          return nothrow_tag_invocable<as_awaitable_t, _T, _Promise&>;
+          using _Result = tag_invoke_result_t<as_awaitable_t, _T, _Promise&>;
+          constexpr bool _Nothrow = nothrow_tag_invocable<as_awaitable_t, _T, _Promise&>;
+          return static_cast<_Result(*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__awaitable<_T>) { // NOT __awaitable<_T, _Promise> !!
-          return true;
+          return static_cast<_T&&(*)() noexcept>(nullptr);
         } else if constexpr (__awaitable_sender<_T, _Promise>) {
-          using _Sender = __sender_awaitable_t<_Promise, _T>;
-          return std::is_nothrow_constructible_v<_Sender, _T, __coro::coroutine_handle<_Promise>>;
+          using _Result = __sender_awaitable_t<_Promise, _T>;
+          constexpr bool _Nothrow =
+            __nothrow_constructible_from<_Result, _T, __coro::coroutine_handle<_Promise>>;
+          return static_cast<_Result(*)() noexcept(_Nothrow)>(nullptr);
         } else {
-          return true;
+          return static_cast<_T&&(*)() noexcept>(nullptr);
         }
       }
       template <class _T, class _Promise>
-      decltype(auto) operator()(_T&& __t, _Promise& __promise) const
-          noexcept(__is_noexcept<_T, _Promise>()) {
+      using __select_impl_t = decltype(__select_impl_<_T, _Promise>());
+
+      template <class _T, class _Promise>
+      auto operator()(_T&& __t, _Promise& __promise) const
+          noexcept(__nothrow_callable<__select_impl_t<_T, _Promise>>)
+          -> __call_result_t<__select_impl_t<_T, _Promise>> {
         if constexpr (tag_invocable<as_awaitable_t, _T, _Promise&>) {
           using _Result = tag_invoke_result_t<as_awaitable_t, _T, _Promise&>;
           static_assert(__awaitable<_Result, _Promise>);
