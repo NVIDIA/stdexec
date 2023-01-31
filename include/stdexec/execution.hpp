@@ -121,6 +121,7 @@ namespace stdexec {
       using __id = __empty_env;
     };
   } // namespace __env
+  using __env::__empty_env;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
@@ -128,7 +129,7 @@ namespace stdexec {
     concept __enable_sender = requires {
       typename _Sender::is_sender;
     } ||
-    __awaitable<_Sender, __compl_sigs::__env_promise<__env::__empty_env>>;
+    __awaitable<_Sender, __compl_sigs::__env_promise<__empty_env>>;
 
   template <class _Sender>
     inline constexpr bool enable_sender = __enable_sender<_Sender>;
@@ -167,52 +168,6 @@ namespace stdexec {
     struct get_completion_signatures_t;
   }
   using __get_completion_signatures::get_completion_signatures_t;
-
-  namespace __r5_support {
-    // The concepts below are not to any spec. They approximate whether
-    // a type satisfies the R5 or R7 sender concept for the purpose of
-    // emitting [[deprecated]] diagnostic warning asking the user to
-    // upgrade their sender types.
-    //
-    // All R5 receivers already provide get_env, so the extra overloads
-    // of get_env would at most conflict if a receiver type also
-    // has completion signatures or the new enable_sender trait, neither
-    // of which is too likely.
-
-    template <class _Sender>
-    concept __r7_sender = enable_sender<remove_cvref_t<_Sender>>;
-
-    template <class _Sender>
-    concept __r5_sender = requires(_Sender&& __sender) {
-      __declval<get_completion_signatures_t>()((_Sender&&)__sender);
-    } && !__r7_sender<_Sender>;
-
-    template <class _T>
-    R5_SENDER_DEPR_WARNING
-    void __update_sender_type_to_p2300r7_by_adding_enable_sender_trait() { }
-
-    template <class _T>
-    void __check_sender_version() {
-      if constexpr (!enable_sender<_T>) {
-        __update_sender_type_to_p2300r7_by_adding_enable_sender_trait<_T>();
-      }
-    }
-
-    template <class _T>
-    R5_RECEIVER_DEPR_WARNING
-    void __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait() { }
-
-    template <class _T>
-    void __check_receiver_version() {
-      if constexpr (!enable_receiver<_T>) {
-        __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait<_T>();
-      }
-    }
-
-  } // namespace __r5_support
-  using __r5_support::__r5_sender;
-  using __r5_support::__check_sender_version;
-  using __r5_support::__check_receiver_version;
 
   /////////////////////////////////////////////////////////////////////////////
   // env_of
@@ -332,16 +287,13 @@ namespace stdexec {
           return tag_invoke(*this, __with_env);
         }
 
-      // NOT TO SPEC: The overloads below check the non-standard
-      // __r5_sender concept to determine whether to provide backwards
+      // NOT TO SPEC: The overload below checks the non-standard
+      // enable_sender to determine whether to provide backwards
       // compatible behavior for R5 version sender types. When we
       // deprecate R5 support, we can bring this overload in line with
-      // the spec.
+      // P2300R7.
       template <class _EnvProvider>
-          requires
-            (!tag_invocable<get_env_t, const _EnvProvider&>)
-        constexpr decltype(auto) operator()(const _EnvProvider& __with_env) const
-          noexcept {
+        constexpr decltype(auto) operator()(const _EnvProvider& __with_env) const noexcept {
           if constexpr (!enable_sender<_EnvProvider>) {
             return __with_env;
           } else {
@@ -350,7 +302,6 @@ namespace stdexec {
         }
     };
   } // namespace __env
-  using __env::__empty_env;
   using __env::__with;
   using __env::__with_;
 
@@ -659,7 +610,8 @@ namespace stdexec {
       // still satisfy the receiver concept if the type provides an
       // explicit get_env. All R5 receivers provided an explicit get_env,
       // so this is backwards compatible.
-      (enable_receiver<_Receiver> || tag_invocable<get_env_t, __cref_t<_Receiver>>) &&
+      //  NOTE: Double-negation here is to make the constraint atomic
+      !!(enable_receiver<_Receiver> || tag_invocable<get_env_t, __cref_t<_Receiver>>) &&
       environment_provider<__cref_t<_Receiver>> &&
       move_constructible<remove_cvref_t<_Receiver>> &&
       constructible_from<remove_cvref_t<_Receiver>, _Receiver>;
@@ -742,11 +694,15 @@ namespace stdexec {
   // [execution.senders]
   // NOT TO SPEC (YET)
   template <class _Sender, class _Env>
+    concept __with_completion_signatures =
+      __callable<get_completion_signatures_t, _Sender, _Env> &&
+      __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env>;
+
+  template <class _Sender, class _Env = no_env>
     concept __sender =
-      __valid<__completion_signatures_of_t, _Sender, _Env> &&
-      __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env> &&
-      move_constructible<remove_cvref_t<_Sender>> &&
-      constructible_from<remove_cvref_t<_Sender>, _Sender>;
+      // Double-negation here is to make this an atomic constraint
+      !!((same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>) ||
+          __with_completion_signatures<_Sender, _Env>);
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
@@ -756,11 +712,15 @@ namespace stdexec {
       // The sender related concepts are temporarily "in flight" being
       // upgraded from P2300R5 to the get_env / enable_sender aware version
       // in P2300R7.
-      requires (const remove_cvref_t<_Sender>& __sndr) {
-        { get_env(__sndr) } -> queryable;
-      } &&
-      __sender<_Sender, no_env> &&
-      __sender<_Sender, _Env>;
+      __sender<_Sender> &&
+      __sender<_Sender, _Env> &&
+      environment_provider<__cref_t<_Sender>> &&
+      move_constructible<remove_cvref_t<_Sender>> &&
+      constructible_from<remove_cvref_t<_Sender>, _Sender>;
+
+  template <class _Sender, class _Env>
+    concept sender_in =
+      sender<_Sender, _Env>;
 
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender<S, Ctx> are both true, then they
@@ -1528,6 +1488,14 @@ namespace stdexec {
   namespace __connect {
     struct connect_t;
 
+    template <class _T>
+    R5_SENDER_DEPR_WARNING
+    void __update_sender_type_to_p2300r7_by_adding_enable_sender_trait() { }
+
+    template <class _T>
+    R5_RECEIVER_DEPR_WARNING
+    void __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait() { }
+
     template <class _Sender, class _Receiver>
       concept __connectable_with_tag_invoke =
         receiver<_Receiver> &&
@@ -1538,6 +1506,13 @@ namespace stdexec {
     struct connect_t {
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
+        // Report that 2300R5-style senders and receivers are deprecated:
+        if constexpr (!enable_sender<remove_cvref_t<_Sender>>)
+          __update_sender_type_to_p2300r7_by_adding_enable_sender_trait<remove_cvref_t<_Sender>>();
+
+        if constexpr (!enable_receiver<remove_cvref_t<_Receiver>>)
+          __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait<remove_cvref_t<_Receiver>>();
+
         if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           using _Result = tag_invoke_result_t<connect_t, _Sender, _Receiver>;
           constexpr bool _Nothrow = nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
@@ -1562,8 +1537,6 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
           noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
-        __check_sender_version<_Sender>();
-        __check_receiver_version<_Receiver>();
         if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,

@@ -21,6 +21,51 @@
 
 namespace ex = stdexec;
 
+struct not_a_sender {};
+
+TEST_CASE("Sender concept rejects non-sender types", "[concepts][sender]") {
+  REQUIRE(!ex::sender<int>);
+  REQUIRE(!ex::sender<not_a_sender>);
+}
+
+struct P2300r7_sender_1 {
+  using is_sender = void;
+};
+
+struct P2300r7_sender_2 {};
+template <>
+inline constexpr bool stdexec::enable_sender<P2300r7_sender_2> = true;
+
+TEST_CASE("Sender concept accepts P2300R7-style senders", "[concepts][sender]") {
+  REQUIRE(ex::sender<P2300r7_sender_1>);
+  REQUIRE(ex::sender<P2300r7_sender_2>);
+}
+
+#if !_STD_NO_COROUTINES_
+struct awaiter {
+  bool await_ready();
+  void await_suspend(__coro::coroutine_handle<>);
+  void await_resume();
+};
+struct awaitable {
+  friend awaiter operator co_await(awaitable) {
+    return {};
+  }
+};
+struct as_awaitable {
+  template <class Promise>
+    friend awaitable tag_invoke(ex::as_awaitable_t, as_awaitable, Promise&) {
+      return {};
+    }
+};
+
+TEST_CASE("Sender concept accepts awaiters and awaitables", "[concepts][sender]") {
+  REQUIRE(ex::sender<awaiter>);
+  REQUIRE(ex::sender<awaitable>);
+  REQUIRE(ex::sender<as_awaitable>);
+}
+#endif
+
 struct oper {
   oper() = default;
   oper(oper&&) = delete;
@@ -40,7 +85,7 @@ struct my_sender0 {
     return {};
   }
 };
-TEST_CASE("type w/ proper types, is a sender & sender", "[concepts][sender]") {
+TEST_CASE("type w/ proper types, is a sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender0>);
   REQUIRE(ex::sender<my_sender0, empty_env>);
 
@@ -70,7 +115,7 @@ struct my_sender_int {
   }
 };
 
-TEST_CASE("my_sender_int is a sender & sender", "[concepts][sender]") {
+TEST_CASE("my_sender_int is a sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender_int>);
   REQUIRE(ex::sender<my_sender_int, empty_env>);
   REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
