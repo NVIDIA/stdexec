@@ -3060,23 +3060,23 @@ namespace stdexec {
           _BaseEnv, // BUGBUG NOT TO SPEC
           __with<get_stop_token_t, in_place_stop_token>>;
 
-    template <class _SenderId, class _EnvId>
+    template <class _SenderCvrefId, class _EnvId>
       struct __sh_state;
 
-    template <class _SenderId, class _EnvId>
+    template <class _SenderCvrefId, class _EnvId>
       struct __receiver {
-        using _Sender = stdexec::__t<_SenderId>;
+        using _Sender = stdexec::__cvref_t<_SenderCvrefId>;
         using _Env = stdexec::__t<_EnvId>;
 
         class __t {
-          stdexec::__t<__sh_state<_SenderId, _EnvId>>& __sh_state_;
+          stdexec::__t<__sh_state<_SenderCvrefId, _EnvId>>& __sh_state_;
 
         public:
           using __id = __receiver;
 
           template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
           friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-            stdexec::__t<__sh_state<_SenderId, _EnvId>>& __state = __self.__sh_state_;
+            stdexec::__t<__sh_state<_SenderCvrefId, _EnvId>>& __state = __self.__sh_state_;
 
             try {
               using __tuple_t = __decayed_tuple<_Tag, _As...>;
@@ -3092,7 +3092,7 @@ namespace stdexec {
             return __self.__sh_state_.__env_;
           }
 
-          explicit __t(stdexec::__t<__sh_state<_SenderId, _EnvId>>& __sh_state) noexcept
+          explicit __t(stdexec::__t<__sh_state<_SenderCvrefId, _EnvId>>& __sh_state) noexcept
             : __sh_state_(__sh_state) {
           }
         };
@@ -3105,9 +3105,9 @@ namespace stdexec {
       __notify_fn* __notify_{};
     };
 
-    template <class _SenderId, class _EnvId>
+    template <class _SenderCvrefId, class _EnvId>
       struct __sh_state {
-        using _Sender = stdexec::__t<_SenderId>;
+        using _Sender = stdexec::__cvref_t<_SenderCvrefId>;
         using _Env = stdexec::__t<_EnvId>;
 
         struct __t {
@@ -3136,7 +3136,7 @@ namespace stdexec {
                 __mbind_front_q<__decayed_tuple, set_error_t>,
                 __bound_values_t>>;
 
-          using __receiver_ = stdexec::__t<__receiver<_SenderId, _EnvId>>;
+          using __receiver_ = stdexec::__t<__receiver<_SenderCvrefId, _EnvId>>;
 
           in_place_stop_source __stop_source_{};
           __variant_t __data_;
@@ -3165,9 +3165,9 @@ namespace stdexec {
         };
       };
 
-    template <class _SenderId, class _EnvId, class _ReceiverId>
+    template <class _SenderCvrefId, class _EnvId, class _ReceiverId>
       struct __operation {
-        using _Sender = stdexec::__t<_SenderId>;
+        using _Sender = stdexec::__cvref_t<_SenderCvrefId>;
         using _Env = stdexec::__t<_EnvId>;
         using _Receiver = stdexec::__t<_ReceiverId>;
 
@@ -3183,12 +3183,12 @@ namespace stdexec {
 
           _Receiver __recvr_;
           __on_stop __on_stop_{};
-          std::shared_ptr<stdexec::__t<__sh_state<_SenderId, _EnvId>>> __shared_state_;
+          std::shared_ptr<stdexec::__t<__sh_state<_SenderCvrefId, _EnvId>>> __shared_state_;
 
         public:
           using __id = __operation;
           __t(_Receiver&& __rcvr,
-              std::shared_ptr<stdexec::__t<__sh_state<_SenderId, _EnvId>>> __shared_state)
+              std::shared_ptr<stdexec::__t<__sh_state<_SenderCvrefId, _EnvId>>> __shared_state)
               noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
             : __operation_base{nullptr, __notify}
             , __recvr_((_Receiver&&)__rcvr)
@@ -3208,7 +3208,7 @@ namespace stdexec {
           }
 
           friend void tag_invoke(start_t, __t& __self) noexcept {
-            stdexec::__t<__sh_state<_SenderId, _EnvId>>* __shared_state = __self.__shared_state_.get();
+            stdexec::__t<__sh_state<_SenderCvrefId, _EnvId>>* __shared_state = __self.__shared_state_.get();
             std::atomic<void*>& __head = __shared_state->__head_;
             void* const __completion_state = static_cast<void*>(__shared_state);
             void* __old = __head.load(std::memory_order_acquire);
@@ -3245,16 +3245,16 @@ namespace stdexec {
         };
       };
 
-    template <class _SenderId, class _EnvId>
+    template <class _SenderCvrefId, class _EnvId>
       struct __sender {
-        using _Sender = stdexec::__t<_SenderId>;
+        using _Sender = stdexec::__cvref_t<_SenderCvrefId>;
         using _Env = stdexec::__t<_EnvId>;
 
         template <class _Receiver>
-          using __operation = stdexec::__t<__operation<_SenderId, _EnvId, stdexec::__id<_Receiver>>>;
+          using __operation = stdexec::__t<__operation<_SenderCvrefId, _EnvId, stdexec::__id<_Receiver>>>;
 
         class __t {
-          using __sh_state_ = stdexec::__t<__sh_state<_SenderId, _EnvId>>;
+          using __sh_state_ = stdexec::__t<__sh_state<_SenderCvrefId, _EnvId>>;
 
           template <class... _Tys>
             using __set_value_t =
@@ -3331,7 +3331,7 @@ namespace stdexec {
         __minvocable<__which<__cust_sigs>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
-      using __sender_t = __t<__sender<stdexec::__id<_Sender>, stdexec::__id<remove_cvref_t<_Env>>>>;
+      using __sender_t = __t<__sender<stdexec::__cvref_id<_Sender>, stdexec::__id<remove_cvref_t<_Env>>>>;
 
     template <class _Sender, class _Env>
       using __dispatcher_for =
