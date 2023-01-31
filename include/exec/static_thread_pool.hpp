@@ -78,13 +78,13 @@ namespace exec {
           return s.make_operation_((Receiver &&) r);
         }
 
-        struct attrs {
+        struct env {
           static_thread_pool& pool_;
 
           template <class CPO>
           friend static_thread_pool::scheduler tag_invoke(
               stdexec::get_completion_scheduler_t<CPO>,
-              const attrs& self) noexcept {
+              const env& self) noexcept {
             return self.make_scheduler_();
           }
 
@@ -93,8 +93,8 @@ namespace exec {
           }
         };
 
-        friend attrs tag_invoke(stdexec::get_env_t, const sender& self) noexcept {
-          return attrs{self.pool_};
+        friend env tag_invoke(stdexec::get_env_t, const sender& self) noexcept {
+          return env{self.pool_};
         }
 
         friend struct static_thread_pool::scheduler;

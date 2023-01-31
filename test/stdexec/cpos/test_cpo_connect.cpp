@@ -42,7 +42,7 @@ struct my_sender  {
     return {{}, s.value_, (R &&) r};
   }
 
-  friend empty_attrs tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+  friend empty_env tag_invoke(ex::get_env_t, const my_sender&) noexcept {
     return {};
   }
 };
@@ -58,7 +58,7 @@ struct my_sender_unconstrained {
     return {{}, s.value_, (R &&) r};
   }
 
-  friend empty_attrs tag_invoke(ex::get_env_t, const my_sender_unconstrained&) noexcept {
+  friend empty_env tag_invoke(ex::get_env_t, const my_sender_unconstrained&) noexcept {
     return {};
   }
 };

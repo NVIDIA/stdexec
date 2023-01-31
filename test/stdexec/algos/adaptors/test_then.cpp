@@ -128,16 +128,16 @@ TEST_CASE("then advertises completion schedulers", "[adaptors][then]") {
   }
 }
 
-TEST_CASE("then forwards attrs", "[adaptors][then]") {
-  SECTION("returns attrs by value") {
-    auto snd = just_with_attrs<value_attrs, int>{value_attrs{100}, {0}} | ex::then([]{});
-    static_assert(std::same_as<decltype(ex::get_env(snd)), value_attrs>);
+TEST_CASE("then forwards env", "[adaptors][then]") {
+  SECTION("returns env by value") {
+    auto snd = just_with_env<value_env, int>{value_env{100}, {0}} | ex::then([]{});
+    static_assert(std::same_as<decltype(ex::get_env(snd)), value_env>);
     CHECK(ex::get_env(snd).value == 100);
   }
 
-  SECTION("returns attrs by reference") {
-    auto snd = just_with_attrs<const value_attrs&, int>{value_attrs{100}, {0}} | ex::then([]{});
-    static_assert(std::same_as<decltype(ex::get_env(snd)), const value_attrs&>);
+  SECTION("returns env by reference") {
+    auto snd = just_with_env<const value_env&, int>{value_env{100}, {0}} | ex::then([]{});
+    static_assert(std::same_as<decltype(ex::get_env(snd)), const value_env&>);
     CHECK(ex::get_env(snd).value == 100);
   }
 }

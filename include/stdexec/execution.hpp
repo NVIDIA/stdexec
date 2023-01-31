@@ -4191,18 +4191,18 @@ namespace stdexec {
             return {&__loop_->__head_, __loop_, (_Receiver &&) __rcvr};
           }
 
-          struct __attrs {
+          struct __env {
             run_loop* __loop_;
 
             template <class _CPO>
             friend __scheduler
-            tag_invoke(get_completion_scheduler_t<_CPO>, const __attrs& __self) noexcept {
+            tag_invoke(get_completion_scheduler_t<_CPO>, const __env& __self) noexcept {
               return __scheduler{__self.__loop_};
             }
           };
 
-          friend __attrs tag_invoke(get_env_t, const __schedule_task& __self) noexcept {
-            return __attrs{__self.__loop_};
+          friend __env tag_invoke(get_env_t, const __schedule_task& __self) noexcept {
+            return __env{__self.__loop_};
           }
 
           explicit __schedule_task(run_loop* __loop) noexcept
@@ -4480,11 +4480,11 @@ namespace stdexec {
           __mcompose<__q<completion_signatures>, __qf<_Tag>>>;
 
     template <class _SchedulerId>
-      struct __attrs {
+      struct __env {
         using _Scheduler = stdexec::__t<_SchedulerId>;
 
         struct __t {
-          using __id = __attrs;
+          using __id = __env;
 
           _Scheduler __sched_;
 
@@ -4500,22 +4500,22 @@ namespace stdexec {
       struct __sender {
         using _Scheduler = stdexec::__t<_SchedulerId>;
         using _Sender = stdexec::__t<_SenderId>;
-        using _Attrs = stdexec::__t<__attrs<_SchedulerId>>;
+        using _Attrs = stdexec::__t<__env<_SchedulerId>>;
 
         struct __t {
           using __id = __sender;
-          _Attrs __attrs_;
+          _Attrs __env_;
           _Sender __sndr_;
 
           template <__decays_to<__t> _Self, class _Receiver>
             requires sender_to<__copy_cvref_t<_Self, _Sender>, _Receiver>
           friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
               -> stdexec::__t<__operation1<_SchedulerId, stdexec::__id<__copy_cvref_t<_Self, _Sender>>, stdexec::__id<_Receiver>>> {
-            return {__self.__attrs_.__sched_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
+            return {__self.__env_.__sched_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
           }
 
           friend const _Attrs& tag_invoke(get_env_t, const __t& __self) noexcept {
-            return __self.__attrs_;
+            return __self.__env_;
           }
 
           template <class... _Errs>

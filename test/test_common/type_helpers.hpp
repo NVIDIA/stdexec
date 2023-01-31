@@ -47,9 +47,6 @@ struct type_printer;
 template <typename... Ts>
 struct type_array {};
 
-//! Used as a default empty attributes
-struct empty_attrs {};
-
 //! Used as a default empty context
 struct empty_env {};
 
@@ -60,9 +57,9 @@ inline void check_val_types(S snd) {
   static_assert(std::same_as<t, ExpectedValType>);
 }
 
-//! Check that the attrs of a sender matches the expected type
+//! Check that the env of a sender matches the expected type
 template <typename ExpectedAttrsType, typename S>
-inline void check_attrs_type(S snd) {
+inline void check_env_type(S snd) {
   using t = decltype(ex::get_env(snd));
   static_assert(std::same_as<t, ExpectedAttrsType>);
 }
