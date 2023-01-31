@@ -490,6 +490,12 @@ namespace stdexec {
   template <class _Ty>
     using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
 
+  template <class _Ty>
+    using __cvref_t = __copy_cvref_t<_Ty, __t<std::remove_cvref_t<_Ty>>>;
+
+  template <class _From, class _To>
+    using __cvref_id = __copy_cvref_t<_From, __id<std::remove_cvref_t<_To>>>;
+
   template <class _Fun, class... _As>
     concept __callable =
       requires (_Fun&& __fun, _As&&... __as) {
