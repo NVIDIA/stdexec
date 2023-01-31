@@ -342,7 +342,7 @@ namespace stdexec {
             (!tag_invocable<get_env_t, const _EnvProvider&>)
         constexpr decltype(auto) operator()(const _EnvProvider& __with_env) const
           noexcept {
-          if constexpr (__r5_sender<_EnvProvider>) {
+          if constexpr (!enable_sender<_EnvProvider>) {
             return __with_env;
           } else {
             return __empty_env{};
