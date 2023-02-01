@@ -538,7 +538,7 @@ namespace nvexec {
         requires stream_receiver<OuterReceiver>
       using exit_operation_state_t 
         = operation_state_t<
-            stdexec::__cvref_id<Sender, Sender>, 
+            stdexec::__cvref_id<Sender, std::remove_cvref_t<Sender>>,
             stdexec::__id<stdexec::__t<propagate_receiver_t<stdexec::__id<OuterReceiver>>>>, 
             stdexec::__id<OuterReceiver>>;
 
