@@ -501,7 +501,7 @@ namespace stdexec {
     using __cvref_t = __copy_cvref_t<_Ty, __t<std::remove_cvref_t<_Ty>>>;
 
   template <class _From, class _To>
-    using __cvref_id = __copy_cvref_t<_From, __id<std::remove_cvref_t<_To>>>;
+    using __cvref_id = __copy_cvref_t<_From, __id<_To>>;
 
   template <class _Fun, class... _As>
     concept __callable =
