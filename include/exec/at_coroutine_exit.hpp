@@ -49,10 +49,14 @@ struct __die_on_stop_t {
       template <class... _Args>
         friend void tag_invoke(stdexec::set_value_t, __receiver&& __self,
                               _Args&&... __args) noexcept {
-          try {
+          if constexpr (stdexec::__nothrow_callable<stdexec::set_value_t, _Receiver&&, _Args&&...>) {
             stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
-          } catch (...) {
-            stdexec::set_error((_Receiver &&) __self.__receiver_, std::current_exception());
+          } else {
+            try {
+              stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
+            } catch (...) {
+              stdexec::set_error((_Receiver &&) __self.__receiver_, std::current_exception());
+            }
           }
         }
 
@@ -62,7 +66,7 @@ struct __die_on_stop_t {
           stdexec::set_error((_Receiver &&) __self.__receiver_, (_Error &&) __error);
         }
 
-      friend [[noreturn]] void tag_invoke(stdexec::set_stopped_t, __receiver&&) noexcept {
+      [[noreturn]] friend void tag_invoke(stdexec::set_stopped_t, __receiver&&) noexcept {
         std::terminate();
       }
 
