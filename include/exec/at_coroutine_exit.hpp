@@ -177,7 +177,7 @@ template <class... _Ts>
         std::terminate();
       }
 
-      __coro::coroutine_handle<__promise> unhandled_stop() noexcept {
+      __coro::coroutine_handle<__promise> unhandled_stopped() noexcept {
         return __coro::coroutine_handle<__promise>::from_promise(*this);
       }
 
