@@ -534,11 +534,11 @@ namespace nvexec {
     template <class CvrefSenderId, class InnerReceiverId, class OuterReceiverId>
       using operation_state_t = stdexec::__t<operation_state_<CvrefSenderId, InnerReceiverId, OuterReceiverId>>;
 
-    template <class Sender, class OuterReceiver>
+    template <class CvrefSender, class OuterReceiver>
         requires stream_receiver<OuterReceiver>
       using exit_operation_state_t 
         = operation_state_t<
-            stdexec::__cvref_id<Sender, std::remove_cvref_t<Sender>>,
+            stdexec::__cvref_id<CvrefSender, std::remove_cvref_t<CvrefSender>>,
             stdexec::__id<stdexec::__t<propagate_receiver_t<stdexec::__id<OuterReceiver>>>>, 
             stdexec::__id<OuterReceiver>>;
 
@@ -577,8 +577,8 @@ namespace nvexec {
           InnerReceiverProvider,
           operation_state_base_t<stdexec::__id<OuterReceiver>>&>;
 
-    template <class Sender, class InnerReceiver, class OuterReceiver>
-      using stream_op_state_t = operation_state_t<stdexec::__cvref_id<Sender, std::remove_cvref_t<Sender>>,
+    template <class CvrefSender, class InnerReceiver, class OuterReceiver>
+      using stream_op_state_t = operation_state_t<stdexec::__cvref_id<CvrefSender, std::remove_cvref_t<CvrefSender>>,
                                                   stdexec::__id<InnerReceiver>,
                                                   stdexec::__id<OuterReceiver>>;
 
