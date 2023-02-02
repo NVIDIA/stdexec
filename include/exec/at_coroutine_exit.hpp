@@ -47,22 +47,22 @@ struct __die_on_stop_t {
       _Receiver __receiver_;
 
       template <class... _Args>
-      friend void tag_invoke(stdexec::set_value_t, __receiver&& __self,
-                            _Args&&... __args) noexcept {
-        try {
-          stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
-        } catch (...) {
-          stdexec::set_error((_Receiver &&) __self.__receiver_, std::current_exception());
+        friend void tag_invoke(stdexec::set_value_t, __receiver&& __self,
+                              _Args&&... __args) noexcept {
+          try {
+            stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
+          } catch (...) {
+            stdexec::set_error((_Receiver &&) __self.__receiver_, std::current_exception());
+          }
         }
-      }
 
       template <class _Error>
-      friend void tag_invoke(stdexec::set_error_t, __receiver&& __self,
-                            _Error&& __error) noexcept {
-        stdexec::set_error((_Receiver &&) __self.__receiver_, (_Error &&) __error);
-      }
+        friend void tag_invoke(stdexec::set_error_t, __receiver&& __self,
+                              _Error&& __error) noexcept {
+          stdexec::set_error((_Receiver &&) __self.__receiver_, (_Error &&) __error);
+        }
 
-      friend void tag_invoke(stdexec::set_stopped_t, __receiver&&) noexcept {
+      friend [[noreturn]] void tag_invoke(stdexec::set_stopped_t, __receiver&&) noexcept {
         std::terminate();
       }
 
@@ -118,23 +118,23 @@ template <class... _Ts>
     using promise_type = __promise;
 
     explicit __task(__coro::coroutine_handle<__promise> __coro) noexcept
-        : __coro_(__coro) {}
+    : __coro_(__coro) {}
 
     __task(__task&& __that) noexcept
-        : __coro_(std::exchange(__that.__coro_, {})) {}
+    : __coro_(std::exchange(__that.__coro_, {})) {}
 
     bool await_ready() const noexcept { return false; }
 
     template <typename _Promise>
-    requires requires (_Promise& __promise, __coro::coroutine_handle<promise_type> __h) {
-      { __promise.continuation() } -> std::convertible_to<__coro::coroutine_handle<>>;
-      { __promise.set_continuation(__h) };
-    }
-    bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
-      __coro_.promise().__coro_ = __parent.promise().continuation();
-      __parent.promise().set_continuation(__coro_);
-      return false;
-    }
+        requires requires (_Promise& __promise, __coro::coroutine_handle<promise_type> __h) {
+          { __promise.continuation() } -> std::convertible_to<__coro::coroutine_handle<>>;
+          { __promise.set_continuation(__h) };
+        }
+      bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
+        __coro_.promise().__coro_ = __parent.promise().continuation();
+        __parent.promise().set_continuation(__coro_);
+        return false;
+      }
 
     std::tuple<_Ts&...> await_resume() noexcept {
       return std::exchange(__coro_, {}).promise().__args_;
@@ -159,9 +159,9 @@ template <class... _Ts>
 
     struct __promise : stdexec::with_awaitable_senders<__promise> {
       template <typename _Action>
-      explicit __promise(_Action&&, _Ts&... __ts) noexcept
-      : __args_{__ts...} {
-      }
+        explicit __promise(_Action&&, _Ts&... __ts) noexcept
+        : __args_{__ts...} {
+        }
 
       __coro::suspend_always initial_suspend() noexcept {
         return {};
@@ -201,16 +201,16 @@ struct __at_coroutine_exit_t {
 private:
   template <typename _Action, typename... _Ts>
     static __task<_Ts...> at_coroutine_exit(_Action&& __action, _Ts&&... __ts) {
-    co_await ((_Action&&) __action)((_Ts&&) __ts...);
-  }
+      co_await ((_Action&&) __action)((_Ts&&) __ts...);
+    }
 
 public:
   template <typename _Action, typename... _Ts>
       requires stdexec::__callable<_Action, _Ts...>
-  __task<_Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {
-    return __at_coroutine_exit_t::at_coroutine_exit((_Action &&) __action,
-                                                  (_Ts &&) __ts...);
-  }
+    __task<_Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {
+      return __at_coroutine_exit_t::at_coroutine_exit((_Action &&) __action,
+                                                    (_Ts &&) __ts...);
+    }
 };
 inline constexpr __at_coroutine_exit_t at_coroutine_exit{};
 } // namespace __at_coroutine_exit
