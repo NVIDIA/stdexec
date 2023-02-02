@@ -33,8 +33,8 @@
  * limitations under the License.
  */
 
-#include <coroutine>
 #include <exception>
+#include <type_traits>
 
 #include "stdexec/execution.hpp"
 #include "exec/task.hpp"
@@ -117,7 +117,7 @@ template <class... _Ts>
   public:
     using promise_type = __promise;
 
-    explicit __task(std::coroutine_handle<__promise> __coro) noexcept
+    explicit __task(__coro::coroutine_handle<__promise> __coro) noexcept
         : __coro_(__coro) {}
 
     __task(__task&& __that) noexcept
