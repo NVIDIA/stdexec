@@ -42,33 +42,34 @@
 namespace exec {
 namespace __at_coroutine_exit {
 struct __die_on_stop_t {
-  template <class _Receiver> struct __receiver {
-  _Receiver __receiver_;
+  template <class _Receiver>
+    struct __receiver {
+      _Receiver __receiver_;
 
-  template <class... _Args>
-  friend void tag_invoke(stdexec::set_value_t, __receiver&& __self,
-                         _Args&&... __args) noexcept {
-    try {
-      stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
-    } catch (...) {
-      stdexec::set_error((_Receiver &&) __self.__receiver_, std::current_exception());
-    }
-  }
+      template <class... _Args>
+      friend void tag_invoke(stdexec::set_value_t, __receiver&& __self,
+                            _Args&&... __args) noexcept {
+        try {
+          stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
+        } catch (...) {
+          stdexec::set_error((_Receiver &&) __self.__receiver_, std::current_exception());
+        }
+      }
 
-  template <class _Error>
-  friend void tag_invoke(stdexec::set_error_t, __receiver&& __self,
-                         _Error&& __error) noexcept {
-    stdexec::set_error((_Receiver &&) __self.__receiver_, (_Error &&) __error);
-  }
+      template <class _Error>
+      friend void tag_invoke(stdexec::set_error_t, __receiver&& __self,
+                            _Error&& __error) noexcept {
+        stdexec::set_error((_Receiver &&) __self.__receiver_, (_Error &&) __error);
+      }
 
-  friend void tag_invoke(stdexec::set_stopped_t, __receiver&&) noexcept {
-    std::terminate();
-  }
+      friend void tag_invoke(stdexec::set_stopped_t, __receiver&&) noexcept {
+        std::terminate();
+      }
 
-  friend auto tag_invoke(stdexec::get_env_t, const __receiver& __self) noexcept {
-    return stdexec::get_env(__self.__receiver_);
-  }
-};
+      friend auto tag_invoke(stdexec::get_env_t, const __receiver& __self) noexcept {
+        return stdexec::get_env(__self.__receiver_);
+      }
+    };
 
   template <class _Sender>
     class __sender {
@@ -110,90 +111,91 @@ struct __die_on_stop_t {
 };
 inline constexpr __die_on_stop_t __die_on_stop;
 
-template <class... _Ts> class [[nodiscard]] __task {
-  struct __promise;
-public:
-  using promise_type = __promise;
+template <class... _Ts>
+  class [[nodiscard]] __task {
+    struct __promise;
+  public:
+    using promise_type = __promise;
 
-  explicit __task(std::coroutine_handle<__promise> __coro) noexcept
-      : __coro_(__coro) {}
+    explicit __task(std::coroutine_handle<__promise> __coro) noexcept
+        : __coro_(__coro) {}
 
-  __task(__task&& __that) noexcept
-      : __coro_(std::exchange(__that.__coro_, {})) {}
+    __task(__task&& __that) noexcept
+        : __coro_(std::exchange(__that.__coro_, {})) {}
 
-  bool await_ready() const noexcept { return false; }
+    bool await_ready() const noexcept { return false; }
 
-  template <typename _Promise>
-  requires requires (_Promise& __promise, __coro::coroutine_handle<promise_type> __h) {
-    { __promise.continuation() } -> std::convertible_to<__coro::coroutine_handle<>>;
-    { __promise.set_continuation(__h) };
-  }
-  bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
-    __coro_.promise().__coro_ = __parent.promise().continuation();
-    __parent.promise().set_continuation(__coro_);
-    return false;
-  }
-
-  std::tuple<_Ts&...> await_resume() noexcept {
-    return std::exchange(__coro_, {}).promise().__args_;
-  }
-
-private:
-  struct __final_awaitable {
-    static std::false_type await_ready() noexcept {
-      return {};
+    template <typename _Promise>
+    requires requires (_Promise& __promise, __coro::coroutine_handle<promise_type> __h) {
+      { __promise.continuation() } -> std::convertible_to<__coro::coroutine_handle<>>;
+      { __promise.set_continuation(__h) };
+    }
+    bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
+      __coro_.promise().__coro_ = __parent.promise().continuation();
+      __parent.promise().set_continuation(__coro_);
+      return false;
     }
 
-    static __coro::coroutine_handle<>
-    await_suspend(__coro::coroutine_handle<__promise> __h) noexcept {
-      auto __coro = __h.promise().__coro_;
-      __h.destroy();
-      return __coro;
+    std::tuple<_Ts&...> await_resume() noexcept {
+      return std::exchange(__coro_, {}).promise().__args_;
     }
 
-    void await_resume() const noexcept {
-    }
-  };
-
-  struct __promise : stdexec::with_awaitable_senders<__promise> {
-    template <typename _Action>
-    explicit __promise(_Action&&, _Ts&... __ts) noexcept
-    : __args_{__ts...} {
-    }
-
-    __coro::suspend_always initial_suspend() noexcept {
-      return {};
-    }
-    __final_awaitable final_suspend() noexcept {
-      return {};
-    }
-
-    void return_void() noexcept {
-    }
-
-    [[noreturn]] void unhandled_exception() noexcept {
-      std::terminate();
-    }
-
-    __coro::coroutine_handle<__promise> unhandled_stop() noexcept {
-      return __coro::coroutine_handle<__promise>::from_promise(*this);
-    }
-
-    __task get_return_object() noexcept {
-      return __task(__coro::coroutine_handle<__promise>::from_promise(*this));
-    }
-
-    template <class _Awaitable>
-      decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
-        return stdexec::as_awaitable(__die_on_stop((_Awaitable &&) __awaitable), *this);
+  private:
+    struct __final_awaitable {
+      static std::false_type await_ready() noexcept {
+        return {};
       }
 
-    __coro::coroutine_handle<> __coro_{};
-    std::tuple<_Ts&...> __args_{};
-  };
+      static __coro::coroutine_handle<>
+      await_suspend(__coro::coroutine_handle<__promise> __h) noexcept {
+        auto __coro = __h.promise().__coro_;
+        __h.destroy();
+        return __coro;
+      }
 
-  __coro::coroutine_handle<__promise> __coro_;
-};
+      void await_resume() const noexcept {
+      }
+    };
+
+    struct __promise : stdexec::with_awaitable_senders<__promise> {
+      template <typename _Action>
+      explicit __promise(_Action&&, _Ts&... __ts) noexcept
+      : __args_{__ts...} {
+      }
+
+      __coro::suspend_always initial_suspend() noexcept {
+        return {};
+      }
+      __final_awaitable final_suspend() noexcept {
+        return {};
+      }
+
+      void return_void() noexcept {
+      }
+
+      [[noreturn]] void unhandled_exception() noexcept {
+        std::terminate();
+      }
+
+      __coro::coroutine_handle<__promise> unhandled_stop() noexcept {
+        return __coro::coroutine_handle<__promise>::from_promise(*this);
+      }
+
+      __task get_return_object() noexcept {
+        return __task(__coro::coroutine_handle<__promise>::from_promise(*this));
+      }
+
+      template <class _Awaitable>
+        decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
+          return stdexec::as_awaitable(__die_on_stop((_Awaitable &&) __awaitable), *this);
+        }
+
+      __coro::coroutine_handle<> __coro_{};
+      std::tuple<_Ts&...> __args_{};
+    };
+
+    __coro::coroutine_handle<__promise> __coro_;
+  };
 
 struct __at_coroutine_exit_t {
 private:
