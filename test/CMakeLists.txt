@@ -70,6 +70,7 @@ set(stdexec_test_sources
     exec/async_scope/test_spawn_future.cpp
     exec/async_scope/test_empty.cpp
     exec/async_scope/test_stop.cpp
+    exec/test_at_coroutine_exit.cpp
     )
 
 add_executable(test.stdexec ${stdexec_test_sources})

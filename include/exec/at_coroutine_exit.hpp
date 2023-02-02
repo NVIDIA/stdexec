@@ -200,13 +200,13 @@ template <class... _Ts>
 struct __at_coroutine_exit_t {
 private:
   template <typename _Action, typename... _Ts>
-  static __task<_Ts...> at_coroutine_exit(_Action __action, _Ts... __ts) {
+    static __task<_Ts...> at_coroutine_exit(_Action&& __action, _Ts&&... __ts) {
     co_await ((_Action&&) __action)((_Ts&&) __ts...);
   }
 
 public:
   template <typename _Action, typename... _Ts>
-  requires stdexec::__callable<std::decay_t<_Action>, std::decay_t<_Ts>...>
+      requires stdexec::__callable<_Action, _Ts...>
   __task<_Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {
     return __at_coroutine_exit_t::at_coroutine_exit((_Action &&) __action,
                                                   (_Ts &&) __ts...);
