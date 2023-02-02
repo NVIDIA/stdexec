@@ -138,6 +138,54 @@ exec::task<void> invoke_actions_after_stop(int& result, auto stop) {
   co_await stop;
   ++result;
 }
+
+exec::task<void> invoke_actions_after_stop2(int& result, auto stop) {
+  ++result;
+  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
+    result += 1;
+    co_return;
+  }, result);
+
+  co_await stop;
+
+  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
+    result *= 2;
+    co_return;
+  }, result);
+  ++result;
+}
+
+exec::task<void> invoke_actions_after_stop3(int& result, auto stop) {
+  ++result;
+  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
+    result += 1;
+    co_return;
+  }, result);
+
+  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
+    result *= 2;
+    co_return;
+  }, result);
+  ++result;
+
+  co_await stop;
+}
+
+exec::task<void> invoke_actions_after_stop4(int& result, auto stop) {
+  ++result;
+  co_await stop;
+
+  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
+    result += 1;
+    co_return;
+  }, result);
+
+  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
+    result *= 2;
+    co_return;
+  }, result);
+  ++result;
+}
 }
 
 TEST_CASE("at_coroutine_exit invokes two actions in correct order after stop signal", "[task][at_coroutine_exit]")
@@ -146,6 +194,18 @@ TEST_CASE("at_coroutine_exit invokes two actions in correct order after stop sig
   stopped_scheduler scheduler;
   stdexec::sync_wait(invoke_actions_after_stop(result, stdexec::schedule(scheduler)));
   REQUIRE(result == 3);
+
+  result = 0;
+  stdexec::sync_wait(invoke_actions_after_stop2(result, stdexec::schedule(scheduler)));
+  REQUIRE(result == 2);
+
+  result = 0;
+  stdexec::sync_wait(invoke_actions_after_stop3(result, stdexec::schedule(scheduler)));
+  REQUIRE(result == 5);
+
+  result = 0;
+  stdexec::sync_wait(invoke_actions_after_stop4(result, stdexec::schedule(scheduler)));
+  REQUIRE(result == 1);
 }
 
 
