@@ -578,7 +578,7 @@ namespace nvexec {
           operation_state_base_t<stdexec::__id<OuterReceiver>>&>;
 
     template <class Sender, class InnerReceiver, class OuterReceiver>
-      using stream_op_state_t = operation_state_t<stdexec::__cvref_id<Sender, Sender>,
+      using stream_op_state_t = operation_state_t<stdexec::__cvref_id<Sender, std::remove_cvref_t<Sender>>,
                                                   stdexec::__id<InnerReceiver>,
                                                   stdexec::__id<OuterReceiver>>;
 
