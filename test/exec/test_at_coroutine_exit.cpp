@@ -225,13 +225,15 @@ TEST_CASE("at_coroutine_exit terminates after exception within action", "[task][
 }
 
 namespace {
-exec::task<void> stop_in_action() {
-  co_await exec::at_coroutine_exit([] { return stdexec::just_stopped(); });
+exec::task<void> stop_in_action(auto stop) {
+  co_await exec::at_coroutine_exit([&] { return stop; });
 }
 }
 
 TEST_CASE("at_coroutine_exit terminates after stop within action", "[task][at_coroutine_exit]")
 {
-  REQUIRE_TERMINATE([] { stdexec::sync_wait(stop_in_action()); });
+  stopped_scheduler scheduler;
+  auto stop = stdexec::schedule(scheduler);
+  REQUIRE_TERMINATE([](auto stop) { stdexec::sync_wait(stop_in_action(stop)); }, std::move(stop));
 }
 #endif
