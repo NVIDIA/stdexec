@@ -71,13 +71,19 @@ set(stdexec_test_sources
     exec/async_scope/test_empty.cpp
     exec/async_scope/test_stop.cpp
     exec/test_at_coroutine_exit.cpp
-    tbbexec/test_tbb_thread_pool.cpp
+    $<$<BOOL:STDEXEC_ENABLE_TBB>:tbbexec/test_tbb_thread_pool.cpp>
     )
 
 add_executable(test.stdexec ${stdexec_test_sources})
 
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
-target_link_libraries(test.stdexec PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2 TBB::tbb fmt::fmt)
+target_link_libraries(test.stdexec
+    PUBLIC
+    STDEXEC::stdexec
+    $<$<BOOL:STDEXEC_ENABLE_TBB>:tbbexec>
+    $<$<BOOL:STDEXEC_ENABLE_TBB>:TBB::tbb>
+    stdexec_executable_flags
+    Catch2::Catch2)
 
 # Discover the Catch2 test built by the application
 include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)

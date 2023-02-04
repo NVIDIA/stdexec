@@ -22,7 +22,7 @@
 #include <exec/on.hpp>
 #include <tbbexec/tbb_thread_pool.hpp>
 
-#include <fmt/format.h>
+#include <iostream>
 
 #include <map>
 
@@ -91,21 +91,21 @@ TEST_CASE("more tbb_thread_pool") {
         std::lock_guard lock{mutex};
         log.emplace(x, legible_thread_id());
       }
-      fmt::print("thread {}: x = {}\n", legible_thread_id(), x);
+      std::cout << "thread " << legible_thread_id() << ": x = " << x << "\n";
       return compute(i);
     };
   };
 
-  fmt::print("Main thread is thread {}\n\n", legible_thread_id());
+  std::cout << "Main thread is thread " << legible_thread_id() << "\n\n";
   auto a = tbb::task_arena{tbb::task_arena::attach{}};
   a.enqueue([] {
     // std::ignore = legible_thread_id();
-    fmt::print("One tbb thread is thread {}\n\n", legible_thread_id());
+    std::cout << "One tbb thread is thread " << legible_thread_id() << "\n\n";
   });
 
   stdexec::sync_wait(stdexec::on(other_sched, stdexec::just()) | stdexec::then([] {
     // std::ignore = legible_thread_id();
-    fmt::print("other thread is thread {}\n\n", legible_thread_id());
+    std::cout << "other thread is thread " << legible_thread_id() << "\n\n";
   }));
 
   using namespace std::chrono_literals;
@@ -129,7 +129,7 @@ TEST_CASE("more tbb_thread_pool") {
   CHECK(i == 3);
   CHECK(j == 2);
   CHECK(k == 5);
-  fmt::print("{}, {}, {}", i, j, k);
+  std::cout << i << ", " << j << ", " << k;
   CHECK(
       log == decltype(log){{"a tbb_sched", 3}, {"b tbb_sched", 3}, {"c other_sched", 2},
                  {"d tbb_sched", 3}, {"e tbb_sched", 3}, {"f other_sched", 2}, {"g tbb_sched", 3}});
@@ -143,9 +143,9 @@ TEST_CASE("more tbb_thread_pool") {
                //schedule(tbb_sched)    | then([] { return 2; }))).value();
   // clang-format on
   auto k = -1;
-  fmt::print("{}, {}, {}", i, j, k);*/
+  std::cout << std::format("{}, {}, {}", i, j, k);*/
   // Print the results:
-  // fmt::print("{}, {}, {}", i, j, k);
+  // std::cout << std::format("{}, {}, {}", i, j, k);
 }
 
 /*

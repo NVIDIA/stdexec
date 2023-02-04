@@ -7,12 +7,6 @@ if(POLICY CMP0135)
   set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
 endif()
 
-# if (APPLE)
-    set (CMAKE_OSX_DEPLOYMENT_TARGET 12.0) # CACHE STRING "Minimum supported version of OS X")
-# endif ()
-find_package (TBB REQUIRED)
-find_package (fmt REQUIRED)
-
 
 ##############################################################################
 # - Download and initialize RAPIDS CMake helpers -----------------------------
@@ -105,9 +99,6 @@ rapids_find_package(Threads REQUIRED
   BUILD_EXPORT_SET stdexec-exports
   INSTALL_EXPORT_SET stdexec-exports
 )
-
-find_package(fmt REQUIRED)
-find_package(tbb REQUIRED)
 
 ##############################################################################
 # - Main library targets -----------------------------------------------------
@@ -257,8 +248,39 @@ if(STDEXEC_ENABLE_CUDA)
             INSTALL_EXPORT_SET stdexec-exports)
 
         target_link_libraries(stdexec INTERFACE libcudacxx::libcudacxx)
-    endif()
-endif()
+    endif ()
+endif ()
+
+
+#////////BFD
+option(STDEXEC_ENABLE_TBB "Enable TBB targets" OFF)
+
+if (STDEXEC_ENABLE_TBB)
+    find_package(TBB REQUIRED)
+    #find_package(tbb REQUIRED)
+
+
+    file(GLOB_RECURSE tbbexec_sources include/tbbexec/*.hpp)
+    add_library(tbbexec INTERFACE ${tbbexec_sources})
+    list(APPEND stdexec_export_targets tbbexec)
+    add_library(STDEXEC::tbbexec ALIAS tbbexec)
+
+    target_link_libraries(tbbexec
+        INTERFACE
+        STDEXEC::stdexec
+        TBB::tbb
+        )
+
+    #include(rapids-find)
+    #rapids_find_package(
+    #    CUDAToolkit REQUIRED # Not sure what to change here to make it work for tbb.
+    #    BUILD_EXPORT_SET stdexec-exports
+    #    INSTALL_EXPORT_SET stdexec-exports
+    #)
+
+    #target_link_libraries(tbbexec INTERFACE TBB::tbb)
+endif ()
+#////////BFD
 
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
@@ -266,7 +288,7 @@ option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
 
 # Don't build tests if configuring stdexec as a submodule of another
 # CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE
-if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR STDEXEC_BUILD_TESTS)
+if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR STDEXEC_BUILD_TESTS)
     # CTest automatically calls enable_testing() if BUILD_TESTING is ON
     # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
     include(CTest)
