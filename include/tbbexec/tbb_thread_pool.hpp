@@ -61,7 +61,7 @@ public:
             friend operation<stdexec::__x<std::decay_t<Receiver>>> tag_invoke(stdexec::connect_t,
                                                                               sender s,
                                                                               Receiver&& r) {
-                return s.make_operation_((Receiver &&) r); // std::move(r)?
+                return s.make_operation_(std::forward<Receiver>(r));
             }
 
             template <class CPO>
