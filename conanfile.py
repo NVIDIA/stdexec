@@ -33,6 +33,3 @@ class P2300Recipe(ConanFile):
         # Make sure to add the correct flags for gcc
         if self.settings.compiler == "gcc":
             self.cpp_info.cxxflags = ["-fcoroutines", "-Wno-non-template-friend"]
-
-    def requirements(self):
-        self.requires("onetbb/2021.7.0")
