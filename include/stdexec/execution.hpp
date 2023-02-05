@@ -4689,8 +4689,8 @@ namespace stdexec {
             : __scheduler_((_Scheduler&&) __sched)
             , __sndr_((_Sender2&&) __sndr)
             , __rcvr_((_Receiver2&&) __rcvr)
-            , __data_{std::in_place_index<0>, __conv{[&, this]{
-                return connect(schedule(__sched), __receiver_t{{}, this});
+            , __data_{std::in_place_index<0>, __conv{[this]{
+                return connect(schedule(__scheduler_), __receiver_t{{}, this});
               }}} {}
           STDEXEC_IMMOVABLE(__t);
 
