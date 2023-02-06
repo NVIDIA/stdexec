@@ -1,12 +1,31 @@
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2021-2022 NVIDIA Corporation
+ *
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *   https://llvm.org/LICENSE.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <exec/at_coroutine_exit.hpp>
 #include <catch2/catch.hpp>
 
 #include <test_common/schedulers.hpp>
 
-#ifdef __linux__
+#if __has_include(<unistd.h>) && __has_include(<sys/wait.h>)
 #include <unistd.h>
 #include <sys/wait.h>
+#define STDEXEC_HAS_FORK
+#endif
 
+#ifdef STDEXEC_HAS_FORK
 namespace {
 template<class F, class... Args>
 void REQUIRE_TERMINATE(F&& f, Args&&... args)
@@ -43,197 +62,246 @@ void REQUIRE_TERMINATE(F&& f, Args&&... args)
 }
 #endif
 
+using namespace exec;
+using stdexec::sync_wait;
+
 namespace {
-exec::task<void> one_exit_task_action(int& result) {
-  ++result;
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result *= 2;
-    co_return;
-  }, result);
-  ++result;
-}
+auto stop() {
+  static stopped_scheduler scheduler{};
+  auto stop = stdexec::schedule(scheduler);
+  return stop;
 }
 
-TEST_CASE("at_coroutine_exit invokes at coroutine destruction", "[task][at_coroutine_exit]")
+task<void> test_one_cleanup_action(int& result) {
+  ++result;
+  co_await at_coroutine_exit([&result]() -> task<void> { result *= 2; co_return; });
+  ++result;
+}
+
+task<void> test_two_cleanup_actions(int& result) {
+  ++result;
+  co_await at_coroutine_exit([&result]() -> task<void> { result *= 2; co_return; });
+  co_await at_coroutine_exit([&result]() -> task<void> { result *= result; co_return; });
+  ++result;
+}
+
+task<void> test_one_cleanup_action_with_stop(int& result) {
+  ++result;
+  co_await at_coroutine_exit([&result]() -> task<void> { result *= 2; co_return; });
+  co_await stop();
+  ++result;
+}
+
+task<void> test_two_cleanup_actions_with_stop(int& result) {
+  ++result;
+  co_await at_coroutine_exit([&result]() -> task<void> { result *= 2; co_return; });
+  co_await at_coroutine_exit([&result]() -> task<void> { result *= result; co_return; });
+  co_await stop();
+  ++result;
+}
+
+task<void> test_sender_cleanup_action(int& result) {
+  co_await at_coroutine_exit([&result]{ return stdexec::just() | stdexec::then([&result]{++result;}); });
+}
+
+task<void> test_stateful_cleanup_action(int& result, int arg) {
+  co_await at_coroutine_exit([arg,&result]{ return stdexec::just() | stdexec::then([arg,&result]{result += arg;}); });
+}
+
+task<void> test_mutable_stateful_cleanup_action(int& result) {
+  auto&& [i] = co_await at_coroutine_exit(
+    [&result](int&& i) -> task<void> {
+      result += i;
+      co_return;
+    }, 3);
+  ++result;
+  i *= i;
+}
+
+task<void> with_continuation(int& result, task<void> next) {
+  co_await std::move(next);
+  result *= 3;
+}
+
+void test_cancel_in_cleanup_action_causes_death(int& result) {
+  task<void> t = []() -> task<void> {
+    co_await at_coroutine_exit([]() -> task<void> {
+      co_await stop();
+    });
+  }();
+  sync_wait(std::move(t)); // causes termination
+  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+}
+
+void test_cancel_during_cancellation_unwind_causes_death(int& result) {
+  task<void> t = []() -> task<void> {
+    co_await at_coroutine_exit([]() -> task<void> {
+      co_await stop(); // BOOM
+    });
+    co_await stop();
+  }();
+  sync_wait(std::move(t)); // causes termination
+  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+}
+
+void test_throw_in_cleanup_action_causes_death(int& result) {
+  task<void> t = []() -> task<void> {
+    co_await at_coroutine_exit([]() -> task<void> {
+      throw 42;
+    });
+  }();
+  sync_wait(std::move(t)); // causes termination
+  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+}
+
+void test_throw_in_cleanup_action_during_exception_unwind_causes_death(int& result) {
+  task<void> t = []() -> task<void> {
+    co_await at_coroutine_exit([]() -> task<void> {
+      throw 42;
+    });
+    throw 42;
+  }();
+  sync_wait(std::move(t)); // causes termination
+  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+}
+
+void test_cancel_in_cleanup_action_during_exception_unwind_causes_death(int& result) {
+  task<void> t = []() -> task<void> {
+    co_await at_coroutine_exit([]() -> task<void> {
+      co_await stop();
+    });
+    throw 42;
+  }();
+  sync_wait(std::move(t)); // causes termination
+  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+}
+
+void test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(int& result) {
+  task<void> t = []() -> task<void> {
+    co_await at_coroutine_exit([]() -> task<void> {
+      throw 42;
+    });
+    co_await stop();
+  }();
+  sync_wait(std::move(t)); // causes termination
+  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+}
+} // unnamed namespace
+
+TEST_CASE("OneCleanupAction", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  stdexec::sync_wait(one_exit_task_action(result));
+  stdexec::sync_wait(test_one_cleanup_action(result));
   REQUIRE(result == 4);
 }
 
-namespace {
-exec::task<void> two_exit_task_actions(int& result) {
-  ++result;
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result += 1;
-    co_return;
-  }, result);
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result *= 2;
-    co_return;
-  }, result);
-  ++result;
-}
-
-exec::task<void> two_exit_task_actions_as_sender(int& result) {
-  ++result;
-  co_await exec::at_coroutine_exit([](int& result) {
-    return stdexec::just() | stdexec::then([&result] { result += 1; }); 
-  }, result);
-  co_await exec::at_coroutine_exit([](int& result) {
-    return stdexec::just() | stdexec::then([&result] { result *= 2; }); 
-  }, result);
-  ++result;
-}
-}
-
-TEST_CASE("at_coroutine_exit invokes two actions in correct order", "[task][at_coroutine_exit]")
+TEST_CASE("TwoCleanupActions", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  stdexec::sync_wait(two_exit_task_actions(result));
-  REQUIRE(result == 5);
-  result = 0;
-  stdexec::sync_wait(two_exit_task_actions_as_sender(result));
-  REQUIRE(result == 5);
+  stdexec::sync_wait(test_two_cleanup_actions(result));
+  REQUIRE(result == 8);
 }
 
-namespace {
-struct test_exception : std::runtime_error {
-  using std::runtime_error::runtime_error;
-};
-
-exec::task<void> invoke_action_after_exception(int& result) {
-  ++result;
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result += 1;
-    co_return;
-  }, result);
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result *= 2;
-    co_return;
-  }, result);
-  throw test_exception("test");
-  ++result;
-}
-}
-
-TEST_CASE("at_coroutine_exit invokes two actions in correct order after exception", "[task][at_coroutine_exit]")
+TEST_CASE("OneCleanupActionWithContinuation", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  REQUIRE_THROWS_AS(stdexec::sync_wait(invoke_action_after_exception(result)), test_exception);
-  REQUIRE(result == 3);
+  stdexec::sync_wait(with_continuation(result, test_one_cleanup_action(result)));
+  REQUIRE(result == 12);
 }
 
-namespace {
-exec::task<void> invoke_actions_after_stop(int& result, auto stop) {
-  ++result;
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result += 1;
-    co_return;
-  }, result);
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result *= 2;
-    co_return;
-  }, result);
-  co_await stop;
-  ++result;
-}
-
-exec::task<void> invoke_actions_after_stop2(int& result, auto stop) {
-  ++result;
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result += 1;
-    co_return;
-  }, result);
-
-  co_await stop;
-
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result *= 2;
-    co_return;
-  }, result);
-  ++result;
-}
-
-exec::task<void> invoke_actions_after_stop3(int& result, auto stop) {
-  ++result;
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result += 1;
-    co_return;
-  }, result);
-
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result *= 2;
-    co_return;
-  }, result);
-  ++result;
-
-  co_await stop;
-}
-
-exec::task<void> invoke_actions_after_stop4(int& result, auto stop) {
-  ++result;
-  co_await stop;
-
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result += 1;
-    co_return;
-  }, result);
-
-  co_await exec::at_coroutine_exit([](int& result) -> exec::task<void> {
-    result *= 2;
-    co_return;
-  }, result);
-  ++result;
-}
-}
-
-TEST_CASE("at_coroutine_exit invokes two actions in correct order after stop signal", "[task][at_coroutine_exit]")
+TEST_CASE("TwoCleanupActionsWithContinuation", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  stopped_scheduler scheduler;
-  stdexec::sync_wait(invoke_actions_after_stop(result, stdexec::schedule(scheduler)));
-  REQUIRE(result == 3);
+  stdexec::sync_wait(with_continuation(result, test_two_cleanup_actions(result)));
+  REQUIRE(result == 24);
+}
 
-  result = 0;
-  stdexec::sync_wait(invoke_actions_after_stop2(result, stdexec::schedule(scheduler)));
-  REQUIRE(result == 2);
-
-  result = 0;
-  stdexec::sync_wait(invoke_actions_after_stop3(result, stdexec::schedule(scheduler)));
-  REQUIRE(result == 5);
-
-  result = 0;
-  stdexec::sync_wait(invoke_actions_after_stop4(result, stdexec::schedule(scheduler)));
+TEST_CASE("CleanupActionWithSender", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  stdexec::sync_wait(test_sender_cleanup_action(result));
   REQUIRE(result == 1);
 }
 
-
-#ifdef __linux__
-namespace {
-exec::task<void> exception_in_action() {
-  co_await exec::at_coroutine_exit([]() -> exec::task<void> {
-    throw test_exception("test");
-    co_return;
-  });
-}
-}
-
-TEST_CASE("at_coroutine_exit terminates after exception within action", "[task][at_coroutine_exit]")
+TEST_CASE("OneCleanupActionWithStop", "[task][at_coroutine_exit]")
 {
-  REQUIRE_TERMINATE([] { stdexec::sync_wait(exception_in_action()); });
+  int result = 0;
+  stdexec::sync_wait(test_one_cleanup_action_with_stop(result));
+  REQUIRE(result == 2);
 }
 
-namespace {
-exec::task<void> stop_in_action(auto stop) {
-  co_await exec::at_coroutine_exit([&] { return stop; });
-}
-}
-
-TEST_CASE("at_coroutine_exit terminates after stop within action", "[task][at_coroutine_exit]")
+TEST_CASE("TwoCleanupActionsWithStop", "[task][at_coroutine_exit]")
 {
-  stopped_scheduler scheduler;
-  auto stop = stdexec::schedule(scheduler);
-  REQUIRE_TERMINATE([](auto stop) { stdexec::sync_wait(stop_in_action(stop)); }, std::move(stop));
+  int result = 0;
+  stdexec::sync_wait(test_two_cleanup_actions_with_stop(result));
+  REQUIRE(result == 2);
 }
+
+TEST_CASE("OneCleanupActionWithContinuationAndStop", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  stdexec::sync_wait(with_continuation(result, test_one_cleanup_action_with_stop(result)));
+  REQUIRE(result == 2);
+}
+
+TEST_CASE("TwoCleanupActionsWithContinuationAndStop", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  stdexec::sync_wait(with_continuation(result, test_two_cleanup_actions_with_stop(result)));
+  REQUIRE(result == 2);
+}
+
+
+TEST_CASE("CleanupActionWithStatefulSender", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  stdexec::sync_wait(test_stateful_cleanup_action(result, 42));
+  REQUIRE(result == 42);
+}
+
+TEST_CASE("CleanupActionWithMutableStateful", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  stdexec::sync_wait(test_mutable_stateful_cleanup_action(result));
+  REQUIRE(result == 10);
+}
+
+#ifdef STDEXEC_HAS_FORK
+
+TEST_CASE("CancelInCleanupActionCallsTerminate", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  REQUIRE_TERMINATE([](int& result) { test_cancel_in_cleanup_action_causes_death(result); }, result);
+}
+
+TEST_CASE("CancelDuringCancellationUnwindCallsTerminate", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  REQUIRE_TERMINATE([](int& result) { test_cancel_during_cancellation_unwind_causes_death(result); }, result);
+}
+
+TEST_CASE("ThrowInCleanupActionCallsTerminate", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  REQUIRE_TERMINATE([](int& result) { test_throw_in_cleanup_action_causes_death(result); }, result);
+}
+
+TEST_CASE("ThrowInCleanupActionDuringExceptionUnwindCallsTerminate", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  REQUIRE_TERMINATE([](int& result) { test_throw_in_cleanup_action_during_exception_unwind_causes_death(result); }, result);
+}
+
+TEST_CASE("CancelInCleanupActionDuringExceptionUnwindCallsTerminate", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  REQUIRE_TERMINATE([](int& result) { test_cancel_in_cleanup_action_during_exception_unwind_causes_death(result); }, result);
+}
+
+TEST_CASE("ThrowInCleanupActionDuringCancellationUnwindCallsTerminate", "[task][at_coroutine_exit]")
+{
+  int result = 0;
+  REQUIRE_TERMINATE([](int& result) { test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(result); }, result);
+}
+
 #endif

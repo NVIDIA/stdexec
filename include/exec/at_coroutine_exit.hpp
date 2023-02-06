@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) Facebook, Inc. and its affiliates.
  * Copyright (c) 2021-2022 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
@@ -17,22 +18,6 @@
 
 // The original idea is taken from libunifex and adapted to stdexec.
 
-/*
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * Licensed under the Apache License Version 2.0 with LLVM Exceptions
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *   https://llvm.org/LICENSE.txt
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #include <exception>
 #include <type_traits>
 
@@ -48,22 +33,18 @@ struct __die_on_stop_t {
         using __id = __receiver_id;
         _Receiver __receiver_;
 
-        template <class... _Args>
-          friend void tag_invoke(stdexec::set_value_t, __t&& __self,
-                                _Args&&... __args) noexcept {
-            if constexpr (stdexec::__nothrow_callable<stdexec::set_value_t, _Receiver&&, _Args&&...>) {
-              stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
-            } else {
-              try {
-                stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
-              } catch (...) {
-                stdexec::set_error((_Receiver &&) __self.__receiver_, std::current_exception());
-              }
-            }
+        template <stdexec::__decays_to<__t> _Self, class... _Args>
+            requires stdexec::__callable<stdexec::set_value_t, _Receiver, std::decay_t<_Args>...>
+          friend void tag_invoke(stdexec::set_value_t, _Self&& __self,
+                                _Args&&... __args) noexcept try {
+            stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
+          } catch (...) {
+            stdexec::set_error((_Receiver &&) __self.__receiver_, std::current_exception());
           }
 
-        template <class _Error>
-          friend void tag_invoke(stdexec::set_error_t, __t&& __self,
+        template <stdexec::__decays_to<__t> _Self, class _Error>
+            requires stdexec::__callable<stdexec::set_error_t, _Receiver, std::decay_t<_Error>>
+          friend void tag_invoke(stdexec::set_error_t, _Self&& __self,
                                 _Error&& __error) noexcept {
             stdexec::set_error((_Receiver &&) __self.__receiver_, (_Error &&) __error);
           }
@@ -72,7 +53,7 @@ struct __die_on_stop_t {
           std::terminate();
         }
 
-        friend auto tag_invoke(stdexec::get_env_t, const __t& __self) noexcept {
+        friend decltype(auto) tag_invoke(stdexec::get_env_t, const __t& __self) noexcept {
           return stdexec::get_env(__self.__receiver_);
         }
       };
@@ -80,19 +61,19 @@ struct __die_on_stop_t {
   template <class _R> using __receiver = stdexec::__t<__receiver_id<_R>>;
 
   template <class _Sig> struct __return_type {
-    using type = _Sig;
+    using __t = _Sig;
   };
 
   template <class _R, class... _Args> struct __return_type<_R(_Args...)> {
-    using type = _R;
+    using __t = _R;
   };
 
   template <class _Sig>
-  using __return_type_t = typename __return_type<_Sig>::type;
+  using __return_type_t = typename __return_type<_Sig>::__t;
 
   template <class _Tag, class _With = stdexec::__> struct __replace_tag {
     template <class _Arg>
-    using __f = stdexec::__if_c<std::is_same_v<__return_type_t<_Arg>, _Tag>, _With, _Arg>;
+    using __f = stdexec::__if<std::is_same<__return_type_t<_Arg>, _Tag>, _With, _Arg>;
   };
 
   template <class _Tag>
@@ -238,16 +219,16 @@ template <class... _Ts>
 struct __at_coroutine_exit_t {
 private:
   template <typename _Action, typename... _Ts>
-    static __task<_Ts...> at_coroutine_exit(_Action&& __action, _Ts&&... __ts) {
+    static __task<_Ts...> at_coroutine_exit(_Action __action, _Ts... __ts) {
       co_await ((_Action&&) __action)((_Ts&&) __ts...);
     }
 
 public:
   template <typename _Action, typename... _Ts>
-      requires stdexec::__callable<_Action, _Ts...>
+      requires stdexec::__callable<std::decay_t<_Action>, std::decay_t<_Ts>...>
     __task<_Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {
       return __at_coroutine_exit_t::at_coroutine_exit((_Action &&) __action,
-                                                    (_Ts &&) __ts...);
+                                                      (_Ts &&) __ts...);
     }
 };
 inline constexpr __at_coroutine_exit_t at_coroutine_exit{};
