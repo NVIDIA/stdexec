@@ -14,6 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#if !_STD_NO_COROUTINES_
+
 #include <exec/at_coroutine_exit.hpp>
 #include <catch2/catch.hpp>
 
@@ -304,4 +306,6 @@ TEST_CASE("ThrowInCleanupActionDuringCancellationUnwindCallsTerminate", "[task][
   REQUIRE_TERMINATE([](int& result) { test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(result); }, result);
 }
 
-#endif
+#endif // STDEXEC_HAS_FORK
+
+#endif // !_STD_NO_COROUTINES_
