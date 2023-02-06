@@ -22,6 +22,8 @@
 using namespace std;
 namespace ex = stdexec;
 
+namespace {
+
 //! Tail Sender
 struct ATailSender {
   using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
@@ -63,11 +65,12 @@ struct ATailReceiver {
   int* called;
   friend void tag_invoke(ex::set_value_t, ATailReceiver&& __self, auto&&...) noexcept { ++*__self.called; }
   friend void tag_invoke(ex::set_stopped_t, ATailReceiver&& __self) noexcept { ++*__self.called; }
-  friend ex::__empty_env tag_invoke(ex::get_env_t, const ATailReceiver&) {
+  template<class _Self>
+    requires same_as<_Self, ATailReceiver>
+  friend ex::__empty_env tag_invoke(ex::get_env_t, const _Self&) {
     return {};
   }
 };
-
 
 template<class NestTailSender>
 struct ANestTailReceiver {
@@ -87,6 +90,70 @@ struct ANestTailReceiver {
     return {};
   }
 };
+
+// struct ATailSender {
+//   using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+
+//   template <class Receiver>
+//   struct operation {
+//     Receiver rcvr_;
+
+//     operation(Receiver __r) : rcvr_(__r) {}
+
+//     operation(const operation&) = delete;
+//     operation(operation&&) = delete;
+//     operation& operator=(const operation&) = delete;
+//     operation& operator=(operation&&) = delete;
+//     [[nodiscard]]
+//     friend auto tag_invoke(ex::start_t, operation& self) noexcept {
+//       return ex::set_value(std::move(self.rcvr_));
+//     }
+
+//     friend void tag_invoke(exec::unwind_t, operation& self) noexcept {
+//       ex::set_stopped(std::move(self.rcvr_));
+//     }
+//   };
+
+//   template <class Receiver>
+//   friend auto tag_invoke(ex::connect_t, ATailSender self, Receiver&& rcvr) noexcept
+//       -> operation<std::decay_t<Receiver>> {
+//     return {std::forward<Receiver>(rcvr)};
+//   }
+
+//   template<class _Env>
+//   friend constexpr bool tag_invoke(
+//       exec::always_completes_inline_t, exec::c_t<ATailSender>, exec::c_t<_Env>) noexcept {
+//     return true;
+//   }
+// };
+
+struct ASenderWithTail {
+  using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+
+  template <class Receiver>
+  struct operation {
+    Receiver rcvr_;
+
+    operation(Receiver __r) : rcvr_(__r) {}
+
+    operation(const operation&) = delete;
+    operation(operation&&) = delete;
+    operation& operator=(const operation&) = delete;
+    operation& operator=(operation&&) = delete;
+    [[nodiscard]]
+    friend auto tag_invoke(ex::start_t, operation& self) noexcept {
+      return ex::set_value(std::move(self.rcvr_));
+    }
+  };
+
+  template <class Receiver>
+  friend auto tag_invoke(ex::connect_t, ATailSender self, Receiver&& rcvr) noexcept
+      -> operation<std::decay_t<Receiver>> {
+    return {std::forward<Receiver>(rcvr)};
+  }
+};
+
+}
 
 TEST_CASE("Test ATailSender is a tail_sender", "[tail_sender]") {
   static_assert(exec::tail_sender<ATailSender>);
@@ -282,4 +349,7 @@ TEST_CASE("Test resume_tail_senders_until_one_remaining()", "[tail_sender]") {
   auto op4 = ex::connect(std::move(empty), ATailReceiver{&called});
   CHECK(called == 1);
   CHECK(!op4);
+}
+
+TEST_CASE("Test sync_wait() with start() that returns a tail_sender", "[tail_sender]") {
 }
