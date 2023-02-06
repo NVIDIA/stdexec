@@ -87,7 +87,7 @@ namespace nvexec {
             cudaStream_t stream_{0};
             cudaError_t status_{cudaSuccess};
 
-            __t(Receiver&& receiver, context_state_t context_state) 
+            __t(Receiver&& receiver, context_state_t context_state)
               : operation_state_base_t<ReceiverId>((Receiver&&)receiver, context_state, false) {
             }
 
@@ -100,7 +100,7 @@ namespace nvexec {
       template <class ReceiverId>
         using operation_state_t = stdexec::__t<operation_state_<ReceiverId>>;
 
-      struct attrs {
+      struct env {
         context_state_t context_state_;
 
         stream_scheduler make_scheduler() const {
@@ -109,7 +109,7 @@ namespace nvexec {
 
         template <class CPO>
           friend stream_scheduler
-          tag_invoke(stdexec::get_completion_scheduler_t<CPO>, const attrs& self) noexcept {
+          tag_invoke(stdexec::get_completion_scheduler_t<CPO>, const env& self) noexcept {
             return self.make_scheduler();
           }
       };
@@ -126,19 +126,19 @@ namespace nvexec {
             friend auto tag_invoke(stdexec::connect_t, const __t& self, R&& rec)
               noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
               -> operation_state_t<stdexec::__id<std::remove_cvref_t<R>>> {
-              return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec, self.attrs_.context_state_);
+              return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec, self.env_.context_state_);
             }
 
-          friend const attrs& tag_invoke(stdexec::get_attrs_t, const __t& self) noexcept {
-            return self.attrs_;
+          friend const env& tag_invoke(stdexec::get_env_t, const __t& self) noexcept {
+            return self.env_;
           };
 
           STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           inline __t(context_state_t context_state) noexcept
-            : attrs_{context_state} {
+            : env_{context_state} {
           }
 
-          attrs attrs_;
+          env env_;
         };
       };
 
@@ -207,9 +207,9 @@ namespace nvexec {
       template <stream_completing_sender... Senders>
         friend auto
         tag_invoke(stdexec::transfer_when_all_with_variant_t, const stream_scheduler& sch, Senders&&... sndrs) noexcept {
-          return 
+          return
             transfer_when_all_sender_th<stream_scheduler, stdexec::tag_invoke_result_t<stdexec::into_variant_t, Senders>...>(
-                sch.context_state_, 
+                sch.context_state_,
                 stdexec::into_variant((Senders&&)sndrs)...);
         }
 
@@ -275,7 +275,7 @@ namespace nvexec {
       when_all_sender_th<stream_scheduler, stdexec::tag_invoke_result_t<stdexec::into_variant_t, Senders>...>
       tag_invoke(stdexec::when_all_with_variant_t, Senders&&... sndrs) noexcept {
         return when_all_sender_th<stream_scheduler, stdexec::tag_invoke_result_t<stdexec::into_variant_t, Senders>...>{
-          context_state_t{nullptr, nullptr, nullptr}, 
+          context_state_t{nullptr, nullptr, nullptr},
           stdexec::into_variant((Senders&&)sndrs)...
         };
       }
@@ -381,19 +381,18 @@ namespace nvexec {
     int dev_id_{};
     STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub_;
 
-    stream_context() 
+    stream_context()
       : dev_id_(get_device())
       , hub_(dev_id_, pinned_resource_.get()) {
     }
 
     stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {
       return {STDEXEC_STREAM_DETAIL_NS::context_state_t(
-          pinned_resource_.get(), 
-          managed_resource_.get(), 
-          // gpu_resource_.get(), 
-          &hub_, 
+          pinned_resource_.get(),
+          managed_resource_.get(),
+          // gpu_resource_.get(),
+          &hub_,
           priority)};
     }
   };
 }
-

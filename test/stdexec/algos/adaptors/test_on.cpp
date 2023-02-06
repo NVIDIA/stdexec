@@ -184,3 +184,65 @@ TEST_CASE("on can be customized", "[adaptors][on]") {
   ex::start(op);
   REQUIRE(res == "Hello, world!");
 }
+
+struct move_checker {
+  bool valid;
+
+  move_checker() noexcept : valid(true) { }
+  move_checker(const move_checker& other) noexcept {
+    REQUIRE(other.valid);
+    valid = true;
+  }
+  move_checker& operator=(const move_checker& other) noexcept {
+    REQUIRE(other.valid);
+    valid = true;
+    return *this;
+  }
+  move_checker(move_checker&& other) noexcept {
+    other.valid = false;
+    valid = true;
+  }
+  move_checker& operator=(move_checker&& other) noexcept {
+    other.valid = false;
+    valid = true;
+    return *this;
+  }
+};
+
+struct move_checking_inline_scheduler {
+
+  template <typename R>
+  struct oper : immovable {
+    R recv_;
+    friend void tag_invoke(ex::start_t, oper& self) noexcept {
+      ex::set_value((R &&) self.recv_);
+    }
+  };
+
+  struct my_sender {
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <typename R>
+    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
+      return {{}, (R &&) r};
+    }
+
+    friend scheduler_env<move_checking_inline_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+      return {};
+    }
+  };
+
+  friend my_sender tag_invoke(ex::schedule_t, move_checking_inline_scheduler) { return {}; }
+
+  friend bool operator==(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept { return true; }
+  friend bool operator!=(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept { return false; }
+
+  move_checker mc_;
+};
+
+TEST_CASE("on does not reference a moved-from scheduler", "[adaptors][on]") {
+  move_checking_inline_scheduler is;
+  ex::sender auto snd = ex::on(is, ex::just()) //
+                        | ex::then([] { });
+  ex::sync_wait(std::move(snd));
+}

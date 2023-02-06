@@ -372,10 +372,10 @@ namespace exec {
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
               -> __minvoke<__impl_fn<_Self, _Env>, _Self, _Env>;
 
-          friend auto tag_invoke(stdexec::get_attrs_t, const __t& __self)
-            noexcept(__nothrow_callable<stdexec::get_attrs_t, const _Sender&>)
-            -> __call_result_t<stdexec::get_attrs_t, const _Sender&> {
-            return stdexec::get_attrs(__self.__sndr_);
+          friend auto tag_invoke(stdexec::get_env_t, const __t& __self)
+            noexcept(__nothrow_callable<stdexec::get_env_t, const _Sender&>)
+            -> __call_result_t<stdexec::get_env_t, const _Sender&> {
+            return stdexec::get_env(__self.__sndr_);
           }
 
         };

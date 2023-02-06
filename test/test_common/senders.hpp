@@ -52,7 +52,7 @@ struct fallible_just {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
 
-  friend empty_attrs tag_invoke(ex::get_attrs_t, const fallible_just&) noexcept {
+  friend empty_env tag_invoke(ex::get_env_t, const fallible_just&) noexcept {
     return {};
   }
 };
@@ -60,13 +60,13 @@ struct fallible_just {
 template <class... Values>
 fallible_just(Values...) -> fallible_just<Values...>;
 
-struct value_attrs {
+struct value_env {
   int value;
 };
 
 template <class Attrs, class... Values>
-struct just_with_attrs {
-  std::remove_cvref_t<Attrs> attrs_;
+struct just_with_env {
+  std::remove_cvref_t<Attrs> env_;
   std::tuple<Values...> values_;
   using completion_signatures =
     ex::completion_signatures<ex::set_value_t(Values...)>;
@@ -86,12 +86,12 @@ struct just_with_attrs {
   };
 
   template <class Receiver>
-  friend auto tag_invoke(ex::connect_t, just_with_attrs&& self, Receiver&& rcvr) ->
+  friend auto tag_invoke(ex::connect_t, just_with_env&& self, Receiver&& rcvr) ->
       operation<std::decay_t<Receiver>> {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
 
-  friend Attrs tag_invoke(ex::get_attrs_t, const just_with_attrs& self) noexcept {
-    return self.attrs_;
+  friend Attrs tag_invoke(ex::get_env_t, const just_with_env& self) noexcept {
+    return self.env_;
   }
 };

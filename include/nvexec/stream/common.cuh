@@ -446,11 +446,11 @@ namespace nvexec {
         };
       };
 
-    template <class SenderId, class InnerReceiverId, class OuterReceiverId>
+    template <class CvrefSenderId, class InnerReceiverId, class OuterReceiverId>
       struct operation_state_ {
         struct __t : operation_state_base_t<OuterReceiverId> {
           using __id = operation_state_;
-          using sender_t = stdexec::__t<SenderId>;
+          using sender_t = stdexec::__cvref_t<CvrefSenderId>;
           using inner_receiver_t = stdexec::__t<InnerReceiverId>;
           using outer_receiver_t = stdexec::__t<OuterReceiverId>;
           using typename operation_state_base_t<OuterReceiverId>::env_t;
@@ -531,14 +531,14 @@ namespace nvexec {
         };
       };
 
-    template <class SenderId, class InnerReceiverId, class OuterReceiverId>
-      using operation_state_t = stdexec::__t<operation_state_<SenderId, InnerReceiverId, OuterReceiverId>>;
+    template <class CvrefSenderId, class InnerReceiverId, class OuterReceiverId>
+      using operation_state_t = stdexec::__t<operation_state_<CvrefSenderId, InnerReceiverId, OuterReceiverId>>;
 
-    template <class Sender, class OuterReceiver>
+    template <class CvrefSender, class OuterReceiver>
         requires stream_receiver<OuterReceiver>
       using exit_operation_state_t 
         = operation_state_t<
-            stdexec::__id<Sender>, 
+            stdexec::__cvref_id<CvrefSender, std::remove_cvref_t<CvrefSender>>,
             stdexec::__id<stdexec::__t<propagate_receiver_t<stdexec::__id<OuterReceiver>>>>, 
             stdexec::__id<OuterReceiver>>;
 
@@ -559,7 +559,7 @@ namespace nvexec {
       concept stream_completing_sender =
         stdexec::sender<S> &&
         requires (const S& sndr) {
-          { stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(sndr)).context_state_ } ->
+          { stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr)).context_state_ } ->
             stdexec::__decays_to<context_state_t>;
         };
 
@@ -577,15 +577,15 @@ namespace nvexec {
           InnerReceiverProvider,
           operation_state_base_t<stdexec::__id<OuterReceiver>>&>;
 
-    template <class Sender, class InnerReceiver, class OuterReceiver>
-      using stream_op_state_t = operation_state_t<stdexec::__id<Sender>,
+    template <class CvrefSender, class InnerReceiver, class OuterReceiver>
+      using stream_op_state_t = operation_state_t<stdexec::__cvref_id<CvrefSender, std::remove_cvref_t<CvrefSender>>,
                                                   stdexec::__id<InnerReceiver>,
                                                   stdexec::__id<OuterReceiver>>;
 
     template <stream_completing_sender Sender, class OuterReceiver, class ReceiverProvider>
       stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
       stream_op_state(Sender&& sndr, OuterReceiver&& out_receiver, ReceiverProvider receiver_provider) {
-        auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(sndr));
+        auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
         context_state_t context_state = sch.context_state_;
 
         return stream_op_state_t<
