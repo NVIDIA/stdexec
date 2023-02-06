@@ -220,7 +220,8 @@ template <class... _Ts>
         }
 
       bool __is_unhandled_stopped_{false};
-      __coro::coroutine_handle<>(*__stopped_callback_)(void*) = nullptr;
+      using __callback_t = __coro::coroutine_handle<>(*)(void*) noexcept;
+      __callback_t __stopped_callback_ = nullptr;
       __coro::coroutine_handle<> __coro_{};
       std::tuple<_Ts&...> __args_{};
     };

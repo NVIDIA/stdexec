@@ -1911,7 +1911,7 @@ namespace stdexec {
         return __continuation_;
       }
 
-      __coro::coroutine_handle<> (*unhandled_stopped_callback() noexcept)(void*) const noexcept {
+      auto unhandled_stopped_callback() const noexcept {
         return __stopped_callback_;
       }
 
