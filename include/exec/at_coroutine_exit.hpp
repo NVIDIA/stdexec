@@ -136,6 +136,8 @@ struct __die_on_stop_t {
 };
 inline constexpr __die_on_stop_t __die_on_stop;
 
+using stdexec::__with_awaitable_senders::__continuation_handle;
+
 template <class... _Ts>
   class [[nodiscard]] __task {
     struct __promise;
@@ -151,13 +153,13 @@ template <class... _Ts>
     bool await_ready() const noexcept { return false; }
 
     template <typename _Promise>
-        requires requires (_Promise& __promise, __coro::coroutine_handle<promise_type> __h) {
-          { __promise.continuation() } -> std::convertible_to<__coro::coroutine_handle<>>;
+        requires requires (_Promise& __promise, __coro::coroutine_handle<promise_type> __h, __continuation_handle<> __c) {
+          { __promise.continuation() } -> std::convertible_to<__continuation_handle<>>;
           { __promise.set_continuation(__h) };
+          { __promise.set_continuation(__c) };
         }
       bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
-        __coro_.promise().__stopped_callback_ = __parent.promise().unhandled_stopped_callback();
-        __coro_.promise().__coro_ = __parent.promise().continuation();
+        __coro_.promise().set_continuation(__parent.promise().continuation());
         __parent.promise().set_continuation(__coro_);
         return false;
       }
@@ -175,8 +177,8 @@ template <class... _Ts>
       static __coro::coroutine_handle<>
       await_suspend(__coro::coroutine_handle<__promise> __h) noexcept {
         __promise& __p = __h.promise();
-        auto __coro = __p.__is_unhandled_stopped_ ? __p.__stopped_callback_(__p.__coro_.address())
-                                                  : __p.__coro_;
+        auto __coro = __p.__is_unhandled_stopped_ ? __p.continuation().unhandled_stopped()
+                                                  : __p.continuation().handle();
         __h.destroy();
         return __coro;
       }
@@ -220,9 +222,6 @@ template <class... _Ts>
         }
 
       bool __is_unhandled_stopped_{false};
-      using __callback_t = __coro::coroutine_handle<>(*)(void*) noexcept;
-      __callback_t __stopped_callback_ = nullptr;
-      __coro::coroutine_handle<> __coro_{};
       std::tuple<_Ts&...> __args_{};
     };
 

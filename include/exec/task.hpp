@@ -234,7 +234,7 @@ namespace exec {
           }
           static __coro::coroutine_handle<>
           await_suspend(__coro::coroutine_handle<__promise> __h) noexcept {
-            return __h.promise().continuation();
+            return __h.promise().continuation().handle();
           }
           static void await_resume() noexcept {
           }
