@@ -87,14 +87,16 @@ struct __die_on_stop_t {
 
   template <class _Sender>
     struct __sender_id {
-      using __old_sigs = stdexec::__completion_signatures_of_t<_Sender, stdexec::env_of_t<_Sender>>;
-      using __completion_signatures_t =
-          stdexec::__mapply<__remove_signatures_with_tag<stdexec::set_stopped_t>, __old_sigs>;
+      template <typename _Env>
+        using __old_sigs = stdexec::__completion_signatures_of_t<_Sender, _Env>;
+
+      template <typename _Env>
+        using __completion_signatures =
+            stdexec::__mapply<__remove_signatures_with_tag<stdexec::set_stopped_t>, __old_sigs<_Env>>;
+
       class __t {
       public:
         using __id = __sender_id;
-
-        using completion_signatures = __completion_signatures_t;
 
         explicit __t(_Sender&& sndr)
         noexcept(stdexec::__nothrow_decay_copyable<_Sender&&>)
@@ -110,6 +112,10 @@ struct __die_on_stop_t {
             return stdexec::connect((_Sender &&) __self.__sender_,
                                     __receiver<_Receiver>{(_Receiver &&) __rcvr});
           }
+
+        template <stdexec::__decays_to<__t> _Self, class _Env>
+          friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env)
+            -> __completion_signatures<_Env>;
 
         friend stdexec::env_of_t<_Sender> tag_invoke(stdexec::get_env_t, const __t& __self) noexcept {
           return stdexec::get_env(__self.__sender_);
