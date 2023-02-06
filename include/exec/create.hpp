@@ -73,7 +73,7 @@ namespace exec {
           return {{(_Receiver&&) __rcvr, ((_Self&&) __self).__args_}, ((_Self&&) __self).__fun_};
         }
 
-        friend __empty_attrs tag_invoke(get_attrs_t, const __sender&) noexcept {
+        friend __empty_env tag_invoke(get_env_t, const __sender&) noexcept {
           return {};
         }
       };

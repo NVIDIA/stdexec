@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include <exec/static_thread_pool.hpp>
 #include <stdexec/coroutine.hpp>
 #include <tuple>
 #include <variant>
@@ -28,10 +29,10 @@
 namespace ex = stdexec;
 
 template <class Sender>
-  concept sender_with_attrs =
+  concept sender_with_env =
     ex::sender<Sender> &&
     requires (const Sender& s) {
-      ex::get_attrs(s);
+      ex::get_env(s);
     };
 
 template <typename Awaiter>
@@ -98,7 +99,7 @@ private:
 template <typename Signatures, typename Awaiter>
 void test_awaitable_sender1(Signatures*, Awaiter&&) {
   static_assert(ex::sender<awaitable_sender_1<Awaiter>>);
-  static_assert(sender_with_attrs<awaitable_sender_1<Awaiter>>);
+  static_assert(sender_with_env<awaitable_sender_1<Awaiter>>);
   static_assert(ex::__awaitable<awaitable_sender_1<Awaiter>>);
 
   static_assert(
@@ -109,7 +110,7 @@ void test_awaitable_sender1(Signatures*, Awaiter&&) {
 
 void test_awaitable_sender2() {
   static_assert(ex::sender<awaitable_sender_2>);
-  static_assert(sender_with_attrs<awaitable_sender_2>);
+  static_assert(sender_with_env<awaitable_sender_2>);
   static_assert(!ex::sender<awaitable_sender_2, ex::__empty_env>);
 
   static_assert(ex::__awaitable<awaitable_sender_2>);
@@ -125,7 +126,7 @@ void test_awaitable_sender2() {
 
 void test_awaitable_sender3() {
   static_assert(ex::sender<awaitable_sender_3>);
-  static_assert(sender_with_attrs<awaitable_sender_3>);
+  static_assert(sender_with_env<awaitable_sender_3>);
   static_assert(!ex::sender<awaitable_sender_3, ex::__empty_env>);
 
   static_assert(ex::__awaiter<awaiter>);
@@ -143,7 +144,7 @@ void test_awaitable_sender3() {
 template <class Signatures>
 void test_awaitable_sender4(Signatures*) {
   static_assert(ex::sender<awaitable_sender_4>);
-  static_assert(sender_with_attrs<awaitable_sender_4>);
+  static_assert(sender_with_env<awaitable_sender_4>);
   static_assert(ex::sender<awaitable_sender_4, ex::__empty_env>);
 
   static_assert(ex::__awaiter<awaiter>);
@@ -170,7 +171,7 @@ struct connect_awaitable_promise
 template <class Signatures>
 void test_awaitable_sender5(Signatures*) {
   static_assert(ex::sender<awaitable_sender_5>);
-  static_assert(sender_with_attrs<awaitable_sender_5>);
+  static_assert(sender_with_env<awaitable_sender_5>);
   static_assert(ex::sender<awaitable_sender_5, ex::__empty_env>);
 
   static_assert(ex::__awaiter<awaiter>);
@@ -220,30 +221,41 @@ TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]")
       ex::__await_result_t<awaitable_sender_5, connect_awaitable_promise>()));
 }
 
-struct awaitable_attrs {};
+struct awaitable_env {};
 template <typename Awaiter>
-struct awaitable_with_get_attrs {
+struct awaitable_with_get_env {
   Awaiter operator co_await();
-  friend awaitable_attrs tag_invoke(ex::get_attrs_t, const awaitable_with_get_attrs&) noexcept {
+  friend awaitable_env tag_invoke(ex::get_env_t, const awaitable_with_get_env&) noexcept {
     return {};
   }
 };
 
-TEST_CASE("get_attrs for awaitables", "[sndtraits][awaitables]") {
+TEST_CASE("get_env for awaitables", "[sndtraits][awaitables]") {
+  check_env_type<ex::__empty_env>(awaitable_sender_1<awaiter>{});
 #if 0
-  // NOT TO SPEC
-  // When the __awaitable constrained get_attrs overload is enabled, enable
-  // these checks inside this path of the 'if' directive. get_attrs returns
-  // __empty_attrs for awaitables by default.
-
-  check_attrs_type<ex::__empty_attrs>(awaitable_sender_1<awaiter>{});
-  check_attrs_type<ex::__empty_attrs>(awaitable_sender_3{});
+  // NOT TO SPEC: Until we clean up all R5 sender support from stdexec
+  // (specifically, the backwards compatibility layer for R5 senders
+  // to satisfy get_env related requirements), get_env on dependent
+  // awaitables return a const ref to self.
+  check_env_type<ex::__empty_env>(awaitable_sender_2{});
+  check_env_type<ex::__empty_env>(awaitable_sender_3{});
 #else
-  // And delete these two lines
-  check_attrs_type<const awaitable_sender_1<awaiter>&>(awaitable_sender_1<awaiter>{});
-  check_attrs_type<const awaitable_sender_3&>(awaitable_sender_3{});
+  // Delete these two lines when removing all remnants of R5 sender
+  // support.
+  check_env_type<const awaitable_sender_2&>(awaitable_sender_2{});
+  check_env_type<const awaitable_sender_3&>(awaitable_sender_3{});
 #endif
-  check_attrs_type<awaitable_attrs>(awaitable_with_get_attrs<awaiter>{});
+  check_env_type<awaitable_env>(awaitable_with_get_env<awaiter>{});
+}
+
+TEST_CASE("env_promise bug when CWG 2369 is fixed", "[sndtraits][awaitables]") {
+  exec::static_thread_pool ctx{1};
+  ex::scheduler auto sch = ctx.get_scheduler();
+  ex::sender auto snd = ex::when_all(ex::then(ex::schedule(sch), [](){}));
+
+  using _Awaitable = decltype(snd);
+  using _Promise = ex::__env_promise<ex::__empty_env>;
+  static_assert(!ex::__awaitable<_Awaitable, _Promise>);
 }
 
 #endif // !_STD_NO_COROUTINES_

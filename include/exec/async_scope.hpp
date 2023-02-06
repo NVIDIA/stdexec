@@ -120,7 +120,7 @@ namespace exec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-        friend __empty_attrs tag_invoke(get_attrs_t, const __when_empty_sender& __self) noexcept {
+        friend __empty_env tag_invoke(get_env_t, const __when_empty_sender& __self) noexcept {
           return {};
         }
       };
@@ -226,7 +226,7 @@ namespace exec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-        friend __empty_attrs tag_invoke(get_attrs_t, const __nest_sender& __self) noexcept {
+        friend __empty_env tag_invoke(get_env_t, const __nest_sender& __self) noexcept {
           return {};
         }
       };
@@ -576,7 +576,7 @@ namespace exec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv)
             -> __completions_t<_Self>;
 
-        friend __empty_attrs tag_invoke(get_attrs_t, const __future& __self) noexcept {
+        friend __empty_env tag_invoke(get_env_t, const __future& __self) noexcept {
           return {};
         }
 

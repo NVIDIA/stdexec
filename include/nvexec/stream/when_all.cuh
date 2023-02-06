@@ -88,12 +88,12 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
   struct when_all_sender_t {
     struct __t : stream_sender_base {
     private:
-      struct attrs {
+      struct env {
         context_state_t context_state_;
 
       template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> _Tag>
           requires WithCompletionScheduler
-        friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const attrs& self) noexcept {
+        friend Scheduler tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const env& self) noexcept {
           return Scheduler(self.context_state_);
         }
       };
@@ -102,12 +102,12 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
       template <class... Sndrs>
         explicit __t(context_state_t context_state, Sndrs&&... __sndrs)
-          : attrs_{context_state}
+          : env_{context_state}
           , sndrs_((Sndrs&&) __sndrs...)
         {}
 
      private:
-      attrs attrs_;
+      env env_;
 
       template <class CvrefEnv>
         using completion_sigs =
@@ -133,9 +133,9 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
           using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
           using Env = make_terminal_stream_env_t<
                         exec::make_env_t<
-                          stdexec::env_of_t<Receiver>, 
+                          stdexec::env_of_t<Receiver>,
                           exec::with_t<
-                            stdexec::get_stop_token_t, 
+                            stdexec::get_stop_token_t,
                             stdexec::in_place_stop_token>>>;
 
           struct __t : stdexec::receiver_adaptor<__t>
@@ -179,7 +179,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
                     if constexpr (stream_receiver<Receiver>) {
                       if (op_state_->status_ == cudaSuccess) {
-                        op_state_->status_ = 
+                        op_state_->status_ =
                           STDEXEC_DBG_ERR(cudaEventRecord(op_state_->events_[Index], stream));
                       }
                     }
@@ -232,7 +232,7 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
           template <class Sender, std::size_t Index>
             using child_op_state =
               exit_operation_state_t<
-                Sender&&, 
+                Sender&&,
                 stdexec::__t<receiver_t<CvrefReceiverId, Index>>>;
 
           using Indices = std::index_sequence_for<SenderIds...>;
@@ -321,17 +321,17 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
 
           template <size_t... Is>
             operation_t(WhenAll&& when_all, Receiver rcvr, std::index_sequence<Is...>)
-              : recvr_((Receiver&&) rcvr) 
+              : recvr_((Receiver&&) rcvr)
               , child_states_{
                   stdexec::__conv{[&when_all, this]() {
                     operation_t* parent_op = this;
-                    auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_attrs(std::get<Is>(when_all.sndrs_)));
+                    auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(std::get<Is>(when_all.sndrs_)));
                     context_state_t context_state = sch.context_state_;
                     STDEXEC_DBG_ERR(cudaStreamCreate(&this->streams_[Is]));
 
                     return exit_op_state<decltype(std::get<Is>(((WhenAll&&)when_all).sndrs_)),
                                          stdexec::__t<receiver_t<CvrefReceiverId, Is>>>(
-                             std::get<Is>(((WhenAll&&) when_all).sndrs_), 
+                             std::get<Is>(((WhenAll&&) when_all).sndrs_),
                              stdexec::__t<receiver_t<CvrefReceiverId, Is>>{{}, {}, parent_op},
                              context_state);
                   }}...
@@ -417,12 +417,11 @@ template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
         friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
           -> completion_sigs<stdexec::__copy_cvref_t<Self, Env>>;
 
-      friend const attrs& tag_invoke(stdexec::get_attrs_t, const __t& __self) noexcept {
-        return __self.attrs_;
+      friend const env& tag_invoke(stdexec::get_env_t, const __t& __self) noexcept {
+        return __self.env_;
       }
 
       std::tuple<stdexec::__t<SenderIds>...> sndrs_;
     };
   };
 }
-

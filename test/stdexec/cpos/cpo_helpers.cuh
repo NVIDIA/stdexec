@@ -30,7 +30,7 @@ struct cpo_t {
       ex::set_error_t(std::exception_ptr),                 //
       ex::set_stopped_t()>;
 
-  friend empty_attrs tag_invoke(ex::get_attrs_t, const cpo_t&) noexcept {
+  friend empty_env tag_invoke(ex::get_env_t, const cpo_t&) noexcept {
     return {};
   }
 };
@@ -47,16 +47,16 @@ struct free_standing_sender_t {
     return cpo_t<scope_t::free_standing>{};
   }
 
-  friend empty_attrs tag_invoke(ex::get_attrs_t, const free_standing_sender_t&) noexcept {
+  friend empty_env tag_invoke(ex::get_env_t, const free_standing_sender_t&) noexcept {
     return {};
   }
 };
 
 template <class CPO, class... CompletionSignals>
 struct scheduler_t {
-  struct attrs_t {
+  struct env_t {
     template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
-    friend scheduler_t tag_invoke(ex::get_completion_scheduler_t<Tag>, const attrs_t&) noexcept {
+    friend scheduler_t tag_invoke(ex::get_completion_scheduler_t<Tag>, const env_t&) noexcept {
       return {};
     }
   };
@@ -66,7 +66,7 @@ struct scheduler_t {
         ex::set_error_t(std::exception_ptr),                 //
         ex::set_stopped_t()>;
 
-    friend attrs_t tag_invoke(ex::get_attrs_t, const sender_t&) noexcept {
+    friend env_t tag_invoke(ex::get_env_t, const sender_t&) noexcept {
       return {};
     }
   };
@@ -81,4 +81,3 @@ struct scheduler_t {
   friend bool operator==(scheduler_t, scheduler_t) noexcept { return true; }
   friend bool operator!=(scheduler_t, scheduler_t) noexcept { return false; }
 };
-
