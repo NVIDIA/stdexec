@@ -150,6 +150,7 @@ template <class... _Ts>
           { __promise.set_continuation(__h) };
         }
       bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
+        __coro_.promise().__stopped_callback_ = __parent.promise().unhandled_stopped_callback();
         __coro_.promise().__coro_ = __parent.promise().continuation();
         __parent.promise().set_continuation(__coro_);
         return false;
@@ -167,7 +168,9 @@ template <class... _Ts>
 
       static __coro::coroutine_handle<>
       await_suspend(__coro::coroutine_handle<__promise> __h) noexcept {
-        auto __coro = __h.promise().__coro_;
+        __promise& __p = __h.promise();
+        auto __coro = __p.__is_unhandled_stopped_ ? __p.__stopped_callback_(__p.__coro_.address())
+                                                  : __p.__coro_;
         __h.destroy();
         return __coro;
       }
@@ -197,6 +200,7 @@ template <class... _Ts>
       }
 
       __coro::coroutine_handle<__promise> unhandled_stopped() noexcept {
+        __is_unhandled_stopped_ = true;
         return __coro::coroutine_handle<__promise>::from_promise(*this);
       }
 
@@ -209,6 +213,8 @@ template <class... _Ts>
           return stdexec::as_awaitable(__die_on_stop((_Awaitable &&) __awaitable), *this);
         }
 
+      bool __is_unhandled_stopped_{false};
+      __coro::coroutine_handle<>(*__stopped_callback_)(void*) = nullptr;
       __coro::coroutine_handle<> __coro_{};
       std::tuple<_Ts&...> __args_{};
     };

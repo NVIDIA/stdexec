@@ -1911,6 +1911,10 @@ namespace stdexec {
         return __continuation_;
       }
 
+      __coro::coroutine_handle<> (*unhandled_stopped_callback() noexcept)(void*) const noexcept {
+        return __stopped_callback_;
+      }
+
       __coro::coroutine_handle<> unhandled_stopped() noexcept {
         return (*__stopped_callback_)(__continuation_.address());
       }
