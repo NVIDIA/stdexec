@@ -1941,7 +1941,7 @@ namespace stdexec {
           return __coro::coroutine_handle<_Promise>::from_address(__continuation_.handle().address());
         }
 
-        __coro::coroutine_handle<_Promise> unhandled_stopped() const noexcept {
+        __coro::coroutine_handle<> unhandled_stopped() const noexcept {
           return __continuation_.unhandled_stopped();
         }
 
