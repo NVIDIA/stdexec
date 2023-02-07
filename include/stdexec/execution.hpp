@@ -5527,7 +5527,7 @@ namespace stdexec {
         __op_->notify(_CPO{}, ((_Args &&) __args)...);
       }
 
-      auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
+      __env_t<env_of_t<_Receiver>> get_env() const noexcept {
         using with_token = __with<get_stop_token_t, in_place_stop_token>;
         auto __token = with_token{__op_->__stop_source_.get_token()};
         return __make_env(stdexec::get_env(__op_->__receiver_), (with_token &&) __token);
@@ -5539,8 +5539,7 @@ namespace stdexec {
         __self.notify(_CPO{}, (_Args &&) __args...);
       }
 
-      friend auto tag_invoke(get_env_t, const __t& __self) noexcept
-          -> __env_t<env_of_t<_Receiver>> {
+      friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
         return __self.get_env();
       }
     };
@@ -5548,34 +5547,33 @@ namespace stdexec {
 
   template <class _R, class _Op> using __receiver = __t<__receiver_id<_R, _Op>>;
 
-  template <class...> struct __completion_signatures;
+  template <class _Env, class...> struct __completion_signatures;
 
-  template <class _Sender, class... _Senders>
-  struct __completion_signatures<_Sender, _Senders...> {
-    using _AddSigl = __minvoke<__mconcat<__q<completion_signatures>>,
-                              completion_signatures_of_t<_Senders>...>;
+  template <class _Env, class _Sender, class... _Senders>
+  struct __completion_signatures<_Env, _Sender, _Senders...> {
+    using __add_sig_line = __minvoke<__mconcat<__q<completion_signatures>>,
+                                     completion_signatures_of_t<_Senders>...>;
 
-    using __type = make_completion_signatures<_Sender, no_env, _AddSigl>;
+    using __t = make_completion_signatures<_Sender, _Env, __add_sig_line>;
   };
 
-  template <class... _Senders>
-  using __completion_signatures_t =
-      typename __completion_signatures<_Senders...>::__type;
+  template <class _Env, class... _Senders>
+  using __completion_signatures_t = __t<__completion_signatures<_Env, _Senders...>>;
 
   template <class _Sig> struct __signature_to_tuple;
 
   template <class _Ret, class... _Args> struct __signature_to_tuple<_Ret(_Args...)> {
-    using __type = std::tuple<_Ret, _Args...>;
+    using __t = std::tuple<_Ret, _Args...>;
   };
 
-  template <class Sig>
-  using __signature_to_tuple_t = typename __signature_to_tuple<Sig>::__type;
+  template <class _Sig>
+  using __signature_to_tuple_t = __t<__signature_to_tuple<_Sig>>;
 
-  template <class... Senders>
+  template <class _Env, class... _Senders>
   using __result_type_t =
       __mapply<__transform<__q<__signature_to_tuple_t>,
                           __mbind_front_q<std::variant, std::monostate>>,
-              __completion_signatures_t<Senders...>>;
+              __completion_signatures_t<_Env, _Senders...>>;
 
   template <class _Receiver, class... _Senders> struct __op_id {
     struct __t {
@@ -5611,7 +5609,8 @@ namespace stdexec {
       std::tuple<connect_result_t<_Senders, __receiver<_Receiver, __t>>...>
           __ops_;
 
-      __result_type_t<_Senders...> __result_;
+      using __result_type = __result_type_t<env_of_t<_Receiver>, _Senders...>;
+      __result_type __result_;
 
       template <class _CPO, class... _Args>
       void notify(_CPO, _Args&&... __args) noexcept {
@@ -5650,7 +5649,7 @@ namespace stdexec {
                       (_Tuple &&) __result);
                 }
               },
-              (__result_type_t<_Senders...> &&) __result_);
+              (__result_type &&) __result_);
         }
       }
 
@@ -5667,11 +5666,6 @@ namespace stdexec {
   template <class _Sender, class... _Senders> struct __sender_id {
     struct __t {
       using __id = __sender_id;
-      using completion_signatures =
-          __completion_signatures_t<_Sender, _Senders...>;
-
-      static_assert(
-          __valid_completion_signatures<completion_signatures, __empty_env>);
 
       std::tuple<_Sender, _Senders...> __senders_;
 
@@ -5689,6 +5683,14 @@ namespace stdexec {
           -> __empty_env {
         return {};
       }
+
+      template <__decays_to<__t> _Self, class _Env>
+      friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env) noexcept
+         -> dependent_completion_signatures<_Env>;
+
+      template <__decays_to<__t> _Self, class _Env>
+      friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env) noexcept
+         -> __completion_signatures_t<_Env, _Sender, _Senders...> requires true;
     };
   };
 
