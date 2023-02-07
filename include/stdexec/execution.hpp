@@ -1888,39 +1888,91 @@ namespace stdexec {
   inline constexpr as_awaitable_t as_awaitable;
 
   namespace __with_awaitable_senders {
+
+    template <class _Promise = void> class __continuation_handle;
+
+    template <>
+      class __continuation_handle<void> {
+      public:
+        __continuation_handle() = default;
+
+        template <class _Promise>
+          __continuation_handle(__coro::coroutine_handle<_Promise> __coro) noexcept
+            : __coro_(__coro)
+          {
+            if constexpr (requires(_Promise& __promise) { __promise.unhandled_stopped(); }) {
+              __stopped_callback_ = [](void* __address) noexcept -> __coro::coroutine_handle<> {
+                // This causes the rest of the coroutine (the part after the co_await
+                // of the sender) to be skipped and invokes the calling coroutine's
+                // stopped handler.
+                return __coro::coroutine_handle<_Promise>::from_address(__address)
+                    .promise().unhandled_stopped();
+              };
+            }
+            // If _Promise doesn't implement unhandled_stopped(), then if a "stopped" unwind
+            // reaches this point, it's considered an unhandled exception and terminate()
+            // is called.
+          }
+
+        __coro::coroutine_handle<> handle() const noexcept {
+          return __coro_;
+        }
+
+        __coro::coroutine_handle<> unhandled_stopped() const noexcept {
+          return __stopped_callback_(__coro_.address());
+        }
+
+      private:
+        __coro::coroutine_handle<> __coro_{};
+        using __stopped_callback_t = __coro::coroutine_handle<> (*)(void*) noexcept;
+        __stopped_callback_t __stopped_callback_ = 
+            [](void*) noexcept -> __coro::coroutine_handle<> {
+              std::terminate();
+            };
+      };
+
+    template <class _Promise>
+      class __continuation_handle {
+      public:
+        __continuation_handle() = default;
+
+        __continuation_handle(__coro::coroutine_handle<_Promise> __coro) noexcept
+          : __continuation_{__coro}
+        {}
+
+        __coro::coroutine_handle<_Promise> handle() const noexcept {
+          return __coro::coroutine_handle<_Promise>::from_address(__continuation_.handle().address());
+        }
+
+        __coro::coroutine_handle<> unhandled_stopped() const noexcept {
+          return __continuation_.unhandled_stopped();
+        }
+
+      private:
+        __continuation_handle<> __continuation_{};
+      };
+
     struct __with_awaitable_senders_base {
       template <class _OtherPromise>
       void set_continuation(__coro::coroutine_handle<_OtherPromise> __hcoro) noexcept {
         static_assert(!std::is_void_v<_OtherPromise>);
         __continuation_ = __hcoro;
-        if constexpr (requires(_OtherPromise& __other) { __other.unhandled_stopped(); }) {
-          __stopped_callback_ = [](void* __address) noexcept -> __coro::coroutine_handle<> {
-            // This causes the rest of the coroutine (the part after the co_await
-            // of the sender) to be skipped and invokes the calling coroutine's
-            // stopped handler.
-            return __coro::coroutine_handle<_OtherPromise>::from_address(__address)
-                .promise().unhandled_stopped();
-          };
-        }
-        // If _OtherPromise doesn't implement unhandled_stopped(), then if a "stopped" unwind
-        // reaches this point, it's considered an unhandled exception and terminate()
-        // is called.
       }
 
-      __coro::coroutine_handle<> continuation() const noexcept {
+      void set_continuation(__continuation_handle<> __continuation) noexcept {
+        __continuation_ = __continuation;
+      }
+
+      __continuation_handle<> continuation() const noexcept {
         return __continuation_;
       }
 
       __coro::coroutine_handle<> unhandled_stopped() noexcept {
-        return (*__stopped_callback_)(__continuation_.address());
+        return __continuation_.unhandled_stopped();
       }
 
       private:
-      __coro::coroutine_handle<> __continuation_{};
-      __coro::coroutine_handle<> (*__stopped_callback_)(void*) noexcept =
-        [](void*) noexcept -> __coro::coroutine_handle<> {
-          std::terminate();
-        };
+      __continuation_handle<> __continuation_{};
     };
 
     template <class _Promise>
@@ -1934,6 +1986,7 @@ namespace stdexec {
     };
   } // namespace __with_awaitable_senders;
   using __with_awaitable_senders::with_awaitable_senders;
+  using __with_awaitable_senders::__continuation_handle;
 #endif
 
   /////////////////////////////////////////////////////////////////////////////
