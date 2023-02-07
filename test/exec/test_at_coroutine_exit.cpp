@@ -14,9 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if !_STD_NO_COROUTINES_
 
 #include <exec/at_coroutine_exit.hpp>
+
+#if !_STD_NO_COROUTINES_
+
 #include <catch2/catch.hpp>
 
 #include <test_common/schedulers.hpp>
