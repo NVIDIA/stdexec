@@ -5698,7 +5698,7 @@ namespace stdexec {
 
   struct __when_any_t {
     template <class... _Senders>
-    requires(stdexec::sender<_Senders> && ...)
+      requires ((stdexec::sender<_Senders> && ...) && sizeof...(_Senders) > 0)
     auto operator()(_Senders&&... __senders) const
         noexcept((__nothrow_decay_copyable<_Senders> && ...)) {
       return __sender<std::decay_t<_Senders>...>{
