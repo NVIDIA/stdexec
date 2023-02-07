@@ -67,13 +67,12 @@ TEST_CASE("when_any with move-only types", "[adaptors][when_any]") {
   wait_for_value(std::move(snd), movable(42));
 }
 
-TEST_CASE("when_any is stoppable", "[adaptors][when_any]") {
-  stopped_scheduler sched;
-  auto stop = ex::let_value([&sched] { return ex::schedule(sched); });
+TEST_CASE("when_any forwards stop signal", "[adaptors][when_any]") {
+  stopped_scheduler stop;
   int result = 42;
   ex::sender auto snd = ex::__when_any( //
       completes_if{false},              //
-      ex::schedule(sched)               //
+      ex::schedule(stop)                //
   ) | ex::then([&result] { result += 1; });
   ex::sync_wait(std::move(snd));
   REQUIRE(result == 42);
