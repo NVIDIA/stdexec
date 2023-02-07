@@ -3364,7 +3364,7 @@ namespace stdexec {
         __minvocable<__which<__cust_sigs>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
-      using __sender_t = __t<__sender<stdexec::__cvref_id<_Sender>, stdexec::__id<remove_cvref_t<_Env>>>>;
+      using __sender_t = __t<__sender<stdexec::__cvref_id<_Sender, _Sender>, stdexec::__id<remove_cvref_t<_Env>>>>;
 
     template <class _Sender, class _Env>
       using __dispatcher_for =

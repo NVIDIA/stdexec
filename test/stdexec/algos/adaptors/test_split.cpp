@@ -421,7 +421,7 @@ TEST_CASE("split can nest", "[adaptors][split]") {
   REQUIRE( v2 == 2 );
   REQUIRE( v3 == 1 );
 }
-TEST_CASE("split advertises completion scheduler via its attrs", "[adaptors][split]") {
+TEST_CASE("split advertises completion scheduler via its ", "[adaptors][split]") {
   inline_scheduler sched;
 
   auto snd = ex::transfer_just(sched, 42) | ex::split();
@@ -431,16 +431,16 @@ TEST_CASE("split advertises completion scheduler via its attrs", "[adaptors][spl
   static_assert(stdexec::__has_completion_scheduler<snd_t, ex::set_stopped_t>);
   (void)snd;
 }
-TEST_CASE("split copies attrs of input sender", "[adaptors][split]") {
-  auto attrs = value_attrs{100};
-  auto snd = just_with_attrs<value_attrs, move_only_type>{attrs, move_only_type{0}} | ex::split();
-  static_assert(std::same_as<decltype(ex::get_attrs(snd)), const value_attrs&>);
-  CHECK(ex::get_attrs(snd).value == 100);
-  attrs.value = 99;
-  CHECK(ex::get_attrs(snd).value == 100);
+TEST_CASE("split copies  of input sender", "[adaptors][split]") {
+  auto sndr_env = value_env{100};
+  auto snd = just_with_env<value_env, move_only_type>{sndr_env, move_only_type{0}} | ex::split();
+  static_assert(std::same_as<decltype(ex::get_env(snd)), const value_env&>);
+  CHECK(ex::get_env(snd).value == 100);
+  sndr_env.value = 99;
+  CHECK(ex::get_env(snd).value == 100);
 
   auto snd2 = ex::then(snd, [](const move_only_type&) { });
-  static_assert(std::same_as<decltype(ex::get_attrs(snd2)), const value_attrs&>);
-  CHECK(ex::get_attrs(snd).value == 100);
-  CHECK(ex::get_attrs(snd2).value == 100);
+  static_assert(std::same_as<decltype(ex::get_env(snd2)), const value_env&>);
+  CHECK(ex::get_env(snd).value == 100);
+  CHECK(ex::get_env(snd2).value == 100);
 }
