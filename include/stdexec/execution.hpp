@@ -1909,6 +1909,9 @@ namespace stdexec {
                     .promise().unhandled_stopped();
               };
             }
+            // If _Promise doesn't implement unhandled_stopped(), then if a "stopped" unwind
+            // reaches this point, it's considered an unhandled exception and terminate()
+            // is called.
           }
 
         __coro::coroutine_handle<> handle() const noexcept {
