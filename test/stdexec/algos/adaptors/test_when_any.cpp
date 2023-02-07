@@ -46,13 +46,37 @@ TEST_CASE("when_any simple example", "[adaptors][when_all]") {
   ex::start(op);
 }
 
-TEST_CASE("when_all returning two values can we waited on", "[adaptors][when_all]") {
+TEST_CASE("when_any completes with only one sender", "[adaptors][when_any]") {
   ex::sender auto snd = ex::__when_any( //
-      completes_if{false} | ex::then([] { return 2; }),  //
-      completes_if{true}  | ex::then([] { return 3; })   //
+      completes_if{false} | ex::then([]{ return 1;  }),  //
+      completes_if{true}  | ex::then([]{ return 42; })   //
   );
-  static_assert(ex::sender<decltype(snd)>);
-  ex::__debug_sender(std::move(snd));
+  wait_for_value(std::move(snd), 42);
+
+  ex::sender auto snd2 = ex::__when_any( //
+      completes_if{true}   | ex::then([]{ return 1;  }),  //
+      completes_if{false}  | ex::then([]{ return 42; })   //
+  );
+  wait_for_value(std::move(snd2), 1);
+}
+
+TEST_CASE("when_any with move-only types", "[adaptors][when_any]") {
+  ex::sender auto snd = ex::__when_any( //
+      ex::just(movable(42))            //
+  );
+  wait_for_value(std::move(snd), movable(42));
+}
+
+TEST_CASE("when_any is stoppable", "[adaptors][when_any]") {
+  stopped_scheduler sched;
+  auto stop = ex::let_value([&sched] { return ex::schedule(sched); });
+  int result = 42;
+  ex::sender auto snd = ex::__when_any( //
+      completes_if{false},              //
+      ex::schedule(sched)               //
+  ) | ex::then([&result] { result += 1; });
+  ex::sync_wait(std::move(snd));
+  REQUIRE(result == 42);
 }
 
 // TEST_CASE("when_all with 5 senders", "[adaptors][when_all]") {

@@ -106,14 +106,18 @@ struct completes_if {
 
     bool condition_;
     Receiver rcvr_;
-    std::optional<typename ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<operation>> on_stop_{};
+    struct on_stopped {
+      operation& self_;
+      void operator()() noexcept { ex::set_stopped(std::move(self_.rcvr_)); }
+    };
+
+    std::optional<typename ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<on_stopped>> on_stop_{};
 
     friend void tag_invoke(ex::start_t, operation& self) noexcept {
       if (self.condition_) {
         ex::set_value(std::move(self.rcvr_));
       } else {
-        self.on_stop_.emplace(
-            ex::get_stop_token(self.rcvr_), [&self] { ex::set_stopped(std::move(self.rcvr_)); });
+        self.on_stop_.emplace(ex::get_stop_token(ex::get_env(self.rcvr_)), on_stopped{self});
       }
     }
   };
