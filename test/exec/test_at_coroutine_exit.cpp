@@ -58,8 +58,9 @@ void REQUIRE_TERMINATE(F&& f, Args&&... args)
   // we check the exit status instead of a signal interrupt, because
   // Catch is going to catch the signal and exit with an error
   bool aborted = WEXITSTATUS(exit_status);
-
-  REQUIRE(aborted);
+  if (!aborted) {
+    FAIL("He didn't fall? Inconceivable!");
+  }
 }
 }
 #endif
@@ -131,8 +132,7 @@ void test_cancel_in_cleanup_action_causes_death(int& result) {
       co_await stop();
     });
   }();
-  sync_wait(std::move(t)); // causes termination
-  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+  REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
 }
 
 void test_cancel_during_cancellation_unwind_causes_death(int& result) {
@@ -142,8 +142,7 @@ void test_cancel_during_cancellation_unwind_causes_death(int& result) {
     });
     co_await stop();
   }();
-  sync_wait(std::move(t)); // causes termination
-  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+  REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
 }
 
 void test_throw_in_cleanup_action_causes_death(int& result) {
@@ -152,8 +151,7 @@ void test_throw_in_cleanup_action_causes_death(int& result) {
       throw 42;
     });
   }();
-  sync_wait(std::move(t)); // causes termination
-  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+  REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
 }
 
 void test_throw_in_cleanup_action_during_exception_unwind_causes_death(int& result) {
@@ -163,8 +161,7 @@ void test_throw_in_cleanup_action_during_exception_unwind_causes_death(int& resu
     });
     throw 42;
   }();
-  sync_wait(std::move(t)); // causes termination
-  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+  REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
 }
 
 void test_cancel_in_cleanup_action_during_exception_unwind_causes_death(int& result) {
@@ -174,8 +171,7 @@ void test_cancel_in_cleanup_action_during_exception_unwind_causes_death(int& res
     });
     throw 42;
   }();
-  sync_wait(std::move(t)); // causes termination
-  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+  REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
 }
 
 void test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(int& result) {
@@ -185,8 +181,7 @@ void test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(int& r
     });
     co_await stop();
   }();
-  sync_wait(std::move(t)); // causes termination
-  // ADD_FAILURE() << "He didn't fall? Inconceivable!";
+  REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
 }
 } // unnamed namespace
 
@@ -273,37 +268,37 @@ TEST_CASE("CleanupActionWithMutableStateful", "[task][at_coroutine_exit]")
 TEST_CASE("CancelInCleanupActionCallsTerminate", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  REQUIRE_TERMINATE([](int& result) { test_cancel_in_cleanup_action_causes_death(result); }, result);
+  test_cancel_in_cleanup_action_causes_death(result);
 }
 
 TEST_CASE("CancelDuringCancellationUnwindCallsTerminate", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  REQUIRE_TERMINATE([](int& result) { test_cancel_during_cancellation_unwind_causes_death(result); }, result);
+  test_cancel_during_cancellation_unwind_causes_death(result);
 }
 
 TEST_CASE("ThrowInCleanupActionCallsTerminate", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  REQUIRE_TERMINATE([](int& result) { test_throw_in_cleanup_action_causes_death(result); }, result);
+  test_throw_in_cleanup_action_causes_death(result);
 }
 
 TEST_CASE("ThrowInCleanupActionDuringExceptionUnwindCallsTerminate", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  REQUIRE_TERMINATE([](int& result) { test_throw_in_cleanup_action_during_exception_unwind_causes_death(result); }, result);
+  test_throw_in_cleanup_action_during_exception_unwind_causes_death(result);
 }
 
 TEST_CASE("CancelInCleanupActionDuringExceptionUnwindCallsTerminate", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  REQUIRE_TERMINATE([](int& result) { test_cancel_in_cleanup_action_during_exception_unwind_causes_death(result); }, result);
+  test_cancel_in_cleanup_action_during_exception_unwind_causes_death(result);
 }
 
 TEST_CASE("ThrowInCleanupActionDuringCancellationUnwindCallsTerminate", "[task][at_coroutine_exit]")
 {
   int result = 0;
-  REQUIRE_TERMINATE([](int& result) { test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(result); }, result);
+  test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(result);
 }
 
 #endif // STDEXEC_HAS_FORK
