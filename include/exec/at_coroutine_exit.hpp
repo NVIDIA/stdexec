@@ -34,16 +34,14 @@ struct __die_on_stop_t {
         _Receiver __receiver_;
 
         template <stdexec::__decays_to<__t> _Self, class... _Args>
-            requires stdexec::__callable<stdexec::set_value_t, _Receiver, std::decay_t<_Args>...>
+            requires stdexec::__callable<stdexec::set_value_t, _Receiver, _Args...>
           friend void tag_invoke(stdexec::set_value_t, _Self&& __self,
-                                _Args&&... __args) noexcept try {
+                                _Args&&... __args) noexcept {
             stdexec::set_value((_Receiver &&) __self.__receiver_, (_Args &&) __args...);
-          } catch (...) {
-            stdexec::set_error((_Receiver &&) __self.__receiver_, std::current_exception());
           }
 
         template <stdexec::__decays_to<__t> _Self, class _Error>
-            requires stdexec::__callable<stdexec::set_error_t, _Receiver, std::decay_t<_Error>>
+            requires stdexec::__callable<stdexec::set_error_t, _Receiver, _Error>
           friend void tag_invoke(stdexec::set_error_t, _Self&& __self,
                                 _Error&& __error) noexcept {
             stdexec::set_error((_Receiver &&) __self.__receiver_, (_Error &&) __error);
@@ -136,7 +134,12 @@ struct __die_on_stop_t {
 };
 inline constexpr __die_on_stop_t __die_on_stop;
 
-using stdexec::__with_awaitable_senders::__continuation_handle;
+using stdexec::__continuation_handle;
+template <class _Promise>
+concept __has_continuation = requires (_Promise& __promise, __continuation_handle<> __c) {
+  { __promise.continuation() } -> std::convertible_to<__continuation_handle<>>;
+  { __promise.set_continuation(__c) };
+};
 
 template <class... _Ts>
   class [[nodiscard]] __task {
@@ -153,11 +156,7 @@ template <class... _Ts>
     bool await_ready() const noexcept { return false; }
 
     template <typename _Promise>
-        requires requires (_Promise& __promise, __coro::coroutine_handle<promise_type> __h, __continuation_handle<> __c) {
-          { __promise.continuation() } -> std::convertible_to<__continuation_handle<>>;
-          { __promise.set_continuation(__h) };
-          { __promise.set_continuation(__c) };
-        }
+        requires __has_continuation<_Promise>
       bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
         __coro_.promise().set_continuation(__parent.promise().continuation());
         __parent.promise().set_continuation(__coro_);

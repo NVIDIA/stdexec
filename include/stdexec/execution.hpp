@@ -1983,6 +1983,7 @@ namespace stdexec {
     };
   } // namespace __with_awaitable_senders;
   using __with_awaitable_senders::with_awaitable_senders;
+  using __with_awaitable_senders::__continuation_handle;
 #endif
 
   /////////////////////////////////////////////////////////////////////////////
