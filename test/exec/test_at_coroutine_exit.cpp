@@ -61,8 +61,9 @@ void REQUIRE_TERMINATE(F&& f, Args&&... args)
   // Catch is going to catch the signal and exit with an error
   bool aborted = WEXITSTATUS(exit_status);
   if (!aborted) {
-    FAIL("He didn't fall? Inconceivable!");
+    INFO("He didn't fall? Inconceivable!");
   }
+  REQUIRE(aborted);
 }
 }
 #endif
