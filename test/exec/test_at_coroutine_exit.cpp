@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#include <exec/at_coroutine_exit.hpp>
+#include <stdexec/coroutine.hpp>
 
 #if !_STD_NO_COROUTINES_
-
+#include <exec/at_coroutine_exit.hpp>
 #include <catch2/catch.hpp>
 
 #include <test_common/schedulers.hpp>
