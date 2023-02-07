@@ -5639,13 +5639,7 @@ namespace stdexec {
                   }
                   std::apply(
                       [this]<class _C, class... _As>(_C, _As&&... __args) noexcept {
-                        try {
-                          tag_invoke(_C{}, (_Receiver &&) __receiver_,
-                                    (_As &&) __args...);
-                        } catch (...) {
-                          set_error((_Receiver &&) __receiver_,
-                                    std::current_exception());
-                        }
+                        tag_invoke(_C{}, (_Receiver &&) __receiver_, (_As &&) __args...);
                       },
                       (_Tuple &&) __result);
                 }
