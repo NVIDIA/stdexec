@@ -5596,9 +5596,9 @@ namespace stdexec {
         void operator()() noexcept { __stop_source_.request_stop(); }
       };
 
-      // If this hits true, we can call store the reuslt
+      // If this hits true, we store the reuslt
       std::atomic<bool> __emplaced_{false};
-      // If this hits zero, we can call set_value on the receiver
+      // If this hits zero, we forward any reuslt to the receiver
       std::atomic<int> __count_{sizeof...(_Senders)};
 
       in_place_stop_source __stop_source_;
@@ -5620,10 +5620,11 @@ namespace stdexec {
           // This emplacement can happen only once
           __result_.template emplace<std::tuple<_CPO, std::decay_t<_Args>...>>(
               _CPO{}, ((_Args &&) __args)...);
+          // stop pending operations
           __stop_source_.request_stop();
         }
-        // __result_ have been emplaced happens-before __count_ goes from one to
-        // zero
+        // make __result_ emplacement visible when __count_ goes from one to zero
+        // This relies on the fact that each sender will call notify() at most once
         if (__count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
           __on_stop_.reset();
           std::visit(
