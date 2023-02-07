@@ -23,9 +23,9 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
  
 namespace transfer {
-  template <class SenderId, class ReceiverId>
+  template <class CvrefSenderId, class ReceiverId>
     struct operation_state_t {
-      using Sender = stdexec::__t<SenderId>;
+      using Sender = stdexec::__cvref_t<CvrefSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using Env = typename operation_state_base_t<ReceiverId>::env_t;
 
@@ -110,7 +110,7 @@ template <class SenderId>
         using op_state_th = 
           stdexec::__t<
             transfer::operation_state_t<
-              stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, 
+              stdexec::__cvref_id<Self, Sender>,
               stdexec::__id<Receiver>>>;
 
       context_state_t context_state_;
