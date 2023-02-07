@@ -18,6 +18,7 @@
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 namespace ex = stdexec;
@@ -31,25 +32,28 @@ TEST_CASE("when_ny returns a sender", "[adaptors][when_any]") {
   (void)snd;
 }
 
-// TEST_CASE("when_all with environment returns a sender", "[adaptors][when_all]") {
-//   auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
-//   static_assert(ex::sender<decltype(snd), empty_env>);
-//   (void)snd;
-// }
-// TEST_CASE("when_all simple example", "[adaptors][when_all]") {
-//   auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
-//   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
-//   auto op = ex::connect(std::move(snd1), expect_value_receiver{3.1415});
-//   ex::start(op);
-// }
+TEST_CASE("when_any with environment returns a sender", "[adaptors][when_any]") {
+  auto snd = ex::__when_any(ex::just(3), ex::just(0.1415));
+  static_assert(ex::sender<decltype(snd), empty_env>);
+  (void)snd;
+}
 
-// TEST_CASE("when_all returning two values can we waited on", "[adaptors][when_all]") {
-//   ex::sender auto snd = ex::when_all( //
-//       ex::just(2),                    //
-//       ex::just(3)                     //
-//   );
-//   wait_for_value(std::move(snd), 2, 3);
-// }
+TEST_CASE("when_any simple example", "[adaptors][when_all]") {
+  auto snd = ex::__when_any(ex::just(3.0));
+  auto snd1 = std::move(snd) | ex::then([](double y) { return y + 0.1415; });
+  const double expected = 3.0 + 0.1415;
+  auto op = ex::connect(std::move(snd1), expect_value_receiver{expected});
+  ex::start(op);
+}
+
+TEST_CASE("when_all returning two values can we waited on", "[adaptors][when_all]") {
+  ex::sender auto snd = ex::__when_any( //
+      completes_if{false} | ex::then([] { return 2; }),  //
+      completes_if{true}  | ex::then([] { return 3; })   //
+  );
+  static_assert(ex::sender<decltype(snd)>);
+  ex::__debug_sender(std::move(snd));
+}
 
 // TEST_CASE("when_all with 5 senders", "[adaptors][when_all]") {
 //   ex::sender auto snd = ex::when_all( //

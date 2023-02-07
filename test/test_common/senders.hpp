@@ -95,3 +95,33 @@ struct just_with_env {
     return self.env_;
   }
 };
+
+struct completes_if {
+  using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+
+  bool condition_;
+
+  template <class Receiver>
+  struct operation {
+
+    bool condition_;
+    Receiver rcvr_;
+    std::optional<typename ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<operation>> on_stop_{};
+
+    friend void tag_invoke(ex::start_t, operation& self) noexcept {
+      if (self.condition_) {
+        ex::set_value(std::move(self.rcvr_));
+      } else {
+        self.on_stop_.emplace(
+            ex::get_stop_token(self.rcvr_), [&self] { ex::set_stopped(std::move(self.rcvr_)); });
+      }
+    }
+  };
+
+  template <ex::__decays_to<completes_if> Self, class Receiver>
+  friend operation<std::decay_t<Receiver>> tag_invoke(ex::connect_t, Self&& self, Receiver&& rcvr) noexcept {
+    return {self.condition_, std::forward<Receiver>(rcvr)};
+  }
+
+  friend empty_env tag_invoke(ex::get_env_t, const completes_if&) noexcept { return {}; }
+};
