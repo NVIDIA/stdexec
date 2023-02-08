@@ -316,7 +316,7 @@ namespace stdexec {
   using __env::get_env_t;
 
   template <class _EnvProvider>
-    using env_of_t = decay_t<__call_result_t<get_env_t, _EnvProvider>>;
+    using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
 
   template <class _EnvProvider>
     concept environment_provider =
