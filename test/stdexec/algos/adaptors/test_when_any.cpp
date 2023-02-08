@@ -16,6 +16,7 @@
 
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
+#include <exec/single_thread_context.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
@@ -62,6 +63,7 @@ TEST_CASE("when_any completes with only one sender", "[adaptors][when_any]") {
 
 TEST_CASE("when_any with move-only types", "[adaptors][when_any]") {
   ex::sender auto snd = ex::__when_any( //
+      completes_if{false} | ex::then([] { return movable(1); }),
       ex::just(movable(42))            //
   );
   wait_for_value(std::move(snd), movable(42));
@@ -90,3 +92,31 @@ TEST_CASE("nested when_any is stoppable", "[adaptors][when_any]") {
   REQUIRE(result == 42);
 }
 
+TEST_CASE("stop is forwarded", "[adaptors][when_any]") {
+  int result = 41;
+  ex::sender auto snd = ex::__when_any(ex::just_stopped(), completes_if{false}) 
+                      | ex::upon_stopped([&result] { result += 1; });
+  ex::sync_wait(std::move(snd));
+  REQUIRE(result == 42);
+}
+
+TEST_CASE("when_any is thread-safe", "[adaptors][when_any]") {
+  exec::single_thread_context ctx1;
+  exec::single_thread_context ctx2;
+  exec::single_thread_context ctx3;
+
+  auto sch1 = ex::schedule(ctx1.get_scheduler());
+  auto sch2 = ex::schedule(ctx2.get_scheduler());
+  auto sch3 = ex::schedule(ctx3.get_scheduler());
+
+  int result = 41;
+
+  ex::sender auto snd = 
+    ex::__when_any(sch1 | ex::let_value([] { return ex::__when_any(completes_if{false}); }),
+                   sch2 | ex::let_value([] { return completes_if{false}; }),
+                   sch3 | ex::then([&result] { result += 1; }),
+                   completes_if{false});
+
+  ex::sync_wait(std::move(snd));
+  REQUIRE(result == 42);
+}
