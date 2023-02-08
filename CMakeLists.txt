@@ -252,7 +252,6 @@ if(STDEXEC_ENABLE_CUDA)
 endif ()
 
 
-#////////BFD
 option(STDEXEC_ENABLE_TBB "Enable TBB targets" OFF)
 
 if (STDEXEC_ENABLE_TBB)
@@ -273,17 +272,7 @@ if (STDEXEC_ENABLE_TBB)
         STDEXEC::stdexec
         TBB::tbb
         )
-
-    #include(rapids-find)
-    #rapids_find_package(
-    #    CUDAToolkit REQUIRED # Not sure what to change here to make it work for tbb.
-    #    BUILD_EXPORT_SET stdexec-exports
-    #    INSTALL_EXPORT_SET stdexec-exports
-    #)
-
-    #target_link_libraries(tbbexec INTERFACE TBB::tbb)
 endif ()
-#////////BFD
 
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
