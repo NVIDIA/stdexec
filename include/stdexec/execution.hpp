@@ -5552,7 +5552,7 @@ namespace stdexec {
   template <class _Env, class _Sender, class... _Senders>
   struct __completion_signatures<_Env, _Sender, _Senders...> {
     using __add_sig_line = __minvoke<__mconcat<__q<completion_signatures>>,
-                                     completion_signatures_of_t<_Senders>...>;
+                                     completion_signatures_of_t<_Senders, _Env>...>;
 
     using __t = make_completion_signatures<_Sender, _Env, __add_sig_line>;
   };
