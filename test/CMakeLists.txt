@@ -80,8 +80,7 @@ target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.stdexec
     PUBLIC
     STDEXEC::stdexec
-    $<$<BOOL:STDEXEC_ENABLE_TBB>:tbbexec>
-    $<$<BOOL:STDEXEC_ENABLE_TBB>:TBB::tbb>
+    $<$<BOOL:STDEXEC_ENABLE_TBB>:STDEXEC::tbbexec>
     stdexec_executable_flags
     Catch2::Catch2)
 

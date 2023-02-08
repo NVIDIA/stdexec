@@ -256,9 +256,12 @@ endif ()
 option(STDEXEC_ENABLE_TBB "Enable TBB targets" OFF)
 
 if (STDEXEC_ENABLE_TBB)
-    find_package(TBB REQUIRED)
-    #find_package(tbb REQUIRED)
-
+    include(rapids-find)
+    rapids_find_package(
+        TBB REQUIRED
+        BUILD_EXPORT_SET stdexec-exports
+        INSTALL_EXPORT_SET stdexec-exports
+    )
 
     file(GLOB_RECURSE tbbexec_sources include/tbbexec/*.hpp)
     add_library(tbbexec INTERFACE ${tbbexec_sources})
