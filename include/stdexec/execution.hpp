@@ -1889,7 +1889,8 @@ namespace stdexec {
 
   namespace __with_awaitable_senders {
 
-    template <class _Promise = void> class __continuation_handle;
+    template <class _Promise = void>
+      class __continuation_handle;
 
     template <>
       class __continuation_handle<void> {
@@ -1898,8 +1899,7 @@ namespace stdexec {
 
         template <class _Promise>
           __continuation_handle(__coro::coroutine_handle<_Promise> __coro) noexcept
-            : __coro_(__coro)
-          {
+            : __coro_(__coro) {
             if constexpr (requires(_Promise& __promise) { __promise.unhandled_stopped(); }) {
               __stopped_callback_ = [](void* __address) noexcept -> __coro::coroutine_handle<> {
                 // This causes the rest of the coroutine (the part after the co_await
@@ -1925,7 +1925,7 @@ namespace stdexec {
       private:
         __coro::coroutine_handle<> __coro_{};
         using __stopped_callback_t = __coro::coroutine_handle<> (*)(void*) noexcept;
-        __stopped_callback_t __stopped_callback_ = 
+        __stopped_callback_t __stopped_callback_ =
             [](void*) noexcept -> __coro::coroutine_handle<> {
               std::terminate();
             };
