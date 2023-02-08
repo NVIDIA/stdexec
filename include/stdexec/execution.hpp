@@ -5651,7 +5651,11 @@ namespace stdexec {
       friend void tag_invoke(start_t, __t& __self) noexcept {
         __self.__on_stop_.emplace(get_stop_token(get_env(__self.__receiver_)),
                                   __on_stop_requested{__self.__stop_source_});
-        std::apply([](auto&... __ops) { (start(__ops), ...); }, __self.__ops_);
+        if (__self.__stop_source_.stop_requested()) {
+          stdexec::set_stopped((_Receiver &&) __self.__receiver_);
+        } else {
+          std::apply([](auto&... __ops) { (start(__ops), ...); }, __self.__ops_);
+        }
       }
     };
   };
@@ -5665,17 +5669,12 @@ namespace stdexec {
       std::tuple<_Sender, _Senders...> __senders_;
 
       template <class _R>
-      friend auto tag_invoke(connect_t, __t&& __self, _R&& __rcvr) noexcept {
-        using _Receiver = std::remove_cvref_t<_R>;
-        using _Op_t = __op<_Receiver, _Sender, _Senders...>;
-        static_assert(sender_to<_Sender, __receiver<_Receiver, _Op_t>> &&
-                      (sender_to<_Senders, __receiver<_Receiver, _Op_t>> && ...));
-        return _Op_t((std::tuple<_Sender, _Senders...> &&) __self.__senders_,
-                    (_R &&) __rcvr);
-      }
+      friend __op<std::remove_cvref_t<_R>, _Sender, _Senders...> 
+        tag_invoke(connect_t, __t&& __self, _R&& __rcvr) noexcept {
+          return {(std::tuple<_Sender, _Senders...> &&) __self.__senders_, (_R &&) __rcvr};
+        }
 
-      friend auto tag_invoke(get_env_t, const __t& __self) noexcept
-          -> __empty_env {
+      friend __empty_env tag_invoke(get_env_t, const __t& __self) noexcept {
         return {};
       }
 
