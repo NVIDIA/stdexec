@@ -28,7 +28,6 @@ namespace exec {
 namespace __at_coro_exit {
 using namespace stdexec;
 
-// TODO __die_on_stop(snd) is just upon_stopped(snd, []{std::terminate();}).
 struct __die_on_stop_t {
   template <class _Receiver>
     struct __receiver_id {
