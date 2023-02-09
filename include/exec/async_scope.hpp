@@ -25,6 +25,45 @@ namespace exec {
   namespace __scope {
     using namespace stdexec;
 
+    template <class _BaseEnv>
+      using __env_t =
+        make_env_t<
+          _BaseEnv,
+          with_t<get_stop_token_t, in_place_stop_token>>;
+
+    struct nest_t {
+      template <class _Fn, class _NestedSender>
+        using __f = __minvoke<_Fn, _NestedSender>;
+
+      template <class _AsyncScopeToken, class _NestedSender>
+        requires tag_invocable<nest_t, _AsyncScopeToken, _NestedSender>
+      [[nodiscard]] auto operator()(_AsyncScopeToken&& __tkn, _NestedSender&& __ns) const {
+        return tag_invoke(nest_t{}, (_AsyncScopeToken&&) __tkn, (_NestedSender&&) __ns);
+      }
+    };
+
+    struct spawn_t {
+      template <class _Fn, class _NestedSender>
+        using __f = __minvoke<_Fn, _NestedSender>;
+
+      template <class _AsyncScopeToken, __movable_value _Env = __empty_env, sender<__env_t<_Env>> _NestedSender>
+        requires tag_invocable<nest_t, _AsyncScopeToken, _NestedSender>
+      void operator()(_AsyncScopeToken&& __tkn, _NestedSender&& __ns, _Env __env = {}) const {
+        (void) tag_invoke(spawn_t{}, (_AsyncScopeToken&&) __tkn, (_NestedSender&&) __ns, (_Env&&) __env);
+      }
+    };
+
+    struct spawn_future_t {
+      template <class _Fn, class _NestedSender>
+        using __f = __minvoke<_Fn, _NestedSender>;
+
+      template <class _AsyncScopeToken, __movable_value _Env = __empty_env, sender<__env_t<_Env>> _NestedSender>
+        requires tag_invocable<nest_t, _AsyncScopeToken, _NestedSender>
+      auto operator()(_AsyncScopeToken&& __tkn, _NestedSender&& __ns, _Env __env = {}) const {
+        return tag_invoke(spawn_future_t{}, (_AsyncScopeToken&&) __tkn, (_NestedSender&&) __ns, (_Env&&) __env);
+      }
+    };
+
     struct __impl;
     struct async_scope;
 
@@ -34,13 +73,7 @@ namespace exec {
       __task* __next_ = nullptr;
     };
 
-    template <class _BaseEnv>
-      using __env_t =
-        make_env_t<
-          _BaseEnv,
-          with_t<get_stop_token_t, in_place_stop_token>>;
-
-    struct __impl {
+    struct __impl : __immovable {
       in_place_stop_source __stop_source_{};
       mutable std::mutex __lock_{};
       mutable std::ptrdiff_t __active_ = 0;
@@ -55,12 +88,6 @@ namespace exec {
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::when_empty implementation
-    template <class _ReceiverId>
-      struct __when_empty_op_base : __task {
-        using _Receiver = __t<_ReceiverId>;
-        [[no_unique_address]] _Receiver __rcvr_;
-      };
-
     template <class _ConstrainedId, class _ReceiverId>
       struct __when_empty_op : __task {
         using _Constrained = __t<_ConstrainedId>;
@@ -181,13 +208,12 @@ namespace exec {
         }
       };
 
-    template <class _ConstrainedId, class _ReceiverId>
+    template <class _Constrained, class _ReceiverId>
       struct __nest_op : __nest_op_base<_ReceiverId> {
-        using _Constrained = __t<_ConstrainedId>;
         using _Receiver = __t<_ReceiverId>;
         STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
           connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>> __op_;
-        template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
+        template <__same_as<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
           explicit __nest_op(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)
             : __nest_op_base<_ReceiverId>{{}, __scope, (_Rcvr&&) __rcvr}
             , __op_(connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {}
@@ -212,17 +238,17 @@ namespace exec {
 
         const __impl* __scope_;
         [[no_unique_address]] _Constrained __c_;
-
-        template <class _Receiver>
-          using __nest_operation_t = __nest_op<_ConstrainedId, __x<_Receiver>>;
+      private:
+        template <class _Self, class _Receiver>
+          using __nest_operation_t = __nest_op<__copy_cvref_t<_Self, _Constrained>, __x<_Receiver>>;
         template <class _Receiver>
           using __nest_receiver_t = __nest_rcvr<__x<_Receiver>>;
 
         template <__decays_to<__nest_sender> _Self, receiver _Receiver>
             requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
-          [[nodiscard]] friend __nest_operation_t<_Receiver>
+          [[nodiscard]] friend __nest_operation_t<_Self, _Receiver>
           tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
-            return __nest_operation_t<_Receiver>{
+            return __nest_operation_t<_Self, _Receiver>{
               __self.__scope_,
               ((_Self&&) __self).__c_,
               (_Receiver&&) __rcvr};
@@ -696,7 +722,33 @@ namespace exec {
       }
 
     private:
+      template <sender _Constrained>
+        friend nest_result_t<_Constrained>
+        tag_invoke(nest_t, __nester& __self, _Constrained&& __c) {
+          return nest_result_t<_Constrained>{__self.__impl_, (_Constrained&&) __c};
+        }
+      template <__movable_value _Env, sender<__env_t<_Env>> _Sender>
+          requires sender_to<nest_result_t<_Sender>, __spawn_receiver_t<_Env>>
+        friend void tag_invoke(spawn_t, __nester& __self, _Sender&& __sndr, _Env&& __env) {
+          using __op_t = __spawn_operation_t<nest_result_t<_Sender>, _Env>;
+          // start is noexcept so we can assume that the operation will complete
+          // after this, which means we can rely on its self-ownership to ensure
+          // that it is eventually deleted
+          stdexec::start(*new __op_t{nest_t{}(__self, (_Sender&&) __sndr), (_Env&&) __env, __self.__impl_});
+        }
+      template <__movable_value _Env, sender<__env_t<_Env>> _Sender>
+        friend __future_t<_Sender, _Env>
+        tag_invoke(spawn_future_t, __nester& __self, _Sender&& __sndr, _Env&& __env) {
+          using __state_t = __future_state<nest_result_t<_Sender>, _Env>;
+          auto __state =
+            std::make_unique<__state_t>(nest_t{}(__self, (_Sender&&) __sndr), (_Env&&) __env, __self.__impl_);
+          stdexec::start(__state->__op_);
+          return __future_t<_Sender, _Env>{std::move(__state)};
+        }
+
       friend struct async_scope;
+      template <class _AdaptorId, class _ReceiverId>
+        friend struct __async_scope_op;
       __nester(__impl* __impl) noexcept : __impl_(__impl) {}
       __impl* __impl_;
     };
@@ -734,7 +786,139 @@ namespace exec {
     private:
       __impl __impl_;
     };
+
+    template <class _ReceiverId>
+      struct __async_scope_op_base {
+        using _Receiver = __t<_ReceiverId>;
+
+        _Receiver __rcvr_;
+        __impl __impl_;
+      protected:
+        explicit __async_scope_op_base(_Receiver&& __rcvr)
+          : __rcvr_(__rcvr)
+          {}
+      };
+
+    template <class _ReceiverId>
+      struct __async_scope_rcvr {
+        using _Receiver = __t<_ReceiverId>;
+        using _OpBase = __async_scope_op_base<_ReceiverId>;
+      private:
+        template <class _AdaptorId_, class _ReceiverId_>
+          friend struct __async_scope_op;
+        __async_scope_rcvr(_OpBase* __op)
+          : __op_(__op) {}
+        _OpBase* __op_;
+
+        template <
+            __one_of<set_value_t, set_error_t, set_stopped_t> _Tag,
+            class... _As>
+            requires __callable<_Tag, _Receiver, _As...>
+          friend void tag_invoke(_Tag, __async_scope_rcvr&& __self, _As&&... __as) noexcept {
+            _Tag{}(std::move(__self.__op_->__rcvr_), (_As&&) __as...);
+            // do not access __op_
+            // do not access this
+          }
+
+        friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __async_scope_rcvr& __self) noexcept {
+          return make_env(
+            get_env(__self.__op_->__rcvr_),
+            with(get_stop_token, __self.__op_->__impl_.__stop_source_.get_token()));
+        }
+      };
+
+    struct __let_empty_adaptor {
+      using _VoidSender = __call_result_t<__just::__just_t>;
+      using _WhenEmptySender = __when_empty_sender_t<_VoidSender>;
+
+      __impl* __impl_;
+      template<class... AN>
+      auto operator()(AN&&... an) {
+        return _WhenEmptySender{__impl_, just()} | let_value([=]() mutable {return just((AN&&) an...);});
+      }
+    };
+
+    template <class _AdaptorId, class _ReceiverId>
+      struct __async_scope_op : __async_scope_op_base<_ReceiverId> {
+        using _Adaptor = __t<_AdaptorId>;
+        using _Receiver = __t<_ReceiverId>;
+        using _Base = __async_scope_op_base<_ReceiverId>;
+
+        using _AdaptedSender = __call_result_t<_Adaptor, __nester>;
+        using _CompleteSender = __call_result_t<let_value_t, _AdaptedSender, __let_empty_adaptor>;
+        using _ScopeReceiver = __async_scope_rcvr<_ReceiverId>;
+
+        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+          connect_result_t<_CompleteSender, _ScopeReceiver> __op_;
+
+        explicit __async_scope_op(_Adaptor&& __a, _Receiver __rcvr)
+          : _Base((_Receiver&&) __rcvr)
+          , __op_(connect(
+            ((_Adaptor&&) __a)(__nester{&this->__impl_})
+              | let_value(__let_empty_adaptor{&this->__impl_}),
+            _ScopeReceiver{this})) {
+          }
+      private:
+        void __start_() noexcept {
+          start(this->__op_);
+        }
+        friend void tag_invoke(start_t, __async_scope_op& __self) noexcept {
+          return __self.__start_();
+        }
+      };
+
+    template <class _AdaptorId>
+      struct __async_scope_sender {
+        using _Adaptor = __t<_AdaptorId>;
+        [[no_unique_address]] _Adaptor __a_;
+
+        using _AdaptedSender = __call_result_t<_Adaptor, __nester>;
+        using _CompleteSender = __call_result_t<let_value_t, _AdaptedSender, __let_empty_adaptor>;
+      private:
+
+        template <class _Self, class _Receiver>
+          using __async_scope_op_t =
+            __async_scope_op<
+              __x<__copy_cvref_t<_Self, _Adaptor>>,
+              __x<_Receiver>>;
+
+        template<class _ReceiverId>
+          friend struct __async_scope_rcvr;
+
+        template <__decays_to<__async_scope_sender> _Self, receiver _Receiver>
+            requires sender_to<__copy_cvref_t<_Self, _CompleteSender>, _Receiver>
+          [[nodiscard]] friend __async_scope_op_t<_Self, _Receiver>
+          tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
+            return __async_scope_op_t<_Self, _Receiver>{
+              ((_Self&&) __self).__a_,
+              (_Receiver&&) __rcvr};
+          }
+
+        template <__decays_to<__async_scope_sender> _Self, class _Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+            -> completion_signatures_of_t<__copy_cvref_t<_Self, _CompleteSender>, __env_t<_Env>>;
+      };
+
+    template <class _Adapter>
+      using __async_scope_sender_t =
+        __async_scope_sender<__x<remove_cvref_t<_Adapter>>>;
+
   } // namespace __scope
 
+  using __scope::nest_t;
+  inline constexpr nest_t nest{};
+  using __scope::spawn_t;
+  inline constexpr spawn_t spawn{};
+  using __scope::spawn_future_t;
+  inline constexpr spawn_future_t spawn_future{};
+
   using __scope::async_scope;
+
+  ////////////////////////////////////////////////////////////////////////////
+  // async_scope
+  template<class _Adaptor>
+    [[nodiscard]] __scope::__async_scope_sender_t<_Adaptor>
+      enter_async_scope(_Adaptor&& adapt) {
+        return {std::forward<_Adaptor>(adapt)};
+      }
 } // namespace exec
