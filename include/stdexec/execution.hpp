@@ -2772,29 +2772,40 @@ namespace stdexec {
       struct __receiver {
         using _Receiver = stdexec::__t<_ReceiverId>;
 
-        class __t : receiver_adaptor<__t, _Receiver> {
-          friend receiver_adaptor<__t, _Receiver>;
-          [[no_unique_address]] _Fun __f_;
+        struct __t {
+          using __id = __receiver;
+
+          _Receiver __rcvr_;
+          [[no_unique_address]] _Fun __fun_;
+
+          template <__decays_to<__t> _Self, class... _Args>
+              requires __callable<set_value_t, _Receiver, _Args...>
+            friend void tag_invoke(set_value_t, _Self&& __self,
+                                   _Args&&... __args) noexcept {
+              set_value((_Receiver &&) __self.__rcvr_, (_Args &&) __args...);
+            }
 
           // Customize set_error by invoking the invocable and passing the result
           // to the base class
-          template <class _Error>
-            requires invocable<_Fun, _Error> &&
-              __receiver_of_invoke_result<_Receiver, _Fun, _Error>
-          void set_error(_Error&& __err) && noexcept {
-            stdexec::__set_value_invoke(
-              ((__t&&) *this).base(),
-              (_Fun&&) __f_,
-              (_Error&&) __err);
+          template <__decays_to<__t> _Self, class _Error>
+              requires invocable<_Fun, _Error> &&
+                __receiver_of_invoke_result<_Receiver, _Fun, _Error>
+            friend void tag_invoke(set_error_t, _Self&& __self,
+                                   _Error&& __error) noexcept {
+              stdexec::__set_value_invoke(
+                (_Receiver &&) __self.__rcvr_,
+                (_Fun &&) __self.__fun_,
+                (_Error &&) __error);
+            }
+
+          friend void tag_invoke(set_stopped_t, __t&& __self) noexcept
+            requires __callable<set_stopped_t, _Receiver> {
+            set_stopped((_Receiver&&) __self.__rcvr_);
           }
 
-         public:
-          using __id = __receiver;
-
-          explicit __t(_Receiver __rcvr, _Fun __fun)
-            : receiver_adaptor<__t, _Receiver>((_Receiver&&) __rcvr)
-            , __f_((_Fun&&) __fun)
-          {}
+          friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
+            return get_env(__self.__rcvr_);
+          }
         };
       };
 
@@ -2803,7 +2814,7 @@ namespace stdexec {
         using _Sender = stdexec::__t<_SenderId>;
 
         template <class _Receiver>
-          using __receiver = stdexec::__t<__receiver<stdexec::__id<_Receiver>, _Fun>>;
+          using __receiver = stdexec::__t<__receiver<__id<_Receiver>, _Fun>>;
 
         struct __t {
           using __id = __sender;
@@ -2887,36 +2898,46 @@ namespace stdexec {
       struct __receiver {
         using _Receiver = stdexec::__t<_ReceiverId>;
 
-        class __t : receiver_adaptor<__t, _Receiver> {
-          friend receiver_adaptor<__t, _Receiver>;
-          [[no_unique_address]] _Fun __f_;
+        struct __t {
+          using __id = __receiver;
+          _Receiver __rcvr_;
+          [[no_unique_address]] _Fun __fun_;
 
-          // Customize set_stopped by invoking the invocable and passing the result
-          // to the base class
-          void set_stopped() && noexcept {
+          template <__decays_to<__t> _Self, class... _Args>
+              requires __callable<set_value_t, _Receiver, _Args...>
+            friend void tag_invoke(set_value_t, _Self&& __self,
+                                   _Args&&... __args) noexcept {
+              set_value((_Receiver &&) __self.__rcvr_, (_Args &&) __args...);
+            }
+
+          template <__decays_to<__t> _Self, class _Error>
+              requires __callable<set_error_t, _Receiver, _Error>
+            friend void tag_invoke(set_error_t, _Self&& __self,
+                                   _Error&& __error) noexcept {
+              set_error((_Receiver &&) __self.__rcvr_, (_Error &&) __error);
+            }
+
+          friend void tag_invoke(set_stopped_t, __t&& __self) noexcept {
             stdexec::__set_value_invoke(
-              ((__t&&) *this).base(),
-              (_Fun&&) __f_);
+              (_Receiver&&) __self.__rcvr_,
+              (_Fun&&) __self.__fun_);
           }
 
-         public:
-          using __id = __receiver;
-          explicit __t(_Receiver __rcvr, _Fun __fun)
-            : receiver_adaptor<__t, _Receiver>((_Receiver&&) __rcvr)
-            , __f_((_Fun&&) __fun)
-          {}
+          friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
+            return get_env(__self.__rcvr_);
+          }
         };
       };
 
     template <class _SenderId, class _Fun>
-      struct __sender {
+      struct __sender_id {
         using _Sender = stdexec::__t<_SenderId>;
 
         template <class _Receiver>
-          using __receiver = stdexec::__t<__receiver<stdexec::__id<_Receiver>, _Fun>>;
+          using __receiver = stdexec::__t<__receiver<__id<_Receiver>, _Fun>>;
 
         struct __t {
-          using __id = __sender;
+          using __id = __sender_id;
 
           [[no_unique_address]] _Sender __sndr_;
           [[no_unique_address]] _Fun __fun_;
@@ -2959,7 +2980,7 @@ namespace stdexec {
 
     struct upon_stopped_t {
       template <class _Sender, class _Fun>
-        using __sender = __t<__sender<stdexec::__id<remove_cvref_t<_Sender>>, _Fun>>;
+        using __sender = __t<__sender_id<__id<remove_cvref_t<_Sender>>, _Fun>>;
 
       template <sender _Sender, __movable_value _Fun>
         requires
