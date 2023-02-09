@@ -2930,7 +2930,7 @@ namespace stdexec {
       };
 
     template <class _SenderId, class _Fun>
-      struct __sender_id {
+      struct __sender {
         using _Sender = stdexec::__t<_SenderId>;
 
         template <class _Receiver>
