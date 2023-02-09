@@ -2937,7 +2937,7 @@ namespace stdexec {
           using __receiver = stdexec::__t<__receiver<__id<_Receiver>, _Fun>>;
 
         struct __t {
-          using __id = __sender_id;
+          using __id = __sender;
 
           [[no_unique_address]] _Sender __sndr_;
           [[no_unique_address]] _Fun __fun_;
