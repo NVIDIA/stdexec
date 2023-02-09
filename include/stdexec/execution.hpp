@@ -2980,7 +2980,7 @@ namespace stdexec {
 
     struct upon_stopped_t {
       template <class _Sender, class _Fun>
-        using __sender = __t<__sender_id<__id<remove_cvref_t<_Sender>>, _Fun>>;
+        using __sender = __t<__sender<__id<remove_cvref_t<_Sender>>, _Fun>>;
 
       template <sender _Sender, __movable_value _Fun>
         requires
