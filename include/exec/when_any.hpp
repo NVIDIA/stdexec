@@ -20,21 +20,29 @@
 
 namespace exec
 {
-  namespace __when_any_ {
+  namespace __when_any {
     using namespace stdexec;
+
+    struct __on_stop_requested {
+      in_place_stop_source& __stop_source_;
+      void operator()() noexcept {
+        __stop_source_.request_stop();
+      }
+    };
+
     template <class _BaseEnv>
       using __env_t =
           __make_env_t<_BaseEnv, __with<get_stop_token_t, in_place_stop_token>>;
 
-    template <class _Env, class _Sender, class... _Senders>
+    template <class _Env, class _SenderId, class... _SenderIds>
       make_completion_signatures<
-          _Sender, _Env,
+          __t<_SenderId>, _Env,
           __minvoke<__mconcat<__q<completion_signatures>>,
-                    completion_signatures_of_t<_Senders, _Env>...>>
-      __completion_signatures_();
+                    completion_signatures_of_t<__t<_SenderIds>, _Env>...>>
+      __completion_signatures_(_Env*, _SenderId*, _SenderIds*...);
 
     template <class _Env, class... _Senders>
-      using __completion_signatures_t = decltype(__completion_signatures_<_Env, _Senders...>());
+      using __completion_signatures_t = decltype(__completion_signatures_((_Env*)nullptr, (_Senders*)nullptr...));
 
     template <class _Ret, class... _Args>
       std::tuple<_Ret, _Args...> __signature_to_tuple_(_Ret(*)(_Args...));
@@ -46,11 +54,11 @@ namespace exec
     template <class _Sig>
       using __signature_to_tuple_t = __signature_to_tuple<_Sig>;
 
-    template <class _Env, class... _Senders>
+    template <class _Env, class... _SenderIds>
       using __result_type_t =
           __mapply<__transform<__q<__signature_to_tuple_t>,
                               __mbind_front_q<std::variant, std::monostate>>,
-                  __completion_signatures_t<_Env, _Senders...>>;
+                  __completion_signatures_t<_Env, _SenderIds...>>;
 
 
     template <class _Receiver, class _ResultType>
@@ -61,10 +69,6 @@ namespace exec
         , __receiver_{(_Receiver&&) __receiver} {
         }
 
-        struct __on_stop_requested {
-          in_place_stop_source& __stop_source_;
-          void operator()() noexcept { __stop_source_.request_stop(); }
-        };
         using __on_stop = std::optional<typename stop_token_of_t<
             env_of_t<_Receiver>&>::template callback_type<__on_stop_requested>>;
 
@@ -142,35 +146,40 @@ namespace exec
       };
     };
 
-    template <class _Receiver, class... _Senders>
+    template <class _ReceiverId, class... _SenderIds>
       struct __op {
-        class __t : __op_base<_Receiver, __result_type_t<env_of_t<_Receiver>, _Senders...>> {
-          using __base = __op_base<_Receiver, __result_type_t<env_of_t<_Receiver>, _Senders...>>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
+
+        using __result_t = __result_type_t<env_of_t<_Receiver>, _SenderIds...>;
+        using __receiver_t = stdexec::__t<__receiver<_Receiver, __result_t>>;
+        using __op_base_t = __op_base<_Receiver, __result_t>;
+
+        class __t : __op_base_t {
          public:
-          __t(std::tuple<_Senders...>&& __senders, _Receiver&& __rcvr)
-          : __t{(std::tuple<_Senders...> &&) __senders, (_Receiver &&) __rcvr,
-                    std::make_index_sequence<sizeof...(_Senders)>{}} {}
+          template <class _SendersTuple>
+          __t(_SendersTuple&& __senders, _Receiver&& __rcvr)
+          : __t{(_SendersTuple&&) __senders, (_Receiver &&) __rcvr,
+                std::index_sequence_for<_SenderIds...>{}} {}
 
          private:
-          using __result_t = __result_type_t<env_of_t<_Receiver>, _Senders...>;
-          using __receiver_t = stdexec::__t<__receiver<_Receiver, __result_t>>;
 
-          template <std::size_t... _Is>
-          __t(std::tuple<_Senders...>&& __senders, _Receiver&& __rcvr,
+
+          template <class _SenderTuple, std::size_t... _Is>
+          __t(_SenderTuple&& __senders, _Receiver&& __rcvr,
               std::index_sequence<_Is...>)
-          : __base{(_Receiver &&) __rcvr, static_cast<int>(sizeof...(_Senders))}
+          : __op_base_t{(_Receiver&&) __rcvr, static_cast<int>(sizeof...(_SenderIds))}
           , __ops_{__conv{[&__senders, this] {
-              return connect((_Senders &&)(std::get<_Is>(__senders)), 
-                             __receiver_t{static_cast<__base*>(this)});
+              return connect(std::get<_Is>((_SenderTuple&&) __senders), 
+                             __receiver_t{static_cast<__op_base_t*>(this)});
             }}...} {}
 
-          std::tuple<connect_result_t<_Senders, __receiver_t>...> __ops_;
+          std::tuple<connect_result_t<stdexec::__t<_SenderIds>, __receiver_t>...> __ops_;
 
           friend void tag_invoke(start_t, __t& __self) noexcept {
             __self.__on_stop_.emplace(get_stop_token(get_env(__self.__receiver_)),
-                                      typename __base::__on_stop_requested{__self.__stop_source_});
+                                      __on_stop_requested{__self.__stop_source_});
             if (__self.__stop_source_.stop_requested()) {
-              stdexec::set_stopped((_Receiver &&) __self.__receiver_);
+              stdexec::set_stopped((_Receiver&&) __self.__receiver_);
             } else {
               std::apply([](auto&... __ops) { (start(__ops), ...); }, __self.__ops_);
             }
@@ -178,39 +187,61 @@ namespace exec
         };
       };
 
-    template <class _Sender, class... _Senders> struct __sender {
-      struct __t {
-        using __id = __sender;
+    template <class... _SenderIds>
+      struct __sender {
+        
+        template <class _Receiver>
+          using __receiver_t = stdexec::__t<
+              __receiver<_Receiver,  __result_type_t<env_of_t<_Receiver>, _SenderIds...>>>;
 
-        std::tuple<_Sender, _Senders...> __senders_;
+        template <class _Receiver>
+          using __op_t = __op<__id<decay_t<_Receiver>>, _SenderIds...>;
 
-        template <__decays_to<__t> _Self, class _R>
-          friend stdexec::__t<__op<std::remove_cvref_t<_R>, _Sender, _Senders...>> 
-          tag_invoke(connect_t, _Self&& __self, _R&& __rcvr) noexcept {
-            return {(std::tuple<_Sender, _Senders...> &&) __self.__senders_, (_R &&) __rcvr};
-          }
+        class __t {
+         public:
+          using __id = __sender;
 
-        template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env) noexcept
-            -> dependent_completion_signatures<_Env>;
+          template <class... _Senders>
+            explicit(sizeof...(_Senders) == 1) __t(_Senders&&... __senders)
+            : __senders_((_Senders&&) __senders...) {
+            }
 
-        template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env) noexcept
-            -> __completion_signatures_t<_Env, _Sender, _Senders...> requires true;
+         private:
+          template <__decays_to<__t> _Self, receiver _Receiver>
+              requires
+                (sender_to<
+                  __cvref_id<_Self, _SenderIds>,
+                  __receiver_t<_Receiver>> && ...)
+            friend __op_t<_Receiver>
+            tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) noexcept {
+              return __op_t<_Receiver>{((_Self&&) __self).__senders_, (_Receiver&&) __rcvr};
+            }
+
+          template <__decays_to<__t> _Self, class _Env>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env) noexcept
+              -> dependent_completion_signatures<_Env>;
+
+          template <__decays_to<__t> _Self, class _Env>
+            friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env) noexcept
+              -> __completion_signatures_t<_Env, _SenderIds...> requires true;
+
+          std::tuple<stdexec::__t<_SenderIds>...> __senders_;
+        };
       };
-    };
   
     struct __when_any_t {
+      template <class... _Senders>
+        using __sender_t = __t<__sender<__id<decay_t<_Senders>>...>>;
+
       template <stdexec::sender... _Senders>
-        requires (sizeof...(_Senders) > 0)
-      auto operator()(_Senders&&... __senders) const
-          noexcept((__nothrow_decay_copyable<_Senders> && ...)) {
-        return __t<__sender<std::decay_t<_Senders>...>>{
-            std::tuple<std::decay_t<_Senders>...>{((_Senders &&) __senders)...}};
-      }
+          requires (sizeof...(_Senders) > 0 && stdexec::sender<__sender_t<_Senders...>>)
+        __sender_t<_Senders...> operator()(_Senders&&... __senders) const
+            noexcept((__nothrow_decay_copyable<_Senders> && ...)) {
+          return __sender_t<_Senders...>((_Senders&&) __senders...);
+        }
     };
 
     inline constexpr __when_any_t when_any{};
-  } // namespace __when_any_
-  using __when_any_::when_any;
+  } // namespace __when_any
+  using __when_any::when_any;
 }
