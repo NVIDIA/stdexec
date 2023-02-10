@@ -116,12 +116,13 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // env_of
   namespace __env {
-    struct __empty_env {
-      using __t = __empty_env;
-      using __id = __empty_env;
+    struct empty_env {
+      using __t = empty_env;
+      using __id = empty_env;
     };
   } // namespace __env
-  using __env::__empty_env;
+  using __env::empty_env;
+  using __empty_env [[deprecated("Please use stdexec::empty_env now.")]] = empty_env;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
@@ -129,7 +130,7 @@ namespace stdexec {
     concept __enable_sender = requires {
       typename _Sender::is_sender;
     } ||
-    __awaitable<_Sender, __compl_sigs::__env_promise<__empty_env>>;
+    __awaitable<_Sender, __compl_sigs::__env_promise<empty_env>>;
 
   template <class _Sender>
     inline constexpr bool enable_sender = __enable_sender<_Sender>;
@@ -259,7 +260,7 @@ namespace stdexec {
         auto operator()(__with<_Tag, _Value> __w, __with<_Tags, _Values>... __ws) const
           noexcept(std::is_nothrow_move_constructible_v<_Value> &&
             (std::is_nothrow_move_constructible_v<_Values> &&...))
-          -> __env_t<__empty_env, __with<_Tag, _Value>, __with<_Tags, _Values>...> {
+          -> __env_t<empty_env, __with<_Tag, _Value>, __with<_Tags, _Values>...> {
           return {{std::move(__w)}, {std::move(__ws)}..., {}};
         }
 
@@ -297,7 +298,7 @@ namespace stdexec {
           if constexpr (!enable_sender<_EnvProvider>) {
             return __with_env;
           } else {
-            return __empty_env{};
+            return empty_env{};
           }
         }
     };
@@ -1581,7 +1582,7 @@ namespace stdexec {
   // understand where in a chain of senders the problem is occurring.
   //
   // ```c++
-  // template <class _Sigs, class _Env = __empty_env, class _Sender>
+  // template <class _Sigs, class _Env = empty_env, class _Sender>
   //   void __debug_sender(_Sender&& __sndr, _Env = {});
   //
   // template <class _Sender>
@@ -1617,7 +1618,7 @@ namespace stdexec {
   // which is the faulty `tag_invoke` overload with a mention of the
   // constraint that failed.
   namespace __debug {
-    template <class _Sigs, class _Env = __empty_env, class _Sender>
+    template <class _Sigs, class _Env = empty_env, class _Sender>
       void __debug_sender(_Sender&& __sndr, _Env = {}) {
         using _Receiver = __debug_receiver<_Env, _Sigs>;
         (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
@@ -1625,7 +1626,7 @@ namespace stdexec {
 
     template <class _Sender>
       void __debug_sender(_Sender&& __sndr) {
-        using _Receiver = __any_debug_receiver<__empty_env>;
+        using _Receiver = __any_debug_receiver<empty_env>;
         (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
       }
 
@@ -1723,7 +1724,7 @@ namespace stdexec {
         std::variant<std::monostate, __value_or_void_t<_Value>, std::exception_ptr>;
     template <class _Promise>
       using __env_t =
-        __minvoke<__with_default<__q<__call_result_t>, __empty_env>, get_env_t, _Promise>;
+        __minvoke<__with_default<__q<__call_result_t>, empty_env>, get_env_t, _Promise>;
 
     template <class _Value>
       struct __receiver_base {
@@ -1772,7 +1773,7 @@ namespace stdexec {
                 __self.__continuation_.address());
               return get_env(__continuation.promise());
             } else {
-              return __empty_env{};
+              return empty_env{};
             }
           }
         };
@@ -2129,7 +2130,7 @@ namespace stdexec {
         __make_dispatcher<__cust_sigs, __mconst<__submit_detached>, _Sender, _Env>;
 
     struct start_detached_t {
-      template <sender _Sender, class _Env = __empty_env>
+      template <sender _Sender, class _Env = empty_env>
           requires
             sender_to<_Sender, __detached_receiver_t<_Env>> ||
             __is_start_detached_customized<_Sender, _Env>
@@ -2194,7 +2195,7 @@ namespace stdexec {
               return {{}, ((__t&&) __sndr).__vals_, (_Receiver&&) __rcvr};
             }
 
-          friend __empty_env tag_invoke(get_env_t, const __t&) noexcept {
+          friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
             return {};
           }
         };
@@ -2267,7 +2268,7 @@ namespace stdexec {
           std::terminate();
         }
         friend void tag_invoke(set_stopped_t, __as_receiver&&) noexcept {}
-        friend __empty_env tag_invoke(get_env_t, const __as_receiver&) {
+        friend empty_env tag_invoke(get_env_t, const __as_receiver&) {
           return {};
         }
       };
@@ -2387,7 +2388,7 @@ namespace stdexec {
       struct __receiver : __nope {};
       void tag_invoke(set_error_t, __receiver, std::exception_ptr) noexcept;
       void tag_invoke(set_stopped_t, __receiver) noexcept;
-      __empty_env tag_invoke(get_env_t, __receiver) noexcept;
+      empty_env tag_invoke(get_env_t, __receiver) noexcept;
     }
     using __not_a_receiver = __no::__receiver;
 
@@ -3431,7 +3432,7 @@ namespace stdexec {
         __make_dispatcher<__cust_sigs, __mconstructor_for<__sender_t>, _Sender, _Env>;
 
     struct split_t {
-      template <sender _Sender, class _Env = __empty_env>
+      template <sender _Sender, class _Env = empty_env>
           requires
             (copy_constructible<remove_cvref_t<_Sender>> &&
              sender_to<_Sender&, __receiver_t<_Sender, _Env>>) ||
@@ -3750,7 +3751,7 @@ namespace stdexec {
     };
 
     struct ensure_started_t {
-      template <sender _Sender, class _Env = __empty_env>
+      template <sender _Sender, class _Env = empty_env>
           requires
             (copy_constructible<remove_cvref_t<_Sender>> &&
              sender_to<_Sender&, __receiver_t<_Sender, _Env>>) ||
@@ -5407,7 +5408,7 @@ namespace stdexec {
               -> __completions_t<_Self, _Env>
                 requires true;
 
-          friend __empty_env tag_invoke(get_env_t, const __t& __self) noexcept {
+          friend empty_env tag_invoke(get_env_t, const __t& __self) noexcept {
             return {};
           }
 
@@ -5548,7 +5549,7 @@ namespace stdexec {
           friend auto tag_invoke(get_completion_signatures_t, __sender, _Env)
             -> __completions_t<_Env>;
 
-        friend __empty_env tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend empty_env tag_invoke(get_env_t, const __t& __self) noexcept {
           return {};
         }
       };

@@ -19,5 +19,5 @@
 namespace ex = stdexec;
 
 TEST_CASE("read returns empty env", "[factories][read]") {
-  check_env_type<ex::__empty_env>(ex::read(ex::get_allocator));
+  check_env_type<ex::empty_env>(ex::read(ex::get_allocator));
 }

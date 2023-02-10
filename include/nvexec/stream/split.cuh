@@ -25,7 +25,7 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace split {
-    using env_t = 
+    using env_t =
       make_stream_env_t<
         stdexec::__make_env_t<
           stdexec::__with<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>>;
@@ -47,9 +47,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         public:
           using __id = receiver_t;
 
-          template <stdexec::__one_of<stdexec::set_value_t, 
-                                      stdexec::set_error_t, 
-                                      stdexec::set_stopped_t> Tag, 
+          template <stdexec::__one_of<stdexec::set_value_t,
+                                      stdexec::set_error_t,
+                                      stdexec::set_stopped_t> Tag,
                     class... As>
             friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
               SharedState &state = self.sh_state_;
@@ -115,7 +115,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using inner_receiver_t = stdexec::__t<receiver_t<stdexec::__id<Sender>, sh_state_t>>;
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using enqueue_receiver_t = stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
-        using intermediate_receiver = 
+        using intermediate_receiver =
           stdexec::__t<
             std::conditional_t<
               stream_sender<Sender>,
@@ -131,7 +131,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         std::atomic<void*> head_{nullptr};
         unsigned int index_{0};
         variant_t *data_{nullptr};
-        task_t *task_{nullptr}; 
+        task_t *task_{nullptr};
         cudaEvent_t event_;
         inner_op_state_t op_state2_;
         ::cuda::std::atomic_flag started_{};
@@ -156,9 +156,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               stdexec::connect(
                 (Sender&&)sndr,
                 enqueue_receiver_t{
-                  make_env(), 
-                  data_, 
-                  task_, 
+                  make_env(),
+                  data_,
+                  task_,
                   context_state.hub_->producer()})) {
         }
 
@@ -295,14 +295,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       struct __t : stream_sender_base {
         using __id = split_sender_t;
         template <class Receiver>
-          using operation_t = 
+          using operation_t =
             stdexec::__t<split::operation_t<SenderId, stdexec::__id<std::remove_cvref_t<Receiver>>>>;
 
         Sender sndr_;
         std::shared_ptr<sh_state_> shared_state_;
 
         template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-            requires stdexec::receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::__empty_env>>
+            requires stdexec::receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::empty_env>>
           friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& recvr)
             noexcept(std::is_nothrow_constructible_v<std::decay_t<Receiver>, Receiver>)
             -> operation_t<Receiver> {
@@ -338,4 +338,3 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       };
     };
 }
-
