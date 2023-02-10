@@ -120,31 +120,32 @@ namespace exec
           }
       };
 
-    template <class _Receiver, class _ResultType> struct __receiver {
-      class __t {
-       public:
-        using __id = __receiver;
+    template <class _Receiver, class _ResultType> 
+      struct __receiver {
+        class __t {
+        public:
+          using __id = __receiver;
 
-        explicit __t(__op_base<_Receiver, _ResultType>* __op) noexcept : __op_{__op} {}
+          explicit __t(__op_base<_Receiver, _ResultType>* __op) noexcept : __op_{__op} {}
 
-       private:
-        __op_base<_Receiver, _ResultType>* __op_;
+        private:
+          __op_base<_Receiver, _ResultType>* __op_;
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO, class... _Args>
-            requires requires (_ResultType& result, _Args&&... __args) {
-              { result.template emplace<std::tuple<_CPO, std::decay_t<_Args>...>>(_CPO{}, (_Args&&) __args...) };
+          template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO, class... _Args>
+              requires requires (_ResultType& result, _Args&&... __args) {
+                { result.template emplace<std::tuple<_CPO, std::decay_t<_Args>...>>(_CPO{}, (_Args&&) __args...) };
+              }
+            friend void tag_invoke(_CPO, __t&& __self, _Args&&... __args) noexcept {
+              __self.__op_->notify(_CPO{}, (_Args &&) __args...);
             }
-          friend void tag_invoke(_CPO, __t&& __self, _Args&&... __args) noexcept {
-            __self.__op_->notify(_CPO{}, (_Args &&) __args...);
-          }
 
-        friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
-          using __with_token = __with<get_stop_token_t, in_place_stop_token>;
-          auto __token = __with_token{__self.__op_->__stop_source_.get_token()};
-          return __make_env(stdexec::get_env(__self.__op_->__receiver_), (__with_token &&) __token);
-        }
+          friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
+            using __with_token = __with<get_stop_token_t, in_place_stop_token>;
+            auto __token = __with_token{__self.__op_->__stop_source_.get_token()};
+            return __make_env(stdexec::get_env(__self.__op_->__receiver_), (__with_token &&) __token);
+          }
+        };
       };
-    };
 
     template <class _ReceiverId, class... _SenderIds>
       struct __op {
@@ -192,10 +193,10 @@ namespace exec
         
         template <class _Receiver>
           using __receiver_t = stdexec::__t<
-              __receiver<_Receiver,  __result_type_t<env_of_t<_Receiver>, _SenderIds...>>>;
+              __receiver<_Receiver, __result_type_t<env_of_t<_Receiver>, _SenderIds...>>>;
 
         template <class _Receiver>
-          using __op_t = __op<__id<decay_t<_Receiver>>, _SenderIds...>;
+          using __op_t = stdexec::__t<__op<__id<decay_t<_Receiver>>, _SenderIds...>>;
 
         class __t {
          public:
@@ -208,9 +209,8 @@ namespace exec
 
          private:
           template <__decays_to<__t> _Self, receiver _Receiver>
-              requires
-                (sender_to<
-                  __cvref_id<_Self, _SenderIds>,
+                requires (sender_to<
+                  __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>,
                   __receiver_t<_Receiver>> && ...)
             friend __op_t<_Receiver>
             tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) noexcept {
