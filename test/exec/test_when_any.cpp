@@ -15,7 +15,7 @@
  */
 
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
+#include <exec/when_any.hpp>
 #include <exec/single_thread_context.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
@@ -24,23 +24,20 @@
 
 namespace ex = stdexec;
 
-// For testing `when_all_with_variant`, we just check a couple of examples, check customization, and
-// we assume it's implemented in terms of `when_all`.
-
 TEST_CASE("when_ny returns a sender", "[adaptors][when_any]") {
-  auto snd = ex::__when_any(ex::just(3), ex::just(0.1415));
+  auto snd = exec::__when_any(ex::just(3), ex::just(0.1415));
   static_assert(ex::sender<decltype(snd)>);
   (void)snd;
 }
 
 TEST_CASE("when_any with environment returns a sender", "[adaptors][when_any]") {
-  auto snd = ex::__when_any(ex::just(3), ex::just(0.1415));
+  auto snd = exec::__when_any(ex::just(3), ex::just(0.1415));
   static_assert(ex::sender<decltype(snd), empty_env>);
   (void)snd;
 }
 
-TEST_CASE("when_any simple example", "[adaptors][when_all]") {
-  auto snd = ex::__when_any(ex::just(3.0));
+TEST_CASE("when_any simple example", "[adaptors][when_any]") {
+  auto snd = exec::__when_any(ex::just(3.0));
   auto snd1 = std::move(snd) | ex::then([](double y) { return y + 0.1415; });
   const double expected = 3.0 + 0.1415;
   auto op = ex::connect(std::move(snd1), expect_value_receiver{expected});
@@ -48,13 +45,13 @@ TEST_CASE("when_any simple example", "[adaptors][when_all]") {
 }
 
 TEST_CASE("when_any completes with only one sender", "[adaptors][when_any]") {
-  ex::sender auto snd = ex::__when_any( //
+  ex::sender auto snd = exec::__when_any( //
       completes_if{false} | ex::then([]{ return 1;  }),  //
       completes_if{true}  | ex::then([]{ return 42; })   //
   );
   wait_for_value(std::move(snd), 42);
 
-  ex::sender auto snd2 = ex::__when_any( //
+  ex::sender auto snd2 = exec::__when_any( //
       completes_if{true}   | ex::then([]{ return 1;  }),  //
       completes_if{false}  | ex::then([]{ return 42; })   //
   );
@@ -62,7 +59,7 @@ TEST_CASE("when_any completes with only one sender", "[adaptors][when_any]") {
 }
 
 TEST_CASE("when_any with move-only types", "[adaptors][when_any]") {
-  ex::sender auto snd = ex::__when_any( //
+  ex::sender auto snd = exec::__when_any( //
       completes_if{false} | ex::then([] { return movable(1); }),
       ex::just(movable(42))            //
   );
@@ -72,7 +69,7 @@ TEST_CASE("when_any with move-only types", "[adaptors][when_any]") {
 TEST_CASE("when_any forwards stop signal", "[adaptors][when_any]") {
   stopped_scheduler stop;
   int result = 42;
-  ex::sender auto snd = ex::__when_any( //
+  ex::sender auto snd = exec::__when_any( //
       completes_if{false},              //
       ex::schedule(stop)                //
   ) | ex::then([&result] { result += 1; });
@@ -82,8 +79,8 @@ TEST_CASE("when_any forwards stop signal", "[adaptors][when_any]") {
 
 TEST_CASE("nested when_any is stoppable", "[adaptors][when_any]") {
   int result = 41;
-  ex::sender auto snd = ex::__when_any(
-      ex::__when_any(completes_if{false}, completes_if{false}),
+  ex::sender auto snd = exec::__when_any(
+      exec::__when_any(completes_if{false}, completes_if{false}),
       completes_if{false},
       ex::just(),
       completes_if{false}
@@ -94,7 +91,7 @@ TEST_CASE("nested when_any is stoppable", "[adaptors][when_any]") {
 
 TEST_CASE("stop is forwarded", "[adaptors][when_any]") {
   int result = 41;
-  ex::sender auto snd = ex::__when_any(ex::just_stopped(), completes_if{false}) 
+  ex::sender auto snd = exec::__when_any(ex::just_stopped(), completes_if{false}) 
                       | ex::upon_stopped([&result] { result += 1; });
   ex::sync_wait(std::move(snd));
   REQUIRE(result == 42);
@@ -112,7 +109,7 @@ TEST_CASE("when_any is thread-safe", "[adaptors][when_any]") {
   int result = 41;
 
   ex::sender auto snd = 
-    ex::__when_any(sch1 | ex::let_value([] { return ex::__when_any(completes_if{false}); }),
+    exec::__when_any(sch1 | ex::let_value([] { return exec::__when_any(completes_if{false}); }),
                    sch2 | ex::let_value([] { return completes_if{false}; }),
                    sch3 | ex::then([&result] { result += 1; }),
                    completes_if{false});

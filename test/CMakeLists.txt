@@ -47,7 +47,6 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_bulk.cpp
     stdexec/algos/adaptors/test_split.cpp
     stdexec/algos/adaptors/test_when_all.cpp
-    stdexec/algos/adaptors/test_when_any.cpp
     stdexec/algos/adaptors/test_transfer_when_all.cpp
     stdexec/algos/adaptors/test_into_variant.cpp
     stdexec/algos/adaptors/test_stopped_as_optional.cpp
@@ -71,6 +70,7 @@ set(stdexec_test_sources
     exec/async_scope/test_spawn_future.cpp
     exec/async_scope/test_empty.cpp
     exec/async_scope/test_stop.cpp
+    exec/test_when_any.cpp
     exec/test_at_coroutine_exit.cpp
     )
 
