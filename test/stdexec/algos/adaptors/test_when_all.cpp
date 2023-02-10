@@ -369,5 +369,5 @@ TEST_CASE(
 }
 
 TEST_CASE("when_all returns empty env", "[adaptors][when_all]") {
-  check_env_type<ex::__empty_env>(ex::when_all(ex::just(), ex::just()));
+  check_env_type<ex::empty_env>(ex::when_all(ex::just(), ex::just()));
 }
