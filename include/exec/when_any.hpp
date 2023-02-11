@@ -58,9 +58,8 @@ namespace exec
 
     template <class _Env, class... _SenderIds>
       using __result_type_t =
-          __mapply<__transform<__q<__signature_to_tuple_t>,
-                              __mbind_front_q<std::variant, std::monostate>>,
-                  __completion_signatures_t<_Env, _SenderIds...>>;
+          __mapply<__transform<__q<__signature_to_tuple_t>, __q<std::variant>>,
+                   __completion_signatures_t<_Env, _SenderIds...>>;
 
 
     template <class _Variant, class... _Ts>
@@ -117,24 +116,25 @@ namespace exec
             // This relies on the fact that each sender will call notify() at most once
             if (__count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
               __on_stop_.reset();
+              if (!__result_) {
+                // TODO: can this happen? assert?
+                set_stopped((_Receiver &&) __receiver_);
+                return;
+              }
               std::visit(
                   [this]<class _Tuple>(_Tuple&& __result) {
-                    if constexpr (std::same_as<std::decay_t<_Tuple>, std::monostate>) {
+                    auto stop_token = get_stop_token(get_env(__receiver_));
+                    if (stop_token.stop_requested()) {
                       set_stopped((_Receiver &&) __receiver_);
-                    } else {
-                      auto stop_token = get_stop_token(get_env(__receiver_));
-                      if (stop_token.stop_requested()) {
-                        set_stopped((_Receiver &&) __receiver_);
-                        return;
-                      }
-                      std::apply(
-                          [this]<class _C, class... _As>(_C, _As&&... __args) noexcept {
-                            _C{}((_Receiver &&) __receiver_, (_As &&) __args...);
-                          },
-                          (_Tuple &&) __result);
+                      return;
                     }
+                    std::apply(
+                        [this]<class _C, class... _As>(_C, _As&&... __args) noexcept {
+                          _C{}((_Receiver &&) __receiver_, (_As &&) __args...);
+                        },
+                        (_Tuple &&) __result);
                   },
-                  (_ResultVariant &&) __result_);
+                  (_ResultVariant &&) *__result_);
             }
           }
       };
