@@ -39,6 +39,7 @@ namespace exec
           __t<_SenderId>, _Env,
           __minvoke<__mconcat<__q<completion_signatures>>,
                     __types<set_error_t(std::exception_ptr)>, // TODO: This should be conditionally added
+                    __types<set_stopped_t()>,
                     completion_signatures_of_t<__t<_SenderIds>, _Env>...>>
       __completion_signatures_(_Env*, _SenderId*, _SenderIds*...);
 
