@@ -65,12 +65,12 @@ namespace exec
     template <class _Variant, class... _Ts>
       concept __result_constructible_from =
         std::is_constructible_v<__decayed_tuple<_Ts...>, _Ts...> &&
-        std::is_constructible_v<_Variant, __decayed_tuple<_Ts...>>;
+        std::is_constructible_v<_Variant, __decayed_tuple<_Ts...>&&>;
 
     template <class _Variant, class... _Ts>
       concept __nothrow_result_constructible_from =
         std::is_nothrow_constructible_v<__decayed_tuple<_Ts...>, _Ts...> &&
-        std::is_nothrow_constructible_v<_Variant, __decayed_tuple<_Ts...>>;
+        std::is_nothrow_constructible_v<_Variant, __decayed_tuple<_Ts...>&&>;
 
     template <class _Receiver, class _ResultVariant>
       struct __op_base : __immovable {
@@ -105,8 +105,7 @@ namespace exec
                 try {
                   __result_.emplace(std::tuple{_CPO{}, (_Args &&) __args...});
                 } catch (...) {
-                  set_error((_Receiver &&) __receiver_, std::current_exception());
-                  return;
+                  __result_.emplace(set_error_t{}, std::current_exception());
                 }
               }
               // stop pending operations
@@ -116,11 +115,7 @@ namespace exec
             // This relies on the fact that each sender will call notify() at most once
             if (__count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
               __on_stop_.reset();
-              if (!__result_) {
-                // TODO: can this happen? assert?
-                set_stopped((_Receiver &&) __receiver_);
-                return;
-              }
+              STDEXEC_ASSERT(__result_.has_value());
               std::visit(
                   [this]<class _Tuple>(_Tuple&& __result) {
                     auto stop_token = get_stop_token(get_env(__receiver_));
