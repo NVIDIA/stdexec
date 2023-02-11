@@ -38,6 +38,7 @@ namespace exec
       make_completion_signatures<
           __t<_SenderId>, _Env,
           __minvoke<__mconcat<__q<completion_signatures>>,
+                    __types<set_error_t(std::exception_ptr)>, // TODO: This should be conditionally added
                     completion_signatures_of_t<__t<_SenderIds>, _Env>...>>
       __completion_signatures_(_Env*, _SenderId*, _SenderIds*...);
 
@@ -61,6 +62,20 @@ namespace exec
                   __completion_signatures_t<_Env, _SenderIds...>>;
 
 
+    template <class _Variant, class... _Ts>
+      concept __result_constructible_from =
+        std::is_constructible_v<__decayed_tuple<_Ts...>, _Ts...> &&
+        std::is_constructible_v<_Variant, __decayed_tuple<_Ts...>>;
+
+    template <class _Variant, class... _Ts>
+      concept __nothrow_result_constructible_from =
+        std::is_nothrow_constructible_v<__decayed_tuple<_Ts...>, _Ts...> &&
+        std::is_nothrow_constructible_v<_Variant, __decayed_tuple<_Ts...>>;
+
+    template <class T>
+      concept __nothrow_decay_copyable = std::is_nothrow_copy_constructible_v<T> &&
+        std::is_nothrow_copy_assignable_v<T>;
+
     template <class _Receiver, class _ResultVariant>
       struct __op_base : __immovable {
         __op_base(_Receiver&& __receiver, int __n_senders)
@@ -80,7 +95,7 @@ namespace exec
         std::atomic<int> __count_{};
 
         _Receiver __receiver_;
-        _ResultVariant __result_{};
+        std::optional<_ResultVariant> __result_{};
 
         template <class _CPO, class... _Args>
           void notify(_CPO, _Args&&... __args) noexcept {
@@ -88,8 +103,16 @@ namespace exec
             if (__emplaced_.compare_exchange_strong(__expect, true, std::memory_order_relaxed,
                                                     std::memory_order_relaxed)) {
               // This emplacement can happen only once
-              __result_.template emplace<std::tuple<_CPO, std::decay_t<_Args>...>>(
-                  _CPO{}, ((_Args &&) __args)...);
+              if constexpr (__nothrow_result_constructible_from<_ResultVariant, _CPO, _Args...>) {
+                __result_.emplace(std::tuple{_CPO{}, (_Args &&) __args...});
+              } else {
+                try {
+                  __result_.emplace(std::tuple{_CPO{}, (_Args &&) __args...});
+                } catch (...) {
+                  set_error((_Receiver &&) __receiver_, std::current_exception());
+                  return;
+                }
+              }
               // stop pending operations
               __stop_source_.request_stop();
             }
@@ -131,9 +154,7 @@ namespace exec
           __op_base<_Receiver, _ResultVariant>* __op_;
 
           template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO, class... _Args>
-              requires requires (_ResultVariant& result, _Args&&... __args) {
-                { result.template emplace<std::tuple<_CPO, std::decay_t<_Args>...>>(_CPO{}, (_Args&&) __args...) };
-              }
+              requires __result_constructible_from<_ResultVariant, _CPO, _Args...>
             friend void tag_invoke(_CPO, __t&& __self, _Args&&... __args) noexcept {
               __self.__op_->notify(_CPO{}, (_Args &&) __args...);
             }
@@ -156,9 +177,11 @@ namespace exec
 
         class __t : __op_base_t {
          public:
-          template <class _SendersTuple>
-            __t(_SendersTuple&& __senders, _Receiver&& __rcvr)
-            : __t{(_SendersTuple&&) __senders, (_Receiver &&) __rcvr,
+          template <class _SenderTuple>
+            __t(_SenderTuple&& __senders, _Receiver&& __rcvr)
+            noexcept(__nothrow_decay_copyable<_SenderTuple>
+                     && __nothrow_decay_copyable<_Receiver>)
+            : __t{(_SenderTuple&&) __senders, (_Receiver &&) __rcvr,
                   std::index_sequence_for<_SenderIds...>{}} {}
 
          private:
@@ -167,6 +190,8 @@ namespace exec
           template <class _SenderTuple, std::size_t... _Is>
             __t(_SenderTuple&& __senders, _Receiver&& __rcvr,
                 std::index_sequence<_Is...>)
+            noexcept(__nothrow_decay_copyable<_SenderTuple>
+                     && __nothrow_decay_copyable<_Receiver>)
             : __op_base_t{(_Receiver&&) __rcvr, static_cast<int>(sizeof...(_SenderIds))}
             , __ops_{__conv{[&__senders, this] {
                 return connect(std::get<_Is>((_SenderTuple&&) __senders), 
@@ -203,6 +228,7 @@ namespace exec
 
           template <class... _Senders>
             explicit(sizeof...(_Senders) == 1) __t(_Senders&&... __senders)
+            noexcept((__nothrow_decay_copyable<_Senders> && ...))
             : __senders_((_Senders&&) __senders...) {
             }
 
