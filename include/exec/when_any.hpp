@@ -73,10 +73,6 @@ namespace exec
         std::is_nothrow_constructible_v<__decayed_tuple<_Ts...>, _Ts...> &&
         std::is_nothrow_constructible_v<_Variant, __decayed_tuple<_Ts...>>;
 
-    template <class T>
-      concept __nothrow_decay_copyable = std::is_nothrow_copy_constructible_v<T> &&
-        std::is_nothrow_copy_assignable_v<T>;
-
     template <class _Receiver, class _ResultVariant>
       struct __op_base : __immovable {
         __op_base(_Receiver&& __receiver, int __n_senders)
