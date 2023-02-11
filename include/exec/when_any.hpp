@@ -182,8 +182,6 @@ namespace exec
                   std::index_sequence_for<_SenderIds...>{}} {}
 
          private:
-
-
           template <class _SenderTuple, std::size_t... _Is>
             __t(_SenderTuple&& __senders, _Receiver&& __rcvr,
                 std::index_sequence<_Is...>)
