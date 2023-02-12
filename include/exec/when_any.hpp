@@ -34,27 +34,32 @@ namespace exec
       using __env_t =
           __make_env_t<_BaseEnv, __with<get_stop_token_t, in_place_stop_token>>;
 
-    template <class _Env, class _SenderId, class... _SenderIds>
-      make_completion_signatures<
-          __t<_SenderId>, _Env,
-          __minvoke<__mconcat<__q<completion_signatures>>,
-                    __types<set_error_t(std::exception_ptr)>, // TODO: This should be conditionally added
-                    __types<set_stopped_t()>,
-                    completion_signatures_of_t<__t<_SenderIds>, _Env>...>>
-      __completion_signatures_(_Env*, _SenderId*, _SenderIds*...);
-
-    template <class _Env, class... _Senders>
-      using __completion_signatures_t = decltype(__completion_signatures_((_Env*)nullptr, (_Senders*)nullptr...));
-
     template <class _Ret, class... _Args>
       std::tuple<_Ret, _Args...> __signature_to_tuple_(_Ret(*)(_Args...));
 
     template <class _Sig>
-      using __signature_to_tuple =
+      using __signature_to_tuple_t =
         decltype(__signature_to_tuple_((_Sig*) nullptr));
 
-    template <class _Sig>
-      using __signature_to_tuple_t = __signature_to_tuple<_Sig>;
+    template <class _Env, class... _SenderIds>
+      using __all_nothrow_copy_constructible =
+          __mapply<__mall_of<__q<std::is_nothrow_copy_constructible>>,
+                   __mapply<__transform<__q<__signature_to_tuple_t>>,
+                            __minvoke<__mconcat<>, __completion_signatures_of_t<__t<_SenderIds>, _Env>...>>>;
+
+    template <class _Env, class _SenderId, class... _SenderIds>
+      make_completion_signatures<
+          __t<_SenderId>, _Env,
+          __minvoke<__mconcat<__q<completion_signatures>>,
+                    __if<__all_nothrow_copy_constructible<_Env, _SenderIds...>,
+                         __types<set_stopped_t()>,
+                         __types<set_stopped_t(), set_error_t(std::exception_ptr)>>,
+                    completion_signatures_of_t<__t<_SenderIds>, _Env>...>>
+      __completion_signatures_(_Env*, _SenderId*, _SenderIds*...);
+
+    template <class _Env, class... _Senders>
+      using __completion_signatures_t = 
+          decltype(__completion_signatures_((_Env*)nullptr, (_Senders*)nullptr...));
 
     template <class _Env, class... _SenderIds>
       using __result_type_t =
@@ -224,9 +229,9 @@ namespace exec
 
          private:
           template <__decays_to<__t> _Self, receiver _Receiver>
-                requires (sender_to<
-                  __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>,
-                  __receiver_t<_Receiver>> && ...)
+              requires (sender_to<
+                __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>,
+                __receiver_t<_Receiver>> && ...)
             friend __op_t<_Receiver>
             tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
             noexcept(std::is_nothrow_constructible_v<__op_t<_Receiver>, _Self&&, _Receiver&&>) {
