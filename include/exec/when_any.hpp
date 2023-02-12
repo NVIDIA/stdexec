@@ -120,14 +120,14 @@ namespace exec
             // This relies on the fact that each sender will call notify() at most once
             if (__count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
               __on_stop_.reset();
+              auto stop_token = get_stop_token(get_env(__receiver_));
+              if (stop_token.stop_requested()) {
+                set_stopped((_Receiver &&) __receiver_);
+                return;
+              }
               STDEXEC_ASSERT(__result_.has_value());
               std::visit(
                   [this]<class _Tuple>(_Tuple&& __result) {
-                    auto stop_token = get_stop_token(get_env(__receiver_));
-                    if (stop_token.stop_requested()) {
-                      set_stopped((_Receiver &&) __receiver_);
-                      return;
-                    }
                     std::apply(
                         [this]<class _C, class... _As>(_C, _As&&... __args) noexcept {
                           _C{}((_Receiver &&) __receiver_, (_As &&) __args...);
