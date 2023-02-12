@@ -171,8 +171,8 @@ namespace exec
          public:
           template <class _SenderTuple>
             __t(_SenderTuple&& __senders, _Receiver&& __rcvr)
-            noexcept(__nothrow_decay_copyable<_SenderTuple>
-                     && __nothrow_decay_copyable<_Receiver>)
+            noexcept(__nothrow_decay_copyable<_Receiver> && 
+                    (__nothrow_connectable<stdexec::__t<_SenderIds>, __receiver_t> && ...))
             : __t{(_SenderTuple&&) __senders, (_Receiver &&) __rcvr,
                   std::index_sequence_for<_SenderIds...>{}} {}
 
@@ -180,8 +180,8 @@ namespace exec
           template <class _SenderTuple, std::size_t... _Is>
             __t(_SenderTuple&& __senders, _Receiver&& __rcvr,
                 std::index_sequence<_Is...>)
-            noexcept(__nothrow_decay_copyable<_SenderTuple>
-                     && __nothrow_decay_copyable<_Receiver>)
+            noexcept(__nothrow_decay_copyable<_Receiver> && 
+                    (__nothrow_connectable<stdexec::__t<_SenderIds>, __receiver_t> && ...))
             : __op_base_t{(_Receiver&&) __rcvr, static_cast<int>(sizeof...(_SenderIds))}
             , __ops_{__conv{[&__senders, this] {
                 return connect(std::get<_Is>((_SenderTuple&&) __senders), 
@@ -228,7 +228,8 @@ namespace exec
                   __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>,
                   __receiver_t<_Receiver>> && ...)
             friend __op_t<_Receiver>
-            tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) noexcept {
+            tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+            noexcept(std::is_nothrow_constructible_v<__op_t<_Receiver>, _Self&&, _Receiver&&>) {
               return __op_t<_Receiver>{((_Self&&) __self).__senders_, (_Receiver&&) __rcvr};
             }
 
