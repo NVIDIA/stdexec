@@ -79,3 +79,12 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 
   // CHECK(tag{}(get_env(ref)) == 42);
 }
+
+
+TEST_CASE("any sender is a sender", "[types][any_sender]") {
+
+  using Sigs = completion_signatures<set_value_t()>;
+  __any::__sender::__sender<Sigs, __types<>, __types<>> sender = stdexec::just();
+
+  // CHECK(tag{}(get_env(ref)) == 42);
+}

@@ -5940,7 +5940,7 @@ namespace stdexec {
         template <class _T>
             requires __callable<__create_vtable_t<_Vtable>, __type<_T>>
           __t(_T&& __object)
-          : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable, __delete_t(void(*)())>}
+          : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable, __delete_t(void(*)() noexcept)>}
           {
             using _ValueType = decay_t<_T>;
             using _Alloc = typename 
@@ -5955,6 +5955,24 @@ namespace stdexec {
             }
             __object_pointer_ = __pointer;
           }
+
+        template <class _T, class... Args>
+        __t(std::in_place_type_t<_T>, Args&&... __args)
+        : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable, __delete_t(void(*)() noexcept)>}
+        {
+            using _ValueType = decay_t<_T>;
+            using _Alloc = typename 
+                std::allocator_traits<_Allocator>::template rebind_alloc<_ValueType>;
+            _Alloc __alloc{__allocator_};
+            _ValueType* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
+            try {
+              std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (Args&&) __args...);
+            } catch (...) {
+              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
+              throw;
+            }
+            __object_pointer_ = __pointer;
+        }
 
         __t(const __t&) = delete;
         __t& operator=(const __t&) = delete;
@@ -5975,7 +5993,7 @@ namespace stdexec {
 
         void __reset() noexcept {
           if (__vtable_) {
-            (*__vtable_)(__delete, *this, __object_pointer_);
+            (*__vtable_)(__delete, this);
             __object_pointer_ = nullptr;
             __vtable_ = nullptr;
           }
@@ -5996,9 +6014,9 @@ namespace stdexec {
                 std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
             if (__self.__object_pointer_) {
               _Alloc __alloc{__self.__allocator_};
-              std::allocator_traits<_Alloc>::destroy(__alloc, __self.__object_pointer_);
-              std::allocator_traits<_Alloc>::deallocate(__alloc, __self.__object_pointer_, 1);
-              __self.__object_pointer_ = nullptr;
+              _T* __pointer = reinterpret_cast<_T*>(std::exchange(__self.__object_pointer_, nullptr));
+              std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
+              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
             }
           }
 
@@ -6039,6 +6057,24 @@ namespace stdexec {
             }
             __object_pointer_ = __pointer;
           }
+
+        template <class _T, class... Args>
+        __t(std::in_place_type_t<_T>, Args&&... __args)
+        : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable, __delete_t(void(*)() noexcept)>}
+        {
+            using _ValueType = decay_t<_T>;
+            using _Alloc = typename 
+                std::allocator_traits<_Allocator>::template rebind_alloc<_ValueType>;
+            _Alloc __alloc{__allocator_};
+            _ValueType* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
+            try {
+              std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (Args&&) __args...);
+            } catch (...) {
+              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
+              throw;
+            }
+            __object_pointer_ = __pointer;
+        }
 
         __t(const __t& __other) {
           (*__other.__vtable_)(__copy_construct, this, __other);
@@ -6216,6 +6252,7 @@ namespace stdexec {
           constexpr void (*operator()() const noexcept)(void*) noexcept {
             return +[](void* __object_pointer) noexcept -> void {
               _Op& __op = *static_cast<_Op*>(__object_pointer);
+              static_assert(operation_state<_Op>);
               start(__op);
             };
           }
@@ -6233,7 +6270,7 @@ namespace stdexec {
         }
 
       template <class _Sigs, class _Queries>
-        using __receiver_ref = __mapply<__mbind_front<__uncurry<__q<__rec::__ref>>, _Sigs>, _Queries>;
+        using __receiver_ref = __mbind_front<__uncurry<__q<__rec::__ref>>, _Sigs>;
 
       template <class _Sender, class _Receiver, typename _Queries>
         class __operation : __immovable {
@@ -6268,7 +6305,7 @@ namespace stdexec {
 
       template <class _Sigs, class _ReceiverQueries>
         struct __sender_vtable {
-          using __receiver_ref = __mapply<__mbind_front<__uncurry<__q<__rec::__ref>>, _Sigs>, _ReceiverQueries>;
+          using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _ReceiverQueries>;
           __unique_operation_storage (*__connect_)(void*, __receiver_ref);
           __unique_operation_storage operator()(connect_t, void* __sender, __receiver_ref __receiver) const {
             return __connect_(__sender, __receiver);
@@ -6278,13 +6315,15 @@ namespace stdexec {
       template <class _Sender, class _ReceiverQueries>
       struct __sender_vtable_fn {
         using _Sigs = completion_signatures_of_t<_Sender>;
-        using __receiver_ref = __mapply<__mbind_front<__uncurry<__q<__rec::__ref>>, _Sigs>, _ReceiverQueries>;
+        using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _ReceiverQueries>;
         constexpr __unique_operation_storage
-        (*operator()() const noexcept)(void*, __receiver_ref)
-        noexcept {
+        (*operator()() const noexcept)(void*, __receiver_ref) {
           return +[](void* __object_pointer, __receiver_ref __receiver) -> __unique_operation_storage {
             _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
-            return connect(__sender, __receiver);
+            static_assert(receiver_of<__receiver_ref, _Sigs>);
+            using __op_state_t = connect_result_t<_Sender, __receiver_ref>;
+            return __unique_operation_storage{std::in_place_type<__op_state_t>, 
+                __conv{[&] { return connect((_Sender&&)__sender, (__receiver_ref&&)__receiver); }}};
           };
         }
       };
