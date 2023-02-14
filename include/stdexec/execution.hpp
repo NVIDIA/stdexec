@@ -5888,7 +5888,7 @@ namespace stdexec {
         }
 
     template <class _Storage, class _T, class _ParentVTable, class... _StorageCPOs>
-      static const __storage_vtable<_ParentVTable, _StorageCPOs...>
+      inline constexpr __storage_vtable<_ParentVTable, _StorageCPOs...>
         __storage_vtbl {
           {*__create_vtable<_ParentVTable>(__mtype<_T>{})},
           {__storage_vfun_fn<_Storage, _T>{}((_StorageCPOs*) nullptr)}...
@@ -5923,7 +5923,7 @@ namespace stdexec {
         template <class _T>
           static constexpr bool __is_small = sizeof(_T) <= __buffer_size && alignof(_T) <= __alignment;
 
-        using __vtable_t = std::conditional_t<_Copyable, 
+        using __vtable_t = __if_c<_Copyable, 
             __storage_vtable<_Vtable, __with_delete, __with_move, __with_copy>, 
             __storage_vtable<_Vtable, __with_delete, __with_move>>;
 
@@ -5942,7 +5942,7 @@ namespace stdexec {
         __t() = default;
 
         template <__none_of<__t&, const __t&> _T>
-            requires tag_invocable<__create_vtable_t<_Vtable>, __mtype<_T>>
+            // requires tag_invocable<__create_vtable_t<_Vtable>, __mtype<std::decay_t<_T>>>
           __t(_T&& __object)
           : __vtable_{__get_vtable<_T>()}
           {
@@ -6001,7 +6001,7 @@ namespace stdexec {
        private:
         template <class _T, class... _As>
           void __construct_small(_As&&... __args) {
-            static_assert(sizeof(_T) <= __buffer_size);
+            static_assert(sizeof(_T) <= __buffer_size && alignof(_T) <= __alignment);
             _T* __pointer = static_cast<_T*>(static_cast<void*>(&__buffer_[0]));
             using _Alloc = typename  std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
             _Alloc __alloc{__allocator_};
