@@ -5987,7 +5987,7 @@ namespace stdexec {
 
        private:
         template <class _T, class... _As>
-          void __construct_small(_As&&... __args...) {
+          void __construct_small(_As&&... __args) {
             static_assert(sizeof(_T) <= __buffer_size);
             _T* __pointer = static_cast<_T*>(static_cast<void*>(&__buffer_[0]));
             using _Alloc = typename  std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
