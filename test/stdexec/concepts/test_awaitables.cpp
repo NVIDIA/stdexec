@@ -111,7 +111,7 @@ void test_awaitable_sender1(Signatures*, Awaiter&&) {
 void test_awaitable_sender2() {
   static_assert(ex::sender<awaitable_sender_2>);
   static_assert(sender_with_env<awaitable_sender_2>);
-  static_assert(!ex::sender<awaitable_sender_2, ex::empty_env>);
+  static_assert(!ex::sender_in<awaitable_sender_2, ex::empty_env>);
 
   static_assert(ex::__awaitable<awaitable_sender_2>);
   static_assert(ex::__awaitable<awaitable_sender_2, promise<__coro::suspend_always>>);
@@ -127,7 +127,7 @@ void test_awaitable_sender2() {
 void test_awaitable_sender3() {
   static_assert(ex::sender<awaitable_sender_3>);
   static_assert(sender_with_env<awaitable_sender_3>);
-  static_assert(!ex::sender<awaitable_sender_3, ex::empty_env>);
+  static_assert(!ex::sender_in<awaitable_sender_3, ex::empty_env>);
 
   static_assert(ex::__awaiter<awaiter>);
   static_assert(ex::__awaitable<awaitable_sender_3>);
@@ -145,7 +145,7 @@ template <class Signatures>
 void test_awaitable_sender4(Signatures*) {
   static_assert(ex::sender<awaitable_sender_4>);
   static_assert(sender_with_env<awaitable_sender_4>);
-  static_assert(ex::sender<awaitable_sender_4, ex::empty_env>);
+  static_assert(ex::sender_in<awaitable_sender_4, ex::empty_env>);
 
   static_assert(ex::__awaiter<awaiter>);
   static_assert(!ex::__awaitable<awaitable_sender_4>);
@@ -172,7 +172,7 @@ template <class Signatures>
 void test_awaitable_sender5(Signatures*) {
   static_assert(ex::sender<awaitable_sender_5>);
   static_assert(sender_with_env<awaitable_sender_5>);
-  static_assert(ex::sender<awaitable_sender_5, ex::empty_env>);
+  static_assert(ex::sender_in<awaitable_sender_5, ex::empty_env>);
 
   static_assert(ex::__awaiter<awaiter>);
   static_assert(!ex::__awaitable<awaitable_sender_5>);
@@ -232,19 +232,8 @@ struct awaitable_with_get_env {
 
 TEST_CASE("get_env for awaitables", "[sndtraits][awaitables]") {
   check_env_type<ex::empty_env>(awaitable_sender_1<awaiter>{});
-#if 0
-  // NOT TO SPEC: Until we clean up all R5 sender support from stdexec
-  // (specifically, the backwards compatibility layer for R5 senders
-  // to satisfy get_env related requirements), get_env on dependent
-  // awaitables return a const ref to self.
   check_env_type<ex::empty_env>(awaitable_sender_2{});
   check_env_type<ex::empty_env>(awaitable_sender_3{});
-#else
-  // Delete these two lines when removing all remnants of R5 sender
-  // support.
-  check_env_type<const awaitable_sender_2&>(awaitable_sender_2{});
-  check_env_type<const awaitable_sender_3&>(awaitable_sender_3{});
-#endif
   check_env_type<awaitable_env>(awaitable_with_get_env<awaiter>{});
 }
 

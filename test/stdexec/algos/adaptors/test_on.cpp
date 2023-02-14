@@ -34,7 +34,7 @@ TEST_CASE("on returns a sender", "[adaptors][on]") {
 }
 TEST_CASE("on with environment returns a sender", "[adaptors][on]") {
   auto snd = ex::on(inline_scheduler{}, ex::just(13));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("on simple example", "[adaptors][on]") {
@@ -220,6 +220,7 @@ struct move_checking_inline_scheduler {
   };
 
   struct my_sender {
+    using is_sender = void;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <typename R>

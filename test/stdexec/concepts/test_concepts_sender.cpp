@@ -73,6 +73,7 @@ struct oper {
 };
 
 struct my_sender0 {
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<             //
       ex::set_value_t(),                   //
@@ -87,7 +88,7 @@ struct my_sender0 {
 };
 TEST_CASE("type w/ proper types, is a sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender0>);
-  REQUIRE(ex::sender<my_sender0, empty_env>);
+  REQUIRE(ex::sender_in<my_sender0, empty_env>);
 
   REQUIRE(ex::sender_of<my_sender0, ex::set_value_t()>);
   REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr)>);
@@ -102,6 +103,7 @@ TEST_CASE(
 }
 
 struct my_sender_int {
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<             //
       ex::set_value_t(int),                //
@@ -117,7 +119,7 @@ struct my_sender_int {
 
 TEST_CASE("my_sender_int is a sender", "[concepts][sender]") {
   REQUIRE(ex::sender<my_sender_int>);
-  REQUIRE(ex::sender<my_sender_int, empty_env>);
+  REQUIRE(ex::sender_in<my_sender_int, empty_env>);
   REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
   REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int), empty_env>);
 }
@@ -150,6 +152,7 @@ TEST_CASE("can query completion signatures for a typed sender that sends int", "
 }
 
 struct multival_sender {
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<      //
       ex::set_value_t(int, double), //
@@ -171,6 +174,7 @@ TEST_CASE("check completion signatures for sender that advertises multiple sets 
 }
 
 struct ec_sender {
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<             //
       ex::set_value_t(),                   //
@@ -190,6 +194,7 @@ TEST_CASE("check completion signatures for sender that also supports error codes
   REQUIRE(ex::sender_of<ec_sender, ex::set_value_t()>);
 }
 struct my_r5_sender0 {
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<             //
       ex::set_value_t(),                   //
@@ -221,7 +226,7 @@ template <ex::sender T>
 sender_no_env_tag test_subsumption(T&&) {
   return {};
 }
-template <ex::sender<empty_env> T>
+template <ex::sender_in<empty_env> T>
 sender_env_tag test_subsumption(T&&) {
   return {};
 }

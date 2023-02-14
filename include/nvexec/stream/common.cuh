@@ -33,8 +33,8 @@
 namespace nvexec {
 
   enum class stream_priority {
-    high, 
-    normal, 
+    high,
+    normal,
     low
   };
 
@@ -99,13 +99,13 @@ namespace nvexec {
       return std::make_pair(0, cudaSuccess);
     }
 
-    inline std::pair<cudaStream_t, cudaError_t> 
+    inline std::pair<cudaStream_t, cudaError_t>
     create_stream_with_priority(stream_priority priority) {
       cudaStream_t stream{};
       cudaError_t status{cudaSuccess};
 
       if (priority == stream_priority::normal) {
-        status = 
+        status =
           STDEXEC_DBG_ERR(cudaStreamCreate(&stream));
       } else {
         int cuda_priority{};
@@ -115,7 +115,7 @@ namespace nvexec {
           return std::make_pair(cudaStream_t{}, status);
         }
 
-        status = 
+        status =
           STDEXEC_DBG_ERR(cudaStreamCreateWithPriority(&stream, cudaStreamDefault, cuda_priority));
       }
 
@@ -123,7 +123,9 @@ namespace nvexec {
     }
 
     struct stream_scheduler;
-    struct stream_sender_base {};
+    struct stream_sender_base {
+      using is_sender = void;
+    };
     struct stream_receiver_base { constexpr static std::size_t memory_allocation_size = 0; };
     struct stream_env_base { cudaStream_t stream_; };
 
@@ -181,7 +183,7 @@ namespace nvexec {
         using BaseEnv = stdexec::__t<BaseEnvId>;
         BaseEnv base_env_;
 
-        template <class Tag, 
+        template <class Tag,
                   stdexec::same_as<stream_env> Self,
                   class... As>
             requires stdexec::__callable<Tag, const BaseEnv&, As...>
@@ -202,7 +204,7 @@ namespace nvexec {
         using BaseEnv = stdexec::__t<BaseEnvId>;
         BaseEnv base_env_;
 
-        template <stdexec::__none_of<get_stream_t> Tag, 
+        template <stdexec::__none_of<get_stream_t> Tag,
                   stdexec::same_as<terminal_stream_env> Self,
                   class... As>
             requires stdexec::__callable<Tag, const BaseEnv&, As...>
@@ -305,7 +307,7 @@ namespace nvexec {
         std::pmr::memory_resource *pinned_resource_{};
         cudaError_t status_{cudaSuccess};
 
-        continuation_task_t(Receiver receiver, Variant* variant, cudaStream_t stream, std::pmr::memory_resource *pinned_resource) noexcept 
+        continuation_task_t(Receiver receiver, Variant* variant, cudaStream_t stream, std::pmr::memory_resource *pinned_resource) noexcept
           : receiver_{receiver}
           , variant_{variant}
           , stream_{stream}
@@ -367,7 +369,7 @@ namespace nvexec {
           std::optional<cudaStream_t> own_stream_{};
           bool defer_stream_destruction_{false};
 
-          __t(outer_receiver_t receiver, 
+          __t(outer_receiver_t receiver,
               context_state_t context_state,
               bool defer_stream_destruction)
             : context_state_(context_state)
@@ -419,7 +421,7 @@ namespace nvexec {
       };
 
     template <class OuterReceiverId>
-      using operation_state_base_t = 
+      using operation_state_base_t =
         stdexec::__t<operation_state_base_<OuterReceiverId>>;
 
     template <class OuterReceiverId>
@@ -536,10 +538,10 @@ namespace nvexec {
 
     template <class CvrefSender, class OuterReceiver>
         requires stream_receiver<OuterReceiver>
-      using exit_operation_state_t 
+      using exit_operation_state_t
         = operation_state_t<
             stdexec::__cvref_id<CvrefSender, std::remove_cvref_t<CvrefSender>>,
-            stdexec::__id<stdexec::__t<propagate_receiver_t<stdexec::__id<OuterReceiver>>>>, 
+            stdexec::__id<stdexec::__t<propagate_receiver_t<stdexec::__id<OuterReceiver>>>>,
             stdexec::__id<OuterReceiver>>;
 
     template <class Sender, class OuterReceiver>
@@ -547,8 +549,8 @@ namespace nvexec {
       exit_op_state(Sender&& sndr, OuterReceiver&& rcvr, context_state_t context_state) noexcept {
         using ReceiverId = stdexec::__id<OuterReceiver>;
         return exit_operation_state_t<Sender, OuterReceiver>(
-          (Sender&&)sndr, 
-          (OuterReceiver&&)rcvr, 
+          (Sender&&)sndr,
+          (OuterReceiver&&)rcvr,
           [](operation_state_base_t<ReceiverId>& op) -> stdexec::__t<propagate_receiver_t<ReceiverId>> {
             return stdexec::__t<propagate_receiver_t<ReceiverId>>{{}, op};
           },
@@ -567,7 +569,7 @@ namespace nvexec {
       concept receiver_with_stream_env =
         stdexec::receiver<R> &&
         requires (const R& rcvr) {
-          { stdexec::get_scheduler(stdexec::get_env(rcvr)).context_state_ } -> 
+          { stdexec::get_scheduler(stdexec::get_env(rcvr)).context_state_ } ->
             stdexec::__decays_to<context_state_t>;
         };
 
@@ -593,7 +595,7 @@ namespace nvexec {
           inner_receiver_t<ReceiverProvider, OuterReceiver>,
           OuterReceiver>(
             (Sender&&)sndr,
-            (OuterReceiver&&)out_receiver, 
+            (OuterReceiver&&)out_receiver,
             receiver_provider,
             context_state);
       }
@@ -609,10 +611,9 @@ namespace nvexec {
           inner_receiver_t<ReceiverProvider, OuterReceiver>,
           OuterReceiver>(
             (Sender&&)sndr,
-            (OuterReceiver&&)out_receiver, 
-            receiver_provider, 
+            (OuterReceiver&&)out_receiver,
+            receiver_provider,
             context_state);
       }
   }
 }
-

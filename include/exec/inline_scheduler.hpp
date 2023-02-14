@@ -35,6 +35,7 @@ namespace exec {
       };
 
     struct __sender {
+      using is_sender = void;
       using completion_signatures =
         stdexec::completion_signatures<
           stdexec::set_value_t(),

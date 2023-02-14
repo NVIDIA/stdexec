@@ -38,7 +38,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     // What should sync_wait(just_stopped()) return?
     template <class Sender>
-        requires stdexec::sender<Sender, __env>
+        requires stdexec::sender_in<Sender, __env>
       using sync_wait_result_t =
         stdexec::value_types_of_t<
           Sender,
@@ -128,7 +128,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           (!stdexec::__tag_invocable_with_completion_scheduler<
             sync_wait_t, stdexec::set_value_t, Sender>) &&
           (!stdexec::tag_invocable<sync_wait_t, Sender>) &&
-          stdexec::sender<Sender, __env> &&
+          stdexec::sender_in<Sender, __env> &&
           stdexec::__receiver_from<receiver_t<Sender>, Sender>
       auto operator()(context_state_t context_state, Sender&& __sndr) const
         -> std::optional<sync_wait_result_t<Sender>> {

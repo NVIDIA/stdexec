@@ -58,7 +58,7 @@ namespace exec
       __completion_signatures_(_Env*, _SenderId*, _SenderIds*...);
 
     template <class _Env, class... _Senders>
-      using __completion_signatures_t = 
+      using __completion_signatures_t =
           decltype(__completion_signatures_((_Env*)nullptr, (_Senders*)nullptr...));
 
     template <class _Env, class... _SenderIds>
@@ -139,7 +139,7 @@ namespace exec
           }
       };
 
-    template <class _Receiver, class _ResultVariant> 
+    template <class _Receiver, class _ResultVariant>
       struct __receiver {
         class __t {
         public:
@@ -176,7 +176,7 @@ namespace exec
          public:
           template <class _SenderTuple>
             __t(_SenderTuple&& __senders, _Receiver&& __rcvr)
-            noexcept(__nothrow_decay_copyable<_Receiver> && 
+            noexcept(__nothrow_decay_copyable<_Receiver> &&
                     (__nothrow_connectable<stdexec::__t<_SenderIds>, __receiver_t> && ...))
             : __t{(_SenderTuple&&) __senders, (_Receiver &&) __rcvr,
                   std::index_sequence_for<_SenderIds...>{}} {}
@@ -185,11 +185,11 @@ namespace exec
           template <class _SenderTuple, std::size_t... _Is>
             __t(_SenderTuple&& __senders, _Receiver&& __rcvr,
                 std::index_sequence<_Is...>)
-            noexcept(__nothrow_decay_copyable<_Receiver> && 
+            noexcept(__nothrow_decay_copyable<_Receiver> &&
                     (__nothrow_connectable<stdexec::__t<_SenderIds>, __receiver_t> && ...))
             : __op_base_t{(_Receiver&&) __rcvr, static_cast<int>(sizeof...(_SenderIds))}
             , __ops_{__conv{[&__senders, this] {
-                return connect(std::get<_Is>((_SenderTuple&&) __senders), 
+                return connect(std::get<_Is>((_SenderTuple&&) __senders),
                               __receiver_t{static_cast<__op_base_t*>(this)});
               }}...} {}
 
@@ -209,7 +209,7 @@ namespace exec
 
     template <class... _SenderIds>
       struct __sender {
-        
+
         template <class _Receiver>
           using __receiver_t = stdexec::__t<
               __receiver<_Receiver, __result_type_t<env_of_t<_Receiver>, _SenderIds...>>>;
@@ -220,6 +220,7 @@ namespace exec
         class __t {
          public:
           using __id = __sender;
+          using is_sender = void;
 
           template <class... _Senders>
             explicit(sizeof...(_Senders) == 1) __t(_Senders&&... __senders)
@@ -249,7 +250,7 @@ namespace exec
           std::tuple<stdexec::__t<_SenderIds>...> __senders_;
         };
       };
-  
+
     struct __when_any_t {
       template <class... _Senders>
         using __sender_t = __t<__sender<__id<decay_t<_Senders>>...>>;

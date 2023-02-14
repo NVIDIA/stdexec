@@ -32,7 +32,7 @@ TEST_CASE("when_ny returns a sender", "[adaptors][when_any]") {
 
 TEST_CASE("when_any with environment returns a sender", "[adaptors][when_any]") {
   auto snd = exec::when_any(ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 
@@ -91,7 +91,7 @@ TEST_CASE("nested when_any is stoppable", "[adaptors][when_any]") {
 
 TEST_CASE("stop is forwarded", "[adaptors][when_any]") {
   int result = 41;
-  ex::sender auto snd = exec::when_any(ex::just_stopped(), completes_if{false}) 
+  ex::sender auto snd = exec::when_any(ex::just_stopped(), completes_if{false})
                       | ex::upon_stopped([&result] { result += 1; });
   ex::sync_wait(std::move(snd));
   REQUIRE(result == 42);
@@ -108,7 +108,7 @@ TEST_CASE("when_any is thread-safe", "[adaptors][when_any]") {
 
   int result = 41;
 
-  ex::sender auto snd = 
+  ex::sender auto snd =
     exec::when_any(sch1 | ex::let_value([] { return exec::when_any(completes_if{false}); }),
                    sch2 | ex::let_value([] { return completes_if{false}; }),
                    sch3 | ex::then([&result] { result += 1; }),

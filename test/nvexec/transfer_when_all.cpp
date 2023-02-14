@@ -37,7 +37,7 @@ TEST_CASE("transfer_when_all with environment returns a sender",
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
   auto snd = ex::transfer_when_all(gpu, ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 
@@ -86,7 +86,7 @@ TEST_CASE("transfer_when_all_with_variant with environment returns a sender",
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
   auto snd = ex::transfer_when_all_with_variant(gpu, ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 

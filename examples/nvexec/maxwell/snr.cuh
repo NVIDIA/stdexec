@@ -37,7 +37,7 @@ namespace nvexec {
     return false;
   }
 }
-#endif 
+#endif
 
 #include <optional>
 #include <exec/inline_scheduler.hpp>
@@ -164,7 +164,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& receiver, std::size_t n)
           : operation_state_base_t<ReceiverId>(
-              (Receiver&&)receiver, 
+              (Receiver&&)receiver,
               stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(pred_sender)).context_state_,
               false)
           , pred_sender_{(PredSender&&)pred_sender}
@@ -177,7 +177,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
       };
   }
-} 
+}
 #endif
 
 namespace repeat_n_detail {
@@ -219,7 +219,7 @@ namespace repeat_n_detail {
       using Closure = stdexec::__t<ClosureId>;
       using Receiver = stdexec::__t<ReceiverId>;
 
-      using inner_op_state_t = 
+      using inner_op_state_t =
         stdexec::connect_result_t<Sender, receiver_t<operation_state_t>>;
 
       inner_op_state_t op_state_;
@@ -246,6 +246,7 @@ struct repeat_n_t {
     struct repeat_n_sender_t {
       using Sender = stdexec::__t<SenderId>;
       using Closure = stdexec::__t<ClosureId>;
+      using is_sender = void;
 
       using completion_signatures = stdexec::completion_signatures<
         stdexec::set_value_t(),
@@ -274,7 +275,7 @@ struct repeat_n_t {
         requires (stdexec::tag_invocable<stdexec::connect_t, Sender, Receiver>) &&
                  (nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
       friend auto
-      tag_invoke(stdexec::connect_t, Self &&self, Receiver &&r) 
+      tag_invoke(stdexec::connect_t, Self &&self, Receiver &&r)
         -> nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>> {
         return nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>>(
           (Sender&&)self.sender_,
@@ -349,7 +350,7 @@ void run_snr(float dt,
   time_storage_t time{is_gpu_scheduler(computer)};
   fields_accessor accessor = grid.accessor();
 
-  auto init = ex::just() 
+  auto init = ex::just()
             | exec::on(computer, ex::bulk(grid.cells, grid_initializer(dt, accessor)));
   stdexec::sync_wait(init);
 
@@ -365,4 +366,3 @@ void run_snr(float dt,
                      scheduler_name,
                      [&snd] { stdexec::sync_wait(std::move(snd)); });
 }
-

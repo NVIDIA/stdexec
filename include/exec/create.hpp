@@ -58,6 +58,7 @@ namespace exec {
     template <class _Fun, class _ArgsId, class... _Sigs>
       struct __sender {
         using _Args = __t<_ArgsId>;
+        using is_sender = void;
         using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
         _Fun __fun_;

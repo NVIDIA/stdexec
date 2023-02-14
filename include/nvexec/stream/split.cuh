@@ -289,6 +289,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   template <class SenderId>
     struct split_sender_t {
+      using is_sender = void;
       using Sender = stdexec::__t<SenderId>;
       using sh_state_ = split::sh_state_t<Sender>;
 

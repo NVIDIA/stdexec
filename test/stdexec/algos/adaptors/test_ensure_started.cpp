@@ -35,7 +35,7 @@ TEST_CASE("ensure_started returns a sender", "[adaptors][ensure_started]") {
 
 TEST_CASE("ensure_started with environment returns a sender", "[adaptors][ensure_started]") {
   auto snd = ex::ensure_started(ex::just(19));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 

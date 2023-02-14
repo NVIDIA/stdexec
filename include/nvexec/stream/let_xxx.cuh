@@ -43,7 +43,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       };
 
     template <class _Sender, class _Receiver, class _Fun, class _SetTag>
-        requires stdexec::sender<_Sender, stdexec::env_of_t<_Receiver>>
+        requires stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>>
       struct __max_sender_size {
         template <class... _As>
           struct __sender_size_for_ {
@@ -60,7 +60,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using __op_state_for =
         stdexec::__mcompose<
           stdexec::__mbind_back_q<
-            stdexec::connect_result_t, 
+            stdexec::connect_result_t,
             stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>>>>,
           __result_sender<_Fun>>;
 
@@ -96,7 +96,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         struct __t : public stream_receiver_base {
           using __id = __receiver_;
 
-          constexpr static std::size_t memory_allocation_size = 
+          constexpr static std::size_t memory_allocation_size =
             stdexec::__v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
 
           template <stdexec::__one_of<_Let> _Tag, class... _As>
@@ -164,10 +164,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             stdexec::__q<stdexec::__decayed_tuple>,
             stdexec::__munique<
               stdexec::__mbind_front_q<
-                __receiver_, 
+                __receiver_,
                 _SenderId,
-                _ReceiverId, 
-                _Fun, 
+                _ReceiverId,
+                _Fun,
                 _Let>>>>;
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
@@ -198,7 +198,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         STDEXEC_IMMOVABLE(__operation);
 
         _Fun __fun_;
-        
+
         __op_state_variant_t __op_state3_;
       };
   } // namespace let_xxx
@@ -268,4 +268,3 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       };
     };
 }
-

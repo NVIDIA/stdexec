@@ -286,6 +286,7 @@ namespace exec {
 
         struct __t {
           using __id = _Derived;
+          using is_sender = void;
           _Sender __sndr_;
           _Kernel __kernel_;
 

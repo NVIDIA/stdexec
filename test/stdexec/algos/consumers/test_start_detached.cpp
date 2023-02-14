@@ -81,6 +81,7 @@ TEST_CASE("start_detached works when changing threads", "[consumers][start_detac
 }
 
 struct custom_sender {
+  using is_sender = void;
   bool* called;
 
   template <class Receiver>

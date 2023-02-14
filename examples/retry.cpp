@@ -23,6 +23,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
 struct fail_some {
+  using is_sender = void;
   using completion_signatures =
     stdexec::completion_signatures<
       stdexec::set_value_t(int),
