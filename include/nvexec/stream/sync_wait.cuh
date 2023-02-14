@@ -104,7 +104,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             rcvr.loop_->finish();
           }
 
-          friend stdexec::__empty_env
+          friend stdexec::empty_env
           tag_invoke(stdexec::get_env_t, const __t& rcvr) noexcept {
             return {};
           }

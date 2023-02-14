@@ -30,12 +30,18 @@ using namespace std::chrono_literals;
 
 TEST_CASE("split returns a sender", "[adaptors][split]") {
   auto snd = ex::split(ex::just(19));
-  static_assert(ex::sender<decltype(snd)>);
+  using Snd = decltype(snd);
+  static_assert(ex::enable_sender<Snd>);
+  static_assert(ex::sender<Snd>);
+  static_assert(ex::same_as<ex::env_of_t<Snd>, empty_env>);
   (void)snd;
 }
 TEST_CASE("split with environment returns a sender", "[adaptors][split]") {
   auto snd = ex::split(ex::just(19));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  using Snd = decltype(snd);
+  static_assert(ex::enable_sender<Snd>);
+  static_assert(ex::sender<Snd, empty_env>);
+  static_assert(ex::same_as<ex::env_of_t<Snd>, empty_env>);
   (void)snd;
 }
 TEST_CASE("split simple example", "[adaptors][split]") {
@@ -72,7 +78,7 @@ TEST_CASE("split executes predecessor sender once", "[adaptors][split]") {
 TEST_CASE("split passes lvalue references", "[adaptors][split]") {
   auto split = ex::split(ex::just(42));
   using split_t = decltype(split);
-  using value_t = ex::value_types_of_t<split_t, stdexec::__empty_env, std::tuple>;
+  using value_t = ex::value_types_of_t<split_t, stdexec::empty_env, std::tuple>;
   static_assert(std::is_same_v<value_t, std::variant<std::tuple<const int&>>>);
 
   auto then = split | ex::then([] (const int &cval) {
@@ -93,7 +99,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
   {
     auto split = ex::split(ex::just_error(std::exception_ptr{}));
     using split_t = decltype(split);
-    using error_t = ex::error_types_of_t<split_t, stdexec::__empty_env, std::variant>;
+    using error_t = ex::error_types_of_t<split_t, stdexec::empty_env, std::variant>;
     static_assert(std::is_same_v<error_t, std::variant<const std::exception_ptr&>>);
 
     auto op = ex::connect(split, expect_error_receiver{});
@@ -105,7 +111,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
   {
     auto split = ex::split(ex::just_error(42));
     using split_t = decltype(split);
-    using error_t = ex::error_types_of_t<split_t, stdexec::__empty_env, std::variant>;
+    using error_t = ex::error_types_of_t<split_t, stdexec::empty_env, std::variant>;
     static_assert(std::is_same_v<error_t, std::variant<const std::exception_ptr&, const int&>>);
 
     auto op = ex::connect(split, expect_error_receiver<int>{});
@@ -115,7 +121,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
 TEST_CASE("split forwards stop signal", "[adaptors][split]") {
   auto split = ex::split(ex::just_stopped());
   using split_t = decltype(split);
-  static_assert(ex::sends_stopped<split_t, stdexec::__empty_env>);
+  static_assert(ex::sends_stopped<split_t, stdexec::empty_env>);
 
   auto op = ex::connect(split, expect_stopped_receiver{});
   ex::start(op);
@@ -359,7 +365,7 @@ TEST_CASE("split into then", "[adaptors][split]") {
 }
 TEMPLATE_TEST_CASE("split move-only and copyable senders", "[adaptors][split]", move_only_type, copy_and_movable_type) {
   int called = 0;
-  auto multishot = 
+  auto multishot =
       ex::just(TestType(10)) |
       ex::then([&](TestType obj) { ++called; return TestType(obj.val+1); }) |
       ex::split();
@@ -420,27 +426,4 @@ TEST_CASE("split can nest", "[adaptors][split]") {
   REQUIRE( v1 == 1 );
   REQUIRE( v2 == 2 );
   REQUIRE( v3 == 1 );
-}
-TEST_CASE("split advertises completion scheduler via its ", "[adaptors][split]") {
-  inline_scheduler sched;
-
-  auto snd = ex::transfer_just(sched, 42) | ex::split();
-  using snd_t = decltype(snd);
-  static_assert(stdexec::__has_completion_scheduler<snd_t, ex::set_value_t>);
-  static_assert(!stdexec::__has_completion_scheduler<snd_t, ex::set_error_t>);
-  static_assert(stdexec::__has_completion_scheduler<snd_t, ex::set_stopped_t>);
-  (void)snd;
-}
-TEST_CASE("split copies  of input sender", "[adaptors][split]") {
-  auto sndr_env = value_env{100};
-  auto snd = just_with_env<value_env, move_only_type>{sndr_env, move_only_type{0}} | ex::split();
-  static_assert(std::same_as<decltype(ex::get_env(snd)), const value_env&>);
-  CHECK(ex::get_env(snd).value == 100);
-  sndr_env.value = 99;
-  CHECK(ex::get_env(snd).value == 100);
-
-  auto snd2 = ex::then(snd, [](const move_only_type&) { });
-  static_assert(std::same_as<decltype(ex::get_env(snd2)), const value_env&>);
-  CHECK(ex::get_env(snd).value == 100);
-  CHECK(ex::get_env(snd2).value == 100);
 }
