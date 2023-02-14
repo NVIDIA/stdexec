@@ -6040,9 +6040,9 @@ namespace stdexec {
             }
             const _T& __other_object = *static_cast<const _T*>(__other.__object_pointer_); 
             if constexpr (__is_small<_T>) {
-              __self.__construct_small<_T>(__other_object);
+              __self.template __construct_small<_T>(__other_object);
             } else {
-              __self.__construct_large<_T>(__other_object);
+              __self.template __construct_large<_T>(__other_object);
             }
             __self.__vtable_ = __other.__vtable_;
           }
