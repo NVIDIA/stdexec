@@ -120,7 +120,7 @@ namespace exec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-        friend __empty_env tag_invoke(get_env_t, const __when_empty_sender& __self) noexcept {
+        friend empty_env tag_invoke(get_env_t, const __when_empty_sender& __self) noexcept {
           return {};
         }
       };
@@ -226,7 +226,7 @@ namespace exec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-        friend __empty_env tag_invoke(get_env_t, const __nest_sender& __self) noexcept {
+        friend empty_env tag_invoke(get_env_t, const __nest_sender& __self) noexcept {
           return {};
         }
       };
@@ -576,7 +576,7 @@ namespace exec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv)
             -> __completions_t<_Self>;
 
-        friend __empty_env tag_invoke(get_env_t, const __future& __self) noexcept {
+        friend empty_env tag_invoke(get_env_t, const __future& __self) noexcept {
           return {};
         }
 
@@ -676,7 +676,7 @@ namespace exec {
           return nest_result_t<_Constrained>{&__impl_, (_Constrained&&) __c};
         }
 
-      template <__movable_value _Env = __empty_env, sender<__env_t<_Env>> _Sender>
+      template <__movable_value _Env = empty_env, sender<__env_t<_Env>> _Sender>
           requires sender_to<nest_result_t<_Sender>, __spawn_receiver_t<_Env>>
         void spawn(_Sender&& __sndr, _Env __env = {}) {
           using __op_t = __spawn_operation_t<nest_result_t<_Sender>, _Env>;
@@ -686,7 +686,7 @@ namespace exec {
           stdexec::start(*new __op_t{nest((_Sender&&) __sndr), (_Env&&) __env, &__impl_});
         }
 
-      template <__movable_value _Env = __empty_env, sender<__env_t<_Env>> _Sender>
+      template <__movable_value _Env = empty_env, sender<__env_t<_Env>> _Sender>
         __future_t<_Sender, _Env> spawn_future(_Sender&& __sndr, _Env __env = {}) {
           using __state_t = __future_state<nest_result_t<_Sender>, _Env>;
           auto __state =

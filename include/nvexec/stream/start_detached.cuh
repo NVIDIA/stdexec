@@ -30,7 +30,7 @@ struct detached_receiver_t : stream_receiver_base {
     std::terminate();
   }
   friend void tag_invoke(stdexec::set_stopped_t, detached_receiver_t&&) noexcept {}
-  friend stdexec::__empty_env tag_invoke(stdexec::get_env_t, const detached_receiver_t&) noexcept {
+  friend stdexec::empty_env tag_invoke(stdexec::get_env_t, const detached_receiver_t&) noexcept {
     return {};
   }
 };

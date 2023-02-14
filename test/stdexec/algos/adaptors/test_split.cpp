@@ -69,7 +69,7 @@ TEST_CASE("split executes predecessor sender once", "[adaptors][split]") {
 TEST_CASE("split passes lvalue references", "[adaptors][split]") {
   auto split = ex::split(ex::just(42));
   using split_t = decltype(split);
-  using value_t = ex::value_types_of_t<split_t, stdexec::__empty_env, std::tuple>;
+  using value_t = ex::value_types_of_t<split_t, stdexec::empty_env, std::tuple>;
   static_assert(std::is_same_v<value_t, std::variant<std::tuple<const int&>>>);
 
   auto then = split | ex::then([] (const int &cval) {
@@ -90,7 +90,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
   {
     auto split = ex::split(ex::just_error(std::exception_ptr{}));
     using split_t = decltype(split);
-    using error_t = ex::error_types_of_t<split_t, stdexec::__empty_env, std::variant>;
+    using error_t = ex::error_types_of_t<split_t, stdexec::empty_env, std::variant>;
     static_assert(std::is_same_v<error_t, std::variant<const std::exception_ptr&>>);
 
     auto op = ex::connect(split, expect_error_receiver{});
@@ -102,7 +102,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
   {
     auto split = ex::split(ex::just_error(42));
     using split_t = decltype(split);
-    using error_t = ex::error_types_of_t<split_t, stdexec::__empty_env, std::variant>;
+    using error_t = ex::error_types_of_t<split_t, stdexec::empty_env, std::variant>;
     static_assert(std::is_same_v<error_t, std::variant<const std::exception_ptr&, const int&>>);
 
     auto op = ex::connect(split, expect_error_receiver<int>{});
@@ -112,7 +112,7 @@ TEST_CASE("split forwards errors", "[adaptors][split]") {
 TEST_CASE("split forwards stop signal", "[adaptors][split]") {
   auto split = ex::split(ex::just_stopped());
   using split_t = decltype(split);
-  static_assert(ex::sends_stopped<split_t, stdexec::__empty_env>);
+  static_assert(ex::sends_stopped<split_t, stdexec::empty_env>);
 
   auto op = ex::connect(split, expect_stopped_receiver{});
   ex::start(op);
