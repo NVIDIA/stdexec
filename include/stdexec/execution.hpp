@@ -17,6 +17,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <cstddef>
 #include <concepts>
 #include <condition_variable>
 #include <stdexcept>
@@ -5736,16 +5737,13 @@ namespace stdexec {
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 
   namespace __any {
-    template <class T>
-    struct __type{};
-
     template <class _VTable>
       struct __create_vtable_t {
         template <class _T>
-            requires __tag_invocable_r<const _VTable*, __create_vtable_t, __type<_T>> 
-          constexpr const _VTable* operator()(__type<_T>) const noexcept 
+            requires __tag_invocable_r<const _VTable*, __create_vtable_t, __mtype<_T>> 
+          constexpr const _VTable* operator()(__mtype<_T>) const noexcept 
           {
-            return tag_invoke(__create_vtable_t{}, __type<_T>{});
+            return tag_invoke(__create_vtable_t{}, __mtype<_T>{});
           }
       };
 
@@ -5813,35 +5811,35 @@ namespace stdexec {
     template <class _Storage, class _T>
       struct __storage_vfun_fn {
         template <class _Tag, class... _As>
-            requires __callable<_Tag, __type<_T>, _Storage&, _As...>
+            requires __callable<_Tag, __mtype<_T>, _Storage&, _As...>
           constexpr void (*operator()(_Tag(*)(void(*)(_As...))) const noexcept)(void*, _As...) {
           return +[](void* __storage, _As... __as) -> void {
-            return _Tag{}(__type<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
+            return _Tag{}(__mtype<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
           };
         }
         template <class _Tag, class... _As>
-            requires __callable<_Tag, __type<_T>, _Storage&, _As...>
+            requires __callable<_Tag, __mtype<_T>, _Storage&, _As...>
           constexpr void (*operator()(_Tag(*)(void(*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
           return +[](void* __storage, _As... __as) noexcept -> void {
-            static_assert(__nothrow_callable<_Tag, __type<_T>, _Storage&, _As...>);
-            return _Tag{}(__type<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
+            static_assert(__nothrow_callable<_Tag, __mtype<_T>, _Storage&, _As...>);
+            return _Tag{}(__mtype<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
           };
         }
       };
 
     struct __get_vtable_t {
-      template <class Storage>
-          requires tag_invocable<__get_vtable_t, const Storage&>
-        const auto operator()(const Storage& __storage) const noexcept {
+      template <class _Storage>
+          requires tag_invocable<__get_vtable_t, const _Storage&>
+        const auto operator()(const _Storage& __storage) const noexcept {
           return tag_invoke(__get_vtable_t{}, __storage);
         }
     };
     inline constexpr __get_vtable_t __get_vtable{};
 
     struct __get_object_pointer_t {
-      template <class Storage>
-          requires __tag_invocable_r<void*, __get_object_pointer_t, const Storage&>
-        void* operator()(const Storage& __storage) const noexcept {
+      template <class _Storage>
+          requires __tag_invocable_r<void*, __get_object_pointer_t, const _Storage&>
+        void* operator()(const _Storage& __storage) const noexcept {
           return tag_invoke(__get_object_pointer_t{}, __storage);
         }
     };
@@ -5849,18 +5847,18 @@ namespace stdexec {
 
     struct __delete_t {
       template <class _Storage, class _T>
-          // requires tag_invocable<__delete_t, __type<_T>, _Storage&>
-        void operator()(__type<_T>, _Storage& __storage) noexcept {
-          tag_invoke(__delete_t{}, __type<_T>{}, __storage);
+          requires tag_invocable<__delete_t, __mtype<_T>, _Storage&>
+        void operator()(__mtype<_T>, _Storage& __storage) noexcept {
+          tag_invoke(__delete_t{}, __mtype<_T>{}, __storage);
         }
     };
     inline constexpr __delete_t __delete{};
 
     struct __copy_construct_t {
       template <class _Storage, class _T>
-          requires tag_invocable<__copy_construct_t, __type<_T>, _Storage&,  const _Storage&>
-        void operator()(__type<_T>, _Storage& __self, const _Storage& __from) noexcept {
-          tag_invoke(__copy_construct_t{}, __type<_T>{}, __self, __from);
+          requires tag_invocable<__copy_construct_t, __mtype<_T>, _Storage&,  const _Storage&>
+        void operator()(__mtype<_T>, _Storage& __self, const _Storage& __from) noexcept {
+          tag_invoke(__copy_construct_t{}, __mtype<_T>{}, __self, __from);
         }
     };
     inline constexpr __copy_construct_t __copy_construct{};
@@ -5874,112 +5872,100 @@ namespace stdexec {
     template <class _Storage, class _T, class _ParentVTable, class... _StorageCPOs>
       inline constexpr __storage_vtable<_ParentVTable, _StorageCPOs...>
         __storage_vtbl {
-          {*__create_vtable<_ParentVTable>(__type<_T>{})},
+          {*__create_vtable<_ParentVTable>(__mtype<_T>{})},
           {__storage_vfun_fn<_Storage, _T>{}((_StorageCPOs*) nullptr)}...
         };
 
-    struct __ref_storage {
-      template <class _VTableRef>
+    template <class _Allocator,
+              bool _Copyable = false,
+              std::size_t _Alignment = alignof(std::max_align_t), 
+              std::size_t _InlineSize = 3*sizeof(void*)>
+    struct __basic_storage {
+      template <class _Vtable>
         struct __storage {
           class __t;
         };
     };
 
     template <class _Allocator = std::allocator<std::byte>>
-      struct __unique_storage {
-        template <class _VTableRef>
-          struct __storage {
-            class __t;
-          };
-      };
+      using __unique_storage = __basic_storage<_Allocator>;
 
     template <class _Allocator = std::allocator<std::byte>>
-      struct __copyable_storage {
-        template <class _VTableRef>
-          struct __storage {
-            class __t;
-          };
-      };
+      using __copyable_storage = __basic_storage<_Allocator, true>;
 
-    template <class _Vtable>
-      class __ref_storage::__storage<_Vtable>::__t {
-        using __vtable_t = __storage_vtable<_Vtable, __delete_t(void(*)() noexcept)>;
-       public:
-        using __id = __ref_storage;
-
-        __t() = default;
+    template <class _Allocator, bool _Copyable, std::size_t _Alignment, std::size_t _InlineSize>
+    template <class _Vtable> 
+      class __basic_storage<_Allocator, _Copyable, _Alignment, _InlineSize>::__storage<_Vtable>::__t {
+        static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
+        static constexpr std::size_t __alignment = std::max(_Alignment, alignof(void*));
+        using __with_copy = __copy_construct_t(void(*)(const __t&));
+        using __with_delete = __delete_t(void(*)() noexcept);
 
         template <class _T>
-            requires __callable<__create_vtable_t<_Vtable>, __type<_T>>
-          __t(_T&& __object)
-          : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable>}
-          , __object_pointer_{std::addressof(__object)} {}
+          static constexpr bool __is_small = sizeof(_T) <= __buffer_size && alignof(_T) <= __alignment;
 
-       private:
-        friend const _Vtable* tag_invoke(__get_vtable_t, const __t& __self) noexcept {
-          return __self.__vtable_;
-        }
-
-        friend void* tag_invoke(__get_object_pointer_t, const __t& __self) noexcept {
-          return __self.__object_pointer_;
-        }
-
-        const __vtable_t* __vtable_{nullptr};
-        void* __object_pointer_{nullptr};
-      };
-
-    template <class _Allocator>
-    template <class _Vtable>
-      class __unique_storage<_Allocator>::__storage<_Vtable>::__t {
-        using __vtable_t = __storage_vtable<_Vtable, __delete_t(void(*)() noexcept)>;
-       public:
-        using __id = __unique_storage;
-
-        __t() = default;
+        using __vtable_t = std::conditional_t<_Copyable, 
+            __storage_vtable<_Vtable, __with_delete, __with_copy>, 
+            __storage_vtable<_Vtable, __with_delete>>;
 
         template <class _T>
-            requires __callable<__create_vtable_t<_Vtable>, __type<_T>>
-          __t(_T&& __object)
-          : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable, __delete_t(void(*)() noexcept)>}
-          {
-            using _ValueType = decay_t<_T>;
-            using _Alloc = typename 
-                std::allocator_traits<_Allocator>::template rebind_alloc<_ValueType>;
-            _Alloc __alloc{__allocator_};
-            _ValueType* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
-            try {
-              std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (_T&&) __object);
-            } catch (...) {
-              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-              throw;
+          static constexpr const __vtable_t* __get_vtable() noexcept {
+            if constexpr (_Copyable) {
+              return &__storage_vtbl<__t, decay_t<_T>, _Vtable, __with_delete, __with_copy>;
+            } else {
+              return &__storage_vtbl<__t, decay_t<_T>, _Vtable, __with_delete>;
             }
-            __object_pointer_ = __pointer;
           }
 
-        template <class _T, class... Args>
-        __t(std::in_place_type_t<_T>, Args&&... __args)
-        : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable, __delete_t(void(*)() noexcept)>}
-        {
-            using _ValueType = decay_t<_T>;
-            using _Alloc = typename 
-                std::allocator_traits<_Allocator>::template rebind_alloc<_ValueType>;
-            _Alloc __alloc{__allocator_};
-            _ValueType* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
-            try {
-              std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (Args&&) __args...);
-            } catch (...) {
-              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-              throw;
+       public:
+        using __id = __basic_storage;
+
+        __t() = default;
+
+        template <class _T>
+            requires __callable<__create_vtable_t<_Vtable>, __mtype<_T>>
+          __t(_T&& __object)
+          : __vtable_{__get_vtable<_T>()}
+          {
+            using _D = decay_t<_T>;
+            if constexpr (__is_small<_D>) {
+              __construct_small<_D>((_T&&) __object);
+            } else {
+              __construct_large<_D>((_T&&) __object);
             }
-            __object_pointer_ = __pointer;
+          }
+
+        template <class _T, class... _Args>
+            requires (__callable<__create_vtable_t<_Vtable>, __mtype<_T>>)
+          __t(std::in_place_type_t<_T>, _Args&&... __args)
+          : __vtable_{__get_vtable<_T>()}
+          {
+            if constexpr (__is_small<_T>) {
+              __construct_small<_T>((_Args&&) __args...);
+            } else {
+              __construct_large<_T>((_Args&&) __args...);
+            }
+          }
+
+        __t(const __t&) requires (!_Copyable) = delete;
+        __t& operator=(const __t&) requires (!_Copyable) = delete;
+
+        __t(const __t& __other) requires (_Copyable) {
+          (*__other.__vtable_)(__copy_construct, this, __other);
         }
 
-        __t(const __t&) = delete;
-        __t& operator=(const __t&) = delete;
+        __t& operator=(const __t& __other) requires (_Copyable) {
+          (*__other.__vtable_)(__copy_construct, this, __other);
+          return *this;
+        }
 
         __t(__t&& other) noexcept
         : __vtable_{std::exchange(other.__vtable_, nullptr)}
-        , __object_pointer_{std::exchange(other.__vtable_, nullptr)} {}
+        , __object_pointer_{std::exchange(other.__vtable_, nullptr)}
+        , __allocator_{other.__allocator_}
+        {
+
+        }
 
         __t& operator=(__t&& other) noexcept {
           __vtable_= std::exchange(other.__vtable_, nullptr);
@@ -6000,154 +5986,70 @@ namespace stdexec {
         }
 
        private:
-        friend const _Vtable* tag_invoke(__get_vtable_t, const __t& __self) noexcept {
-          return __self.__vtable_;
-        }
-
-        friend void* tag_invoke(__get_object_pointer_t, const __t& __self) noexcept {
-          return __self.__object_pointer_;
-        }
-
-        template <class _T>
-          friend void tag_invoke(__delete_t, __type<_T>, __t& __self) noexcept {
-            using _Alloc = typename 
-                std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
-            if (__self.__object_pointer_) {
-              _Alloc __alloc{__self.__allocator_};
-              _T* __pointer = reinterpret_cast<_T*>(std::exchange(__self.__object_pointer_, nullptr));
-              std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
-              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-            }
-          }
-
-        const __vtable_t* __vtable_{nullptr};
-        void* __object_pointer_{nullptr};
-        [[no_unique_address]] _Allocator __allocator_{};
-      };
-
-    template <class _Allocator>
-    template <class _Vtable>
-      class __copyable_storage<_Allocator>::__storage<_Vtable>::__t {
-        using __vtable_t = __storage_vtable<_Vtable,
-            __delete_t(void(*)() noexcept),
-            __copy_construct_t(void(*)(const __t& other))>;
-       public:
-        using __id = __copyable_storage;
-
-        __t() = default;
-
-        template <__none_of<__t&, const __t&> _T>
-            requires (__callable<__create_vtable_t<_Vtable>, __type<std::decay_t<_T>>> &&
-                      std::is_copy_constructible_v<std::decay_t<_T>>)
-          __t(_T&& __object)
-          : __vtable_(&__storage_vtbl<__t, decay_t<_T>, _Vtable, 
-                                      __delete_t(void(*)() noexcept),
-                                      __copy_construct_t(void(*)(const __t& other))>)
-          {
-            using _ValueType = decay_t<_T>;
-            using _Alloc = typename 
-                std::allocator_traits<_Allocator>::template rebind_alloc<_ValueType>;
+        template <class _T, class... _As>
+          void __construct_small(_As&&... __args...) {
+            static_assert(sizeof(_T) <= __buffer_size);
+            _T* __pointer = static_cast<_T*>(static_cast<void*>(&__buffer_[0]));
+            using _Alloc = typename  std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
             _Alloc __alloc{__allocator_};
-            _ValueType* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
-            try {
-              std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (_T&&) __object);
-            } catch (...) {
-              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-              throw;
-            }
+            std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (_As&&) __args...);
             __object_pointer_ = __pointer;
           }
 
-        template <class _T, class... Args>
-        __t(std::in_place_type_t<_T>, Args&&... __args)
-        : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable, __delete_t(void(*)() noexcept)>}
-        {
-            using _ValueType = decay_t<_T>;
-            using _Alloc = typename 
-                std::allocator_traits<_Allocator>::template rebind_alloc<_ValueType>;
+        template <class _T, class... _As>
+          void __construct_large(_As&&... __args) {
+            using _Alloc = typename  std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
             _Alloc __alloc{__allocator_};
-            _ValueType* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
-            try {
-              std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (Args&&) __args...);
-            } catch (...) {
-              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-              throw;
-            }
-            __object_pointer_ = __pointer;
-        }
-
-        __t(const __t& __other) {
-          (*__other.__vtable_)(__copy_construct, this, __other);
-        }
-
-        __t& operator=(const __t& __other) {
-          (*__other.__vtable_)(__copy_construct, this, __other);
-          return *this;
-        }
-
-        __t(__t&& other) noexcept
-        : __vtable_{std::exchange(other.__vtable_, nullptr)}
-        , __object_pointer_{std::exchange(other.__vtable_, nullptr)} {}
-
-        __t& operator=(__t&& other) noexcept {
-          __vtable_= std::exchange(other.__vtable_, nullptr);
-          __object_pointer_ = std::exchange(other.__vtable_, nullptr);
-          return *this;
-        }
-
-        ~__t() {
-          __reset();
-        }
-
-        void __reset() noexcept {
-          if (__vtable_) {
-            (*__vtable_)(__delete, this);
-            __object_pointer_ = nullptr;
-            __vtable_ = nullptr;
-          }
-        }
-
-       private:
-        friend const _Vtable* tag_invoke(__get_vtable_t, const __t& __self) noexcept {
-          return __self.__vtable_;
-        }
-
-        friend void* tag_invoke(__get_object_pointer_t, const __t& __self) noexcept {
-          return __self.__object_pointer_;
-        }
-
-        template <class _T>
-          friend void tag_invoke(__delete_t, __type<_T>, __t& __self) noexcept {
-            using _Alloc = typename 
-                std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
-            if (__self.__object_pointer_) {
-              _Alloc __alloc{__self.__allocator_};
-              _T* __pointer = reinterpret_cast<_T*>(std::exchange(__self.__object_pointer_, nullptr));
-              std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
-              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-            }
-          }
-
-        template <class _T>
-          friend void tag_invoke(__copy_construct_t, __type<_T>, __t& __self, const __t& __other) {
-            using _Alloc = typename 
-                std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
-            _Alloc __alloc{__self.__allocator_};
             _T* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
             try {
-              std::allocator_traits<_Alloc>::construct(
-                  __alloc, __pointer,  *reinterpret_cast<const _T*>(__other.__object_pointer_));
-              __self.__reset();
-              __self.__object_pointer_ = __pointer;
-              __self.__vtable_ = __other.__vtable_;
+              std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (_As&&) __args...);
             } catch (...) {
               std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
               throw;
             }
+            __object_pointer_ = __pointer;
+          }
+
+        friend const _Vtable* tag_invoke(__get_vtable_t, const __t& __self) noexcept {
+          return __self.__vtable_;
+        }
+
+        friend void* tag_invoke(__get_object_pointer_t, const __t& __self) noexcept {
+          return __self.__object_pointer_;
+        }
+
+        template <class _T>
+          friend void tag_invoke(__delete_t, __mtype<_T>, __t& __self) noexcept {
+            if (!__self.__object_pointer_) { 
+              return;
+            }
+            using _Alloc = typename  std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
+            _Alloc __alloc{__self.__allocator_};
+            _T* __pointer = static_cast<_T*>(std::exchange(__self.__object_pointer_, nullptr));
+            std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
+            if (!__is_small<_T>) {
+              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
+            }
+          }
+
+        template <class _T>
+          friend void tag_invoke(__copy_construct_t, __mtype<_T>, __t& __self, const __t& __other) {
+            __self.__reset();
+            if (!__other.__object_pointer_) {
+              return;
+            }
+            const _T& __other_object = *static_cast<const _T*>(__other.__object_pointer_); 
+            if constexpr (__is_small<_T>) {
+              __self.__construct_small<_T>(__other_object);
+            } else {
+              __self.__construct_large<_T>(__other_object);
+            }
+            __self.__vtable_ = __other.__vtable_;
           }
 
         const __vtable_t* __vtable_{nullptr};
         void* __object_pointer_{nullptr};
+        alignas(_Alignment) std::byte __buffer_[_InlineSize]{};
         [[no_unique_address]] _Allocator __allocator_{};
       };
 
@@ -6199,7 +6101,7 @@ namespace stdexec {
           requires receiver_of<_Rcvr, _Sigs> &&
                 (__callable<__query_vfun_fn<_Rcvr>, _Queries*> &&...)
         constexpr const __vtable<_Sigs, _Queries...>*
-        tag_invoke(__create_vtable_t<__vtable<_Sigs, _Queries...>>, __type<_Rcvr>) noexcept {
+        tag_invoke(__create_vtable_t<__vtable<_Sigs, _Queries...>>, __mtype<_Rcvr>) noexcept {
           return &__vtbl<_Rcvr, _Sigs, _Queries...>;
         }
 
@@ -6240,34 +6142,38 @@ namespace stdexec {
     } // __rec
 
     namespace __sender {
+      struct __operation_vtable;
+      
+      template <class _Op>
+        constexpr const __operation_vtable* __op_vtbl_();
+
       struct __operation_vtable {
         void (*__start_)(void*) noexcept;
         void operator()(start_t, void* __op) const noexcept {
           __start_(__op);
         }
+       private:
+        template <class _Op>
+          friend constexpr const __operation_vtable*
+          tag_invoke(__create_vtable_t<__operation_vtable>, __mtype<_Op>) noexcept {
+            return __op_vtbl_<_Op>();
+          }
       };
 
       template <class _Op>
-        struct __operation_vtable_fn {
-          constexpr void (*operator()() const noexcept)(void*) noexcept {
-            return +[](void* __object_pointer) noexcept -> void {
-              _Op& __op = *static_cast<_Op*>(__object_pointer);
-              static_assert(operation_state<_Op>);
-              start(__op);
-            };
-          }
-        };
+      inline constexpr __operation_vtable __op_vtbl{[](void* __object_pointer) noexcept -> void {
+        _Op& __op = *static_cast<_Op*>(__object_pointer);
+        static_assert(operation_state<_Op>);
+        start(__op);
+      }};
 
-      using __unique_operation_storage = __storage_t<__unique_storage<>, __operation_vtable>;
 
       template <class _Op>
-        inline constexpr __operation_vtable __op_vtbl{__operation_vtable_fn<_Op>{}()};
-
-      template <class _Op>
-        constexpr const __operation_vtable*
-        tag_invoke(__create_vtable_t<__operation_vtable>, __type<_Op>) noexcept {
+        constexpr const __operation_vtable* __op_vtbl_() {
           return &__op_vtbl<_Op>;
         }
+
+      using __unique_operation_storage = __storage_t<__unique_storage<>, __operation_vtable>;
 
       template <class _Sigs, class _Queries>
         using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
@@ -6334,7 +6240,7 @@ namespace stdexec {
 
       template <class _Sigs, class _Queries, class _Sender>
         constexpr const __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>*
-        tag_invoke(__create_vtable_t<__sender_vtable<_Sigs, _Queries>>, __type<_Sender>) noexcept {
+        tag_invoke(__create_vtable_t<__sender_vtable<_Sigs, _Queries>>, __mtype<_Sender>) noexcept {
           return &__sender_vtbl<_Sender, _Queries>;
         }
 
