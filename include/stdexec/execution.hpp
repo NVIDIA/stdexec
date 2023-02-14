@@ -5736,17 +5736,21 @@ namespace stdexec {
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 
   namespace __any {
-    template <class _VTable, class _T>
+    template <class T>
+    struct __type{};
+
+    template <class _VTable>
       struct __create_vtable_t {
-        constexpr const _VTable* 
-        operator()() const noexcept 
-        requires __tag_invocable_r<const _VTable*, __create_vtable_t, _VTable, _T> {
-          return tag_invoke(__create_vtable_t{});
-        }
+        template <class _T>
+            requires __tag_invocable_r<const _VTable*, __create_vtable_t, __type<_T>> 
+          constexpr const _VTable* operator()(__type<_T>) const noexcept 
+          {
+            return tag_invoke(__create_vtable_t{}, __type<_T>{});
+          }
       };
 
-    template <class _VTable, class _T>
-      inline constexpr __create_vtable_t __create_vtable{};
+    template <class _VTable>
+      inline constexpr __create_vtable_t<_VTable> __create_vtable{};
 
     template <class _Sig>
       struct __query_vfun;
@@ -5790,37 +5794,37 @@ namespace stdexec {
     template <class _Sig>
       struct __storage_vfun;
 
-    template <class _Tag, class _Ret, class... _As>
-      struct __storage_vfun<_Tag(_Ret(*)(_As...))> {
-        _Ret (*__fn_)(void*, _As...);
-        _Ret operator()(_Tag, void* __storage, _As&&... __as) const {
+    template <class _Tag, class... _As>
+      struct __storage_vfun<_Tag(void(*)(_As...))> {
+        void (*__fn_)(void*, _As...);
+        void operator()(_Tag, void* __storage, _As&&... __as) const {
           return __fn_(__storage, (_As&&) __as...);
         }
       };
 
-    template <class _Tag, class _Ret, class... _As>
-      struct __storage_vfun<_Tag(_Ret(*)(_As...)) noexcept> {
-        _Ret (*__fn_)(void*, _As...) noexcept;
-        _Ret operator()(_Tag, void* __storage, _As&&... __as) const noexcept {
+    template <class _Tag, class... _As>
+      struct __storage_vfun<_Tag(void(*)(_As...) noexcept)> {
+        void (*__fn_)(void*, _As...) noexcept;
+        void operator()(_Tag, void* __storage, _As&&... __as) const noexcept {
           return __fn_(__storage, (_As&&) __as...);
         }
       };
 
     template <class _Storage, class _T>
       struct __storage_vfun_fn {
-        template <class _Tag, class _Ret, class... _As>
-            requires __callable<_Tag, _Storage&, __types<_T>, _As...>
-          constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...))) const noexcept)(void*, _As...) {
-          return +[](void* __storage, _As... __as) -> _Ret {
-            return _Tag{}(__types<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
+        template <class _Tag, class... _As>
+            requires __callable<_Tag, __type<_T>, _Storage&, _As...>
+          constexpr void (*operator()(_Tag(*)(void(*)(_As...))) const noexcept)(void*, _As...) {
+          return +[](void* __storage, _As... __as) -> void {
+            return _Tag{}(__type<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
           };
         }
-        template <class _Tag, class _Ret, class... _As>
-            requires __callable<_Tag, _Storage&, __types<_T>, _As...>
-          constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
-          return +[](void* __storage, _As... __as) noexcept -> _Ret {
-            static_assert(__nothrow_callable<_Tag, _Storage&, _As...>);
-            return _Tag{}(__types<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
+        template <class _Tag, class... _As>
+            requires __callable<_Tag, __type<_T>, _Storage&, _As...>
+          constexpr void (*operator()(_Tag(*)(void(*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
+          return +[](void* __storage, _As... __as) noexcept -> void {
+            static_assert(__nothrow_callable<_Tag, __type<_T>, _Storage&, _As...>);
+            return _Tag{}(__type<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
           };
         }
       };
@@ -5836,8 +5840,8 @@ namespace stdexec {
 
     struct __get_object_pointer_t {
       template <class Storage>
-          requires __tag_invocable_r<__get_object_pointer_t, const Storage&>
-        const void* operator()(const Storage& __storage) const noexcept {
+          requires __tag_invocable_r<void*, __get_object_pointer_t, const Storage&>
+        void* operator()(const Storage& __storage) const noexcept {
           return tag_invoke(__get_object_pointer_t{}, __storage);
         }
     };
@@ -5845,18 +5849,18 @@ namespace stdexec {
 
     struct __delete_t {
       template <class _Storage, class _T>
-          requires tag_invocable<__delete_t, __types<_T>, _Storage&>
-        void operator()(__types<_T>, _Storage& __storage) noexcept {
-          tag_invoke(__delete_t{}, __types<_T>{}, __storage);
+          // requires tag_invocable<__delete_t, __type<_T>, _Storage&>
+        void operator()(__type<_T>, _Storage& __storage) noexcept {
+          tag_invoke(__delete_t{}, __type<_T>{}, __storage);
         }
     };
     inline constexpr __delete_t __delete{};
 
     struct __copy_construct_t {
       template <class _Storage, class _T>
-          requires tag_invocable<__delete_t, __types<_T>, _Storage&,  const _Storage&>
-        void operator()(_Storage& __self, const _Storage& __from) noexcept {
-          tag_invoke(__copy_construct_t{}, __types<_T>, __self, __from);
+          requires tag_invocable<__copy_construct_t, __type<_T>, _Storage&,  const _Storage&>
+        void operator()(__type<_T>, _Storage& __self, const _Storage& __from) noexcept {
+          tag_invoke(__copy_construct_t{}, __type<_T>{}, __self, __from);
         }
     };
     inline constexpr __copy_construct_t __copy_construct{};
@@ -5870,7 +5874,7 @@ namespace stdexec {
     template <class _Storage, class _T, class _ParentVTable, class... _StorageCPOs>
       inline constexpr __storage_vtable<_ParentVTable, _StorageCPOs...>
         __storage_vtbl {
-          __create_vtable(__types<_ParentVTable, _T>{}),
+          {*__create_vtable<_ParentVTable>(__type<_T>{})},
           {__storage_vfun_fn<_Storage, _T>{}((_StorageCPOs*) nullptr)}...
         };
 
@@ -5881,7 +5885,7 @@ namespace stdexec {
         };
     };
 
-    template <class _DefaultAllocator = std::allocator<std::byte>>
+    template <class _Allocator = std::allocator<std::byte>>
       struct __unique_storage {
         template <class _VTableRef>
           struct __storage {
@@ -5889,7 +5893,7 @@ namespace stdexec {
           };
       };
 
-    template <class _DefaultAllocator = std::allocator<std::byte>>
+    template <class _Allocator = std::allocator<std::byte>>
       struct __copyable_storage {
         template <class _VTableRef>
           struct __storage {
@@ -5901,17 +5905,15 @@ namespace stdexec {
       class __ref_storage::__storage<_Vtable>::__t {
         using __vtable_t = __storage_vtable<_Vtable, __delete_t(void(*)() noexcept)>;
        public:
-        using __id = __unique_storage;
+        using __id = __ref_storage;
 
         __t() = default;
 
         template <class _T>
-            requires __callable<__create_vtable_t, __types<_VTableRef, _T>>
+            requires __callable<__create_vtable_t<_Vtable>, __type<_T>>
           __t(_T&& __object)
-          : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _VTableRef>}
+          : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable>}
           , __object_pointer_{std::addressof(__object)} {}
-          {
-          }
 
        private:
         friend const _Vtable* tag_invoke(__get_vtable_t, const __t& __self) noexcept {
@@ -5936,13 +5938,13 @@ namespace stdexec {
         __t() = default;
 
         template <class _T>
-            requires __callable<__create_vtable_t, __types<_VTableRef, _T>>
+            requires __callable<__create_vtable_t<_Vtable>, __type<_T>>
           __t(_T&& __object)
-          : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _VTableRef, __delete_t(void(*)())>}
+          : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable, __delete_t(void(*)())>}
           {
             using _ValueType = decay_t<_T>;
             using _Alloc = typename 
-                std::allocator_traits<_DefaultAllocator>::template rebind_alloc<_ValueType>;
+                std::allocator_traits<_Allocator>::template rebind_alloc<_ValueType>;
             _Alloc __alloc{__allocator_};
             _ValueType* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
             try {
@@ -5989,9 +5991,9 @@ namespace stdexec {
         }
 
         template <class _T>
-          friend void tag_invoke(__delete_t, __types<_T>, __t& __self) noexcept {
+          friend void tag_invoke(__delete_t, __type<_T>, __t& __self) noexcept {
             using _Alloc = typename 
-                std::allocator_traits<_DefaultAllocator>::template rebind_alloc<_T>;
+                std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
             if (__self.__object_pointer_) {
               _Alloc __alloc{__self.__allocator_};
               std::allocator_traits<_Alloc>::destroy(__alloc, __self.__object_pointer_);
@@ -6002,7 +6004,7 @@ namespace stdexec {
 
         const __vtable_t* __vtable_{nullptr};
         void* __object_pointer_{nullptr};
-        [[no_unique_address]] _DefaultAllocator __allocator_{};
+        [[no_unique_address]] _Allocator __allocator_{};
       };
 
     template <class _Allocator>
@@ -6017,16 +6019,16 @@ namespace stdexec {
         __t() = default;
 
         template <__none_of<__t&, const __t&> _T>
-            requires (__callable<__create_vtable_t, __types<_Vtable, _T>> &&
+            requires (__callable<__create_vtable_t<_Vtable>, __type<std::decay_t<_T>>> &&
                       std::is_copy_constructible_v<std::decay_t<_T>>)
           __t(_T&& __object)
-          : __vtable_{&__storage_vtbl<__t, decay_t<_T>, _Vtable, 
-                                      __delete_t(void(*)()),
-                                      __copy_construct_t(void(*)(const __t& other))>}
+          : __vtable_(&__storage_vtbl<__t, decay_t<_T>, _Vtable, 
+                                      __delete_t(void(*)() noexcept),
+                                      __copy_construct_t(void(*)(const __t& other))>)
           {
             using _ValueType = decay_t<_T>;
             using _Alloc = typename 
-                std::allocator_traits<_DefaultAllocator>::template rebind_alloc<_ValueType>;
+                std::allocator_traits<_Allocator>::template rebind_alloc<_ValueType>;
             _Alloc __alloc{__allocator_};
             _ValueType* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
             try {
@@ -6038,12 +6040,12 @@ namespace stdexec {
             __object_pointer_ = __pointer;
           }
 
-        __t(const __t& other) {
-          __other.__vtable_(__copy_construct, *this, __other);
+        __t(const __t& __other) {
+          (*__other.__vtable_)(__copy_construct, this, __other);
         }
 
-        __t& operator=(const __t& other) {
-          __other.__vtable_(__copy_construct, *this, __other);
+        __t& operator=(const __t& __other) {
+          (*__other.__vtable_)(__copy_construct, this, __other);
           return *this;
         }
 
@@ -6063,7 +6065,7 @@ namespace stdexec {
 
         void __reset() noexcept {
           if (__vtable_) {
-            (*__vtable_)(__delete, *this, __object_pointer_);
+            (*__vtable_)(__delete, this);
             __object_pointer_ = nullptr;
             __vtable_ = nullptr;
           }
@@ -6079,22 +6081,22 @@ namespace stdexec {
         }
 
         template <class _T>
-          friend void tag_invoke(__delete_t, __types<_T>, __t& __self) noexcept {
+          friend void tag_invoke(__delete_t, __type<_T>, __t& __self) noexcept {
             using _Alloc = typename 
-                std::allocator_traits<_DefaultAllocator>::template rebind_alloc<_T>;
+                std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
             if (__self.__object_pointer_) {
               _Alloc __alloc{__self.__allocator_};
-              std::allocator_traits<_Alloc>::destroy(__alloc, __self.__object_pointer_);
-              std::allocator_traits<_Alloc>::deallocate(__alloc, __self.__object_pointer_, 1);
-              __self.__object_pointer_ = nullptr;
+              _T* __pointer = reinterpret_cast<_T*>(std::exchange(__self.__object_pointer_, nullptr));
+              std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
+              std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
             }
           }
 
         template <class _T>
-          friend void tag_invoke(__copy_construct_t, __types<_T>, __t& __self, const __t& __other) noexcept {
+          friend void tag_invoke(__copy_construct_t, __type<_T>, __t& __self, const __t& __other) {
             using _Alloc = typename 
-                std::allocator_traits<_DefaultAllocator>::template rebind_alloc<_T>;
-            _Alloc __alloc{__allocator_};
+                std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
+            _Alloc __alloc{__self.__allocator_};
             _T* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
             try {
               std::allocator_traits<_Alloc>::construct(
@@ -6109,7 +6111,7 @@ namespace stdexec {
 
         const __vtable_t* __vtable_{nullptr};
         void* __object_pointer_{nullptr};
-        [[no_unique_address]] _DefaultAllocator __allocator_{};
+        [[no_unique_address]] _Allocator __allocator_{};
       };
 
     template <class _Storage, class _VTable>
@@ -6157,10 +6159,10 @@ namespace stdexec {
           };
 
       template <class _Rcvr, class _Sigs, class... _Queries>
-          requires receiver_of<_Rcvr, _Sigs> &&
-                (__callable<__query_vfun_fn<_Rcvr>, _Queries*> &&...)
-        const __vtable<_Sigs, _Queries...>*
-        tag_invoke(__create_vtable_t<__vtable<_Sigs, _Queries...>, _Rcvr>) noexcept {
+          // requires receiver_of<_Rcvr, _Sigs> &&
+          //       (__callable<__query_vfun_fn<_Rcvr>, _Queries*> &&...)
+        constexpr const __vtable<_Sigs, _Queries...>*
+        tag_invoke(__create_vtable_t<__vtable<_Sigs, _Queries...>>, __type<_Rcvr>) noexcept {
           return &__vtbl<_Rcvr, _Sigs, _Queries...>;
         }
 

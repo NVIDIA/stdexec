@@ -56,3 +56,26 @@ TEST_CASE("any receiver reference", "[types][any_sender]") {
 
   CHECK(tag{}(get_env(ref)) == 42);
 }
+
+
+TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
+
+  using Sigs = completion_signatures<set_value_t()>;
+  sink_receiver rcvr;
+  __any::__storage_t<__any::__copyable_storage<>, __any::__rec::__vtable<Sigs, tag(int())>> vtable_holder(rcvr);
+  REQUIRE(__any::__get_vtable(vtable_holder));
+  REQUIRE(__any::__get_object_pointer(vtable_holder));
+  
+  CHECK((*__any::__get_vtable(vtable_holder))(tag{}, __any::__get_object_pointer(vtable_holder)) == 42);
+
+  auto vtable2 = vtable_holder;
+  REQUIRE(__any::__get_vtable(vtable2));
+  REQUIRE(__any::__get_object_pointer(vtable2));
+  CHECK((*__any::__get_vtable(vtable_holder))(tag{}, __any::__get_object_pointer(vtable_holder)) == 42);
+  CHECK((*__any::__get_vtable(vtable2))(tag{}, __any::__get_object_pointer(vtable2)) == 42);
+
+  CHECK(__any::__get_object_pointer(vtable2) != __any::__get_object_pointer(vtable_holder));
+  CHECK(__any::__get_vtable(vtable2) == __any::__get_vtable(vtable_holder));
+
+  // CHECK(tag{}(get_env(ref)) == 42);
+}
