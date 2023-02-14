@@ -6103,6 +6103,7 @@ namespace stdexec {
                   __alloc, __pointer,  *reinterpret_cast<const _T*>(__other.__object_pointer_));
               __self.__reset();
               __self.__object_pointer_ = __pointer;
+              __self.__vtable_ = __other.__vtable_;
             } catch (...) {
               std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
               throw;
