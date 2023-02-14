@@ -199,6 +199,10 @@ namespace stdexec {
 #endif
 
   template <class _Ty>
+    concept __decay_copyable =
+      constructible_from<decay_t<_Ty>, _Ty>;
+
+  template <class _Ty>
     concept __nothrow_decay_copyable =
       __nothrow_constructible_from<decay_t<_Ty>, _Ty>;
 } // namespace stdexec

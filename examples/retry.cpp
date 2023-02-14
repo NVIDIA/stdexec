@@ -47,8 +47,8 @@ struct fail_some {
     return {std::move(r)};
   }
 
-  struct empty_attrs {};
-  friend empty_attrs tag_invoke(stdexec::get_env_t, const fail_some&) noexcept {
+  struct empty_env {};
+  friend empty_env tag_invoke(stdexec::get_env_t, const fail_some&) noexcept {
     return {};
   }
 };

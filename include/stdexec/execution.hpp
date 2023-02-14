@@ -322,6 +322,9 @@ namespace stdexec {
   template <class _EnvProvider>
     concept environment_provider =
       requires (_EnvProvider& __ep) {
+        { get_env(std::as_const(__ep)) } -> queryable;
+        // NOT TO SPEC: Remove the following line when we deprecate all
+        // R5 entities.
         { get_env(std::as_const(__ep)) } -> __none_of<no_env, void>;
       };
 
@@ -3165,23 +3168,23 @@ namespace stdexec {
           _BaseEnv, // BUGBUG NOT TO SPEC
           __with<get_stop_token_t, in_place_stop_token>>;
 
-    template <class _SenderId, class _EnvId>
+    template <class _CvrefSenderId, class _EnvId>
       struct __sh_state;
 
-    template <class _SenderId, class _EnvId>
+    template <class _CvrefSenderId, class _EnvId>
       struct __receiver {
-        using _Sender = stdexec::__t<_SenderId>;
+        using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
         using _Env = stdexec::__t<_EnvId>;
 
         class __t {
-          stdexec::__t<__sh_state<_SenderId, _EnvId>>& __sh_state_;
+          stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __sh_state_;
 
         public:
           using __id = __receiver;
 
           template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
           friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-            stdexec::__t<__sh_state<_SenderId, _EnvId>>& __state = __self.__sh_state_;
+            stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __state = __self.__sh_state_;
 
             try {
               using __tuple_t = __decayed_tuple<_Tag, _As...>;
@@ -3197,7 +3200,7 @@ namespace stdexec {
             return __self.__sh_state_.__env_;
           }
 
-          explicit __t(stdexec::__t<__sh_state<_SenderId, _EnvId>>& __sh_state) noexcept
+          explicit __t(stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __sh_state) noexcept
             : __sh_state_(__sh_state) {
           }
         };
@@ -3210,9 +3213,9 @@ namespace stdexec {
       __notify_fn* __notify_{};
     };
 
-    template <class _SenderId, class _EnvId>
+    template <class _CvrefSenderId, class _EnvId>
       struct __sh_state {
-        using _Sender = stdexec::__t<_SenderId>;
+        using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
         using _Env = stdexec::__t<_EnvId>;
 
         struct __t {
@@ -3228,30 +3231,30 @@ namespace stdexec {
 
           using __bound_values_t =
             __value_types_of_t<
-              _Sender,
+              _CvrefSender,
               __env_t<_Env>,
               __mbind_front_q<__decayed_tuple, set_value_t>,
               __q<__bind_tuples>>;
 
           using __variant_t =
             __error_types_of_t<
-              _Sender,
+              _CvrefSender,
               __env_t<_Env>,
               __transform<
                 __mbind_front_q<__decayed_tuple, set_error_t>,
                 __bound_values_t>>;
 
-          using __receiver_ = stdexec::__t<__receiver<_SenderId, _EnvId>>;
+          using __receiver_ = stdexec::__t<__receiver<_CvrefSenderId, _EnvId>>;
 
           in_place_stop_source __stop_source_{};
           __variant_t __data_;
           std::atomic<void*> __head_{nullptr};
           __env_t<_Env> __env_;
-          connect_result_t<_Sender&, __receiver_> __op_state2_;
+          connect_result_t<_CvrefSender, __receiver_> __op_state2_;
 
-          explicit __t(_Sender& __sndr, _Env __env)
+          explicit __t(_CvrefSender&& __sndr, _Env __env)
             : __env_(__make_env((_Env&&) __env, __with_(get_stop_token, __stop_source_.get_token())))
-            , __op_state2_(connect(__sndr, __receiver_{*this})) {
+            , __op_state2_(connect((_CvrefSender&&) __sndr, __receiver_{*this})) {
           }
 
           void __notify() noexcept {
@@ -3268,9 +3271,9 @@ namespace stdexec {
         };
       };
 
-    template <class _SenderId, class _EnvId, class _ReceiverId>
+    template <class _CvrefSenderId, class _EnvId, class _ReceiverId>
       struct __operation {
-        using _Sender = stdexec::__t<_SenderId>;
+        using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
         using _Env = stdexec::__t<_EnvId>;
         using _Receiver = stdexec::__t<_ReceiverId>;
 
@@ -3286,12 +3289,12 @@ namespace stdexec {
 
           _Receiver __recvr_;
           __on_stop __on_stop_{};
-          std::shared_ptr<stdexec::__t<__sh_state<_SenderId, _EnvId>>> __shared_state_;
+          std::shared_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state_;
 
         public:
           using __id = __operation;
           __t(_Receiver&& __rcvr,
-              std::shared_ptr<stdexec::__t<__sh_state<_SenderId, _EnvId>>> __shared_state)
+              std::shared_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state)
               noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
             : __operation_base{nullptr, __notify}
             , __recvr_((_Receiver&&)__rcvr)
@@ -3311,7 +3314,7 @@ namespace stdexec {
           }
 
           friend void tag_invoke(start_t, __t& __self) noexcept {
-            stdexec::__t<__sh_state<_SenderId, _EnvId>>* __shared_state = __self.__shared_state_.get();
+            stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>* __shared_state = __self.__shared_state_.get();
             std::atomic<void*>& __head = __shared_state->__head_;
             void* const __completion_state = static_cast<void*>(__shared_state);
             void* __old = __head.load(std::memory_order_acquire);
@@ -3348,16 +3351,16 @@ namespace stdexec {
         };
       };
 
-    template <class _SenderId, class _EnvId>
+    template <class _CvrefSenderId, class _EnvId>
       struct __sender {
-        using _Sender = stdexec::__t<_SenderId>;
+        using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
         using _Env = stdexec::__t<_EnvId>;
 
         template <class _Receiver>
-          using __operation = stdexec::__t<__operation<_SenderId, _EnvId, stdexec::__id<_Receiver>>>;
+          using __operation = stdexec::__t<__operation<_CvrefSenderId, _EnvId, stdexec::__id<_Receiver>>>;
 
         class __t {
-          using __sh_state_ = stdexec::__t<__sh_state<_SenderId, _EnvId>>;
+          using __sh_state_ = stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>;
 
           template <class... _Tys>
             using __set_value_t =
@@ -3368,20 +3371,18 @@ namespace stdexec {
               completion_signatures<set_error_t(const decay_t<_Ty>&)>;
 
           template <class _Self>
-          using __completions_t =
-            make_completion_signatures<
-              _Sender&,
-              __env_t<__make_dependent_on<_Env, _Self>>,
-              completion_signatures<set_error_t(const std::exception_ptr&),
-                                    set_stopped_t()>, // NOT TO SPEC
-              __set_value_t,
-              __set_error_t>;
+            using __completions_t =
+              make_completion_signatures<
+                // NOT TO SPEC:
+                // See https://github.com/brycelelbach/wg21_p2300_execution/issues/26
+                _CvrefSender,
+                __env_t<__make_dependent_on<_Env, _Self>>,
+                completion_signatures<set_error_t(const std::exception_ptr&),
+                                      set_stopped_t()>, // NOT TO SPEC
+                __set_value_t,
+                __set_error_t>;
 
-          _Sender __sndr_;
           std::shared_ptr<__sh_state_> __shared_state_;
-
-        public:
-          using __id = __sender;
 
           template <__decays_to<__t> _Self, receiver_of<__completions_t<_Self>> _Receiver>
             friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __recvr)
@@ -3395,9 +3396,12 @@ namespace stdexec {
             friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv)
               -> __completions_t<_Self>;
 
-          explicit __t(_Sender __sndr, _Env __env)
-            : __sndr_((_Sender&&) __sndr)
-            , __shared_state_{std::make_shared<__sh_state_>(__sndr_, (_Env&&) __env)} {
+        public:
+          using __id = __sender;
+          using is_sender = void;
+
+          explicit __t(_CvrefSender&& __sndr, _Env __env)
+            : __shared_state_{std::make_shared<__sh_state_>((_CvrefSender&&)__sndr, (_Env&&) __env)} {
           }
         };
       };
@@ -3410,8 +3414,8 @@ namespace stdexec {
     using _Env = __1;
     using __cust_sigs =
       __types<
-        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)), _Sender),
-        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)), _Sender, _Env),
+        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)), _Sender),
+        tag_invoke_t(split_t, get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)), _Sender, _Env),
         tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender),
         tag_invoke_t(split_t, get_scheduler_t(_Env&), _Sender, _Env),
         tag_invoke_t(split_t, _Sender),
@@ -3422,10 +3426,7 @@ namespace stdexec {
         __minvocable<__which<__cust_sigs>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
-      using __sender_t = __t<__sender<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
-
-    template <class _Sender, class _Env>
-      using __receiver_t = __t<__receiver<stdexec::__id<remove_cvref_t<_Sender>>, stdexec::__id<remove_cvref_t<_Env>>>>;
+      using __sender_t = __t<__sender<stdexec::__cvref_id<_Sender, _Sender>, stdexec::__id<remove_cvref_t<_Env>>>>;
 
     template <class _Sender, class _Env>
       using __dispatcher_for =
@@ -3434,9 +3435,8 @@ namespace stdexec {
     struct split_t {
       template <sender _Sender, class _Env = empty_env>
           requires
-            (copy_constructible<remove_cvref_t<_Sender>> &&
-             sender_to<_Sender&, __receiver_t<_Sender, _Env>>) ||
-            __is_split_customized<_Sender, _Env>
+             (sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>) ||
+             __is_split_customized<_Sender, _Env>
         auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
           noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
           -> __call_result_t<__dispatcher_for<_Sender, _Env>, _Sender, _Env> {
