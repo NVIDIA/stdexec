@@ -77,6 +77,12 @@ namespace stdexec {
           tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
         };
 
+    template <class _Ret, class _Tag, class... _Args>
+      concept __tag_invocable_r =
+        requires (_Tag __tag, _Args&&... __args) {
+          { tag_invoke((_Tag&&) __tag, (_Args&&) __args...) } -> same_as<_Ret>;
+        };
+
     // NOT TO SPEC: nothrow_tag_invocable subsumes tag_invocable
     template<class _Tag, class... _Args>
       concept nothrow_tag_invocable =
@@ -117,6 +123,7 @@ namespace stdexec {
     using tag_t = decay_t<decltype(_Tag)>;
 
   using __tag_invoke::tag_invocable;
+  using __tag_invoke::__tag_invocable_r;
   using __tag_invoke::nothrow_tag_invocable;
   using __tag_invoke::tag_invoke_result_t;
   using __tag_invoke::tag_invoke_result;
