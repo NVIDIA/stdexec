@@ -85,6 +85,7 @@ TEST_CASE("any sender is a sender", "[types][any_sender]") {
 
   using Sigs = completion_signatures<set_value_t()>;
   __any::__sender::__sender<Sigs, __types<>, __types<>> sender = stdexec::just();
+  static_assert(stdexec::sender<decltype(sender)>);
 
   // CHECK(tag{}(get_env(ref)) == 42);
 }
