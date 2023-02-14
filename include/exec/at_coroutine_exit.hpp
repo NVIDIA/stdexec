@@ -71,6 +71,7 @@ struct __die_on_stop_t {
 
       struct __t {
         using __id = __sender_id;
+        using is_sender = void;
 
         _Sender __sender_;
 

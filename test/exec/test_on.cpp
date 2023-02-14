@@ -44,7 +44,7 @@ TEST_CASE("exec::on returns a sender", "[adaptors][exec::on]") {
 }
 TEST_CASE("exec::on with environment returns a sender", "[adaptors][exec::on]") {
   auto snd = exec::on(inline_scheduler{}, ex::just(13));
-  static_assert(ex::sender<decltype(snd), _env_with_sched_t>);
+  static_assert(ex::sender_in<decltype(snd), _env_with_sched_t>);
   (void)snd;
 }
 TEST_CASE("exec::on simple example", "[adaptors][exec::on]") {

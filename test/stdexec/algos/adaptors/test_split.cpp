@@ -40,7 +40,7 @@ TEST_CASE("split with environment returns a sender", "[adaptors][split]") {
   auto snd = ex::split(ex::just(19));
   using Snd = decltype(snd);
   static_assert(ex::enable_sender<Snd>);
-  static_assert(ex::sender<Snd, empty_env>);
+  static_assert(ex::sender_in<Snd, empty_env>);
   static_assert(ex::same_as<ex::env_of_t<Snd>, empty_env>);
   (void)snd;
 }

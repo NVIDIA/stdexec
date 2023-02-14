@@ -21,6 +21,7 @@
 namespace ex = stdexec;
 
 struct my_sender {
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<             //
       ex::set_value_t(),                   //

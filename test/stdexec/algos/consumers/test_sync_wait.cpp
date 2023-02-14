@@ -206,6 +206,7 @@ optional<tuple<std::string>> tag_invoke(
 }
 
 struct my_other_string_sender_t {
+  using is_sender = void;
   std::string str_;
 
   using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just(std::string{}))>;
@@ -247,6 +248,7 @@ TEST_CASE("sync_wait can be customized without scheduler", "[consumers][sync_wai
 
 using multi_value_impl_t = decltype(fallible_just{std::string{}} | ex::let_error(always(ex::just(0))));
 struct my_multi_value_sender_t {
+  using is_sender = void;
   std::string str_;
   using completion_signatures = ex::completion_signatures_of_t<multi_value_impl_t>;
 

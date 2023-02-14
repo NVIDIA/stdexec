@@ -49,7 +49,7 @@ namespace upon_error {
         constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
         template <class Error>
-          friend void tag_invoke(stdexec::set_error_t, __t&& self, Error&& error) 
+          friend void tag_invoke(stdexec::set_error_t, __t&& self, Error&& error)
               noexcept requires std::invocable<Fun, Error> {
             using result_t = std::invoke_result_t<Fun, std::decay_t<Error>>;
             constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
@@ -75,7 +75,7 @@ namespace upon_error {
           }
 
         template <stdexec::__one_of<stdexec::set_value_t,
-                                    stdexec::set_stopped_t> Tag, 
+                                    stdexec::set_stopped_t> Tag,
                   class... As>
           friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
             self.op_state_.propagate_completion_signal(tag, (As&&)as...);
@@ -112,7 +112,7 @@ template <class SenderId, class Fun>
         struct size_of_<void, W> {
           using __t = stdexec::__msize_t<0>;
         };
-      
+
       template <class... As>
         struct result_size_for {
           using __t = typename size_of_<stdexec::__call_result_t<Fun, As...>>::__t;
@@ -124,7 +124,7 @@ template <class SenderId, class Fun>
         };
 
       template <class Receiver>
-          requires stdexec::sender<Sender, stdexec::env_of_t<Receiver>>
+          requires stdexec::sender_in<Sender, stdexec::env_of_t<Receiver>>
         struct max_result_size {
           template <class... _As>
             using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
@@ -132,19 +132,19 @@ template <class SenderId, class Fun>
           static constexpr std::size_t value =
             stdexec::__v<
               stdexec::__gather_completions_for<
-                stdexec::set_error_t, 
-                Sender,  
-                stdexec::env_of_t<Receiver>, 
-                stdexec::__q<result_size_for_t>, 
+                stdexec::set_error_t,
+                Sender,
+                stdexec::env_of_t<Receiver>,
+                stdexec::__q<result_size_for_t>,
                 stdexec::__q<max_in_pack>>>;
         };
 
       template <class Receiver>
-        using receiver_t = 
+        using receiver_t =
           stdexec::__t<
             upon_error::receiver_t<
-              max_result_size<Receiver>::value, 
-              stdexec::__id<Receiver>, 
+              max_result_size<Receiver>::value,
+              stdexec::__id<Receiver>,
               Fun>>;
 
       template <class Self, class Env>
@@ -184,4 +184,3 @@ template <class SenderId, class Fun>
     };
   };
 }
-

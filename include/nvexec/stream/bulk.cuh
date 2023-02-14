@@ -70,7 +70,7 @@ namespace bulk {
           }
 
         template <stdexec::__one_of<stdexec::set_error_t,
-                                    stdexec::set_stopped_t> Tag, 
+                                    stdexec::set_stopped_t> Tag,
                   class... As>
           friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
             self.op_state_.propagate_completion_signal(tag, (As&&)as...);
@@ -151,7 +151,7 @@ namespace multi_gpu_bulk {
   template <int BlockThreads, std::integral Shape, class Fun, class... As>
     __launch_bounds__(BlockThreads)
     __global__ void kernel(Shape begin, Shape end, Fun fn, As... as) {
-      const Shape i = begin 
+      const Shape i = begin
                     + static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (i < end) {
@@ -250,7 +250,7 @@ namespace multi_gpu_bulk {
           }
 
         template <stdexec::__one_of<stdexec::set_error_t,
-                                    stdexec::set_stopped_t> Tag, 
+                                    stdexec::set_stopped_t> Tag,
                   class... As>
           friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
             self.op_state_.propagate_completion_signal(tag, (As&&)as...);
@@ -290,7 +290,7 @@ namespace multi_gpu_bulk {
               },
               context_state)
           , num_devices_(num_devices)
-          , streams_(new cudaStream_t[num_devices_]) 
+          , streams_(new cudaStream_t[num_devices_])
           , ready_to_complete_(new cudaEvent_t[num_devices_]) {
           // TODO Manage errors
           cudaGetDevice(&current_device_);
@@ -326,6 +326,7 @@ namespace multi_gpu_bulk {
 
 template <class SenderId, std::integral Shape, class Fun>
   struct multi_gpu_bulk_sender_t {
+    using is_sender = void;
     using Sender = stdexec::__t<SenderId>;
 
     struct __t : stream_sender_base {
@@ -383,4 +384,3 @@ template <class SenderId, std::integral Shape, class Fun>
     };
   };
 }
-

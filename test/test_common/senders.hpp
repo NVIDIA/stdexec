@@ -25,6 +25,7 @@ namespace ex = stdexec;
 template <class... Values>
 struct fallible_just {
   std::tuple<Values...> values_;
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<
       ex::set_value_t(Values...),
@@ -68,6 +69,7 @@ template <class Attrs, class... Values>
 struct just_with_env {
   std::remove_cvref_t<Attrs> env_;
   std::tuple<Values...> values_;
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<ex::set_value_t(Values...)>;
 
@@ -97,7 +99,11 @@ struct just_with_env {
 };
 
 struct completes_if {
-  using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+  using __t = completes_if;
+  using __id = completes_if;
+  using is_sender = void;
+  using completion_signatures =
+    ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
   bool condition_;
 
@@ -117,7 +123,7 @@ struct completes_if {
         state_t expected = self_.state_.load(std::memory_order_relaxed);
         while (!self_.state_.compare_exchange_weak(expected, state_t::stopped, std::memory_order_acq_rel));
         if (expected == state_t::emplaced) {
-          ex::set_stopped(std::move(self_.rcvr_)); 
+          ex::set_stopped(std::move(self_.rcvr_));
         }
       }
     };

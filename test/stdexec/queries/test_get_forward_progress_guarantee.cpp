@@ -30,6 +30,7 @@ struct uncustomized_scheduler {
   };
 
   struct sender {
+    using is_sender = void;
     using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
     template <typename R>
@@ -61,6 +62,7 @@ struct customized_scheduler {
   };
 
   struct sender {
+    using is_sender = void;
     using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
     template <typename R>

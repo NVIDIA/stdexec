@@ -90,6 +90,7 @@ struct _op {
 
 template<class S>
 struct _retry_sender {
+  using is_sender = void;
   S s_;
   explicit _retry_sender(S s) : s_((S&&) s) {}
 

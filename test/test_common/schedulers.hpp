@@ -79,6 +79,7 @@ struct impulse_scheduler {
   };
 
   struct my_sender {
+    using is_sender = void;
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
         ex::set_stopped_t()>;
@@ -136,6 +137,7 @@ struct inline_scheduler {
   };
 
   struct my_sender {
+    using is_sender = void;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <typename R>
@@ -168,6 +170,7 @@ struct error_scheduler {
   };
 
   struct my_sender {
+    using is_sender = void;
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
         ex::set_error_t(E),
@@ -202,6 +205,7 @@ struct stopped_scheduler {
   };
 
   struct my_sender {
+    using is_sender = void;
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
         ex::set_stopped_t()>;

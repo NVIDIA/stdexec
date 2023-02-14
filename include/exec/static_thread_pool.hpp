@@ -61,6 +61,7 @@ namespace exec {
        public:
         using __t = sender;
         using __id = sender;
+        using is_sender = void;
         using completion_signatures =
           stdexec::completion_signatures<
             stdexec::set_value_t(),
@@ -330,6 +331,7 @@ namespace exec {
         struct bulk_sender {
           using Sender = stdexec::__t<SenderId>;
           using Fun = stdexec::__t<FunId>;
+          using is_sender = void;
 
           static_thread_pool& pool_;
           Sender sndr_;
