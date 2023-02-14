@@ -6167,7 +6167,6 @@ namespace stdexec {
         start(__op);
       }};
 
-
       template <class _Op>
         constexpr const __operation_vtable* __op_vtbl_() {
           return &__op_vtbl<_Op>;
@@ -6178,7 +6177,7 @@ namespace stdexec {
       template <class _Sigs, class _Queries>
         using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
 
-      template <class _Sender, class _Receiver, typename _Queries>
+      template <class _Sender, class _Receiver, class _Queries>
         class __operation : __immovable {
           using _Sigs = completion_signatures_of_t<_Sender>;
           using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
