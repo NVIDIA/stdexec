@@ -270,6 +270,7 @@ namespace exec {
         }
 
         __t& operator=(const __t& __other) requires (_Copyable) {
+          // TODO can we provider better exception safety here?
           __reset();
           (*__other.__vtable_)(__copy_construct, this, __other);
           return *this;
