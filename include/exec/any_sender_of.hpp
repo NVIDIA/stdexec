@@ -514,27 +514,25 @@ namespace exec {
         };
     } // __rec
 
-    struct __operation_vtable {
-      class __t {
-       public:
-        void (*__start_)(void*) noexcept;
+    class __operation_vtable {
+     public:
+      void (*__start_)(void*) noexcept;
 
-       private:
-        template <class _Op>
-          friend const __t*
-          tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Op>) noexcept {
-            static __t __vtable{[](void* __object_pointer) noexcept -> void {
-              STDEXEC_ASSERT(__object_pointer);
-              _Op& __op = *static_cast<_Op*>(__object_pointer);
-              static_assert(operation_state<_Op>);
-              start(__op);
-            }};
-            return &__vtable;
-          }
-      };
+     private:
+      template <class _Op>
+        friend const __operation_vtable*
+        tag_invoke(__create_vtable_t, __mtype<__operation_vtable>, __mtype<_Op>) noexcept {
+          static __operation_vtable __vtable{[](void* __object_pointer) noexcept -> void {
+            STDEXEC_ASSERT(__object_pointer);
+            _Op& __op = *static_cast<_Op*>(__object_pointer);
+            static_assert(operation_state<_Op>);
+            start(__op);
+          }};
+          return &__vtable;
+        }
     };
 
-    using __unique_operation_storage = __unique_storage_t<__t<__operation_vtable>>;
+    using __unique_operation_storage = __unique_storage_t<__operation_vtable>;
 
     template <class _Sigs, class _Queries>
       using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
@@ -620,13 +618,12 @@ namespace exec {
           using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
           using __env_t = __mapply<__q<any_env_of>, _SenderQueries>;
           class __t {
-          public:
+           public:
             using __id = __vtable;
             __unique_operation_storage (*__connect_)(void*, __receiver_ref_t);
             __env_t (*__get_env_)(void*) noexcept;
-          private:
-            template <class _Sender>
-                requires sender_to<_Sender, __receiver_ref_t>
+           private:
+            template <sender_to<__receiver_ref_t> _Sender>
               friend const __t*
               tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Sender>) noexcept {
               static const __t __vtable{
