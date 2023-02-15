@@ -5737,18 +5737,16 @@ namespace stdexec {
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 
   namespace __any {
-    template <class _VTable>
       struct __create_vtable_t {
-        template <class _T>
-            requires __tag_invocable_r<const _VTable*, __create_vtable_t, __mtype<_T>> 
-          constexpr const _VTable* operator()(__mtype<_T>) const noexcept 
+        template <class _VTable, class _T>
+            requires __tag_invocable_r<const _VTable*, __create_vtable_t, __mtype<_VTable>, __mtype<_T>> 
+          constexpr const _VTable* operator()(__mtype<_VTable>, __mtype<_T>) const noexcept 
           {
-            return tag_invoke(__create_vtable_t{}, __mtype<_T>{});
+            return tag_invoke(__create_vtable_t{}, __mtype<_VTable>{}, __mtype<_T>{});
           }
       };
 
-    template <class _VTable>
-      inline constexpr __create_vtable_t<_VTable> __create_vtable{};
+    inline constexpr __create_vtable_t __create_vtable{};
 
     template <class _Sig>
       struct __query_vfun;
@@ -5890,7 +5888,7 @@ namespace stdexec {
     template <class _Storage, class _T, class _ParentVTable, class... _StorageCPOs>
       inline constexpr __storage_vtable<_ParentVTable, _StorageCPOs...>
         __storage_vtbl {
-          {*__create_vtable<_ParentVTable>(__mtype<_T>{})},
+          {*__create_vtable(__mtype<_ParentVTable>{}, __mtype<_T>{})},
           {__storage_vfun_fn<_Storage, _T>{}((_StorageCPOs*) nullptr)}...
         };
 
@@ -5944,7 +5942,7 @@ namespace stdexec {
         __t() = default;
 
         template <__none_of<__t&, const __t&> _T>
-            // requires tag_invocable<__create_vtable_t<_Vtable>, __mtype<std::decay_t<_T>>>
+            requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<std::decay_t<_T>>>
           __t(_T&& __object)
           : __vtable_{__get_vtable<_T>()}
           {
@@ -5957,7 +5955,7 @@ namespace stdexec {
           }
 
         template <class _T, class... _Args>
-            requires (__callable<__create_vtable_t<_Vtable>, __mtype<_T>>)
+            requires (__callable<__create_vtable_t, __mtype<_Vtable>, __mtype<_T>>)
           __t(std::in_place_type_t<_T>, _Args&&... __args)
           : __vtable_{__get_vtable<_T>()}
           {
@@ -6093,7 +6091,7 @@ namespace stdexec {
         struct __rcvr_vfun;
 
       template <class _Sigs, class... _Queries>
-        struct __vtable;
+        struct __vtable { class __t; };
 
       template <class _Sigs, class... _Queries>
         struct __ref;
@@ -6115,42 +6113,45 @@ namespace stdexec {
         };
 
       template <class _Rcvr, class _Sigs, class... _Queries>
-        constexpr const __vtable<_Sigs, _Queries...>* __vtbl_() noexcept;
+        constexpr const __t<__vtable<_Sigs, _Queries...>>* __vtbl_() noexcept;
 
       template <class... _Sigs, class... _Queries>
-        struct __vtable<completion_signatures<_Sigs...>, _Queries...>
-          : __rcvr_vfun<_Sigs>..., __query_vfun<_Queries>... {
-          using __query_vfun<_Queries>::operator()...;
+        struct __vtable<completion_signatures<_Sigs...>, _Queries...> {
+          class __t : public __rcvr_vfun<_Sigs>...
+                    , public __query_vfun<_Queries>... {
+           public:
+            using __query_vfun<_Queries>::operator()...;
 
-         private:
-          template <class _Rcvr>
-              requires receiver_of<_Rcvr, completion_signatures<_Sigs...>> &&
-                    (__callable<__query_vfun_fn<_Rcvr>, _Queries*> &&...)
-            friend constexpr const __vtable*
-            tag_invoke(__create_vtable_t<__vtable<completion_signatures<_Sigs...>, _Queries...>>, __mtype<_Rcvr>) noexcept {
-              return __vtbl_<_Rcvr, completion_signatures<_Sigs...>, _Queries...>();
-            }
+           private:
+            template <class _Rcvr>
+                requires receiver_of<_Rcvr, completion_signatures<_Sigs...>> &&
+                      (__callable<__query_vfun_fn<_Rcvr>, _Queries*> &&...)
+              friend constexpr const __t*
+              tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Rcvr>) noexcept {
+                return __vtbl_<_Rcvr, completion_signatures<_Sigs...>, _Queries...>();
+              }
+          };
         };
 
       template <class _Rcvr, class _Sigs, class... _Queries>
-        extern __vtable<_Sigs, _Queries...> __vtbl;
+        extern __t<__vtable<_Sigs, _Queries...>> __vtbl;
 
       template <class _Rcvr, class... _Sigs, class... _Queries>
-        inline constexpr __vtable<completion_signatures<_Sigs...>, _Queries...>
+        inline constexpr __t<__vtable<completion_signatures<_Sigs...>, _Queries...>>
           __vtbl<_Rcvr, completion_signatures<_Sigs...>, _Queries...> {
             {__rcvr_vfun_fn<_Rcvr>{}((_Sigs*) nullptr)}...,
             {__query_vfun_fn<_Rcvr>{}((_Queries*) nullptr)}...
           };
 
       template <class _Rcvr, class _Sigs, class... _Queries>
-        constexpr const __vtable<_Sigs, _Queries...>* __vtbl_() noexcept {
+        constexpr const __t<__vtable<_Sigs, _Queries...>>* __vtbl_() noexcept {
           return &__vtbl<_Rcvr, _Sigs, _Queries...>;
         }
 
       template <class... _Sigs, class... _Queries>
         struct __ref<completion_signatures<_Sigs...>, _Queries...> {
          private:
-          using __vtable_t = __vtable<completion_signatures<_Sigs...>, _Queries...>;
+          using __vtable_t = __t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
           struct __env_t {
             const __vtable_t* __vtable_;
             void* __rcvr_;
@@ -6197,7 +6198,7 @@ namespace stdexec {
        private:
         template <class _Op>
           friend constexpr const __operation_vtable*
-          tag_invoke(__create_vtable_t<__operation_vtable>, __mtype<_Op>) noexcept {
+          tag_invoke(__create_vtable_t, __mtype<__operation_vtable>, __mtype<_Op>) noexcept {
             return __op_vtbl_<_Op>();
           }
       };
@@ -6283,7 +6284,7 @@ namespace stdexec {
          private:
           template <class _Sender>
             friend constexpr const __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>*
-            tag_invoke(__create_vtable_t<__sender_vtable<_Sigs, _Queries>>, __mtype<_Sender>) noexcept {
+            tag_invoke(__create_vtable_t, __mtype<__sender_vtable<_Sigs, _Queries>>, __mtype<_Sender>) noexcept {
               return __sender_vtbl_<_Sender, _Queries>();
             }
         };
