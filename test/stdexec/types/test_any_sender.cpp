@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
+#include <exec/any_sneder_of.hpp>
+
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
+
 
 using namespace stdexec;
+using namespace exec;
 
 struct tag {
   template <class T>
@@ -61,7 +64,7 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 
   using Sigs = completion_signatures<set_value_t()>;
   sink_receiver rcvr;
-  __any::__storage_t<__any::__copyable_storage<>, __any::__rec::__vtable<Sigs, tag(int())>> vtable_holder(rcvr);
+  __any::__storage_t<__any::__copyable_storage<>, __t<__any::__rec::__vtable<Sigs, tag(int())>>> vtable_holder(rcvr);
   REQUIRE(__any::__get_vtable(vtable_holder));
   REQUIRE(__any::__get_object_pointer(vtable_holder));
   

@@ -80,7 +80,7 @@ namespace stdexec {
     template <class _Ret, class _Tag, class... _Args>
       concept __tag_invocable_r =
         requires (_Tag __tag, _Args&&... __args) {
-          { tag_invoke((_Tag&&) __tag, (_Args&&) __args...) } -> same_as<_Ret>;
+          { static_cast<_Ret>(tag_invoke((_Tag&&) __tag, (_Args&&) __args...)) };
         };
 
     // NOT TO SPEC: nothrow_tag_invocable subsumes tag_invocable
