@@ -77,16 +77,56 @@ TEST_CASE("empty storage is movable", "[types][any_sender]") {
   any_unique s2 = foo{};
   static_assert(std::is_move_assignable_v<any_unique>);
   static_assert(!std::is_copy_assignable_v<any_unique>);
-  CHECK(__any::__get_vtable(s1));
+
   CHECK(__any::__get_vtable(s2));
   CHECK(__any::__get_vtable(s1) != __any::__get_vtable(s2));
   CHECK(__any::__get_object_pointer(s1) == nullptr);
   CHECK(__any::__get_object_pointer(s2) != nullptr);
+  // Test SBO
+  std::intptr_t obj_ptr = reinterpret_cast<std::intptr_t>(__any::__get_object_pointer(s2));
+  std::intptr_t s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
+  CHECK(std::abs(s2_ptr - obj_ptr) < sizeof(any_unique));
+  
   s1 = std::move(s2);
-  CHECK(__any::__get_vtable(s1));
   CHECK(__any::__get_vtable(s2));
   CHECK(__any::__get_vtable(s1) != __any::__get_vtable(s2));
   CHECK(__any::__get_object_pointer(s1) != nullptr);
+  CHECK(__any::__get_object_pointer(s2) == nullptr);
+
+  s1 = std::move(s2);
+  CHECK(__any::__get_object_pointer(s1) == nullptr);
+  CHECK(__any::__get_object_pointer(s2) == nullptr);
+}
+
+TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any_sender]") {
+  struct move_throws {
+    move_throws() = default;
+    move_throws(move_throws&&) noexcept(false) {}
+    move_throws& operator=(move_throws&&) noexcept(false) { return *this; }
+  };
+  using any_unique = __any::__storage_t<__any::__unique_storage<>, empty_vtable_t>;
+  any_unique s1{};
+  any_unique s2 = move_throws{};
+  static_assert(std::is_move_assignable_v<any_unique>);
+  static_assert(!std::is_copy_assignable_v<any_unique>);
+
+  CHECK(__any::__get_vtable(s2));
+  CHECK(__any::__get_vtable(s1) != __any::__get_vtable(s2));
+  CHECK(__any::__get_object_pointer(s1) == nullptr);
+  CHECK(__any::__get_object_pointer(s2) != nullptr);
+  // Test SBO
+  std::intptr_t obj_ptr = reinterpret_cast<std::intptr_t>(__any::__get_object_pointer(s2));
+  std::intptr_t s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
+  CHECK(std::abs(s2_ptr - obj_ptr) >= sizeof(any_unique));
+  
+  s1 = std::move(s2);
+  CHECK(__any::__get_vtable(s2));
+  CHECK(__any::__get_vtable(s1) != __any::__get_vtable(s2));
+  CHECK(__any::__get_object_pointer(s1) != nullptr);
+  CHECK(__any::__get_object_pointer(s2) == nullptr);
+
+  s1 = std::move(s2);
+  CHECK(__any::__get_object_pointer(s1) == nullptr);
   CHECK(__any::__get_object_pointer(s2) == nullptr);
 }
 
