@@ -270,6 +270,7 @@ namespace exec {
         }
 
         __t& operator=(const __t& __other) requires (_Copyable) {
+          __reset();
           (*__other.__vtable_)(__copy_construct, this, __other);
           return *this;
         }
@@ -280,6 +281,7 @@ namespace exec {
         }
 
         __t& operator=(__t&& __other) noexcept {
+          __reset();
           (*__other.__vtable_)(__move_construct, this, (__t&&) __other);
           return *this;
         }
@@ -343,7 +345,6 @@ namespace exec {
 
           template <class _T>
             friend void tag_invoke(__move_construct_t, __mtype<_T>, __t& __self, __t&& __other) noexcept {
-              __self.__reset();
               if (!__other.__object_pointer_) {
                 return;
               }
@@ -360,7 +361,6 @@ namespace exec {
         template <class _T>
             requires _Copyable
           friend void tag_invoke(__copy_construct_t, __mtype<_T>, __t& __self, const __t& __other) {
-            __self.__reset();
             if (!__other.__object_pointer_) {
               return;
             }
