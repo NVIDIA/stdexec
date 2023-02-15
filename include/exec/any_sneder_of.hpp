@@ -182,7 +182,7 @@ namespace exec {
         }
 
     template <class _Storage, class _T, class _ParentVTable, class... _StorageCPOs>
-      inline constexpr __storage_vtable<_ParentVTable, _StorageCPOs...>
+      static const __storage_vtable<_ParentVTable, _StorageCPOs...>
         __storage_vtbl {
           {*__create_vtable(__mtype<_ParentVTable>{}, __mtype<_T>{})},
           {__storage_vfun_fn<_Storage, _T>{}((_StorageCPOs*) nullptr)}...
