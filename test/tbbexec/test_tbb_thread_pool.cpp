@@ -80,6 +80,8 @@ namespace {
 TEST_CASE(
     "exec::on works when changing threads with tbbexec::tbb_thread_pool", "[adaptors][exec::on]") {
   tbbexec::tbb_thread_pool pool;
+  CHECK(stdexec::get_forward_progress_guarantee(pool) ==
+        stdexec::forward_progress_guarantee::parallel);
   bool called{false};
   // launch some work on the thread pool
   ex::sender auto snd = exec::on(pool.get_scheduler(), ex::just()) //

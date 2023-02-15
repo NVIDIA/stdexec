@@ -348,9 +348,9 @@ public:
             return bulk_sender_t<S, Shape, Fn>{*sch.pool_, (S &&) sndr, shape, (Fn &&) fun};
         }
 
-        friend stdexec::forward_progress_guarantee tag_invoke(stdexec::get_forward_progress_guarantee_t,
-                                                              const DerivedPoolType&) noexcept {
-            return stdexec::forward_progress_guarantee::parallel;
+        friend constexpr stdexec::forward_progress_guarantee tag_invoke(stdexec::get_forward_progress_guarantee_t,
+                                                              const DerivedPoolType& pool) noexcept {
+            return pool.forward_progress_guarantee();
         }
 
         friend thread_pool_base;
@@ -393,8 +393,11 @@ public:
     }
 
     [[nodiscard]] std::uint32_t available_parallelism() const { return arena_.max_concurrency(); }
-
 private:
+    [[nodiscard]] static constexpr stdexec::forward_progress_guarantee forward_progress_guarantee() {
+        return stdexec::forward_progress_guarantee::parallel;
+    }
+
     friend detail::thread_pool_base<tbb_thread_pool>;
 
     template <typename PoolType, typename ReceiverId>
