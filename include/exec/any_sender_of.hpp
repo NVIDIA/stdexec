@@ -481,154 +481,152 @@ namespace exec {
         };
     } // __rec
 
-    namespace __sender {
-      struct __operation_vtable;
-      
-      template <class _Op>
-        constexpr const __operation_vtable* __op_vtbl_();
+    struct __operation_vtable;
+    
+    template <class _Op>
+      constexpr const __operation_vtable* __op_vtbl_();
 
-      struct __operation_vtable {
-        void (*__start_)(void*) noexcept;
-        void operator()(start_t, void* __op) const noexcept {
-          __start_(__op);
+    struct __operation_vtable {
+      void (*__start_)(void*) noexcept;
+      void operator()(start_t, void* __op) const noexcept {
+        __start_(__op);
+      }
+      private:
+      template <class _Op>
+        friend constexpr const __operation_vtable*
+        tag_invoke(__create_vtable_t, __mtype<__operation_vtable>, __mtype<_Op>) noexcept {
+          return __op_vtbl_<_Op>();
         }
-       private:
-        template <class _Op>
-          friend constexpr const __operation_vtable*
-          tag_invoke(__create_vtable_t, __mtype<__operation_vtable>, __mtype<_Op>) noexcept {
-            return __op_vtbl_<_Op>();
-          }
-      };
+    };
 
-      template <class _Op>
-      inline constexpr __operation_vtable __op_vtbl{[](void* __object_pointer) noexcept -> void {
-        _Op& __op = *static_cast<_Op*>(__object_pointer);
-        static_assert(operation_state<_Op>);
-        start(__op);
-      }};
+    template <class _Op>
+    inline constexpr __operation_vtable __op_vtbl{[](void* __object_pointer) noexcept -> void {
+      _Op& __op = *static_cast<_Op*>(__object_pointer);
+      static_assert(operation_state<_Op>);
+      start(__op);
+    }};
 
-      template <class _Op>
-        constexpr const __operation_vtable* __op_vtbl_() {
-          return &__op_vtbl<_Op>;
-        }
+    template <class _Op>
+      constexpr const __operation_vtable* __op_vtbl_() {
+        return &__op_vtbl<_Op>;
+      }
 
-      using __unique_operation_storage = __storage_t<__unique_storage<>, __operation_vtable>;
+    using __unique_operation_storage = __storage_t<__unique_storage<>, __operation_vtable>;
 
-      template <class _Sigs, class _Queries>
-        using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
+    template <class _Sigs, class _Queries>
+      using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
 
-      template <class _Sender, class _Receiver, class _Queries>
-        class __operation : __immovable {
-          using _Sigs = completion_signatures_of_t<_Sender>;
-          using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
-
-         public:
-          __operation(_Sender&& sender, _Receiver&& receiver)
-          : __receiver_{(_Receiver&&) receiver}
-          , __storage_{connect((_Sender&&) sender, __receiver_ref_t{*this})}
-          {
-          }
-
-         private:
-          [[no_unique_address]] _Receiver __receiver_;
-          __unique_operation_storage __storage_{};
-
-          template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO, 
-                    __decays_to<__operation> _Self, class... _Args>
-            void take_invoke(_CPO, _Self&& __self, _Args&&... __args) noexcept {
-              _CPO{}((_Receiver&&) __self.__receiver_, (_Args&&) __args...);
-            }
-
-          friend env_of_t<_Receiver> tag_invoke(get_env_t, const __operation& __self) noexcept {
-            return get_env(__self.__receiver_);
-          }
-
-          friend void tag_invoke(start_t, __operation& __self) noexcept {
-            (*__get_vtable(__self.__storage_)->__start_)(__get_object_pointer(__self.__storage_));
-          }
-        };
-
-      template <class _Sender, class _ReceiverQueries>
-      struct __sender_vtable_fn {
+    template <class _Sender, class _Receiver, class _Queries>
+      class __operation : __immovable {
         using _Sigs = completion_signatures_of_t<_Sender>;
-        using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
-        constexpr __unique_operation_storage
-        (*operator()() const noexcept)(void*, __receiver_ref_t) {
-          return +[](void* __object_pointer, __receiver_ref_t __receiver) -> __unique_operation_storage {
-            _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
-            static_assert(receiver_of<__receiver_ref_t, _Sigs>);
-            using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
-            return __unique_operation_storage{std::in_place_type<__op_state_t>, 
-                __conv{[&] { return connect((_Sender&&)__sender, (__receiver_ref_t&&)__receiver); }}};
-          };
+        using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
+
+        public:
+        __operation(_Sender&& sender, _Receiver&& receiver)
+        : __receiver_{(_Receiver&&) receiver}
+        , __storage_{connect((_Sender&&) sender, __receiver_ref_t{*this})}
+        {
+        }
+
+        private:
+        [[no_unique_address]] _Receiver __receiver_;
+        __unique_operation_storage __storage_{};
+
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO, 
+                  __decays_to<__operation> _Self, class... _Args>
+          void take_invoke(_CPO, _Self&& __self, _Args&&... __args) noexcept {
+            _CPO{}((_Receiver&&) __self.__receiver_, (_Args&&) __args...);
+          }
+
+        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __operation& __self) noexcept {
+          return get_env(__self.__receiver_);
+        }
+
+        friend void tag_invoke(start_t, __operation& __self) noexcept {
+          (*__get_vtable(__self.__storage_)->__start_)(__get_object_pointer(__self.__storage_));
         }
       };
 
-      template <class _Sigs, class _Queries>
-      struct __sender_vtable;
+    template <class _Sender, class _ReceiverQueries>
+    struct __sender_vtable_fn {
+      using _Sigs = completion_signatures_of_t<_Sender>;
+      using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
+      constexpr __unique_operation_storage
+      (*operator()() const noexcept)(void*, __receiver_ref_t) {
+        return +[](void* __object_pointer, __receiver_ref_t __receiver) -> __unique_operation_storage {
+          _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
+          static_assert(receiver_of<__receiver_ref_t, _Sigs>);
+          using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
+          return __unique_operation_storage{std::in_place_type<__op_state_t>, 
+              __conv{[&] { return connect((_Sender&&)__sender, (__receiver_ref_t&&)__receiver); }}};
+        };
+      }
+    };
+
+    template <class _Sigs, class _Queries>
+    struct __sender_vtable;
+
+    template <class _Sender, class _Queries>
+      constexpr const __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>*
+      __sender_vtbl_();
+
+    template <class _Sigs, class _Queries>
+      struct __sender_vtable {
+        using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
+        __unique_operation_storage (*__connect_)(void*, __receiver_ref_t);
+        __unique_operation_storage operator()(connect_t, void* __sender, __receiver_ref_t __receiver) const {
+          return __connect_(__sender, __receiver);
+        }
+        private:
+        template <class _Sender>
+          friend constexpr const __sender_vtable*
+          tag_invoke(__create_vtable_t, __mtype<__sender_vtable>, __mtype<_Sender>) noexcept {
+            return __sender_vtbl_<_Sender, _Queries>();
+          }
+      };
+
+    template <class _Sender, class _Queries>
+      inline constexpr __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>
+      __sender_vtbl{__sender_vtable_fn<_Sender, _Queries>{}()};
 
       template <class _Sender, class _Queries>
-        constexpr const __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>*
-        __sender_vtbl_();
+      constexpr const __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>*
+      __sender_vtbl_() { 
+        return &__sender_vtbl<_Sender, _Queries>;
+      }
 
-      template <class _Sigs, class _Queries>
-        struct __sender_vtable {
-          using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
-          __unique_operation_storage (*__connect_)(void*, __receiver_ref_t);
-          __unique_operation_storage operator()(connect_t, void* __sender, __receiver_ref_t __receiver) const {
-            return __connect_(__sender, __receiver);
-          }
-         private:
+    template <class _Sigs, class _ReceiverQueries, class _SenderQueries>
+      struct __sender {
+        class __t {
+          public:
+          using __id = __sender;
+          using completion_signatures = _Sigs;
+
+          __t(const __t&) = delete;
+          __t& operator=(const __t&) = delete;
+
+          __t(__t&&) = default;
+          __t& operator=(__t&&) = default;
+
           template <class _Sender>
-            friend constexpr const __sender_vtable*
-            tag_invoke(__create_vtable_t, __mtype<__sender_vtable>, __mtype<_Sender>) noexcept {
-              return __sender_vtbl_<_Sender, _Queries>();
+              requires (!__decays_to<_Sender, __t> &&
+                        sender_to<_Sender, __receiver_ref<_Sigs, _ReceiverQueries>>)
+            __t(_Sender&& __sndr)
+              : __storage_{(_Sender&&) __sndr} {}
+
+          private:
+          using __vtable_t = __sender_vtable<_Sigs, _ReceiverQueries>;
+          using __storage_t = exec::__any::__storage_t<__unique_storage<>, __vtable_t>;
+
+          __storage_t __storage_;
+
+          template <receiver_of<_Sigs> _Rcvr>
+              requires sender_to<__t, _Rcvr>
+            friend __operation<__t, std::decay_t<_Rcvr>, _ReceiverQueries> 
+            tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr) {
+              return {(_Rcvr&&) __rcvr, (__t&&) __self};
             }
         };
-
-      template <class _Sender, class _Queries>
-        inline constexpr __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>
-        __sender_vtbl{__sender_vtable_fn<_Sender, _Queries>{}()};
-
-        template <class _Sender, class _Queries>
-        constexpr const __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>*
-        __sender_vtbl_() { 
-          return &__sender_vtbl<_Sender, _Queries>;
-        }
-
-      template <class _Sigs, class _ReceiverQueries, class _SenderQueries>
-        struct __sender {
-          class __t {
-           public:
-            using __id = __sender;
-            using completion_signatures = _Sigs;
-
-            __t(const __t&) = delete;
-            __t& operator=(const __t&) = delete;
-
-            __t(__t&&) = default;
-            __t& operator=(__t&&) = default;
-
-            template <class _Sender>
-                requires (!__decays_to<_Sender, __t> &&
-                          sender_to<_Sender, __receiver_ref<_Sigs, _ReceiverQueries>>)
-              __t(_Sender&& __sndr)
-                : __storage_{(_Sender&&) __sndr} {}
-
-           private:
-            using __vtable_t = __sender_vtable<_Sigs, _ReceiverQueries>;
-            using __storage_t = exec::__any::__storage_t<__unique_storage<>, __vtable_t>;
-
-            __storage_t __storage_;
-
-            template <receiver_of<_Sigs> _Rcvr>
-                requires sender_to<__t, _Rcvr>
-              friend __operation<__t, std::decay_t<_Rcvr>, _ReceiverQueries> 
-              tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr) {
-                return {(_Rcvr&&) __rcvr, (__t&&) __self};
-              }
-          };
-        };
-    } // namespace __sender
+      };
   } // namepsace __any
 } // namespace exec
