@@ -34,12 +34,6 @@ inline auto _with_scheduler(Sched sched = {}) {
   return exec::write(exec::with(ex::get_scheduler, std::move(sched)));
 }
 
-template <ex::scheduler Sched = inline_scheduler>
-inline auto _make_env_with_sched(Sched sched = {}) {
-  return exec::make_env(exec::with(ex::get_scheduler, std::move(sched)));
-}
-
-using _env_with_sched_t = decltype(_make_env_with_sched());
 
 namespace {
 
@@ -85,7 +79,7 @@ namespace {
 
 TEST_CASE(
     "exec::on works when changing threads with tbbexec::tbb_thread_pool", "[adaptors][exec::on]") {
-  tbbexec::tbb_thread_pool pool{2};
+  tbbexec::tbb_thread_pool pool;
   bool called{false};
   // launch some work on the thread pool
   ex::sender auto snd = exec::on(pool.get_scheduler(), ex::just()) //

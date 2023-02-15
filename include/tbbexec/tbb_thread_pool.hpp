@@ -7,7 +7,7 @@
 
 namespace tbbexec {
 
-template <typename ReceiverId>
+template <typename PoolType, typename ReceiverId>
 class operation;
 
 using task_base = exec::task_base;
@@ -20,27 +20,20 @@ using task_base = exec::task_base;
 //! * template<F> auto execute(F &&f) -> decltype(f())
 //!
 //! See https://spec.oneapi.io/versions/1.0-rev-3/elements/oneTBB/source/task_scheduler/task_arena/task_arena_cls.html
-class tbb_thread_pool {
-    template <typename ReceiverId>
+namespace detail {
+template <typename DerivedPoolType> // CRTP
+class thread_pool_base {
+    template <typename DerivedPoolType_, typename ReceiverId>
     friend class operation;
 
 public:
-    tbb_thread_pool() : tbb_thread_pool(tbb::task_arena::attach{}) {}
-
-    explicit tbb_thread_pool(std::uint32_t threadCount) : m_arena{int(threadCount)} { m_arena.initialize(); }
-
-    template <typename... Args>
-    explicit tbb_thread_pool(Args&&... args) : m_arena{std::forward<Args>(args)...} {
-        m_arena.initialize();
-    }
-
     struct scheduler {
         using T = scheduler;
         using ID = scheduler;
         bool operator==(const scheduler&) const = default;
 
     private:
-        template <typename ReceiverId>
+        template <typename DerivedPoolType_, typename ReceiverId>
         friend class operation;
 
         class sender {
@@ -52,27 +45,27 @@ public:
 
         private:
             template <typename Receiver>
-            operation<stdexec::__x<std::decay_t<Receiver>>> make_operation_(Receiver&& r) const {
-                return operation<stdexec::__x<std::decay_t<Receiver>>>{this->pool_, (Receiver &&) r};
+            operation<DerivedPoolType, stdexec::__x<std::decay_t<Receiver>>> make_operation_(Receiver&& r) const {
+                return operation<DerivedPoolType, stdexec::__x<std::decay_t<Receiver>>>{this->pool_, (Receiver &&) r};
             }
 
             template <class Receiver>
-            friend operation<stdexec::__x<std::decay_t<Receiver>>> tag_invoke(stdexec::connect_t,
-                                                                              sender s,
-                                                                              Receiver&& r) {
+            friend operation<DerivedPoolType, stdexec::__x<std::decay_t<Receiver>>> tag_invoke(stdexec::connect_t,
+                                                                                       sender s,
+                                                                                       Receiver&& r) {
                 return s.make_operation_(std::forward<Receiver>(r));
             }
 
             template <class CPO>
-            friend tbb_thread_pool::scheduler tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender s) noexcept {
-                return tbb_thread_pool::scheduler{s.pool_};
+            friend typename DerivedPoolType::scheduler tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender s) noexcept {
+                return typename DerivedPoolType::scheduler{s.pool_};
             }
 
-            friend struct tbb_thread_pool::scheduler;
+            friend struct DerivedPoolType::tbb_thread_pool::scheduler;
 
-            explicit sender(tbb_thread_pool& pool) noexcept : pool_(pool) {}
+            explicit sender(DerivedPoolType& pool) noexcept : pool_(pool) {}
 
-            tbb_thread_pool& pool_;
+            DerivedPoolType& pool_;
         };
 
         template <class Fun, class Shape, class... Args>
@@ -96,7 +89,7 @@ public:
                                                           stdexec::__q<stdexec::__variant>>;
 
             variant_t data_;
-            tbb_thread_pool& pool_;
+            DerivedPoolType& pool_;
             Receiver receiver_;
             Shape shape_;
             Fun fn_;
@@ -138,7 +131,7 @@ public:
                            data_);
             }
 
-            bulk_shared_state(tbb_thread_pool& pool, Receiver receiver, Shape shape, Fun fn)
+            bulk_shared_state(DerivedPoolType& pool, Receiver receiver, Shape shape, Fun fn)
                 : pool_(pool)
                 , receiver_{(Receiver &&) receiver}
                 , shape_{shape}
@@ -262,7 +255,7 @@ public:
 
             friend void tag_invoke(stdexec::start_t, bulk_op_state& op) noexcept { stdexec::start(op.inner_op_); }
 
-            bulk_op_state(tbb_thread_pool& pool, Shape shape, Fun fn, Sender&& sender, Receiver receiver)
+            bulk_op_state(DerivedPoolType& pool, Shape shape, Fun fn, Sender&& sender, Receiver receiver)
                 : shared_state_(pool, (Receiver &&) receiver, shape, fn)
                 , inner_op_{stdexec::connect((Sender &&) sender, bulk_rcvr{shared_state_})} {}
         };
@@ -272,7 +265,7 @@ public:
             using Sender = stdexec::__t<SenderId>;
             using Fun = stdexec::__t<FunId>;
 
-            tbb_thread_pool& pool_;
+            DerivedPoolType& pool_;
             Sender sndr_;
             Shape shape_;
             Fun fun_;
@@ -308,7 +301,7 @@ public:
                 stdexec::connect_t,
                 Self&& self,
                 Receiver&& rcvr) noexcept(std::is_nothrow_constructible_v<bulk_op_state_t<Self, Receiver>,
-                                                                          tbb_thread_pool&,
+                                                                          DerivedPoolType&,
                                                                           Shape,
                                                                           Fun,
                                                                           Sender,
@@ -356,49 +349,74 @@ public:
         }
 
         friend stdexec::forward_progress_guarantee tag_invoke(stdexec::get_forward_progress_guarantee_t,
-                                                              const tbb_thread_pool&) noexcept {
+                                                              const DerivedPoolType&) noexcept {
             return stdexec::forward_progress_guarantee::parallel;
         }
 
-        friend class tbb_thread_pool;
-        explicit scheduler(tbb_thread_pool& pool) noexcept : pool_(&pool) {}
+        friend thread_pool_base;
+        explicit scheduler(DerivedPoolType& pool) noexcept : pool_(&pool) {}
 
-        tbb_thread_pool* pool_;
+        DerivedPoolType* pool_;
     };
 
-    scheduler get_scheduler() noexcept { return scheduler{*this}; }
+    [[nodiscard]] scheduler get_scheduler() noexcept { return scheduler{static_cast<DerivedPoolType&>(*this)}; }
 
-    void request_stop() noexcept {
+    /* Is this even needed? Looks like no.
+     * void request_stop() noexcept {
         // Should this do anything? TBB supports its own flavor of cancelation at a tbb::task_group level
-        // https://spec.oneapi.io/versions/latest/elements/oneTBB/source/task_scheduler/scheduling_controls/task_group_context_cls.html
+        //
+    https://spec.oneapi.io/versions/latest/elements/oneTBB/source/task_scheduler/scheduling_controls/task_group_context_cls.html
         // but not at the tbb::task_arena level.
         // https://spec.oneapi.io/versions/latest/elements/oneTBB/source/task_scheduler/task_arena/task_arena_cls.html
-    }
+    }*/
 
-    std::uint32_t available_parallelism() const { return m_arena.max_concurrency(); }
+    [[nodiscard]] std::uint32_t available_parallelism() const { return static_cast<DerivedPoolType&>(*this).available_parallelism(); }
 
 private:
-    void enqueue(task_base* task, std::uint32_t tid = 0) noexcept {
-        m_arena.enqueue([task, tid] { task->__execute(task, /*tid=*/tid); });
-    }
+    void enqueue(task_base* task, std::uint32_t tid = 0) noexcept { static_cast<DerivedPoolType&>(*this).enqueue(task, tid); }
     void bulk_enqueue(task_base* task, std::uint32_t n_threads) noexcept {
         for (std::size_t tid = 0; tid < n_threads; ++tid) {
             this->enqueue(task, tid);
         }
     }
-
-    tbb::task_arena m_arena;
 };
 
-template <typename ReceiverId>
+} // namespace detail
+
+
+class tbb_thread_pool : public detail::thread_pool_base<tbb_thread_pool> {
+public:
+    //! Constructor forwards to tbb::task_arena constructor:
+    template <typename... Args>
+    explicit tbb_thread_pool(Args&&... args) : arena_{std::forward<Args>(args)...} {
+        arena_.initialize();
+    }
+
+    [[nodiscard]] std::uint32_t available_parallelism() const { return arena_.max_concurrency(); }
+
+private:
+    friend detail::thread_pool_base<tbb_thread_pool>;
+
+    template <typename PoolType, typename ReceiverId>
+    friend class operation;
+
+    void enqueue(task_base* task, std::uint32_t tid = 0) noexcept {
+        arena_.enqueue([task, tid] { task->__execute(task, /*tid=*/tid); });
+    }
+
+    tbb::task_arena arena_{tbb::task_arena::attach{}};
+};
+
+
+template <typename PoolType, typename ReceiverId>
 class operation : task_base {
     using Receiver = stdexec::__t<ReceiverId>;
-    friend tbb_thread_pool::scheduler::sender;
+    friend class detail::thread_pool_base<PoolType>;
 
-    tbb_thread_pool& pool_;
+    PoolType& pool_;
     Receiver receiver_;
 
-    explicit operation(tbb_thread_pool& pool, Receiver&& r) : pool_(pool), receiver_(std::move(r)) {
+    explicit operation(PoolType& pool, Receiver&& r) : pool_(pool), receiver_(std::move(r)) {
         this->__execute = [](task_base* t, std::uint32_t /* tid What is this needed for? */) noexcept {
             auto& op = *static_cast<operation*>(t);
             auto stoken = stdexec::get_stop_token(stdexec::get_env(op.receiver_));
@@ -412,5 +430,6 @@ class operation : task_base {
 
     friend void tag_invoke(stdexec::start_t, operation& op) noexcept { op.pool_.enqueue(&op); }
 };
+
 
 } // namespace tbbexec
