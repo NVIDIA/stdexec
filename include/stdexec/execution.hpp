@@ -5916,9 +5916,9 @@ namespace stdexec {
       class __basic_storage<_Allocator, _Copyable, _Alignment, _InlineSize>::__storage<_Vtable>::__t {
         static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
         static constexpr std::size_t __alignment = std::max(_Alignment, alignof(void*));
-        using __with_copy = __copy_construct_t(void(*)(const __t&));
-        using __with_move = __move_construct_t(void(*)(__t&&) noexcept);
-        using __with_delete = __delete_t(void(*)() noexcept);
+        using __with_copy = __copy_construct_t(void(const __t&));
+        using __with_move = __move_construct_t(void(__t&&) noexcept);
+        using __with_delete = __delete_t(void() noexcept);
 
         template <class _T>
           static constexpr bool __is_small = sizeof(_T) <= __buffer_size && alignof(_T) <= __alignment;
