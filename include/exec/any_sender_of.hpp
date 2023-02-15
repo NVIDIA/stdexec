@@ -518,10 +518,7 @@ namespace exec {
       class __t {
        public:
         void (*__start_)(void*) noexcept;
-        void operator()(start_t, void* __op) const noexcept {
-          STDEXEC_ASSERT(__start_);
-          __start_(__op);
-        }
+
        private:
         template <class _Op>
           friend const __t*
@@ -573,7 +570,8 @@ namespace exec {
           }
 
           friend void tag_invoke(start_t, __t& __self) noexcept {
-            (*__get_vtable(__self.__storage_)->__start_)(__get_object_pointer(__self.__storage_));
+            STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__start_);
+            __get_vtable(__self.__storage_)->__start_(__get_object_pointer(__self.__storage_));
           }
         };
       };
