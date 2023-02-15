@@ -59,6 +59,36 @@ TEST_CASE("any receiver reference", "[types][any_sender]") {
   CHECK(tag{}(get_env(ref)) == 42);
 }
 
+struct empty_vtable_t {
+  private:
+  template <class T>
+    friend empty_vtable_t* 
+    tag_invoke(__any::__create_vtable_t, __mtype<empty_vtable_t>, __mtype<T>) noexcept
+    {
+      static empty_vtable_t vtable{};
+      return &vtable;
+    }
+};
+
+TEST_CASE("empty storage is movable", "[types][any_sender]") {
+  struct foo {};
+  using any_unique = __any::__storage_t<__any::__unique_storage<>, empty_vtable_t>;
+  any_unique s1{};
+  any_unique s2 = foo{};
+  static_assert(std::is_move_assignable_v<any_unique>);
+  static_assert(!std::is_copy_assignable_v<any_unique>);
+  CHECK(__any::__get_vtable(s1));
+  CHECK(__any::__get_vtable(s2));
+  CHECK(__any::__get_vtable(s1) != __any::__get_vtable(s2));
+  CHECK(__any::__get_object_pointer(s1) == nullptr);
+  CHECK(__any::__get_object_pointer(s2) != nullptr);
+  s1 = std::move(s2);
+  CHECK(__any::__get_vtable(s1));
+  CHECK(__any::__get_vtable(s2));
+  CHECK(__any::__get_vtable(s1) != __any::__get_vtable(s2));
+  CHECK(__any::__get_object_pointer(s1) != nullptr);
+  CHECK(__any::__get_object_pointer(s2) == nullptr);
+}
 
 TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 
@@ -86,7 +116,7 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 TEST_CASE("any sender is a sender", "[types][any_sender]") {
 
   using Sigs = completion_signatures<set_value_t()>;
-  __any::__sender::__sender<Sigs, __types<>, __types<>> sender = stdexec::just();
+  __t<__any::__sender::__sender<Sigs, __types<>, __types<>>> sender = stdexec::just();
   static_assert(stdexec::sender<decltype(sender)>);
 
   // CHECK(tag{}(get_env(ref)) == 42);
