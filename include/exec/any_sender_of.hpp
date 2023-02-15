@@ -408,6 +408,12 @@ namespace exec {
     template <class _Storage, class _VTable>
       using __storage_t = typename _Storage::template __storage<_VTable>::__t;
 
+    template <class _VTable, class _Allocator = std::allocator<std::byte>>
+      using __unique_storage_t = __storage_t<__unique_storage<_Allocator>, _VTable>;
+
+    template <class _VTable, class _Allocator = std::allocator<std::byte>>
+      using __copyable_storage_t = __storage_t<__copyable_storage<_Allocator>, _VTable>;
+
     namespace __rec {
       template <class _Sig>
         struct __rcvr_vfun;
@@ -536,7 +542,7 @@ namespace exec {
         return &__op_vtbl<_Op>;
       }
 
-    using __unique_operation_storage = __storage_t<__unique_storage<>, __operation_vtable>;
+    using __unique_operation_storage = __unique_storage_t<__operation_vtable>;
 
     template <class _Sigs, class _Queries>
       using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
@@ -577,6 +583,7 @@ namespace exec {
         class __t : public __query_vfun<_Queries>... {
          public:
           using __id = __sender_env_vtable;
+          using __query_vfun<_Queries>::operator()...;
 
          private:
           template <class _Env>
@@ -590,7 +597,22 @@ namespace exec {
 
     template <class... Queries>
       class any_env_of {
-        __storage_t<__copyable_storage<>, __sender_env_vtable<Queries...>> __storage_{};
+       public:
+        template <class _Env>
+            // requires _
+          any_env_of(const _Env& other);
+
+       private:
+        using __vtable_t = __sender_env_vtable<Queries...>;
+        __copyable_storage_t<__vtable_t> __storage_{};
+        template <class _Tag, class... _As>
+            requires __callable<const __vtable_t&, _Tag, void*, _As...>
+          friend auto tag_invoke(_Tag, const any_env_of& __self, _As&&... __as)
+          noexcept(__nothrow_callable<const __vtable_t&, _Tag, void*, _As...>)
+            -> __call_result_t<const __vtable_t&, _Tag, void*, _As...> {
+            return (*__get_vtable(__self.__storage_))(
+                _Tag{}, __get_object_pointer(__self.__storage_), (_As&&) __as...);
+          }
       };
 
     template <class _Sigs, class _RecQueries, class _SndQueries>
@@ -641,9 +663,7 @@ namespace exec {
 
           private:
           using __vtable_t = stdexec::__t<__sender_vtable<_Sigs, _ReceiverQueries, _SenderQueries>>;
-          using __storage_t = exec::__any::__storage_t<__unique_storage<>, __vtable_t>;
-
-          __storage_t __storage_;
+          __unique_storage_t<__vtable_t> __storage_;
 
           template <receiver_of<_Sigs> _Rcvr>
               requires sender_to<__t, _Rcvr>
