@@ -3,7 +3,6 @@
 #include <tbb/task_arena.h>
 
 #include <exec/static_thread_pool.hpp>
-#include <exec/inline_scheduler.hpp>
 
 
 namespace tbbexec {
@@ -128,7 +127,9 @@ public:
             }
 
             std::uint32_t num_agents_required() const {
-                return std::min(shape_, static_cast<Shape>(pool_.available_parallelism()));
+                // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
+                // than we can actually deal with at one time? I think the answer is "no".
+                return shape_;
             }
 
             template <class F>
@@ -367,20 +368,23 @@ public:
 
     scheduler get_scheduler() noexcept { return scheduler{*this}; }
 
-    void request_stop() noexcept { /* TODO? */
+    void request_stop() noexcept {
+        // Should this do anything? TBB supports its own flavor of cancelation at a tbb::task_group level
+        // https://spec.oneapi.io/versions/latest/elements/oneTBB/source/task_scheduler/scheduling_controls/task_group_context_cls.html
+        // but not at the tbb::task_arena level.
+        // https://spec.oneapi.io/versions/latest/elements/oneTBB/source/task_scheduler/task_arena/task_arena_cls.html
     }
 
     std::uint32_t available_parallelism() const { return m_arena.max_concurrency(); }
 
 private:
     void enqueue(task_base* task) noexcept {
-        m_arena.enqueue([task] { tbb::this_task_arena::isolate([task] { task->__execute(task, /*tid=*/0); }); });
+        m_arena.enqueue([task] { task->__execute(task, /*tid=*/0); });
     }
     void bulk_enqueue(task_base* task, std::uint32_t n_threads) noexcept {
         for (std::size_t i = 0; i < n_threads; ++i) {
             // FIXME: Is this right? i is the tid?
-            m_arena.enqueue(
-                [task, i] { tbb::this_task_arena::isolate([task, i] { task->__execute(task, /*tid=*/i); }); });
+            m_arena.enqueue([task, i] { task->__execute(task, /*tid=*/i); });
         }
     }
 
@@ -395,14 +399,14 @@ class operation : task_base {
     tbb_thread_pool& pool_;
     Receiver receiver_;
 
-    explicit operation(tbb_thread_pool& pool, Receiver&& r) : pool_(pool), receiver_((Receiver &&) r) {
+    explicit operation(tbb_thread_pool& pool, Receiver&& r) : pool_(pool), receiver_(std::move(r)) {
         this->__execute = [](task_base* t, std::uint32_t /* tid What is this needed for? */) noexcept {
             auto& op = *static_cast<operation*>(t);
             auto stoken = stdexec::get_stop_token(stdexec::get_env(op.receiver_));
             if (stoken.stop_requested()) {
-                stdexec::set_stopped((Receiver &&) op.receiver_); // std::move?
+                stdexec::set_stopped(std::move(op.receiver_));
             } else {
-                stdexec::set_value((Receiver &&) op.receiver_); // std::move?
+                stdexec::set_value(std::move(op.receiver_));
             }
         };
     }
