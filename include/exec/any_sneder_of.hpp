@@ -579,8 +579,8 @@ namespace exec {
           }
          private:
           template <class _Sender>
-            friend constexpr const __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>*
-            tag_invoke(__create_vtable_t, __mtype<__sender_vtable<_Sigs, _Queries>>, __mtype<_Sender>) noexcept {
+            friend constexpr const __sender_vtable*
+            tag_invoke(__create_vtable_t, __mtype<__sender_vtable>, __mtype<_Sender>) noexcept {
               return __sender_vtbl_<_Sender, _Queries>();
             }
         };
@@ -596,31 +596,37 @@ namespace exec {
         }
 
       template <class _Sigs, class _ReceiverQueries, class _SenderQueries>
-        class __sender {
-         public:
-          using completion_signatures = _Sigs;
+        struct __sender {
+          class __t {
+           public:
+            using __id = __sender;
+            using completion_signatures = _Sigs;
 
-          __sender(const __sender&) = delete;
-          __sender& operator=(const __sender&) = delete;
+            __t(const __t&) = delete;
+            __t& operator=(const __t&) = delete;
 
-          __sender(__sender&&) = default;
-          __sender& operator=(__sender&&) = default;
+            __t(__t&&) = default;
+            __t& operator=(__t&&) = default;
 
-          template <__none_of<__sender&, const __sender&> _Sender>
-            __sender(_Sender&& __sender)
-              : __storage_{(_Sender&&) __sender} {}
+            template <class _Sender>
+                requires (!__decays_to<_Sender, __t> &&
+                          sender_to<_Sender, __receiver_ref<_Sigs, _ReceiverQueries>>)
+              __t(_Sender&& __sndr)
+                : __storage_{(_Sender&&) __sndr} {}
 
-         private:
-          using __vtable_t = __sender_vtable<_Sigs, _ReceiverQueries>;
+           private:
+            using __vtable_t = __sender_vtable<_Sigs, _ReceiverQueries>;
+            using __storage_t = exec::__any::__storage_t<__unique_storage<>, __vtable_t>;
 
-          __storage_t<__unique_storage<>, __vtable_t> __storage_;
+            __storage_t __storage_;
 
-          template <receiver_of<_Sigs> _Rcvr>
-              requires sender_to<__sender, _Rcvr>
-            friend __operation<__sender, std::decay_t<_Rcvr>, _ReceiverQueries> 
-            tag_invoke(connect_t, __sender&& __self, _Rcvr&& __rcvr) {
-              return {(_Rcvr&&) __rcvr, (__sender&&) __self};
-            }
+            template <receiver_of<_Sigs> _Rcvr>
+                requires sender_to<__t, _Rcvr>
+              friend __operation<__t, std::decay_t<_Rcvr>, _ReceiverQueries> 
+              tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr) {
+                return {(_Rcvr&&) __rcvr, (__t&&) __self};
+              }
+          };
         };
     } // namespace __sender
   } // namepsace __any
