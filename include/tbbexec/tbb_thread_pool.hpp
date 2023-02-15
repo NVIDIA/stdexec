@@ -128,8 +128,8 @@ public:
 
             std::uint32_t num_agents_required() const {
                 // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
-                // than we can actually deal with at one time? I think the answer is "no".
-                return shape_;
+                // than we can actually deal with at one time?
+                return std::min(shape_, static_cast<Shape>(pool_.available_parallelism()));
             }
 
             template <class F>
@@ -378,13 +378,12 @@ public:
     std::uint32_t available_parallelism() const { return m_arena.max_concurrency(); }
 
 private:
-    void enqueue(task_base* task) noexcept {
-        m_arena.enqueue([task] { task->__execute(task, /*tid=*/0); });
+    void enqueue(task_base* task, std::uint32_t tid = 0) noexcept {
+        m_arena.enqueue([task, tid] { task->__execute(task, /*tid=*/tid); });
     }
     void bulk_enqueue(task_base* task, std::uint32_t n_threads) noexcept {
-        for (std::size_t i = 0; i < n_threads; ++i) {
-            // FIXME: Is this right? i is the tid?
-            m_arena.enqueue([task, i] { task->__execute(task, /*tid=*/i); });
+        for (std::size_t tid = 0; tid < n_threads; ++tid) {
+            this->enqueue(task, tid);
         }
     }
 
