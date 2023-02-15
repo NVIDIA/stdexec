@@ -5921,7 +5921,9 @@ namespace stdexec {
         using __with_delete = __delete_t(void() noexcept);
 
         template <class _T>
-          static constexpr bool __is_small = sizeof(_T) <= __buffer_size && alignof(_T) <= __alignment;
+          static constexpr bool __is_small = sizeof(_T) <= __buffer_size 
+                                             && alignof(_T) <= __alignment 
+                                             && std::is_nothrow_move_constructible_v<_T>;
 
         using __vtable_t = __if_c<_Copyable, 
             __storage_vtable<_Vtable, __with_delete, __with_move, __with_copy>, 
@@ -6052,7 +6054,7 @@ namespace stdexec {
                 return;
               }
               _T* __pointer = static_cast<_T*>(std::exchange(__other.__object_pointer_, nullptr));
-              if constexpr (__is_small<_T> && std::is_nothrow_move_constructible_v<_T>) {
+              if constexpr (__is_small<_T>) {
                 _T& __other_object = *__pointer; 
                 __self.template __construct_small<_T>((_T&&)__other_object);
               } else {
