@@ -599,7 +599,7 @@ namespace exec {
       class any_env_of {
        public:
         template <class _Env>
-            // requires _
+            requires (!__decays_to<_Env, any_env_of>)
           any_env_of(_Env&& other)
           : __storage_((_Env&&) other) {}
 
