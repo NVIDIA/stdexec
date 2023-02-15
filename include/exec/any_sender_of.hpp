@@ -52,7 +52,11 @@ namespace exec {
       };
 
     template <class _EnvProvider>
-      struct __query_vfun_fn {
+      struct __query_vfun_fn;
+
+    template <class _EnvProvider>
+        requires tag_invocable<get_env_t, const _EnvProvider&>
+      struct __query_vfun_fn<_EnvProvider> {
         template <class _Tag, class _Ret, class... _As>
             requires __callable<_Tag, env_of_t<const _EnvProvider&>, _As...>
           constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...))) const noexcept)(void*, _As...) {
@@ -69,6 +73,27 @@ namespace exec {
           };
         }
       };
+
+    template <class _Env>
+        requires (!tag_invocable<get_env_t, const _Env&>)
+      struct __query_vfun_fn<_Env> {
+        template <class _Tag, class _Ret, class... _As>
+            requires __callable<_Tag, const _Env&, _As...>
+          constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...))) const noexcept)(void*, _As...) {
+          return +[](void* __env, _As... __as) -> _Ret {
+            return _Tag{}(*(const _Env*) __env, (_As&&) __as...);
+          };
+        }
+        template <class _Tag, class _Ret, class... _As>
+            requires __callable<_Tag, const _Env&, _As...>
+          constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
+          return +[](void* __env, _As... __as) noexcept -> _Ret {
+            static_assert(__nothrow_callable<_Tag, const _Env&, _As...>);
+            return _Tag{}(*(const _Env*) __env, (_As&&) __as...);
+          };
+        }
+      };
+
 
     
     template <class _Sig>
@@ -491,7 +516,7 @@ namespace exec {
       void operator()(start_t, void* __op) const noexcept {
         __start_(__op);
       }
-      private:
+     private:
       template <class _Op>
         friend constexpr const __operation_vtable*
         tag_invoke(__create_vtable_t, __mtype<__operation_vtable>, __mtype<_Op>) noexcept {
@@ -546,54 +571,54 @@ namespace exec {
           (*__get_vtable(__self.__storage_)->__start_)(__get_object_pointer(__self.__storage_));
         }
       };
+    
+    template <class... _Queries>
+      struct __sender_env_vtable {
+        class __t : public __query_vfun<_Queries>... {
+         public:
+          using __id = __sender_env_vtable;
 
-    template <class _Sender, class _ReceiverQueries>
-    struct __sender_vtable_fn {
-      using _Sigs = completion_signatures_of_t<_Sender>;
-      using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
-      constexpr __unique_operation_storage
-      (*operator()() const noexcept)(void*, __receiver_ref_t) {
-        return +[](void* __object_pointer, __receiver_ref_t __receiver) -> __unique_operation_storage {
-          _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
-          static_assert(receiver_of<__receiver_ref_t, _Sigs>);
-          using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
-          return __unique_operation_storage{std::in_place_type<__op_state_t>, 
-              __conv{[&] { return connect((_Sender&&)__sender, (__receiver_ref_t&&)__receiver); }}};
+         private:
+          template <class _Env>
+            friend const __t*
+            tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Env>) noexcept {
+              static const __t __vtable{__query_vfun_fn<_Env>{}((_Queries*) nullptr)...};
+              return &__vtable;
+            }
         };
-      }
-    };
-
-    template <class _Sigs, class _Queries>
-    struct __sender_vtable;
-
-    template <class _Sender, class _Queries>
-      constexpr const __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>*
-      __sender_vtbl_();
-
-    template <class _Sigs, class _Queries>
-      struct __sender_vtable {
-        using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
-        __unique_operation_storage (*__connect_)(void*, __receiver_ref_t);
-        __unique_operation_storage operator()(connect_t, void* __sender, __receiver_ref_t __receiver) const {
-          return __connect_(__sender, __receiver);
-        }
-        private:
-        template <class _Sender>
-          friend constexpr const __sender_vtable*
-          tag_invoke(__create_vtable_t, __mtype<__sender_vtable>, __mtype<_Sender>) noexcept {
-            return __sender_vtbl_<_Sender, _Queries>();
-          }
       };
 
-    template <class _Sender, class _Queries>
-      inline constexpr __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>
-      __sender_vtbl{__sender_vtable_fn<_Sender, _Queries>{}()};
+    template <class... Queries>
+      class any_env_of {
+        __storage_t<__copyable_storage<>, __sender_env_vtable<Queries...>> __storage_{};
+      };
 
-      template <class _Sender, class _Queries>
-      constexpr const __sender_vtable<completion_signatures_of_t<_Sender>, _Queries>*
-      __sender_vtbl_() { 
-        return &__sender_vtbl<_Sender, _Queries>;
-      }
+    template <class _Sigs, class _RecQueries, class _SndQueries>
+      struct __sender_vtable {
+        using __receiver_ref_t = __receiver_ref<_Sigs, _RecQueries>;
+        class __t {
+         public:
+          using __id = __sender_vtable;
+          __unique_operation_storage (*__connect_)(void*, __receiver_ref_t);
+          // __env_t (*__get_env_)(void*) noexcept;
+         private:
+          template <class _Sender>
+              requires sender_to<_Sender, __receiver_ref_t>
+            friend const __t*
+            tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Sender>) noexcept {
+            static const __t __vtable{
+              [](void *__object_pointer, __receiver_ref_t __receiver)  -> __unique_operation_storage {
+                  _Sender &__sender = *static_cast<_Sender *>(__object_pointer);
+                  using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
+                  return __unique_operation_storage{
+                    std::in_place_type<__op_state_t>,
+                    __conv{[&] { return connect((_Sender &&) __sender, 
+                                                (__receiver_ref_t &&) __receiver); }}};
+              }};
+              return &__vtable;
+            }
+        };
+      };
 
     template <class _Sigs, class _ReceiverQueries, class _SenderQueries>
       struct __sender {
@@ -615,7 +640,7 @@ namespace exec {
               : __storage_{(_Sender&&) __sndr} {}
 
           private:
-          using __vtable_t = __sender_vtable<_Sigs, _ReceiverQueries>;
+          using __vtable_t = stdexec::__t<__sender_vtable<_Sigs, _ReceiverQueries, _SenderQueries>>;
           using __storage_t = exec::__any::__storage_t<__unique_storage<>, __vtable_t>;
 
           __storage_t __storage_;
