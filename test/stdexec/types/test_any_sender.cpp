@@ -17,7 +17,6 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-using namespace std;
 using namespace stdexec;
 
 struct tag {
