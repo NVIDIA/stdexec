@@ -155,8 +155,20 @@ namespace exec {
     inline constexpr __move_construct_t __move_construct{};
 
     template <class _ParentVTable, class... _StorageCPOs>
-      struct __storage_vtable : _ParentVTable, __storage_vfun<_StorageCPOs>... {
+      struct __storage_vtable;
+
+    template <class _ParentVTable, class... _StorageCPOs>
+        requires requires (_ParentVTable pv) { pv(); }
+      struct __storage_vtable<_ParentVTable, _StorageCPOs...>
+      : _ParentVTable, __storage_vfun<_StorageCPOs>... {
         using _ParentVTable::operator();
+        using __storage_vfun<_StorageCPOs>::operator()...;
+      };
+
+    template <class _ParentVTable, class... _StorageCPOs>
+        requires (!(requires (_ParentVTable pv) { pv(); }))
+      struct __storage_vtable<_ParentVTable, _StorageCPOs...>
+      : _ParentVTable, __storage_vfun<_StorageCPOs>... {
         using __storage_vfun<_StorageCPOs>::operator()...;
       };
 
