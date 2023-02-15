@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <exec/any_sneder_of.hpp>
+#include <exec/any_sender_of.hpp>
 
 #include <catch2/catch.hpp>
 
@@ -85,7 +85,7 @@ TEST_CASE("empty storage is movable", "[types][any_sender]") {
   // Test SBO
   std::intptr_t obj_ptr = reinterpret_cast<std::intptr_t>(__any::__get_object_pointer(s2));
   std::intptr_t s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
-  CHECK(std::abs(s2_ptr - obj_ptr) < sizeof(any_unique));
+  CHECK(std::abs(s2_ptr - obj_ptr) < std::intptr_t(sizeof(any_unique)));
   
   s1 = std::move(s2);
   CHECK(__any::__get_vtable(s2));
@@ -117,7 +117,7 @@ TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any
   // Test SBO
   std::intptr_t obj_ptr = reinterpret_cast<std::intptr_t>(__any::__get_object_pointer(s2));
   std::intptr_t s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
-  CHECK(std::abs(s2_ptr - obj_ptr) >= sizeof(any_unique));
+  CHECK(std::abs(s2_ptr - obj_ptr) >= std::intptr_t(sizeof(any_unique)));
   
   s1 = std::move(s2);
   CHECK(__any::__get_vtable(s2));
