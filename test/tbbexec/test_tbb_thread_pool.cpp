@@ -124,6 +124,30 @@ TEST_CASE("more tbb_thread_pool") {
   CHECK(k == 5);
 }
 
+TEST_CASE("tbb_thread_pool exceptions") {
+  // I know tbb::task_groups do cancellation with exceptions, which leaves them in a not-restartable
+  // state. We'd better have it act normally here.
+  using namespace stdexec;
+
+  tbbexec::tbb_thread_pool tbb_pool;
+  exec::static_thread_pool other_pool(1);
+  {
+    CHECK_THROWS(stdexec::sync_wait(
+        on(tbb_pool.get_scheduler(), just(0)) | then([](auto i) { throw std::exception(); })));
+    CHECK_THROWS(stdexec::sync_wait(
+        on(other_pool.get_scheduler(), just(0)) | then([](auto i) { throw std::exception(); })));
+  }
+  // Ensure it still works normally after exceptions:
+  {
+    auto tbb_result = stdexec::sync_wait(
+        on(tbb_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
+    CHECK(tbb_result.has_value());
+    auto other_result = stdexec::sync_wait(
+        on(other_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
+    CHECK(tbb_result == other_result);
+  }
+}
+
 TEST_CASE("tbb_thread_pool async_inclusive_scan") {
   const auto input = std::array{1.0, 2.0, -1.0, -2.0};
   std::remove_const_t<decltype(input)> output;
