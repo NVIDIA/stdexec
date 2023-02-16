@@ -16,6 +16,7 @@
 
 #include <exec/any_sender_of.hpp>
 #include <exec/inline_scheduler.hpp>
+#include <exec/static_thread_pool.hpp>
 
 #include <catch2/catch.hpp>
 
@@ -163,9 +164,25 @@ TEST_CASE("any sender is a sender", "[types][any_sender]") {
   // CHECK(tag{}(env) == 42);
 }
 
-TEST_CASE("any scheduler", "[types][any_sender]") {
+TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
   static_assert(scheduler<any_scheduler>);
   any_scheduler scheduler = exec::inline_scheduler();
+  any_scheduler copied = scheduler;
+  CHECK(copied == scheduler);
+
+  auto sched = schedule(scheduler);
+  static_assert(sender<decltype(sched)>);
+  std::same_as<any_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  CHECK(get_sched == scheduler);
+
+  bool called = false;
+  sync_wait(std::move(sched) | then([&] { called = true; }));
+  CHECK(called);
+}
+
+TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
+  exec::static_thread_pool pool(1);
+  any_scheduler scheduler = pool.get_scheduler();
   any_scheduler copied = scheduler;
   CHECK(copied == scheduler);
 

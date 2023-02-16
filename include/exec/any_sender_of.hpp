@@ -497,39 +497,48 @@ namespace exec {
     template <class _Sigs, class _Queries>
       using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
 
+    template <class _Receiver, class _Sigs, class _Queries>
+      struct __operation_base {
+        [[no_unique_address]] _Receiver __receiver_;
+      };
+
     template <class _Sender, class _Receiver, class _Queries>
       struct __operation {
-        class __t {
-          using _Sigs = completion_signatures_of_t<_Sender>;
-          using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
+        using _Sigs = completion_signatures_of_t<_Sender>;
+        using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
 
+        struct __rec {
+          __operation_base<_Receiver, _Sigs, _Queries>* __op_;
+
+          template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO, 
+                    __decays_to<__rec> _Self, class... _Args>
+              requires __callable<_CPO, _Receiver&&, _Args...>
+            friend void tag_invoke(_CPO, _Self&& __self, _Args&&... __args) noexcept {
+              _CPO{}((_Receiver&&) __self.__op_->__receiver_, (_Args&&) __args...);
+            }
+
+          friend env_of_t<_Receiver> tag_invoke(get_env_t, const __rec& __self) noexcept {
+            return get_env(__self.__op_->__receiver_);
+          }
+        };
+
+        class __t : __immovable, __operation_base<_Receiver, _Sigs, _Queries> {
          public:
           using __id = __operation;
 
           __t(_Sender&& __sender, _Receiver&& __receiver)
-          : __receiver_{(_Receiver&&) __receiver}
-          , __storage_{__sender.__connect(__receiver_ref_t{*this})}
-          {
+          : __operation_base<_Receiver, _Sigs, _Queries>{(_Receiver&&) __receiver}
+          , __storage_{__sender.__connect(__receiver_ref_t{__rec_})} {
           }
 
          private:
-          [[no_unique_address]] _Receiver __receiver_;
+          __rec __rec_{static_cast<__operation_base<_Receiver, _Sigs, _Queries>*>(this)};
           __unique_operation_storage __storage_{};
-
-          template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO, 
-                    __decays_to<__t> _Self, class... _Args>
-              requires __callable<_CPO, _Receiver&&, _Args...>
-            friend void tag_invoke(_CPO, _Self&& __self, _Args&&... __args) noexcept {
-              _CPO{}((_Receiver&&) __self.__receiver_, (_Args&&) __args...);
-            }
-
-          friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
-            return get_env(__self.__receiver_);
-          }
 
           friend void tag_invoke(start_t, __t& __self) noexcept {
             STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__start_);
-            __get_vtable(__self.__storage_)->__start_(__get_object_pointer(__self.__storage_));
+            __get_vtable(__self.__storage_)
+                ->__start_(__get_object_pointer(__self.__storage_));
           }
         };
       };
@@ -624,7 +633,6 @@ namespace exec {
           __unique_storage_t<__vtable> __storage_;
 
           template <receiver_of<_Sigs> _Rcvr>
-              // requires sender_to<__t, _Rcvr>
             friend stdexec::__t<__operation<__t, std::decay_t<_Rcvr>, _ReceiverQueries>>
             tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr) {
               return {(__t&&) __self, (_Rcvr&&) __rcvr};
@@ -647,7 +655,7 @@ namespace exec {
           : __storage_{(_Scheduler&&) __scheduler} {}
 
      private:
-      using __completion_sigs = completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>;
+      using __completion_sigs = completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
       using __receiver_queries = __types<>;
       using __sender_queries = __types<get_completion_scheduler_t<set_value_t>(any_scheduler() noexcept)>;
       using __sender_t = __t<__sender<__completion_sigs, __receiver_queries, __sender_queries>>;
@@ -655,10 +663,9 @@ namespace exec {
       class __vtable {
        public:        
         __sender_t (*__schedule_)(void*) noexcept;
-        bool (*__equal_to_)(const void*, const any_scheduler& other) noexcept;
-      };
-
-      template <scheduler _Scheduler>
+        bool (*__equal_to_)(const void*, const void* other) noexcept;
+       private:
+        template <scheduler _Scheduler>
           friend const __vtable*
           tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Scheduler>) noexcept {
             static const __vtable __vtable_{
@@ -666,15 +673,16 @@ namespace exec {
                 const _Scheduler& __scheduler = *static_cast<const _Scheduler *>(__object_pointer);
                 return __sender_t{schedule(__scheduler)};
               },
-              [](const void *__self, const any_scheduler& __other) noexcept -> bool {
-                const _Scheduler* __self_scheduler = static_cast<const _Scheduler *>(__self);
-                const _Scheduler* __other_scheduler = 
-                    static_cast<const _Scheduler *>(__get_object_pointer(__other.__storage_));
-                return (__self_scheduler == __other_scheduler) || 
-                       (__self_scheduler && __other_scheduler && *__self_scheduler == *__other_scheduler);
+              [](const void *__self, const void* __other) noexcept -> bool {
+                static_assert(noexcept(std::declval<const _Scheduler&>() == std::declval<const _Scheduler&>()));
+                STDEXEC_ASSERT(__self && __other);
+                const _Scheduler& __self_scheduler = *static_cast<const _Scheduler *>(__self);
+                const _Scheduler& __other_scheduler = *static_cast<const _Scheduler *>(__other);
+                return __self_scheduler == __other_scheduler;
               }};
             return &__vtable_;
           }
+      };
 
       friend __sender_t tag_invoke(schedule_t, const any_scheduler& __self) noexcept {
         STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__schedule_);
@@ -685,13 +693,12 @@ namespace exec {
         if (__get_vtable(__self.__storage_) != __get_vtable(__other.__storage_)) {
           return false;
         }
-        if (__get_object_pointer(__self.__storage_) == __get_object_pointer(__other.__storage_)) {
-          return true;
-        }
-        if (!__get_object_pointer(__self.__storage_) || !__get_object_pointer(__other.__storage_)) {
-          return false;
-        }
-        return __get_vtable(__self.__storage_)->__equal_to_(__get_object_pointer(__self.__storage_), __other);
+        void* __p = __get_object_pointer(__self.__storage_);
+        void* __o = __get_object_pointer(__other.__storage_);
+                // if both object pointers are not null, use the virtual equal_to function
+        return (__p && __o && __get_vtable(__self.__storage_)->__equal_to_(__p, __o)) 
+                // if both object pointers are nullptrs, they are equal
+               || (!__p && !__o);
       }
 
       friend bool operator!=(const any_scheduler& __self, const any_scheduler& __other) noexcept {
