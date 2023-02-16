@@ -17,6 +17,8 @@
 
 #include <stdexec/execution.hpp>
 
+#include <cstddef>
+
 namespace exec {
   namespace __any {
     using namespace stdexec;
@@ -643,9 +645,6 @@ namespace exec {
           }
         };
       };
-
-    template <class _Sigs, class _ReceiverQueries = __types<>, class _SenderQueries = __types<>>
-      using any_sender_of = __t<__sender<_Sigs, _ReceiverQueries, _SenderQueries>>;
 
     class any_scheduler {
      public:
