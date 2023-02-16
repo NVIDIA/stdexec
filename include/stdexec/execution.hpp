@@ -17,7 +17,6 @@
 
 #include <atomic>
 #include <cassert>
-#include <cstddef>
 #include <concepts>
 #include <condition_variable>
 #include <stdexcept>
