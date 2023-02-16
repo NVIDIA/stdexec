@@ -141,6 +141,7 @@ TEST_CASE(
   REQUIRE(!ex::scheduler<sched_no_completion>);
 }
 
+#if STDEXEC_LEGACY_R5_CONCEPTS()
 struct sched_no_env {
   // P2300R5 senders defined sender queries on the sender itself.
   struct my_sender {
@@ -169,3 +170,4 @@ TEST_CASE(
   static_assert(ex::scheduler<sched_no_env>);
   REQUIRE(ex::scheduler<sched_no_env>);
 }
+#endif

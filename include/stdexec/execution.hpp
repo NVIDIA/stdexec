@@ -703,7 +703,9 @@ namespace stdexec {
       __callable<get_completion_signatures_t, _Sender, _Env> &&
       __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env>;
 
-#if 0
+#define STDEXEC_LEGACY_R5_CONCEPTS() 1
+
+#if !STDEXEC_LEGACY_R5_CONCEPTS()
   // Here is the R7 sender concepts, not yet enabled.
   template <class _Sender>
     concept sender =
@@ -1550,7 +1552,7 @@ namespace stdexec {
         using __select_impl_t =
           decltype(__select_impl<_Sender, _Receiver>());
 
-      template <class _Sender, class _Receiver>
+      template <sender _Sender, receiver _Receiver>
         requires
           __connectable_with_tag_invoke<_Sender, _Receiver> ||
           __callable<__connect_awaitable_t, _Sender, _Receiver> ||
