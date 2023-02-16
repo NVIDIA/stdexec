@@ -15,6 +15,7 @@
  */
 
 #include <exec/any_sender_of.hpp>
+#include <exec/inline_scheduler.hpp>
 
 #include <catch2/catch.hpp>
 
@@ -159,8 +160,21 @@ TEST_CASE("any sender is a sender", "[types][any_sender]") {
   __t<__any::__sender<Sigs, __types<>, __types<>>> sender = stdexec::just();
   static_assert(stdexec::sender<decltype(sender)>);
   
-  any_env_of<> env1 = get_env(sender);
-  any_env_of<> env2 = env1;
+  // CHECK(tag{}(env) == 42);
+}
 
-  // CHECK(tag{}(get_env(ref)) == 42);
+TEST_CASE("any scheduler", "[types][any_sender]") {
+  static_assert(scheduler<any_scheduler>);
+  any_scheduler scheduler = exec::inline_scheduler();
+  any_scheduler copied = scheduler;
+  CHECK(copied == scheduler);
+
+  auto sched = schedule(scheduler);
+  static_assert(sender<decltype(sched)>);
+  std::same_as<any_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  CHECK(get_sched == scheduler);
+
+  bool called = false;
+  sync_wait(std::move(sched) | then([&] { called = true; }));
+  CHECK(called);
 }
