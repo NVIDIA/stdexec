@@ -51,11 +51,7 @@ namespace exec {
       };
 
     template <class _EnvProvider>
-      struct __query_vfun_fn;
-
-    template <class _EnvProvider>
-        requires tag_invocable<get_env_t, const _EnvProvider&>
-      struct __query_vfun_fn<_EnvProvider> {
+      struct __query_vfun_fn {
         template <class _Tag, class _Ret, class... _As>
             requires __callable<_Tag, env_of_t<const _EnvProvider&>, _As...>
           constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...))) const noexcept)(void*, _As...) {
@@ -73,28 +69,6 @@ namespace exec {
         }
       };
 
-    template <class _Env>
-        requires (!tag_invocable<get_env_t, const _Env&>)
-      struct __query_vfun_fn<_Env> {
-        template <class _Tag, class _Ret, class... _As>
-            requires __callable<_Tag, const _Env&, _As...>
-          constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...))) const noexcept)(void*, _As...) {
-          return +[](void* __env, _As... __as) -> _Ret {
-            return _Tag{}(*(const _Env*) __env, (_As&&) __as...);
-          };
-        }
-        template <class _Tag, class _Ret, class... _As>
-            requires __callable<_Tag, const _Env&, _As...>
-          constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
-          return +[](void* __env, _As... __as) noexcept -> _Ret {
-            static_assert(__nothrow_callable<_Tag, const _Env&, _As...>);
-            return _Tag{}(*(const _Env*) __env, (_As&&) __as...);
-          };
-        }
-      };
-
-
-    
     template <class _Sig>
       struct __storage_vfun;
 
@@ -573,80 +547,74 @@ namespace exec {
           }
         };
       };
-    
-    template <class... _Queries>
-      struct __sender_env_vtable {
-        class __t : public __query_vfun<_Queries>... {
-         public:
-          using __id = __sender_env_vtable;
-          using __query_vfun<_Queries>::operator()...;
 
-         private:
-          template <class _Env>
-            friend const __t*
-            tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Env>) noexcept {
-              static const __t __vtable{__query_vfun_fn<_Env>{}((_Queries*) nullptr)...};
-              return &__vtable;
-            }
-        };
-      };
+    template <class _Queries>
+      class __query_vtable;
 
-    template <class... Queries>
-      class any_env_of {
+    template <template <class...> class _L, typename... _Queries>
+      class __query_vtable<_L<_Queries...>> : __query_vfun<_Queries>... {
        public:
-        template <class _Env>
-            requires (!__decays_to<_Env, any_env_of>)
-          any_env_of(_Env&& other)
-          : __storage_((_Env&&) other) {}
-
+        using __query_vfun<_Queries>::operator()...;
        private:
-        using __vtable_t = __t<__sender_env_vtable<Queries...>>;
-        __copyable_storage_t<__vtable_t> __storage_{};
-        template <class _Tag, class... _As>
-            requires __callable<const __vtable_t&, _Tag, void*, _As...>
-          friend auto tag_invoke(_Tag, const any_env_of& __self, _As&&... __as)
-          noexcept(__nothrow_callable<const __vtable_t&, _Tag, void*, _As...>)
-            -> __call_result_t<const __vtable_t&, _Tag, void*, _As...> {
-            return (*__get_vtable(__self.__storage_))(
-                _Tag{}, __get_object_pointer(__self.__storage_), (_As&&) __as...);
+        template <class _EnvProvider>
+          friend const __query_vtable*
+          tag_invoke(__create_vtable_t, __mtype<__query_vtable>, __mtype<_EnvProvider>) noexcept {
+            static const __query_vtable __vtable{__query_vfun_fn<_EnvProvider>{}((_Queries*) nullptr)...};
+            return &__vtable;
           }
       };
 
-    template <class _Sigs, class _ReceiverQueries, class _SenderQueries>
+    template <class _Sigs, class _ReceiverQueries = __types<>, class _SenderQueries = __types<>>
       struct __sender {
-        struct __vtable {
+        class __vtable : public __query_vtable<_SenderQueries> {
           using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
-          using __env_t = __mapply<__q<any_env_of>, _SenderQueries>;
-          class __t {
-           public:
-            using __id = __vtable;
-            __unique_operation_storage (*__connect_)(void*, __receiver_ref_t);
-            __env_t (*__get_env_)(void*) noexcept;
-           private:
-            template <sender_to<__receiver_ref_t> _Sender>
-              friend const __t*
-              tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Sender>) noexcept {
-              static const __t __vtable{
-                [](void *__object_pointer, __receiver_ref_t __receiver)  -> __unique_operation_storage {
-                    _Sender &__sender = *static_cast<_Sender *>(__object_pointer);
-                    using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
-                    return __unique_operation_storage{
-                      std::in_place_type<__op_state_t>,
-                      __conv{[&] { return connect((_Sender &&) __sender, 
-                                                  (__receiver_ref_t &&) __receiver); }}};
-                },
-                [](void *__object_pointer) noexcept -> __env_t {
-                    _Sender &__sender = *static_cast<_Sender *>(__object_pointer);
-                    return __env_t{get_env(__sender)};
-                }};
-                return &__vtable;
-              }
-          };
+         public:
+          using __id = __vtable;
+          const __query_vtable<_SenderQueries>* __queries() const noexcept {
+            return this;
+          }
+
+          __unique_operation_storage (*__connect_)(void*, __receiver_ref_t);
+         private:
+          template <sender_to<__receiver_ref_t> _Sender>
+            friend const __vtable*
+            tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Sender>) noexcept {
+            static const __vtable __vtable_{
+              {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
+              {[](void *__object_pointer, __receiver_ref_t __receiver)  -> __unique_operation_storage {
+                  _Sender &__sender = *static_cast<_Sender *>(__object_pointer);
+                  using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
+                  return __unique_operation_storage{
+                    std::in_place_type<__op_state_t>,
+                    __conv{[&] { return connect((_Sender &&) __sender, 
+                                                (__receiver_ref_t &&) __receiver); }}};
+              }}};
+              return &__vtable_;
+            }
         };
         class __t {
-          public:
+         public:
           using __id = __sender;
           using completion_signatures = _Sigs;
+
+          class __env_t {
+            __env_t(const __vtable* __vtable, void* __sender) noexcept
+            : __vtable_{__vtable}, __sender_{__sender} {
+            }
+
+            const __vtable* __vtable_;
+            void* __sender_;
+
+            template <class _Tag, class... _As>
+                requires __callable<const __vtable&, _Tag, void*, _As...>
+              friend auto tag_invoke(_Tag, const __env_t& __self, _As&&... __as)
+                noexcept(__nothrow_callable<const __vtable&, _Tag, void*, _As...>)
+                -> __call_result_t<const __vtable&, _Tag, void*, _As...> {
+                return (*__self.__vtable_->__queries())(_Tag{}, __self.__sender_, (_As&&) __as...);
+              }
+
+            friend class __t;
+          };
 
           __t(const __t&) = delete;
           __t& operator=(const __t&) = delete;
@@ -660,9 +628,8 @@ namespace exec {
             __t(_Sender&& __sndr)
               : __storage_{(_Sender&&) __sndr} {}
 
-          private:
-          using __vtable_t = stdexec::__t<__vtable>;
-          __unique_storage_t<__vtable_t> __storage_;
+         private:
+          __unique_storage_t<__vtable> __storage_;
 
           template <receiver_of<_Sigs> _Rcvr>
               requires sender_to<__t, _Rcvr>
@@ -671,13 +638,10 @@ namespace exec {
               return {(_Rcvr&&) __rcvr, (__t&&) __self};
             }
 
-          friend __mapply<__q<any_env_of>, _SenderQueries>
-          tag_invoke(get_env_t, const __t& __self) noexcept {
-            STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__get_env_);
-            return (*__get_vtable(__self.__storage_)->__get_env_)(__get_object_pointer(__self.__storage_));
+          friend __env_t tag_invoke(get_env_t, const __t& __self) noexcept {
+            return {__get_vtable(__self.__storage_), __get_object_pointer(__self.__storage_)};
           }
         };
       };
   } // namepsace __any
-  using __any::any_env_of;
 } // namespace exec
