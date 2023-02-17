@@ -180,11 +180,14 @@ TEST_CASE("sync_wait returns value", "[types][any_sender]") {
 template <class... Vals>
 using my_sender_of = any_sender_of<Vals..., set_error_t(std::exception_ptr)>;
 
-// TEST_CASE("sync_wait returns value and exception", "[types][any_sender]") {
-//   my_sender_of<int> sender{};// = just(21) | then([&](int v) { return 2 * v; });
-//   auto [value] = *sync_wait(std::move(sender));
-//   CHECK(value == 42);
-// }
+TEST_CASE("sync_wait returns value and exception", "[types][any_sender]") {
+  my_sender_of<int> sender = just(21) | then([&](int v) { return 2 * v; });
+  auto [value] = *sync_wait(std::move(sender));
+  CHECK(value == 42);
+
+  sender = just(21) | then([&](int v) { throw std::runtime_error("test"); return 2*v; });
+  CHECK_THROWS(sync_wait(std::move(sender)));
+}
 
 // TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
 //   static_assert(scheduler<any_scheduler>);
