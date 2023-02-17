@@ -156,12 +156,31 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 
 
 TEST_CASE("any sender is a sender", "[types][any_sender]") {
-
-  using Sigs = completion_signatures<set_value_t()>;
-  __t<__any::__sender<Sigs, __types<>, __types<>>> sender = stdexec::just();
+  any_sender_of<> sender = just();
   static_assert(stdexec::sender<decltype(sender)>);
-  
-  // CHECK(tag{}(env) == 42);
+}
+
+TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
+  int value = 0;
+  any_sender_of<> sender = just(42) | then([&](int v) noexcept { value = v; });
+  sync_wait(std::move(sender));
+  CHECK(value == 42);
+}
+
+TEST_CASE("sync_wait returns value", "[types][any_sender]") {
+  any_sender_of<int> sender = just(21) | then([&](int v) noexcept { return 2 * v; });
+  auto [value] = *sync_wait(std::move(sender));
+  CHECK(value == 42);
+}
+
+template <class... Vals>
+using my_sender_of = __add_completion_signatures<
+    exec::any_sender_of<Vals...>, set_error_t(std::exception_ptr)>;
+
+TEST_CASE("sync_wait returns value", "[types][any_sender]") {
+  __any::__sender<set_value_t(int), set_error_t(std::exception_ptr)> sender = just(21) | then([&](int v) { return 2 * v; });
+  auto [value] = *sync_wait(std::move(sender));
+  CHECK(value == 42);
 }
 
 TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {

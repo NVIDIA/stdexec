@@ -728,15 +728,32 @@ namespace exec {
         __copyable_storage_t<__vtable> __storage_{};
       };
 
+    template <class... _OldSigs, class... _Sigs, class _RQ, class _SQ>
+      auto __with_sigs_fn(__sender<completion_signatures<_OldSigs...>, _RQ, _SQ>*, _Sigs*...) 
+        -> __sender<completion_signatures<_Sigs..., _OldSigs...>, _RQ, _SQ>;
+
+    template <sender _Sndr, class... _Sigs>
+      auto __with_sigs_fn(_Sndr*, _Sigs*...) 
+        -> decltype(__with_sigs_fn((__id<_Sndr>*) nullptr, (_Sigs*)nullptr...));
+
     template <class... _OldSigs, class... _Sigs, class _SchQ, class _RQ, class _SQ>
       auto __with_sigs_fn(__scheduler<completion_signatures<_OldSigs...>, _SchQ, _RQ, _SQ>*, _Sigs*...) 
         -> __scheduler<completion_signatures<_Sigs..., _OldSigs...>, _SchQ, _RQ, _SQ>;
 
-    template <class _Scheduler, class... _Sigs>
-      using __add_completion_signatures = decltype(__with_sigs_fn((_Scheduler*)nullptr, (_Sigs*)nullptr...));
+    template <class _S, class... _Sigs>
+      using __add_completion_signatures = decltype(__with_sigs_fn((_S*)nullptr, (_Sigs*)nullptr...));
+
+
+  template <class... Sigs>
+    using basic_any_sender_of = __t<__any::__sender<completion_signatures<Sigs...>>>;
+
+  template <class... Values>
+    using any_sender_of = basic_any_sender_of<set_value_t(Values...)>;
 
   } // namepsace __any
 
+  using __any::basic_any_sender_of;
+  using __any::any_sender_of;
   using __any::__add_completion_signatures;
   using any_scheduler = __any::__scheduler<>;
 } // namespace exec
