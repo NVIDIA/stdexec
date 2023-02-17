@@ -756,19 +756,16 @@ namespace exec {
       inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
 
   template <class... _Sigs>
-    using __basic_any_sender_of = __t<__any::__sender<completion_signatures<_Sigs...>>>;
+    using __sender_of = __t<__any::__sender<completion_signatures<_Sigs...>>>;
 
   template <class _T>
-    using __any_sender_of_t = __if_c<__is_compl_sig<_T>, _T, set_value_t(_T)>;
-
-  template <class... _Ts>
-    using any_sender_of = __minvoke<__transform<
-        __q<__any_sender_of_t>, __q<__basic_any_sender_of>>, _Ts...>;
+    using __transform_value = __if_c<__is_compl_sig<_T>, _T, set_value_t(_T)>;
 
   } // namepsace __any
 
-  using __any::__basic_any_sender_of;
-  using __any::any_sender_of;
-  using __any::__add_completion_signatures;
-  using any_scheduler = __any::__scheduler<>;
+template <class... _Ts>
+    using any_sender_of = __any::__sender_of<__any::__transform_value<_Ts>...>;
+
+  template <class... _Ts>
+    using any_scheduler = __any::__scheduler<stdexec::completion_signatures<__any::__transform_value<_Ts>...>>;
 } // namespace exec
