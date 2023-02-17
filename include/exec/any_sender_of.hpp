@@ -565,6 +565,7 @@ namespace exec {
     template <class _Sigs, class _ReceiverQueries = __types<>, class _SenderQueries = __types<>>
       struct __sender {
         using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
+        
         class __vtable : public __query_vtable<_SenderQueries> {
          public:
           using __id = __vtable;
@@ -613,6 +614,7 @@ namespace exec {
          public:
           using __id = __sender;
           using completion_signatures = _Sigs;
+          using is_sender = void;
 
           __t(const __t&) = delete;
           __t& operator=(const __t&) = delete;
@@ -743,16 +745,29 @@ namespace exec {
     template <class _S, class... _Sigs>
       using __add_completion_signatures = decltype(__with_sigs_fn((_S*)nullptr, (_Sigs*)nullptr...));
 
+    // BUGBUG: __completion_signature<_T> returns always true???
+    template <class _Sig>
+      inline constexpr bool __is_compl_sig = false;
+    template <class... _Args>
+      inline constexpr bool __is_compl_sig<set_value_t(_Args...)> = true;
+    template <class _Error>
+      inline constexpr bool __is_compl_sig<set_error_t(_Error)> = true;
+    template <>
+      inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
 
-  template <class... Sigs>
-    using basic_any_sender_of = __t<__any::__sender<completion_signatures<Sigs...>>>;
+  template <class... _Sigs>
+    using __basic_any_sender_of = __t<__any::__sender<completion_signatures<_Sigs...>>>;
 
-  template <class... Values>
-    using any_sender_of = basic_any_sender_of<set_value_t(Values...)>;
+  template <class _T>
+    using __any_sender_of_t = __if_c<__is_compl_sig<_T>, _T, set_value_t(_T)>;
+
+  template <class... _Ts>
+    using any_sender_of = __minvoke<__transform<
+        __q<__any_sender_of_t>, __q<__basic_any_sender_of>>, _Ts...>;
 
   } // namepsace __any
 
-  using __any::basic_any_sender_of;
+  using __any::__basic_any_sender_of;
   using __any::any_sender_of;
   using __any::__add_completion_signatures;
   using any_scheduler = __any::__scheduler<>;
