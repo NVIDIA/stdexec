@@ -74,7 +74,7 @@ struct empty_vtable_t {
 
 TEST_CASE("empty storage is movable", "[types][any_sender]") {
   struct foo {};
-  using any_unique = __any::__storage_t<__any::__unique_storage<>, empty_vtable_t>;
+  using any_unique = __any::__unique_storage_t<empty_vtable_t>;
   any_unique s1{};
   any_unique s2 = foo{};
   static_assert(std::is_move_assignable_v<any_unique>);
@@ -106,7 +106,7 @@ TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any
     move_throws(move_throws&&) noexcept(false) {}
     move_throws& operator=(move_throws&&) noexcept(false) { return *this; }
   };
-  using any_unique = __any::__storage_t<__any::__unique_storage<>, empty_vtable_t>;
+  using any_unique = __any::__unique_storage_t<empty_vtable_t>;
   any_unique s1{};
   any_unique s2 = move_throws{};
   static_assert(std::is_move_assignable_v<any_unique>);
@@ -136,7 +136,7 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 
   using Sigs = completion_signatures<set_value_t()>;
   sink_receiver rcvr;
-  __any::__storage_t<__any::__copyable_storage<>, __t<__any::__rec::__vtable<Sigs, tag(int())>>> vtable_holder(rcvr);
+  __any::__copyable_storage_t<__t<__any::__rec::__vtable<Sigs, tag(int())>>> vtable_holder(rcvr);
   REQUIRE(__any::__get_vtable(vtable_holder));
   REQUIRE(__any::__get_object_pointer(vtable_holder));
   

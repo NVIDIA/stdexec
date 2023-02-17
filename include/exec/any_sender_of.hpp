@@ -217,26 +217,17 @@ namespace exec {
           {__storage_vfun_fn<_Storage, _T>{}((_StorageCPOs*) nullptr)}...
         };
 
-    template <class _Allocator,
+    template <class _Vtable,
+              class _Allocator,
               bool _Copyable = false,
               std::size_t _Alignment = alignof(std::max_align_t), 
               std::size_t _InlineSize = 3*sizeof(void*)>
-    struct __basic_storage {
-      template <class _Vtable>
-        struct __storage {
-          class __t;
-        };
+    struct __storage {
+      class __t;
     };
 
-    template <class _Allocator = std::allocator<std::byte>>
-      using __unique_storage = __basic_storage<_Allocator>;
-
-    template <class _Allocator = std::allocator<std::byte>>
-      using __copyable_storage = __basic_storage<_Allocator, true>;
-
-    template <class _Allocator, bool _Copyable, std::size_t _Alignment, std::size_t _InlineSize>
-    template <class _Vtable> 
-      class __basic_storage<_Allocator, _Copyable, _Alignment, _InlineSize>::__storage<_Vtable>::__t {
+    template <class _Vtable, class _Allocator, bool _Copyable, std::size_t _Alignment, std::size_t _InlineSize>
+      class __storage<_Vtable, _Allocator, _Copyable, _Alignment, _InlineSize>::__t {
         static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
         static constexpr std::size_t __alignment = std::max(_Alignment, alignof(void*));
         using __with_copy = __copy_construct_t(void(const __t&));
@@ -262,7 +253,7 @@ namespace exec {
           }
 
        public:
-        using __id = __basic_storage;
+        using __id = __storage;
 
         __t() = default;
 
@@ -407,14 +398,11 @@ namespace exec {
         [[no_unique_address]] _Allocator __allocator_{};
       };
 
-    template <class _Storage, class _VTable>
-      using __storage_t = typename _Storage::template __storage<_VTable>::__t;
+    template <class _VTable, class _Allocator = std::allocator<std::byte>>
+      using __unique_storage_t = __t<__storage<_VTable, _Allocator>>;
 
     template <class _VTable, class _Allocator = std::allocator<std::byte>>
-      using __unique_storage_t = __storage_t<__unique_storage<_Allocator>, _VTable>;
-
-    template <class _VTable, class _Allocator = std::allocator<std::byte>>
-      using __copyable_storage_t = __storage_t<__copyable_storage<_Allocator>, _VTable>;
+      using __copyable_storage_t = __t<__storage<_VTable, _Allocator, true>>;
 
     namespace __rec {
       template <class _Sig>
