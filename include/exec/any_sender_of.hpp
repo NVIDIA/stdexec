@@ -646,67 +646,97 @@ namespace exec {
         };
       };
 
-    class any_scheduler {
-     public:
-      template <class _Scheduler>
-          requires (!__decays_to<_Scheduler, any_scheduler>) // && scheduler<_Scheduler>)
-        any_scheduler(_Scheduler&& __scheduler)
-          : __storage_{(_Scheduler&&) __scheduler} {}
+    template <class _R, class... _Args>
+    _R __return_value_(_R(*)(_Args...));
 
-     private:
-      using __completion_sigs = completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
-      using __receiver_queries = __types<>;
-      using __sender_queries = __types<get_completion_scheduler_t<set_value_t>(any_scheduler() noexcept)>;
-      using __sender_t = __t<__sender<__completion_sigs, __receiver_queries, __sender_queries>>;
+    template <class _Sig>
+    using __return_value_t = decltype(__return_value_((_Sig*)nullptr));
 
-      class __vtable {
-       public:        
-        __sender_t (*__schedule_)(void*) noexcept;
-        bool (*__equal_to_)(const void*, const void* other) noexcept;
+    template <class _Sigs = completion_signatures<set_value_t()>,
+              class _SchedulerQueries = __types<>,
+              class _SenderQueries = __types<>,
+              class _ReceiverQueries = __types<>>
+      class __scheduler {
+      public:
+        template <class _Scheduler>
+            requires (!__decays_to<_Scheduler, __scheduler>) // && scheduler<_Scheduler>)
+          __scheduler(_Scheduler&& __scheduler)
+            : __storage_{(_Scheduler&&) __scheduler} {}
+
+        using __receiver_queries = _ReceiverQueries;
+        using __signatures = __concat_completion_signatures_t<_Sigs, completion_signatures<set_value_t()>>;
+        // using __sender_queries = __types<get_completion_scheduler_t<set_value_t>(__scheduler() noexcept)>;
+        using __sender_queries = __if<
+            __minvoke<__contains<get_completion_scheduler_t<set_value_t>>, 
+                      __mapply<__transform<__q<__return_value_t>>, _Sigs>>,
+            _SenderQueries, 
+            __minvoke<__push_back<>, 
+                      _SenderQueries, 
+                      get_completion_scheduler_t<set_value_t>(__scheduler() noexcept)>>;
+        using __sender_t = __t<__sender<__signatures, __receiver_queries, __sender_queries>>;
        private:
-        template <scheduler _Scheduler>
-          friend const __vtable*
-          tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Scheduler>) noexcept {
-            static const __vtable __vtable_{
-              [](void *__object_pointer) noexcept -> __sender_t {
-                const _Scheduler& __scheduler = *static_cast<const _Scheduler *>(__object_pointer);
-                return __sender_t{schedule(__scheduler)};
-              },
-              [](const void *__self, const void* __other) noexcept -> bool {
-                static_assert(noexcept(std::declval<const _Scheduler&>() == std::declval<const _Scheduler&>()));
-                STDEXEC_ASSERT(__self && __other);
-                const _Scheduler& __self_scheduler = *static_cast<const _Scheduler *>(__self);
-                const _Scheduler& __other_scheduler = *static_cast<const _Scheduler *>(__other);
-                return __self_scheduler == __other_scheduler;
-              }};
-            return &__vtable_;
+        class __vtable : public __query_vtable<_SchedulerQueries> {
+        public:
+          __sender_t (*__schedule_)(void*) noexcept;
+          bool (*__equal_to_)(const void*, const void* other) noexcept;
+
+          const __query_vtable<_SenderQueries>* __queries() const noexcept {
+            return this;
           }
+        private:
+          template <scheduler _Scheduler>
+            friend const __vtable*
+            tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Scheduler>) noexcept {
+              static const __vtable __vtable_{
+                {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Scheduler>{})},
+                [](void *__object_pointer) noexcept -> __sender_t {
+                  const _Scheduler& __scheduler = *static_cast<const _Scheduler *>(__object_pointer);
+                  return __sender_t{schedule(__scheduler)};
+                },
+                [](const void *__self, const void* __other) noexcept -> bool {
+                  static_assert(noexcept(std::declval<const _Scheduler&>() == std::declval<const _Scheduler&>()));
+                  STDEXEC_ASSERT(__self && __other);
+                  const _Scheduler& __self_scheduler = *static_cast<const _Scheduler *>(__self);
+                  const _Scheduler& __other_scheduler = *static_cast<const _Scheduler *>(__other);
+                  return __self_scheduler == __other_scheduler;
+                }};
+              return &__vtable_;
+            }
+        };
+
+        friend __sender_t tag_invoke(schedule_t, const __scheduler& __self) noexcept {
+          STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__schedule_);
+          return __get_vtable(__self.__storage_)->__schedule_(__get_object_pointer(__self.__storage_));
+        }
+
+        friend bool operator==(const __scheduler& __self, const __scheduler& __other) noexcept {
+          if (__get_vtable(__self.__storage_) != __get_vtable(__other.__storage_)) {
+            return false;
+          }
+          void* __p = __get_object_pointer(__self.__storage_);
+          void* __o = __get_object_pointer(__other.__storage_);
+                  // if both object pointers are not null, use the virtual equal_to function
+          return (__p && __o && __get_vtable(__self.__storage_)->__equal_to_(__p, __o)) 
+                  // if both object pointers are nullptrs, they are equal
+                || (!__p && !__o);
+        }
+
+        friend bool operator!=(const __scheduler& __self, const __scheduler& __other) noexcept {
+          return !(__self == __other);
+        }
+
+        __copyable_storage_t<__vtable> __storage_{};
       };
 
-      friend __sender_t tag_invoke(schedule_t, const any_scheduler& __self) noexcept {
-        STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__schedule_);
-        return __get_vtable(__self.__storage_)->__schedule_(__get_object_pointer(__self.__storage_));
-      }
+    template <class... _OldSigs, class... _Sigs, class _SchQ, class _RQ, class _SQ>
+      auto __with_sigs_fn(__scheduler<completion_signatures<_OldSigs...>, _SchQ, _RQ, _SQ>*, _Sigs*...) 
+        -> __scheduler<completion_signatures<_Sigs..., _OldSigs...>, _SchQ, _RQ, _SQ>;
 
-      friend bool operator==(const any_scheduler& __self, const any_scheduler& __other) noexcept {
-        if (__get_vtable(__self.__storage_) != __get_vtable(__other.__storage_)) {
-          return false;
-        }
-        void* __p = __get_object_pointer(__self.__storage_);
-        void* __o = __get_object_pointer(__other.__storage_);
-                // if both object pointers are not null, use the virtual equal_to function
-        return (__p && __o && __get_vtable(__self.__storage_)->__equal_to_(__p, __o)) 
-                // if both object pointers are nullptrs, they are equal
-               || (!__p && !__o);
-      }
+    template <class _Scheduler, class... _Sigs>
+      using __add_completion_signatures = decltype(__with_sigs_fn((_Scheduler*)nullptr, (_Sigs*)nullptr...));
 
-      friend bool operator!=(const any_scheduler& __self, const any_scheduler& __other) noexcept {
-        return !(__self == __other);
-      }
-
-      __copyable_storage_t<__vtable> __storage_{};
-    };
   } // namepsace __any
 
-  using __any::any_scheduler;
+  using __any::__add_completion_signatures;
+  using any_scheduler = __any::__scheduler<>;
 } // namespace exec
