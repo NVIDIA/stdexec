@@ -438,6 +438,8 @@ namespace stdexec {
       __types<__minvoke<_Ty>> __test(_Tag(*)());
     template <class, class = void>
       __types<> __test(...);
+    template <class _Tag, class _Ty = void, class... _Args>
+      void __test(_Tag(*)(_Args...) noexcept) = delete;
     #endif
 
     // To be kept in sync with the promise type used in __connect_awaitable

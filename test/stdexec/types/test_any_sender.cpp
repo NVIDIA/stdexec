@@ -64,7 +64,7 @@ TEST_CASE("any receiver reference", "[types][any_sender]") {
 struct empty_vtable_t {
   private:
   template <class T>
-    friend empty_vtable_t* 
+    friend empty_vtable_t*
     tag_invoke(__any::__create_vtable_t, __mtype<empty_vtable_t>, __mtype<T>) noexcept
     {
       static empty_vtable_t vtable{};
@@ -88,7 +88,7 @@ TEST_CASE("empty storage is movable", "[types][any_sender]") {
   std::intptr_t obj_ptr = reinterpret_cast<std::intptr_t>(__any::__get_object_pointer(s2));
   std::intptr_t s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
   CHECK(std::abs(s2_ptr - obj_ptr) < std::intptr_t(sizeof(any_unique)));
-  
+
   s1 = std::move(s2);
   CHECK(__any::__get_vtable(s2));
   CHECK(__any::__get_vtable(s1) != __any::__get_vtable(s2));
@@ -120,7 +120,7 @@ TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any
   std::intptr_t obj_ptr = reinterpret_cast<std::intptr_t>(__any::__get_object_pointer(s2));
   std::intptr_t s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
   CHECK(std::abs(s2_ptr - obj_ptr) >= std::intptr_t(sizeof(any_unique)));
-  
+
   s1 = std::move(s2);
   CHECK(__any::__get_vtable(s2));
   CHECK(__any::__get_vtable(s1) != __any::__get_vtable(s2));
@@ -139,7 +139,7 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
   __any::__copyable_storage_t<__t<__any::__rec::__vtable<Sigs, tag(int())>>> vtable_holder(rcvr);
   REQUIRE(__any::__get_vtable(vtable_holder));
   REQUIRE(__any::__get_object_pointer(vtable_holder));
-  
+
   CHECK((*__any::__get_vtable(vtable_holder))(tag{}, __any::__get_object_pointer(vtable_holder)) == 42);
 
   auto vtable2 = vtable_holder;
@@ -206,7 +206,7 @@ TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
 }
 
 TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]") {
-  using my_scheduler = with_scheduler_queries<any_scheduler<>, 
+  using my_scheduler = with_scheduler_queries<any_scheduler<>,
                           get_forward_progress_guarantee_t(forward_progress_guarantee())>;
   static_assert(scheduler<my_scheduler>);
   my_scheduler scheduler = exec::inline_scheduler();
@@ -245,7 +245,7 @@ TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
 
 TEST_CASE("queryable any_scheduler with static_thread_pool", "[types][any_sender]") {
   using stoppable_scheduler = exec::any_scheduler<set_stopped_t()>;
-  using my_scheduler = with_scheduler_queries<stoppable_scheduler, 
+  using my_scheduler = with_scheduler_queries<stoppable_scheduler,
                           get_forward_progress_guarantee_t(forward_progress_guarantee())>;
 
   exec::static_thread_pool pool(1);
