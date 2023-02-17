@@ -52,8 +52,11 @@ namespace exec {
         }
       };
 
+    template <class> struct __query_vfun_fn;
+
     template <class _EnvProvider>
-      struct __query_vfun_fn {
+        requires __callable<get_env_t, const _EnvProvider&>
+      struct __query_vfun_fn<_EnvProvider> {
         template <class _Tag, class _Ret, class... _As>
             requires __callable<_Tag, env_of_t<const _EnvProvider&>, _As...>
           constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...))) const noexcept)(void*, _As...) {
@@ -67,6 +70,26 @@ namespace exec {
           return +[](void* __env_provider, _As... __as) noexcept -> _Ret {
             static_assert(__nothrow_callable<_Tag, const env_of_t<_EnvProvider>&, _As...>);
             return _Tag{}(get_env(*(const _EnvProvider*) __env_provider), (_As&&) __as...);
+          };
+        }
+      };
+
+    template <class _Queryable>
+        requires (!__callable<get_env_t, const _Queryable&>)
+      struct __query_vfun_fn<_Queryable> {
+        template <class _Tag, class _Ret, class... _As>
+            requires __callable<_Tag, const _Queryable&, _As...>
+          constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...))) const noexcept)(void*, _As...) {
+          return +[](void* __queryable, _As... __as) -> _Ret {
+            return _Tag{}(*(const _Queryable*) __queryable, (_As&&) __as...);
+          };
+        }
+        template <class _Tag, class _Ret, class... _As>
+            requires __callable<_Tag, const _Queryable&, _As...>
+          constexpr _Ret (*operator()(_Tag(*)(_Ret(*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
+          return +[](void* __env_provider, _As... __as) noexcept -> _Ret {
+            static_assert(__nothrow_callable<_Tag, const _Queryable&, _As...>);
+            return _Tag{}(*(const _Queryable*) __env_provider, (_As&&) __as...);
           };
         }
       };
@@ -562,15 +585,15 @@ namespace exec {
           }
       };
 
-    template <class _Sigs, class _ReceiverQueries = __types<>, class _SenderQueries = __types<>>
+    template <class _Sigs, class _SenderQueries = __types<>, class _ReceiverQueries = __types<>>
       struct __sender {
         using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
         
         class __vtable : public __query_vtable<_SenderQueries> {
          public:
           using __id = __vtable;
-          const __query_vtable<_SenderQueries>* __queries() const noexcept {
-            return this;
+          const __query_vtable<_SenderQueries>& __queries() const noexcept {
+            return *this;
           }
 
           __unique_operation_storage (*__connect_)(void*, __receiver_ref_t);
@@ -602,11 +625,11 @@ namespace exec {
           void* __sender_;
 
           template <class _Tag, class... _As>
-              requires __callable<const __vtable&, _Tag, void*, _As...>
+              requires __callable<const __query_vtable<_SenderQueries>&, _Tag, void*, _As...>
             friend auto tag_invoke(_Tag, const __env_t& __self, _As&&... __as)
-              noexcept(__nothrow_callable<const __vtable&, _Tag, void*, _As...>)
-              -> __call_result_t<const __vtable&, _Tag, void*, _As...> {
-              return (*__self.__vtable_->__queries())(_Tag{}, __self.__sender_, (_As&&) __as...);
+              noexcept(__nothrow_callable<const __query_vtable<_SenderQueries>&, _Tag, void*, _As...>)
+              -> __call_result_t<const __query_vtable<_SenderQueries>&, _Tag, void*, _As...> {
+              return __self.__vtable_->__queries()(_Tag{}, __self.__sender_, (_As&&) __as...);
             }
         };
 
@@ -675,22 +698,22 @@ namespace exec {
             __minvoke<__push_back<>, 
                       _SenderQueries, 
                       get_completion_scheduler_t<set_value_t>(__scheduler() noexcept)>>;
-        using __sender_t = __t<__sender<__signatures, __receiver_queries, __sender_queries>>;
+        using __sender_t = __t<__sender<__signatures, __sender_queries, __receiver_queries>>;
        private:
         class __vtable : public __query_vtable<_SchedulerQueries> {
         public:
           __sender_t (*__schedule_)(void*) noexcept;
           bool (*__equal_to_)(const void*, const void* other) noexcept;
 
-          const __query_vtable<_SenderQueries>* __queries() const noexcept {
-            return this;
+          const __query_vtable<_SchedulerQueries>& __queries() const noexcept {
+            return *this;
           }
         private:
           template <scheduler _Scheduler>
             friend const __vtable*
             tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Scheduler>) noexcept {
               static const __vtable __vtable_{
-                {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Scheduler>{})},
+                {*__create_vtable(__mtype<__query_vtable<_SchedulerQueries>>{}, __mtype<_Scheduler>{})},
                 [](void *__object_pointer) noexcept -> __sender_t {
                   const _Scheduler& __scheduler = *static_cast<const _Scheduler *>(__object_pointer);
                   return __sender_t{schedule(__scheduler)};
@@ -711,6 +734,15 @@ namespace exec {
           return __get_vtable(__self.__storage_)->__schedule_(__get_object_pointer(__self.__storage_));
         }
 
+        template <class _Tag, class... _As>
+            requires __callable<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...>
+          friend auto tag_invoke(_Tag, const __scheduler& __self, _As&&... __as)
+            noexcept(__nothrow_callable<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...>)
+            -> __call_result_t<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...> {
+            return __get_vtable(__self.__storage_)
+                ->__queries()(_Tag{}, __get_object_pointer(__self.__storage_), (_As&&) __as...);
+          }
+
         friend bool operator==(const __scheduler& __self, const __scheduler& __other) noexcept {
           if (__get_vtable(__self.__storage_) != __get_vtable(__other.__storage_)) {
             return false;
@@ -730,20 +762,30 @@ namespace exec {
         __copyable_storage_t<__vtable> __storage_{};
       };
 
-    template <class... _OldSigs, class... _Sigs, class _RQ, class _SQ>
-      auto __with_sigs_fn(__sender<completion_signatures<_OldSigs...>, _RQ, _SQ>*, _Sigs*...) 
-        -> __sender<completion_signatures<_Sigs..., _OldSigs...>, _RQ, _SQ>;
+    template <class _Sigs, class _OldSQs, class _RQ, class... _NewSQs>
+      auto __with_sender_queries_fn(__sender<_Sigs, _OldSQs, _RQ>*, _NewSQs*...) 
+        -> __sender<_Sigs, __minvoke<__mconcat<>, _OldSQs, __types<_NewSQs...>>, _RQ>;
 
-    template <sender _Sndr, class... _Sigs>
-      auto __with_sigs_fn(_Sndr*, _Sigs*...) 
-        -> decltype(__with_sigs_fn((__id<_Sndr>*) nullptr, (_Sigs*)nullptr...));
+    template <class _Sigs, class _SchQs, class _RQ, class _OldSQs, class... _NewSQs>
+      auto __with_sender_queries_fn(__scheduler<_Sigs, _SchQs, _OldSQs, _RQ>*, _NewSQs*...) 
+        -> __scheduler<_Sigs, _SchQs, __minvoke<__mconcat<>, _OldSQs, __types<_NewSQs...>>, _RQ>;
 
-    template <class... _OldSigs, class... _Sigs, class _SchQ, class _RQ, class _SQ>
-      auto __with_sigs_fn(__scheduler<completion_signatures<_OldSigs...>, _SchQ, _RQ, _SQ>*, _Sigs*...) 
-        -> __scheduler<completion_signatures<_Sigs..., _OldSigs...>, _SchQ, _RQ, _SQ>;
+    template <class _S, class... _Queries>
+      using with_sender_queries = decltype(__with_sender_queries_fn((_S*)nullptr, (_Queries*)nullptr...));
 
-    template <class _S, class... _Sigs>
-      using __add_completion_signatures = decltype(__with_sigs_fn((_S*)nullptr, (_Sigs*)nullptr...));
+    template <class _Sigs, class _SQs, class _OldRQs, class... _NewRQs>
+      auto __with_receiver_queries_fn(__sender<_Sigs, _SQs, _OldRQs>*, _NewRQs*...) 
+        -> __sender<_Sigs, _SQs, __minvoke<__mconcat<>, _OldRQs, __types<_NewRQs...>>>;
+
+    template <class _S, class... _Queries>
+      using with_receiver_queries = decltype(__with_receiver_queries_fn((_S*)nullptr, (_Queries*)nullptr...));
+
+    template <class _Sigs, class _SchSQs, class _RQ, class _SQs, class... _NewSchSQs>
+      auto __with_scheduler_queries_fn(__scheduler<_Sigs, _SchSQs, _SQs, _RQ>*, _NewSchSQs*...) 
+        -> __scheduler<_Sigs, __minvoke<__mconcat<>, _SchSQs, __types<_NewSchSQs...>>, _SQs, _RQ>;
+
+    template <class _S, class... _Queries>
+      using with_scheduler_queries = decltype(__with_scheduler_queries_fn((_S*)nullptr, (_Queries*)nullptr...));
 
     // BUGBUG: __completion_signature<_T> returns always true???
     template <class _Sig>
@@ -763,9 +805,13 @@ namespace exec {
 
   } // namepsace __any
 
-template <class... _Ts>
+  template <class... _Ts>
     using any_sender_of = __any::__sender_of<__any::__transform_value<_Ts>...>;
 
   template <class... _Ts>
     using any_scheduler = __any::__scheduler<stdexec::completion_signatures<__any::__transform_value<_Ts>...>>;
+
+  using __any::with_sender_queries;
+  using __any::with_receiver_queries;
+  using __any::with_scheduler_queries;
 } // namespace exec

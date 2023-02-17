@@ -205,6 +205,26 @@ TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
   CHECK(called);
 }
 
+TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]") {
+  using my_scheduler = with_scheduler_queries<any_scheduler<>, 
+                          get_forward_progress_guarantee_t(forward_progress_guarantee())>;
+  static_assert(scheduler<my_scheduler>);
+  my_scheduler scheduler = exec::inline_scheduler();
+  my_scheduler copied = scheduler;
+  CHECK(copied == scheduler);
+
+  auto sched = schedule(scheduler);
+  static_assert(sender<decltype(sched)>);
+  std::same_as<my_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  CHECK(get_sched == scheduler);
+
+  CHECK(get_forward_progress_guarantee(scheduler) == get_forward_progress_guarantee(exec::inline_scheduler()));
+
+  bool called = false;
+  sync_wait(std::move(sched) | then([&] { called = true; }));
+  CHECK(called);
+}
+
 TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
   using any_scheduler = exec::any_scheduler<set_stopped_t()>;
 
@@ -217,6 +237,28 @@ TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
   static_assert(sender<decltype(sched)>);
   std::same_as<any_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
   CHECK(get_sched == scheduler);
+
+  bool called = false;
+  sync_wait(std::move(sched) | then([&] { called = true; }));
+  CHECK(called);
+}
+
+TEST_CASE("queryable any_scheduler with static_thread_pool", "[types][any_sender]") {
+  using stoppable_scheduler = exec::any_scheduler<set_stopped_t()>;
+  using my_scheduler = with_scheduler_queries<stoppable_scheduler, 
+                          get_forward_progress_guarantee_t(forward_progress_guarantee())>;
+
+  exec::static_thread_pool pool(1);
+  my_scheduler scheduler = pool.get_scheduler();
+  auto copied = scheduler;
+  CHECK(copied == scheduler);
+
+  auto sched = schedule(scheduler);
+  static_assert(sender<decltype(sched)>);
+  std::same_as<my_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  CHECK(get_sched == scheduler);
+
+  CHECK(get_forward_progress_guarantee(scheduler) == get_forward_progress_guarantee(pool.get_scheduler()));
 
   bool called = false;
   sync_wait(std::move(sched) | then([&] { called = true; }));
