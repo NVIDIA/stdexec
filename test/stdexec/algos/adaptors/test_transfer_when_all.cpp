@@ -35,7 +35,7 @@ TEST_CASE("transfer_when_all returns a sender", "[adaptors][transfer_when_all]")
 }
 TEST_CASE("transfer_when_all with environment returns a sender", "[adaptors][transfer_when_all]") {
   auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("transfer_when_all simple example", "[adaptors][transfer_when_all]") {
@@ -82,7 +82,7 @@ TEST_CASE("transfer_when_all_with_variant returns a sender", "[adaptors][transfe
 TEST_CASE("transfer_when_all_with_variant with environment returns a sender",
     "[adaptors][transfer_when_all]") {
   auto snd = ex::transfer_when_all_with_variant(inline_scheduler{}, ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("transfer_when_all_with_variant basic example", "[adaptors][transfer_when_all]") {

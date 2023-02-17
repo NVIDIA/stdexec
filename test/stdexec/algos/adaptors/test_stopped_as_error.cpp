@@ -29,7 +29,7 @@ TEST_CASE("stopped_as_error returns a sender", "[adaptors][stopped_as_error]") {
 }
 TEST_CASE("stopped_as_error with environment returns a sender", "[adaptors][stopped_as_error]") {
   auto snd = ex::stopped_as_error(ex::just(11), -1);
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("stopped_as_error simple example", "[adaptors][stopped_as_error]") {

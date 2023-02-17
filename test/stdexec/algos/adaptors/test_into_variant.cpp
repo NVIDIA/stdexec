@@ -30,7 +30,7 @@ TEST_CASE("into_variant returns a sender", "[adaptors][into_variant]") {
 }
 TEST_CASE("into_variant with environment returns a sender", "[adaptors][into_variant]") {
   auto snd = ex::into_variant(ex::just(11));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("into_variant simple example", "[adaptors][into_variant]") {

@@ -24,9 +24,9 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
 namespace schedule_from {
-  template <class SenderId, class ReceiverId>
+  template <class CvrefSenderId, class ReceiverId>
     struct receiver_t {
-      using Sender = stdexec::__t<SenderId>;
+      using Sender = stdexec::__cvref_t<CvrefSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using Env = typename operation_state_base_t<ReceiverId>::env_t;
 
@@ -108,7 +108,7 @@ template <class Scheduler, class SenderId>
         using receiver_t =
           stdexec::__t<
             schedule_from::receiver_t<
-              stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>,
+              stdexec::__cvref_id<Self, Sender>,
               stdexec::__id<Receiver>>>;
 
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
@@ -142,3 +142,4 @@ template <class Scheduler, class SenderId>
     };
   };
 }
+

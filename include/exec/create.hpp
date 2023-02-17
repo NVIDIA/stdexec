@@ -58,6 +58,7 @@ namespace exec {
     template <class _Fun, class _ArgsId, class... _Sigs>
       struct __sender {
         using _Args = __t<_ArgsId>;
+        using is_sender = void;
         using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
         _Fun __fun_;
@@ -73,7 +74,7 @@ namespace exec {
           return {{(_Receiver&&) __rcvr, ((_Self&&) __self).__args_}, ((_Self&&) __self).__fun_};
         }
 
-        friend __empty_env tag_invoke(get_env_t, const __sender&) noexcept {
+        friend empty_env tag_invoke(get_env_t, const __sender&) noexcept {
           return {};
         }
       };

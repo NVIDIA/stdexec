@@ -152,6 +152,7 @@ namespace detail::a_sender {
 
   template <class SenderId, class FunId>
     struct sender_t {
+      using is_sender = void;
       using Sender = stdexec::__t<SenderId>;
       using Fun = stdexec::__t<FunId>;
 
@@ -217,6 +218,7 @@ namespace detail::a_receiverless_sender {
 
   template <class SenderId>
     struct sender_t {
+      using is_sender = void;
       using Sender = stdexec::__t<SenderId>;
 
       Sender sndr_;
@@ -300,8 +302,8 @@ template <>
     }
   };
 
-struct a_sender_t : a_sender_helper_t<a_sender_kind::then> 
-                  , a_sender_helper_t<a_sender_kind::receiverless> { 
+struct a_sender_t : a_sender_helper_t<a_sender_kind::then>
+                  , a_sender_helper_t<a_sender_kind::receiverless> {
   using a_sender_helper_t<a_sender_kind::then>::operator();
   using a_sender_helper_t<a_sender_kind::receiverless>::operator();
 };
@@ -312,12 +314,12 @@ struct move_only_t {
   static constexpr int invalid = -42;
 
   move_only_t() = delete;
-  __host__ __device__ move_only_t(int data) 
+  __host__ __device__ move_only_t(int data)
     : data_(data)
     , self_(this) {
   }
 
-  __host__ __device__ move_only_t(move_only_t&& other) 
+  __host__ __device__ move_only_t(move_only_t&& other)
     : data_(other.data_)
     , self_(this) {
   }
@@ -340,4 +342,3 @@ struct move_only_t {
   int data_{invalid};
   move_only_t* self_;
 };
-

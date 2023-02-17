@@ -32,6 +32,7 @@ struct op_state : immovable {
 };
 
 struct my_sender  {
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<ex::set_value_t(int)>;
 
@@ -48,6 +49,7 @@ struct my_sender  {
 };
 
 struct my_sender_unconstrained {
+  using is_sender = void;
   using completion_signatures =
     ex::completion_signatures<ex::set_value_t(int)>;
 

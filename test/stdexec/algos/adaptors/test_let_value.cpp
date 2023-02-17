@@ -34,7 +34,7 @@ TEST_CASE("let_value returns a sender", "[adaptors][let_value]") {
 }
 TEST_CASE("let_value with environment returns a sender", "[adaptors][let_value]") {
   auto snd = ex::let_value(ex::just(), [] { return ex::just(); });
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("let_value simple example", "[adaptors][let_value]") {

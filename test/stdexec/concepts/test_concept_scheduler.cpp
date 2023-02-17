@@ -28,7 +28,8 @@ struct default_env {
 };
 
 struct my_scheduler {
-  struct my_sender  {
+  struct my_sender {
+    using is_sender = void;
     using completion_signatures =
       ex::completion_signatures<             //
         ex::set_value_t(),                   //
@@ -62,6 +63,7 @@ TEST_CASE("type without schedule CPO doesn't model scheduler", "[concepts][sched
 
 struct my_scheduler_except {
   struct my_sender {
+    using is_sender = void;
     using completion_signatures =
       ex::completion_signatures<             //
         ex::set_value_t(),                   //
@@ -139,8 +141,8 @@ TEST_CASE(
   REQUIRE(!ex::scheduler<sched_no_completion>);
 }
 
+#if STDEXEC_LEGACY_R5_CONCEPTS()
 struct sched_no_env {
-
   // P2300R5 senders defined sender queries on the sender itself.
   struct my_sender {
     using completion_signatures =
@@ -165,5 +167,7 @@ struct sched_no_env {
 TEST_CASE(
     "type without sender get_env is still a scheduler",
     "[concepts][scheduler][r5_backwards_compatibility]") {
+  static_assert(ex::scheduler<sched_no_env>);
   REQUIRE(ex::scheduler<sched_no_env>);
 }
+#endif

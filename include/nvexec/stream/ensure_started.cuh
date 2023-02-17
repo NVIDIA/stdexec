@@ -30,7 +30,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         var->template emplace<tuple_t>(Tag{}, (As&&)as...);
       }
 
-    using env_t = 
+    using env_t =
       make_stream_env_t<
         stdexec::__make_env_t<
           stdexec::__with<stdexec::get_stop_token_t, stdexec::in_place_stop_token>>>;
@@ -49,9 +49,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             : shared_state_(shared_state.__intrusive_from_this()) {
           }
 
-          template <stdexec::__one_of<stdexec::set_value_t, 
-                                      stdexec::set_error_t, 
-                                      stdexec::set_stopped_t> Tag, 
+          template <stdexec::__one_of<stdexec::set_value_t,
+                                      stdexec::set_error_t,
+                                      stdexec::set_stopped_t> Tag,
                     class... As>
             friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
               SharedState& state = *self.shared_state_;
@@ -113,7 +113,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using inner_receiver_t = stdexec::__t<receiver_t<SenderId, sh_state_t>>;
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using enqueue_receiver_t = stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
-        using intermediate_receiver = 
+        using intermediate_receiver =
           stdexec::__t<
             std::conditional_t<
               stream_sender<Sender>,
@@ -127,7 +127,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         cudaEvent_t event_{};
         unsigned int index_{0};
         variant_t *data_{nullptr};
-        task_t *task_{nullptr}; 
+        task_t *task_{nullptr};
         stdexec::in_place_stop_source stop_source_{};
 
         std::atomic<void*> op_state1_;
@@ -163,8 +163,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 (Sender&&)sndr,
                 enqueue_receiver_t{
                   make_env(),
-                  data_, 
-                  task_, 
+                  data_,
+                  task_,
                   context_state.hub_->producer()})) {
             stdexec::start(op_state2_);
         }
@@ -253,7 +253,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                   op->propagate_completion_signal(tag, args...);
                 }, tupl);
               }, *op->shared_state_->data_, op->shared_state_->index_);
-            } else { 
+            } else {
               op->propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           }
@@ -297,13 +297,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   template <class SenderId>
     struct ensure_started_sender_t {
+      using is_sender = void;
       using Sender = stdexec::__t<SenderId>;
 
       struct __t : stream_sender_base {
         using __id = ensure_started_sender_t;
         using sh_state_ = ensure_started::sh_state_t<Sender>;
         template <class Receiver>
-          using operation_t = 
+          using operation_t =
             stdexec::__t<
               ensure_started::operation_t<SenderId, stdexec::__id<std::remove_cvref_t<Receiver>>>>;
 
@@ -311,7 +312,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         stdexec::__intrusive_ptr<sh_state_> shared_state_;
 
         template <std::same_as<__t> Self, stdexec::receiver Receiver>
-            requires stdexec::receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::__empty_env>>
+            requires stdexec::receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::empty_env>>
           friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
             noexcept(std::is_nothrow_constructible_v<std::decay_t<Receiver>, Receiver>)
             -> operation_t<Receiver> {
@@ -326,11 +327,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <class... Tys>
-          using set_value_t = 
+          using set_value_t =
             stdexec::completion_signatures<stdexec::set_value_t(const std::decay_t<Tys>&...)>;
 
         template <class Ty>
-          using set_error_t = 
+          using set_error_t =
             stdexec::completion_signatures<stdexec::set_error_t(const std::decay_t<Ty>&)>;
 
         template <std::same_as<__t> Self, class Env>
@@ -339,7 +340,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               Sender,
               ensure_started::env_t,
               stdexec::completion_signatures<stdexec::set_error_t(cudaError_t),
-                                                    stdexec::set_stopped_t()>, 
+                                                    stdexec::set_stopped_t()>,
               set_value_t,
               set_error_t>;
 
@@ -359,4 +360,3 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       };
     };
 }
-

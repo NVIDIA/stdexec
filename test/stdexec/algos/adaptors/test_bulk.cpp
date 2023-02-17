@@ -48,7 +48,7 @@ TEST_CASE("bulk returns a sender", "[adaptors][bulk]") {
 
 TEST_CASE("bulk with environment returns a sender", "[adaptors][bulk]") {
   auto snd = ex::bulk(ex::just(19), 8, [](int idx, int val) {});
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 
@@ -250,4 +250,3 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
     CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == n);
   }
 }
-

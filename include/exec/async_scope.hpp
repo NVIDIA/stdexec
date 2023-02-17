@@ -26,6 +26,7 @@ namespace exec {
     using namespace stdexec;
 
     struct __impl;
+    struct async_scope;
 
     struct __task : __immovable {
       const __impl* __scope_;
@@ -65,13 +66,11 @@ namespace exec {
         using _Constrained = __t<_ConstrainedId>;
         using _Receiver = __t<_ReceiverId>;
 
-        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-          connect_result_t<_Constrained, _Receiver> __op_;
-
         explicit __when_empty_op(const __impl* __scope, _Constrained&& __sndr, _Receiver __rcvr)
           : __task{{}, __scope, __notify_waiter}
           , __op_(connect((_Constrained&&) __sndr, (_Receiver&&) __rcvr)) {
         }
+
       private:
         static void __notify_waiter(__task* __self) noexcept {
           start(static_cast<__when_empty_op*>(__self)->__op_);
@@ -91,15 +90,16 @@ namespace exec {
         friend void tag_invoke(start_t, __when_empty_op& __self) noexcept {
           return __self.__start_();
         }
+
+        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+          connect_result_t<_Constrained, _Receiver> __op_;
       };
 
     template <class _ConstrainedId>
       struct __when_empty_sender {
         using _Constrained = __t<_ConstrainedId>;
+        using is_sender = void;
 
-        const __impl* __scope_;
-        [[no_unique_address]] _Constrained __c_;
-      private:
         template <class _Self, class _Receiver>
           using __when_empty_op_t =
             __when_empty_op<
@@ -120,9 +120,12 @@ namespace exec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-        friend __empty_env tag_invoke(get_env_t, const __when_empty_sender& __self) noexcept {
+        friend empty_env tag_invoke(get_env_t, const __when_empty_sender& __self) noexcept {
           return {};
         }
+
+        const __impl* __scope_;
+        [[no_unique_address]] _Constrained __c_;
       };
 
     template <class _Constrained>
@@ -205,9 +208,11 @@ namespace exec {
     template <class _ConstrainedId>
       struct __nest_sender {
         using _Constrained = __t<_ConstrainedId>;
+        using is_sender = void;
+
         const __impl* __scope_;
         [[no_unique_address]] _Constrained __c_;
-      private:
+
         template <class _Receiver>
           using __nest_operation_t = __nest_op<_ConstrainedId, __x<_Receiver>>;
         template <class _Receiver>
@@ -226,7 +231,7 @@ namespace exec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
             -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-        friend __empty_env tag_invoke(get_env_t, const __nest_sender& __self) noexcept {
+        friend empty_env tag_invoke(get_env_t, const __nest_sender& __self) noexcept {
           return {};
         }
       };
@@ -537,6 +542,10 @@ namespace exec {
         using _Env = __t<_EnvId>;
         friend struct async_scope;
       public:
+        using is_sender = void;
+
+        __future(__future&&) = default;
+        __future& operator=(__future&&) = default;
         ~__future() noexcept {
           if (__state_ != nullptr) {
             auto __raw_state = __state_.get();
@@ -550,8 +559,6 @@ namespace exec {
             __raw_state->__step_from_to_(__guard, __future_step::__future, __future_step::__no_future);
           }
         }
-        __future(__future&&) = default;
-        __future& operator=(__future&&) = default;
       private:
         template <class _Self>
           using __completions_t =
@@ -576,7 +583,7 @@ namespace exec {
           friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv)
             -> __completions_t<_Self>;
 
-        friend __empty_env tag_invoke(get_env_t, const __future& __self) noexcept {
+        friend empty_env tag_invoke(get_env_t, const __future& __self) noexcept {
           return {};
         }
 
@@ -661,7 +668,7 @@ namespace exec {
       template <sender _Constrained>
       [[nodiscard]] __when_empty_sender_t<_Constrained>
         when_empty(_Constrained&& __c) const {
-          return __when_empty_sender_t<_Constrained>{&__impl_, __c};
+          return __when_empty_sender_t<_Constrained>{&__impl_, (_Constrained&&) __c};
         }
       [[nodiscard]] auto on_empty() const {
         return when_empty(just());
@@ -676,7 +683,7 @@ namespace exec {
           return nest_result_t<_Constrained>{&__impl_, (_Constrained&&) __c};
         }
 
-      template <__movable_value _Env = __empty_env, sender<__env_t<_Env>> _Sender>
+      template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>
           requires sender_to<nest_result_t<_Sender>, __spawn_receiver_t<_Env>>
         void spawn(_Sender&& __sndr, _Env __env = {}) {
           using __op_t = __spawn_operation_t<nest_result_t<_Sender>, _Env>;
@@ -686,7 +693,7 @@ namespace exec {
           stdexec::start(*new __op_t{nest((_Sender&&) __sndr), (_Env&&) __env, &__impl_});
         }
 
-      template <__movable_value _Env = __empty_env, sender<__env_t<_Env>> _Sender>
+      template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>
         __future_t<_Sender, _Env> spawn_future(_Sender&& __sndr, _Env __env = {}) {
           using __state_t = __future_state<nest_result_t<_Sender>, _Env>;
           auto __state =

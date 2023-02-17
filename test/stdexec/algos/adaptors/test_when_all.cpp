@@ -32,7 +32,7 @@ TEST_CASE("when_all returns a sender", "[adaptors][when_all]") {
 }
 TEST_CASE("when_all with environment returns a sender", "[adaptors][when_all]") {
   auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("when_all simple example", "[adaptors][when_all]") {
@@ -306,6 +306,7 @@ TEST_CASE("when_all has the sends_stopped == true", "[adaptors][when_all]") {
 struct my_string_sender_t {
   std::string str_;
 
+  using is_sender = void;
   using completion_signatures = typename decltype(ex::just(std::string{}))::completion_signatures;
 
   template <class Recv>
@@ -369,5 +370,5 @@ TEST_CASE(
 }
 
 TEST_CASE("when_all returns empty env", "[adaptors][when_all]") {
-  check_env_type<ex::__empty_env>(ex::when_all(ex::just(), ex::just()));
+  check_env_type<ex::empty_env>(ex::when_all(ex::just(), ex::just()));
 }

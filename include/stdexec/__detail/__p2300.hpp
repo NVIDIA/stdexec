@@ -54,7 +54,7 @@ namespace std {
 
   template <class _Token>
     concept unstoppable_token /*STDEXEC_STD_DEPRECATED*/ = stdexec::unstoppable_token<_Token>;
- 
+
   using never_stop_token STDEXEC_STD_DEPRECATED = stdexec::never_stop_token;
   using in_place_stop_token STDEXEC_STD_DEPRECATED = stdexec::in_place_stop_token;
   using in_place_stop_source STDEXEC_STD_DEPRECATED = stdexec::in_place_stop_source;
@@ -137,7 +137,7 @@ namespace std {
 
     // [exec.snd], senders
     template <class _Sender, class _Env = stdexec::no_env>
-      concept sender /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender<_Sender, _Env>;
+      concept sender /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_in<_Sender, _Env>;
 
     template <class _Sender, class _Receiver>
       concept sender_to /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_to<_Sender, _Receiver>;

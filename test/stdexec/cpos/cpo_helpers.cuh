@@ -23,6 +23,7 @@ enum class scope_t { free_standing, scheduler };
 
 template <scope_t Scope>
 struct cpo_t {
+  using is_sender = void;
   constexpr static scope_t scope = Scope;
 
   using completion_signatures = ex::completion_signatures< //
@@ -37,6 +38,7 @@ struct cpo_t {
 
 template <class CPO>
 struct free_standing_sender_t {
+  using is_sender = void;
   using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                   //
       ex::set_error_t(std::exception_ptr),                 //
@@ -61,6 +63,7 @@ struct scheduler_t {
     }
   };
   struct sender_t {
+    using is_sender = void;
     using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                   //
         ex::set_error_t(std::exception_ptr),                 //

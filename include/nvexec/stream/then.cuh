@@ -85,7 +85,7 @@ template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
           self.op_state_.propagate_completion_signal(tag, (As&&)as...);
         }
 
-      friend typename operation_state_base_t<ReceiverId>::env_t 
+      friend typename operation_state_base_t<ReceiverId>::env_t
       tag_invoke(stdexec::get_env_t, const __t& self) {
         return self.op_state_.make_env();
       }
@@ -117,7 +117,7 @@ template <class SenderId, class Fun>
         struct size_of_<void, W> {
           using __t = stdexec::__msize_t<0>;
         };
-      
+
       template <class... As>
         struct result_size_for {
           using __t = typename size_of_<stdexec::__call_result_t<Fun, As...>>::__t;
@@ -129,7 +129,7 @@ template <class SenderId, class Fun>
         };
 
       template <class Receiver>
-          requires stdexec::sender<Sender, stdexec::env_of_t<Receiver>>
+          requires stdexec::sender_in<Sender, stdexec::env_of_t<Receiver>>
         struct max_result_size {
           template <class... _As>
             using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
@@ -137,23 +137,23 @@ template <class SenderId, class Fun>
           static constexpr std::size_t value =
             stdexec::__v<
               stdexec::__gather_completions_for<
-                stdexec::set_value_t, 
-                Sender,  
-                stdexec::env_of_t<Receiver>, 
-                stdexec::__q<result_size_for_t>, 
+                stdexec::set_value_t,
+                Sender,
+                stdexec::env_of_t<Receiver>,
+                stdexec::__q<result_size_for_t>,
                 stdexec::__q<max_in_pack>>>;
         };
 
       template <class Receiver>
-        using receiver_t = 
+        using receiver_t =
           stdexec::__t<
             then::receiver_t<
-              max_result_size<Receiver>::value, 
-              stdexec::__id<Receiver>, 
+              max_result_size<Receiver>::value,
+              stdexec::__id<Receiver>,
               Fun>>;
 
       template <class _Error>
-        using set_error = 
+        using set_error =
           stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>;
 
       template <class Self, class Env>
@@ -197,4 +197,3 @@ template <class SenderId, class Fun>
     };
   };
 }
-

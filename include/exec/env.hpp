@@ -76,6 +76,7 @@ namespace exec {
     template <class _Tag, class _DefaultId>
       struct __sender {
         using _Default = __t<_DefaultId>;
+        using is_sender = void;
         [[no_unique_address]] _Default __default_;
 
         template <class _Env>
@@ -172,6 +173,8 @@ namespace exec {
     template <class _SenderId, class... _Withs>
       struct __sender {
         using _Sender = __t<_SenderId>;
+        using is_sender = void;
+
         template <class _ReceiverId>
           using __receiver_t =
             __receiver<_ReceiverId, _Withs...>;

@@ -70,7 +70,7 @@ namespace bulk {
           }
 
         template <stdexec::__one_of<stdexec::set_error_t,
-                                    stdexec::set_stopped_t> Tag, 
+                                    stdexec::set_stopped_t> Tag,
                   class... As>
           friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
             self.op_state_.propagate_completion_signal(tag, (As&&)as...);
@@ -151,7 +151,7 @@ namespace multi_gpu_bulk {
   template <int BlockThreads, std::integral Shape, class Fun, class... As>
     __launch_bounds__(BlockThreads)
     __global__ void kernel(Shape begin, Shape end, Fun fn, As... as) {
-      const Shape i = begin 
+      const Shape i = begin
                     + static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (i < end) {
@@ -159,10 +159,10 @@ namespace multi_gpu_bulk {
       }
     }
 
-  template <class SenderId, class ReceiverId, class Shape, class Fun>
+  template <class CvrefSenderId, class ReceiverId, class Shape, class Fun>
     struct operation_t;
 
-  template <class SenderId, class ReceiverId, std::integral Shape, class Fun>
+  template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
     struct receiver_t {
       using Receiver = stdexec::__t<ReceiverId>;
 
@@ -170,7 +170,7 @@ namespace multi_gpu_bulk {
         Shape shape_;
         Fun f_;
 
-        operation_t<SenderId, ReceiverId, Shape, Fun>& op_state_;
+        operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state_;
 
         static std::pair<Shape, Shape>
         even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
@@ -192,7 +192,7 @@ namespace multi_gpu_bulk {
         template <class... As>
           friend void tag_invoke(stdexec::set_value_t, __t&& self, As&&... as)
             noexcept requires stdexec::__callable<Fun, Shape, As...> {
-            operation_t<SenderId, ReceiverId, Shape, Fun> &op_state = self.op_state_;
+            operation_t<CvrefSenderId, ReceiverId, Shape, Fun> &op_state = self.op_state_;
 
             // TODO Manage errors
             // TODO Usual logic when there's only a single GPU
@@ -250,7 +250,7 @@ namespace multi_gpu_bulk {
           }
 
         template <stdexec::__one_of<stdexec::set_error_t,
-                                    stdexec::set_stopped_t> Tag, 
+                                    stdexec::set_stopped_t> Tag,
                   class... As>
           friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
             self.op_state_.propagate_completion_signal(tag, (As&&)as...);
@@ -260,7 +260,7 @@ namespace multi_gpu_bulk {
           return stdexec::get_env(self.op_state_.receiver_);
         }
 
-        explicit __t(Shape shape, Fun fun, operation_t<SenderId, ReceiverId, Shape, Fun>& op_state)
+        explicit __t(Shape shape, Fun fun, operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state)
           : shape_(shape)
           , f_((Fun&&) fun)
           , op_state_(op_state)
@@ -275,22 +275,22 @@ namespace multi_gpu_bulk {
         receiver_t<SenderId, ReceiverId, Shape, Fun>,
         ReceiverId>;
 
-  template <class SenderId, class ReceiverId, class Shape, class Fun>
-    struct operation_t : operation_base_t<SenderId, ReceiverId, Shape, Fun> {
-      using Sender = stdexec::__t<SenderId>;
+  template <class CvrefSenderId, class ReceiverId, class Shape, class Fun>
+    struct operation_t : operation_base_t<CvrefSenderId, ReceiverId, Shape, Fun> {
+      using Sender = stdexec::__cvref_t<CvrefSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
 
       template <class _Receiver2>
         operation_t(int num_devices, Sender&& __sndr, _Receiver2&& __rcvr, Shape shape, Fun fun, context_state_t context_state)
-          : operation_base_t<SenderId, ReceiverId, Shape, Fun>(
+          : operation_base_t<CvrefSenderId, ReceiverId, Shape, Fun>(
               (Sender&&) __sndr,
               (_Receiver2&&)__rcvr,
-              [&] (operation_state_base_t<stdexec::__id<_Receiver2>> &) -> stdexec::__t<receiver_t<SenderId, ReceiverId, Shape, Fun>> {
-                return stdexec::__t<receiver_t<SenderId, ReceiverId, Shape, Fun>>(shape, fun, *this);
+              [&] (operation_state_base_t<stdexec::__id<_Receiver2>> &) -> stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>> {
+                return stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>>(shape, fun, *this);
               },
               context_state)
           , num_devices_(num_devices)
-          , streams_(new cudaStream_t[num_devices_]) 
+          , streams_(new cudaStream_t[num_devices_])
           , ready_to_complete_(new cudaEvent_t[num_devices_]) {
           // TODO Manage errors
           cudaGetDevice(&current_device_);
@@ -326,6 +326,7 @@ namespace multi_gpu_bulk {
 
 template <class SenderId, std::integral Shape, class Fun>
   struct multi_gpu_bulk_sender_t {
+    using is_sender = void;
     using Sender = stdexec::__t<SenderId>;
 
     struct __t : stream_sender_base {
@@ -355,10 +356,10 @@ template <class SenderId, std::integral Shape, class Fun>
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
           requires stdexec::receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
         friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-          -> multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun> {
+          -> multi_gpu_bulk::operation_t<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun> {
           auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(self.sndr_));
           context_state_t context_state = sch.context_state_;
-          return multi_gpu_bulk::operation_t<stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>, stdexec::__id<Receiver>, Shape, Fun>(
+          return multi_gpu_bulk::operation_t<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>(
               self.num_devices_,
               ((Self&&)self).sndr_,
               (Receiver&&)rcvr,
@@ -383,4 +384,3 @@ template <class SenderId, std::integral Shape, class Fun>
     };
   };
 }
-

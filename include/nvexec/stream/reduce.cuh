@@ -57,8 +57,8 @@ namespace reduce_ {
               sizeof(
                 ::cuda::std::decay_t<
                   ::cuda::std::invoke_result_t<
-                    Fun, 
-                    range_value_t<Range...>, 
+                    Fun,
+                    range_value_t<Range...>,
                     range_value_t<Range...>
                   >
                 >)>;
@@ -76,10 +76,10 @@ namespace reduce_ {
           static constexpr std::size_t value =
             stdexec::__v<
               stdexec::__gather_completions_for<
-                stdexec::set_value_t, 
-                Sender,  
-                stdexec::env_of_t<Receiver>, 
-                stdexec::__q<result_size_for_t>, 
+                stdexec::set_value_t,
+                Sender,
+                stdexec::env_of_t<Receiver>,
+                stdexec::__q<result_size_for_t>,
                 stdexec::__q<max_in_pack>>>;
         };
 
@@ -172,11 +172,11 @@ template <class SenderId, class Fun>
       Fun fun_;
 
       template <class Receiver>
-        using receiver_t = 
+        using receiver_t =
           stdexec::__t<
             reduce_::receiver_t<
-              SenderId, 
-              stdexec::__id<Receiver>, 
+              SenderId,
+              stdexec::__id<Receiver>,
               Fun>>;
 
       template <class... Range>
@@ -245,4 +245,3 @@ struct reduce_t {
 
 inline constexpr STDEXEC_STREAM_DETAIL_NS::reduce_t reduce{};
 }
-

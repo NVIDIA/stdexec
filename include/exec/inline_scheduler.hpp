@@ -27,18 +27,15 @@ namespace exec {
       struct __op {
         using R = stdexec::__t<R_>;
         [[no_unique_address]] R rec_;
-        friend void tag_invoke(stdexec::start_t, __op& op) noexcept try {
+        friend void tag_invoke(stdexec::start_t, __op& op) noexcept {
           stdexec::set_value((R&&) op.rec_);
-        } catch(...) {
-          stdexec::set_error((R&&) op.rec_, std::current_exception());
         }
       };
 
     struct __sender {
+      using is_sender = void;
       using completion_signatures =
-        stdexec::completion_signatures<
-          stdexec::set_value_t(),
-          stdexec::set_error_t(std::exception_ptr)>;
+        stdexec::completion_signatures<stdexec::set_value_t()>;
 
       template <class R>
         friend auto tag_invoke(stdexec::connect_t, __sender, R&& rec)

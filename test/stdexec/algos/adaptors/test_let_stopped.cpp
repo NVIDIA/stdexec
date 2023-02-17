@@ -33,7 +33,7 @@ TEST_CASE("let_stopped returns a sender", "[adaptors][let_stopped]") {
 }
 TEST_CASE("let_stopped with environment returns a sender", "[adaptors][let_stopped]") {
   auto snd = ex::let_stopped(ex::just(), [] { return ex::just(); });
-  static_assert(ex::sender<decltype(snd), empty_env>);
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
   (void)snd;
 }
 TEST_CASE("let_stopped simple example", "[adaptors][let_stopped]") {
