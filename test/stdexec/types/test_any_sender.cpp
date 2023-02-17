@@ -166,6 +166,8 @@ TEST_CASE("any sender is a sender", "[types][any_sender]") {
 
 TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
   static_assert(scheduler<any_scheduler>);
+  using any_scheduler = __add_completion_signatures<exec::any_scheduler, set_error_t(std::exception_ptr)>;
+
   any_scheduler scheduler = exec::inline_scheduler();
   any_scheduler copied = scheduler;
   CHECK(copied == scheduler);
@@ -181,6 +183,8 @@ TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
 }
 
 TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
+  using any_scheduler = __add_completion_signatures<exec::any_scheduler, set_stopped_t()>;
+
   exec::static_thread_pool pool(1);
   any_scheduler scheduler = pool.get_scheduler();
   any_scheduler copied = scheduler;
