@@ -48,13 +48,20 @@ namespace stdexec {
 
   struct __none_such {};
 
-  template <class...>
-    concept __typename = true;
-
   struct __immovable {
     __immovable() = default;
    private:
     STDEXEC_IMMOVABLE(__immovable);
+  };
+
+  struct __move_only {
+    __move_only() = default;
+
+    __move_only(__move_only&&) noexcept = default;
+    __move_only& operator=(__move_only&&) noexcept = default;
+
+    __move_only(const __move_only&) = delete;
+    __move_only& operator=(const __move_only&) = delete;
   };
 
   template <class _T>
@@ -71,6 +78,12 @@ namespace stdexec {
   // Some utilities for manipulating lists of types at compile time
   template <class...>
     struct __types;
+
+  template <class... _Ts>
+    concept __typename =
+      requires {
+        typename __types<_Ts...>;
+      };
 
   template <class _T>
     using __midentity = _T;

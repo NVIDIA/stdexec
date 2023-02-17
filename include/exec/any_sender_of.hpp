@@ -226,7 +226,8 @@ namespace exec {
     };
 
     template <class _Vtable, class _Allocator, bool _Copyable, std::size_t _Alignment, std::size_t _InlineSize>
-      class __storage<_Vtable, _Allocator, _Copyable, _Alignment, _InlineSize>::__t {
+      class __storage<_Vtable, _Allocator, _Copyable, _Alignment, _InlineSize>::__t
+        : __if_c<_Copyable, __, __move_only> {
         static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
         static constexpr std::size_t __alignment = std::max(_Alignment, alignof(void*));
         using __with_copy = __copy_construct_t(void(const __t&));
@@ -278,9 +279,6 @@ namespace exec {
               __construct_large<_T>((_Args&&) __args...);
             }
           }
-
-        __t(const __t&) requires (!_Copyable) = delete;
-        __t& operator=(const __t&) requires (!_Copyable) = delete;
 
         __t(const __t& __other) requires (_Copyable) {
           (*__other.__vtable_)(__copy_construct, this, __other);
@@ -672,14 +670,6 @@ namespace exec {
           __scheduler(_Scheduler&& __scheduler)
             : __storage_{(_Scheduler&&) __scheduler} {}
 
-#if STDEXEC_NVHPC()
-        // BUGBUG TODO find out why nvc++ needs this
-        __scheduler(__scheduler&&) noexcept = default;
-        __scheduler(const __scheduler& __that)
-          : __storage_(__that.__storage_)
-        {}
-#endif
-
         using __receiver_queries = _ReceiverQueries;
         using __signatures = __concat_completion_signatures_t<_Sigs, completion_signatures<set_value_t()>>;
         // using __sender_queries = __types<get_completion_scheduler_t<set_value_t>(__scheduler() noexcept)>;
@@ -779,21 +769,11 @@ namespace exec {
     template <class _S, class... _Queries>
       using with_scheduler_queries = decltype(__with_scheduler_queries_fn((_S*)nullptr, (_Queries*)nullptr...));
 
-    // BUGBUG: __completion_signature<_T> returns always true???
-    template <class _Sig>
-      inline constexpr bool __is_compl_sig = false;
-    template <class... _Args>
-      inline constexpr bool __is_compl_sig<set_value_t(_Args...)> = true;
-    template <class _Error>
-      inline constexpr bool __is_compl_sig<set_error_t(_Error)> = true;
-    template <>
-      inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
+    template <class... _Sigs>
+      using __sender_of = __t<__any::__sender<completion_signatures<_Sigs...>>>;
 
-  template <class... _Sigs>
-    using __sender_of = __t<__any::__sender<completion_signatures<_Sigs...>>>;
-
-  template <class _T>
-    using __transform_value = __if_c<__is_compl_sig<_T>, _T, set_value_t(_T)>;
+    template <class _T>
+      using __transform_value = __if_c<__completion_signature<_T>, _T, set_value_t(_T)>;
 
   } // namepsace __any
 
