@@ -46,7 +46,7 @@ namespace exec {
       template <class _Fn, class _Env, class _NestedSender>
         using __f = __minvoke<_Fn, _Env, _NestedSender>;
 
-      template <class _AsyncScopeToken, __movable_value _Env = __empty_env, sender<__env_t<_Env>> _NestedSender>
+      template <class _AsyncScopeToken, __movable_value _Env = empty_env, sender<__env_t<_Env>> _NestedSender>
         requires tag_invocable<nest_t, _AsyncScopeToken, _NestedSender>
       void operator()(_AsyncScopeToken&& __tkn, _NestedSender&& __ns, _Env __env = {}) const {
         (void) tag_invoke(spawn_t{}, (_AsyncScopeToken&&) __tkn, (_NestedSender&&) __ns, (_Env&&) __env);
@@ -57,7 +57,7 @@ namespace exec {
       template <class _Fn, class _Env, class _NestedSender>
         using __f = __minvoke<_Fn, _Env, _NestedSender>;
 
-      template <class _AsyncScopeToken, __movable_value _Env = __empty_env, sender<__env_t<_Env>> _NestedSender>
+      template <class _AsyncScopeToken, __movable_value _Env = empty_env, sender<__env_t<_Env>> _NestedSender>
         requires tag_invocable<nest_t, _AsyncScopeToken, _NestedSender>
       auto operator()(_AsyncScopeToken&& __tkn, _NestedSender&& __ns, _Env __env = {}) const {
         return tag_invoke(spawn_future_t{}, (_AsyncScopeToken&&) __tkn, (_NestedSender&&) __ns, (_Env&&) __env);
