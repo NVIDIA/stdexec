@@ -129,7 +129,10 @@ TEST_CASE("enter_async_scope will complete", "[types][type_async_scope]") {
 
     })
     | ex::then([](int a, int b, int c){ return a-b+c; });
-    CHECK(std::get<0>(stdexec::sync_wait(scoped).value()) == 42);
+    auto res = stdexec::sync_wait(scoped);
+    REQUIRE(res.has_value());
+    auto [v] = res.value();
+    CHECK(v == 42);
   }
 }
 

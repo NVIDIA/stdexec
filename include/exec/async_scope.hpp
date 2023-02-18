@@ -43,8 +43,8 @@ namespace exec {
     };
 
     struct spawn_t {
-      template <class _Fn, class _NestedSender>
-        using __f = __minvoke<_Fn, _NestedSender>;
+      template <class _Fn, class _Env, class _NestedSender>
+        using __f = __minvoke<_Fn, _Env, _NestedSender>;
 
       template <class _AsyncScopeToken, __movable_value _Env = __empty_env, sender<__env_t<_Env>> _NestedSender>
         requires tag_invocable<nest_t, _AsyncScopeToken, _NestedSender>
@@ -54,8 +54,8 @@ namespace exec {
     };
 
     struct spawn_future_t {
-      template <class _Fn, class _NestedSender>
-        using __f = __minvoke<_Fn, _NestedSender>;
+      template <class _Fn, class _Env, class _NestedSender>
+        using __f = __minvoke<_Fn, _Env, _NestedSender>;
 
       template <class _AsyncScopeToken, __movable_value _Env = __empty_env, sender<__env_t<_Env>> _NestedSender>
         requires tag_invocable<nest_t, _AsyncScopeToken, _NestedSender>
@@ -787,6 +787,9 @@ namespace exec {
       __impl __impl_;
     };
 
+    ////////////////////////////////////////////////////////////////////////////
+    // enter_async_scope
+
     template <class _ReceiverId>
       struct __async_scope_op_base {
         using _Receiver = __t<_ReceiverId>;
@@ -903,6 +906,80 @@ namespace exec {
       using __async_scope_sender_t =
         __async_scope_sender<__x<remove_cvref_t<_Adapter>>>;
 
+    ////////////////////////////////////////////////////////////////////////////
+    // enter_scopes
+
+    template <class _ReceiverId>
+      struct __enter_scopes_op_base {
+        using _Receiver = __t<_ReceiverId>;
+
+        _Receiver __rcvr_;
+      protected:
+        explicit __enter_scopes_op_base(_Receiver&& __rcvr)
+          : __rcvr_(__rcvr)
+          {}
+      };
+
+    template <class _ReceiverId, class... _Resources>
+      struct __enter_scopes_op : __enter_scopes_op_base<_ReceiverId> {
+        using _Receiver = __t<_ReceiverId>;
+        using _Base = __enter_scopes_op_base<_ReceiverId>;
+
+
+        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+          connect_result_t<__call_result_t<__just::__just_t>, _Receiver> __op_;
+
+        explicit __enter_scopes_op(_Receiver __rcvr)
+          : _Base((_Receiver&&) __rcvr)
+          , __op_(connect(
+            just(),
+            (_Receiver&&) this->__rcvr_)) {
+          }
+      private:
+        void __start_() noexcept {
+          start(this->__op_);
+        }
+        friend void tag_invoke(start_t, __enter_scopes_op& __self) noexcept {
+          return __self.__start_();
+        }
+      };
+
+    template <class... _ResourcesId>
+      struct __enter_scopes_sender {
+        using _ResourcesStorage = std::tuple<__t<_ResourcesId>...>;
+
+      private:
+        _ResourcesStorage __rstg_;
+
+        template <class _Self, class _Receiver>
+          using __enter_scopes_op_t =
+            __enter_scopes_op<
+              __x<_Receiver>,
+              __x<__copy_cvref_t<_Self, __t<_ResourcesId>>>...>;
+
+        template <__decays_to<__enter_scopes_sender> _Self, receiver _Receiver>
+          [[nodiscard]] friend __enter_scopes_op_t<_Self, _Receiver>
+          tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
+            return __enter_scopes_op_t<_Self, _Receiver>{
+              (_Receiver&&) __rcvr};
+          }
+
+        template <__decays_to<__enter_scopes_sender> _Self, class _Env>
+          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+            -> completion_signatures_of_t<__copy_cvref_t<_Self, __call_result_t<__just::__just_t>>, __env_t<_Env>>;
+      };
+
+    template<class... _Resources>
+      using __enter_scopes_sender_t =
+        __enter_scopes_sender<__x<remove_cvref_t<_Resources>>...>;
+
+    struct enter_scopes_t {
+      template<class... _Resources>
+      [[nodiscard]] __enter_scopes_sender_t<_Resources...> operator()() const {
+        return {};
+      }
+    };
+
   } // namespace __scope
 
   using __scope::nest_t;
@@ -913,6 +990,8 @@ namespace exec {
   inline constexpr spawn_future_t spawn_future{};
 
   using __scope::async_scope;
+  using __scope::enter_scopes_t;
+  inline constexpr enter_scopes_t enter_scopes{};
 
   ////////////////////////////////////////////////////////////////////////////
   // async_scope
