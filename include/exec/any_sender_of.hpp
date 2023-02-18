@@ -388,7 +388,7 @@ namespace exec {
 
         const __vtable_t* __vtable_{__default_storage_vtable((__vtable_t*) nullptr)};
         void* __object_pointer_{nullptr};
-        alignas(_Alignment) std::byte __buffer_[_InlineSize]{};
+        alignas(__alignment) std::byte __buffer_[__buffer_size]{};
         [[no_unique_address]] _Allocator __allocator_{};
       };
 
