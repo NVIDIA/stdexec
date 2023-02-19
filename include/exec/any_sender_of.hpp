@@ -685,7 +685,7 @@ namespace exec {
       class __scheduler {
       public:
         template <class _Scheduler>
-            requires (!__decays_to<_Scheduler, __scheduler>) // && scheduler<_Scheduler>)
+            requires (!__decays_to<_Scheduler, __scheduler>) && scheduler<_Scheduler>
           __scheduler(_Scheduler&& __scheduler)
             : __storage_{(_Scheduler&&) __scheduler} {}
 
@@ -724,14 +724,15 @@ namespace exec {
             }
         };
 
-        friend __sender_t tag_invoke(schedule_t, const __scheduler& __self) noexcept {
-          STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__schedule_);
-          return __get_vtable(__self.__storage_)->__schedule_(__get_object_pointer(__self.__storage_));
-        }
+        template <same_as<__scheduler> _Self>
+          friend __sender_t tag_invoke(schedule_t, const _Self& __self) noexcept {
+            STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__schedule_);
+            return __get_vtable(__self.__storage_)->__schedule_(__get_object_pointer(__self.__storage_));
+          }
 
-        template <class _Tag, class... _As>
+        template <class _Tag, same_as<__scheduler> _Self, class... _As>
             requires __callable<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...>
-          friend auto tag_invoke(_Tag, const __scheduler& __self, _As&&... __as)
+          friend auto tag_invoke(_Tag, const _Self& __self, _As&&... __as)
             noexcept(__nothrow_callable<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...>)
             -> __call_result_t<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...> {
             return __get_vtable(__self.__storage_)
