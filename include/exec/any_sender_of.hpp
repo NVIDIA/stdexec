@@ -36,7 +36,7 @@ namespace exec {
       struct __query_vfun;
 
     template <class _Tag, class _Ret, class... _As>
-      struct __query_vfun<_Tag(_Ret(*)(_As...))> {
+      struct __query_vfun<_Tag(*const)(_Ret(*)(_As...))> {
         _Ret (*__fn_)(void*, _As...);
         _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const {
           return __fn_(__rcvr, (_As&&) __as...);
@@ -44,7 +44,23 @@ namespace exec {
       };
 
     template <class _Tag, class _Ret, class... _As>
-      struct __query_vfun<_Tag(_Ret(*)(_As...) noexcept)> {
+      struct __query_vfun<_Tag(*)(_Ret(*)(_As...))> {
+        _Ret (*__fn_)(void*, _As...);
+        _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const {
+          return __fn_(__rcvr, (_As&&) __as...);
+        }
+      };
+
+    template <class _Tag, class _Ret, class... _As>
+      struct __query_vfun<_Tag(*const)(_Ret(*)(_As...) noexcept)> {
+        _Ret (*__fn_)(void*, _As...) noexcept;
+        _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const noexcept {
+          return __fn_(__rcvr, (_As&&) __as...);
+        }
+      };
+
+    template <class _Tag, class _Ret, class... _As>
+      struct __query_vfun<_Tag(*)(_Ret(*)(_As...) noexcept)> {
         _Ret (*__fn_)(void*, _As...) noexcept;
         _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const noexcept {
           return __fn_(__rcvr, (_As&&) __as...);
@@ -228,6 +244,8 @@ namespace exec {
     template <class _Vtable, class _Allocator, bool _Copyable, std::size_t _Alignment, std::size_t _InlineSize>
       class __storage<_Vtable, _Allocator, _Copyable, _Alignment, _InlineSize>::__t
         : __if_c<_Copyable, __, __move_only> {
+        static_assert(std::is_convertible_v<typename std::allocator_traits<_Allocator>::void_pointer, void*>);
+
         static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
         static constexpr std::size_t __alignment = std::max(_Alignment, alignof(void*));
         using __with_copy = __copy_construct_t(void(const __t&));
@@ -433,12 +451,12 @@ namespace exec {
            private:
             template <class _Rcvr>
                 requires receiver_of<_Rcvr, completion_signatures<_Sigs...>> &&
-                      (__callable<__query_vfun_fn<_Rcvr>, _Queries*> &&...)
+                      (__callable<__query_vfun_fn<_Rcvr>, _Queries> &&...)
               friend const __t*
               tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Rcvr>) noexcept {
                 static const __t __vtable_{
                   {__rcvr_vfun_fn<_Rcvr>{}((_Sigs*) nullptr)}...,
-                  {__query_vfun_fn<_Rcvr>{}((_Queries*) nullptr)}...
+                  {__query_vfun_fn<_Rcvr>{}((_Queries) nullptr)}...
                 };
                 return &__vtable_;
               }
@@ -464,7 +482,7 @@ namespace exec {
          public:
           template <__none_of<__ref, const __ref, __env_t, const __env_t> _Rcvr>
               requires receiver_of<_Rcvr, completion_signatures<_Sigs...>> &&
-                (__callable<__query_vfun_fn<_Rcvr>, _Queries*> &&...)
+                (__callable<__query_vfun_fn<_Rcvr>, _Queries> &&...)
             __ref(_Rcvr& __rcvr) noexcept
               : __env_{__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr}
             {}
@@ -559,10 +577,10 @@ namespace exec {
         using __query_vfun<_Queries>::operator()...;
        private:
         template <class _EnvProvider>
-            requires (__callable<__query_vfun_fn<_EnvProvider>, _Queries*> && ...)
+            requires (__callable<__query_vfun_fn<_EnvProvider>, _Queries> && ...)
           friend const __query_vtable*
           tag_invoke(__create_vtable_t, __mtype<__query_vtable>, __mtype<_EnvProvider>) noexcept {
-            static const __query_vtable __vtable{{__query_vfun_fn<_EnvProvider>{}((_Queries*) nullptr)}...};
+            static const __query_vtable __vtable{{__query_vfun_fn<_EnvProvider>{}((_Queries) nullptr)}...};
             return &__vtable;
           }
       };
@@ -659,7 +677,8 @@ namespace exec {
     template <class _Sig>
     using __return_value_t = decltype(__return_value_((_Sig*)nullptr));
 
-    template <class _Sigs = completion_signatures<set_value_t()>,
+    template <class Derived, 
+              class _Sigs = completion_signatures<set_value_t()>,
               class _SchedulerQueries = __types<>,
               class _SenderQueries = __types<>,
               class _ReceiverQueries = __types<>>
@@ -672,14 +691,8 @@ namespace exec {
 
         using __receiver_queries = _ReceiverQueries;
         using __signatures = __concat_completion_signatures_t<_Sigs, completion_signatures<set_value_t()>>;
-        // using __sender_queries = __types<get_completion_scheduler_t<set_value_t>(__scheduler() noexcept)>;
-        using __sender_queries = __if<
-            __minvoke<__contains<get_completion_scheduler_t<set_value_t>>,
-                      __mapply<__transform<__q<__return_value_t>>, _Sigs>>,
-            _SenderQueries,
-            __minvoke<__push_back<>,
-                      _SenderQueries,
-                      get_completion_scheduler_t<set_value_t>(__scheduler() noexcept)>>;
+        using __sender_queries = __minvoke<__push_back_unique<>, _SenderQueries,
+            decltype(get_completion_scheduler<set_value_t>.signature<Derived() noexcept>)>;
         using __sender_t = __t<__sender<__signatures, __sender_queries, __receiver_queries>>;
        private:
         class __vtable : public __query_vtable<_SchedulerQueries> {
@@ -753,21 +766,25 @@ namespace exec {
         -> __scheduler<_Sigs, _SchQs, __minvoke<__mconcat<>, _OldSQs, __types<_NewSQs...>>, _RQ>;
 
     template <class _S, class... _Queries>
-      using with_sender_queries = decltype(__with_sender_queries_fn((_S*)nullptr, (_Queries*)nullptr...));
+      struct with_sender_queries : decltype(__with_sender_queries_fn((_S*)nullptr, (_Queries*)nullptr...)) {};
 
     template <class _Sigs, class _SQs, class _OldRQs, class... _NewRQs>
       auto __with_receiver_queries_fn(__sender<_Sigs, _SQs, _OldRQs>*, _NewRQs*...)
         -> __sender<_Sigs, _SQs, __minvoke<__mconcat<>, _OldRQs, __types<_NewRQs...>>>;
 
+    template <class _Sigs, class _SchQs, class _SQs, class _OldRQs, class... _NewRQs>
+      auto __with_receiver_queries_fn(__scheduler<_Sigs, _SchQs, _SQs, _OldRQs>*, _NewRQs*...)
+        -> __scheduler<_Sigs, _SchQs, _SQs, __minvoke<__mconcat<>, _OldRQs, __types<_NewRQs...>>>;
+
     template <class _S, class... _Queries>
-      using with_receiver_queries = decltype(__with_receiver_queries_fn((_S*)nullptr, (_Queries*)nullptr...));
+      struct with_receiver_queries : decltype(__with_receiver_queries_fn((_S*)nullptr, (_Queries*)nullptr...)) {};
 
     template <class _Sigs, class _SchSQs, class _RQ, class _SQs, class... _NewSchSQs>
       auto __with_scheduler_queries_fn(__scheduler<_Sigs, _SchSQs, _SQs, _RQ>*, _NewSchSQs*...)
         -> __scheduler<_Sigs, __minvoke<__mconcat<>, _SchSQs, __types<_NewSchSQs...>>, _SQs, _RQ>;
 
     template <class _S, class... _Queries>
-      using with_scheduler_queries = decltype(__with_scheduler_queries_fn((_S*)nullptr, (_Queries*)nullptr...));
+      struct with_scheduler_queries : decltype(__with_scheduler_queries_fn((_S*)nullptr, (_Queries*)nullptr...)) {};
 
     template <class... _Sigs>
       using __sender_of = __t<__any::__sender<completion_signatures<_Sigs...>>>;
@@ -777,13 +794,66 @@ namespace exec {
 
   } // namepsace __any
 
-  template <class... _Ts>
-    using any_sender_of = __any::__sender_of<__any::__transform_value<_Ts>...>;
+  template <auto... _Sigs>
+    using queries = stdexec::__types<decltype(_Sigs)...>;
 
-  template <class... _Ts>
-    using any_scheduler = __any::__scheduler<stdexec::completion_signatures<__any::__transform_value<_Ts>...>>;
+  template <class _Completions, auto... _ReceiverQueries>
+    struct any_receiver : __any::__rec::__ref<_Completions, decltype(_ReceiverQueries)...> {
+      using __receiver_base = __any::__rec::__ref<_Completions, decltype(_ReceiverQueries)...>;
+      template <auto... _SenderQueries>
+      using __sender_base = stdexec::__t<
+          __any::__sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>>;
+      
+      template <class _Receiver>
+          requires (!stdexec::__decays_to<_Receiver, any_receiver>
+                    && stdexec::receiver<_Receiver>)
+        any_receiver(_Receiver&& __receiver) 
+        noexcept(std::is_nothrow_constructible_v<__receiver_base, _Receiver>) 
+        : __receiver_base((_Receiver&&) __receiver) {}
+      
+      template <auto... _SenderQueries>
+        struct any_sender : __sender_base<_SenderQueries...> {
 
-  using __any::with_sender_queries;
-  using __any::with_receiver_queries;
-  using __any::with_scheduler_queries;
+          template <class _Sender>
+              requires (!stdexec::__decays_to<_Sender, any_sender>
+                        && stdexec::sender<_Sender>)
+            any_sender(_Sender&& __sender) 
+            noexcept(std::is_nothrow_constructible_v<
+                __sender_base<_SenderQueries...>, _Sender>) 
+            : __sender_base<_SenderQueries...>((_Sender&&) __sender) {}
+
+          template <auto... _SchedulerQueries>
+            class any_scheduler {
+              using base_scheduler = __any::__scheduler<
+                  any_scheduler,
+                  _Completions, 
+                  queries<_SchedulerQueries...>,
+                  queries<_SenderQueries...>,
+                  queries<_ReceiverQueries...>>;
+
+              base_scheduler __scheduler_;
+             public:
+               template <class _Scheduler>
+                  requires(!stdexec::__decays_to<_Scheduler, any_scheduler>
+                           && stdexec::scheduler<_Scheduler>)
+                any_scheduler(_Scheduler &&__scheduler)
+                : __scheduler_{(_Scheduler &&) __scheduler} {}
+              
+             private:
+              template <class _Tag, 
+                        stdexec::__decays_to<any_scheduler> Self,
+                        class... _As>
+                  requires stdexec::tag_invocable<
+                      _Tag, stdexec::__copy_cvref_t<Self, base_scheduler>, _As...>
+                friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as)
+                noexcept(std::is_nothrow_invocable_v<
+                    _Tag, stdexec::__copy_cvref_t<Self, base_scheduler>, _As...>) {
+                  return tag_invoke(_Tag{}, ((Self&&)__self).__scheduler_, (_As&&) __as...);
+                }
+
+              friend bool operator==(const any_scheduler& __self, 
+                                     const any_scheduler& __other) noexcept = default;
+          };
+        };
+    };
 } // namespace exec

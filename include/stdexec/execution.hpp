@@ -79,6 +79,13 @@ namespace stdexec {
   template <class T>
   concept queryable = destructible<T>;
 
+  template <class Tag>
+    struct __query {
+      template <class Sig>
+        static inline constexpr Tag(*signature)(Sig) = nullptr;
+    };
+
+
   // [exec.fwd_env]
   namespace __fwding_query {
     struct forwarding_query_t {
@@ -147,7 +154,7 @@ namespace stdexec {
       using __cref_t =
         decltype(__scheduler_queries::__cref_fn(__declval<_Ty>()));
 
-    struct execute_may_block_caller_t {
+    struct execute_may_block_caller_t : __query<execute_may_block_caller_t> {
       template <class _T>
         requires tag_invocable<execute_may_block_caller_t, __cref_t<_T>>
       constexpr bool operator()(_T&& __t) const noexcept {
@@ -1066,7 +1073,7 @@ namespace stdexec {
       using __cref_t =
         decltype(__scheduler_queries::__cref_fn(__declval<_Ty>()));
 
-    struct get_forward_progress_guarantee_t {
+    struct get_forward_progress_guarantee_t : __query<get_forward_progress_guarantee_t> {
       template <class _T>
         requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>
       constexpr auto operator()(_T&& __t) const
@@ -1079,7 +1086,7 @@ namespace stdexec {
       }
     };
 
-    struct __has_algorithm_customizations_t {
+    struct __has_algorithm_customizations_t : __query<__has_algorithm_customizations_t> {
       template <class _T>
         using __result_t =
           tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
@@ -1140,7 +1147,7 @@ namespace stdexec {
     template <class _T0>
       concept __allocator = true;
 
-    struct get_scheduler_t {
+    struct get_scheduler_t : __query<get_scheduler_t> {
       friend constexpr bool tag_invoke(
         forwarding_query_t, const get_scheduler_t&) noexcept {
         return true;
@@ -1156,7 +1163,7 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
-    struct get_delegatee_scheduler_t {
+    struct get_delegatee_scheduler_t : __query<get_delegatee_scheduler_t> {
       friend constexpr bool tag_invoke(
         forwarding_query_t, const get_delegatee_scheduler_t&) noexcept {
         return true;
@@ -1172,7 +1179,7 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
-    struct get_allocator_t {
+    struct get_allocator_t : __query<get_allocator_t> {
       friend constexpr bool tag_invoke(
         forwarding_query_t, const get_allocator_t&) noexcept {
         return true;
@@ -1188,7 +1195,7 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
-    struct get_stop_token_t {
+    struct get_stop_token_t : __query<get_stop_token_t> {
       friend constexpr bool tag_invoke(
         forwarding_query_t, const get_stop_token_t&) noexcept {
         return true;
@@ -1436,7 +1443,7 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd_queries]
   namespace __sender_queries {
-    struct forwarding_sender_query_t {
+    struct forwarding_sender_query_t : __query<forwarding_sender_query_t> {
       template <class _Tag>
       constexpr bool operator()(_Tag __tag) const noexcept {
         if constexpr (nothrow_tag_invocable<forwarding_sender_query_t, _Tag> &&
@@ -1701,7 +1708,7 @@ namespace stdexec {
   // [exec.snd_queries], sender queries
   namespace __sender_queries {
     template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
-      struct get_completion_scheduler_t {
+      struct get_completion_scheduler_t : __query<get_completion_scheduler_t<_CPO>> {
         // NOT TO SPEC:
         friend constexpr bool tag_invoke(forwarding_sender_query_t, const get_completion_scheduler_t&) noexcept {
           return true;

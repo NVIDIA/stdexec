@@ -24,19 +24,20 @@
 using namespace stdexec;
 using namespace exec;
 
-struct tag {
+struct tag_t : stdexec::__query<::tag_t> {
   template <class T>
       // BUGBUG ambiguous!
-      requires stdexec::tag_invocable<tag, T>
+      requires stdexec::tag_invocable<tag_t, T>
     auto operator()(T&& t) const
-      noexcept(stdexec::nothrow_tag_invocable<tag, T>)
-      -> stdexec::tag_invoke_result_t<tag, T> {
+      noexcept(stdexec::nothrow_tag_invocable<tag_t, T>)
+      -> stdexec::tag_invoke_result_t<tag_t, T> {
       return stdexec::tag_invoke(*this, (T&&) t);
     }
 };
+inline constexpr ::tag_t tag;
 
 struct env {
-  friend int tag_invoke(tag, env) noexcept {
+  friend int tag_invoke(::tag_t, env) noexcept {
     return 42;
   }
 };
@@ -56,9 +57,9 @@ TEST_CASE("any receiver reference", "[types][any_sender]") {
 
   using Sigs = completion_signatures<set_value_t()>;
   sink_receiver rcvr;
-  __any::__rec::__ref<Sigs, tag(int())> ref { rcvr };
+  __any::__rec::__ref<Sigs, decltype(tag.signature<int()>)> ref { rcvr };
 
-  CHECK(tag{}(get_env(ref)) == 42);
+  CHECK(tag(get_env(ref)) == 42);
 }
 
 struct empty_vtable_t {
@@ -136,17 +137,17 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 
   using Sigs = completion_signatures<set_value_t()>;
   sink_receiver rcvr;
-  __any::__copyable_storage_t<__t<__any::__rec::__vtable<Sigs, tag(int())>>> vtable_holder(rcvr);
+  __any::__copyable_storage_t<__t<__any::__rec::__vtable<Sigs, decltype(tag.signature<int()>)>>> vtable_holder(rcvr);
   REQUIRE(__any::__get_vtable(vtable_holder));
   REQUIRE(__any::__get_object_pointer(vtable_holder));
 
-  CHECK((*__any::__get_vtable(vtable_holder))(tag{}, __any::__get_object_pointer(vtable_holder)) == 42);
+  CHECK((*__any::__get_vtable(vtable_holder))(tag, __any::__get_object_pointer(vtable_holder)) == 42);
 
   auto vtable2 = vtable_holder;
   REQUIRE(__any::__get_vtable(vtable2));
   REQUIRE(__any::__get_object_pointer(vtable2));
-  CHECK((*__any::__get_vtable(vtable_holder))(tag{}, __any::__get_object_pointer(vtable_holder)) == 42);
-  CHECK((*__any::__get_vtable(vtable2))(tag{}, __any::__get_object_pointer(vtable2)) == 42);
+  CHECK((*__any::__get_vtable(vtable_holder))(tag, __any::__get_object_pointer(vtable_holder)) == 42);
+  CHECK((*__any::__get_vtable(vtable2))(tag, __any::__get_object_pointer(vtable2)) == 42);
 
   CHECK(__any::__get_object_pointer(vtable2) != __any::__get_object_pointer(vtable_holder));
   CHECK(__any::__get_vtable(vtable2) == __any::__get_vtable(vtable_holder));
@@ -154,6 +155,8 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
   // CHECK(tag{}(get_env(ref)) == 42);
 }
 
+template <class... Ts>
+  using any_sender_of = any_receiver<completion_signatures<Ts...>>::template any_sender<>;
 
 TEST_CASE("any sender is a sender", "[types][any_sender]") {
   any_sender_of<set_value_t()> sender = just();
@@ -169,16 +172,14 @@ TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
 
 
 TEST_CASE("sync_wait returns value", "[types][any_sender]") {
-  any_sender_of<int> sender = just(21) | then([&](int v) noexcept { return 2 * v; });
-  static_assert(std::is_same_v<__any::__transform_value<int>, set_value_t(int)>);
-  static_assert(std::same_as<completion_signatures_of_t<any_sender_of<int>>, completion_signatures<set_value_t(int)>>);
+  any_sender_of<set_value_t(int)> sender = just(21) | then([&](int v) noexcept { return 2 * v; });
   static_assert(std::same_as<completion_signatures_of_t<any_sender_of<set_value_t(int)>>, completion_signatures<set_value_t(int)>>);
   auto [value] = *sync_wait(std::move(sender));
   CHECK(value == 42);
 }
 
 template <class... Vals>
-using my_sender_of = any_sender_of<Vals..., set_error_t(std::exception_ptr)>;
+  using my_sender_of = any_sender_of<set_value_t(Vals)..., set_error_t(std::exception_ptr)>;
 
 TEST_CASE("sync_wait returns value and exception", "[types][any_sender]") {
   my_sender_of<int> sender = just(21) | then([&](int v) { return 2 * v; });
@@ -188,6 +189,9 @@ TEST_CASE("sync_wait returns value and exception", "[types][any_sender]") {
   sender = just(21) | then([&](int v) { throw std::runtime_error("test"); return 2*v; });
   CHECK_THROWS(sync_wait(std::move(sender)));
 }
+
+template <auto... Queries>
+  using any_scheduler = any_sender_of<>::any_scheduler<Queries...>;
 
 TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
   static_assert(scheduler<any_scheduler<>>);
@@ -206,8 +210,7 @@ TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
 }
 
 TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]") {
-  using my_scheduler = with_scheduler_queries<any_scheduler<>,
-                          get_forward_progress_guarantee_t(forward_progress_guarantee())>;
+  using my_scheduler = any_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
   static_assert(scheduler<my_scheduler>);
   my_scheduler scheduler = exec::inline_scheduler();
   my_scheduler copied = scheduler;
@@ -225,17 +228,18 @@ TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]"
   CHECK(called);
 }
 
-TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
-  using any_scheduler = exec::any_scheduler<set_stopped_t()>;
+template <auto... Queries>
+  using stoppable_scheduler = any_sender_of<set_stopped_t()>::any_scheduler<Queries...>;
 
+TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
   exec::static_thread_pool pool(1);
-  any_scheduler scheduler = pool.get_scheduler();
+  stoppable_scheduler<> scheduler = pool.get_scheduler();
   auto copied = scheduler;
   CHECK(copied == scheduler);
 
   auto sched = schedule(scheduler);
   static_assert(sender<decltype(sched)>);
-  std::same_as<any_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  std::same_as<stoppable_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
   CHECK(get_sched == scheduler);
 
   bool called = false;
@@ -244,9 +248,7 @@ TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
 }
 
 TEST_CASE("queryable any_scheduler with static_thread_pool", "[types][any_sender]") {
-  using stoppable_scheduler = exec::any_scheduler<set_stopped_t()>;
-  using my_scheduler = with_scheduler_queries<stoppable_scheduler,
-                          get_forward_progress_guarantee_t(forward_progress_guarantee())>;
+  using my_scheduler = stoppable_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
 
   exec::static_thread_pool pool(1);
   my_scheduler scheduler = pool.get_scheduler();
