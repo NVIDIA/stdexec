@@ -765,11 +765,7 @@ namespace exec {
   template <class _Completions, auto... _ReceiverQueries>
     class any_receiver {
       using __receiver_base = __any::__rec::__ref<_Completions, decltype(_ReceiverQueries)...>;
-      template <auto... _SenderQueries>
-        using __sender_base = stdexec::__t<
-          __any::__sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>>;
-     
-      __any::__rec::__ref<_Completions, decltype(_ReceiverQueries)...> __receiver_;
+      __receiver_base __receiver_;
       template <class _Tag, 
                 stdexec::__decays_to<any_receiver> Self,
                 class... _As>
@@ -782,6 +778,7 @@ namespace exec {
         }
      
      public:
+      using is_receiver = void;
       template <class _Receiver>
           requires (!stdexec::__decays_to<_Receiver, any_receiver>
                     && stdexec::receiver<_Receiver>)
@@ -791,38 +788,41 @@ namespace exec {
       
       template <auto... _SenderQueries>
         class any_sender {
-          __sender_base<_SenderQueries...> __sender_;
+          using __sender_base = stdexec::__t<
+              __any::__sender<_Completions, 
+                              queries<_SenderQueries...>,
+                              queries<_ReceiverQueries...>>>;
+          __sender_base __sender_;
           template <class _Tag, 
                     stdexec::__decays_to<any_sender> Self,
                     class... _As>
               requires stdexec::tag_invocable<
-                  _Tag, stdexec::__copy_cvref_t<Self, __sender_base<_SenderQueries...>>, _As...>
+                  _Tag, stdexec::__copy_cvref_t<Self, __sender_base>, _As...>
             friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as)
             noexcept(std::is_nothrow_invocable_v<
-                _Tag, stdexec::__copy_cvref_t<Self, __sender_base<_SenderQueries...>>, _As...>) {
+                _Tag, stdexec::__copy_cvref_t<Self, __sender_base>, _As...>) {
               return tag_invoke(_Tag{}, ((Self&&)__self).__sender_, (_As&&) __as...);
             }
          public:
           using is_sender = void;
-          using completion_signatures = typename __sender_base<_SenderQueries...>::completion_signatures;
+          using completion_signatures = typename __sender_base::completion_signatures;
           template <class _Sender>
               requires (!stdexec::__decays_to<_Sender, any_sender>
                         && stdexec::sender<_Sender>)
             any_sender(_Sender&& __sender) 
-            noexcept(std::is_nothrow_constructible_v<
-                __sender_base<_SenderQueries...>, _Sender>) 
+            noexcept(std::is_nothrow_constructible_v<__sender_base, _Sender>) 
             : __sender_((_Sender&&) __sender) {}
 
           template <auto... _SchedulerQueries>
             class any_scheduler {
-              using __base_scheduler = __any::__scheduler<
+              using __scheduler_base = __any::__scheduler<
                   any_scheduler,
                   _Completions, 
                   queries<_SchedulerQueries...>,
                   queries<_SenderQueries...>,
                   queries<_ReceiverQueries...>>;
 
-              __base_scheduler __scheduler_;
+              __scheduler_base __scheduler_;
              public:
                template <class _Scheduler>
                   requires(!stdexec::__decays_to<_Scheduler, any_scheduler>
@@ -835,10 +835,10 @@ namespace exec {
                         stdexec::__decays_to<any_scheduler> Self,
                         class... _As>
                   requires stdexec::tag_invocable<
-                      _Tag, stdexec::__copy_cvref_t<Self, __base_scheduler>, _As...>
+                      _Tag, stdexec::__copy_cvref_t<Self, __scheduler_base>, _As...>
                 friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as)
                 noexcept(std::is_nothrow_invocable_v<
-                    _Tag, stdexec::__copy_cvref_t<Self, __base_scheduler>, _As...>) {
+                    _Tag, stdexec::__copy_cvref_t<Self, __scheduler_base>, _As...>) {
                   return tag_invoke(_Tag{}, ((Self&&)__self).__scheduler_, (_As&&) __as...);
                 }
 
