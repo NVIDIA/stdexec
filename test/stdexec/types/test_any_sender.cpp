@@ -191,17 +191,17 @@ TEST_CASE("sync_wait returns value and exception", "[types][any_sender]") {
 }
 
 template <auto... Queries>
-  using any_scheduler = any_sender_of<>::any_scheduler<Queries...>;
+  using my_scheduler = any_scheduler<any_sender_of<>, Queries...>;
 
 TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
-  static_assert(scheduler<any_scheduler<>>);
-  any_scheduler<> scheduler = exec::inline_scheduler();
-  any_scheduler<> copied = scheduler;
+  static_assert(scheduler<my_scheduler<>>);
+  my_scheduler<> scheduler = exec::inline_scheduler();
+  my_scheduler<> copied = scheduler;
   CHECK(copied == scheduler);
 
   auto sched = schedule(scheduler);
   static_assert(sender<decltype(sched)>);
-  std::same_as<any_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  std::same_as<my_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
   CHECK(get_sched == scheduler);
 
   bool called = false;
@@ -210,15 +210,15 @@ TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
 }
 
 TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]") {
-  using my_scheduler = any_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
-  static_assert(scheduler<my_scheduler>);
-  my_scheduler scheduler = exec::inline_scheduler();
-  my_scheduler copied = scheduler;
+  using my_scheduler2 = my_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
+  static_assert(scheduler<my_scheduler2>);
+  my_scheduler2 scheduler = exec::inline_scheduler();
+  my_scheduler2 copied = scheduler;
   CHECK(copied == scheduler);
 
   auto sched = schedule(scheduler);
   static_assert(sender<decltype(sched)>);
-  std::same_as<my_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  std::same_as<my_scheduler2> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
   CHECK(get_sched == scheduler);
 
   CHECK(get_forward_progress_guarantee(scheduler) == get_forward_progress_guarantee(exec::inline_scheduler()));

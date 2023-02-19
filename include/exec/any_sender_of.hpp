@@ -757,42 +757,6 @@ namespace exec {
 
         __copyable_storage_t<__vtable> __storage_{};
       };
-
-    template <class _Sigs, class _OldSQs, class _RQ, class... _NewSQs>
-      auto __with_sender_queries_fn(__sender<_Sigs, _OldSQs, _RQ>*, _NewSQs*...)
-        -> __sender<_Sigs, __minvoke<__mconcat<>, _OldSQs, __types<_NewSQs...>>, _RQ>;
-
-    template <class _Sigs, class _SchQs, class _RQ, class _OldSQs, class... _NewSQs>
-      auto __with_sender_queries_fn(__scheduler<_Sigs, _SchQs, _OldSQs, _RQ>*, _NewSQs*...)
-        -> __scheduler<_Sigs, _SchQs, __minvoke<__mconcat<>, _OldSQs, __types<_NewSQs...>>, _RQ>;
-
-    template <class _S, class... _Queries>
-      struct with_sender_queries : decltype(__with_sender_queries_fn((_S*)nullptr, (_Queries*)nullptr...)) {};
-
-    template <class _Sigs, class _SQs, class _OldRQs, class... _NewRQs>
-      auto __with_receiver_queries_fn(__sender<_Sigs, _SQs, _OldRQs>*, _NewRQs*...)
-        -> __sender<_Sigs, _SQs, __minvoke<__mconcat<>, _OldRQs, __types<_NewRQs...>>>;
-
-    template <class _Sigs, class _SchQs, class _SQs, class _OldRQs, class... _NewRQs>
-      auto __with_receiver_queries_fn(__scheduler<_Sigs, _SchQs, _SQs, _OldRQs>*, _NewRQs*...)
-        -> __scheduler<_Sigs, _SchQs, _SQs, __minvoke<__mconcat<>, _OldRQs, __types<_NewRQs...>>>;
-
-    template <class _S, class... _Queries>
-      struct with_receiver_queries : decltype(__with_receiver_queries_fn((_S*)nullptr, (_Queries*)nullptr...)) {};
-
-    template <class _Sigs, class _SchSQs, class _RQ, class _SQs, class... _NewSchSQs>
-      auto __with_scheduler_queries_fn(__scheduler<_Sigs, _SchSQs, _SQs, _RQ>*, _NewSchSQs*...)
-        -> __scheduler<_Sigs, __minvoke<__mconcat<>, _SchSQs, __types<_NewSchSQs...>>, _SQs, _RQ>;
-
-    template <class _S, class... _Queries>
-      struct with_scheduler_queries : decltype(__with_scheduler_queries_fn((_S*)nullptr, (_Queries*)nullptr...)) {};
-
-    template <class... _Sigs>
-      using __sender_of = __t<__any::__sender<completion_signatures<_Sigs...>>>;
-
-    template <class _T>
-      using __transform_value = __if_c<__completion_signature<_T>, _T, set_value_t(_T)>;
-
   } // namepsace __any
 
   template <auto... _Sigs>
@@ -814,7 +778,6 @@ namespace exec {
       
       template <auto... _SenderQueries>
         struct any_sender : __sender_base<_SenderQueries...> {
-
           template <class _Sender>
               requires (!stdexec::__decays_to<_Sender, any_sender>
                         && stdexec::sender<_Sender>)
@@ -857,4 +820,10 @@ namespace exec {
           };
         };
     };
+
+  template <class _Receiver, auto... _SenderQueries>
+    using any_sender = typename _Receiver::template any_sender<_SenderQueries...>;
+
+  template <class _Sender, auto... _SchedulerQueries>
+    using any_scheduler = typename _Sender::template any_scheduler<_SchedulerQueries...>;
 } // namespace exec
