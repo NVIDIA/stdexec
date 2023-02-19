@@ -692,7 +692,7 @@ namespace exec {
         using __receiver_queries = _ReceiverQueries;
         using __signatures = __concat_completion_signatures_t<_Sigs, completion_signatures<set_value_t()>>;
         using __sender_queries = __minvoke<__push_back_unique<>, _SenderQueries,
-            decltype(get_completion_scheduler<set_value_t>.signature<Derived() noexcept>)>;
+            decltype(get_completion_scheduler<set_value_t>.template signature<Derived() noexcept>)>;
         using __sender_t = __t<__sender<__signatures, __sender_queries, __receiver_queries>>;
        private:
         class __vtable : public __query_vtable<_SchedulerQueries> {
