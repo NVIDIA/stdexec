@@ -156,7 +156,7 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 }
 
 template <class... Ts>
-  using any_sender_of = any_receiver<completion_signatures<Ts...>>::template any_sender<>;
+  using any_sender_of = typename any_receiver<completion_signatures<Ts...>>::template any_sender<>;
 
 TEST_CASE("any sender is a sender", "[types][any_sender]") {
   any_sender_of<set_value_t()> sender = just();
@@ -229,7 +229,7 @@ TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]"
 }
 
 template <auto... Queries>
-  using stoppable_scheduler = any_sender_of<set_stopped_t()>::any_scheduler<Queries...>;
+  using stoppable_scheduler = typename any_sender_of<set_stopped_t()>::template any_scheduler<Queries...>;
 
 TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
   exec::static_thread_pool pool(1);
