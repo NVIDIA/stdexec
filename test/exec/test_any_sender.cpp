@@ -175,6 +175,9 @@ template <class... Ts>
 TEST_CASE("any sender is a sender", "[types][any_sender]") {
   any_sender_of<set_value_t()> sender = just();
   static_assert(stdexec::sender<decltype(sender)>);
+  static_assert(std::is_move_assignable_v<any_sender_of<set_value_t()>>);
+  static_assert(std::is_nothrow_move_assignable_v<any_sender_of<set_value_t()>>);
+  static_assert(!std::is_copy_assignable_v<any_sender_of<set_value_t()>>);
 }
 
 TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
@@ -183,7 +186,6 @@ TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
   sync_wait(std::move(sender));
   CHECK(value == 42);
 }
-
 
 TEST_CASE("sync_wait returns value", "[types][any_sender]") {
   any_sender_of<set_value_t(int)> sender = just(21) | then([&](int v) noexcept { return 2 * v; });
@@ -240,6 +242,25 @@ TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]"
   bool called = false;
   sync_wait(std::move(sched) | then([&] { called = true; }));
   CHECK(called);
+}
+
+TEST_CASE("any_scheduler adds set_value_t() completion sig (empty)", "[types][any_sender]") {
+  using scheduler_t = any_sender_of<>::any_scheduler<>;
+  using schedule_t = decltype(schedule(std::declval<scheduler_t>()));
+  CHECK(std::is_same_v<completion_signatures_of_t<schedule_t>, completion_signatures<set_value_t()>>);
+}
+
+TEST_CASE("any_scheduler adds set_value_t() completion sig (along with error)", "[types][any_sender]") {
+  using scheduler_t = any_sender_of<set_error_t(std::exception_ptr)>::any_scheduler<>;
+  using schedule_t = decltype(schedule(std::declval<scheduler_t>()));
+  CHECK(sender_of<schedule_t, set_value_t()>);
+  CHECK(sender_of<schedule_t, set_error_t(std::exception_ptr)>);
+}
+
+TEST_CASE("any_scheduler adds uniquely set_value_t() completion sig", "[types][any_sender]") {
+  using scheduler_t = any_sender_of<set_value_t()>::any_scheduler<>;
+  using schedule_t = decltype(schedule(std::declval<scheduler_t>()));
+  CHECK(std::is_same_v<completion_signatures_of_t<schedule_t>, completion_signatures<set_value_t()>>);
 }
 
 template <auto... Queries>
