@@ -27,7 +27,7 @@ int main() {
   const int n = 2 * 1024;
   thrust::device_vector<float> input(n, 1);
   float* first = thrust::raw_pointer_cast(input.data());
-  float* last  = thrust::raw_pointer_cast(input.data()) + input.size();
+  float* last = thrust::raw_pointer_cast(input.data()) + input.size();
 
   nvexec::stream_context stream_ctx{};
 

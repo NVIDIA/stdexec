@@ -93,7 +93,9 @@ TEST_CASE("waiting on work that spawns more work", "[async_scope][empty]") {
   async_scope scope;
 
   bool work1_done{false};
-  auto work1 = [&] { work1_done = true; };
+  auto work1 = [&] {
+    work1_done = true;
+  };
   bool work2_done{false};
   auto work2 = [&] {
     // Spawn work
@@ -109,7 +111,7 @@ TEST_CASE("waiting on work that spawns more work", "[async_scope][empty]") {
   // start an on_empty() sender
   bool is_empty{false};
   ex::sender auto snd = ex::on(inline_scheduler{}, scope.on_empty()) //
-                        | ex::then([&] { is_empty = true; });
+                      | ex::then([&] { is_empty = true; });
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
   REQUIRE_FALSE(work1_done);
@@ -134,14 +136,15 @@ TEST_CASE("waiting on work that spawns more work", "[async_scope][empty]") {
 
 // TODO: GCC-11 generates warnings (treated as errors) for the following test
 #if defined(__clang__) || !defined(__GNUC__)
-TEST_CASE("async_scope is empty after adding work when in cancelled state",
-    "[async_scope][empty]") {
+TEST_CASE(
+  "async_scope is empty after adding work when in cancelled state",
+  "[async_scope][empty]") {
   impulse_scheduler sch;
   async_scope scope;
 
   bool is_empty1{false};
   ex::sender auto snd = ex::on(inline_scheduler{}, scope.on_empty()) //
-                        | ex::then([&] { is_empty1 = true; });
+                      | ex::then([&] { is_empty1 = true; });
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
   REQUIRE(is_empty1);
@@ -149,13 +152,17 @@ TEST_CASE("async_scope is empty after adding work when in cancelled state",
   // cancel & add work
   scope.request_stop();
   bool work_executed{false};
-  scope.spawn(ex::on(sch, ex::just())
-            | ex::upon_stopped([&] { work_executed = true; printf(".\n");}));
+  scope.spawn(
+    ex::on(sch, ex::just()) //
+    | ex::upon_stopped([&] {
+        work_executed = true;
+        printf(".\n");
+      }));
   // note that we don't tell impulse sender to start the work
 
   bool is_empty2{false};
   ex::sender auto snd2 = ex::on(inline_scheduler{}, scope.on_empty()) //
-                         | ex::then([&] { is_empty2 = true; });
+                       | ex::then([&] { is_empty2 = true; });
   auto op2 = ex::connect(std::move(snd2), expect_void_receiver{});
   ex::start(op2);
   REQUIRE_FALSE(is_empty2);

@@ -12,17 +12,14 @@ TEST_CASE("split returns a sender", "[cuda][stream][adaptors][split]") {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::split(ex::schedule(stream_ctx.get_scheduler()));
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("split works", "[cuda][stream][adaptors][split]") {
   nvexec::stream_context stream_ctx{};
 
   auto fork = ex::schedule(stream_ctx.get_scheduler()) //
-            | ex::then([=] {
-                return is_on_gpu(); 
-              })
-            | ex::split();
+            | ex::then([=] { return is_on_gpu(); }) | ex::split();
 
   auto b1 = fork | ex::then([](bool on_gpu) { return on_gpu * 24; });
   auto b2 = fork | ex::then([](bool on_gpu) { return on_gpu * 42; });
@@ -41,7 +38,7 @@ TEST_CASE("split can preceed a sender without values", "[cuda][stream][adaptors]
   auto flags = flags_storage.get();
 
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-           | ex::split()
+           | ex::split()                              //
            | a_sender([=]() noexcept {
                if (is_on_gpu()) {
                  flags.set();
@@ -65,7 +62,7 @@ TEST_CASE("split can succeed a sender", "[cuda][stream][adaptors][split]") {
                    flags.set(1);
                  }
                })
-             | ex::split()
+             | ex::split() //
              | ex::then([flags] {
                  if (is_on_gpu()) {
                    flags.set(0);
@@ -82,10 +79,7 @@ TEST_CASE("split can succeed a sender", "[cuda][stream][adaptors][split]") {
     auto flags = flags_storage.get();
 
     auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-             | a_sender([]() -> bool {
-                 return is_on_gpu();
-               })
-             | ex::split()
+             | a_sender([]() -> bool { return is_on_gpu(); }) | ex::split()
              | ex::then([flags](bool a_sender_was_on_gpu) {
                  if (a_sender_was_on_gpu && is_on_gpu()) {
                    flags.set();
@@ -96,4 +90,3 @@ TEST_CASE("split can succeed a sender", "[cuda][stream][adaptors][split]") {
     REQUIRE(flags_storage.all_set_once());
   }
 }
-

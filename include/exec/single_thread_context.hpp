@@ -25,11 +25,11 @@ namespace exec {
     stdexec::run_loop loop_;
     std::thread thread_;
 
-  public:
+public:
     single_thread_context()
       : loop_()
-      , thread_([this] { loop_.run(); })
-    {}
+      , thread_([this] { loop_.run(); }) {
+    }
 
     ~single_thread_context() {
       loop_.finish();

@@ -21,23 +21,23 @@
 namespace ex = stdexec;
 
 namespace {
-// Two dummy properties:
-constexpr struct Foo {
-  template <class Env>
-    requires std::tag_invocable<Foo, Env>
-  auto operator()(const Env& e) const {
-    return stdexec::tag_invoke(*this, e);
-  }
-} foo {};
+  // Two dummy properties:
+  constexpr struct Foo {
+    template <class Env>
+      requires std::tag_invocable<Foo, Env>
+    auto operator()(const Env& e) const {
+      return stdexec::tag_invoke(*this, e);
+    }
+  } foo{};
 
-constexpr struct Bar {
-  template <class Env>
-    requires std::tag_invocable<Bar, Env>
-  auto operator()(const Env& e) const {
-    return stdexec::tag_invoke(*this, e);
-  }
-} bar {};
-}
+  constexpr struct Bar {
+    template <class Env>
+      requires std::tag_invocable<Bar, Env>
+    auto operator()(const Env& e) const {
+      return stdexec::tag_invoke(*this, e);
+    }
+  } bar{};
+} // namespace
 
 TEST_CASE("Test make_env works", "[env]") {
   auto e = exec::make_env(exec::with(foo, 42));

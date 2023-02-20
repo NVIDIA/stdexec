@@ -129,7 +129,9 @@ classification_result on_classification_error(std::exception_ptr ex) {
 }
 
 // Check for cancellation and transform it into classification result
-classification_result on_classification_cancelled() { return {obj_type::cancelled, 100}; }
+classification_result on_classification_cancelled() {
+  return {obj_type::cancelled, 100};
+}
 
 // Convert the classification result into an HTTP response
 http_response to_response(classification_result res) {
@@ -150,21 +152,21 @@ http_response to_response(classification_result res) {
 // Handler for the "classify" request type
 ex::sender auto handle_classify_request(const http_request& req) {
   return
-      // start with the input buffer
-      ex::just(req)
-      // extract the image from the input request
-      | ex::then(extract_image)
-      // analyze the content of the image and classify it
-      // we are doing the processing on the same thread
-      | ex::then(do_classify)
-      // handle errors
-      | ex::upon_error(on_classification_error)
-      // handle cancellation
-      | ex::upon_stopped(on_classification_cancelled)
-      // transform this into a response
-      | ex::then(to_response)
-      // done
-      ;
+    // start with the input buffer
+    ex::just(req)
+    // extract the image from the input request
+    | ex::then(extract_image)
+    // analyze the content of the image and classify it
+    // we are doing the processing on the same thread
+    | ex::then(do_classify)
+    // handle errors
+    | ex::upon_error(on_classification_error)
+    // handle cancellation
+    | ex::upon_stopped(on_classification_cancelled)
+    // transform this into a response
+    | ex::then(to_response)
+    // done
+    ;
 }
 
 int main() {
@@ -191,11 +193,13 @@ int main() {
     ex::sender auto snd = handle_classify_request(req);
 
     // Pack this into a simplified flow and execute it asynchronously
-    ex::sender auto action = std::move(snd) | ex::then([](http_response resp) {
-      std::ostringstream oss;
-      oss << "Sending response: " << resp.status_code_ << " / " << resp.body_ << "\n";
-      std::cout << oss.str();
-    });
+    ex::sender auto action =
+      std::move(snd) //
+      | ex::then([](http_response resp) {
+          std::ostringstream oss;
+          oss << "Sending response: " << resp.status_code_ << " / " << resp.body_ << "\n";
+          std::cout << oss.str();
+        });
     scope.spawn(ex::on(sched, std::move(action)));
   }
 

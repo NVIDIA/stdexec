@@ -25,19 +25,21 @@
 namespace nvexec {
   namespace detail {
     inline cudaError_t debug_cuda_error(
-        cudaError_t error,
-        [[maybe_unused]] char const* file_name,
-        [[maybe_unused]] int line) {
+      cudaError_t error,
+      [[maybe_unused]] char const * file_name,
+      [[maybe_unused]] int line) {
       // Clear the global CUDA error state which may have been set by the last
       // call. Otherwise, errors may "leak" to unrelated calls.
       cudaGetLastError();
 
 #if defined(STDEXEC_STDERR)
       if (error != cudaSuccess) {
-        std::printf("CUDA error %s [%s:%d]: %s\n", 
-                    cudaGetErrorName(error),
-                    file_name, line, 
-                    cudaGetErrorString(error));
+        std::printf(
+          "CUDA error %s [%s:%d]: %s\n",
+          cudaGetErrorName(error),
+          file_name,
+          line,
+          cudaGetErrorString(error));
       }
 #endif
 
@@ -45,7 +47,5 @@ namespace nvexec {
     }
   }
 
-  #define STDEXEC_DBG_ERR(E)                                         \
-    ::nvexec::detail::debug_cuda_error(E, __FILE__, __LINE__) \
-    /**/
+#define STDEXEC_DBG_ERR(E) ::nvexec::detail::debug_cuda_error(E, __FILE__, __LINE__) /**/
 }

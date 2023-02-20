@@ -54,14 +54,10 @@ TEST_CASE("variant emplaces alternative from CPU", "[cuda][stream][containers][v
   REQUIRE(v.index_ == 0);
 
   v.emplace<double>(4.2);
-  visit([](auto alt) {
-      REQUIRE(alt == 4.2);
-  }, v);
+  visit([](auto alt) { REQUIRE(alt == 4.2); }, v);
 
   v.emplace<double>(42);
-  visit([](auto alt) {
-      REQUIRE(alt == 42);
-  }, v);
+  visit([](auto alt) { REQUIRE(alt == 42); }, v);
 }
 
 template <class T, class V>
@@ -72,23 +68,19 @@ __global__ void kernel(V* v, T alt) {
 TEST_CASE("variant emplaces alternative from GPU", "[cuda][stream][containers][variant]") {
   using variant_t = variant_t<int, double>;
   thrust::universal_vector<variant_t> variant_storage(1);
-  variant_t *v = thrust::raw_pointer_cast(variant_storage.data());
+  variant_t* v = thrust::raw_pointer_cast(variant_storage.data());
 
   REQUIRE(v->index_ == 0);
 
   kernel<<<1, 1>>>(v, 4.2);
   THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
 
-  visit([](auto alt) {
-      REQUIRE(alt == 4.2);
-  }, *v);
+  visit([](auto alt) { REQUIRE(alt == 4.2); }, *v);
 
   kernel<<<1, 1>>>(v, 42);
   THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
 
-  visit([](auto alt) {
-      REQUIRE(alt == 42);
-  }, *v);
+  visit([](auto alt) { REQUIRE(alt == 42); }, *v);
 }
 
 TEST_CASE("variant works with cuda tuple", "[cuda][stream][containers][variant]") {
@@ -96,38 +88,56 @@ TEST_CASE("variant works with cuda tuple", "[cuda][stream][containers][variant]"
   REQUIRE(v.index_ == 0);
 
   v.emplace<cuda::std::tuple<int, double>>(42, 4.2);
-  visit([](auto& tuple) {
-      cuda::std::apply([](auto i, auto d) {
-        REQUIRE(i == 42);
-        REQUIRE(d == 4.2);
-      }, tuple);
-  }, v);
+  visit(
+    [](auto& tuple) {
+      cuda::std::apply(
+        [](auto i, auto d) {
+          REQUIRE(i == 42);
+          REQUIRE(d == 4.2);
+        },
+        tuple);
+    },
+    v);
 
   v.emplace<cuda::std::tuple<char, int>>('f', 4);
-  visit([](auto& tuple) {
-      cuda::std::apply([](auto c, auto i) {
-        REQUIRE(c == 'f');
-        REQUIRE(i == 4);
-      }, tuple);
-  }, v);
+  visit(
+    [](auto& tuple) {
+      cuda::std::apply(
+        [](auto c, auto i) {
+          REQUIRE(c == 'f');
+          REQUIRE(i == 4);
+        },
+        tuple);
+    },
+    v);
 }
 
 TEST_CASE("variant internal index bypass works", "[cuda][stream][containers][variant]") {
   variant_t<cuda::std::tuple<int, double>, cuda::std::tuple<char, int>> v;
 
   v.emplace<cuda::std::tuple<int, double>>(42, 4.2);
-  visit([](auto& tuple) {
-      cuda::std::apply([](auto i, auto d) {
-        REQUIRE(i == 42);
-        REQUIRE(d == 4.2);
-      }, tuple);
-  }, v, 0);
+  visit(
+    [](auto& tuple) {
+      cuda::std::apply(
+        [](auto i, auto d) {
+          REQUIRE(i == 42);
+          REQUIRE(d == 4.2);
+        },
+        tuple);
+    },
+    v,
+    0);
 
   v.emplace<cuda::std::tuple<char, int>>('f', 4);
-  visit([](auto& tuple) {
-      cuda::std::apply([](auto c, auto i) {
-        REQUIRE(c == 'f');
-        REQUIRE(i == 4);
-      }, tuple);
-  }, v, 1);
+  visit(
+    [](auto& tuple) {
+      cuda::std::apply(
+        [](auto c, auto i) {
+          REQUIRE(c == 'f');
+          REQUIRE(i == 4);
+        },
+        tuple);
+    },
+    v,
+    1);
 }

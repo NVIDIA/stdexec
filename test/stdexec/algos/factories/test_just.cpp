@@ -61,7 +61,7 @@ TEST_CASE("value types are properly set for just", "[factories][just]") {
 
   check_val_types<type_array<type_array<int, double>>>(ex::just(1, 3.14));
   check_val_types<type_array<type_array<int, double, std::string>>>(
-      ex::just(1, 3.14, std::string{}));
+    ex::just(1, 3.14, std::string{}));
 }
 
 TEST_CASE("error types are properly set for just", "[factories][just]") {
@@ -86,6 +86,7 @@ TEST_CASE("just works with value type", "[factories][just]") {
   CHECK(res == "hello");
   CHECK(cat == typecat::rvalref);
 }
+
 TEST_CASE("just works with ref type", "[factories][just]") {
   std::string original{"hello"};
   auto snd = ex::just(original);
@@ -101,6 +102,7 @@ TEST_CASE("just works with ref type", "[factories][just]") {
   CHECK(res == original);
   CHECK(cat == typecat::rvalref);
 }
+
 TEST_CASE("just works with const-ref type", "[factories][just]") {
   const std::string original{"hello"};
   auto snd = ex::just(original);

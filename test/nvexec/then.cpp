@@ -12,7 +12,7 @@ TEST_CASE("then returns a sender", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::then(ex::schedule(stream_ctx.get_scheduler()), [] {});
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("then executes on GPU", "[cuda][stream][adaptors][then]") {
@@ -136,9 +136,7 @@ TEST_CASE("then can succeed a sender", "[cuda][stream][adaptors][then]") {
     auto flags = flags_storage.get();
 
     auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-             | a_sender([]() -> bool {
-                 return is_on_gpu();
-               })
+             | a_sender([]() -> bool { return is_on_gpu(); })
              | ex::then([flags](bool a_sender_was_on_gpu) {
                  if (a_sender_was_on_gpu && is_on_gpu()) {
                    flags.set();
@@ -157,7 +155,7 @@ TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][th
     auto flags = flags_storage.get();
 
     auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-             | a_sender()
+             | a_sender()                               //
              | ex::then([flags] {
                  if (is_on_gpu()) {
                    flags.set();
@@ -174,10 +172,7 @@ TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][th
     auto flags = flags_storage.get();
 
     auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-             | ex::then([]() -> bool {
-                 return is_on_gpu();
-               })
-             | a_sender()
+             | ex::then([]() -> bool { return is_on_gpu(); }) | a_sender()
              | ex::then([flags](bool a_sender_was_on_gpu) {
                  if (a_sender_was_on_gpu && is_on_gpu()) {
                    flags.set();
@@ -195,10 +190,8 @@ TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptor
   auto flags = flags_storage.get();
 
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-           | ex::then([]() -> move_only_t {
-               return move_only_t{42};
-             })
-           | ex::then([flags](move_only_t &&val) {
+           | ex::then([]() -> move_only_t { return move_only_t{42}; })
+           | ex::then([flags](move_only_t&& val) {
                if (val.contains(42)) {
                  flags.set();
                }
@@ -211,12 +204,9 @@ TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptor
 TEST_CASE("then can preceed a sender with values", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
 
-  auto snd = ex::schedule(stream_ctx.get_scheduler()) 
+  auto snd = ex::schedule(stream_ctx.get_scheduler())
            | ex::then([]() -> bool { return is_on_gpu(); })
-           | a_sender([](bool then_was_on_gpu) -> bool {
-               return then_was_on_gpu && is_on_gpu(); 
-             });
+           | a_sender([](bool then_was_on_gpu) -> bool { return then_was_on_gpu && is_on_gpu(); });
   auto [ok] = stdexec::sync_wait(std::move(snd)).value();
   REQUIRE(ok);
 }
-

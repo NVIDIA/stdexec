@@ -28,52 +28,54 @@ template <class E>
 using set_error_sig = ex::set_error_t(E);
 
 TEST_CASE(
-    "set_value_sig can be used to transform value types to corresponding completion signatures",
-    "[detail][completion_signatures]") {
+  "set_value_sig can be used to transform value types to corresponding completion signatures",
+  "[detail][completion_signatures]") {
   using set_value_f = stdexec::__q<set_value_sig>;
 
   using tr = stdexec::__transform<set_value_f, stdexec::__q<stdexec::__types>>;
 
   using res = stdexec::__minvoke<tr, int, double, string>;
-  using expected = stdexec::__types<    //
-      ex::set_value_t(int),    //
-      ex::set_value_t(double), //
-      ex::set_value_t(string)  //
-      >;
+  using expected = stdexec::__types< //
+    ex::set_value_t(int),            //
+    ex::set_value_t(double),         //
+    ex::set_value_t(string)          //
+    >;
   static_assert(is_same_v<res, expected>);
 }
 
 TEST_CASE(
-    "set_error_sig can be used to transform error types to corresponding completion signatures",
-    "[detail][completion_signatures]") {
+  "set_error_sig can be used to transform error types to corresponding completion signatures",
+  "[detail][completion_signatures]") {
   using set_error_f = stdexec::__q<set_error_sig>;
 
   using tr = stdexec::__transform<set_error_f, stdexec::__q<stdexec::__types>>;
 
   using res = stdexec::__minvoke<tr, exception_ptr, error_code, string>;
-  using expected = stdexec::__types<           //
-      ex::set_error_t(exception_ptr), //
-      ex::set_error_t(error_code),    //
-      ex::set_error_t(string)         //
-      >;
+  using expected = stdexec::__types< //
+    ex::set_error_t(exception_ptr),  //
+    ex::set_error_t(error_code),     //
+    ex::set_error_t(string)          //
+    >;
   static_assert(is_same_v<res, expected>);
 }
 
 TEST_CASE(
-    "set_error_sig can be used to transform exception_ptr", "[detail][completion_signatures]") {
+  "set_error_sig can be used to transform exception_ptr",
+  "[detail][completion_signatures]") {
   using set_error_f = stdexec::__q<set_error_sig>;
 
   using tr = stdexec::__transform<set_error_f, stdexec::__q<stdexec::__types>>;
 
   using res = stdexec::__minvoke<tr, exception_ptr>;
-  using expected = stdexec::__types<          //
-      ex::set_error_t(exception_ptr) //
-      >;
+  using expected = stdexec::__types< //
+    ex::set_error_t(exception_ptr)   //
+    >;
   static_assert(is_same_v<res, expected>);
 }
 
 TEST_CASE(
-    "__error_types_of_t gets the error types from sender", "[detail][completion_signatures]") {
+  "__error_types_of_t gets the error types from sender",
+  "[detail][completion_signatures]") {
   using snd_eptr_t = decltype(ex::just_error(exception_ptr{}));
   using snd_ec_t = decltype(ex::just_error(error_code{}));
   using snd_str_t = decltype(ex::just_error(std::string{}));
@@ -109,27 +111,27 @@ TEST_CASE("__error_types_of_t can also transform error types", "[detail][complet
 
 template <typename CS, typename ExpectedValTypes>
 void expect_val_types() {
-  using t =
-    stdexec::__gather_signal<
-      stdexec::set_value_t,
-      CS,
-      stdexec::__q<stdexec::__types>,
-      stdexec::__q<stdexec::__types>>;
+  using t = stdexec::__gather_signal<
+    stdexec::set_value_t,
+    CS,
+    stdexec::__q<stdexec::__types>,
+    stdexec::__q<stdexec::__types>>;
   static_assert(is_same_v<t, ExpectedValTypes>);
 }
+
 template <typename CS, typename ExpectedErrTypes>
 void expect_err_types() {
-  using t =
-    stdexec::__gather_signal<
-      stdexec::set_error_t,
-      CS,
-      stdexec::__q<stdexec::__midentity>,
-      stdexec::__q<stdexec::__types>>;
+  using t = stdexec::__gather_signal<
+    stdexec::set_error_t,
+    CS,
+    stdexec::__q<stdexec::__midentity>,
+    stdexec::__q<stdexec::__types>>;
   static_assert(is_same_v<t, ExpectedErrTypes>);
 }
 
-TEST_CASE("make_completion_signatures can replicate the completion signatures of input senders",
-    "[detail][completion_signatures]") {
+TEST_CASE(
+  "make_completion_signatures can replicate the completion signatures of input senders",
+  "[detail][completion_signatures]") {
   using snd_int_t = decltype(ex::just(0));
   using snd_double_char_t = decltype(ex::just(3.14, 'p'));
   using snd_eptr_t = decltype(ex::just_error(exception_ptr{}));
@@ -155,9 +157,10 @@ TEST_CASE("make_completion_signatures can replicate the completion signatures of
   expect_err_types<cs_stopped, stdexec::__types<>>();
 }
 
-TEST_CASE("make_completion_signatures with no_env can replicate the completion signatures of input "
-          "senders",
-    "[detail][completion_signatures]") {
+TEST_CASE(
+  "make_completion_signatures with no_env can replicate the completion signatures of input "
+  "senders",
+  "[detail][completion_signatures]") {
   using snd_int_t = decltype(ex::just(0));
   using snd_double_char_t = decltype(ex::just(3.14, 'p'));
   using snd_eptr_t = decltype(ex::just_error(exception_ptr{}));
@@ -183,72 +186,88 @@ TEST_CASE("make_completion_signatures with no_env can replicate the completion s
   expect_err_types<cs_stopped, stdexec::__types<>>();
 }
 
-TEST_CASE("make_completion_signatures can add other error signatures",
-    "[detail][completion_signatures]") {
+TEST_CASE(
+  "make_completion_signatures can add other error signatures",
+  "[detail][completion_signatures]") {
   using snd_double_t = decltype(ex::just_error(std::exception_ptr{}));
-  using cs_with_ec = ex::make_completion_signatures<snd_double_t, ex::no_env,
-      ex::completion_signatures<ex::set_error_t(error_code)>>;
+  using cs_with_ec = ex::make_completion_signatures<
+    snd_double_t,
+    ex::no_env,
+    ex::completion_signatures<ex::set_error_t(error_code)>>;
 
   expect_val_types<cs_with_ec, stdexec::__types<>>();
   expect_err_types<cs_with_ec, stdexec::__types<error_code, exception_ptr>>();
 }
 
-TEST_CASE("make_completion_signatures can add other error signatures, but will dedup them",
-    "[detail][completion_signatures]") {
+TEST_CASE(
+  "make_completion_signatures can add other error signatures, but will dedup them",
+  "[detail][completion_signatures]") {
   using snd_double_t = decltype(ex::just(3.14));
-  using cs_with_ec = ex::make_completion_signatures<snd_double_t, ex::no_env,
-      ex::completion_signatures<ex::set_error_t(exception_ptr)>>;
+  using cs_with_ec = ex::make_completion_signatures<
+    snd_double_t,
+    ex::no_env,
+    ex::completion_signatures<ex::set_error_t(exception_ptr)>>;
 
   // exception_ptr appears only once
   expect_err_types<cs_with_ec, stdexec::__types<exception_ptr>>();
 }
 
-TEST_CASE("make_completion_signatures can add other value signatures",
-    "[detail][completion_signatures]") {
+TEST_CASE(
+  "make_completion_signatures can add other value signatures",
+  "[detail][completion_signatures]") {
   using snd_double_t = decltype(ex::just(3.14));
-  using cs = ex::make_completion_signatures<snd_double_t, ex::no_env,
-      ex::completion_signatures<  //
-          ex::set_value_t(int),   //
-          ex::set_value_t(double) //
-          >>;
+  using cs = ex::make_completion_signatures<
+    snd_double_t,
+    ex::no_env,
+    ex::completion_signatures< //
+      ex::set_value_t(int),    //
+      ex::set_value_t(double)  //
+      >>;
 
   // will add int, double will appear only once
   expect_val_types<cs, stdexec::__types<stdexec::__types<int>, stdexec::__types<double>>>();
 }
 
 template <class... Args>
-using add_int_set_value_sig =
-  ex::completion_signatures<ex::set_value_t(string, Args...)>;
+using add_int_set_value_sig = ex::completion_signatures<ex::set_value_t(string, Args...)>;
 
 template <class Err>
-using optional_set_error_sig =
-  ex::completion_signatures<ex::set_error_t(optional<Err>)>;
+using optional_set_error_sig = ex::completion_signatures<ex::set_error_t(optional<Err>)>;
 
-TEST_CASE("make_completion_signatures can transform value types signatures",
-    "[detail][completion_signatures]") {
+TEST_CASE(
+  "make_completion_signatures can transform value types signatures",
+  "[detail][completion_signatures]") {
   using snd_double_t = decltype(ex::just(3.14));
-  using cs = ex::make_completion_signatures<snd_double_t, ex::no_env,
-      ex::completion_signatures<  //
-          ex::set_value_t(int),   //
-          ex::set_value_t(double) //
-          >,                      //
-      add_int_set_value_sig       //
-      >;
+  using cs = ex::make_completion_signatures<
+    snd_double_t,
+    ex::no_env,
+    ex::completion_signatures< //
+      ex::set_value_t(int),    //
+      ex::set_value_t(double)  //
+      >,                       //
+    add_int_set_value_sig      //
+    >;
 
   // will transform the original "double" into <string, double>
   // then will add the other "int" and "double"
-  expect_val_types<cs, stdexec::__types<stdexec::__types<int>, stdexec::__types<double>, stdexec::__types<string, double>>>();
+  expect_val_types<
+    cs,
+    stdexec::
+      __types<stdexec::__types<int>, stdexec::__types<double>, stdexec::__types<string, double>>>();
 }
 
-TEST_CASE("make_completion_signatures can transform error types signatures",
-    "[detail][completion_signatures]") {
+TEST_CASE(
+  "make_completion_signatures can transform error types signatures",
+  "[detail][completion_signatures]") {
   using snd_double_t = decltype(ex::just_error(std::exception_ptr{}));
-  using cs = ex::make_completion_signatures<snd_double_t, ex::no_env,
-      ex::completion_signatures<                        //
-          ex::set_error_t(error_code)                   //
-          >,                                            //
-      stdexec::__compl_sigs::__default_set_value,            //
-      optional_set_error_sig>;
+  using cs = ex::make_completion_signatures<
+    snd_double_t,
+    ex::no_env,
+    ex::completion_signatures<                  //
+      ex::set_error_t(error_code)               //
+      >,                                        //
+    stdexec::__compl_sigs::__default_set_value, //
+    optional_set_error_sig>;
 
   // will transform the original "exception_ptr" into optional<exception_ptr>
   // then will add the other "error_code" as specified in the additional signatures
@@ -258,20 +277,18 @@ TEST_CASE("make_completion_signatures can transform error types signatures",
 template <template <class...> class Variant = stdexec::__types>
 using my_error_types = Variant<exception_ptr>;
 
-TEST_CASE("error_types_of_t can be used to get error types",
-    "[detail][completion_signatures]") {
+TEST_CASE("error_types_of_t can be used to get error types", "[detail][completion_signatures]") {
   using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
   using err_t = ex::error_types_of_t<snd_t, ex::no_env, stdexec::__types>;
   static_assert(is_same_v<err_t, stdexec::__types<>>);
 }
 
 TEST_CASE(
-    "regression: error_types_of_t can be used to transform error types",
-    "[detail][completion_signatures]") {
+  "regression: error_types_of_t can be used to transform error types",
+  "[detail][completion_signatures]") {
   using tr = stdexec::__transform<stdexec::__q<set_error_sig>>;
 
   using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
-  using err_t =
-      ex::error_types_of_t<snd_t, ex::no_env, tr::template __f>;
+  using err_t = ex::error_types_of_t<snd_t, ex::no_env, tr::template __f>;
   static_assert(is_same_v<err_t, stdexec::__types<>>);
 }

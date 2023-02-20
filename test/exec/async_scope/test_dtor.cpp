@@ -8,7 +8,7 @@ using stdexec::sync_wait;
 
 TEST_CASE("async_scope can be created and them immediately destructed", "[async_scope][dtor]") {
   async_scope scope;
-  (void)scope;
+  (void) scope;
 }
 
 TEST_CASE("async_scope destruction after spawning work into it", "[async_scope][dtor]") {
