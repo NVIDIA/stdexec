@@ -181,7 +181,6 @@ TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
   int value = 0;
   any_sender_of<set_value_t()> sender = just(42) | then([&](int v) noexcept { value = v; });
   sync_wait(std::move(sender));
-  sync_wait(std::move(sender));
   CHECK(value == 42);
 }
 
@@ -244,7 +243,7 @@ TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]"
 }
 
 template <auto... Queries>
-  using stoppable_scheduler = typename any_sender_of<set_stopped_t()>::template any_scheduler<Queries...>;
+  using stoppable_scheduler = any_sender_of<set_stopped_t()>::any_scheduler<Queries...>;
 
 TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
   exec::static_thread_pool pool(1);
