@@ -12,7 +12,7 @@ TEST_CASE("bulk returns a sender", "[cuda][stream][adaptors][bulk]") {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::bulk(ex::schedule(stream_ctx.get_scheduler()), 42, [] {});
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("bulk executes on GPU", "[cuda][stream][adaptors][bulk]") {
@@ -79,11 +79,13 @@ TEST_CASE("bulk can preceed a sender without values", "[cuda][stream][adaptors][
   auto flags = flags_storage.get();
 
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-           | ex::bulk(2, [flags](int idx) {
-               if (is_on_gpu()) {
-                 flags.set(idx);
-               }
-             })
+           | ex::bulk(
+               2,
+               [flags](int idx) {
+                 if (is_on_gpu()) {
+                   flags.set(idx);
+                 }
+               })
            | a_sender([flags] {
                if (is_on_gpu()) {
                  flags.set(2);
@@ -122,9 +124,7 @@ TEST_CASE("bulk can succeed a sender", "[cuda][stream][adaptors][bulk]") {
     auto flags = flags_storage.get();
 
     auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-             | a_sender([]() -> bool {
-                 return is_on_gpu();
-               })
+             | a_sender([]() -> bool { return is_on_gpu(); })
              | ex::bulk(2, [flags](int idx, bool a_sender_was_on_gpu) {
                  if (a_sender_was_on_gpu && is_on_gpu()) {
                    flags.set(idx);
@@ -135,4 +135,3 @@ TEST_CASE("bulk can succeed a sender", "[cuda][stream][adaptors][bulk]") {
     REQUIRE(flags_storage.all_set_once());
   }
 }
-

@@ -21,22 +21,20 @@
 #include <vector>
 
 static std::pair<std::size_t, std::size_t>
-even_share(std::size_t n, std::uint32_t rank, std::uint32_t size) noexcept {
+  even_share(std::size_t n, std::uint32_t rank, std::uint32_t size) noexcept {
   const auto avg_per_thread = n / size;
   const auto n_big_share = avg_per_thread + 1;
   const auto big_shares = n % size;
   const auto is_big_share = rank < big_shares;
   const auto begin = is_big_share ? n_big_share * rank
-                                  : n_big_share * big_shares +
-                                      (rank - big_shares) * avg_per_thread;
+                                  : n_big_share * big_shares + (rank - big_shares) * avg_per_thread;
   const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
 
   return std::make_pair(begin, end);
 }
 
 template <class T>
-std::unique_ptr<T, deleter_t>
-device_alloc(std::size_t elements = 1) {
+std::unique_ptr<T, deleter_t> device_alloc(std::size_t elements = 1) {
   T *ptr{};
   STDEXEC_DBG_ERR(cudaMalloc(&ptr, elements * sizeof(T)));
   return std::unique_ptr<T, deleter_t>(ptr, deleter_t{true});
@@ -79,20 +77,17 @@ namespace distributed {
 
     std::unique_ptr<float, deleter_t> fields_{};
 
-    grid_t(grid_t&&) = delete;
-    grid_t(const grid_t&) = delete;
+    grid_t(grid_t &&) = delete;
+    grid_t(const grid_t &) = delete;
 
-    grid_t(
-        std::size_t n,
-        std::size_t grid_begin,
-        std::size_t grid_end)
+    grid_t(std::size_t n, std::size_t grid_begin, std::size_t grid_end)
       : n(n)
       , cells(n * n)
       , begin(grid_begin)
       , end(grid_end)
       , own_cells(end - begin)
-      , fields_(device_alloc<float>(static_cast<std::size_t>(own_cells + n * 2) *
-                                    static_cast<int>(field_id::fields_count))) {
+      , fields_(device_alloc<float>(
+          static_cast<std::size_t>(own_cells + n * 2) * static_cast<int>(field_id::fields_count))) {
     }
 
     [[nodiscard]] fields_accessor accessor() const {
@@ -116,14 +111,12 @@ namespace distributed {
       float *ez = accessor_.get(field_id::ez);
       std::vector<float> h_ez(accessor_.own_cells() + 2 * accessor_.n);
 
-      cudaMemcpy(h_ez.data(),
-                 accessor_.get(field_id::ez),
-                 sizeof(float) * h_ez.size(),
-                 cudaMemcpyDefault);
+      cudaMemcpy(
+        h_ez.data(), accessor_.get(field_id::ez), sizeof(float) * h_ez.size(), cudaMemcpyDefault);
       ez = h_ez.data();
 
       if (rank_ == 0) {
-        printf("\twriting report #%d", (int)report_step_);
+        printf("\twriting report #%d", (int) report_step_);
         fflush(stdout);
       }
 
@@ -139,7 +132,7 @@ namespace distributed {
       fprintf(f, "vtk output\n");
       fprintf(f, "ASCII\n");
       fprintf(f, "DATASET UNSTRUCTURED_GRID\n");
-      fprintf(f, "POINTS %d double\n", (int)(own_cells * 4));
+      fprintf(f, "POINTS %d double\n", (int) (own_cells * 4));
 
       const float y_offset = with_halo_ ? dy : 0.0f;
       for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++) {
@@ -147,31 +140,48 @@ namespace distributed {
         const std::size_t i = cell_id % nx;
         const std::size_t j = cell_id / nx;
 
-        fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 0), dy * static_cast<float>(j + 0) - y_offset);
-        fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 1), dy * static_cast<float>(j + 0) - y_offset);
-        fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 1), dy * static_cast<float>(j + 1) - y_offset);
-        fprintf(f, "%lf %lf 0.0\n", dx * static_cast<float>(i + 0), dy * static_cast<float>(j + 1) - y_offset);
+        fprintf(
+          f,
+          "%lf %lf 0.0\n",
+          dx * static_cast<float>(i + 0),
+          dy * static_cast<float>(j + 0) - y_offset);
+        fprintf(
+          f,
+          "%lf %lf 0.0\n",
+          dx * static_cast<float>(i + 1),
+          dy * static_cast<float>(j + 0) - y_offset);
+        fprintf(
+          f,
+          "%lf %lf 0.0\n",
+          dx * static_cast<float>(i + 1),
+          dy * static_cast<float>(j + 1) - y_offset);
+        fprintf(
+          f,
+          "%lf %lf 0.0\n",
+          dx * static_cast<float>(i + 0),
+          dy * static_cast<float>(j + 1) - y_offset);
       }
 
-      fprintf(f, "CELLS %d %d\n", (int)own_cells, (int)own_cells * 5);
+      fprintf(f, "CELLS %d %d\n", (int) own_cells, (int) own_cells * 5);
 
       for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++) {
         const std::size_t point_offset = own_cell_id * 4;
-        fprintf(f,
-                "4 %d %d %d %d\n",
-                (int)(point_offset + 0),
-                (int)(point_offset + 1),
-                (int)(point_offset + 2),
-                (int)(point_offset + 3));
+        fprintf(
+          f,
+          "4 %d %d %d %d\n",
+          (int) (point_offset + 0),
+          (int) (point_offset + 1),
+          (int) (point_offset + 2),
+          (int) (point_offset + 3));
       }
 
-      fprintf(f, "CELL_TYPES %d\n", (int)own_cells);
+      fprintf(f, "CELL_TYPES %d\n", (int) own_cells);
 
       for (std::size_t own_cell_id = 0; own_cell_id < own_cells; own_cell_id++) {
         fprintf(f, "9\n");
       }
 
-      fprintf(f, "CELL_DATA %d\n", (int)own_cells);
+      fprintf(f, "CELL_DATA %d\n", (int) own_cells);
       fprintf(f, "SCALARS Ez double 1\n");
       fprintf(f, "LOOKUP_TABLE default\n");
 
@@ -187,31 +197,28 @@ namespace distributed {
       }
     }
 
-  public:
+public:
     result_dumper_t(
-        bool write_results,
-        int rank,
-        std::size_t &report_step,
-        fields_accessor accessor)
+      bool write_results,
+      int rank,
+      std::size_t &report_step,
+      fields_accessor accessor)
       : write_results_(write_results)
       , rank_(rank)
       , report_step_(report_step)
-      , accessor_(accessor) {}
+      , accessor_(accessor) {
+    }
 
     void operator()() const {
-      const std::string filename = std::string("output_") +
-                                   std::to_string(rank_) + "_" +
-                                   std::to_string(report_step_) + ".vtk";
+      const std::string filename = std::string("output_") + std::to_string(rank_) + "_"
+                                 + std::to_string(report_step_) + ".vtk";
 
       write_vtk(filename);
     }
   };
 
   __host__ result_dumper_t
-  dump_vtk(bool write_results,
-                       int rank,
-                       std::size_t &report_step,
-                       fields_accessor accessor) {
+    dump_vtk(bool write_results, int rank, std::size_t &report_step, fields_accessor accessor) {
     return {write_results, rank, report_step, accessor};
   }
 
@@ -220,8 +227,7 @@ namespace distributed {
     float dt;
     AccessorT accessor;
 
-    __host__ __device__ void
-    operator()(std::size_t cell_id) const {
+    __host__ __device__ void operator()(std::size_t cell_id) const {
       const std::size_t row = (accessor.begin + cell_id) / accessor.n;
       const std::size_t column = (accessor.begin + cell_id) % accessor.n;
 
@@ -242,8 +248,7 @@ namespace distributed {
 
         if (is_circle_part(x, y, object_x, object_y, object_size)) {
           er = hr = 200000; /// Relative permeabuliti of Iron
-        }
-        else {
+        } else {
           er = hr = soil_er_hr;
         }
       }
@@ -262,27 +267,27 @@ namespace distributed {
 
   template <class AccessorT>
   __host__ __device__ inline grid_initializer_t<AccessorT>
-  grid_initializer(float dt, AccessorT accessor) {
+    grid_initializer(float dt, AccessorT accessor) {
     return {dt, accessor};
   }
 
   __host__ __device__ inline std::size_t
-  right_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+    right_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
     return col == N - 1 ? cell_id - (N - 1) : cell_id + 1;
   }
 
   __host__ __device__ inline std::size_t
-  left_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+    left_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
     return col == 0 ? cell_id + N - 1 : cell_id - 1;
   }
 
   __host__ __device__ inline std::size_t
-  bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+    bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
     return cell_id - N;
   }
 
   __host__ __device__ inline std::size_t
-  top_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+    top_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
     return cell_id + N;
   }
 
@@ -290,8 +295,7 @@ namespace distributed {
   struct h_field_calculator_t {
     AccessorT accessor;
 
-    __host__ __device__ void
-    operator()(std::size_t cell_id) const __attribute__((always_inline)) {
+    __host__ __device__ void operator()(std::size_t cell_id) const __attribute__((always_inline)) {
       const std::size_t N = accessor.n;
       const std::size_t column = (accessor.begin + cell_id) % N;
       const std::size_t row = (accessor.begin + cell_id) / N;
@@ -308,8 +312,7 @@ namespace distributed {
   };
 
   template <class AccessorT>
-  __host__ __device__ inline h_field_calculator_t<AccessorT>
-  update_h(AccessorT accessor) {
+  __host__ __device__ inline h_field_calculator_t<AccessorT> update_h(AccessorT accessor) {
     return {accessor};
   }
 
@@ -320,20 +323,17 @@ namespace distributed {
     AccessorT accessor;
     std::size_t source_position;
 
-    [[nodiscard]] __host__ __device__ float
-    gaussian_pulse(float t, float t_0, float tau) const {
+    [[nodiscard]] __host__ __device__ float gaussian_pulse(float t, float t_0, float tau) const {
       return exp(-(((t - t_0) / tau) * (t - t_0) / tau));
     }
 
-    [[nodiscard]] __host__ __device__ float
-    calculate_source(float t, float frequency) const {
+    [[nodiscard]] __host__ __device__ float calculate_source(float t, float frequency) const {
       const float tau = 0.5f / frequency;
       const float t_0 = 6.0f * tau;
       return gaussian_pulse(t, t_0, tau);
     }
 
-    __host__ __device__ void
-    operator()(std::size_t cell_id) const __attribute__((always_inline)) {
+    __host__ __device__ void operator()(std::size_t cell_id) const __attribute__((always_inline)) {
       const std::size_t N = accessor.n;
       const std::size_t column = (accessor.begin + cell_id) % N;
       const std::size_t row = (accessor.begin + cell_id) / N;
@@ -363,7 +363,7 @@ namespace distributed {
 
   template <class AccessorT>
   __host__ __device__ inline e_field_calculator_t<AccessorT>
-  update_e(float *time, float dt, AccessorT accessor) {
+    update_e(float *time, float dt, AccessorT accessor) {
     std::size_t source_position = accessor.n / 2 + (accessor.n * (accessor.n / 2));
     return {dt, time, accessor, source_position};
   }
@@ -409,7 +409,8 @@ int main(int argc, char *argv[]) {
 
   nvexec::stream_context stream_context{};
   nvexec::stream_scheduler gpu = stream_context.get_scheduler(nvexec::stream_priority::low);
-  nvexec::stream_scheduler gpu_with_priority = stream_context.get_scheduler(nvexec::stream_priority::high);
+  nvexec::stream_scheduler gpu_with_priority = stream_context.get_scheduler(
+    nvexec::stream_priority::high);
 
   time_storage_t time{true /* on gpu */};
 
@@ -420,24 +421,39 @@ int main(int argc, char *argv[]) {
   };
 
   stdexec::this_thread::sync_wait(
-    ex::schedule(gpu) |
-    ex::bulk(accessor.own_cells(), distributed::grid_initializer(dt, accessor)));
+    ex::schedule(gpu)
+    | ex::bulk(accessor.own_cells(), distributed::grid_initializer(dt, accessor)));
 
   const int prev_rank = rank == 0 ? size - 1 : rank - 1;
   const int next_rank = rank == (size - 1) ? 0 : rank + 1;
 
   auto exchange_hx = [&] {
-     MPI_Request requests[2];
-     MPI_Irecv(accessor.get(field_id::hx) - N, N, MPI_FLOAT, prev_rank, 0, MPI_COMM_WORLD, requests + 0);
-     MPI_Isend(accessor.get(field_id::hx) + accessor.own_cells() - N, N, MPI_FLOAT, next_rank, 0, MPI_COMM_WORLD, requests + 1);
-     MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
+    MPI_Request requests[2];
+    MPI_Irecv(
+      accessor.get(field_id::hx) - N, N, MPI_FLOAT, prev_rank, 0, MPI_COMM_WORLD, requests + 0);
+    MPI_Isend(
+      accessor.get(field_id::hx) + accessor.own_cells() - N,
+      N,
+      MPI_FLOAT,
+      next_rank,
+      0,
+      MPI_COMM_WORLD,
+      requests + 1);
+    MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
   };
 
   auto exchange_ez = [&] {
-     MPI_Request requests[2];
-     MPI_Irecv(accessor.get(field_id::ez) + accessor.own_cells(), N, MPI_FLOAT, next_rank, 0, MPI_COMM_WORLD, requests + 0);
-     MPI_Isend(accessor.get(field_id::ez), N, MPI_FLOAT, prev_rank, 0, MPI_COMM_WORLD, requests + 1);
-     MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
+    MPI_Request requests[2];
+    MPI_Irecv(
+      accessor.get(field_id::ez) + accessor.own_cells(),
+      N,
+      MPI_FLOAT,
+      next_rank,
+      0,
+      MPI_COMM_WORLD,
+      requests + 0);
+    MPI_Isend(accessor.get(field_id::ez), N, MPI_FLOAT, prev_rank, 0, MPI_COMM_WORLD, requests + 1);
+    MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
   };
 
   exchange_hx();
@@ -462,13 +478,13 @@ int main(int argc, char *argv[]) {
   for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
     auto compute_h = ex::when_all(
       ex::just() | exec::on(gpu, ex::bulk(bulk_cells, bulk_h_update)),
-      ex::just() | exec::on(gpu_with_priority, ex::bulk(border_cells, border_h_update)) | ex::then(exchange_hx)
-    );
+      ex::just() | exec::on(gpu_with_priority, ex::bulk(border_cells, border_h_update))
+        | ex::then(exchange_hx));
 
     auto compute_e = ex::when_all(
       ex::just() | exec::on(gpu, ex::bulk(bulk_cells, bulk_e_update)),
-      ex::just() | exec::on(gpu_with_priority, ex::bulk(border_cells, border_e_update)) | ex::then(exchange_ez)
-    );
+      ex::just() | exec::on(gpu_with_priority, ex::bulk(border_cells, border_e_update))
+        | ex::then(exchange_ez));
 
     stdexec::this_thread::sync_wait(std::move(compute_h));
     stdexec::this_thread::sync_wait(std::move(compute_e));
@@ -481,9 +497,11 @@ int main(int argc, char *argv[]) {
                    | exec::on(gpu, ex::bulk(accessor.own_cells(), distributed::update_h(accessor)))
                    | ex::then(exchange_hx);
 
-    auto compute_e = ex::just()
-                   | exec::on(gpu, ex::bulk(accessor.own_cells(), distributed::update_e(time.get(), dt, accessor)))
-                   | ex::then(exchange_ez);
+    auto compute_e =
+      ex::just()
+      | exec::on(
+        gpu, ex::bulk(accessor.own_cells(), distributed::update_e(time.get(), dt, accessor)))
+      | ex::then(exchange_ez);
 
     stdexec::this_thread::sync_wait(std::move(compute_h));
     stdexec::this_thread::sync_wait(std::move(compute_e));
@@ -500,10 +518,10 @@ int main(int argc, char *argv[]) {
 
     report_header();
     report_performance(
-        grid.cells,
-        n_iterations,
-        "GPU (distributed)",
-        std::chrono::duration<double>(end - begin).count());
+      grid.cells,
+      n_iterations,
+      "GPU (distributed)",
+      std::chrono::duration<double>(end - begin).count());
   }
 
   MPI_Finalize();

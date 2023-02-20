@@ -23,19 +23,24 @@ namespace ex = stdexec;
 //! Used for to make a class non-movable without giving up aggregate initialization
 struct immovable {
   immovable() = default;
- private:
+
+  private:
   STDEXEC_IMMOVABLE(immovable);
 };
 
 //! A move-only type
 struct movable {
   movable(int value)
-    : value_(value)
-  {}
+    : value_(value) {
+  }
+
   movable(movable&&) = default;
   bool operator==(const movable&) const noexcept = default;
-  int value() {return value_;} // silence warning of unused private field
-private:
+
+  int value() {
+    return value_;
+  } // silence warning of unused private field
+  private:
   int value_;
 };
 
@@ -45,7 +50,7 @@ struct type_printer;
 
 //! Used in various sender types queries
 template <typename... Ts>
-struct type_array {};
+struct type_array { };
 
 //! Used as a default empty context
 using ex::empty_env;

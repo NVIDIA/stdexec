@@ -12,8 +12,8 @@ int main() {
   ex::scheduler auto sch = stream_ctx.get_scheduler();
 
   auto bulk_fn = [](int lbl) {
-    return [=](int i) { 
-      std::printf("B%d: i = %d\n", lbl, i); 
+    return [=](int i) {
+      std::printf("B%d: i = %d\n", lbl, i);
     };
   };
 
@@ -23,9 +23,7 @@ int main() {
     };
   };
 
-  auto fork = ex::schedule(sch)
-            | ex::bulk(4, bulk_fn(0))
-            | ex::split();
+  auto fork = ex::schedule(sch) | ex::bulk(4, bulk_fn(0)) | ex::split();
 
   auto snd = ex::transfer_when_all(
                sch,
@@ -36,4 +34,3 @@ int main() {
 
   stdexec::sync_wait(std::move(snd));
 }
-

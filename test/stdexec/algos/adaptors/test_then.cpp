@@ -26,13 +26,15 @@ namespace ex = stdexec;
 TEST_CASE("then returns a sender", "[adaptors][then]") {
   auto snd = ex::then(ex::just(), [] {});
   static_assert(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("then with environment returns a sender", "[adaptors][then]") {
   auto snd = ex::then(ex::just(), [] {});
   static_assert(ex::sender_in<decltype(snd), empty_env>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("then simple example", "[adaptors][then]") {
   bool called{false};
   auto snd = ex::then(ex::just(), [&] { called = true; });
@@ -45,7 +47,7 @@ TEST_CASE("then simple example", "[adaptors][then]") {
 
 TEST_CASE("then can be piped", "[adaptors][then]") {
   ex::sender auto snd = ex::just() | ex::then([] {});
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("then returning void can we waited on", "[adaptors][then]") {
@@ -70,23 +72,23 @@ TEST_CASE("then can be used with multiple parameters", "[adaptors][then]") {
 
 TEST_CASE("then can throw, and set_error will be called", "[adaptors][then]") {
   auto snd = ex::just(13) //
-             | ex::then([](int x) -> int {
-                 throw std::logic_error{"err"};
-                 return x + 5;
-               });
+           | ex::then([](int x) -> int {
+               throw std::logic_error{"err"};
+               return x + 5;
+             });
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
 }
 
 TEST_CASE("then can be used with just_error", "[adaptors][then]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
-                        | ex::then([]() -> int { return 17; });
+                      | ex::then([]() -> int { return 17; });
   auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
   ex::start(op);
 }
+
 TEST_CASE("then can be used with just_stopped", "[adaptors][then]") {
-  ex::sender auto snd = ex::just_stopped() | //
-                        ex::then([]() -> int { return 17; });
+  ex::sender auto snd = ex::just_stopped() | ex::then([]() -> int { return 17; });
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
 }
@@ -95,48 +97,50 @@ TEST_CASE("then function is not called on error", "[adaptors][then]") {
   bool called{false};
   error_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::then([&](int x) -> int {
-                            called = true;
-                            return x + 5;
-                          });
+                      | ex::then([&](int x) -> int {
+                          called = true;
+                          return x + 5;
+                        });
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
   CHECK_FALSE(called);
 }
+
 TEST_CASE("then function is not called when cancelled", "[adaptors][then]") {
   bool called{false};
   stopped_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::then([&](int x) -> int {
-                            called = true;
-                            return x + 5;
-                          });
+                      | ex::then([&](int x) -> int {
+                          called = true;
+                          return x + 5;
+                        });
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
   CHECK_FALSE(called);
 }
+
 TEST_CASE("then advertises completion schedulers", "[adaptors][then]") {
   inline_scheduler sched{};
 
   SECTION("for value channel") {
-    ex::sender auto snd = ex::schedule(sched) | ex::then([]{});
+    ex::sender auto snd = ex::schedule(sched) | ex::then([] {});
     REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)) == sched);
   }
   SECTION("for stop channel") {
-    ex::sender auto snd = ex::just_stopped() | ex::transfer(sched) | ex::then([]{});
+    ex::sender auto snd = ex::just_stopped() | ex::transfer(sched) | ex::then([] {});
     REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)) == sched);
   }
 }
 
 TEST_CASE("then forwards env", "[adaptors][then]") {
   SECTION("returns env by value") {
-    auto snd = just_with_env<value_env, int>{value_env{100}, {0}} | ex::then([]{});
+    auto snd = just_with_env<value_env, int>{value_env{100}, {0}} | ex::then([] {});
     static_assert(std::same_as<decltype(ex::get_env(snd)), value_env>);
     CHECK(ex::get_env(snd).value == 100);
   }
 
   SECTION("returns env by reference") {
-    auto snd = just_with_env<const value_env&, int>{value_env{100}, {0}} | ex::then([]{});
+    auto snd = just_with_env<const value_env&, int>{value_env{100}, {0}} | ex::then([] {});
     static_assert(std::same_as<decltype(ex::get_env(snd)), const value_env&>);
     CHECK(ex::get_env(snd).value == 100);
   }
@@ -146,35 +150,38 @@ TEST_CASE("then has the values_type corresponding to the given values", "[adapto
   check_val_types<type_array<type_array<int>>>(ex::just() | ex::then([] { return 7; }));
   check_val_types<type_array<type_array<double>>>(ex::just() | ex::then([] { return 3.14; }));
   check_val_types<type_array<type_array<std::string>>>(
-      ex::just() | ex::then([] { return std::string{"hello"}; }));
+    ex::just() | ex::then([] { return std::string{"hello"}; }));
 }
+
 TEST_CASE("then keeps error_types from input sender", "[adaptors][then]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
-  check_err_types<type_array<>>( //
-      ex::transfer_just(sched1) | ex::then([]() noexcept {}));
-  check_err_types<type_array<std::exception_ptr>>( //
-      ex::transfer_just(sched2) | ex::then([]() noexcept {}));
+  check_err_types<type_array<>>(                        //
+    ex::transfer_just(sched1) | ex::then([]() noexcept {}));
+  check_err_types<type_array<std::exception_ptr>>(      //
+    ex::transfer_just(sched2) | ex::then([]() noexcept {}));
   check_err_types<type_array<std::exception_ptr, int>>( //
-      ex::transfer_just(sched3) | ex::then([] {}));
+    ex::transfer_just(sched3) | ex::then([] {}));
 }
+
 TEST_CASE("then keeps sends_stopped from input sender", "[adaptors][then]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   stopped_scheduler sched3{};
 
   check_sends_stopped<false>( //
-      ex::transfer_just(sched1) | ex::then([] {}));
-  check_sends_stopped<true>( //
-      ex::transfer_just(sched2) | ex::then([] {}));
-  check_sends_stopped<true>( //
-      ex::transfer_just(sched3) | ex::then([] {}));
+    ex::transfer_just(sched1) | ex::then([] {}));
+  check_sends_stopped<true>(  //
+    ex::transfer_just(sched2) | ex::then([] {}));
+  check_sends_stopped<true>(  //
+    ex::transfer_just(sched3) | ex::then([] {}));
 }
 
 // Return a different sender when we invoke this custom defined on implementation
 using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
+
 template <typename Fun>
 auto tag_invoke(ex::then_t, inline_scheduler sched, my_string_sender_t, Fun) {
   return ex::just(std::string{"hallo"});
@@ -183,6 +190,6 @@ auto tag_invoke(ex::then_t, inline_scheduler sched, my_string_sender_t, Fun) {
 TEST_CASE("then can be customized", "[adaptors][then]") {
   // The customization will return a different value
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
-             | ex::then([](std::string x) { return x + ", world"; });
+           | ex::then([](std::string x) { return x + ", world"; });
   wait_for_value(std::move(snd), std::string{"hallo"});
 }

@@ -18,9 +18,11 @@
 namespace ex = stdexec;
 
 struct my_derived_forwarding_query_t : ex::forwarding_query_t { };
+
 inline constexpr my_derived_forwarding_query_t my_derived_forwarding_query{};
 
 struct my_non_forwarding_query_t { };
+
 inline constexpr my_non_forwarding_query_t my_non_forwarding_query{};
 
 TEST_CASE("exec.queries are forwarding queries", "[exec.queries][forwarding_queries]") {

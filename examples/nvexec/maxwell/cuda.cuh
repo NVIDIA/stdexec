@@ -19,8 +19,7 @@
 #include "nvexec/detail/throw_on_cuda_error.cuh"
 
 template <int BlockThreads, class Action>
-__launch_bounds__(BlockThreads)
-__global__ void kernel(std::size_t cells, Action action) {
+__launch_bounds__(BlockThreads) __global__ void kernel(std::size_t cells, Action action) {
   std::size_t cell_id = threadIdx.x + blockIdx.x * BlockThreads;
 
   if (cell_id < cells) {
@@ -28,8 +27,12 @@ __global__ void kernel(std::size_t cells, Action action) {
   }
 }
 
-void run_cuda(float dt, bool write_vtk, std::size_t n_iterations,
-              grid_t &grid, std::string_view method) {
+void run_cuda(
+  float dt,
+  bool write_vtk,
+  std::size_t n_iterations,
+  grid_t &grid,
+  std::string_view method) {
   fields_accessor accessor = grid.accessor();
 
   constexpr int block_threads = 256;
@@ -48,15 +51,14 @@ void run_cuda(float dt, bool write_vtk, std::size_t n_iterations,
   kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, initializer);
   STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
 
-  report_performance(grid.cells, n_iterations, method,
-                     [&]() {
-                         for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
-                           kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, h_updater);
-                           kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, e_updater);
-                         }
-                         writer(false);
-                         STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
-                     });
+  report_performance(grid.cells, n_iterations, method, [&]() {
+    for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
+      kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, h_updater);
+      kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, e_updater);
+    }
+    writer(false);
+    STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+  });
 
   cudaStreamDestroy(stream);
 }

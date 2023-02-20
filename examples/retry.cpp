@@ -24,13 +24,13 @@
 // Example code:
 struct fail_some {
   using is_sender = void;
-  using completion_signatures =
-    stdexec::completion_signatures<
-      stdexec::set_value_t(int),
-      stdexec::set_error_t(std::exception_ptr)>;
+  using completion_signatures = stdexec::
+    completion_signatures< stdexec::set_value_t(int), stdexec::set_error_t(std::exception_ptr)>;
+
   template <class R>
   struct op {
     R r_;
+
     friend void tag_invoke(stdexec::start_t, op& self) noexcept {
       static int i = 0;
       if (++i < 3) {
@@ -48,7 +48,8 @@ struct fail_some {
     return {std::move(r)};
   }
 
-  struct empty_env {};
+  struct empty_env { };
+
   friend empty_env tag_invoke(stdexec::get_env_t, const fail_some&) noexcept {
     return {};
   }

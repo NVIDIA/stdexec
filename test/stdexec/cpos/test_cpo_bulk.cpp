@@ -19,7 +19,8 @@
 
 TEST_CASE("bulk is customizable", "[cpo][cpo_bulk]") {
   const auto n = 42;
-  const auto f = [](int) {};
+  const auto f = [](int) {
+  };
 
   SECTION("by free standing sender") {
     free_standing_sender_t<ex::bulk_t> snd{};
