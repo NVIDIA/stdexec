@@ -53,12 +53,27 @@ struct sink_receiver {
   }
 };
 
-TEST_CASE("any receiver reference", "[types][any_sender]") {
-
+TEST_CASE("any_receiver is constructible from receivers", "[types][any_sender]") {
   using Sigs = completion_signatures<set_value_t()>;
   sink_receiver rcvr;
-  __any::__rec::__ref<Sigs, decltype(tag.signature<int()>)> ref { rcvr };
+  any_receiver<Sigs> ref{rcvr};
+  CHECK(receiver<decltype(ref)>);
+  CHECK(receiver_of<decltype(ref), Sigs>);
+  CHECK(!receiver_of<decltype(ref), completion_signatures<set_value_t(int)>>);
+  CHECK(std::is_copy_assignable_v<any_receiver<Sigs>>);
+}
 
+TEST_CASE("any_receiver is queryable", "[types][any_sender]") {
+  using Sigs = completion_signatures<set_value_t()>;
+  sink_receiver rcvr;
+  any_receiver<Sigs, tag.signature<int()>> ref{rcvr};
+  CHECK(tag(get_env(ref)) == 42);
+  {
+    any_receiver<Sigs, tag.signature<int()>> copied_ref{rcvr};
+    ref = copied_ref;
+    CHECK(tag(get_env(copied_ref)) == 42);
+    CHECK(tag(get_env(ref)) == 42);
+  }
   CHECK(tag(get_env(ref)) == 42);
 }
 
@@ -134,7 +149,6 @@ TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any
 }
 
 TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
-
   using Sigs = completion_signatures<set_value_t()>;
   sink_receiver rcvr;
   __any::__copyable_storage_t<__t<__any::__rec::__vtable<Sigs, decltype(tag.signature<int()>)>>> vtable_holder(rcvr);
@@ -166,6 +180,7 @@ TEST_CASE("any sender is a sender", "[types][any_sender]") {
 TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
   int value = 0;
   any_sender_of<set_value_t()> sender = just(42) | then([&](int v) noexcept { value = v; });
+  sync_wait(std::move(sender));
   sync_wait(std::move(sender));
   CHECK(value == 42);
 }
