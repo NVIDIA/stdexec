@@ -807,7 +807,7 @@ namespace exec {
                     _Completions,
                     stdexec::completion_signatures<stdexec::set_value_t()>>;
               using __schedule_receiver = any_receiver<__schedule_completions, _ReceiverQueries...>;
-              using __schedule_sender = __schedule_receiver::template any_sender<
+              using __schedule_sender = typename __schedule_receiver::template any_sender<
                       stdexec::get_completion_scheduler<stdexec::set_value_t>
                           .template signature<any_scheduler() noexcept>,
                       _SenderQueries...>;
