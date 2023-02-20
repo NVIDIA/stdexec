@@ -677,11 +677,8 @@ namespace exec {
     template <class _Sig>
     using __return_value_t = decltype(__return_value_((_Sig*)nullptr));
 
-    template <class Derived, 
-              class _Sigs = completion_signatures<set_value_t()>,
-              class _SchedulerQueries = __types<>,
-              class _SenderQueries = __types<>,
-              class _ReceiverQueries = __types<>>
+    template <class _ScheduleSender,
+              class _SchedulerQueries = __types<>>
       class __scheduler {
       public:
         template <class _Scheduler>
@@ -689,11 +686,7 @@ namespace exec {
           __scheduler(_Scheduler&& __scheduler)
             : __storage_{(_Scheduler&&) __scheduler} {}
 
-        using __receiver_queries = _ReceiverQueries;
-        using __signatures = __concat_completion_signatures_t<_Sigs, completion_signatures<set_value_t()>>;
-        using __sender_queries = __minvoke<__push_back_unique<>, _SenderQueries,
-            decltype(get_completion_scheduler<set_value_t>.template signature<Derived() noexcept>)>;
-        using __sender_t = __t<__sender<__signatures, __sender_queries, __receiver_queries>>;
+        using __sender_t = _ScheduleSender;
        private:
         class __vtable : public __query_vtable<_SchedulerQueries> {
         public:
@@ -784,7 +777,7 @@ namespace exec {
                     && stdexec::receiver<_Receiver>)
         any_receiver(_Receiver&& __receiver) 
         noexcept(std::is_nothrow_constructible_v<__receiver_base, _Receiver>) 
-        : __receiver_base((_Receiver&&) __receiver) {}
+        : __receiver_((_Receiver&&) __receiver) {}
       
       template <auto... _SenderQueries>
         class any_sender {
@@ -815,12 +808,16 @@ namespace exec {
 
           template <auto... _SchedulerQueries>
             class any_scheduler {
-              using __scheduler_base = __any::__scheduler<
-                  any_scheduler,
-                  _Completions, 
-                  queries<_SchedulerQueries...>,
-                  queries<_SenderQueries...>,
-                  queries<_ReceiverQueries...>>;
+              using __schedule_completions = 
+                  stdexec::__concat_completion_signatures_t<
+                    _Completions,
+                    stdexec::completion_signatures<stdexec::set_value_t()>>;
+              using __schedule_receiver = any_receiver<__schedule_completions, _ReceiverQueries...>;
+              using __schedule_sender = __schedule_receiver::template any_sender<
+                      stdexec::get_completion_scheduler<stdexec::set_value_t>
+                          .template signature<any_scheduler() noexcept>,
+                      _SenderQueries...>;
+              using __scheduler_base = __any::__scheduler<__schedule_sender, queries<_SchedulerQueries...>>;
 
               __scheduler_base __scheduler_;
              public:
