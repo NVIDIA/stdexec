@@ -671,12 +671,6 @@ namespace exec {
         };
       };
 
-    template <class _R, class... _Args>
-    _R __return_value_(_R(*)(_Args...));
-
-    template <class _Sig>
-    using __return_value_t = decltype(__return_value_((_Sig*)nullptr));
-
     template <class _ScheduleSender,
               class _SchedulerQueries = __types<>>
       class __scheduler {
