@@ -19,6 +19,9 @@
 #include <exec/when_any.hpp>
 #include <exec/static_thread_pool.hpp>
 
+#include <test_common/schedulers.hpp>
+#include <test_common/receivers.hpp>
+
 #include <catch2/catch.hpp>
 
 
@@ -514,4 +517,44 @@ TEST_CASE("queryable any_scheduler with static_thread_pool", "[types][any_sender
   bool called = false;
   sync_wait(std::move(sched) | then([&] { called = true; }));
   CHECK(called);
+}
+
+TEST_CASE("Scheduler with error handling and set_stopped", "[types][any_scheduler][any_sender]") {
+  using receiver_ref =
+    any_receiver_ref<completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>;
+  using sender_t = receiver_ref::any_sender<>;
+  using scheduler_t = sender_t::any_scheduler<>;
+  scheduler_t scheduler = exec::inline_scheduler();
+  {
+    auto op = connect(schedule(scheduler), expect_void_receiver{});
+    start(op);
+  }
+  scheduler = stopped_scheduler();
+  {
+    auto op = connect(schedule(scheduler), expect_stopped_receiver{});
+    start(op);
+  }
+  scheduler = error_scheduler<>{std::make_exception_ptr(std::logic_error("test"))};
+  {
+    auto op = connect(schedule(scheduler), expect_error_receiver<>{});
+    start(op);
+  }
+}
+
+TEST_CASE("Schedule Sender lifetime", "[types][any_scheduler][any_sender]") {
+  using receiver_ref =
+    any_receiver_ref<completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>;
+  using sender_t = receiver_ref::any_sender<>;
+  using scheduler_t = sender_t::any_scheduler<>;
+  scheduler_t scheduler = exec::inline_scheduler();
+  auto sched = schedule(scheduler);
+  scheduler = stopped_scheduler();
+  {
+    auto op = connect(schedule(scheduler), expect_stopped_receiver{});
+    start(op);
+  }
+  {
+    auto op = connect(std::move(sched), expect_void_receiver{});
+    start(op);
+  }
 }

@@ -523,11 +523,14 @@ namespace exec {
           : __env_{__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr} {
         }
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+        template <
+          __one_of<set_value_t, set_error_t, set_stopped_t> _Tag,
+          __decays_to<__ref> _Self,
+          class... _As>
           requires __one_of<_Tag(_As...), _Sigs...>
-        friend void tag_invoke(_Tag, __ref&& __self, _As&&... __as) noexcept {
+        friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
           (*static_cast<const __rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__fn_)(
-            __self.__env_.__rcvr_, (_As&&) __as...);
+            ((_Self&&) __self).__env_.__rcvr_, (_As&&) __as...);
         }
 
         friend const __env_t& tag_invoke(get_env_t, const __ref& __self) noexcept {
