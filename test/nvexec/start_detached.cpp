@@ -15,14 +15,14 @@ using nvexec::is_on_gpu;
 TEST_CASE("start_detached doesn't block", "[cuda][stream][consumers][start_detached]") {
   if (const char* env = std::getenv("CUDA_LAUNCH_BLOCKING")) {
     if (std::strlen(env) >= 1 && env[0] == '1') {
-      return; // This test is unable to run when the launch is blocking 
+      return; // This test is unable to run when the launch is blocking
     }
   }
 
   nvexec::stream_context stream_ctx{};
 
-  int *host_flag{};
-  int *device_flag{};
+  int* host_flag{};
+  int* device_flag{};
   THROW_ON_CUDA_ERROR(cudaMallocHost(&host_flag, sizeof(int)));
   THROW_ON_CUDA_ERROR(cudaMallocHost(&device_flag, sizeof(int)));
   *host_flag = *device_flag = 0;
@@ -48,7 +48,8 @@ TEST_CASE("start_detached doesn't block", "[cuda][stream][consumers][start_detac
   cuda::atomic_ref<int, cuda::thread_scope_system> device_flag_ref(*device_flag);
   host_flag_ref.store(1, cuda::memory_order_relaxed);
 
-  while (device_flag_ref.load(cuda::memory_order_relaxed) == 0);
+  while (device_flag_ref.load(cuda::memory_order_relaxed) == 0)
+    ;
 
   REQUIRE(device_flag_ref.load(cuda::memory_order_relaxed) > 0);
 

@@ -27,13 +27,13 @@ namespace ex = stdexec;
 TEST_CASE("when_ny returns a sender", "[adaptors][when_any]") {
   auto snd = exec::when_any(ex::just(3), ex::just(0.1415));
   static_assert(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("when_any with environment returns a sender", "[adaptors][when_any]") {
   auto snd = exec::when_any(ex::just(3), ex::just(0.1415));
   static_assert(ex::sender_in<decltype(snd), empty_env>);
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("when_any simple example", "[adaptors][when_any]") {
@@ -45,23 +45,23 @@ TEST_CASE("when_any simple example", "[adaptors][when_any]") {
 }
 
 TEST_CASE("when_any completes with only one sender", "[adaptors][when_any]") {
-  ex::sender auto snd = exec::when_any( //
-      completes_if{false} | ex::then([]{ return 1;  }),  //
-      completes_if{true}  | ex::then([]{ return 42; })   //
+  ex::sender auto snd = exec::when_any(               //
+    completes_if{false} | ex::then([] { return 1; }), //
+    completes_if{true} | ex::then([] { return 42; })  //
   );
   wait_for_value(std::move(snd), 42);
 
-  ex::sender auto snd2 = exec::when_any( //
-      completes_if{true}   | ex::then([]{ return 1;  }),  //
-      completes_if{false}  | ex::then([]{ return 42; })   //
+  ex::sender auto snd2 = exec::when_any(              //
+    completes_if{true} | ex::then([] { return 1; }),  //
+    completes_if{false} | ex::then([] { return 42; }) //
   );
   wait_for_value(std::move(snd2), 1);
 }
 
 TEST_CASE("when_any with move-only types", "[adaptors][when_any]") {
   ex::sender auto snd = exec::when_any( //
-      completes_if{false} | ex::then([] { return movable(1); }),
-      ex::just(movable(42))            //
+    completes_if{false} | ex::then([] { return movable(1); }),
+    ex::just(movable(42))               //
   );
   wait_for_value(std::move(snd), movable(42));
 }
@@ -69,22 +69,25 @@ TEST_CASE("when_any with move-only types", "[adaptors][when_any]") {
 TEST_CASE("when_any forwards stop signal", "[adaptors][when_any]") {
   stopped_scheduler stop;
   int result = 42;
-  ex::sender auto snd = exec::when_any( //
-      completes_if{false},              //
-      ex::schedule(stop)                //
-  ) | ex::then([&result] { result += 1; });
+  ex::sender auto snd =
+    exec::when_any(        //
+      completes_if{false}, //
+      ex::schedule(stop)   //
+      )
+    | ex::then([&result] { result += 1; });
   ex::sync_wait(std::move(snd));
   REQUIRE(result == 42);
 }
 
 TEST_CASE("nested when_any is stoppable", "[adaptors][when_any]") {
   int result = 41;
-  ex::sender auto snd = exec::when_any(
+  ex::sender auto snd =
+    exec::when_any(
       exec::when_any(completes_if{false}, completes_if{false}),
       completes_if{false},
       ex::just(),
-      completes_if{false}
-  ) | ex::then([&result] { result += 1; });
+      completes_if{false})
+    | ex::then([&result] { result += 1; });
   ex::sync_wait(std::move(snd));
   REQUIRE(result == 42);
 }
@@ -108,11 +111,11 @@ TEST_CASE("when_any is thread-safe", "[adaptors][when_any]") {
 
   int result = 41;
 
-  ex::sender auto snd =
-    exec::when_any(sch1 | ex::let_value([] { return exec::when_any(completes_if{false}); }),
-                   sch2 | ex::let_value([] { return completes_if{false}; }),
-                   sch3 | ex::then([&result] { result += 1; }),
-                   completes_if{false});
+  ex::sender auto snd = exec::when_any(
+    sch1 | ex::let_value([] { return exec::when_any(completes_if{false}); }),
+    sch2 | ex::let_value([] { return completes_if{false}; }),
+    sch3 | ex::then([&result] { result += 1; }),
+    completes_if{false});
 
   ex::sync_wait(std::move(snd));
   REQUIRE(result == 42);

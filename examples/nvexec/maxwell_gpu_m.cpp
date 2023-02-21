@@ -33,15 +33,19 @@ int main(int argc, char *argv[]) {
   const std::size_t n_iterations = value(params, "iterations", 100);
   const std::size_t N = value(params, "N", 512);
 
-  auto run_snr_on = [&](std::string_view scheduler_name,
-                        stdexec::scheduler auto &&scheduler) {
+  auto run_snr_on = [&](std::string_view scheduler_name, stdexec::scheduler auto &&scheduler) {
     grid_t grid{N, is_gpu_scheduler(scheduler)};
 
     auto accessor = grid.accessor();
     auto dt = calculate_dt(accessor.dx, accessor.dy);
 
-    run_snr(dt, write_vtk, n_iterations, grid, 
-            scheduler_name, std::forward<decltype(scheduler)>(scheduler));
+    run_snr(
+      dt,
+      write_vtk,
+      n_iterations,
+      grid,
+      scheduler_name,
+      std::forward<decltype(scheduler)>(scheduler));
   };
 
   report_header();
@@ -49,4 +53,3 @@ int main(int argc, char *argv[]) {
   nvexec::multi_gpu_stream_context stream_context{};
   run_snr_on("GPU (multi-GPU)", stream_context.get_scheduler());
 }
-

@@ -19,21 +19,21 @@
 
 namespace exec {
   template <stdexec::__nothrow_callable _Fn>
-    struct scope_guard {
-      [[no_unique_address]] _Fn __fn_;
-      [[no_unique_address]] stdexec::__immovable __hidden_{};
-      bool __dismissed_{false};
+  struct scope_guard {
+    [[no_unique_address]] _Fn __fn_;
+    [[no_unique_address]] stdexec::__immovable __hidden_{};
+    bool __dismissed_{false};
 
-      ~scope_guard() {
-        if (!__dismissed_)
-          ((_Fn&&) __fn_)();
-      }
+    ~scope_guard() {
+      if (!__dismissed_)
+        ((_Fn&&) __fn_)();
+    }
 
-      void dismiss() noexcept {
-        __dismissed_ = true;
-      }
-    };
+    void dismiss() noexcept {
+      __dismissed_ = true;
+    }
+  };
 
   template <stdexec::__nothrow_callable _Fn>
-    scope_guard(_Fn) -> scope_guard<_Fn>;
+  scope_guard(_Fn) -> scope_guard<_Fn>;
 } // namespace exec

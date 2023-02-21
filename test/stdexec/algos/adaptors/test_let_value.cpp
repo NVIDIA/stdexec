@@ -30,13 +30,15 @@ using namespace std::chrono_literals;
 TEST_CASE("let_value returns a sender", "[adaptors][let_value]") {
   auto snd = ex::let_value(ex::just(), [] { return ex::just(); });
   static_assert(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("let_value with environment returns a sender", "[adaptors][let_value]") {
   auto snd = ex::let_value(ex::just(), [] { return ex::just(); });
   static_assert(ex::sender_in<decltype(snd), empty_env>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("let_value simple example", "[adaptors][let_value]") {
   bool called{false};
   auto snd = ex::let_value(ex::just(), [&] {
@@ -52,7 +54,7 @@ TEST_CASE("let_value simple example", "[adaptors][let_value]") {
 
 TEST_CASE("let_value can be piped", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just() | ex::let_value([] { return ex::just(); });
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("let_value returning void can we waited on", "[adaptors][let_value]") {
@@ -111,11 +113,12 @@ TEST_CASE("let_value can be used for composition", "[adaptors][let_value]") {
       throw std::logic_error("not prime");
     return ex::just(x);
   };
-  ex::sender auto snd = ex::just(13)        //
-                        | ex::let_value(f1) //
-                        | ex::let_value(f2) //
-                        | ex::let_value(f3) //
-      ;
+  ex::sender auto snd =
+    ex::just(13)        //
+    | ex::let_value(f1) //
+    | ex::let_value(f2) //
+    | ex::let_value(f3) //
+    ;
   wait_for_value(std::move(snd), 29);
   CHECK(called1);
   CHECK(called2);
@@ -124,23 +127,23 @@ TEST_CASE("let_value can be used for composition", "[adaptors][let_value]") {
 
 TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_value]") {
   auto snd = ex::just(13) //
-             | ex::let_value([](int& x) {
-                 throw std::logic_error{"err"};
-                 return ex::just(x + 5);
-               });
+           | ex::let_value([](int& x) {
+               throw std::logic_error{"err"};
+               return ex::just(x + 5);
+             });
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
 }
 
 TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
   ex::sender auto snd = ex::just_error(std::string{"err"}) //
-                        | ex::let_value([]() { return ex::just(17); });
+                      | ex::let_value([]() { return ex::just(17); });
   auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
   ex::start(op);
 }
+
 TEST_CASE("let_value can be used with just_stopped", "[adaptors][let_value]") {
-  ex::sender auto snd = ex::just_stopped() | //
-                        ex::let_value([]() { return ex::just(17); });
+  ex::sender auto snd = ex::just_stopped() | ex::let_value([]() { return ex::just(17); });
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
 }
@@ -149,39 +152,45 @@ TEST_CASE("let_value function is not called on error", "[adaptors][let_value]") 
   bool called{false};
   error_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::let_value([&](int& x) {
-                            called = true;
-                            return ex::just(x + 5);
-                          });
+                      | ex::let_value([&](int& x) {
+                          called = true;
+                          return ex::just(x + 5);
+                        });
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
   CHECK_FALSE(called);
 }
+
 TEST_CASE("let_value function is not called when cancelled", "[adaptors][let_value]") {
   bool called{false};
   stopped_scheduler sched;
   ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::let_value([&](int& x) {
-                            called = true;
-                            return ex::just(x + 5);
-                          });
+                      | ex::let_value([&](int& x) {
+                          called = true;
+                          return ex::just(x + 5);
+                        });
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
   CHECK_FALSE(called);
 }
 
-TEST_CASE("let_value exposes a parameter that is destructed when the main operation is destructed",
-    "[adaptors][let_value]") {
+TEST_CASE(
+  "let_value exposes a parameter that is destructed when the main operation is destructed",
+  "[adaptors][let_value]") {
 
   // Type that sets into a received boolean when the dtor is called
   struct my_type {
     bool* p_called_{nullptr};
+
     explicit my_type(bool* p_called)
-        : p_called_(p_called) {}
+      : p_called_(p_called) {
+    }
+
     my_type(my_type&& rhs)
-        : p_called_(rhs.p_called_) {
+      : p_called_(rhs.p_called_) {
       rhs.p_called_ = nullptr;
     }
+
     my_type& operator=(my_type&& rhs) {
       if (p_called_)
         *p_called_ = true;
@@ -189,6 +198,7 @@ TEST_CASE("let_value exposes a parameter that is destructed when the main operat
       rhs.p_called_ = nullptr;
       return *this;
     }
+
     ~my_type() {
       if (p_called_)
         *p_called_ = true;
@@ -200,11 +210,11 @@ TEST_CASE("let_value exposes a parameter that is destructed when the main operat
   impulse_scheduler sched;
 
   ex::sender auto snd = ex::just(my_type(&param_destructed)) //
-                        | ex::let_value([&](const my_type& obj) {
-                            CHECK_FALSE(param_destructed);
-                            fun_called = true;
-                            return ex::transfer_just(sched, 13);
-                          });
+                      | ex::let_value([&](const my_type& obj) {
+                          CHECK_FALSE(param_destructed);
+                          fun_called = true;
+                          return ex::transfer_just(sched, 13);
+                        });
 
   {
     int res{0};
@@ -233,12 +243,13 @@ TEST_CASE("let_value works when changing threads", "[adaptors][let_value]") {
   std::atomic<bool> called{false};
   {
     // lunch some work on the thread pool
-    ex::sender auto snd = ex::transfer_just(pool.get_scheduler(), 7)                 //
-                          | ex::let_value([](int& x) { return ex::just(x * 2 - 1); }) //
-                          | ex::then([&](int x) {
-                              CHECK(x == 13);
-                              called.store(true);
-                            });
+    ex::sender auto snd =
+      ex::transfer_just(pool.get_scheduler(), 7)                  //
+      | ex::let_value([](int& x) { return ex::just(x * 2 - 1); }) //
+      | ex::then([&](int x) {
+          CHECK(x == 13);
+          called.store(true);
+        });
     ex::start_detached(std::move(snd));
   }
   // wait for the work to be executed, with timeout
@@ -251,41 +262,45 @@ TEST_CASE("let_value works when changing threads", "[adaptors][let_value]") {
 }
 
 TEST_CASE(
-    "let_value has the values_type corresponding to the given values", "[adaptors][let_value]") {
+  "let_value has the values_type corresponding to the given values",
+  "[adaptors][let_value]") {
   check_val_types<type_array<type_array<int>>>(
-      ex::just() | ex::let_value([] { return ex::just(7); }));
+    ex::just() | ex::let_value([] { return ex::just(7); }));
   check_val_types<type_array<type_array<double>>>(
-      ex::just() | ex::let_value([] { return ex::just(3.14); }));
+    ex::just() | ex::let_value([] { return ex::just(3.14); }));
   check_val_types<type_array<type_array<std::string>>>(
-      ex::just() | ex::let_value([] { return ex::just(std::string{"hello"}); }));
+    ex::just() | ex::let_value([] { return ex::just(std::string{"hello"}); }));
 }
+
 TEST_CASE("let_value keeps error_types from input sender", "[adaptors][let_value]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
-  check_err_types<type_array<std::exception_ptr>>( //
-      ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
-  check_err_types<type_array<std::exception_ptr>>( //
-      ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
+  check_err_types<type_array<std::exception_ptr>>(      //
+    ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
+  check_err_types<type_array<std::exception_ptr>>(      //
+    ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
   check_err_types<type_array<int, std::exception_ptr>>( //
-      ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
+    ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
 }
+
 TEST_CASE("let_value keeps sends_stopped from input sender", "[adaptors][let_value]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   stopped_scheduler sched3{};
 
   check_sends_stopped<false>( //
-      ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
-  check_sends_stopped<true>( //
-      ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
-  check_sends_stopped<true>( //
-      ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
+    ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
+  check_sends_stopped<true>(  //
+    ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
+  check_sends_stopped<true>(  //
+    ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
 }
 
 // Return a different sender when we invoke this custom defined on implementation
 using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
+
 template <typename Fun>
 auto tag_invoke(ex::let_value_t, inline_scheduler sched, my_string_sender_t, Fun) {
   return ex::just(std::string{"hallo"});
@@ -294,6 +309,6 @@ auto tag_invoke(ex::let_value_t, inline_scheduler sched, my_string_sender_t, Fun
 TEST_CASE("let_value can be customized", "[adaptors][let_value]") {
   // The customization will return a different value
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
-             | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
+           | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
   wait_for_value(std::move(snd), std::string{"hallo"});
 }

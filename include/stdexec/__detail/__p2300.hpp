@@ -20,7 +20,11 @@
 #ifdef STDEXEC_DISABLE_STD_DEPRECATIONS
 #define STDEXEC_STD_DEPRECATED
 #else
-#define STDEXEC_STD_DEPRECATED [[deprecated("Please access this entity in the ::stdexec:: namespace. Define STDEXEC_DISABLE_STD_DEPRECATIONS to silence this warning.")]]
+#define STDEXEC_STD_DEPRECATED \
+  [[deprecated( \
+    "Please access this entity in the ::stdexec:: namespace. Define " \
+    "STDEXEC_DISABLE_STD_DEPRECATIONS to silence this " \
+    "warning.")]]
 #endif
 
 namespace std {
@@ -30,37 +34,39 @@ namespace std {
   inline constexpr stdexec::tag_invoke_t tag_invoke{};
 
   template <class _Tag, class... _Ts>
-    using tag_invoke_result STDEXEC_STD_DEPRECATED = stdexec::tag_invoke_result<_Tag, _Ts...>;
+  using tag_invoke_result STDEXEC_STD_DEPRECATED = stdexec::tag_invoke_result<_Tag, _Ts...>;
 
   template <class _Tag, class... _Ts>
-    using tag_invoke_result_t STDEXEC_STD_DEPRECATED = stdexec::tag_invoke_result_t<_Tag, _Ts...>;
+  using tag_invoke_result_t STDEXEC_STD_DEPRECATED = stdexec::tag_invoke_result_t<_Tag, _Ts...>;
 
   template <class _Tag, class... _Ts>
-    concept tag_invocable /*STDEXEC_STD_DEPRECATED*/ = stdexec::tag_invocable<_Tag, _Ts...>;
+  concept tag_invocable /*STDEXEC_STD_DEPRECATED*/ = stdexec::tag_invocable<_Tag, _Ts...>;
 
   template <class _Tag, class... _Ts>
-    concept nothrow_tag_invocable /*STDEXEC_STD_DEPRECATED*/ = stdexec::nothrow_tag_invocable<_Tag, _Ts...>;
+  concept nothrow_tag_invocable /*STDEXEC_STD_DEPRECATED*/ =
+    stdexec::nothrow_tag_invocable<_Tag, _Ts...>;
 
   template <auto& _Tag>
-    using tag_t STDEXEC_STD_DEPRECATED = stdexec::tag_t<_Tag>;
+  using tag_t STDEXEC_STD_DEPRECATED = stdexec::tag_t<_Tag>;
 
   //////////////////////////////////////////////////////////////////////////////
   // <stop_token>
   template <class _Token>
-    concept stoppable_token /*STDEXEC_STD_DEPRECATED*/ = stdexec::stoppable_token<_Token>;
+  concept stoppable_token /*STDEXEC_STD_DEPRECATED*/ = stdexec::stoppable_token<_Token>;
 
   template <class _Token, typename _Callback, typename _Initializer = _Callback>
-    concept stoppable_token_for /*STDEXEC_STD_DEPRECATED*/ = stdexec::stoppable_token_for<_Token, _Callback, _Initializer>;
+  concept stoppable_token_for /*STDEXEC_STD_DEPRECATED*/ =
+    stdexec::stoppable_token_for<_Token, _Callback, _Initializer>;
 
   template <class _Token>
-    concept unstoppable_token /*STDEXEC_STD_DEPRECATED*/ = stdexec::unstoppable_token<_Token>;
+  concept unstoppable_token /*STDEXEC_STD_DEPRECATED*/ = stdexec::unstoppable_token<_Token>;
 
   using never_stop_token STDEXEC_STD_DEPRECATED = stdexec::never_stop_token;
   using in_place_stop_token STDEXEC_STD_DEPRECATED = stdexec::in_place_stop_token;
   using in_place_stop_source STDEXEC_STD_DEPRECATED = stdexec::in_place_stop_source;
 
   template <class _Callback>
-    using in_place_stop_callback STDEXEC_STD_DEPRECATED = stdexec::in_place_stop_callback<_Callback>;
+  using in_place_stop_callback STDEXEC_STD_DEPRECATED = stdexec::in_place_stop_callback<_Callback>;
 
   //////////////////////////////////////////////////////////////////////////////
   // <execution>
@@ -80,7 +86,7 @@ namespace std {
     inline constexpr stdexec::get_stop_token_t get_stop_token{};
 
     template <class _StopTokenProvider>
-      using stop_token_of_t STDEXEC_STD_DEPRECATED = stdexec::stop_token_of_t<_StopTokenProvider>;
+    using stop_token_of_t STDEXEC_STD_DEPRECATED = stdexec::stop_token_of_t<_StopTokenProvider>;
 
     // [exec.env], execution environments
     using no_env STDEXEC_STD_DEPRECATED = stdexec::no_env;
@@ -91,16 +97,18 @@ namespace std {
     //inline constexpr stdexec::forwarding_env_query_t forwarding_env_query{}; // BUGBUG
 
     template <class _EnvProvider>
-      using env_of_t STDEXEC_STD_DEPRECATED = stdexec::env_of_t<_EnvProvider>;
+    using env_of_t STDEXEC_STD_DEPRECATED = stdexec::env_of_t<_EnvProvider>;
 
     // [exec.sched], schedulers
     template <class _Scheduler>
-      concept scheduler /*STDEXEC_STD_DEPRECATED*/ = stdexec::scheduler<_Scheduler>;
+    concept scheduler /*STDEXEC_STD_DEPRECATED*/ = stdexec::scheduler<_Scheduler>;
 
     // [exec.sched_queries], scheduler queries
     using forward_progress_guarantee STDEXEC_STD_DEPRECATED = stdexec::forward_progress_guarantee;
-    using forwarding_scheduler_query_t STDEXEC_STD_DEPRECATED = stdexec::forwarding_scheduler_query_t;
-    using get_forward_progress_guarantee_t STDEXEC_STD_DEPRECATED = stdexec::get_forward_progress_guarantee_t;
+    using forwarding_scheduler_query_t STDEXEC_STD_DEPRECATED =
+      stdexec::forwarding_scheduler_query_t;
+    using get_forward_progress_guarantee_t STDEXEC_STD_DEPRECATED =
+      stdexec::get_forward_progress_guarantee_t;
     STDEXEC_STD_DEPRECATED
     inline constexpr stdexec::forwarding_scheduler_query_t forwarding_scheduler_query{};
     STDEXEC_STD_DEPRECATED
@@ -108,10 +116,10 @@ namespace std {
 
     // [exec.recv], receivers
     template <class _Receiver>
-      concept receiver /*STDEXEC_STD_DEPRECATED*/ = stdexec::receiver<_Receiver>;
+    concept receiver /*STDEXEC_STD_DEPRECATED*/ = stdexec::receiver<_Receiver>;
 
     template <class _Receiver, class _Completions>
-      concept receiver_of /*STDEXEC_STD_DEPRECATED*/ = stdexec::receiver_of<_Receiver, _Completions>;
+    concept receiver_of /*STDEXEC_STD_DEPRECATED*/ = stdexec::receiver_of<_Receiver, _Completions>;
 
     using set_value_t STDEXEC_STD_DEPRECATED = stdexec::set_value_t;
     using set_error_t STDEXEC_STD_DEPRECATED = stdexec::set_error_t;
@@ -129,7 +137,7 @@ namespace std {
 
     // [exec.op_state], operation states
     template <class _OpState>
-      concept operation_state /*STDEXEC_STD_DEPRECATED*/ = stdexec::operation_state<_OpState>;
+    concept operation_state /*STDEXEC_STD_DEPRECATED*/ = stdexec::operation_state<_OpState>;
 
     using start_t STDEXEC_STD_DEPRECATED = stdexec::start_t;
     STDEXEC_STD_DEPRECATED
@@ -137,39 +145,45 @@ namespace std {
 
     // [exec.snd], senders
     template <class _Sender, class _Env = stdexec::no_env>
-      concept sender /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_in<_Sender, _Env>;
+    concept sender /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_in<_Sender, _Env>;
 
     template <class _Sender, class _Receiver>
-      concept sender_to /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_to<_Sender, _Receiver>;
+    concept sender_to /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_to<_Sender, _Receiver>;
 
-    template<class _Sender, class _SetSig, class _Env = stdexec::no_env>
-      concept sender_of /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_of<_Sender, _SetSig, _Env>;
+    template <class _Sender, class _SetSig, class _Env = stdexec::no_env>
+    concept sender_of /*STDEXEC_STD_DEPRECATED*/ = stdexec::sender_of<_Sender, _SetSig, _Env>;
 
     // [exec.sndtraits], completion signatures
     using get_completion_signatures_t STDEXEC_STD_DEPRECATED = stdexec::get_completion_signatures_t;
     STDEXEC_STD_DEPRECATED
     inline constexpr stdexec::get_completion_signatures_t get_completion_signatures{};
 
-    template<class _Sender, class _Env = stdexec::no_env>
-      using completion_signatures_of_t STDEXEC_STD_DEPRECATED = stdexec::completion_signatures_of_t<_Sender, _Env>;
+    template <class _Sender, class _Env = stdexec::no_env>
+    using completion_signatures_of_t STDEXEC_STD_DEPRECATED =
+      stdexec::completion_signatures_of_t<_Sender, _Env>;
 
     template <class _Env>
-      using dependent_completion_signatures STDEXEC_STD_DEPRECATED = stdexec::dependent_completion_signatures<_Env>;
+    using dependent_completion_signatures STDEXEC_STD_DEPRECATED =
+      stdexec::dependent_completion_signatures<_Env>;
 
-    template <class _Sender,
-              class _Env = stdexec::no_env,
-              template <class...> class _Tuple = stdexec::__decayed_tuple,
-              template <class...> class _Variant = stdexec::__variant>
-      using value_types_of_t STDEXEC_STD_DEPRECATED = stdexec::value_types_of_t<_Sender, _Env, _Tuple, _Variant>;
+    template <                                                     //
+      class _Sender,                                               //
+      class _Env = stdexec::no_env,                                //
+      template <class...> class _Tuple = stdexec::__decayed_tuple, //
+      template <class...> class _Variant = stdexec::__variant>
+    using value_types_of_t STDEXEC_STD_DEPRECATED =
+      stdexec::value_types_of_t<_Sender, _Env, _Tuple, _Variant>;
 
-    template <class _Sender,
-              class _Env = stdexec::no_env,
-              template <class...> class _Variant = stdexec::__variant>
-      using error_types_of_t STDEXEC_STD_DEPRECATED = stdexec::error_types_of_t<_Sender, _Env, _Variant>;
+    template <                      //
+      class _Sender,                //
+      class _Env = stdexec::no_env, //
+      template <class...> class _Variant = stdexec::__variant>
+    using error_types_of_t STDEXEC_STD_DEPRECATED =
+      stdexec::error_types_of_t<_Sender, _Env, _Variant>;
 
     template <class _Sender, class _Env = stdexec::no_env>
-      STDEXEC_STD_DEPRECATED
-      inline constexpr bool sends_stopped = stdexec::sends_stopped<_Sender, _Env>;
+    STDEXEC_STD_DEPRECATED inline constexpr bool sends_stopped =
+      stdexec::sends_stopped<_Sender, _Env>;
 
     // [exec.connect], the connect sender algorithm
     using connect_t STDEXEC_STD_DEPRECATED = stdexec::connect_t;
@@ -177,18 +191,19 @@ namespace std {
     inline constexpr stdexec::connect_t connect{};
 
     template <class _Sender, class _Receiver>
-      using connect_result_t STDEXEC_STD_DEPRECATED = stdexec::connect_result_t<_Sender, _Receiver>;
+    using connect_result_t STDEXEC_STD_DEPRECATED = stdexec::connect_result_t<_Sender, _Receiver>;
 
     // [exec.snd_queries], sender queries
     using forwarding_sender_query_t STDEXEC_STD_DEPRECATED = stdexec::forwarding_sender_query_t;
     template <class _Tag>
-      using get_completion_scheduler_t STDEXEC_STD_DEPRECATED = stdexec::get_completion_scheduler_t<_Tag>;
+    using get_completion_scheduler_t STDEXEC_STD_DEPRECATED =
+      stdexec::get_completion_scheduler_t<_Tag>;
     STDEXEC_STD_DEPRECATED
     inline constexpr stdexec::forwarding_sender_query_t forwarding_sender_query{};
 
     template <class _Tag>
-      STDEXEC_STD_DEPRECATED
-      inline constexpr stdexec::get_completion_scheduler_t<_Tag> get_completion_scheduler{};
+    STDEXEC_STD_DEPRECATED inline constexpr stdexec::get_completion_scheduler_t<_Tag>
+      get_completion_scheduler{};
 
     // [exec.factories], sender factories
     using schedule_t STDEXEC_STD_DEPRECATED = stdexec::schedule_t;
@@ -207,11 +222,11 @@ namespace std {
     inline constexpr auto read = stdexec::read;
 
     template <class _Scheduler>
-      using schedule_result_t STDEXEC_STD_DEPRECATED = stdexec::schedule_result_t<_Scheduler>;
+    using schedule_result_t STDEXEC_STD_DEPRECATED = stdexec::schedule_result_t<_Scheduler>;
 
     // [exec.adapt], sender adaptors
     template <class _Closure>
-      using sender_adaptor_closure STDEXEC_STD_DEPRECATED = stdexec::sender_adaptor_closure<_Closure>;
+    using sender_adaptor_closure STDEXEC_STD_DEPRECATED = stdexec::sender_adaptor_closure<_Closure>;
 
     using on_t STDEXEC_STD_DEPRECATED = stdexec::on_t;
     using transfer_t STDEXEC_STD_DEPRECATED = stdexec::transfer_t;
@@ -227,7 +242,8 @@ namespace std {
     using when_all_t STDEXEC_STD_DEPRECATED = stdexec::when_all_t;
     using when_all_with_variant_t STDEXEC_STD_DEPRECATED = stdexec::when_all_with_variant_t;
     using transfer_when_all_t STDEXEC_STD_DEPRECATED = stdexec::transfer_when_all_t;
-    using transfer_when_all_with_variant_t STDEXEC_STD_DEPRECATED = stdexec::transfer_when_all_with_variant_t;
+    using transfer_when_all_with_variant_t STDEXEC_STD_DEPRECATED =
+      stdexec::transfer_when_all_with_variant_t;
     using into_variant_t STDEXEC_STD_DEPRECATED = stdexec::into_variant_t;
     using stopped_as_optional_t STDEXEC_STD_DEPRECATED = stdexec::stopped_as_optional_t;
     using stopped_as_error_t STDEXEC_STD_DEPRECATED = stdexec::stopped_as_error_t;
@@ -280,19 +296,19 @@ namespace std {
     // [exec.utils], sender and receiver utilities
     // [exec.utils.rcvr_adptr]
     template <class _Derived, class _Base = stdexec::__adaptors::__not_a_receiver>
-      using receiver_adaptor STDEXEC_STD_DEPRECATED = stdexec::receiver_adaptor<_Derived, _Base>;
+    using receiver_adaptor STDEXEC_STD_DEPRECATED = stdexec::receiver_adaptor<_Derived, _Base>;
 
     // [exec.utils.cmplsigs]
     template <class... _Sigs>
-      using completion_signatures STDEXEC_STD_DEPRECATED = stdexec::completion_signatures<_Sigs...>;
+    using completion_signatures STDEXEC_STD_DEPRECATED = stdexec::completion_signatures<_Sigs...>;
 
     // [exec.utils.mkcmplsigs]
-    template<
-      class _Sender,
+    template <                                                                          //
+      class _Sender,                                                                    //
       class _Env = stdexec::no_env,
-      class _Sigs = stdexec::completion_signatures<>,
-      template <class...> class _SetValue = stdexec::__compl_sigs::__default_set_value,
-      template <class> class _SetError = stdexec::__compl_sigs::__default_set_error,
+      class _Sigs = stdexec::completion_signatures<>,                                   //
+      template <class...> class _SetValue = stdexec::__compl_sigs::__default_set_value, //
+      template <class> class _SetError = stdexec::__compl_sigs::__default_set_error,    //
       class _SetStopped = stdexec::completion_signatures<stdexec::set_stopped_t()>>
     using make_completion_signatures STDEXEC_STD_DEPRECATED =
       stdexec::make_completion_signatures<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
@@ -305,7 +321,7 @@ namespace std {
     STDEXEC_STD_DEPRECATED
     inline constexpr auto execute = stdexec::execute;
 
-    #if !_STD_NO_COROUTINES_
+#if !_STD_NO_COROUTINES_
     // [exec.as_awaitable]
     using as_awaitable_t STDEXEC_STD_DEPRECATED = stdexec::as_awaitable_t;
     STDEXEC_STD_DEPRECATED
@@ -313,9 +329,9 @@ namespace std {
 
     // [exec.with_awaitable_senders]
     template <class _Promise>
-      using with_awaitable_senders STDEXEC_STD_DEPRECATED = stdexec::with_awaitable_senders<_Promise>;
-    #endif // !_STD_NO_COROUTINES_
-  } // namespace execution
+    using with_awaitable_senders STDEXEC_STD_DEPRECATED = stdexec::with_awaitable_senders<_Promise>;
+#endif // !_STD_NO_COROUTINES_
+  }    // namespace execution
 
   namespace this_thread {
     using execute_may_block_caller_t STDEXEC_STD_DEPRECATED = stdexec::execute_may_block_caller_t;

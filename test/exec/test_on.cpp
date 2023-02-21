@@ -40,18 +40,19 @@ using _env_with_sched_t = decltype(_make_env_with_sched());
 TEST_CASE("exec::on returns a sender", "[adaptors][exec::on]") {
   auto snd = exec::on(inline_scheduler{}, ex::just(13));
   static_assert(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("exec::on with environment returns a sender", "[adaptors][exec::on]") {
   auto snd = exec::on(inline_scheduler{}, ex::just(13));
   static_assert(ex::sender_in<decltype(snd), _env_with_sched_t>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("exec::on simple example", "[adaptors][exec::on]") {
   auto snd = exec::on(inline_scheduler{}, ex::just(13));
   auto op = ex::connect(
-    std::move(snd),
-    expect_value_receiver{env_tag{}, _make_env_with_sched(), 13});
+    std::move(snd), expect_value_receiver{env_tag{}, _make_env_with_sched(), 13});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
@@ -73,10 +74,11 @@ TEST_CASE("exec::on calls the receiver when the scheduler dictates", "[adaptors]
 
 TEST_CASE("exec::on calls the given sender when the scheduler dictates", "[adaptors][exec::on]") {
   bool called{false};
-  auto snd_base = ex::just() | ex::then([&]() -> int {
-    called = true;
-    return 19;
-  });
+  auto snd_base = ex::just() //
+                | ex::then([&]() -> int {
+                    called = true;
+                    return 19;
+                  });
 
   int recv_value{0};
   impulse_scheduler sched;
@@ -101,8 +103,7 @@ TEST_CASE("exec::on works when changing threads", "[adaptors][exec::on]") {
   bool called{false};
   // launch some work on the thread pool
   ex::sender auto snd = exec::on(pool.get_scheduler(), ex::just()) //
-                        | ex::then([&] { called = true; })
-                        | _with_scheduler();
+                      | ex::then([&] { called = true; }) | _with_scheduler();
   stdexec::sync_wait(std::move(snd));
   // the work should be executed
   REQUIRE(called);
@@ -115,6 +116,7 @@ TEST_CASE("exec::on can be called with rvalue ref scheduler", "[adaptors][exec::
   ex::start(op);
   // The receiver checks if we receive the right value
 }
+
 TEST_CASE("exec::on can be called with const ref scheduler", "[adaptors][exec::on]") {
   auto env = _make_env_with_sched();
   const inline_scheduler sched;
@@ -123,6 +125,7 @@ TEST_CASE("exec::on can be called with const ref scheduler", "[adaptors][exec::o
   ex::start(op);
   // The receiver checks if we receive the right value
 }
+
 TEST_CASE("exec::on can be called with ref scheduler", "[adaptors][exec::on]") {
   auto env = _make_env_with_sched();
   inline_scheduler sched;
@@ -140,6 +143,7 @@ TEST_CASE("exec::on forwards set_error calls", "[adaptors][exec::on]") {
   ex::start(op);
   // The receiver checks if we receive an error
 }
+
 TEST_CASE("exec::on forwards set_error calls of other types", "[adaptors][exec::on]") {
   auto env = _make_env_with_sched();
   error_scheduler<std::string> sched{std::string{"error"}};
@@ -148,6 +152,7 @@ TEST_CASE("exec::on forwards set_error calls of other types", "[adaptors][exec::
   ex::start(op);
   // The receiver checks if we receive an error
 }
+
 TEST_CASE("exec::on forwards set_stopped calls", "[adaptors][exec::on]") {
   auto env = _make_env_with_sched();
   stopped_scheduler sched{};
@@ -157,23 +162,31 @@ TEST_CASE("exec::on forwards set_stopped calls", "[adaptors][exec::on]") {
   // The receiver checks if we receive the stopped signal
 }
 
-TEST_CASE("exec::on has the values_type corresponding to the given values", "[adaptors][exec::on]") {
+TEST_CASE(
+  "exec::on has the values_type corresponding to the given values",
+  "[adaptors][exec::on]") {
   inline_scheduler sched{};
 
   check_val_types<type_array<type_array<int>>>(exec::on(sched, ex::just(1)) | _with_scheduler());
-  check_val_types<type_array<type_array<int, double>>>(exec::on(sched, ex::just(3, 0.14)) | _with_scheduler());
+  check_val_types<type_array<type_array<int, double>>>(
+    exec::on(sched, ex::just(3, 0.14)) | _with_scheduler());
   check_val_types<type_array<type_array<int, double, std::string>>>(
-      exec::on(sched, ex::just(3, 0.14, std::string{"pi"})) | _with_scheduler());
+    exec::on(sched, ex::just(3, 0.14, std::string{"pi"})) | _with_scheduler());
 }
+
 TEST_CASE("exec::on keeps error_types from scheduler's sender", "[adaptors][exec::on]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
-  check_err_types<type_array<std::exception_ptr>>(exec::on(sched1, ex::just(1)) | _with_scheduler());
-  check_err_types<type_array<std::exception_ptr>>(exec::on(sched2, ex::just(2)) | _with_scheduler());
-  check_err_types<type_array<std::exception_ptr, int>>(exec::on(sched3, ex::just(3)) | _with_scheduler());
+  check_err_types<type_array<std::exception_ptr>>(
+    exec::on(sched1, ex::just(1)) | _with_scheduler());
+  check_err_types<type_array<std::exception_ptr>>(
+    exec::on(sched2, ex::just(2)) | _with_scheduler());
+  check_err_types<type_array<std::exception_ptr, int>>(
+    exec::on(sched3, ex::just(3)) | _with_scheduler());
 }
+
 TEST_CASE("exec::on keeps sends_stopped from scheduler's sender", "[adaptors][exec::on]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};

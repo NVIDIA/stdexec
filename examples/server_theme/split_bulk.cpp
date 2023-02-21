@@ -65,7 +65,10 @@ struct image {
 };
 
 // Extract the image from the HTTP request
-image extract_image(http_request req) { return {req.body_}; }
+image extract_image(http_request req) {
+  return {req.body_};
+}
+
 // Extract multiple images from the HTTP request
 std::vector<image> extract_images(http_request req) {
   std::vector<image> res;
@@ -94,19 +97,30 @@ http_response img3_to_response(const image& img1, const image& img2, const image
 // Convert the given set of images into the corresponding HTTP response
 http_response imgvec_to_response(const std::vector<image>& imgs) {
   std::ostringstream oss;
-  for (const auto& img : imgs)
+  for (const auto& img: imgs)
     oss << img.image_data_ << "\n";
   return {200, oss.str()};
 }
 
 // Apply the Canny edge detector on the given image
-image apply_canny(const image& img) { return {"canny / " + img.image_data_}; }
+image apply_canny(const image& img) {
+  return {"canny / " + img.image_data_};
+}
+
 // Apply the Sobel edge detector on the given image
-image apply_sobel(const image& img) { return {"sobel / " + img.image_data_}; }
+image apply_sobel(const image& img) {
+  return {"sobel / " + img.image_data_};
+}
+
 // Apply the Prewitt edge detector on the given image
-image apply_prewitt(const image& img) { return {"prewitt / " + img.image_data_}; }
+image apply_prewitt(const image& img) {
+  return {"prewitt / " + img.image_data_};
+}
+
 // Apply blur filter on the given image
-image apply_blur(const image& img) { return {"blur / " + img.image_data_}; }
+image apply_blur(const image& img) {
+  return {"blur / " + img.image_data_};
+}
 
 ex::sender auto handle_edge_detection_request(const http_request& req) {
   // extract the input image from the request
@@ -118,11 +132,12 @@ ex::sender auto handle_edge_detection_request(const http_request& req) {
 
   // Apply the three methods of edge detection on the same input image, in parallel.
   // Then, join the results and generate the HTTP response
-  return ex::when_all(                                //
-             multi_shot_img | ex::then(apply_canny),  //
-             multi_shot_img | ex::then(apply_sobel),  //
-             multi_shot_img | ex::then(apply_prewitt) //
-             ) |
+  return ex::when_all(                              //
+           multi_shot_img | ex::then(apply_canny),  //
+           multi_shot_img | ex::then(apply_sobel),  //
+           multi_shot_img | ex::then(apply_prewitt) //
+           )
+       |
          // transform the resulting 3 images into an HTTP response
          ex::then(img3_to_response);
   // error and cancellation handling is performed outside
@@ -130,23 +145,24 @@ ex::sender auto handle_edge_detection_request(const http_request& req) {
 
 ex::sender auto handle_multi_blur_request(const http_request& req) {
   return
-      // extract the input images from the request
-      ex::just(req) |
-      ex::then(extract_images)
-      // process images in parallel with bulk.
-      // use let_value to access the image count before calling bulk.
-      | ex::let_value([](std::vector<image> imgs) {
-          // get the image count
-          size_t img_count = imgs.size();
-          // return a sender that bulk-processes the image in parallel
-          return ex::just(std::move(imgs)) |
-                 ex::bulk(img_count,
-                     [](size_t i, std::vector<image>& imgs) { imgs[i] = apply_blur(imgs[i]); });
-        })
-      // transform the resulting 3 images into an HTTP response
-      | ex::then(imgvec_to_response)
-      // done; error and cancellation handling is performed outside
-      ;
+    // extract the input images from the request
+    ex::just(req)
+    | ex::then(extract_images)
+    // process images in parallel with bulk.
+    // use let_value to access the image count before calling bulk.
+    | ex::let_value([](std::vector<image> imgs) {
+        // get the image count
+        size_t img_count = imgs.size();
+        // return a sender that bulk-processes the image in parallel
+        return ex::just(std::move(imgs))
+             | ex::bulk(img_count, [](size_t i, std::vector<image>& imgs) {
+                 imgs[i] = apply_blur(imgs[i]);
+               });
+      })
+    // transform the resulting 3 images into an HTTP response
+    | ex::then(imgvec_to_response)
+    // done; error and cancellation handling is performed outside
+    ;
 }
 
 int main() {
@@ -164,11 +180,13 @@ int main() {
     ex::sender auto snd = handle_edge_detection_request(req);
 
     // Pack this into a simplified flow and execute it asynchronously
-    ex::sender auto action = std::move(snd) | ex::then([](http_response resp) {
-      std::ostringstream oss;
-      oss << "Sending response: " << resp.status_code_ << " / " << resp.body_ << "\n";
-      std::cout << oss.str();
-    });
+    ex::sender auto action =
+      std::move(snd) //
+      | ex::then([](http_response resp) {
+          std::ostringstream oss;
+          oss << "Sending response: " << resp.status_code_ << " / " << resp.body_ << "\n";
+          std::cout << oss.str();
+        });
     scope.spawn(ex::on(sched, std::move(action)));
   }
 
@@ -181,11 +199,13 @@ int main() {
     ex::sender auto snd = handle_multi_blur_request(req);
 
     // Pack this into a simplified flow and execute it asynchronously
-    ex::sender auto action = std::move(snd) | ex::then([](http_response resp) {
-      std::ostringstream oss;
-      oss << "Sending response: " << resp.status_code_ << " / " << resp.body_ << "\n";
-      std::cout << oss.str();
-    });
+    ex::sender auto action =
+      std::move(snd) //
+      | ex::then([](http_response resp) {
+          std::ostringstream oss;
+          oss << "Sending response: " << resp.status_code_ << " / " << resp.body_ << "\n";
+          std::cout << oss.str();
+        });
     scope.spawn(ex::on(sched, std::move(action)));
   }
 

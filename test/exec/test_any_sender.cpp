@@ -26,14 +26,14 @@ using namespace exec;
 
 struct tag_t : stdexec::__query<::tag_t> {
   template <class T>
-      // BUGBUG ambiguous!
-      requires stdexec::tag_invocable<tag_t, T>
-    auto operator()(T&& t) const
-      noexcept(stdexec::nothrow_tag_invocable<tag_t, T>)
-      -> stdexec::tag_invoke_result_t<tag_t, T> {
-      return stdexec::tag_invoke(*this, (T&&) t);
-    }
+  // BUGBUG ambiguous!
+    requires stdexec::tag_invocable<tag_t, T>
+  auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<tag_t, T>)
+    -> stdexec::tag_invoke_result_t<tag_t, T> {
+    return stdexec::tag_invoke(*this, (T&&) t);
+  }
 };
+
 inline constexpr ::tag_t tag;
 
 struct env {
@@ -44,10 +44,16 @@ struct env {
 
 struct sink_receiver {
   template <class... Ts>
-    friend void tag_invoke(set_value_t, sink_receiver&&, Ts&&...) noexcept {}
+  friend void tag_invoke(set_value_t, sink_receiver&&, Ts&&...) noexcept {
+  }
+
   template <class Err>
-    friend void tag_invoke(set_value_t, sink_receiver&&, Err&&) noexcept {}
-  friend void tag_invoke(set_stopped_t, sink_receiver&&) noexcept {}
+  friend void tag_invoke(set_value_t, sink_receiver&&, Err&&) noexcept {
+  }
+
+  friend void tag_invoke(set_stopped_t, sink_receiver&&) noexcept {
+  }
+
   friend env tag_invoke(get_env_t, const sink_receiver&) noexcept {
     return {};
   }
@@ -80,16 +86,16 @@ TEST_CASE("any_receiver is queryable", "[types][any_sender]") {
 struct empty_vtable_t {
   private:
   template <class T>
-    friend empty_vtable_t*
-    tag_invoke(__any::__create_vtable_t, __mtype<empty_vtable_t>, __mtype<T>) noexcept
-    {
-      static empty_vtable_t vtable{};
-      return &vtable;
-    }
+  friend empty_vtable_t*
+    tag_invoke(__any::__create_vtable_t, __mtype<empty_vtable_t>, __mtype<T>) noexcept {
+    static empty_vtable_t vtable{};
+    return &vtable;
+  }
 };
 
 TEST_CASE("empty storage is movable", "[types][any_sender]") {
-  struct foo {};
+  struct foo { };
+
   using any_unique = __any::__unique_storage_t<empty_vtable_t>;
   any_unique s1{};
   any_unique s2 = foo{};
@@ -119,9 +125,15 @@ TEST_CASE("empty storage is movable", "[types][any_sender]") {
 TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any_sender]") {
   struct move_throws {
     move_throws() = default;
-    move_throws(move_throws&&) noexcept(false) {}
-    move_throws& operator=(move_throws&&) noexcept(false) { return *this; }
+
+    move_throws(move_throws&&) noexcept(false) {
+    }
+
+    move_throws& operator=(move_throws&&) noexcept(false) {
+      return *this;
+    }
   };
+
   using any_unique = __any::__unique_storage_t<empty_vtable_t>;
   any_unique s1{};
   any_unique s2 = move_throws{};
@@ -151,16 +163,19 @@ TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any
 TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
   using Sigs = completion_signatures<set_value_t()>;
   sink_receiver rcvr;
-  __any::__copyable_storage_t<__t<__any::__rec::__vtable<Sigs, decltype(tag.signature<int()>)>>> vtable_holder(rcvr);
+  __any::__copyable_storage_t<__t<__any::__rec::__vtable<Sigs, decltype(tag.signature<int()>)>>>
+    vtable_holder(rcvr);
   REQUIRE(__any::__get_vtable(vtable_holder));
   REQUIRE(__any::__get_object_pointer(vtable_holder));
 
-  CHECK((*__any::__get_vtable(vtable_holder))(tag, __any::__get_object_pointer(vtable_holder)) == 42);
+  CHECK(
+    (*__any::__get_vtable(vtable_holder))(tag, __any::__get_object_pointer(vtable_holder)) == 42);
 
   auto vtable2 = vtable_holder;
   REQUIRE(__any::__get_vtable(vtable2));
   REQUIRE(__any::__get_object_pointer(vtable2));
-  CHECK((*__any::__get_vtable(vtable_holder))(tag, __any::__get_object_pointer(vtable_holder)) == 42);
+  CHECK(
+    (*__any::__get_vtable(vtable_holder))(tag, __any::__get_object_pointer(vtable_holder)) == 42);
   CHECK((*__any::__get_vtable(vtable2))(tag, __any::__get_object_pointer(vtable2)) == 42);
 
   CHECK(__any::__get_object_pointer(vtable2) != __any::__get_object_pointer(vtable_holder));
@@ -170,7 +185,7 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 }
 
 template <class... Ts>
-  using any_sender_of = typename any_receiver<completion_signatures<Ts...>>::template any_sender<>;
+using any_sender_of = typename any_receiver<completion_signatures<Ts...>>::template any_sender<>;
 
 TEST_CASE("any sender is a sender", "[types][any_sender]") {
   any_sender_of<set_value_t()> sender = just();
@@ -189,25 +204,30 @@ TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
 
 TEST_CASE("sync_wait returns value", "[types][any_sender]") {
   any_sender_of<set_value_t(int)> sender = just(21) | then([&](int v) noexcept { return 2 * v; });
-  static_assert(std::same_as<completion_signatures_of_t<any_sender_of<set_value_t(int)>>, completion_signatures<set_value_t(int)>>);
+  static_assert(std::same_as<
+                completion_signatures_of_t<any_sender_of<set_value_t(int)>>,
+                completion_signatures<set_value_t(int)>>);
   auto [value] = *sync_wait(std::move(sender));
   CHECK(value == 42);
 }
 
 template <class... Vals>
-  using my_sender_of = any_sender_of<set_value_t(Vals)..., set_error_t(std::exception_ptr)>;
+using my_sender_of = any_sender_of<set_value_t(Vals)..., set_error_t(std::exception_ptr)>;
 
 TEST_CASE("sync_wait returns value and exception", "[types][any_sender]") {
   my_sender_of<int> sender = just(21) | then([&](int v) { return 2 * v; });
   auto [value] = *sync_wait(std::move(sender));
   CHECK(value == 42);
 
-  sender = just(21) | then([&](int v) { throw std::runtime_error("test"); return 2*v; });
+  sender = just(21) | then([&](int v) {
+             throw std::runtime_error("test");
+             return 2 * v;
+           });
   CHECK_THROWS(sync_wait(std::move(sender)));
 }
 
 template <auto... Queries>
-  using my_scheduler = any_scheduler<any_sender_of<>, Queries...>;
+using my_scheduler = any_scheduler<any_sender_of<>, Queries...>;
 
 TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
   static_assert(scheduler<my_scheduler<>>);
@@ -217,7 +237,8 @@ TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
 
   auto sched = schedule(scheduler);
   static_assert(sender<decltype(sched)>);
-  std::same_as<my_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  std::same_as<my_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(
+    get_env(sched));
   CHECK(get_sched == scheduler);
 
   bool called = false;
@@ -226,7 +247,8 @@ TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
 }
 
 TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]") {
-  using my_scheduler2 = my_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
+  using my_scheduler2 =
+    my_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
   static_assert(scheduler<my_scheduler2>);
   my_scheduler2 scheduler = exec::inline_scheduler();
   my_scheduler2 copied = scheduler;
@@ -234,10 +256,13 @@ TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]"
 
   auto sched = schedule(scheduler);
   static_assert(sender<decltype(sched)>);
-  std::same_as<my_scheduler2> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  std::same_as<my_scheduler2> auto get_sched = get_completion_scheduler<set_value_t>(
+    get_env(sched));
   CHECK(get_sched == scheduler);
 
-  CHECK(get_forward_progress_guarantee(scheduler) == get_forward_progress_guarantee(exec::inline_scheduler()));
+  CHECK(
+    get_forward_progress_guarantee(scheduler)
+    == get_forward_progress_guarantee(exec::inline_scheduler()));
 
   bool called = false;
   sync_wait(std::move(sched) | then([&] { called = true; }));
@@ -247,10 +272,13 @@ TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]"
 TEST_CASE("any_scheduler adds set_value_t() completion sig (empty)", "[types][any_sender]") {
   using scheduler_t = any_sender_of<>::any_scheduler<>;
   using schedule_t = decltype(schedule(std::declval<scheduler_t>()));
-  CHECK(std::is_same_v<completion_signatures_of_t<schedule_t>, completion_signatures<set_value_t()>>);
+  CHECK(
+    std::is_same_v<completion_signatures_of_t<schedule_t>, completion_signatures<set_value_t()>>);
 }
 
-TEST_CASE("any_scheduler adds set_value_t() completion sig (along with error)", "[types][any_sender]") {
+TEST_CASE(
+  "any_scheduler adds set_value_t() completion sig (along with error)",
+  "[types][any_sender]") {
   using scheduler_t = any_sender_of<set_error_t(std::exception_ptr)>::any_scheduler<>;
   using schedule_t = decltype(schedule(std::declval<scheduler_t>()));
   CHECK(sender_of<schedule_t, set_value_t()>);
@@ -260,11 +288,12 @@ TEST_CASE("any_scheduler adds set_value_t() completion sig (along with error)", 
 TEST_CASE("any_scheduler adds uniquely set_value_t() completion sig", "[types][any_sender]") {
   using scheduler_t = any_sender_of<set_value_t()>::any_scheduler<>;
   using schedule_t = decltype(schedule(std::declval<scheduler_t>()));
-  CHECK(std::is_same_v<completion_signatures_of_t<schedule_t>, completion_signatures<set_value_t()>>);
+  CHECK(
+    std::is_same_v<completion_signatures_of_t<schedule_t>, completion_signatures<set_value_t()>>);
 }
 
 template <auto... Queries>
-  using stoppable_scheduler = any_sender_of<set_stopped_t()>::any_scheduler<Queries...>;
+using stoppable_scheduler = any_sender_of<set_stopped_t()>::any_scheduler<Queries...>;
 
 TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
   exec::static_thread_pool pool(1);
@@ -274,7 +303,8 @@ TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
 
   auto sched = schedule(scheduler);
   static_assert(sender<decltype(sched)>);
-  std::same_as<stoppable_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
+  std::same_as<stoppable_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(
+    get_env(sched));
   CHECK(get_sched == scheduler);
 
   bool called = false;
@@ -283,7 +313,8 @@ TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]") {
 }
 
 TEST_CASE("queryable any_scheduler with static_thread_pool", "[types][any_sender]") {
-  using my_scheduler = stoppable_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
+  using my_scheduler =
+    stoppable_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
 
   exec::static_thread_pool pool(1);
   my_scheduler scheduler = pool.get_scheduler();
@@ -295,7 +326,9 @@ TEST_CASE("queryable any_scheduler with static_thread_pool", "[types][any_sender
   std::same_as<my_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(get_env(sched));
   CHECK(get_sched == scheduler);
 
-  CHECK(get_forward_progress_guarantee(scheduler) == get_forward_progress_guarantee(pool.get_scheduler()));
+  CHECK(
+    get_forward_progress_guarantee(scheduler)
+    == get_forward_progress_guarantee(pool.get_scheduler()));
 
   bool called = false;
   sync_wait(std::move(sched) | then([&] { called = true; }));

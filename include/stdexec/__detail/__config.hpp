@@ -21,7 +21,7 @@
 
 #include <cassert>
 
-#define STDEXEC_CAT_(X, ...) X ## __VA_ARGS__
+#define STDEXEC_CAT_(X, ...) X##__VA_ARGS__
 #define STDEXEC_CAT(X, ...) STDEXEC_CAT_(X, __VA_ARGS__)
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
@@ -31,16 +31,15 @@
 #define STDEXEC_NOT_0 1
 #define STDEXEC_NOT_1 0
 
-#define STDEXEC_IIF_0(Y,...) __VA_ARGS__
-#define STDEXEC_IIF_1(Y,...) Y
-#define STDEXEC_IIF(X,Y,...) \
-    STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, X), Y, __VA_ARGS__)
+#define STDEXEC_IIF_0(Y, ...) __VA_ARGS__
+#define STDEXEC_IIF_1(Y, ...) Y
+#define STDEXEC_IIF(X, Y, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, X), Y, __VA_ARGS__)
 
 #define STDEXEC_COUNT(...) \
-    STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__,10,9,8,7,6,5,4,3,2,1))
+  STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
 #define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _N, ...) _N
 
-#define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0,))
+#define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0, ))
 #define STDEXEC_CHECK_N(x, n, ...) n
 #define STDEXEC_PROBE(x) x, 1,
 
@@ -81,7 +80,7 @@
   do { \
     static_assert(noexcept(_X)); \
     STDEXEC_ASSERT_FN(_X); \
-  } while(false)
+  } while (false)
 
 #ifndef STDEXEC_ASSERT_FN
 #define STDEXEC_ASSERT_FN assert

@@ -39,10 +39,12 @@ TEST_CASE("just_stopped returns a typed sender", "[factories][just_stopped]") {
 TEST_CASE("value types are properly set for just_stopped", "[factories][just_stopped]") {
   check_val_types<type_array<>>(ex::just_stopped());
 }
+
 TEST_CASE("error types are properly set for just_stopped", "[factories][just_stopped]") {
   // no errors sent by just_stopped
   check_err_types<type_array<>>(ex::just_stopped());
 }
+
 TEST_CASE("just_stopped advertises that it can call set_stopped", "[factories][just_stopped]") {
   check_sends_stopped<true>(ex::just_stopped());
 }

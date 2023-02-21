@@ -22,44 +22,49 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS::submit {
 
-template <class SenderId, class ReceiverId>
-struct op_state_t {
-  using Sender = stdexec::__t<SenderId>;
-  using Receiver = stdexec::__t<ReceiverId>;
+  template <class SenderId, class ReceiverId>
+  struct op_state_t {
+    using Sender = stdexec::__t<SenderId>;
+    using Receiver = stdexec::__t<ReceiverId>;
 
-  struct receiver_t : stream_receiver_base {
-    op_state_t* op_state_;
+    struct receiver_t : stream_receiver_base {
+      op_state_t* op_state_;
 
-    template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-      requires stdexec::__callable<Tag, Receiver, As...>
-    friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as)
+      template <
+        stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> Tag,
+        class... As>
+        requires stdexec::__callable<Tag, Receiver, As...>
+      friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) //
         noexcept(stdexec::__nothrow_callable<Tag, Receiver, As...>) {
-      // Delete the state as cleanup:
-      std::unique_ptr<op_state_t> g{self.op_state_};
-      return tag((Receiver&&) self.op_state_->rcvr_, (As&&) as...);
-    }
-    // Forward all receiever queries.
-    friend auto tag_invoke(stdexec::get_env_t, const receiver_t& self)
-      -> stdexec::env_of_t<Receiver> {
-      return stdexec::get_env((const Receiver&) self.op_state_->rcvr_);
+        // Delete the state as cleanup:
+        std::unique_ptr<op_state_t> g{self.op_state_};
+        return tag((Receiver&&) self.op_state_->rcvr_, (As&&) as...);
+      }
+
+      // Forward all receiever queries.
+      friend auto tag_invoke(stdexec::get_env_t, const receiver_t& self)
+        -> stdexec::env_of_t<Receiver> {
+        return stdexec::get_env((const Receiver&) self.op_state_->rcvr_);
+      }
+    };
+
+    Receiver rcvr_;
+    stdexec::connect_result_t<Sender, receiver_t> op_state_;
+
+    template <stdexec::__decays_to<Receiver> CvrefReceiver>
+    op_state_t(Sender&& sndr, CvrefReceiver&& rcvr)
+      : rcvr_((CvrefReceiver&&) rcvr)
+      , op_state_(stdexec::connect((Sender&&) sndr, receiver_t{{}, this})) {
     }
   };
-  Receiver rcvr_;
-  stdexec::connect_result_t<Sender, receiver_t> op_state_;
 
-  template <stdexec::__decays_to<Receiver> CvrefReceiver>
-  op_state_t(Sender&& sndr, CvrefReceiver&& rcvr)
-    : rcvr_((CvrefReceiver&&) rcvr)
-    , op_state_(stdexec::connect((Sender&&) sndr, receiver_t{{}, this}))
-  {}
-};
-
-struct submit_t {
-  template <stdexec::receiver Receiver, stdexec::sender_to<Receiver> Sender>
-  void operator()(Sender&& sndr, Receiver&& rcvr) const noexcept(false) {
-    stdexec::start((new op_state_t<stdexec::__id<Sender>, stdexec::__id<std::decay_t<Receiver>>>{
-        (Sender&&) sndr, (Receiver&&) rcvr})->op_state_);
-  }
-};
+  struct submit_t {
+    template <stdexec::receiver Receiver, stdexec::sender_to<Receiver> Sender>
+    void operator()(Sender&& sndr, Receiver&& rcvr) const noexcept(false) {
+      stdexec::start((new op_state_t<stdexec::__id<Sender>, stdexec::__id<std::decay_t<Receiver>>>{
+                        (Sender&&) sndr, (Receiver&&) rcvr})
+                       ->op_state_);
+    }
+  };
 
 }

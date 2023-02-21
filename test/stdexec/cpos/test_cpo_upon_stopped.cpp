@@ -18,7 +18,8 @@
 #include <catch2/catch.hpp>
 
 TEST_CASE("upon_stopped is customizable", "[cpo][cpo_upon_stopped]") {
-  const auto f = []() {};
+  const auto f = []() {
+  };
 
   SECTION("by free standing sender") {
     free_standing_sender_t<ex::upon_stopped_t> snd{};

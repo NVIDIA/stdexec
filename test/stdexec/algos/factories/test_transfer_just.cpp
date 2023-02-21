@@ -25,13 +25,15 @@ namespace ex = stdexec;
 TEST_CASE("transfer_just returns a sender", "[factories][transfer_just]") {
   auto snd = ex::transfer_just(inline_scheduler{}, 13);
   static_assert(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("transfer_just with environment returns a sender", "[factories][transfer_just]") {
   auto snd = ex::transfer_just(inline_scheduler{}, 13);
   static_assert(ex::sender_in<decltype(snd), empty_env>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("transfer_just simple example", "[factories][transfer_just]") {
   inline_scheduler sched;
   auto snd = ex::transfer_just(sched, 13);
@@ -41,7 +43,8 @@ TEST_CASE("transfer_just simple example", "[factories][transfer_just]") {
 }
 
 TEST_CASE(
-    "transfer_just calls the receiver when the scheduler dictates", "[factories][transfer_just]") {
+  "transfer_just calls the receiver when the scheduler dictates",
+  "[factories][transfer_just]") {
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::transfer_just(sched, 13);
@@ -54,18 +57,21 @@ TEST_CASE(
   sched.start_next();
   CHECK(recv_value == 13);
 }
+
 TEST_CASE("transfer_just can be called with value type scheduler", "[factories][transfer_just]") {
   auto snd = ex::transfer_just(inline_scheduler{}, 13);
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
+
 TEST_CASE("transfer_just can be called with rvalue ref scheduler", "[factories][transfer_just]") {
   auto snd = ex::transfer_just(inline_scheduler{}, 13);
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
   ex::start(op);
   // The receiver checks if we receive the right value
 }
+
 TEST_CASE("transfer_just can be called with const ref scheduler", "[factories][transfer_just]") {
   const inline_scheduler sched;
   auto snd = ex::transfer_just(sched, 13);
@@ -73,6 +79,7 @@ TEST_CASE("transfer_just can be called with const ref scheduler", "[factories][t
   ex::start(op);
   // The receiver checks if we receive the right value
 }
+
 TEST_CASE("transfer_just can be called with ref scheduler", "[factories][transfer_just]") {
   inline_scheduler sched;
   auto snd = ex::transfer_just(sched, 13);
@@ -88,6 +95,7 @@ TEST_CASE("transfer_just forwards set_error calls", "[factories][transfer_just]"
   ex::start(op);
   // The receiver checks if we receive an error
 }
+
 TEST_CASE("transfer_just forwards set_error calls of other types", "[factories][transfer_just]") {
   error_scheduler<std::string> sched{std::string{"error"}};
   auto snd = ex::transfer_just(sched, 13);
@@ -95,6 +103,7 @@ TEST_CASE("transfer_just forwards set_error calls of other types", "[factories][
   ex::start(op);
   // The receiver checks if we receive an error
 }
+
 TEST_CASE("transfer_just forwards set_stopped calls", "[factories][transfer_just]") {
   stopped_scheduler sched{};
   auto snd = ex::transfer_just(sched, 13);
@@ -103,17 +112,18 @@ TEST_CASE("transfer_just forwards set_stopped calls", "[factories][transfer_just
   // The receiver checks if we receive the stopped signal
 }
 
-TEST_CASE("transfer_just has the values_type corresponding to the given values",
-    "[factories][transfer_just]") {
+TEST_CASE(
+  "transfer_just has the values_type corresponding to the given values",
+  "[factories][transfer_just]") {
   inline_scheduler sched{};
 
   check_val_types<type_array<type_array<int>>>(ex::transfer_just(sched, 1));
   check_val_types<type_array<type_array<int, double>>>(ex::transfer_just(sched, 3, 0.14));
   check_val_types<type_array<type_array<int, double, std::string>>>(
-      ex::transfer_just(sched, 3, 0.14, std::string{"pi"}));
+    ex::transfer_just(sched, 3, 0.14, std::string{"pi"}));
 }
-TEST_CASE(
-    "transfer_just keeps error_types from scheduler's sender", "[factories][transfer_just]") {
+
+TEST_CASE("transfer_just keeps error_types from scheduler's sender", "[factories][transfer_just]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
@@ -122,7 +132,10 @@ TEST_CASE(
   check_err_types<type_array<std::exception_ptr>>(ex::transfer_just(sched2, 2));
   check_err_types<type_array<int>>(ex::transfer_just(sched3, 3));
 }
-TEST_CASE("transfer_just keeps sends_stopped from scheduler's sender", "[factories][transfer_just]") {
+
+TEST_CASE(
+  "transfer_just keeps sends_stopped from scheduler's sender",
+  "[factories][transfer_just]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   stopped_scheduler sched3{};
@@ -137,14 +150,26 @@ TEST_CASE("transfer_just advertises its completion scheduler", "[factories][tran
   error_scheduler sched2{};
   stopped_scheduler sched3{};
 
-  REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched1, 1))) == sched1);
-  REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(ex::transfer_just(sched1, 1))) == sched1);
+  REQUIRE(
+    ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched1, 1)))
+    == sched1);
+  REQUIRE(
+    ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(ex::transfer_just(sched1, 1)))
+    == sched1);
 
-  REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched2, 2))) == sched2);
-  REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(ex::transfer_just(sched2, 2))) == sched2);
+  REQUIRE(
+    ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched2, 2)))
+    == sched2);
+  REQUIRE(
+    ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(ex::transfer_just(sched2, 2)))
+    == sched2);
 
-  REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched3, 3))) == sched3);
-  REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(ex::transfer_just(sched3, 3))) == sched3);
+  REQUIRE(
+    ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched3, 3)))
+    == sched3);
+  REQUIRE(
+    ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(ex::transfer_just(sched3, 3)))
+    == sched3);
 }
 
 // Modify the value when we invoke this custom defined transfer_just implementation
