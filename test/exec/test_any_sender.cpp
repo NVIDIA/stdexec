@@ -88,7 +88,7 @@ TEST_CASE("any_receiver_ref is queryable", "[types][any_sender]") {
 }
 
 struct empty_vtable_t {
-  private:
+ private:
   template <class T>
   friend empty_vtable_t*
     tag_invoke(__any::__create_vtable_t, __mtype<empty_vtable_t>, __mtype<T>) noexcept {
