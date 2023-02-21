@@ -701,6 +701,10 @@ namespace exec {
             ->__connect_(__get_object_pointer(__storage_), (__receiver_ref_t&&) __receiver);
         }
 
+        explicit operator bool() const noexcept {
+          return __get_object_pointer(__storage_) != nullptr;
+        }
+
        private:
         __unique_storage_t<__vtable> __storage_;
 
@@ -841,6 +845,10 @@ namespace exec {
       any_sender(_Sender&& __sender) noexcept(
         std::is_nothrow_constructible_v<__sender_base, _Sender>)
         : __sender_((_Sender&&) __sender) {
+      }
+
+      explicit operator bool() const noexcept {
+        return bool(__sender_);
       }
 
       template <auto... _SchedulerQueries>

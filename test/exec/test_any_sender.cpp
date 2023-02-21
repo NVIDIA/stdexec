@@ -16,6 +16,7 @@
 
 #include <exec/any_sender_of.hpp>
 #include <exec/inline_scheduler.hpp>
+#include <exec/when_any.hpp>
 #include <exec/static_thread_pool.hpp>
 
 #include <catch2/catch.hpp>
@@ -23,6 +24,9 @@
 
 using namespace stdexec;
 using namespace exec;
+
+///////////////////////////////////////////////////////////////////////////////
+//                                                             any_receiver_ref
 
 struct tag_t : stdexec::__query<::tag_t> {
   template <class T>
@@ -131,6 +135,24 @@ TEST_CASE("any_receiver_ref calls receiver methods", "[types][any_sender]") {
   CHECK(stopped.value_.index() == 3);
 }
 
+TEST_CASE("any_receiver_ref is connectable with when_any", "[types][any_sender]") {
+  using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
+  using receiver_ref = any_receiver_ref<Sigs>;
+  REQUIRE(receiver_of<receiver_ref, Sigs>);
+  sink_receiver rcvr{};
+  receiver_ref ref = rcvr;
+
+  auto sndr = when_any(just(42));
+  CHECK(rcvr.value_.index() == 0);
+  auto op = connect(std::move(sndr), std::move(ref));
+  start(op);
+  CHECK(rcvr.value_.index() == 1);
+  CHECK(std::get<1>(rcvr.value_) == 42);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//                                                                any.storage
+
 struct empty_vtable_t {
  private:
   template <class T>
@@ -208,6 +230,9 @@ TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any
   CHECK(__any::__get_object_pointer(s2) == nullptr);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//                                                                any_sender
+
 template <class... Ts>
 using any_sender_of =
   typename any_receiver_ref<completion_signatures<Ts...>>::template any_sender<>;
@@ -267,6 +292,107 @@ TEST_CASE("sync_wait returns value and exception", "[types][any_sender]") {
   CHECK_THROWS_AS(sync_wait(std::move(sender)), int);
 }
 
+TEST_CASE("any_sender is connectable with any_receiver_ref", "[types][any_sender]") {
+  using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
+  using receiver_ref = any_receiver_ref<Sigs>;
+  using sender = receiver_ref::any_sender<>;
+  REQUIRE(receiver_of<receiver_ref, Sigs>);
+  sender sndr = just_stopped();
+  {
+    sink_receiver rcvr{};
+    receiver_ref ref = rcvr;
+    auto op = connect(std::move(sndr), std::move(ref));
+    CHECK(rcvr.value_.index() == 0);
+    start(op);
+    CHECK(rcvr.value_.index() == 3);
+  }
+  sndr = just(42);
+  {
+    sink_receiver rcvr{};
+    receiver_ref ref = rcvr;
+    auto op = connect(std::move(sndr), std::move(ref));
+    CHECK(rcvr.value_.index() == 0);
+    start(op);
+    CHECK(rcvr.value_.index() == 1);
+  }
+  sndr = when_any(just(42));
+  {
+    sink_receiver rcvr{};
+    receiver_ref ref = rcvr;
+    auto op = connect(std::move(sndr), std::move(ref));
+    CHECK(rcvr.value_.index() == 0);
+    start(op);
+    CHECK(rcvr.value_.index() == 1);
+  }
+}
+
+struct stopped_receiver_base {
+  in_place_stop_token stop_token_{};
+};
+
+struct stopped_receiver_env {
+  const stopped_receiver_base* receiver_;
+
+  friend in_place_stop_token
+    tag_invoke(get_stop_token_t, const stopped_receiver_env& env) noexcept {
+    return env.receiver_->stop_token_;
+  }
+};
+
+struct stopped_receiver : stopped_receiver_base {
+  stopped_receiver(in_place_stop_token token, bool expect_stop)
+    : stopped_receiver_base{token}
+    , expect_stop_{expect_stop} {
+  }
+
+  bool expect_stop_{false};
+
+  template <class... Args>
+  friend void tag_invoke(set_value_t, const stopped_receiver& r, Args&&...) noexcept {
+    CHECK(!r.expect_stop_);
+  }
+
+  friend void tag_invoke(set_stopped_t, const stopped_receiver& r) noexcept {
+    CHECK(r.expect_stop_);
+  }
+
+  friend stopped_receiver_env tag_invoke(get_env_t, const stopped_receiver& r) noexcept {
+    return {&r};
+  }
+};
+
+static_assert(
+  receiver_of<stopped_receiver, completion_signatures<set_value_t(int), set_stopped_t()>>);
+
+TEST_CASE("any_sender does not connect with stop token", "[types][any_sender]") {
+  using unstoppable_sender = any_sender_of<set_value_t(int), set_stopped_t()>;
+  unstoppable_sender sender = when_any(just(21));
+  in_place_stop_source stop_source{};
+  stopped_receiver receiver{stop_source.get_token(), false};
+  stop_source.request_stop();
+  auto do_check = connect(std::move(sender), std::move(receiver));
+  // This CHECKS whether set_value is called
+  start(do_check);
+}
+
+TEST_CASE(
+  "any_sender does connect with stop token if the get_stop_token query is registered",
+  "[types][any_sender]") {
+  using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
+  using receiver_ref = any_receiver_ref<Sigs, get_stop_token.signature<in_place_stop_token()>>;
+  using stoppable_sender = receiver_ref::any_sender<>;
+  stoppable_sender sender = when_any(just(21));
+  in_place_stop_source stop_source{};
+  stopped_receiver receiver{stop_source.get_token(), true};
+  stop_source.request_stop();
+  auto do_check = connect(std::move(sender), std::move(receiver));
+  // This CHECKS whether a set_stopped is called
+  start(do_check);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//                                                                any_scheduler
+
 template <auto... Queries>
 using my_scheduler = typename any_sender_of<>::any_scheduler<Queries...>;
 
@@ -310,11 +436,22 @@ TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]"
   CHECK(called);
 }
 
-TEST_CASE("any_scheduler adds set_value_t() completion sig (empty)", "[types][any_sender]") {
+TEST_CASE("any_scheduler adds set_value_t() completion sig", "[types][any_scheduler][any_sender]") {
   using scheduler_t = any_sender_of<>::any_scheduler<>;
   using schedule_t = decltype(schedule(std::declval<scheduler_t>()));
   CHECK(
     std::is_same_v<completion_signatures_of_t<schedule_t>, completion_signatures<set_value_t()>>);
+  CHECK(scheduler<scheduler_t>);
+}
+
+TEST_CASE(
+  "any_scheduler uniquely adds set_value_t() completion sig",
+  "[types][any_scheduler][any_sender]") {
+  using scheduler_t = any_sender_of<set_value_t()>::any_scheduler<>;
+  using schedule_t = decltype(schedule(std::declval<scheduler_t>()));
+  CHECK(
+    std::is_same_v<completion_signatures_of_t<schedule_t>, completion_signatures<set_value_t()>>);
+  CHECK(scheduler<scheduler_t>);
 }
 
 TEST_CASE(
@@ -326,11 +463,15 @@ TEST_CASE(
   CHECK(sender_of<schedule_t, set_error_t(std::exception_ptr)>);
 }
 
-TEST_CASE("any_scheduler adds uniquely set_value_t() completion sig", "[types][any_sender]") {
-  using scheduler_t = any_sender_of<set_value_t()>::any_scheduler<>;
-  using schedule_t = decltype(schedule(std::declval<scheduler_t>()));
-  CHECK(
-    std::is_same_v<completion_signatures_of_t<schedule_t>, completion_signatures<set_value_t()>>);
+TEST_CASE(
+  "User-defined completion_scheduler<set_value_t> is ignored",
+  "[types][any_scheduler][any_sender]") {
+  using not_scheduler_t =                                                 //
+    any_receiver_ref<completion_signatures<set_value_t()>>                //
+    ::any_sender<get_completion_scheduler<set_value_t>.signature<void()>> //
+    ::any_scheduler<>;
+  CHECK(scheduler<not_scheduler_t>);
+  CHECK(std::is_same_v<get_completion_scheduler_t<set_value_t>, not_scheduler_t>);
 }
 
 template <auto... Queries>
