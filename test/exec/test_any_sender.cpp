@@ -471,7 +471,6 @@ TEST_CASE(
     ::any_sender<get_completion_scheduler<set_value_t>.signature<void()>> //
     ::any_scheduler<>;
   CHECK(scheduler<not_scheduler_t>);
-  CHECK(std::is_same_v<get_completion_scheduler_t<set_value_t>, not_scheduler_t>);
 }
 
 template <auto... Queries>

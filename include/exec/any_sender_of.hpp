@@ -857,9 +857,27 @@ namespace exec {
           _Completions,
           stdexec::completion_signatures<stdexec::set_value_t()>>;
         using __schedule_receiver = any_receiver_ref<__schedule_completions, _ReceiverQueries...>;
-        using __schedule_sender = typename __schedule_receiver::template any_sender<
-          stdexec::get_completion_scheduler<stdexec::set_value_t>.template signature<any_scheduler() noexcept>,
-          _SenderQueries...>;
+
+        template <typename _Tag, typename _Sig>
+        static _Tag __ret_fn(_Tag (*const)(_Sig));
+
+        template <class _Tag>
+        struct __ret_equals_to {
+          template <class _Sig>
+          using __f = std::is_same<_Tag, decltype(__ret_fn((_Sig) nullptr))>;
+        };
+
+        using schedule_sender_queries = stdexec::__minvoke<
+          stdexec::__remove_if<
+            __ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>>,
+          decltype(_SenderQueries)...>;
+
+        template <class... _Queries>
+        using __schedule_sender_fn = typename __schedule_receiver::template any_sender<
+          stdexec::get_completion_scheduler<stdexec::set_value_t>.template signature<any_scheduler() noexcept>>;
+        using __schedule_sender =
+          stdexec::__mapply<stdexec::__q<__schedule_sender_fn>, schedule_sender_queries>;
+
         using __scheduler_base =
           __any::__scheduler<__schedule_sender, queries<_SchedulerQueries...>>;
 

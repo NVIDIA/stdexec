@@ -402,6 +402,15 @@ namespace stdexec {
         __if<std::is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
   };
 
+  template <class _Pred, class _Continuation = __q<__types>>
+  struct __remove_if {
+    template <class... _Args>
+    using __f = //
+      __minvoke<
+        __mconcat<_Continuation>,
+        __if<__minvoke<_Pred, _Args>, __types<>, __types<_Args>>...>;
+  };
+
   template <class _Return>
   struct __qf {
     template <class... _Args>
