@@ -37,54 +37,58 @@ struct tag_t : stdexec::__query<::tag_t> {
 inline constexpr ::tag_t tag;
 
 struct env {
-  int value_{42};
+  const void* object_{nullptr};
 
-  friend int tag_invoke(::tag_t, env e) noexcept {
-    return e.value_;
+  friend const void* tag_invoke(::tag_t, env e) noexcept {
+    return e.object_;
   }
 };
 
 struct sink_receiver {
-  int value_{42};
+  std::variant<int, std::exception_ptr, set_stopped_t> value_{0};
 
-  template <class... Ts>
-  friend void tag_invoke(set_value_t, sink_receiver&&, Ts&&...) noexcept {
+  friend void tag_invoke(set_value_t, sink_receiver&&, int value) noexcept {
   }
 
-  template <class Err>
-  friend void tag_invoke(set_value_t, sink_receiver&&, Err&&) noexcept {
+  friend void tag_invoke(set_value_t, sink_receiver&&, std::exception_ptr e) noexcept {
   }
 
   friend void tag_invoke(set_stopped_t, sink_receiver&&) noexcept {
   }
 
   friend env tag_invoke(get_env_t, const sink_receiver& r) noexcept {
-    return {r.value_};
+    return {static_cast<const void*>(&r)};
   }
 };
 
 TEST_CASE("any_receiver_ref is constructible from receivers", "[types][any_sender]") {
-  using Sigs = completion_signatures<set_value_t()>;
+  using Sigs = completion_signatures<set_value_t(int)>;
   sink_receiver rcvr;
   any_receiver_ref<Sigs> ref{rcvr};
   CHECK(receiver<decltype(ref)>);
   CHECK(receiver_of<decltype(ref), Sigs>);
-  CHECK(!receiver_of<decltype(ref), completion_signatures<set_value_t(int)>>);
+  CHECK(!receiver_of<decltype(ref), completion_signatures<set_value_t()>>);
   CHECK(std::is_copy_assignable_v<any_receiver_ref<Sigs>>);
+  CHECK(std::is_constructible_v<any_receiver_ref<Sigs>, const sink_receiver&>);
+  CHECK(!std::is_constructible_v<any_receiver_ref<Sigs>, sink_receiver&&>);
+  CHECK(!std::is_constructible_v<
+        any_receiver_ref<completion_signatures<set_value_t()>>,
+        const sink_receiver&>);
 }
 
 TEST_CASE("any_receiver_ref is queryable", "[types][any_sender]") {
-  using Sigs = completion_signatures<set_value_t()>;
-  sink_receiver rcvr;
-  any_receiver_ref<Sigs, tag.signature<int()>> ref{rcvr};
-  CHECK(tag(get_env(ref)) == 42);
+  using Sigs = completion_signatures<set_value_t(int)>;
+  using receiver_ref = any_receiver_ref<Sigs, tag.signature<const void*()>>;
+  sink_receiver rcvr{};
+  receiver_ref ref{rcvr};
+  CHECK(tag(get_env(ref)) == &rcvr);
   {
-    any_receiver_ref<Sigs, tag.signature<int()>> copied_ref{rcvr};
+    receiver_ref copied_ref{rcvr};
     ref = copied_ref;
-    CHECK(tag(get_env(copied_ref)) == 42);
-    CHECK(tag(get_env(ref)) == 42);
+    CHECK(tag(get_env(copied_ref)) == &rcvr);
+    CHECK(tag(get_env(ref)) == &rcvr);
   }
-  CHECK(tag(get_env(ref)) == 42);
+  CHECK(tag(get_env(ref)) == &rcvr);
 }
 
 struct empty_vtable_t {
@@ -164,30 +168,6 @@ TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any
   CHECK(__any::__get_object_pointer(s2) == nullptr);
 }
 
-TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
-  using Sigs = completion_signatures<set_value_t()>;
-  sink_receiver rcvr;
-  __any::__copyable_storage_t<__t<__any::__rec::__vtable<Sigs, decltype(tag.signature<int()>)>>>
-    vtable_holder(rcvr);
-  REQUIRE(__any::__get_vtable(vtable_holder));
-  REQUIRE(__any::__get_object_pointer(vtable_holder));
-
-  CHECK(
-    (*__any::__get_vtable(vtable_holder))(tag, __any::__get_object_pointer(vtable_holder)) == 42);
-
-  auto vtable2 = vtable_holder;
-  REQUIRE(__any::__get_vtable(vtable2));
-  REQUIRE(__any::__get_object_pointer(vtable2));
-  CHECK(
-    (*__any::__get_vtable(vtable_holder))(tag, __any::__get_object_pointer(vtable_holder)) == 42);
-  CHECK((*__any::__get_vtable(vtable2))(tag, __any::__get_object_pointer(vtable2)) == 42);
-
-  CHECK(__any::__get_object_pointer(vtable2) != __any::__get_object_pointer(vtable_holder));
-  CHECK(__any::__get_vtable(vtable2) == __any::__get_vtable(vtable_holder));
-
-  // CHECK(tag{}(get_env(ref)) == 42);
-}
-
 template <class... Ts>
 using any_sender_of =
   typename any_receiver_ref<completion_signatures<Ts...>>::template any_sender<>;
@@ -232,7 +212,7 @@ TEST_CASE("sync_wait returns value and exception", "[types][any_sender]") {
 }
 
 template <auto... Queries>
-using my_scheduler = any_scheduler<any_sender_of<>, Queries...>;
+using my_scheduler = typename any_sender_of<>::any_scheduler<Queries...>;
 
 TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
   static_assert(scheduler<my_scheduler<>>);

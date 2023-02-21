@@ -799,6 +799,7 @@ namespace exec {
   template <class _Completions, auto... _ReceiverQueries>
   class any_receiver_ref {
     using __receiver_base = __any::__rec::__ref<_Completions, decltype(_ReceiverQueries)...>;
+    using __env_t = stdexec::env_of_t<__receiver_base>;
     __receiver_base __receiver_;
 
     template <class _Tag, stdexec::__decays_to<any_receiver_ref> Self, class... _As>
@@ -811,11 +812,12 @@ namespace exec {
    public:
     using is_receiver = void;
 
-    template <class _Receiver>
-      requires(!stdexec::__decays_to<_Receiver, any_receiver_ref> && stdexec::receiver<_Receiver>)
-    any_receiver_ref(_Receiver&& __receiver) noexcept(
+    template <stdexec::__none_of<any_receiver_ref, const any_receiver_ref, __env_t, const __env_t>
+                _Receiver>
+      requires stdexec::receiver_of<_Receiver, _Completions>
+    any_receiver_ref(_Receiver& __receiver) noexcept(
       std::is_nothrow_constructible_v<__receiver_base, _Receiver>)
-      : __receiver_((_Receiver&&) __receiver) {
+      : __receiver_(__receiver) {
     }
 
     template <auto... _SenderQueries>
