@@ -24,7 +24,7 @@ namespace ex = stdexec;
 struct immovable {
   immovable() = default;
 
-  private:
+ private:
   STDEXEC_IMMOVABLE(immovable);
 };
 
@@ -40,7 +40,7 @@ struct movable {
   int value() {
     return value_;
   } // silence warning of unused private field
-  private:
+ private:
   int value_;
 };
 

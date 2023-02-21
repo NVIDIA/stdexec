@@ -47,7 +47,7 @@ namespace stdexec {
         this->__execute_(this);
       }
 
-  protected:
+     protected:
       using __execute_fn_t = void(__in_place_stop_callback_base*) noexcept;
 
       explicit __in_place_stop_callback_base( //
@@ -82,7 +82,7 @@ namespace stdexec {
         }
       }
 
-  private:
+     private:
       static constexpr uint32_t __yield_threshold_ = 20;
       uint32_t __count_ = 0;
     };
@@ -93,12 +93,12 @@ namespace stdexec {
 
   // [stoptoken.never], class never_stop_token
   struct never_stop_token {
-private:
+   private:
     struct __callback_type {
       explicit __callback_type(never_stop_token, auto&&) noexcept {
       }
     };
-public:
+   public:
     template <class>
     using callback_type = __callback_type;
 
@@ -118,7 +118,7 @@ public:
 
   // [stopsource.inplace], class in_place_stop_source
   class in_place_stop_source {
-public:
+   public:
     in_place_stop_source() noexcept = default;
     ~in_place_stop_source();
     in_place_stop_source(in_place_stop_source&&) = delete;
@@ -131,7 +131,7 @@ public:
       return (__state_.load(std::memory_order_acquire) & __stop_requested_flag_) != 0;
     }
 
-private:
+   private:
     friend in_place_stop_token;
     friend __stok::__in_place_stop_callback_base;
     template <class>
@@ -156,7 +156,7 @@ private:
 
   // [stoptoken.inplace], class in_place_stop_token
   class in_place_stop_token {
-public:
+   public:
     template <class _Fun>
     using callback_type = in_place_stop_callback<_Fun>;
 
@@ -191,7 +191,7 @@ public:
 
     bool operator==(const in_place_stop_token&) const noexcept = default;
 
-private:
+   private:
     friend in_place_stop_source;
     template <class>
     friend class in_place_stop_callback;
@@ -210,7 +210,7 @@ private:
   // [stopcallback.inplace], class template in_place_stop_callback
   template <class _Fun>
   class in_place_stop_callback : __stok::__in_place_stop_callback_base {
-public:
+   public:
     template <class _Fun2>
       requires constructible_from<_Fun, _Fun2>
     explicit in_place_stop_callback(
@@ -229,7 +229,7 @@ public:
         __source_->__remove_callback_(this);
     }
 
-private:
+   private:
     static void __execute_impl_(__stok::__in_place_stop_callback_base* cb) noexcept {
       std::move(static_cast<in_place_stop_callback*>(cb)->__fun_)();
     }

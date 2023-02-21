@@ -362,7 +362,7 @@ class result_dumper_t {
     }
   }
 
-  public:
+ public:
   result_dumper_t(bool write_results, fields_accessor accessor)
     : write_results_(write_results)
     , accessor_(accessor) {
@@ -384,7 +384,7 @@ inline result_dumper_t dump_vtk(bool write_results, fields_accessor accessor) {
 class time_storage_t {
   std::unique_ptr<float, deleter_t> time_{};
 
-  public:
+ public:
   explicit time_storage_t(bool gpu)
     : time_(allocate_on<float>(gpu)) {
   }

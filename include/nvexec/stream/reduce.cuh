@@ -78,7 +78,7 @@ namespace nvexec {
           Fun f_;
           operation_state_base_t<ReceiverId>& op_state_;
 
-      public:
+         public:
           using __id = receiver_t;
 
           constexpr static std::size_t memory_allocation_size = max_result_size::value;

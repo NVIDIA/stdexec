@@ -42,7 +42,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         SharedState& sh_state_;
 
-    public:
+       public:
         using __id = receiver_t;
 
         template <
@@ -220,7 +220,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         on_stop on_stop_{};
         std::shared_ptr<sh_state_t<Sender>> shared_state_;
 
-    public:
+       public:
         __t(Receiver&& rcvr, std::shared_ptr<sh_state_t<Sender>> shared_state) //
           noexcept(std::is_nothrow_move_constructible_v<Receiver>)
           : operation_base_t{nullptr, notify}
