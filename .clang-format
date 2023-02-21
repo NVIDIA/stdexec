@@ -116,7 +116,6 @@ SpaceBeforeParensOptions:
   AfterControlStatements: true
   AfterForeachMacros: false
   AfterFunctionDeclarationName: false
-  AfterFunctionDeclarationName: false
   AfterFunctionDefinitionName: false
   AfterIfMacros: false
   AfterOverloadedOperator: false
