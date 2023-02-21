@@ -37,12 +37,16 @@ struct tag_t : stdexec::__query<::tag_t> {
 inline constexpr ::tag_t tag;
 
 struct env {
-  friend int tag_invoke(::tag_t, env) noexcept {
-    return 42;
+  int value_{42};
+
+  friend int tag_invoke(::tag_t, env e) noexcept {
+    return e.value_;
   }
 };
 
 struct sink_receiver {
+  int value_{42};
+
   template <class... Ts>
   friend void tag_invoke(set_value_t, sink_receiver&&, Ts&&...) noexcept {
   }
@@ -54,28 +58,28 @@ struct sink_receiver {
   friend void tag_invoke(set_stopped_t, sink_receiver&&) noexcept {
   }
 
-  friend env tag_invoke(get_env_t, const sink_receiver&) noexcept {
-    return {};
+  friend env tag_invoke(get_env_t, const sink_receiver& r) noexcept {
+    return {r.value_};
   }
 };
 
-TEST_CASE("any_receiver is constructible from receivers", "[types][any_sender]") {
+TEST_CASE("any_receiver_ref is constructible from receivers", "[types][any_sender]") {
   using Sigs = completion_signatures<set_value_t()>;
   sink_receiver rcvr;
-  any_receiver<Sigs> ref{rcvr};
+  any_receiver_ref<Sigs> ref{rcvr};
   CHECK(receiver<decltype(ref)>);
   CHECK(receiver_of<decltype(ref), Sigs>);
   CHECK(!receiver_of<decltype(ref), completion_signatures<set_value_t(int)>>);
-  CHECK(std::is_copy_assignable_v<any_receiver<Sigs>>);
+  CHECK(std::is_copy_assignable_v<any_receiver_ref<Sigs>>);
 }
 
-TEST_CASE("any_receiver is queryable", "[types][any_sender]") {
+TEST_CASE("any_receiver_ref is queryable", "[types][any_sender]") {
   using Sigs = completion_signatures<set_value_t()>;
   sink_receiver rcvr;
-  any_receiver<Sigs, tag.signature<int()>> ref{rcvr};
+  any_receiver_ref<Sigs, tag.signature<int()>> ref{rcvr};
   CHECK(tag(get_env(ref)) == 42);
   {
-    any_receiver<Sigs, tag.signature<int()>> copied_ref{rcvr};
+    any_receiver_ref<Sigs, tag.signature<int()>> copied_ref{rcvr};
     ref = copied_ref;
     CHECK(tag(get_env(copied_ref)) == 42);
     CHECK(tag(get_env(ref)) == 42);
@@ -185,7 +189,8 @@ TEST_CASE("any receiver copyable storage", "[types][any_sender]") {
 }
 
 template <class... Ts>
-using any_sender_of = typename any_receiver<completion_signatures<Ts...>>::template any_sender<>;
+using any_sender_of =
+  typename any_receiver_ref<completion_signatures<Ts...>>::template any_sender<>;
 
 TEST_CASE("any sender is a sender", "[types][any_sender]") {
   any_sender_of<set_value_t()> sender = just();

@@ -797,11 +797,11 @@ namespace exec {
   using queries = stdexec::__types<decltype(_Sigs)...>;
 
   template <class _Completions, auto... _ReceiverQueries>
-  class any_receiver {
+  class any_receiver_ref {
     using __receiver_base = __any::__rec::__ref<_Completions, decltype(_ReceiverQueries)...>;
     __receiver_base __receiver_;
 
-    template <class _Tag, stdexec::__decays_to<any_receiver> Self, class... _As>
+    template <class _Tag, stdexec::__decays_to<any_receiver_ref> Self, class... _As>
       requires stdexec::tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __receiver_base>, _As...>
     friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
       std::is_nothrow_invocable_v< _Tag, stdexec::__copy_cvref_t<Self, __receiver_base>, _As...>) {
@@ -812,8 +812,8 @@ public:
     using is_receiver = void;
 
     template <class _Receiver>
-      requires(!stdexec::__decays_to<_Receiver, any_receiver> && stdexec::receiver<_Receiver>)
-    any_receiver(_Receiver&& __receiver) noexcept(
+      requires(!stdexec::__decays_to<_Receiver, any_receiver_ref> && stdexec::receiver<_Receiver>)
+    any_receiver_ref(_Receiver&& __receiver) noexcept(
       std::is_nothrow_constructible_v<__receiver_base, _Receiver>)
       : __receiver_((_Receiver&&) __receiver) {
     }
@@ -846,7 +846,7 @@ public:
         using __schedule_completions = stdexec::__concat_completion_signatures_t<
           _Completions,
           stdexec::completion_signatures<stdexec::set_value_t()>>;
-        using __schedule_receiver = any_receiver<__schedule_completions, _ReceiverQueries...>;
+        using __schedule_receiver = any_receiver_ref<__schedule_completions, _ReceiverQueries...>;
         using __schedule_sender = typename __schedule_receiver::template any_sender<
           stdexec::get_completion_scheduler<stdexec::set_value_t>.template signature<any_scheduler() noexcept>,
           _SenderQueries...>;
