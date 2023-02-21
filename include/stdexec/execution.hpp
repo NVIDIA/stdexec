@@ -4634,7 +4634,8 @@ namespace stdexec {
           start(__op_state.__state1_);
         }
 
-        void __complete() noexcept try {
+        void __complete() noexcept {
+          STDEXEC_ASSERT(!__data_.valueless_by_exception());
           std::visit(
             [&]<class _Tup>(_Tup& __tupl) -> void {
               if constexpr (same_as<_Tup, std::monostate>) {
@@ -4642,15 +4643,13 @@ namespace stdexec {
               } else {
                 std::apply(
                   [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
-                    __tag((_Receiver&&) __rcvr_, (_Args&&) __args...);
+                    __try_call(
+                      (_Receiver &&) __rcvr_, __tag, (_Receiver &&) __rcvr_, (_Args &&) __args...);
                   },
                   __tupl);
               }
             },
             __data_);
-        } catch (...) {
-
-          set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
       };
     };
