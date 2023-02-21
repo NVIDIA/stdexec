@@ -34,7 +34,7 @@ struct tag_t : stdexec::__query<::tag_t> {
   }
 };
 
-inline constexpr ::tag_t tag;
+inline constexpr ::tag_t get_address;
 
 struct env {
   const void* object_{nullptr};
@@ -45,15 +45,18 @@ struct env {
 };
 
 struct sink_receiver {
-  std::variant<int, std::exception_ptr, set_stopped_t> value_{0};
+  std::variant<std::monostate, int, std::exception_ptr, set_stopped_t> value_{};
 
-  friend void tag_invoke(set_value_t, sink_receiver&&, int value) noexcept {
+  friend void tag_invoke(set_value_t, sink_receiver&& r, int value) noexcept {
+    r.value_ = value;
   }
 
-  friend void tag_invoke(set_value_t, sink_receiver&&, std::exception_ptr e) noexcept {
+  friend void tag_invoke(set_error_t, sink_receiver&& r, std::exception_ptr e) noexcept {
+    r.value_ = e;
   }
 
-  friend void tag_invoke(set_stopped_t, sink_receiver&&) noexcept {
+  friend void tag_invoke(set_stopped_t, sink_receiver&& r) noexcept {
+    r.value_ = set_stopped;
   }
 
   friend env tag_invoke(get_env_t, const sink_receiver& r) noexcept {
@@ -78,17 +81,54 @@ TEST_CASE("any_receiver_ref is constructible from receivers", "[types][any_sende
 
 TEST_CASE("any_receiver_ref is queryable", "[types][any_sender]") {
   using Sigs = completion_signatures<set_value_t(int)>;
-  using receiver_ref = any_receiver_ref<Sigs, tag.signature<const void*()>>;
-  sink_receiver rcvr{};
-  receiver_ref ref{rcvr};
-  CHECK(tag(get_env(ref)) == &rcvr);
+  using receiver_ref = any_receiver_ref<Sigs, get_address.signature<const void*()>>;
+  sink_receiver rcvr1{};
+  sink_receiver rcvr2{};
+  receiver_ref ref1{rcvr1};
+  receiver_ref ref2{rcvr2};
+  CHECK(get_address(get_env(ref1)) == &rcvr1);
+  CHECK(get_address(get_env(ref2)) == &rcvr2);
   {
-    receiver_ref copied_ref{rcvr};
-    ref = copied_ref;
-    CHECK(tag(get_env(copied_ref)) == &rcvr);
-    CHECK(tag(get_env(ref)) == &rcvr);
+    receiver_ref copied_ref = ref2;
+    CHECK(get_address(get_env(copied_ref)) != &ref2);
+    CHECK(get_address(get_env(copied_ref)) == &rcvr2);
+    ref1 = copied_ref;
+    CHECK(get_address(get_env(ref1)) != &rcvr1);
+    CHECK(get_address(get_env(ref1)) != &copied_ref);
+    CHECK(get_address(get_env(ref1)) == &rcvr2);
+    copied_ref = rcvr1;
+    CHECK(get_address(get_env(ref1)) == &rcvr2);
+    CHECK(get_address(get_env(copied_ref)) == &rcvr1);
   }
-  CHECK(tag(get_env(ref)) == &rcvr);
+  CHECK(get_address(get_env(ref1)) == &rcvr2);
+}
+
+TEST_CASE("any_receiver_ref calls receiver methods", "[types][any_sender]") {
+  using Sigs =
+    completion_signatures<set_value_t(int), set_error_t(std::exception_ptr), set_stopped_t()>;
+  using receiver_ref = any_receiver_ref<Sigs>;
+  REQUIRE(receiver_of<receiver_ref, Sigs>);
+  sink_receiver value{};
+  sink_receiver error{};
+  sink_receiver stopped{};
+
+  // Check set value
+  CHECK(value.value_.index() == 0);
+  receiver_ref ref = value;
+  set_value((receiver_ref&&) ref, 42);
+  CHECK(value.value_.index() == 1);
+  CHECK(std::get<1>(value.value_) == 42);
+  // Check set error
+  CHECK(error.value_.index() == 0);
+  ref = error;
+  set_error((receiver_ref&&) ref, std::make_exception_ptr(42));
+  CHECK(error.value_.index() == 2);
+  CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
+  // Check set stopped
+  CHECK(stopped.value_.index() == 0);
+  ref = stopped;
+  set_stopped((receiver_ref&&) ref);
+  CHECK(stopped.value_.index() == 3);
 }
 
 struct empty_vtable_t {
