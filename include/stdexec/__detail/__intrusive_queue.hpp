@@ -29,7 +29,7 @@ namespace stdexec {
 
     template <class _Item, _Item* _Item::*_Next>
     class __intrusive_queue<_Next> {
-  public:
+     public:
       __intrusive_queue() noexcept = default;
 
       __intrusive_queue(__intrusive_queue&& __other) noexcept
@@ -125,7 +125,7 @@ namespace stdexec {
         __other.__head_ = nullptr;
       }
 
-  private:
+     private:
       _Item* __head_ = nullptr;
       _Item* __tail_ = nullptr;
     };

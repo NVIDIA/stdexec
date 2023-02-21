@@ -266,7 +266,7 @@ namespace nvexec {
         queue::task_base_t* task_;
         queue::producer_t producer_;
 
-    public:
+       public:
         using __id = stream_enqueue_receiver;
 
         template <

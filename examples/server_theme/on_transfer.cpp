@@ -48,10 +48,10 @@
 namespace ex = stdexec;
 
 struct sync_stream {
-  private:
+ private:
   static std::mutex s_mtx_;
 
-  public:
+ public:
   std::ostream& sout_;
   std::unique_lock<std::mutex> lock_{s_mtx_};
 

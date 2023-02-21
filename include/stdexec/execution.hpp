@@ -741,11 +741,11 @@ namespace stdexec {
   // enforces that at compile time.
   template <class _Sender, class _Env>
   struct __checked_completion_signatures {
-private:
+   private:
     using _WithEnv = __completion_signatures_of_t<_Sender, _Env>;
     using _WithoutEnv = __completion_signatures_of_t<_Sender, no_env>;
     static_assert(__one_of< _WithoutEnv, _WithEnv, dependent_completion_signatures<no_env>>);
-public:
+   public:
     using __t = _WithEnv;
   };
 
@@ -1357,7 +1357,7 @@ public:
     using __operation_t = __t<__operation<__id<_Receiver>>>;
 
     struct __connect_awaitable_t {
-  private:
+     private:
       template <class _Awaitable, class _Receiver>
       static __operation_t<_Receiver> __co_impl(_Awaitable __await, _Receiver __rcvr) {
         using __result_t = __await_result_t<_Awaitable, __promise_t<_Receiver>>;
@@ -1397,7 +1397,7 @@ public:
           set_error_t(std::exception_ptr),
           set_stopped_t()>;
 
-  public:
+     public:
       template <class _Receiver, __awaitable<__promise_t<_Receiver>> _Awaitable>
         requires receiver_of<_Receiver, __completions_t<_Receiver, _Awaitable>>
       __operation_t<_Receiver> operator()(_Awaitable&& __await, _Receiver __rcvr) const {
@@ -1812,7 +1812,7 @@ public:
         std::terminate();
       }
 
-  protected:
+     protected:
       __expected_t<_Value> __result_;
     };
 
@@ -1835,7 +1835,7 @@ public:
         void await_suspend(__coro::coroutine_handle<_Promise>) noexcept {
           start(__op_state_);
         }
-    private:
+       private:
         using __receiver = __receiver_t<_Sender, _Promise>;
         connect_result_t<_Sender, __receiver> __op_state_;
       };
@@ -1902,7 +1902,7 @@ public:
 
     template <>
     class __continuation_handle<void> {
-  public:
+     public:
       __continuation_handle() = default;
 
       template <class _Promise>
@@ -1931,7 +1931,7 @@ public:
         return __stopped_callback_(__coro_.address());
       }
 
-  private:
+     private:
       __coro::coroutine_handle<> __coro_{};
       using __stopped_callback_t = __coro::coroutine_handle<> (*)(void*) noexcept;
       __stopped_callback_t __stopped_callback_ = [](void*) noexcept -> __coro::coroutine_handle<> {
@@ -1941,7 +1941,7 @@ public:
 
     template <class _Promise>
     class __continuation_handle {
-  public:
+     public:
       __continuation_handle() = default;
 
       __continuation_handle(__coro::coroutine_handle<_Promise> __coro) noexcept
@@ -1956,7 +1956,7 @@ public:
         return __continuation_.unhandled_stopped();
       }
 
-  private:
+     private:
       __continuation_handle<> __continuation_{};
     };
 
@@ -1979,7 +1979,7 @@ public:
         return __continuation_.unhandled_stopped();
       }
 
-  private:
+     private:
       __continuation_handle<> __continuation_{};
     };
 
@@ -2440,10 +2440,10 @@ public:
           : __base_((_T1&&) __base) {
         }
 
-    private:
+       private:
         [[no_unique_address]] _Base __base_;
 
-    protected:
+       protected:
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           _Base&
           base() & noexcept {
@@ -2597,7 +2597,7 @@ public:
           return stdexec::get_env(__get_base(__self));
         }
 
-    public:
+       public:
         __t() = default;
         using __adaptor_base<_Base>::__adaptor_base;
 
@@ -3120,7 +3120,7 @@ public:
           }
         }
 
-    public:
+       public:
         using __id = __receiver;
 
         explicit __t(_Receiver __rcvr, _Shape __shape, _Fun __fun)
@@ -3270,7 +3270,7 @@ public:
       class __t {
         stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __sh_state_;
 
-    public:
+       public:
         using __id = __receiver;
 
         template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
@@ -3383,7 +3383,7 @@ public:
         __on_stop __on_stop_{};
         std::shared_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state_;
 
-    public:
+       public:
         using __id = __operation;
 
         __t(                                                                                //
@@ -3470,7 +3470,7 @@ public:
             std::make_shared<__sh_state_>((_CvrefSender&&) __sndr, (_Env&&) __env)} {
         }
 
-    private:
+       private:
         using __sh_state_ = stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>;
 
         template <class... _Tys>
@@ -3578,7 +3578,7 @@ public:
       class __t {
         __intrusive_ptr<stdexec::__t<__sh_state<_SenderId, _EnvId>>> __shared_state_;
 
-    public:
+       public:
         using __id = __receiver;
 
         explicit __t(stdexec::__t<__sh_state<_SenderId, _EnvId>>& __shared_state) noexcept
@@ -3694,7 +3694,7 @@ public:
         __on_stop __on_stop_{};
         __intrusive_ptr<stdexec::__t<__sh_state<_SenderId, _EnvId>>> __shared_state_;
 
-    public:
+       public:
         using __id = __operation;
 
         __t(                                                                           //
@@ -3790,7 +3790,7 @@ public:
         // Move-only:
         __t(__t&&) = default;
 
-    private:
+       private:
         using __sh_state_ = stdexec::__t<__sh_state<_SenderId, _EnvId>>;
         template <class _Receiver>
         using __operation = stdexec::__t<__operation<_SenderId, _EnvId, stdexec::__id<_Receiver>>>;
@@ -4351,13 +4351,13 @@ public:
 
       template <class>
       friend struct __operation;
-  public:
+     public:
       struct __scheduler {
         using __t = __scheduler;
         using __id = __scheduler;
         bool operator==(const __scheduler&) const noexcept = default;
 
-    private:
+       private:
         struct __schedule_task {
           using __t = __schedule_task;
           using __id = __schedule_task;
@@ -4368,7 +4368,7 @@ public:
               set_error_t(std::exception_ptr),
               set_stopped_t()>;
 
-      private:
+         private:
           friend __scheduler;
 
           template <class _Receiver>
@@ -4442,7 +4442,7 @@ public:
 
       void finish();
 
-  private:
+     private:
       void __push_back_(__task* __task);
       __task* __pop_front_();
 
@@ -5040,7 +5040,7 @@ public:
 
       class __t : receiver_adaptor<__t, _Receiver> {
 #if STDEXEC_NON_LEXICAL_FRIENDSHIP
-    public:
+       public:
 #endif
         using _Sender = stdexec::__t<_SenderId>;
         using _Receiver = stdexec::__t<_ReceiverId>;
@@ -5059,7 +5059,7 @@ public:
           stdexec::set_error(((__t&&) *this).base(), std::current_exception());
         }
 
-    public:
+       public:
         using __id = __receiver;
         using receiver_adaptor<__t, _Receiver>::receiver_adaptor;
       };
@@ -5081,7 +5081,7 @@ public:
           : __sndr_((_CvrefSender&&) __sndr) {
         }
 
-    private:
+       private:
         template <class...>
         using __value_t = completion_signatures<>;
 
@@ -5513,7 +5513,7 @@ public:
           : __sndrs_((_Sndrs&&) __sndrs...) {
         }
 
-    private:
+       private:
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(
             sender_to< __cvref_id<_Self, _SenderIds>, __receiver_t<_Self, _Receiver, _Indices>>

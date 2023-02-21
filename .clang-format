@@ -1,6 +1,6 @@
 Language: Cpp
 BasedOnStyle: WebKit
-AccessModifierOffset: -4
+AccessModifierOffset: -1
 AlignAfterOpenBracket: AlwaysBreak
 AlignArrayOfStructures: Right
 AlignConsecutiveAssignments: None

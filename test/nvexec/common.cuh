@@ -45,7 +45,7 @@ template <int N = 1>
 class flags_storage_t {
   int* flags_{};
 
-  public:
+ public:
   class flags_t {
     int* flags_{};
 
@@ -53,7 +53,7 @@ class flags_storage_t {
       : flags_(flags) {
     }
 
-public:
+   public:
     __device__ void set(int idx = 0) const {
       if (idx < N) {
         flags_[idx] += 1;
@@ -139,7 +139,7 @@ namespace detail::a_sender {
       }
     }
 
-public:
+   public:
     explicit receiver_t(Receiver rcvr, Fun fun)
       : stdexec::receiver_adaptor<receiver_t, Receiver>((Receiver&&) rcvr)
       , f_((Fun&&) fun) {

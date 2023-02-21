@@ -92,7 +92,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
   struct when_all_sender_t {
     struct __t : stream_sender_base {
-  private:
+     private:
       struct env {
         context_state_t context_state_;
 
@@ -103,7 +103,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           return Scheduler(self.context_state_);
         }
       };
-  public:
+     public:
       using __id = when_all_sender_t;
 
       template <class... Sndrs>
@@ -112,7 +112,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , sndrs_((Sndrs&&) __sndrs...) {
       }
 
-  private:
+     private:
       env env_;
 
       template <class CvrefEnv>

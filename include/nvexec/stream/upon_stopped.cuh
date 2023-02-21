@@ -48,7 +48,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         Fun f_;
         operation_state_base_t<ReceiverId>& op_state_;
 
-    public:
+       public:
         using __id = receiver_t;
 
         constexpr static std::size_t memory_allocation_size = size_of_<result_t>;

@@ -43,7 +43,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         operation_state_base_t<ReceiverId>& op_state_;
 
-    public:
+       public:
         using __id = receiver_t;
 
         template <class... As>
@@ -182,7 +182,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           return std::make_pair(begin, end);
         }
 
-    public:
+       public:
         using __id = receiver_t;
 
         template <class... As>

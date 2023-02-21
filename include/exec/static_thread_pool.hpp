@@ -43,7 +43,7 @@ namespace exec {
   class static_thread_pool {
     template <typename ReceiverId>
     friend class operation;
-public:
+   public:
     static_thread_pool();
     static_thread_pool(std::uint32_t threadCount);
     ~static_thread_pool();
@@ -53,18 +53,18 @@ public:
       using __id = scheduler;
       bool operator==(const scheduler&) const = default;
 
-  private:
+     private:
       template <typename ReceiverId>
       friend class operation;
 
       class sender {
-    public:
+       public:
         using __t = sender;
         using __id = sender;
         using is_sender = void;
         using completion_signatures =
           stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
-    private:
+       private:
         template <typename Receiver>
         operation<stdexec::__x<std::decay_t<Receiver>>> make_operation_(Receiver&& r) const {
           return operation<stdexec::__x<std::decay_t<Receiver>>>{pool_, (Receiver&&) r};
@@ -444,16 +444,16 @@ public:
       return threadCount_;
     }
 
-private:
+   private:
     class thread_state {
-  public:
+     public:
       task_base* try_pop();
       task_base* pop();
       bool try_push(task_base* task);
       void push(task_base* task);
       void request_stop();
 
-  private:
+     private:
       std::mutex mut_;
       std::condition_variable cv_;
       __intrusive_queue<&task_base::next> queue_;

@@ -107,7 +107,7 @@ class base_expect_receiver {
     return self.env_;
   }
 
-  public:
+ public:
   base_expect_receiver() = default;
 
   ~base_expect_receiver() {
@@ -165,7 +165,7 @@ struct expect_void_receiver_ex {
     : executed_(&executed) {
   }
 
-  private:
+ private:
   bool* executed_;
 
   template <class... Ty>
@@ -219,7 +219,7 @@ struct expect_value_receiver : base_expect_receiver<Env> {
     FAIL_CHECK("set_error called on expect_value_receiver");
   }
 
-  private:
+ private:
   std::tuple<Ts...> values_;
 };
 
@@ -228,7 +228,7 @@ class expect_value_receiver_ex {
   T* dest_;
   Env env_{};
 
-  public:
+ public:
   explicit expect_value_receiver_ex(T& dest)
     : dest_(&dest) {
   }
@@ -293,7 +293,7 @@ struct expect_stopped_receiver_ex {
     , env_(std::move(env)) {
   }
 
-  private:
+ private:
   template <typename... Ts>
   friend void tag_invoke(ex::set_value_t, expect_stopped_receiver_ex&&, Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_stopped_receiver_ex");
@@ -355,7 +355,7 @@ struct expect_error_receiver : base_expect_receiver<Env> {
     return *this;
   }
 
-  private:
+ private:
   std::optional<T> error_;
 
   template <typename... Ts>
@@ -391,7 +391,7 @@ struct expect_error_receiver_ex {
     , env_(std::move(env)) {
   }
 
-  private:
+ private:
   T* value_;
   Env env_{};
 
@@ -423,7 +423,7 @@ struct logging_receiver {
     : state_(&state) {
   }
 
-  private:
+ private:
   int* state_;
 
   template <typename... Args>

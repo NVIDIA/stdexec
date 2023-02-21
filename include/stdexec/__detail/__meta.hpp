@@ -52,7 +52,7 @@ namespace stdexec {
 
   struct __immovable {
     __immovable() = default;
-private:
+   private:
     STDEXEC_IMMOVABLE(__immovable);
   };
 

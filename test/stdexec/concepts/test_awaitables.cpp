@@ -81,21 +81,21 @@ struct awaitable_sender_1 {
 struct awaitable_sender_2 {
   using promise_type = promise<__coro::suspend_always>;
 
-  private:
+ private:
   friend dependent operator co_await(awaitable_sender_2);
 };
 
 struct awaitable_sender_3 {
   using promise_type = promise<awaiter>;
 
-  private:
+ private:
   friend dependent operator co_await(awaitable_sender_3);
 };
 
 struct awaitable_sender_4 {
   using promise_type = promise<__coro::suspend_always>;
 
-  private:
+ private:
   template <class Promise>
   friend awaiter tag_invoke(ex::as_awaitable_t, awaitable_sender_4, Promise&) {
     return {};
@@ -107,7 +107,7 @@ struct awaitable_sender_4 {
 };
 
 struct awaitable_sender_5 {
-  private:
+ private:
   template <class Promise>
   friend awaiter tag_invoke(ex::as_awaitable_t, awaitable_sender_5, Promise&) {
     return {};
