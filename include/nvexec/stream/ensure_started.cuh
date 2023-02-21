@@ -40,7 +40,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         stdexec::__intrusive_ptr<SharedState> shared_state_;
 
-    public:
+       public:
         using __id = receiver_t;
 
         explicit __t(SharedState& shared_state) noexcept
@@ -218,7 +218,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         on_stop on_stop_{};
         stdexec::__intrusive_ptr<sh_state_t<Sender>> shared_state_;
 
-    public:
+       public:
         using __id = operation_t;
 
         __t(Receiver rcvr, stdexec::__intrusive_ptr<sh_state_t<Sender>> shared_state) //

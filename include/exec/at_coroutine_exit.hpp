@@ -120,7 +120,7 @@ namespace exec {
     template <class... _Ts>
     class [[nodiscard]] __task {
       struct __promise;
-  public:
+     public:
       using promise_type = __promise;
 
       explicit __task(__coro::coroutine_handle<__promise> __coro) noexcept
@@ -147,7 +147,7 @@ namespace exec {
         return std::exchange(__coro_, {}).promise().__args_;
       }
 
-  private:
+     private:
       struct __final_awaitable {
         static std::false_type await_ready() noexcept {
           return {};
@@ -210,13 +210,13 @@ namespace exec {
     };
 
     struct __at_coro_exit_t {
-  private:
+     private:
       template <class _Action, class... _Ts>
       static __task<_Ts...> __impl(_Action __action, _Ts... __ts) {
         co_await ((_Action&&) __action)((_Ts&&) __ts...);
       }
 
-  public:
+     public:
       template <class _Action, class... _Ts>
         requires __callable<std::decay_t<_Action>, std::decay_t<_Ts>...>
       __task<_Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {

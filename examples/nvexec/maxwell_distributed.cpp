@@ -197,7 +197,7 @@ namespace distributed {
       }
     }
 
-public:
+   public:
     result_dumper_t(
       bool write_results,
       int rank,

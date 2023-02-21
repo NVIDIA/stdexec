@@ -68,7 +68,7 @@ namespace exec {
         , __op_(connect((_Constrained&&) __sndr, (_Receiver&&) __rcvr)) {
       }
 
-  private:
+     private:
       static void __notify_waiter(__task* __self) noexcept {
         start(static_cast<__when_empty_op*>(__self)->__op_);
       }
@@ -185,7 +185,7 @@ namespace exec {
         : __nest_op_base<_ReceiverId>{{}, __scope, (_Rcvr&&) __rcvr}
         , __op_(connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {
       }
-  private:
+     private:
       void __start_() noexcept {
         STDEXEC_ASSERT(this->__scope_);
         std::unique_lock __guard{this->__scope_->__lock_};
@@ -329,7 +329,7 @@ namespace exec {
       std::unique_ptr<__future_state<_Sender, _Env>> __state_;
       [[no_unique_address]] __forward_consumer __forward_consumer_;
 
-  public:
+     public:
       ~__future_op() noexcept {
         if (__state_ != nullptr) {
           auto __raw_state = __state_.get();
@@ -531,7 +531,7 @@ namespace exec {
       using _Sender = __t<_SenderId>;
       using _Env = __t<_EnvId>;
       friend struct async_scope;
-  public:
+     public:
       using is_sender = void;
 
       __future(__future&&) = default;
@@ -551,7 +551,7 @@ namespace exec {
             __guard, __future_step::__future, __future_step::__no_future);
         }
       }
-  private:
+     private:
       template <class _Self>
       using __completions_t = __future_completions_t<__make_dependent_on<_Sender, _Self>, _Env>;
 
@@ -699,7 +699,7 @@ namespace exec {
         return __impl_.__stop_source_.request_stop();
       }
 
-  private:
+     private:
       __impl __impl_;
     };
   } // namespace __scope

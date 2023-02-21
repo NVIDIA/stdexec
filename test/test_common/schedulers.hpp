@@ -39,7 +39,7 @@ struct scheduler_env {
 //! thread-safety to allow it to be run with `sync_wait` (which makes us not control when the
 //! operation_state object is created and started).
 struct impulse_scheduler {
-  private:
+ private:
   //! Command type that can store the action of firing up a sender
   using oper_command_t = std::function<void()>;
   using cmd_vec_t = std::vector<oper_command_t>;
@@ -98,7 +98,7 @@ struct impulse_scheduler {
     }
   };
 
-  public:
+ public:
   impulse_scheduler()
     : shared_data_(std::make_shared<data>()) {
   }

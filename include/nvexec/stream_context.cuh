@@ -379,7 +379,7 @@ namespace nvexec {
       std::pmr::monotonic_buffer_resource monotonic_resource_{512 * 1024, &underlying_resource_};
       std::pmr::synchronized_pool_resource resource_{&monotonic_resource_};
 
-  public:
+     public:
       std::pmr::memory_resource* get() {
         return &resource_;
       }

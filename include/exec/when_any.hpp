@@ -147,14 +147,14 @@ namespace exec {
     template <class _Receiver, class _ResultVariant>
     struct __receiver {
       class __t {
-    public:
+       public:
         using __id = __receiver;
 
         explicit __t(__op_base<_Receiver, _ResultVariant>* __op) noexcept
           : __op_{__op} {
         }
 
-    private:
+       private:
         __op_base<_Receiver, _ResultVariant>* __op_;
 
         template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO, class... _Args>
@@ -180,7 +180,7 @@ namespace exec {
       using __op_base_t = __op_base<_Receiver, __result_t>;
 
       class __t : __op_base_t {
-    public:
+       public:
         template <class _SenderTuple>
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr) //
           noexcept(
@@ -192,7 +192,7 @@ namespace exec {
             std::index_sequence_for<_SenderIds...>{}} {
         }
 
-    private:
+       private:
         template <class _SenderTuple, std::size_t... _Is>
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr, std::index_sequence<_Is...>) //
           noexcept(
@@ -232,7 +232,7 @@ namespace exec {
       using __op_t = stdexec::__t<__op<__id<decay_t<_Receiver>>, _SenderIds...>>;
 
       class __t {
-    public:
+       public:
         using __id = __sender;
         using is_sender = void;
 
@@ -242,7 +242,7 @@ namespace exec {
           : __senders_((_Senders&&) __senders...) {
         }
 
-    private:
+       private:
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(
             sender_to< __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, __receiver_t<_Receiver>>

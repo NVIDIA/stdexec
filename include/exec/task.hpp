@@ -65,7 +65,7 @@ namespace exec {
         return __self.__stop_token_;
       }
 
-  public:
+     public:
       __default_task_context_impl() = default;
 
       bool stop_requested() const noexcept {
@@ -209,7 +209,7 @@ namespace exec {
     template <class _Ty, class _Context = default_task_context<_Ty>>
     class basic_task {
       struct __promise;
-  public:
+     public:
       using __t = basic_task;
       using __id = basic_task;
       using promise_type = __promise;
@@ -223,7 +223,7 @@ namespace exec {
           __coro_.destroy();
       }
 
-  private:
+     private:
       struct __final_awaitable {
         static std::false_type await_ready() noexcept {
           return {};

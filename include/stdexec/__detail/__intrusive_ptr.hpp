@@ -78,7 +78,7 @@ namespace stdexec {
         }
       }
 
-  public:
+     public:
       __intrusive_ptr() = default;
 
       __intrusive_ptr(__intrusive_ptr&& __that) noexcept

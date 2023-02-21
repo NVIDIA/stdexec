@@ -3,3 +3,6 @@
 
 # Added project-wide .clang-format and reformatted everything
 483f3eb285ac8545d9ff7fdba66e0057407bed4b
+
+# Fixed access modifier offset
+9150f682444f8f45c02bf858b767c1a0db81e548

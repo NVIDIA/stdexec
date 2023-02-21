@@ -42,7 +42,7 @@ class _then_receiver : stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
     stdexec::set_error(std::move(*this).base(), std::current_exception());
   }
 
-  public:
+ public:
   _then_receiver(R r, F f)
     : stdexec::receiver_adaptor<_then_receiver, R>{std::move(r)}
     , f_(std::move(f)) {

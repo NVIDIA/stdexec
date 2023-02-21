@@ -55,7 +55,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
 
     OpT& op_state_;
 
-public:
+   public:
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
     friend void tag_invoke(_Tag __tag, receiver_2_t&& __self, _Args&&... __args) noexcept {
       OpT& op_state = __self.op_state_;
@@ -97,7 +97,7 @@ public:
 
     OpT& op_state_;
 
-public:
+   public:
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
     friend void tag_invoke(_Tag __tag, receiver_1_t&& __self, _Args&&... __args) noexcept {
       OpT& op_state = __self.op_state_;
@@ -189,7 +189,7 @@ class receiver_t {
 
   OpT& op_state_;
 
-  public:
+ public:
   template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
   friend void tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
     __tag(std::move(__self.op_state_.receiver_), (_Args&&) __args...);
