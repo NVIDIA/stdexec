@@ -850,10 +850,6 @@ namespace exec {
         : __sender_((_Sender&&) __sender) {
       }
 
-      explicit operator bool() const noexcept {
-        return bool(__sender_);
-      }
-
       template <auto... _SchedulerQueries>
       class any_scheduler {
         using __schedule_completions = stdexec::__concat_completion_signatures_t<

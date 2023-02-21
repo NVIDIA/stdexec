@@ -246,7 +246,6 @@ TEST_CASE("any sender is a sender", "[types][any_sender]") {
   CHECK(std::is_nothrow_move_assignable_v<any_sender_of<set_value_t()>>);
   CHECK(!std::is_copy_assignable_v<any_sender_of<set_value_t()>>);
   any_sender_of<set_value_t()> sender = just();
-  CHECK(sender);
 }
 
 TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
@@ -255,14 +254,8 @@ TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
   CHECK(std::same_as<
         completion_signatures_of_t<any_sender_of<set_value_t()>>,
         completion_signatures<set_value_t()>>);
-  CHECK(sender);
   sync_wait(std::move(sender));
-  CHECK(sender); // Should this be: CHECK(!sender); ?
   CHECK(value == 42);
-  any_sender_of<set_value_t()> sender2 = std::move(sender);
-  CHECK(sender2);
-  // Do we unconditionally need this even for small trivially copy assignable senders?
-  CHECK(!sender);
 }
 
 TEST_CASE("sync_wait returns value", "[types][any_sender]") {
@@ -270,14 +263,8 @@ TEST_CASE("sync_wait returns value", "[types][any_sender]") {
   CHECK(std::same_as<
         completion_signatures_of_t<any_sender_of<set_value_t(int)>>,
         completion_signatures<set_value_t(int)>>);
-  CHECK(sender);
   auto [value1] = *sync_wait(std::move(sender));
   CHECK(value1 == 42);
-  // uh-oh? this currently works, do we want this? This is a potential footgun
-  // Maybe we reset the internal object pointer if the underlying sender is not trivially copy assignable?
-  CHECK(sender);
-  auto [value2] = *sync_wait(std::move(sender));
-  CHECK(value2 == 42);
 }
 
 template <class... Vals>
