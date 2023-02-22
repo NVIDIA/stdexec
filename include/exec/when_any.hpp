@@ -49,8 +49,13 @@ namespace exec {
     using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Args> && ...)>;
 
     template <class _Env, class... _SenderIds>
-    using __all_value_args_nothrow_decay_copyable =
-      __mand<value_types_of_t<__t<_SenderIds>, _Env, __all_nothrow_decay_copyable, __mand>...>;
+    using __all_value_args_nothrow_decay_copyable = __mand<
+      value_types_of_t<__t<_SenderIds>, _Env, __all_nothrow_decay_copyable, __mand>...,
+      value_types_of_t<
+        __t<_SenderIds>,
+        _Env,
+        __decayed_tuple,
+        __mall_of<__q<std::is_nothrow_move_constructible>>::__f>...>;
 
     template <class... Args>
     using __as_rvalues = set_value_t(decay_t<Args>&&...);
