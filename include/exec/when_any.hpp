@@ -40,7 +40,7 @@ namespace exec {
     using __signature_to_tuple_t = decltype(__signature_to_tuple_((_Sig*) nullptr));
 
     template <class _Tag>
-    struct __ret_equals_to {
+    struct __tag_equals_to {
       template <class _Sig>
       using __f = std::is_same<_Tag, __tag_of_sig_t<_Sig>>;
     };
@@ -63,6 +63,9 @@ namespace exec {
     template <class... E>
     using __as_error = completion_signatures<set_error_t(E)...>;
 
+    // Here we convert all set_value(Args...) to set_value(decay_t<Args>&&...)
+    // Note, we keep all error types as they are
+    // unconditionally add set_stopped()
     template <class _Env, class... _SenderIds>
     using __completion_signatures_t = __concat_completion_signatures_t<
         __if<
@@ -72,23 +75,39 @@ namespace exec {
       value_types_of_t<__t<_SenderIds>, _Env, __as_rvalues, completion_signatures>...,
       error_types_of_t<__t<_SenderIds>, _Env, __as_error>...>;
 
+    // We cache only calls to set_value_t. Therefore we throw away all other sigs.
+    // We also transform the signature
+    // set_value_t(Args...) to a tuple __decayed_tuple<Args...>
     template <class _Env, class... _SenderIds>
     using __result_type_t_ = __mapply<
-        __transform<__q<__signature_to_tuple_t>, __q<std::variant>>,
+      __transform<__q<__signature_to_tuple_t>>,
       __mapply<
-        __remove_if<__mnone_of<__ret_equals_to<set_value_t>>, __q<completion_signatures>>,
+        __remove_if<__mnone_of<__tag_equals_to<set_value_t>>, __q<completion_signatures>>,
         __completion_signatures_t<_Env, _SenderIds...>>>;
 
+    // this is our secret tag to distinguish between a value and an exception
     struct __exception_tag { };
 
+    // We check if all value arguments are nothrow decay copyable
+    // If not, we need to add a (__exception_tag, exception_ptr) tuple into the variant
     template <class _Env, class... _SenderIds>
-    using __result_type_t = __if<
+    using __result_type_t__ = __if<
       __all_value_args_nothrow_decay_copyable<_Env, _SenderIds...>,
       __result_type_t_<_Env, _SenderIds...>,
       __minvoke<
         __push_back<__q<std::variant>>,
         __result_type_t_<_Env, _SenderIds...>,
         std::tuple<__exception_tag, std::exception_ptr>>>;
+
+    // The following transformation is needed if no input senders send any values
+    // std::variant<> would be ill-formed in that case
+    template <class _Env, class... _SenderIds>
+    using __result_type_t = __if_c<
+      std::is_same_v<__mapply<__msize, __result_type_t__<_Env, _SenderIds...>>, __msize_t<0>>,
+      std::monostate,
+      __mapply<
+        __transform<__q<__midentity>, __q<std::variant>>,
+        __result_type_t__<_Env, _SenderIds...>>>;
 
     template <class _Variant, class... _Ts>
     concept __result_constructible_from =
@@ -133,7 +152,7 @@ namespace exec {
             set_stopped((_Receiver&&) __receiver_);
           } else if (!__result_.has_value()) {
             _CPO{}((_Receiver&&) __receiver_, (_Args&&) __args...);
-          } else {
+          } else if constexpr (!std::is_same_v<_ResultVariant, std::monostate>) {
           std::visit(
             [this]<class _Tuple>(_Tuple&& __result) {
               std::apply(
