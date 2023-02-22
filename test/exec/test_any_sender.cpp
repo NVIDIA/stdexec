@@ -145,7 +145,7 @@ TEST_CASE("any_receiver_ref is connectable with when_any", "[types][any_sender]"
   sink_receiver rcvr{};
   receiver_ref ref = rcvr;
 
-  auto sndr = when_any(just(42));
+  auto sndr = when_any_value(just(42));
   CHECK(rcvr.value_.index() == 0);
   auto op = connect(std::move(sndr), std::move(ref));
   start(op);
@@ -305,7 +305,7 @@ TEST_CASE("any_sender is connectable with any_receiver_ref", "[types][any_sender
     start(op);
     CHECK(rcvr.value_.index() == 1);
   }
-  sndr = when_any(just(42));
+  sndr = when_any_value(just(42));
   {
     sink_receiver rcvr{};
     receiver_ref ref = rcvr;
@@ -356,7 +356,7 @@ static_assert(
 
 TEST_CASE("any_sender does not connect with stop token", "[types][any_sender]") {
   using unstoppable_sender = any_sender_of<set_value_t(int), set_stopped_t()>;
-  unstoppable_sender sender = when_any(just(21));
+  unstoppable_sender sender = when_any_value(just(21));
   in_place_stop_source stop_source{};
   stopped_receiver receiver{stop_source.get_token(), false};
   stop_source.request_stop();
@@ -371,7 +371,7 @@ TEST_CASE(
   using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
   using receiver_ref = any_receiver_ref<Sigs, get_stop_token.signature<in_place_stop_token()>>;
   using stoppable_sender = receiver_ref::any_sender<>;
-  stoppable_sender sender = when_any(just(21));
+  stoppable_sender sender = when_any_value(just(21));
   in_place_stop_source stop_source{};
   stopped_receiver receiver{stop_source.get_token(), true};
   stop_source.request_stop();
