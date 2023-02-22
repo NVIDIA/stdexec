@@ -52,9 +52,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "nvc++ 23.1", cuda: "12.0",  cxx: "mpic++",  tag: "nvhpc23.1",       gpu: "v100", driver: "latest", arch: "amd64" }
-          - { name: "clang 16", cuda: "11.8",    cxx: "clang++", tag: "llvm16-cuda11.8", gpu: "v100", driver: "latest", arch: "amd64" }
-        # - { name: "clang 16", cuda: "12.0",    cxx: "clang++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "525", arch: "amd64" }
+          - { name: "nvc++ 23.1", cuda: "12.0", cxx: "mpic++",  tag: "nvhpc23.1",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
     runs-on:
       - self-hosted
       - linux
@@ -64,7 +63,6 @@ jobs:
       options: -u coder
       image: rapidsai/devcontainers:23.04-cpp-${{ matrix.tag }}-ubuntu22.04
       env:
-        NVIDIA_DISABLE_REQUIRE: true
         CUDA_VERSION: "${{ matrix.cuda }}"
         NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
     steps:
@@ -91,7 +89,7 @@ jobs:
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CXX_COMPILER="$cxx" \
             -DCMAKE_CUDA_COMPILER="$cxx" \
-            -DCMAKE_CUDA_ARCHITECTURES=native;
+            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }}-real;
 
           # Compile
           cmake --build build;
