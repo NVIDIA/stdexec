@@ -14,7 +14,7 @@
 # limitations under the License.
 #=============================================================================
 
-set(stdexec_test_sources
+set(stdexec_test_sources 
     test_main.cpp
     stdexec/cpos/test_cpo_bulk.cpp
     stdexec/cpos/test_cpo_ensure_started.cpp
@@ -59,6 +59,7 @@ set(stdexec_test_sources
     stdexec/detail/test_utility.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/queries/test_forwarding_queries.cpp
+    exec/test_any_sender.cpp
     exec/test_type_async_scope.cpp
     exec/test_create.cpp
     exec/test_env.cpp

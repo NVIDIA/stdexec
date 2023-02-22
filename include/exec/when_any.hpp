@@ -62,7 +62,7 @@ namespace exec {
 
     template <class _Env, class... _Senders>
     using __completion_signatures_t =
-      decltype(__completion_signatures_((_Env*) nullptr, (_Senders*) nullptr...));
+      decltype(__completion_signatures_((decay_t<_Env>*) nullptr, (_Senders*) nullptr...));
 
     template <class _Env, class... _SenderIds>
     using __result_type_t = //
