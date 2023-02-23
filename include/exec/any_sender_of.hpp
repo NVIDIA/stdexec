@@ -533,7 +533,8 @@ namespace exec {
             ((_Self&&) __self).__env_.__rcvr_, (_As&&) __as...);
         }
 
-        friend const __env_t& tag_invoke(get_env_t, const __ref& __self) noexcept {
+        template <std::same_as<__ref> Self>
+        friend const __env_t& tag_invoke(get_env_t, const Self& __self) noexcept {
           return __self.__env_;
         }
       };
