@@ -27,6 +27,26 @@ using set_value_sig = ex::set_value_t(Vs...);
 template <class E>
 using set_error_sig = ex::set_error_t(E);
 
+TEST_CASE("test the internal __completion_signature concept", "[detail][completion_signatures]") {
+  static_assert(ex::__completion_signature<ex::set_value_t()>);
+  static_assert(ex::__completion_signature<ex::set_value_t(int)>);
+  static_assert(ex::__completion_signature<ex::set_value_t(int, int)>);
+  static_assert(!ex::__completion_signature<ex::set_value_t(int, int, ...)>);
+  static_assert(!ex::__completion_signature<ex::set_value_t>);
+  static_assert(!ex::__completion_signature<ex::set_value_t(int) noexcept>);
+
+  static_assert(!ex::__completion_signature<ex::set_error_t()>);
+  static_assert(ex::__completion_signature<ex::set_error_t(int)>);
+  static_assert(!ex::__completion_signature<ex::set_error_t(int, int)>);
+  static_assert(!ex::__completion_signature<ex::set_error_t(int, ...)>);
+  static_assert(!ex::__completion_signature<ex::set_error_t(int) noexcept>);
+
+  static_assert(ex::__completion_signature<ex::set_stopped_t()>);
+  static_assert(!ex::__completion_signature<ex::set_stopped_t(int)>);
+  static_assert(!ex::__completion_signature<ex::set_stopped_t(...)>);
+  static_assert(!ex::__completion_signature<ex::set_stopped_t() noexcept>);
+}
+
 TEST_CASE(
   "set_value_sig can be used to transform value types to corresponding completion signatures",
   "[detail][completion_signatures]") {
