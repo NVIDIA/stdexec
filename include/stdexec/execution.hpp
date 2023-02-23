@@ -72,6 +72,8 @@
 #define R5_RECEIVER_DEPR_WARNING
 #endif
 
+#define STDEXEC_LEGACY_R5_CONCEPTS() 1
+
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
 STDEXEC_PRAGMA_IGNORE("-Wundefined-internal")
@@ -667,6 +669,11 @@ namespace stdexec {
               set_error_t(std::exception_ptr)>>{};
           }
         }
+#if STDEXEC_LEGACY_R5_CONCEPTS()
+        else if constexpr (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>) {
+          return __mconst<dependent_completion_signatures<no_env>>{};
+        }
+#endif
       }
 
       template <class _Sender, class _Env>
@@ -674,8 +681,13 @@ namespace stdexec {
 
       template <class _Sender, class _Env = no_env>
         requires(
-          __with_tag_invoke<_Sender, _Env> || __with_member_alias<_Sender>
-          || __awaitable<_Sender, __env_promise<_Env>>)
+          __with_tag_invoke<_Sender, _Env> //
+          || __with_member_alias<_Sender>  //
+          || __awaitable<_Sender, __env_promise<_Env>>
+#if STDEXEC_LEGACY_R5_CONCEPTS()
+          || (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
+#endif
+            )
       constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept
         -> __minvoke<__impl_fn<_Sender, _Env>, _Sender, _Env> {
         return {};
@@ -698,8 +710,6 @@ namespace stdexec {
   concept __with_completion_signatures =
     __callable<get_completion_signatures_t, _Sender, _Env>
     && __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env>;
-
-#define STDEXEC_LEGACY_R5_CONCEPTS() 1
 
 #if !STDEXEC_LEGACY_R5_CONCEPTS()
   // Here is the R7 sender concepts, not yet enabled.
