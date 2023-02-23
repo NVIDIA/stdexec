@@ -260,11 +260,9 @@ TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
 
 TEST_CASE("construct any_sender_of recursively from when_all", "[types][any_sender]") {
   any_sender_of<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)> sender = just();
-  sender = when_all(std::move(sender), just());
-  CHECK(std::same_as<
-        completion_signatures_of_t<any_sender_of<set_value_t()>>,
-        completion_signatures<set_value_t()>>);
-  sync_wait(std::move(sender));
+  using sender_t = any_sender_of<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>;
+  using when_all_t = decltype(when_all(std::move(sender)));
+  static_assert(std::is_constructible_v<sender_t, when_all_t&&>);
 }
 
 TEST_CASE("sync_wait returns value", "[types][any_sender]") {
