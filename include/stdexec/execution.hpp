@@ -4643,8 +4643,7 @@ namespace stdexec {
               } else {
                 std::apply(
                   [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
-                    __try_call(
-                      (_Receiver &&) __rcvr_, __tag, (_Receiver &&) __rcvr_, (_Args &&) __args...);
+                    __tag((_Receiver &&) __rcvr_, (_Args &&) __args...);
                   },
                   __tupl);
               }
