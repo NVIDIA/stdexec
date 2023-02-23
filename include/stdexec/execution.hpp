@@ -4701,7 +4701,7 @@ namespace stdexec {
         using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Errs> && ...)>;
 
         template <class _Env>
-        using __with_error_t = //
+        using __scheduler_with_error_t = //
           __if_c<
             __v<error_types_of_t<schedule_result_t<_Scheduler>, _Env, __all_nothrow_decay_copyable>>,
             completion_signatures<>,
@@ -4712,15 +4712,25 @@ namespace stdexec {
           __make_completion_signatures<
             schedule_result_t<_Scheduler>,
             _Env,
-            __with_error_t<_Env>,
+            __scheduler_with_error_t<_Env>,
             __mconst<completion_signatures<>>>;
+
+        template <class _Env>
+        using __input_sender_with_error_t = //
+          __if_c<
+            __v<value_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable, __mand>> &&
+            __v<error_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable>>,
+            completion_signatures<>,
+            __with_exception_ptr>;
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
           -> __make_completion_signatures<
             __copy_cvref_t<_Self, _Sender>,
             _Env,
-            __scheduler_completions_t<_Env>,
+            __concat_completion_signatures_t<
+              __scheduler_completions_t<_Env>,
+              __input_sender_with_error_t<_Env>>,
             __decay_signature<set_value_t>,
             __decay_signature<set_error_t>>;
       };
