@@ -80,7 +80,7 @@ namespace exec {
         using __materialize_value = completion_signatures<set_value_t(set_value_t, _Args...)>;
 
         template <class _E>
-        using __materialize_error = completion_signatures<set_value_t(set_error_t, _E...)>;
+        using __materialize_error = completion_signatures<set_value_t(set_error_t, _E)>;
 
         template <class _Env>
         using __completion_signatures_for_t = make_completion_signatures<
