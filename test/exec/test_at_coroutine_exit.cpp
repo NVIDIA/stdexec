@@ -233,6 +233,17 @@ namespace {
     i *= i;
   }
 
+  task<void> test_on_succeeded_mutable_stateful_cleanup_action(int& result) {
+    auto&& [i] = co_await on_coroutine_succeeded(
+      [&result](int&& i) -> task<void> {
+        result += i;
+        co_return;
+      },
+      3);
+    ++result;
+    i *= i;
+  }
+
   task<void> with_continuation(int& result, task<void> next) {
     co_await std::move(next);
     result *= 3;
@@ -404,6 +415,12 @@ TEST_CASE("CleanupActionWithStatefulSender", "[task][at_coroutine_exit]") {
 TEST_CASE("CleanupActionWithMutableStateful", "[task][at_coroutine_exit]") {
   int result = 0;
   stdexec::sync_wait(test_mutable_stateful_cleanup_action(result));
+  REQUIRE(result == 10);
+}
+
+TEST_CASE("OnSuccessCleanupActionWithMutableStateful", "[task][at_coroutine_exit]") {
+  int result = 0;
+  stdexec::sync_wait(test_on_succeeded_mutable_stateful_cleanup_action(result));
   REQUIRE(result == 10);
 }
 
