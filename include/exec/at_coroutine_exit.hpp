@@ -231,13 +231,13 @@ namespace exec {
   namespace __on_coroutine_succeeded {
     using namespace stdexec;
 
-    enum class __on_coroutine_completion {
+    enum class __on_coroutine_completion : int {
       __stopped,
       __value,
       __error
     };
 
-    __on_coroutine_completion __from_int(int __i) noexcept {
+    inline __on_coroutine_completion __from_int(int __i) noexcept {
       return static_cast<__on_coroutine_completion>(__i);
     }
 
