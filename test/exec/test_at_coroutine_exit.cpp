@@ -99,6 +99,20 @@ namespace {
     ++result;
   }
 
+  task<void> test_on_stopped_two_cleanup_actions_with_stop(int& result) {
+    ++result;
+    co_await on_coroutine_stopped([&result]() -> task<void> {
+      result *= 2;
+      co_return;
+    });
+    co_await on_coroutine_stopped([&result]() -> task<void> {
+      result *= result;
+      co_return;
+    });
+    ++result;
+    co_await stop();
+  }
+
   task<void> test_one_cleanup_action_with_stop(int& result) {
     ++result;
     co_await at_coroutine_exit([&result]() -> task<void> {
@@ -307,6 +321,12 @@ TEST_CASE("OneCleanupAction", "[task][at_coroutine_exit]") {
 TEST_CASE("TwoCleanupActions", "[task][at_coroutine_exit]") {
   int result = 0;
   stdexec::sync_wait(test_two_cleanup_actions(result));
+  REQUIRE(result == 8);
+}
+
+TEST_CASE("OnStoppedTwoCleanupActions", "[task][at_coroutine_exit]") {
+  int result = 0;
+  stdexec::sync_wait(test_on_stopped_two_cleanup_actions_with_stop(result));
   REQUIRE(result == 8);
 }
 
