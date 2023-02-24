@@ -392,7 +392,7 @@ namespace exec {
       }
     };
 
-    struct __on_coro_error_t {
+    struct __on_coro_failed_t {
      private:
       template <class _Action, class... _Ts>
       static __task<__on_coroutine_completion::__error, _Ts...>
@@ -412,5 +412,5 @@ namespace exec {
 
   inline constexpr __on_coroutine_succeeded::__on_coro_succeeded_t on_coroutine_succeeded{};
   inline constexpr __on_coroutine_succeeded::__on_coro_stopped_t on_coroutine_stopped{};
-  inline constexpr __on_coroutine_succeeded::__on_coro_error_t on_coroutine_error{};
+  inline constexpr __on_coroutine_succeeded::__on_coro_failed_t on_coroutine_failed{};
 } // namespace exec
