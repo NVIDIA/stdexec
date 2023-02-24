@@ -270,7 +270,7 @@ namespace exec {
         requires __promise_base_test_t<_Promise>::value
       bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
         __coro_.promise().__parent_ = __parent;
-        __coro_.promise().__on_exit_callback_ = [](void* __parent) noexcept -> int {
+        __coro_.promise().__get_index_callback_ = [](void* __parent) noexcept -> int {
           auto p = __coro::coroutine_handle<_Promise>::from_address(__parent).promise();
           return p.__data_.index();
         };
@@ -335,10 +335,8 @@ namespace exec {
 
         template <class _Awaitable>
         decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
-          int __index = 0;
-          if (__parent_ && __on_exit_callback_) {
-            __index = __on_exit_callback_(__parent_.address());
-          }
+          STDEXEC_ASSERT(__parent_ && __get_index_callback_);
+          const int __index = __get_index_callback_(__parent_.address());
           using __any_sender_t = typename any_receiver_ref<
             completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>>::any_sender<>;
           __any_sender_t __sender = just();
@@ -350,9 +348,9 @@ namespace exec {
 
         bool __is_unhandled_stopped_{false};
         std::tuple<_Ts&...> __args_{};
-        using __on_exit_callback_t = int (*)(void*) noexcept;
+        using __get_index_callback_t = int (*)(void*) noexcept;
         __coro::coroutine_handle<> __parent_{};
-        __on_exit_callback_t __on_exit_callback_{nullptr};
+        __get_index_callback_t __get_index_callback_{nullptr};
       };
 
       __coro::coroutine_handle<__promise> __coro_;
