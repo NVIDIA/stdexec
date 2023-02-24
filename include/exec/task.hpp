@@ -204,6 +204,12 @@ namespace exec {
       std::variant<std::monostate, __void, std::exception_ptr> __data_{};
     };
 
+    enum class __disposition : unsigned {
+      __none,
+      __value,
+      __exception,
+    };
+
     ////////////////////////////////////////////////////////////////////////////////
     // basic_task
     template <class _Ty, class _Context = default_task_context<_Ty>>
@@ -251,6 +257,10 @@ namespace exec {
 
         __final_awaitable final_suspend() noexcept {
           return {};
+        }
+
+        __task::__disposition __disposition() const noexcept {
+          return static_cast<__task::__disposition>(this->__data_.index());
         }
 
         void unhandled_exception() noexcept {
