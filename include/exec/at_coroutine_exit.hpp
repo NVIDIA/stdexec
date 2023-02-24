@@ -23,7 +23,6 @@
 
 #include "stdexec/execution.hpp"
 #include "exec/task.hpp"
-#include "exec/any_sender_of.hpp"
 
 namespace exec {
   namespace __at_coro_exit {
