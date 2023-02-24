@@ -41,8 +41,8 @@ namespace exec {
           set_value((_Receiver&&) __self.__upstream_, tag, (_Args&&) __args...);
         }
 
-        template <__decays_to<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, _Self&& __self) noexcept {
+        template <std::same_as<__t> _Self>
+        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
           return get_env(__self.__upstream_);
         }
       };
@@ -140,8 +140,8 @@ namespace exec {
           tag((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
         }
 
-        template <__decays_to<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, _Self&& __self) noexcept {
+        template <std::same_as<__t> _Self>
+        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
           return get_env(__self.__upstream_);
         }
       };
