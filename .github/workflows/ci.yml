@@ -52,8 +52,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "nvc++ 23.1", cuda: "12.0", cxx: "mpic++",  tag: "nvhpc23.1",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 23.1", cuda: "12.0", cxx: "mpic++",  tag: "nvhpc23.1",       gpu: "v100", sm: "70", driver: "525", arch: "amd64" }
+          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "525", arch: "amd64" }
     runs-on:
       - self-hosted
       - linux
