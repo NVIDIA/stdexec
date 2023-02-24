@@ -42,14 +42,18 @@ namespace exec {
     template <class... _Args>
     using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Args> && ...)>;
 
+    template <class... _Args>
+    using __all_nothrow_move_constructible =
+      __minvoke<__mall_of<__q<std::is_nothrow_move_constructible>>, _Args...>;
+
     template <class _Env, class... _SenderIds>
     using __all_value_args_nothrow_decay_copyable = __mand<
-      value_types_of_t<__t<_SenderIds>, _Env, __all_nothrow_decay_copyable, __mand>...,
-      value_types_of_t<
+      __mand< value_types_of_t<__t<_SenderIds>, _Env, __all_nothrow_decay_copyable, __mand>...>,
+      __mand<value_types_of_t<
         __t<_SenderIds>,
         _Env,
         __decayed_tuple, // This tests only decayed Args which is ok because moving tags is noexcept
-        __mall_of<__q<std::is_nothrow_move_constructible>>::__f>...>;
+        __all_nothrow_move_constructible>...>>;
 
     template <class... Args>
     using __as_rvalues = set_value_t(decay_t<Args>&&...);
