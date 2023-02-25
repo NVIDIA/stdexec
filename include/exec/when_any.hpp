@@ -34,42 +34,49 @@ namespace exec {
     using __env_t = __make_env_t<_BaseEnv, __with<get_stop_token_t, in_place_stop_token>>;
 
     template <class _Ret, class... _Args>
-    std::tuple<_Ret, _Args...> __signature_to_tuple_(_Ret (*)(_Args...));
+    __decayed_tuple<_Ret, _Args...> __signature_to_tuple_(_Ret (*)(_Args...));
 
     template <class _Sig>
     using __signature_to_tuple_t = decltype(__signature_to_tuple_((_Sig*) nullptr));
 
-    template <class _Env, class... _SenderIds>
-    using __all_nothrow_copy_constructible = //
-      __mapply<
-        __mall_of<__q<std::is_nothrow_copy_constructible>>,
-        __mapply<
-          __transform<__q<__signature_to_tuple_t>>,
-          __minvoke<__mconcat<>, __completion_signatures_of_t<__t<_SenderIds>, _Env>...>>>;
+    template <class... _Args>
+    using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Args> && ...)>;
 
-    template <class _Env, class _SenderId, class... _SenderIds>
-    make_completion_signatures<
-      __t<_SenderId>,
-      _Env,
-      __minvoke<
-        __mconcat<__q<completion_signatures>>,
-        __if<
-          __all_nothrow_copy_constructible<_Env, _SenderIds...>,
-          __types<set_stopped_t()>,
-          __types<set_stopped_t(), set_error_t(std::exception_ptr)>>,
-        completion_signatures_of_t<__t<_SenderIds>, _Env>...>>
-      __completion_signatures_(_Env*, _SenderId*, _SenderIds*...);
-
-    template <class _Env, class... _Senders>
-    using __completion_signatures_t =
-      decltype(__completion_signatures_((decay_t<_Env>*) nullptr, (_Senders*) nullptr...));
+    template <class... _Args>
+    using __all_nothrow_move_constructible =
+      __minvoke<__mall_of<__q<std::is_nothrow_move_constructible>>, _Args...>;
 
     template <class _Env, class... _SenderIds>
-    using __result_type_t = //
-      __mapply<
-        __transform<__q<__signature_to_tuple_t>, __q<std::variant>>,
-        __completion_signatures_t<_Env, _SenderIds...>>;
+    using __all_value_args_nothrow_decay_copyable = __mand<
+      __mand< value_types_of_t<__t<_SenderIds>, _Env, __all_nothrow_decay_copyable, __mand>...>,
+      __mand<value_types_of_t<
+        __t<_SenderIds>,
+        _Env,
+        __decayed_tuple, // This tests only decayed Args which is ok because moving tags is noexcept
+        __all_nothrow_move_constructible>...>>;
 
+    template <class... Args>
+    using __as_rvalues = set_value_t(decay_t<Args>&&...);
+
+    template <class... E>
+    using __as_error = completion_signatures<set_error_t(E)...>;
+
+    // Here we convert all set_value(Args...) to set_value(decay_t<Args>&&...)
+    // Note, we keep all error types as they are and unconditionally add set_stopped()
+    template <class _Env, class... _SenderIds>
+    using __completion_signatures_t = __concat_completion_signatures_t<
+      __if<
+        __all_value_args_nothrow_decay_copyable<_Env, _SenderIds...>,
+        completion_signatures<set_stopped_t()>,
+        completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>,
+      value_types_of_t<__t<_SenderIds>, _Env, __as_rvalues, completion_signatures>...,
+      error_types_of_t<__t<_SenderIds>, _Env, __as_error>...>;
+
+    // transform Tag(Args...) to a tuple __decayed_tuple<Tag, Args...>
+    template <class _Env, class... _SenderIds>
+    using __result_type_t = __mapply<
+      __transform<__q<__signature_to_tuple_t>, __q<std::variant>>,
+      __completion_signatures_t<_Env, _SenderIds...>>;
 
     template <class _Variant, class... _Ts>
     concept __result_constructible_from =
@@ -157,7 +164,7 @@ namespace exec {
        private:
         __op_base<_Receiver, _ResultVariant>* __op_;
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO, class... _Args>
+        template <__completion_tag _CPO, class... _Args>
           requires __result_constructible_from<_ResultVariant, _CPO, _Args...>
         friend void tag_invoke(_CPO, __t&& __self, _Args&&... __args) noexcept {
           __self.__op_->notify(_CPO{}, (_Args&&) __args...);
