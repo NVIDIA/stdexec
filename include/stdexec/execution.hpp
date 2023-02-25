@@ -1195,25 +1195,58 @@ namespace stdexec {
   };
 
   /////////////////////////////////////////////////////////////////////////////
+  // execution_concept_tag
+  // NOT TO SPEC (YET)
+
+  namespace __start {
+    struct start_t;
+  }
+
+  struct execution_concept_tag
+  {
+    template <class _O>
+    requires requires (_O& __o) { __o.start(std::declval<__start::start_t&>()); }
+    static void start(_O& __o) noexcept(noexcept(std::invoke(&std::remove_pointer_t<_O>::start, __o, std::declval<__start::start_t&>())));
+  };
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   namespace __start {
     struct start_t {
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+      template <class _Op>
+      void operator()(_Op& __op) const noexcept(noexcept(execution_concept_tag::start(__op))) {
+        (void) execution_concept_tag::start(__op);
+      }
+#else
       template <class _Op>
         requires tag_invocable<start_t, _Op&>
       void operator()(_Op& __op) const noexcept(nothrow_tag_invocable<start_t, _Op&>) {
         (void) tag_invoke(start_t{}, __op);
       }
+#endif
     };
   }
 
   using __start::start_t;
   inline constexpr start_t start{};
 
+  template <class _O>
+  requires requires (_O& __o) { __o.start(std::declval<__start::start_t&>()); }
+  void execution_concept_tag::start(_O& __o) noexcept(noexcept(std::invoke(&std::remove_pointer_t<_O>::start, __o, std::declval<__start::start_t&>())))
+  {
+    __o.start(start_t{});
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   template <class _O>
   concept operation_state = destructible<_O> && std::is_object_v<_O> && requires(_O& __o) {
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+    { execution_concept_tag::start(__o) } noexcept;
+#else
     { start(__o) } noexcept;
+#endif
   };
 
 #if !_STD_NO_COROUTINES_
@@ -1278,10 +1311,15 @@ namespace stdexec {
         if (__coro_)
           __coro_.destroy();
       }
-
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+      void start(start_t) noexcept {
+        __coro_.resume();
+      }
+#else
       friend void tag_invoke(start_t, __operation_base& __self) noexcept {
         __self.__coro_.resume();
       }
+#endif
     };
 
     template <class _ReceiverId>
@@ -1435,7 +1473,11 @@ namespace stdexec {
     struct __debug_op_state {
       __debug_op_state(auto&&);
       __debug_op_state(__debug_op_state&&) = delete;
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+      void start(start_t) noexcept;
+#else
       friend void tag_invoke(start_t, __debug_op_state&) noexcept;
+#endif
     };
 
     template <class _Sig>
@@ -2024,15 +2066,25 @@ namespace stdexec {
           : __rcvr_((_Receiver&&) __rcvr)
           , __op_state_(connect((_Sender&&) __sndr, __receiver{this})) {
         }
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          stdexec::start(__op_state_);
+        }
+#endif
       };
     };
 
     struct __submit_t {
       template <receiver _Receiver, sender_to<_Receiver> _Sender>
       void operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(false) {
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        start(*(new __t<__operation<__id<_Sender>, __id<_Receiver>>>{
+                 (_Sender&&) __sndr, (_Receiver&&) __rcvr}));
+#else
         start((new __t<__operation<__id<_Sender>, __id<_Receiver>>>{
                  (_Sender&&) __sndr, (_Receiver&&) __rcvr})
                 ->__op_state_);
+#endif
       }
     };
   } // namespace __submit_
@@ -2049,9 +2101,15 @@ namespace stdexec {
       struct __op : __immovable {
         _Receiver __recv_;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          set_value((_Receiver&&) __recv_);
+        }
+#else
         friend void tag_invoke(start_t, __op& __self) noexcept {
           set_value((_Receiver&&) __self.__recv_);
         }
+#endif
       };
 
       struct __sender {
@@ -2166,6 +2224,15 @@ namespace stdexec {
         std::tuple<_Ts...> __vals_;
         _Receiver __rcvr_;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          std::apply(
+            [this](_Ts&... __ts) {
+              _Tag{}((_Receiver&&) __rcvr_, (_Ts&&) __ts...);
+            },
+            __vals_);
+        }
+#else
         friend void tag_invoke(start_t, __t& __op_state) noexcept {
           std::apply(
             [&__op_state](_Ts&... __ts) {
@@ -2173,6 +2240,7 @@ namespace stdexec {
             },
             __op_state.__vals_);
         }
+#endif
       };
     };
 
@@ -2707,9 +2775,15 @@ namespace stdexec {
           , __op_(connect((_Sender&&) __sndr, __receiver_t{&__data_})) {
         }
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          stdexec::start(__op_);
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept {
           start(__self.__op_);
         }
+#endif
       };
     };
 
@@ -3400,6 +3474,45 @@ namespace stdexec {
             __op->__shared_state_->__data_);
         }
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>* __shared_state =
+            __shared_state_.get();
+          std::atomic<void*>& __head = __shared_state->__head_;
+          void* const __completion_state = static_cast<void*>(__shared_state);
+          void* __old = __head.load(std::memory_order_acquire);
+
+          if (__old != __completion_state) {
+            __on_stop_.emplace(
+              get_stop_token(get_env(__recvr_)),
+              __on_stop_requested{__shared_state->__stop_source_});
+          }
+
+          do {
+            if (__old == __completion_state) {
+              __notify(this);
+              return;
+            }
+            __next_ = static_cast<__operation_base*>(__old);
+          } while (!__head.compare_exchange_weak(
+            __old,
+            static_cast<void*>(this),
+            std::memory_order_release,
+            std::memory_order_acquire));
+
+          if (__old == nullptr) {
+            // the inner sender isn't running
+            if (__shared_state->__stop_source_.stop_requested()) {
+              // 1. resets __head to completion state
+              // 2. notifies waiting threads
+              // 3. propagates "stopped" signal to `out_r'`
+              __shared_state->__notify();
+            } else {
+              stdexec::start(__shared_state->__op_state2_);
+            }
+          }
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept {
           stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>* __shared_state =
             __self.__shared_state_.get();
@@ -3437,6 +3550,7 @@ namespace stdexec {
             }
           }
         }
+#endif
       };
     };
 
@@ -3641,7 +3755,11 @@ namespace stdexec {
         explicit __t(_Sender& __sndr, _Env __env)
           : __env_(__make_env((_Env&&) __env, __with_(get_stop_token, __stop_source_.get_token())))
           , __op_state2_(connect(__sndr, __receiver_t{*this})) {
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+          stdexec::start(__op_state2_);
+#else
           start(__op_state2_);
+#endif
         }
 
         void __notify() noexcept {
@@ -3719,6 +3837,40 @@ namespace stdexec {
             __op->__shared_state_->__data_);
         }
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          stdexec::__t<__sh_state<_SenderId, _EnvId>>* __shared_state =
+            __shared_state_.get();
+          std::atomic<void*>& __op_state1 = __shared_state->__op_state1_;
+          void* const __completion_state = static_cast<void*>(__shared_state);
+          void* const __old = __op_state1.load(std::memory_order_acquire);
+          if (__old == __completion_state) {
+            __notify(this);
+          } else {
+            // register stop callback:
+            __on_stop_.emplace(
+              get_stop_token(get_env(__rcvr_)),
+              __on_stop_requested{__shared_state->__stop_source_});
+            // Check if the stop_source has requested cancellation
+            if (__shared_state->__stop_source_.stop_requested()) {
+              // Stop has already been requested. Don't bother starting
+              // the child operations.
+              stdexec::set_stopped((_Receiver&&) __rcvr_);
+            } else {
+              // Otherwise, the inner source hasn't notified completion.
+              // Set this operation as the __op_state1 so it's notified.
+              void* __old = nullptr;
+              if (!__op_state1.compare_exchange_weak(
+                    __old, this, std::memory_order_release, std::memory_order_acquire)) {
+                // We get here when the task completed during the execution
+                // of this function. Complete the operation synchronously.
+                STDEXEC_ASSERT(__old == __completion_state);
+                __notify(this);
+              }
+            }
+          }
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept {
           stdexec::__t<__sh_state<_SenderId, _EnvId>>* __shared_state =
             __self.__shared_state_.get();
@@ -3751,6 +3903,7 @@ namespace stdexec {
             }
           }
         }
+#endif
       };
     };
 
@@ -4004,9 +4157,15 @@ namespace stdexec {
         using __op_base_t = __operation_base<_CvrefSenderId, _ReceiverId, _Fun, _Let>;
         using __receiver_t = __receiver<_CvrefSenderId, _ReceiverId, _Fun, _Let>;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          stdexec::start(__op_state2_);
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept {
           start(__self.__op_state2_);
         }
+#endif
 
         template <class _Receiver2>
         __t(_Sender&& __sndr, _Receiver2&& __rcvr, _Fun __fun)
@@ -4182,9 +4341,15 @@ namespace stdexec {
 
         STDEXEC_IMMOVABLE(__t);
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          stdexec::start(__op_state_);
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept {
           start(__self.__op_state_);
         }
+#endif
 
         _Receiver __rcvr_;
         connect_result_t<_Sender, __receiver_t> __op_state_;
@@ -4325,9 +4490,15 @@ namespace stdexec {
           , __rcvr_{(_Receiver&&) __rcvr} {
         }
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          __start_();
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept {
           __self.__start_();
         }
+#endif
 
         void __start_() noexcept;
       };
@@ -4584,7 +4755,11 @@ namespace stdexec {
             _Tag{}, (_Args&&) __args...);
           // Enqueue the schedule operation so the completion happens
           // on the scheduler's execution context.
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+          stdexec::start(__self.__op_state_->__state2_);
+#else
           start(__self.__op_state_->__state2_);
+#endif
         }
 
         template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _Args>
@@ -4630,9 +4805,15 @@ namespace stdexec {
 
         STDEXEC_IMMOVABLE(__t);
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          stdexec::start(__state1_);
+        }
+#else
         friend void tag_invoke(start_t, __t& __op_state) noexcept {
           start(__op_state.__state1_);
         }
+#endif
 
         void __complete() noexcept try {
           std::visit(
@@ -4885,10 +5066,15 @@ namespace stdexec {
         using __receiver_t = stdexec::__t<__receiver<_SchedulerId, _SenderId, _ReceiverId>>;
         using __receiver_ref_t = stdexec::__t<__receiver_ref<_SchedulerId, _SenderId, _ReceiverId>>;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          stdexec::start(std::get<0>(__data_));
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept {
           start(std::get<0>(__self.__data_));
         }
-
+#endif
         template <class _Sender2, class _Receiver2>
         __t(_Scheduler __sched, _Sender2&& __sndr, _Receiver2&& __rcvr)
           : __scheduler_((_Scheduler&&) __sched)
@@ -5450,6 +5636,25 @@ namespace stdexec {
           : __t((_SendersTuple&&) __sndrs, (_Receiver&&) __rcvr, _Indices{}) {
         }
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          // register stop callback:
+          this->__on_stop_.emplace(
+            get_stop_token(get_env(this->__recvr_)), __on_stop_requested{this->__stop_source_});
+          if (this->__stop_source_.stop_requested()) {
+            // Stop has already been requested. Don't bother starting
+            // the child operations.
+            stdexec::set_stopped((_Receiver&&) this->__recvr_);
+          } else {
+            std::apply(
+              [](auto&... __child_ops) noexcept -> void { (stdexec::start(__child_ops), ...); },
+              __op_states_);
+            if constexpr (sizeof...(_SenderIds) == 0) {
+              this->__complete();
+            }
+          }
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept {
           // register stop callback:
           __self.__on_stop_.emplace(
@@ -5467,6 +5672,7 @@ namespace stdexec {
             }
           }
         }
+#endif
 
         __op_states_tuple_t __op_states_;
       };
@@ -5625,6 +5831,15 @@ namespace stdexec {
         using __id = __operation;
         _Receiver __rcvr_;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept try {
+          auto __env = get_env(__rcvr_);
+          set_value(std::move(__rcvr_), _Tag{}(__env));
+        } catch (...) {
+
+          set_error(std::move(__rcvr_), std::current_exception());
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept try {
           auto __env = get_env(__self.__rcvr_);
           set_value(std::move(__self.__rcvr_), _Tag{}(__env));
@@ -5632,6 +5847,7 @@ namespace stdexec {
 
           set_error(std::move(__self.__rcvr_), std::current_exception());
         }
+#endif
       };
     };
 
@@ -5824,7 +6040,11 @@ namespace stdexec {
         // Launch the sender with a continuation that will fill in a variant
         // and notify a condition variable.
         auto __op_state = connect((_Sender&&) __sndr, __receiver_t<_Sender>{&__state, &__loop});
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        stdexec::start(__op_state);
+#else
         start(__op_state);
+#endif
 
         // Wait for the variant to be filled in.
         __loop.run();

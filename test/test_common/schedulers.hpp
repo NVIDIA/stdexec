@@ -66,6 +66,21 @@ struct impulse_scheduler {
 
     oper(oper&&) = delete;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+    void start(ex::start_t) noexcept {
+      // Enqueue another command to the list of all commands
+      // The scheduler will start this, whenever start_next() is called
+      std::unique_lock lock{data_->mutex_};
+      data_->all_commands_.emplace_back([this]() {
+        if (ex::get_stop_token(ex::get_env(receiver_)).stop_requested()) {
+          ex::set_stopped((R&&) receiver_);
+        } else {
+          ex::set_value((R&&) receiver_);
+        }
+      });
+      data_->cv_.notify_all();
+    }
+#else
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
       // Enqueue another command to the list of all commands
       // The scheduler will start this, whenever start_next() is called
@@ -79,6 +94,7 @@ struct impulse_scheduler {
       });
       self.data_->cv_.notify_all();
     }
+#endif
   };
 
   struct my_sender {
@@ -142,9 +158,15 @@ struct inline_scheduler {
   struct oper : immovable {
     R recv_;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+    void start(ex::start_t) noexcept {
+      ex::set_value((R&&) recv_);
+    }
+#else
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
       ex::set_value((R&&) self.recv_);
     }
+#endif
   };
 
   struct my_sender {
@@ -182,9 +204,15 @@ struct error_scheduler {
     R recv_;
     E err_;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+    void start(ex::start_t) noexcept {
+      ex::set_error((R&&) recv_, (E&&) err_);
+    }
+#else
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
       ex::set_error((R&&) self.recv_, (E&&) self.err_);
     }
+#endif
   };
 
   struct my_sender {
@@ -227,9 +255,15 @@ struct stopped_scheduler {
   struct oper : immovable {
     R recv_;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+    void start(ex::start_t) noexcept {
+      ex::set_stopped((R&&) recv_);
+    }
+#else
     friend void tag_invoke(ex::start_t, oper& self) noexcept {
       ex::set_stopped((R&&) self.recv_);
     }
+#endif
   };
 
   struct my_sender {

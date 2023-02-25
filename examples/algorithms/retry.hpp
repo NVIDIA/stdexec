@@ -100,9 +100,15 @@ struct _op {
     stdexec::set_error((R&&) r_, std::current_exception());
   }
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+  void start(stdexec::start_t) noexcept {
+    stdexec::start(*o_);
+  }
+#else
   friend void tag_invoke(stdexec::start_t, _op& o) noexcept {
     stdexec::start(*o.o_);
   }
+#endif
 };
 
 template <class S>

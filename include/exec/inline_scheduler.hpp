@@ -28,9 +28,15 @@ namespace exec {
       using R = stdexec::__t<R_>;
       [[no_unique_address]] R rec_;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+      void start(stdexec::start_t) noexcept {
+        stdexec::set_value((R&&) rec_);
+      }
+#else
       friend void tag_invoke(stdexec::start_t, __op& op) noexcept {
         stdexec::set_value((R&&) op.rec_);
       }
+#endif
     };
 
     struct __sender {

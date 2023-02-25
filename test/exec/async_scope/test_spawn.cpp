@@ -17,9 +17,15 @@ struct throwing_sender {
   struct operation {
     Receiver rcvr_;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+    void start(ex::start_t) noexcept {
+      ex::set_value(std::move(rcvr_));
+    }
+#else
     friend void tag_invoke(ex::start_t, operation& self) noexcept {
       ex::set_value(std::move(self.rcvr_));
     }
+#endif
   };
 
   template <class Receiver>

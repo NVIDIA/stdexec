@@ -239,10 +239,17 @@ namespace exec {
               __receiver_t{&__state_})) {
         }
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(start_t) noexcept {
+          __state_.__kernel_.start(
+            __op_, __state_.__data_, __state_.__rcvr_);
+        }
+#else
         friend void tag_invoke(start_t, __t& __self) noexcept {
           __self.__state_.__kernel_.start(
             __self.__op_, __self.__state_.__data_, __self.__state_.__rcvr_);
         }
+#endif
       };
     };
 

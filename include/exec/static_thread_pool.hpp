@@ -314,10 +314,15 @@ namespace exec {
 
         inner_op_state inner_op_;
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+        void start(stdexec::start_t) noexcept {
+          stdexec::start(inner_op_);
+        }
+#else
         friend void tag_invoke(stdexec::start_t, bulk_op_state& op) noexcept {
           stdexec::start(op.inner_op_);
         }
-
+#endif
         bulk_op_state(
           static_thread_pool& pool,
           Shape shape,
@@ -502,9 +507,17 @@ namespace exec {
       pool_.enqueue(op);
     }
 
+#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
+  public:
+    void start(stdexec::start_t) noexcept {
+      enqueue_(this);
+    }
+  private:
+#else
     friend void tag_invoke(stdexec::start_t, operation& op) noexcept {
       op.enqueue_(&op);
     }
+#endif
   };
 
   inline static_thread_pool::static_thread_pool()

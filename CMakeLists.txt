@@ -250,6 +250,7 @@ if(STDEXEC_ENABLE_CUDA)
     endif()
 endif()
 
+OPTION(STDEXEC_MEMBER_CUSTOMIZATION_POINTS "Option description" OFF)
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
 option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
@@ -272,6 +273,9 @@ if(STDEXEC_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
+if(STDEXEC_MEMBER_CUSTOMIZATION_POINTS)
+    target_compile_definitions(stdexec INTERFACE -DSTDEXEC_MEMBER_CUSTOMIZATION_POINTS)
+endif()
 ##############################################################################
 # Install targets ------------------------------------------------------------
 
