@@ -1206,7 +1206,7 @@ namespace stdexec {
   {
     template <class _O>
     requires requires (_O& __o) { __o.start(std::declval<__start::start_t&>()); }
-    static void start(_O& __o) noexcept(noexcept(std::invoke(&std::remove_pointer_t<_O>::start, __o, std::declval<__start::start_t&>())));
+    static void start(_O& __o) noexcept(noexcept(__o.start(std::declval<__start::start_t&>)));
   };
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1233,7 +1233,7 @@ namespace stdexec {
 
   template <class _O>
   requires requires (_O& __o) { __o.start(std::declval<__start::start_t&>()); }
-  void execution_concept_tag::start(_O& __o) noexcept(noexcept(std::invoke(&std::remove_pointer_t<_O>::start, __o, std::declval<__start::start_t&>())))
+  void execution_concept_tag::start(_O& __o) noexcept(noexcept(__o.start(std::declval<__start::start_t&>)))
   {
     __o.start(start_t{});
   }
@@ -1241,7 +1241,7 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   template <class _O>
-  concept operation_state = destructible<_O> && std::is_object_v<_O> && requires(_O& __o) {
+  concept operation_state = destructible<_O> && std::is_object_v<_O> && !std::is_pointer_v<_O> && requires(_O& __o) {
 #ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
     { execution_concept_tag::start(__o) } noexcept;
 #else
