@@ -4665,7 +4665,7 @@ namespace stdexec {
               } else {
                 std::apply(
                   [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
-                    __tag((_Receiver &&) __rcvr_, (_Args &&) __args...);
+                    __tag((_Receiver&&) __rcvr_, (_Args&&) __args...);
                   },
                   __tupl);
               }
@@ -4739,8 +4739,8 @@ namespace stdexec {
         template <class _Env>
         using __input_sender_with_error_t = //
           __if_c<
-            __v<value_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable, __mand>> &&
-            __v<error_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable>>,
+            __v<value_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable, __mand>>
+              && __v<error_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable>>,
             completion_signatures<>,
             __with_exception_ptr>;
 
@@ -5223,12 +5223,21 @@ namespace stdexec {
       completion_signatures<
         __minvoke< __mconcat<__qf<set_value_t>>, __single_values_of_t<_Env, _Senders>...>>;
 
+    template <class... _Args>
+    using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Args> && ...)>;
+
+    template <class _Env, class... _SenderIds>
+    using __all_value_and_error_args_nothrow_decay_copyable = __mand<
+      __mand<value_types_of_t<__t<_SenderIds>, _Env, __all_nothrow_decay_copyable, __mand>...>,
+      __mand<error_types_of_t<__t<_SenderIds>, _Env, __all_nothrow_decay_copyable>...>>;
+
     template <class _Env, class... _Senders>
     using __completions_t = //
       __concat_completion_signatures_t<
-        completion_signatures<
-          set_error_t(std::exception_ptr&&), // TODO add this only if the copies can fail
-          set_stopped_t()>,
+        __if<
+          __all_value_and_error_args_nothrow_decay_copyable<_Env, __id<_Senders>...>,
+          completion_signatures<set_stopped_t()>,
+          completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr&&)>>,
         __minvoke<
           __with_default< __mbind_front_q<__set_values_sig_t, _Env>, completion_signatures<>>,
           _Senders...>,
@@ -5293,7 +5302,10 @@ namespace stdexec {
           }
           break;
         case __error:
-          std::visit(__complete_fn{set_error, __recvr_}, __errors_);
+          if constexpr (!same_as<_ErrorsVariant, std::variant<std::monostate>>) {
+            // One or more child operations completed with an error:
+            std::visit(__complete_fn{set_error, __recvr_}, __errors_);
+          }
           break;
         case __stopped:
           stdexec::set_stopped((_Receiver&&) __recvr_);
@@ -5331,10 +5343,15 @@ namespace stdexec {
             __op_state_->__stop_source_.request_stop();
             // We won the race, free to write the error into the operation
             // state without worry.
-            try {
+            if constexpr (__nothrow_decay_copyable<_Error>) {
               __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
-            } catch (...) {
-              __op_state_->__errors_.template emplace<std::exception_ptr>(std::current_exception());
+            } else {
+              try {
+                __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
+              } catch (...) {
+                __op_state_->__errors_.template emplace<std::exception_ptr>(
+                  std::current_exception());
+              }
             }
           }
         }
@@ -5349,10 +5366,14 @@ namespace stdexec {
             // We only need to bother recording the completion values
             // if we're not already in the "error" or "stopped" state.
             if (__self.__op_state_->__state_ == __started) {
-              try {
+              if constexpr ((__nothrow_decay_copyable<_Values> && ...)) {
                 std::get<_Index>(__self.__op_state_->__values_).emplace((_Values&&) __vals...);
-              } catch (...) {
-                __self.__set_error(std::current_exception());
+              } else {
+                try {
+                  std::get<_Index>(__self.__op_state_->__values_).emplace((_Values&&) __vals...);
+                } catch (...) {
+                  __self.__set_error(std::current_exception());
+                }
               }
             }
           }
@@ -5411,11 +5432,19 @@ namespace stdexec {
             __ignore>,
           _Senders...>;
 
-      using __errors_variant = //
+      using __error_types = //
         __minvoke<
-          __mconcat<__q<__variant>>,
-          __types<std::exception_ptr>,
-          error_types_of_t< _Senders, __env_t<__id<_Env>>, __types>...>;
+          __mconcat<__transform<__q<decay_t>, __munique<>>>,
+          error_types_of_t<_Senders, __env_t<__id<_Env>>, __types>... >;
+
+      using __errors_variant = //
+        __if<
+          __all_value_and_error_args_nothrow_decay_copyable<_Env, __id<_Senders>...>,
+          __if<
+            std::is_same<__error_types, __types<>>,
+            std::variant<std::monostate>,
+            __mapply<__q<std::variant>, __error_types>>,
+          __minvoke<__push_back_unique<__q<std::variant>>, __error_types, std::exception_ptr>>;
     };
 
     template <receiver _Receiver, __max1_sender<__env_t<env_of_t<_Receiver>>>... _Senders>
