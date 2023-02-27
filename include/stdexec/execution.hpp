@@ -1219,7 +1219,8 @@ namespace stdexec {
     struct start_t {
       template <class _Op>
         requires tag_invocable<start_t, _Op&>
-      void operator()(_Op& __op) const noexcept(nothrow_tag_invocable<start_t, _Op&>) {
+      void operator()(_Op& __op) const noexcept {
+        static_assert(nothrow_tag_invocable<start_t, _Op&>);
         (void) tag_invoke(start_t{}, __op);
       }
     };
@@ -1230,10 +1231,13 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
-  template <class _O>
-  concept operation_state = destructible<_O> && std::is_object_v<_O> && requires(_O& __o) {
-    { start(__o) } noexcept;
-  };
+  template <class _Op>
+  concept operation_state =  //
+    destructible<_Op> &&     //
+    std::is_object_v<_Op> && //
+    requires(_Op& __op) {    //
+      start(__op);
+    };
 
 #if !_STD_NO_COROUTINES_
   /////////////////////////////////////////////////////////////////////////////

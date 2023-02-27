@@ -23,7 +23,7 @@ namespace ex = stdexec;
 struct my_oper : immovable {
   bool started_{false};
 
-  friend void tag_invoke(ex::start_t, my_oper& self) {
+  friend void tag_invoke(ex::start_t, my_oper& self) noexcept {
     self.started_ = true;
   }
 };
@@ -31,7 +31,7 @@ struct my_oper : immovable {
 struct op_value /*: immovable*/ { // Intentionally movable!
   bool* started_;
 
-  friend void tag_invoke(ex::start_t, op_value self) {
+  friend void tag_invoke(ex::start_t, op_value self) noexcept {
     *self.started_ = true;
   }
 };
@@ -39,7 +39,7 @@ struct op_value /*: immovable*/ { // Intentionally movable!
 struct op_rvalref : immovable {
   bool* started_;
 
-  friend void tag_invoke(ex::start_t, op_rvalref&& self) {
+  friend void tag_invoke(ex::start_t, op_rvalref&& self) noexcept {
     *self.started_ = true;
   }
 };
@@ -47,7 +47,7 @@ struct op_rvalref : immovable {
 struct op_ref : immovable {
   bool* started_;
 
-  friend void tag_invoke(ex::start_t, op_ref& self) {
+  friend void tag_invoke(ex::start_t, op_ref& self) noexcept {
     *self.started_ = true;
   }
 };
@@ -55,7 +55,7 @@ struct op_ref : immovable {
 struct op_cref : immovable {
   bool* started_;
 
-  friend void tag_invoke(ex::start_t, const op_cref& self) {
+  friend void tag_invoke(ex::start_t, const op_cref& self) noexcept {
     *self.started_ = true;
   }
 };
