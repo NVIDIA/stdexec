@@ -148,8 +148,8 @@ namespace exec {
 
      private:
       struct __final_awaitable {
-        static std::false_type await_ready() noexcept {
-          return {};
+        static constexpr bool await_ready() noexcept {
+          return false;
         }
 
         static __coro::coroutine_handle<>
@@ -226,33 +226,37 @@ namespace exec {
 
   inline constexpr __at_coro_exit::__at_coro_exit_t at_coroutine_exit{};
 
-  namespace __on_coroutine_succeeded {
+  namespace __on_coro_disp {
     using namespace stdexec;
-    using exec::__task::__disposition;
-    using __on_coroutine_completion = __disposition;
 
     template <class _Promise>
-    concept __promise_with_disposition =
-      __at_coro_exit::__has_continuation<_Promise> && requires(_Promise& __promise) {
-        { __promise.__disposition() } -> convertible_to<__disposition>;
+    concept __promise_with_disposition =              //
+      __at_coro_exit::__has_continuation<_Promise> && //
+      requires(_Promise& __promise) {
+        { __promise.disposition() } -> convertible_to<task_disposition>;
       };
 
     struct __get_disposition {
-      __disposition __disposition_;
+      task_disposition __disposition_;
 
-      constexpr bool await_ready() const noexcept {
-        return true;
+      static constexpr bool await_ready() noexcept {
+        return false;
       }
 
-      void await_suspend(__coro::coroutine_handle<>) const noexcept {
+      template <class _Promise>
+      bool await_suspend(__coro::coroutine_handle<_Promise> __h) noexcept {
+        auto& __promise = __h.promise();
+        __disposition_ = //
+          __promise.__get_disposition_callback_(__promise.__parent_.address());
+        return false;
       }
 
-      __disposition await_resume() const noexcept {
+      task_disposition await_resume() const noexcept {
         return __disposition_;
       }
     };
 
-    template <__on_coroutine_completion _OnCompletion, class... _Ts>
+    template <class... _Ts>
     class [[nodiscard]] __task {
       struct __promise;
      public:
@@ -273,11 +277,12 @@ namespace exec {
       template <__promise_with_disposition _Promise>
       bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
         __coro_.promise().__parent_ = __parent;
-        __coro_.promise().__get_disposition_callback_ = [](void* __parent) noexcept {
-          _Promise& __promise =
-            __coro::coroutine_handle<_Promise>::from_address(__parent).promise();
-          return __promise.__disposition();
-        };
+        __coro_.promise().__get_disposition_callback_ = //
+          [](void* __parent) noexcept {
+            _Promise& __promise =
+              __coro::coroutine_handle<_Promise>::from_address(__parent).promise();
+            return __promise.disposition();
+          };
         __coro_.promise().set_continuation(__parent.promise().continuation());
         __parent.promise().set_continuation(__coro_);
         return false;
@@ -338,19 +343,17 @@ namespace exec {
         }
 
         __get_disposition await_transform(__get_disposition __awaitable) noexcept {
-          __awaitable.__disposition_ = __get_disposition_callback_(__parent_.address());
           return __awaitable;
         }
 
         template <class _Awaitable>
-          requires(!__decays_to<__get_disposition, _Awaitable>)
         decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
           return as_awaitable(__at_coro_exit::__die_on_stop((_Awaitable&&) __awaitable), *this);
         }
 
         bool __is_unhandled_stopped_{false};
         std::tuple<_Ts&...> __args_{};
-        using __get_disposition_callback_t = __disposition (*)(void*) noexcept;
+        using __get_disposition_callback_t = task_disposition (*)(void*) noexcept;
         __coro::coroutine_handle<> __parent_{};
         __get_disposition_callback_t __get_disposition_callback_{nullptr};
       };
@@ -358,12 +361,12 @@ namespace exec {
       __coro::coroutine_handle<__promise> __coro_;
     };
 
-    template <__on_coroutine_completion _OnCompletion>
-    class __on_coro_t {
+    template <task_disposition _OnCompletion>
+    class __on_disp {
      private:
       template <class _Action, class... _Ts>
-      static __task<_OnCompletion, _Ts...> __impl(_Action __action, _Ts... __ts) {
-        __on_coroutine_completion __d = co_await __get_disposition();
+      static __task<_Ts...> __impl(_Action __action, _Ts... __ts) {
+        task_disposition __d = co_await __get_disposition();
         if (__d == _OnCompletion) {
           co_await ((_Action&&) __action)((_Ts&&) __ts...);
         }
@@ -372,19 +375,19 @@ namespace exec {
      public:
       template <class _Action, class... _Ts>
         requires __callable<std::decay_t<_Action>, std::decay_t<_Ts>...>
-      __task<_OnCompletion, _Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {
+      __task<_Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {
         return __impl((_Action&&) __action, (_Ts&&) __ts...);
       }
     };
 
-    struct __on_coro_succeeded_t : __on_coro_t<__on_coroutine_completion::__value> { };
+    struct __succeeded_t : __on_disp<task_disposition::succeeded> { };
 
-    struct __on_coro_stopped_t : __on_coro_t<__on_coroutine_completion::__none> { };
+    struct __stopped_t : __on_disp<task_disposition::stopped> { };
 
-    struct __on_coro_failed_t : __on_coro_t<__on_coroutine_completion::__exception> { };
-  }
+    struct __failed_t : __on_disp<task_disposition::failed> { };
+  } // namespace __on_coro_disp
 
-  inline constexpr __on_coroutine_succeeded::__on_coro_succeeded_t on_coroutine_succeeded{};
-  inline constexpr __on_coroutine_succeeded::__on_coro_stopped_t on_coroutine_stopped{};
-  inline constexpr __on_coroutine_succeeded::__on_coro_failed_t on_coroutine_failed{};
+  inline constexpr __on_coro_disp::__succeeded_t on_coroutine_succeeded{};
+  inline constexpr __on_coro_disp::__stopped_t on_coroutine_stopped{};
+  inline constexpr __on_coro_disp::__failed_t on_coroutine_failed{};
 } // namespace exec
