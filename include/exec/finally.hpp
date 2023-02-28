@@ -197,6 +197,7 @@ namespace exec {
         }
 
         template <__one_of<set_error_t, set_stopped_t> _Tag, __decays_to<__t> _Self, class... _Error>
+          requires __callable<_Tag, _Receiver&&, _Error...>
         friend void tag_invoke(_Tag __tag, _Self&& __self, _Error&&... __error) noexcept {
           __self.__op_->__result_.__destruct();
           __tag((_Receiver&&) __self.__op_->__receiver_, (_Error&&) __error...);
@@ -222,6 +223,7 @@ namespace exec {
       __manual_lifetime<__final_operation_t> __final_operation_{};
 
       template <class... _Args>
+        requires std::is_constructible_v<__result_type<_Sigs>, __decayed_tuple<_Args...>>
       void __store_result_and_start_next_op(_Args&&... __args) noexcept(
         __nothrow_store_and_connect_v<_FinalSender, __final_receiver_ref_t, _Args...>) {
         this->__result_.__construct(std::tuple{(_Args&&) __args...});
@@ -251,6 +253,7 @@ namespace exec {
         __initial_operation_base<_FinalSenderId, _Sigs, _ReceiverId>* __op_;
 
         template <__decays_to<__t> _Self, class... _Args>
+          requires __callable<set_value_t, _Receiver&&, _Args...>
         friend void tag_invoke(set_value_t, _Self&& __self, _Args&&... __args) noexcept {
           if constexpr (
             __nothrow_store_and_connect_v<_FinalSender, __final_receiver_ref_t, _Args...>) {
@@ -265,6 +268,7 @@ namespace exec {
         }
 
         template <__one_of<set_error_t, set_stopped_t> _Tag, __decays_to<__t> _Self, class... _Error>
+          requires __callable<_Tag, _Receiver&&, _Error...>
         friend void tag_invoke(_Tag __tag, _Self&& __self, _Error&&... __error) noexcept {
           __tag((_Receiver&&) __self.__op_->__receiver_, (_Error&&) __error...);
         }
