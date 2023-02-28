@@ -19,6 +19,7 @@
 #include <cassert>
 #include <concepts>
 #include <condition_variable>
+#include <coroutine>
 #include <stdexcept>
 #include <memory>
 #include <mutex>
@@ -1243,6 +1244,30 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // __connect_awaitable_
   namespace __connect_awaitable_ {
+    inline constexpr auto __co_call =
+      []<class _Fun, class... _Ts>(_Fun __fun, _Ts&&... __as) noexcept {
+        auto __fn = [&, __fun]() noexcept {
+          __fun((_Ts&&) __as...);
+        };
+
+        struct __awaitable {
+          decltype(__fn) __fn_;
+
+          static constexpr bool await_ready() noexcept {
+            return false;
+          }
+
+          void await_suspend(__coro::coroutine_handle<>) noexcept {
+            __fn_();
+          }
+
+          void await_resume() noexcept {
+          }
+        };
+
+        return __awaitable{__fn};
+      };
+
     struct __promise_base {
       __coro::suspend_always initial_suspend() noexcept {
         return {};
@@ -1258,31 +1283,6 @@ namespace stdexec {
 
       [[noreturn]] void return_void() noexcept {
         std::terminate();
-      }
-
-      template <class _Fun>
-      auto yield_value(_Fun&& __fun) noexcept {
-        struct awaiter {
-          _Fun&& __fun_;
-
-          bool await_ready() noexcept {
-            return false;
-          }
-
-          void await_suspend(__coro::coroutine_handle<>) noexcept(__nothrow_callable<_Fun>) {
-            // If this throws, the runtime catches the exception,
-            // resumes the __connect_awaitable coroutine, and immediately
-            // rethrows the exception. The end result is that an
-            // exception_ptr to the exception gets passed to set_error.
-            ((_Fun&&) __fun_)();
-          }
-
-          [[noreturn]] void await_resume() noexcept {
-            std::terminate();
-          }
-        };
-
-        return awaiter{(_Fun&&) __fun};
       }
     };
 
@@ -1330,7 +1330,7 @@ namespace stdexec {
         }
 
         __coro::coroutine_handle<> unhandled_stopped() noexcept {
-          set_stopped(std::move(__rcvr_));
+          set_stopped((_Receiver&&) __rcvr_);
           // Returning noop_coroutine here causes the __connect_awaitable
           // coroutine to never resume past the point where it co_await's
           // the awaitable.
@@ -1377,29 +1377,15 @@ namespace stdexec {
         using __result_t = __await_result_t<_Awaitable, __promise_t<_Receiver>>;
         std::exception_ptr __eptr;
         try {
-          // This is a bit mind bending control-flow wise.
-          // We are first evaluating the co_await expression.
-          // Then the result of that is passed into a lambda
-          // that curries a reference to the result into another
-          // lambda which is then returned to 'co_yield'.
-          // The 'co_yield' expression then invokes this lambda
-          // after the coroutine is suspended so that it is safe
-          // for the receiver to destroy the coroutine.
-          auto __fun = [&](auto&&... __as) noexcept {
-            return [&]() noexcept -> void {
-              set_value((_Receiver&&) __rcvr, (std::add_rvalue_reference_t<__result_t>) __as...);
-            };
-          };
           if constexpr (std::is_void_v<__result_t>)
-            co_yield (co_await (_Awaitable&&) __await, __fun());
+            co_await (co_await (_Awaitable&&) __await, __co_call(set_value, (_Receiver&&) __rcvr));
           else
-            co_yield __fun(co_await (_Awaitable&&) __await);
+            co_await __co_call(set_value, (_Receiver&&) __rcvr, co_await (_Awaitable&&) __await);
+
         } catch (...) {
           __eptr = std::current_exception();
         }
-        co_yield [&]() noexcept -> void {
-          set_error((_Receiver&&) __rcvr, (std::exception_ptr&&) __eptr);
-        };
+        co_await __co_call(set_error, (_Receiver&&) __rcvr, (std::exception_ptr&&) __eptr);
       }
 
       template <receiver _Receiver, class _Awaitable>
@@ -4669,7 +4655,7 @@ namespace stdexec {
               } else {
                 std::apply(
                   [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
-                    __tag((_Receiver &&) __rcvr_, (_Args &&) __args...);
+                    __tag((_Receiver&&) __rcvr_, (_Args&&) __args...);
                   },
                   __tupl);
               }
@@ -4743,8 +4729,8 @@ namespace stdexec {
         template <class _Env>
         using __input_sender_with_error_t = //
           __if_c<
-            __v<value_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable, __mand>> &&
-            __v<error_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable>>,
+            __v<value_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable, __mand>>
+              && __v<error_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable>>,
             completion_signatures<>,
             __with_exception_ptr>;
 
