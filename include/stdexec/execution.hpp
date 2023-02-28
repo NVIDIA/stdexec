@@ -2728,7 +2728,10 @@ namespace stdexec {
         typename __receiver_id::__data __data_;
         connect_result_t<_Sender, __receiver_t> __op_;
 
-        __t(_Sender&& __sndr, _Receiver __rcvr, _Fun __fun)
+        __t(_Sender&& __sndr, _Receiver __rcvr, _Fun __fun) //
+          noexcept(__nothrow_decay_copyable<_Receiver&&>    //
+                     && __nothrow_decay_copyable<_Fun&&>    //
+                       && __nothrow_connectable<_Sender, __receiver_t>)
           : __data_{(_Receiver&&) __rcvr, (_Fun&&) __fun}
           , __op_(connect((_Sender&&) __sndr, __receiver_t{&__data_})) {
         }
@@ -2764,8 +2767,12 @@ namespace stdexec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __operation<_Self, _Receiver> {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
+          noexcept(std::is_nothrow_constructible_v<
+                   __operation<_Self, _Receiver>,
+                   __copy_cvref_t<_Self, _Sender>,
+                   _Receiver&&,
+                   __copy_cvref_t<_Self, _Fun>>) -> __operation<_Self, _Receiver> {
           return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};
         }
 
@@ -4669,7 +4676,7 @@ namespace stdexec {
               } else {
                 std::apply(
                   [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
-                    __tag((_Receiver &&) __rcvr_, (_Args &&) __args...);
+                    __tag((_Receiver&&) __rcvr_, (_Args&&) __args...);
                   },
                   __tupl);
               }
@@ -4743,8 +4750,8 @@ namespace stdexec {
         template <class _Env>
         using __input_sender_with_error_t = //
           __if_c<
-            __v<value_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable, __mand>> &&
-            __v<error_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable>>,
+            __v<value_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable, __mand>>
+              && __v<error_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable>>,
             completion_signatures<>,
             __with_exception_ptr>;
 
