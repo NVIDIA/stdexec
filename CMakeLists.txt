@@ -125,14 +125,6 @@ target_link_libraries(stdexec INTERFACE Threads::Threads)
 # Use C++20 standard
 target_compile_features(stdexec INTERFACE cxx_std_20)
 
-# # Enable GPU compilation when using NVHPC compiler
-# target_compile_options(stdexec INTERFACE
-#                        $<$<COMPILE_LANG_AND_ID:CXX,NVHPC>:-stdpar=gpu>
-#                        )
-# target_link_options(stdexec INTERFACE
-#                        $<$<LINK_LANG_AND_ID:CXX,NVHPC>:-stdpar=gpu>
-#                        )
-
 # Enable coroutines for GCC
 target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>
@@ -191,17 +183,17 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        )
 
 # Set up nvexec library
-option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
-    set(STDEXEC_ENABLE_CUDA ON)
-    # Unset these if using nvc++
-    disable_compiler(LANG CUDA)
-    disable_compiler_launcher(LANG CXX)
-    disable_compiler_launcher(LANG CUDA)
+  option(STDEXEC_ENABLE_CUDA "Enable CUDA targets" ON)
+  # Unset these if using nvc++
+  disable_compiler(LANG CUDA)
+  disable_compiler_launcher(LANG CXX)
+  disable_compiler_launcher(LANG CUDA)
+else()
+  option(STDEXEC_ENABLE_CUDA "Enable CUDA targets" OFF)
 endif()
 
 if(STDEXEC_ENABLE_CUDA)
-
     file(GLOB_RECURSE nvexec_sources include/nvexec/*.cuh)
     add_library(nvexec INTERFACE ${nvexec_sources})
     list(APPEND stdexec_export_targets nvexec)
