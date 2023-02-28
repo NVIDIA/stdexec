@@ -175,6 +175,13 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:GNU>:-fdiagnostics-color=always>
                        )
 
+# Compilation timing
+option(STDEXEC_ENABLE_COMPILATION_TIMING "Enable compilation timing" OFF)
+if(STDEXEC_ENABLE_COMPILATION_TIMING)
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "/usr/bin/time -f '%e'")
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "/usr/bin/time -f '%e'")
+endif()
+
 # Clang CUDA options
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CUDA,Clang>:
