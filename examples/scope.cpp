@@ -26,7 +26,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
 using namespace stdexec;
-using stdexec::sync_wait;
 
 class noop_receiver : receiver_adaptor<noop_receiver> {
   friend receiver_adaptor<noop_receiver>;
