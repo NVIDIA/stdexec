@@ -1243,30 +1243,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // __connect_awaitable_
   namespace __connect_awaitable_ {
-    inline constexpr auto __co_call =
-      []<class _Fun, class... _Ts>(_Fun __fun, _Ts&&... __as) noexcept {
-        auto __fn = [&, __fun]() noexcept {
-          __fun((_Ts&&) __as...);
-        };
-
-        struct __awaitable {
-          decltype(__fn) __fn_;
-
-          static constexpr bool await_ready() noexcept {
-            return false;
-          }
-
-          void await_suspend(__coro::coroutine_handle<>) noexcept {
-            __fn_();
-          }
-
-          void await_resume() noexcept {
-          }
-        };
-
-        return __awaitable{__fn};
-      };
-
     struct __promise_base {
       __coro::suspend_always initial_suspend() noexcept {
         return {};
@@ -1371,16 +1347,40 @@ namespace stdexec {
 
     struct __connect_awaitable_t {
      private:
+      template <class _Fun, class... _Ts>
+      static auto __co_call(_Fun __fun, _Ts&&... __as) noexcept {
+        auto __fn = [&, __fun]() noexcept {
+          __fun((_Ts&&) __as...);
+        };
+
+        struct __awaiter {
+          decltype(__fn) __fn_;
+
+          static constexpr bool await_ready() noexcept {
+            return false;
+          }
+
+          void await_suspend(__coro::coroutine_handle<>) noexcept {
+            __fn_();
+          }
+
+          [[noreturn]] void await_resume() noexcept {
+            std::terminate();
+          }
+        };
+
+        return __awaiter{__fn};
+      };
+
       template <class _Awaitable, class _Receiver>
       static __operation_t<_Receiver> __co_impl(_Awaitable __await, _Receiver __rcvr) {
         using __result_t = __await_result_t<_Awaitable, __promise_t<_Receiver>>;
         std::exception_ptr __eptr;
         try {
-          if constexpr (std::is_void_v<__result_t>)
+          if constexpr (same_as<__result_t, void>)
             co_await (co_await (_Awaitable&&) __await, __co_call(set_value, (_Receiver&&) __rcvr));
           else
             co_await __co_call(set_value, (_Receiver&&) __rcvr, co_await (_Awaitable&&) __await);
-
         } catch (...) {
           __eptr = std::current_exception();
         }
