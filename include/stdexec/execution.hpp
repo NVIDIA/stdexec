@@ -5304,7 +5304,8 @@ namespace stdexec {
         case __error:
           if constexpr (!same_as<_ErrorsVariant, std::variant<std::monostate>>) {
             // One or more child operations completed with an error:
-            std::visit(__complete_fn{set_error, __recvr_}, __errors_);
+            STDEXEC_ASSERT(__errors_.has_value());
+            std::visit(__complete_fn{set_error, __recvr_}, *__errors_);
           }
           break;
         case __stopped:
@@ -5319,7 +5320,7 @@ namespace stdexec {
       in_place_stop_source __stop_source_{};
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       std::atomic<__state_t> __state_{__started};
-      _ErrorsVariant __errors_{};
+      std::optional<_ErrorsVariant> __errors_{};
       [[no_unique_address]] _ValuesTuple __values_{};
       std::optional<
         typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_requested>>
@@ -5344,13 +5345,12 @@ namespace stdexec {
             // We won the race, free to write the error into the operation
             // state without worry.
             if constexpr (__nothrow_decay_copyable<_Error>) {
-              __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
+              __op_state_->__errors_.emplace((_Error&&) __err);
             } else {
               try {
-                __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
+                __op_state_->__errors_.emplace((_Error&&) __err);
               } catch (...) {
-                __op_state_->__errors_.template emplace<std::exception_ptr>(
-                  std::current_exception());
+                __op_state_->__errors_.emplace(std::current_exception());
               }
             }
           }
