@@ -21,7 +21,6 @@
 
 #include "common.cuh"
 #include "../detail/queue.cuh"
-#include "../detail/throw_on_cuda_error.cuh"
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
@@ -185,7 +184,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
                 if constexpr (stream_receiver<Receiver>) {
                   if (op_state_->status_ == cudaSuccess) {
-                    op_state_->status_ = STDEXEC_DBG_ERR(
+                    op_state_->status_ = STDEXEC_CHECK_CUDA_ERROR(
                       cudaEventRecord(op_state_->events_[Index], stream));
                   }
                 }
@@ -257,7 +256,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         static void sync(OpT& op) noexcept {
           if constexpr (std::is_base_of_v<stream_op_state_base, OpT>) {
             if (op.status_ == cudaSuccess) {
-              op.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.get_stream()));
+              op.status_ = STDEXEC_CHECK_CUDA_ERROR(cudaStreamSynchronize(op.get_stream()));
             }
           }
         }
@@ -274,7 +273,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
               for (int i = 0; i < sizeof...(SenderIds); i++) {
                 if (status_ == cudaSuccess) {
-                  status_ = STDEXEC_DBG_ERR(cudaStreamWaitEvent(stream, events_[i]));
+                  status_ = STDEXEC_CHECK_CUDA_ERROR(cudaStreamWaitEvent(stream, events_[i]));
                 }
               }
             } else {
@@ -325,7 +324,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             auto sch = stdexec::get_completion_scheduler<stdexec::set_value_t>(
               stdexec::get_env(std::get<Is>(when_all.sndrs_)));
             context_state_t context_state = sch.context_state_;
-            STDEXEC_DBG_ERR(cudaStreamCreate(&this->streams_[Is]));
+            STDEXEC_CHECK_CUDA_ERROR(cudaStreamCreate(&this->streams_[Is]));
 
             return exit_op_state<
               decltype(std::get<Is>(((WhenAll&&) when_all).sndrs_)),
@@ -334,24 +333,24 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               stdexec::__t<receiver_t<CvrefReceiverId, Is>>{{}, {}, parent_op},
               context_state);
           }}...} {
-          status_ = STDEXEC_DBG_ERR(cudaMallocManaged(&values_, sizeof(child_values_tuple_t)));
+          status_ = STDEXEC_CHECK_CUDA_ERROR(cudaMallocManaged(&values_, sizeof(child_values_tuple_t)));
         }
 
         operation_t(WhenAll&& when_all, Receiver rcvr)
           : operation_t((WhenAll&&) when_all, (Receiver&&) rcvr, Indices{}) {
           for (int i = 0; i < sizeof...(SenderIds); i++) {
             if (status_ == cudaSuccess) {
-              status_ = STDEXEC_DBG_ERR(cudaEventCreate(&events_[i]));
+              status_ = STDEXEC_CHECK_CUDA_ERROR(cudaEventCreate(&events_[i]));
             }
           }
         }
 
         ~operation_t() {
-          STDEXEC_DBG_ERR(cudaFree(values_));
+          STDEXEC_CHECK_CUDA_ERROR(cudaFree(values_));
 
           for (int i = 0; i < sizeof...(SenderIds); i++) {
-            STDEXEC_DBG_ERR(cudaStreamDestroy(streams_[i]));
-            STDEXEC_DBG_ERR(cudaEventDestroy(events_[i]));
+            STDEXEC_CHECK_CUDA_ERROR(cudaStreamDestroy(streams_[i]));
+            STDEXEC_CHECK_CUDA_ERROR(cudaEventDestroy(events_[i]));
           }
         }
 

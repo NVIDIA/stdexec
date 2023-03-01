@@ -36,7 +36,7 @@ static std::pair<std::size_t, std::size_t>
 template <class T>
 std::unique_ptr<T, deleter_t> device_alloc(std::size_t elements = 1) {
   T *ptr{};
-  STDEXEC_DBG_ERR(cudaMalloc(&ptr, elements * sizeof(T)));
+  STDEXEC_CHECK_CUDA_ERROR(cudaMalloc(&ptr, elements * sizeof(T)));
   return std::unique_ptr<T, deleter_t>(ptr, deleter_t{true});
 }
 
@@ -111,8 +111,8 @@ namespace distributed {
       float *ez = accessor_.get(field_id::ez);
       std::vector<float> h_ez(accessor_.own_cells() + 2 * accessor_.n);
 
-      cudaMemcpy(
-        h_ez.data(), accessor_.get(field_id::ez), sizeof(float) * h_ez.size(), cudaMemcpyDefault);
+      STDEXEC_CHECK_CUDA_ERROR(cudaMemcpy(
+        h_ez.data(), accessor_.get(field_id::ez), sizeof(float) * h_ez.size(), cudaMemcpyDefault));
       ez = h_ez.data();
 
       if (rank_ == 0) {

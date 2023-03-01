@@ -117,7 +117,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           kernel_with_result<std::decay_t<_Fun>, result_sender_t, _As...>
             <<<1, 1, 0, stream>>>(__self.__op_state_->__fun_, result_sender, (_As&&) __as...);
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+          if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
             auto& __op = __self.__op_state_->__op_state3_.template emplace<op_state_t>(
               stdexec::__conv{[&] {

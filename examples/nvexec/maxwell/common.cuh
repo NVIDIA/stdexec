@@ -29,8 +29,7 @@
 #include <math.h>
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-#define STDEXEC_STDERR
-#include "nvexec/detail/throw_on_cuda_error.cuh"
+#include "nvexec/detail/cuda_error_handling.cuh"
 #endif
 
 struct deleter_t {
@@ -40,7 +39,7 @@ struct deleter_t {
   void operator()(T *ptr) {
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
     if (on_gpu) {
-      STDEXEC_DBG_ERR(cudaFree(ptr));
+      STDEXEC_CHECK_CUDA_ERROR(cudaFree(ptr));
     } else
 #endif
     {
@@ -56,7 +55,7 @@ STDEXEC_DETAIL_CUDACC_HOST_DEVICE inline std::unique_ptr<T, deleter_t>
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
   if (gpu) {
-    STDEXEC_DBG_ERR(cudaMallocManaged(&ptr, elements * sizeof(T)));
+    STDEXEC_CHECK_CUDA_ERROR(cudaMallocManaged(&ptr, elements * sizeof(T)));
   } else
 #endif
   {

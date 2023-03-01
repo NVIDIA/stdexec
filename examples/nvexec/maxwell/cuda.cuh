@@ -46,10 +46,10 @@ void run_cuda(
   auto e_updater = update_e(time.get(), dt, accessor);
 
   cudaStream_t stream{};
-  cudaStreamCreate(&stream);
+  STDEXEC_CHECK_CUDA_ERROR(cudaStreamCreate(&stream));
 
   kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, initializer);
-  STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+  STDEXEC_CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
 
   report_performance(grid.cells, n_iterations, method, [&]() {
     for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
@@ -57,8 +57,8 @@ void run_cuda(
       kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, e_updater);
     }
     writer(false);
-    STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+    STDEXEC_CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
   });
 
-  cudaStreamDestroy(stream);
+  STDEXEC_CHECK_CUDA_ERROR(cudaStreamDestroy(stream));
 }

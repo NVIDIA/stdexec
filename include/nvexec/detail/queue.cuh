@@ -22,7 +22,7 @@
 
 #include "config.cuh"
 #include "cuda_atomic.cuh"
-#include "throw_on_cuda_error.cuh"
+#include "cuda_error_handling.cuh"
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
   struct task_base_t {
@@ -37,7 +37,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
   struct device_deleter_t {
     template <class T>
     void operator()(T* ptr) {
-      STDEXEC_DBG_ERR(cudaFree(ptr));
+      STDEXEC_CHECK_CUDA_ERROR(cudaFree(ptr));
     }
   };
 
@@ -50,9 +50,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
 
     if (status == cudaSuccess) {
       T* ptr{};
-      if (status = STDEXEC_DBG_ERR(cudaMalloc(&ptr, sizeof(T))); status == cudaSuccess) {
+      if (status = STDEXEC_CHECK_CUDA_ERROR(cudaMalloc(&ptr, sizeof(T))); status == cudaSuccess) {
         T h((As&&) as...);
-        status = STDEXEC_DBG_ERR(cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
+        status = STDEXEC_CHECK_CUDA_ERROR(cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
         return device_ptr<T>(ptr);
       }
     }
@@ -130,13 +130,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
       this->execute_ = [](task_base_t* t) noexcept {
       };
       this->free_ = [](task_base_t* t) noexcept {
-        STDEXEC_DBG_ERR(cudaFree(t->atom_next_));
+        STDEXEC_CHECK_CUDA_ERROR(cudaFree(t->atom_next_));
       };
       this->next_ = nullptr;
 
       constexpr std::size_t ptr_size = sizeof(this->atom_next_);
-      STDEXEC_DBG_ERR(cudaMalloc(&this->atom_next_, ptr_size));
-      STDEXEC_DBG_ERR(cudaMemset(this->atom_next_, 0, ptr_size));
+      STDEXEC_CHECK_CUDA_ERROR(cudaMalloc(&this->atom_next_, ptr_size));
+      STDEXEC_CHECK_CUDA_ERROR(cudaMemset(this->atom_next_, 0, ptr_size));
     }
   };
 
@@ -148,7 +148,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
     poller_t(int dev_id, task_base_t* head)
       : head_(head) {
       poller_ = std::thread([dev_id, this] {
-        cudaSetDevice(dev_id);
+        STDEXEC_CHECK_CUDA_ERROR(cudaSetDevice(dev_id));
 
         task_base_t* current = head_;
 

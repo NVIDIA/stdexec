@@ -69,7 +69,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace sync_wait {
         requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
       friend void tag_invoke(stdexec::set_value_t, __t&& rcvr, As&&... as) noexcept {
         try {
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+          if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaStreamSynchronize(rcvr.state_->stream_));
               status == cudaSuccess) {
             rcvr.state_->data_.template emplace<1>((As&&) as...);
           } else {
@@ -83,7 +83,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace sync_wait {
 
       template <class Error>
       friend void tag_invoke(stdexec::set_error_t, __t&& rcvr, Error err) noexcept {
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+        if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaStreamSynchronize(rcvr.state_->stream_));
             status == cudaSuccess) {
           rcvr.set_error((Error&&) err);
         } else {
@@ -92,7 +92,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace sync_wait {
       }
 
       friend void tag_invoke(stdexec::set_stopped_t __d, __t&& rcvr) noexcept {
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+        if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaStreamSynchronize(rcvr.state_->stream_));
             status == cudaSuccess) {
           rcvr.state_->data_.template emplace<3>(__d);
         } else {

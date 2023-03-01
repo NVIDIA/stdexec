@@ -32,11 +32,11 @@ template <class Policy>
 bool is_gpu_policy(Policy&& policy) {
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
   bool* flag{};
-  STDEXEC_DBG_ERR(cudaMallocHost(&flag, sizeof(bool)));
+  STDEXEC_CHECK_CUDA_ERROR(cudaMallocHost(&flag, sizeof(bool)));
   std::for_each(policy, flag, flag + 1, [](bool& f) { f = nvexec::is_on_gpu(); });
 
   bool h_flag = *flag;
-  STDEXEC_DBG_ERR(cudaFreeHost(flag));
+  STDEXEC_CHECK_CUDA_ERROR(cudaFreeHost(flag));
 
   return h_flag;
 #else

@@ -44,11 +44,11 @@ namespace nvexec {
         template <stdexec::__decays_to<R> Receiver>
         operation_state_t(Receiver&& rec)
           : rec_((Receiver&&) rec) {
-          status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
+          status_ = STDEXEC_CHECK_CUDA_ERROR(cudaStreamCreate(&stream_));
         }
 
         ~operation_state_t() {
-          STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
+          STDEXEC_CHECK_CUDA_ERROR(cudaStreamDestroy(stream_));
         }
 
         cudaStream_t get_stream() {
@@ -66,9 +66,11 @@ namespace nvexec {
             if (op.status_ == cudaSuccess) {
               continuation_kernel<std::decay_t<R>, stdexec::set_value_t>
                 <<<1, 1, 0, op.stream_>>>(op.rec_, stdexec::set_value);
+              STDEXEC_CHECK_CUDA_ERROR(cudaGetLastError());
             } else {
               continuation_kernel<std::decay_t<R>, stdexec::set_error_t, cudaError_t>
                 <<<1, 1, 0, op.stream_>>>(op.rec_, stdexec::set_error, op.status_);
+              STDEXEC_CHECK_CUDA_ERROR(cudaGetLastError());
             }
           }
         }
@@ -263,22 +265,22 @@ namespace nvexec {
       : dev_id_(get_device())
       , hub_(dev_id_, pinned_resource_.get()) {
       // TODO Manage errors
-      cudaGetDeviceCount(&num_devices_);
+      STDEXEC_CHECK_CUDA_ERROR(cudaGetDeviceCount(&num_devices_));
 
       for (int dev_id = 0; dev_id < num_devices_; dev_id++) {
-        cudaSetDevice(dev_id);
+        STDEXEC_CHECK_CUDA_ERROR(cudaSetDevice(dev_id));
         for (int peer_id = 0; peer_id < num_devices_; peer_id++) {
           if (peer_id != dev_id) {
-            int can_access{};
-            cudaDeviceCanAccessPeer(&can_access, dev_id, peer_id);
+            int can_access{0};
+            STDEXEC_CHECK_CUDA_ERROR(cudaDeviceCanAccessPeer(&can_access, dev_id, peer_id));
 
             if (can_access) {
-              cudaDeviceEnablePeerAccess(peer_id, 0);
+              STDEXEC_CHECK_CUDA_ERROR(cudaDeviceEnablePeerAccess(peer_id, 0));
             }
           }
         }
       }
-      cudaSetDevice(dev_id_);
+      STDEXEC_CHECK_CUDA_ERROR(cudaSetDevice(dev_id_));
     }
 
     multi_gpu_stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {

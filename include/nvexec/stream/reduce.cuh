@@ -107,7 +107,7 @@ namespace nvexec {
             cudaError_t status;
 
             do {
-              if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+              if (status = STDEXEC_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
                     d_temp_storage,
                     temp_storage_size,
                     first,
@@ -120,13 +120,13 @@ namespace nvexec {
                 break;
               }
 
-              if (status = STDEXEC_DBG_ERR(
+              if (status = STDEXEC_CHECK_CUDA_ERROR(
                     cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
                   status != cudaSuccess) {
                 break;
               }
 
-              if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+              if (status = STDEXEC_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
                     d_temp_storage,
                     temp_storage_size,
                     first,
@@ -139,7 +139,7 @@ namespace nvexec {
                 break;
               }
 
-              status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
+              status = STDEXEC_CHECK_CUDA_ERROR(cudaFreeAsync(d_temp_storage, stream));
             } while (false);
 
             if (status == cudaSuccess) {

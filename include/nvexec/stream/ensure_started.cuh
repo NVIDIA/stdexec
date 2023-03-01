@@ -18,7 +18,6 @@
 #include "../../stdexec/execution.hpp"
 #include <type_traits>
 
-#include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
@@ -58,7 +57,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             using tuple_t = decayed_tuple<Tag, As...>;
             state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
             copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&) as...);
-            state.status_ = STDEXEC_DBG_ERR(cudaEventRecord(state.event_, stream));
+            state.status_ = STDEXEC_CHECK_CUDA_ERROR(cudaEventRecord(state.event_, stream));
           } else {
             using tuple_t = decayed_tuple<Tag, As...>;
             state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
@@ -84,7 +83,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       T* ptr{};
 
       if (status == cudaSuccess) {
-        if (status = STDEXEC_DBG_ERR(cudaMallocManaged(&ptr, sizeof(T))); status == cudaSuccess) {
+        if (status = STDEXEC_CHECK_CUDA_ERROR(cudaMallocManaged(&ptr, sizeof(T))); status == cudaSuccess) {
           new (ptr) T();
           return ptr;
         }
@@ -144,7 +143,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , op_state1_{nullptr}
         , op_state2_(stdexec::connect((Sender&&) sndr, inner_receiver_t{*this})) {
         if (status_ == cudaSuccess) {
-          status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_));
+          status_ = STDEXEC_CHECK_CUDA_ERROR(cudaEventCreate(&event_));
         }
 
         stdexec::start(op_state2_);
@@ -171,13 +170,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       ~sh_state_t() {
         if (status_ == cudaSuccess) {
           if constexpr (stream_sender<Sender>) {
-            STDEXEC_DBG_ERR(cudaEventDestroy(event_));
+            STDEXEC_CHECK_CUDA_ERROR(cudaEventDestroy(event_));
           }
-          STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
+          STDEXEC_CHECK_CUDA_ERROR(cudaStreamDestroy(stream_));
         }
 
         if (data_) {
-          STDEXEC_DBG_ERR(cudaFree(data_));
+          STDEXEC_CHECK_CUDA_ERROR(cudaFree(data_));
         }
       }
 
@@ -249,7 +248,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (status == cudaSuccess) {
             if constexpr (stream_sender<Sender>) {
-              status = STDEXEC_DBG_ERR(
+              status = STDEXEC_CHECK_CUDA_ERROR(
                 cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_));
             }
 
