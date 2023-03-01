@@ -59,7 +59,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if constexpr (does_not_return_a_value) {
             kernel<Fun><<<1, 1, 0, stream>>>(self.f_);
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+            if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaPeekAtLastError());
                 status == cudaSuccess) {
               self.op_state_.propagate_completion_signal(stdexec::set_value);
             } else {
@@ -70,7 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             decayed_result_t* d_result = static_cast<decayed_result_t*>(
               self.op_state_.temp_storage_);
             kernel_with_result<Fun><<<1, 1, 0, stream>>>(self.f_, d_result);
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+            if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaPeekAtLastError());
                 status == cudaSuccess) {
               self.op_state_.propagate_completion_signal(stdexec::set_value, *d_result);
             } else {

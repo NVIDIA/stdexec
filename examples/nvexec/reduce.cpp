@@ -1,3 +1,5 @@
+#define STDEXEC_THROW_ON_CUDA_ERROR
+
 #include <nvexec/stream_context.cuh>
 #include <stdexec/execution.hpp>
 

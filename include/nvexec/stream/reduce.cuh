@@ -212,7 +212,7 @@ template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
           cudaError_t status;
 
           do {
-            if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+            if (status = STDEXEC_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
                   d_temp_storage, temp_storage_size,
                   first, d_out, num_items,
                   fun, Result{},
@@ -221,13 +221,13 @@ template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
               break;
             }
 
-            if (status = STDEXEC_DBG_ERR(
+            if (status = STDEXEC_CHECK_CUDA_ERROR(
                   cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
                 status != cudaSuccess) {
               break;
             }
 
-            if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+            if (status = STDEXEC_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
                   d_temp_storage, temp_storage_size,
                   first, d_out, num_items,
                   fun, Result{},
@@ -236,7 +236,7 @@ template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
               break;
             }
 
-            status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
+            status = STDEXEC_CHECK_CUDA_ERROR(cudaFreeAsync(d_temp_storage, stream));
           } while (false);
 
           if (status == cudaSuccess) {

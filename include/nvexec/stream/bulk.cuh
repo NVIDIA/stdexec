@@ -59,9 +59,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                                   / block_threads;
             kernel<block_threads, Shape, Fun, As...>
               <<<grid_blocks, block_threads, 0, stream>>>(self.shape_, self.f_, (As&&) as...);
+             STDEXEC_CHECK_CUDA_ERROR(cudaGetLastError());
           }
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+          if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaPeekAtLastError()); status == cudaSuccess) {
             op_state.propagate_completion_signal(stdexec::set_value, (As&&) as...);
           } else {
             op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -194,7 +195,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           // TODO Manage errors
           // TODO Usual logic when there's only a single GPU
           cudaStream_t baseline_stream = op_state.get_stream();
-          cudaEventRecord(op_state.ready_to_launch_, baseline_stream);
+          STDEXEC_CHECK_CUDA_ERROR(cudaEventRecord(op_state.ready_to_launch_, baseline_stream));
 
           if (self.shape_) {
             constexpr int block_threads = 256;
@@ -206,18 +207,19 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 const int grid_blocks = (shape + block_threads - 1) / block_threads;
 
                 if (begin < end) {
-                  cudaSetDevice(dev);
-                  cudaStreamWaitEvent(stream, op_state.ready_to_launch_);
+                  STDEXEC_CHECK_CUDA_ERROR(cudaSetDevice(dev));
+                  STDEXEC_CHECK_CUDA_ERROR(cudaStreamWaitEvent(stream, op_state.ready_to_launch_));
                   kernel<block_threads, Shape, Fun, As...>
                     <<<grid_blocks, block_threads, 0, stream>>>(begin, end, self.f_, (As&&) as...);
-                  cudaEventRecord(op_state.ready_to_complete_[dev], op_state.streams_[dev]);
+                  STDEXEC_CHECK_CUDA_ERROR(cudaGetLastError());
+                  STDEXEC_CHECK_CUDA_ERROR(cudaEventRecord(op_state.ready_to_complete_[dev], op_state.streams_[dev]));
                 }
               }
             }
 
             {
               const int dev = op_state.current_device_;
-              cudaSetDevice(dev);
+              STDEXEC_CHECK_CUDA_ERROR(cudaSetDevice(dev));
               auto [begin, end] = even_share(self.shape_, dev, op_state.num_devices_);
               auto shape = static_cast<int>(end - begin);
               const int grid_blocks = (shape + block_threads - 1) / block_threads;
@@ -231,12 +233,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
             for (int dev = 0; dev < op_state.num_devices_; dev++) {
               if (dev != op_state.current_device_) {
-                cudaStreamWaitEvent(baseline_stream, op_state.ready_to_complete_[dev]);
+                STDEXEC_CHECK_CUDA_ERROR(cudaStreamWaitEvent(baseline_stream, op_state.ready_to_complete_[dev]));
               }
             }
           }
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+          if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaPeekAtLastError()); status == cudaSuccess) {
             op_state.propagate_completion_signal(stdexec::set_value, (As&&) as...);
           } else {
             op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -293,25 +295,25 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , streams_(new cudaStream_t[num_devices_])
         , ready_to_complete_(new cudaEvent_t[num_devices_]) {
         // TODO Manage errors
-        cudaGetDevice(&current_device_);
-        cudaEventCreate(&ready_to_launch_);
+        STDEXEC_CHECK_CUDA_ERROR(cudaGetDevice(&current_device_));
+        STDEXEC_CHECK_CUDA_ERROR(cudaEventCreate(&ready_to_launch_));
         for (int dev = 0; dev < num_devices_; dev++) {
-          cudaSetDevice(dev);
-          cudaStreamCreate(streams_.get() + dev);
-          cudaEventCreate(ready_to_complete_.get() + dev);
+          STDEXEC_CHECK_CUDA_ERROR(cudaSetDevice(dev));
+          STDEXEC_CHECK_CUDA_ERROR(cudaStreamCreate(streams_.get() + dev));
+          STDEXEC_CHECK_CUDA_ERROR(cudaEventCreate(ready_to_complete_.get() + dev));
         }
-        cudaSetDevice(current_device_);
+        STDEXEC_CHECK_CUDA_ERROR(cudaSetDevice(current_device_));
       }
 
       ~operation_t() {
         // TODO Manage errors
         for (int dev = 0; dev < num_devices_; dev++) {
-          cudaSetDevice(dev);
-          cudaStreamDestroy(streams_[dev]);
-          cudaEventDestroy(ready_to_complete_[dev]);
+          STDEXEC_CHECK_CUDA_ERROR(cudaSetDevice(dev));
+          STDEXEC_CHECK_CUDA_ERROR(cudaStreamDestroy(streams_[dev]));
+          STDEXEC_CHECK_CUDA_ERROR(cudaEventDestroy(ready_to_complete_[dev]));
         }
-        cudaSetDevice(current_device_);
-        cudaEventDestroy(ready_to_launch_);
+        STDEXEC_CHECK_CUDA_ERROR(cudaSetDevice(current_device_));
+        STDEXEC_CHECK_CUDA_ERROR(cudaEventDestroy(ready_to_launch_));
       }
 
       STDEXEC_IMMOVABLE(operation_t);

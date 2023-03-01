@@ -26,7 +26,7 @@
 
 #include "../detail/config.cuh"
 #include "../detail/cuda_atomic.cuh"
-#include "../detail/throw_on_cuda_error.cuh"
+#include "../detail/cuda_error_handling.cuh"
 #include "../detail/queue.cuh"
 #include "../detail/variant.cuh"
 
@@ -93,7 +93,7 @@ namespace nvexec {
       int least{};
       int greatest{};
 
-      if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetStreamPriorityRange(&least, &greatest));
+      if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaDeviceGetStreamPriorityRange(&least, &greatest));
           status != cudaSuccess) {
         return std::make_pair(0, status);
       }
@@ -113,7 +113,7 @@ namespace nvexec {
       cudaError_t status{cudaSuccess};
 
       if (priority == stream_priority::normal) {
-        status = STDEXEC_DBG_ERR(cudaStreamCreate(&stream));
+        status = STDEXEC_CHECK_CUDA_ERROR(cudaStreamCreate(&stream));
       } else {
         int cuda_priority{};
         std::tie(cuda_priority, status) = get_stream_priority(priority);
@@ -122,7 +122,7 @@ namespace nvexec {
           return std::make_pair(cudaStream_t{}, status);
         }
 
-        status = STDEXEC_DBG_ERR(
+        status = STDEXEC_CHECK_CUDA_ERROR(
           cudaStreamCreateWithPriority(&stream, cudaStreamDefault, cuda_priority));
       }
 
@@ -346,8 +346,8 @@ namespace nvexec {
 
         this->free_ = [](task_base_t* t) noexcept {
           continuation_task_t& self = *static_cast<continuation_task_t*>(t);
-          STDEXEC_DBG_ERR(cudaFreeAsync(self.atom_next_, self.stream_));
-          STDEXEC_DBG_ERR(cudaStreamDestroy(self.stream_));
+          STDEXEC_CHECK_CUDA_ERROR(cudaFreeAsync(self.atom_next_, self.stream_));
+          STDEXEC_CHECK_CUDA_ERROR(cudaStreamDestroy(self.stream_));
           self.pinned_resource_->deallocate(
             t, sizeof(continuation_task_t), std::alignment_of_v<continuation_task_t>);
         };
@@ -355,10 +355,10 @@ namespace nvexec {
         this->next_ = nullptr;
 
         constexpr std::size_t ptr_size = sizeof(this->atom_next_);
-        status_ = STDEXEC_DBG_ERR(cudaMallocAsync(&this->atom_next_, ptr_size, stream_));
+        status_ = STDEXEC_CHECK_CUDA_ERROR(cudaMallocAsync(&this->atom_next_, ptr_size, stream_));
 
         if (status_ == cudaSuccess) {
-          status_ = STDEXEC_DBG_ERR(cudaMemsetAsync(this->atom_next_, 0, ptr_size, stream_));
+          status_ = STDEXEC_CHECK_CUDA_ERROR(cudaMemsetAsync(this->atom_next_, 0, ptr_size, stream_));
         }
       }
     };
@@ -431,7 +431,7 @@ namespace nvexec {
         ~__t() {
           if (own_stream_) {
             if (!defer_stream_destruction_) {
-              STDEXEC_DBG_ERR(cudaStreamDestroy(*own_stream_));
+              STDEXEC_CHECK_CUDA_ERROR(cudaStreamDestroy(*own_stream_));
             }
             own_stream_.reset();
           }

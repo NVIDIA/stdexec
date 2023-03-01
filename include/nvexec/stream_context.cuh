@@ -37,7 +37,6 @@
 
 #include "stream/common.cuh"
 #include "detail/queue.cuh"
-#include "detail/throw_on_cuda_error.cuh"
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
@@ -315,7 +314,7 @@ namespace nvexec {
       void* do_allocate(size_t bytes, size_t /* alignment */) override {
         void* ret;
 
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocHost(&ret, bytes));
+        if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaMallocHost(&ret, bytes));
             status != cudaSuccess) {
           throw std::bad_alloc();
         }
@@ -324,7 +323,7 @@ namespace nvexec {
       }
 
       void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
-        STDEXEC_DBG_ERR(cudaFreeHost(ptr));
+        STDEXEC_CHECK_CUDA_ERROR(cudaFreeHost(ptr));
       }
 
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
@@ -336,7 +335,7 @@ namespace nvexec {
       void* do_allocate(size_t bytes, size_t /* alignment */) override {
         void* ret;
 
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMalloc(&ret, bytes)); status != cudaSuccess) {
+        if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaMalloc(&ret, bytes)); status != cudaSuccess) {
           throw std::bad_alloc();
         }
 
@@ -344,7 +343,7 @@ namespace nvexec {
       }
 
       void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
-        STDEXEC_DBG_ERR(cudaFree(ptr));
+        STDEXEC_CHECK_CUDA_ERROR(cudaFree(ptr));
       }
 
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
@@ -356,7 +355,7 @@ namespace nvexec {
       void* do_allocate(size_t bytes, size_t /* alignment */) override {
         void* ret;
 
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocManaged(&ret, bytes));
+        if (cudaError_t status = STDEXEC_CHECK_CUDA_ERROR(cudaMallocManaged(&ret, bytes));
             status != cudaSuccess) {
           throw std::bad_alloc();
         }
@@ -365,7 +364,7 @@ namespace nvexec {
       }
 
       void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
-        STDEXEC_DBG_ERR(cudaFree(ptr));
+        STDEXEC_CHECK_CUDA_ERROR(cudaFree(ptr));
       }
 
       bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
