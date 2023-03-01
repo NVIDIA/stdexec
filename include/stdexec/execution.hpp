@@ -5252,6 +5252,12 @@ namespace stdexec {
         : __rcvr_(__rcvr) {
       }
 
+      template <__decays_to<std::monostate> _Ty>
+        requires std::same_as<_Tag, set_error_t>
+      void operator()(_Ty&& __x) const noexcept {
+        STDEXEC_ASSERT(false);
+      }
+
       template <class... _Ts>
       void operator()(_Ts&... __ts) const noexcept {
         _Tag{}((_Receiver&&) __rcvr_, (_Ts&&) __ts...);
@@ -5293,8 +5299,7 @@ namespace stdexec {
         case __error:
           if constexpr (!same_as<_ErrorsVariant, std::variant<std::monostate>>) {
             // One or more child operations completed with an error:
-            STDEXEC_ASSERT(__errors_.has_value());
-            std::visit(__complete_fn{set_error, __recvr_}, *__errors_);
+            std::visit(__complete_fn{set_error, __recvr_}, __errors_);
           }
           break;
         case __stopped:
@@ -5309,7 +5314,7 @@ namespace stdexec {
       in_place_stop_source __stop_source_{};
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       std::atomic<__state_t> __state_{__started};
-      std::optional<_ErrorsVariant> __errors_{};
+      _ErrorsVariant __errors_{};
       [[no_unique_address]] _ValuesTuple __values_{};
       std::optional<
         typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_requested>>
@@ -5334,12 +5339,13 @@ namespace stdexec {
             // We won the race, free to write the error into the operation
             // state without worry.
             if constexpr (__nothrow_decay_copyable<_Error>) {
-              __op_state_->__errors_.emplace((_Error&&) __err);
+              __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
             } else {
               try {
-                __op_state_->__errors_.emplace((_Error&&) __err);
+                __op_state_->__errors_.template emplace<decay_t<_Error>>((_Error&&) __err);
               } catch (...) {
-                __op_state_->__errors_.emplace(std::current_exception());
+                __op_state_->__errors_.template emplace<std::exception_ptr>(
+                  std::current_exception());
               }
             }
           }
@@ -5423,16 +5429,13 @@ namespace stdexec {
 
       using __error_types = //
         __minvoke<
-          __mconcat<__transform<__q<decay_t>, __munique<>>>,
+          __mconcat<__transform<__q<decay_t>, __nullable_variant_t>>,
           error_types_of_t<_Senders, __env_t<__id<_Env>>, __types>... >;
 
       using __errors_variant = //
         __if<
           __all_value_and_error_args_nothrow_decay_copyable<_Env, __id<_Senders>...>,
-          __if<
-            std::is_same<__error_types, __types<>>,
-            std::variant<std::monostate>,
-            __mapply<__q<std::variant>, __error_types>>,
+          __error_types,
           __minvoke<__push_back_unique<__q<std::variant>>, __error_types, std::exception_ptr>>;
     };
 
