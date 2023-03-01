@@ -6,7 +6,9 @@ namespace ex = stdexec;
 int main() {
   std::vector<int> input(2048, 1);
 
-  auto snd = ex::transfer_just(nvexec::stream_context{}.get_scheduler(), input)
+  nvexec::stream_context stream{};
+
+  auto snd = ex::transfer_just(stream.get_scheduler(), input)
            | nvexec::reduce();
 
   auto [result] = ex::sync_wait(std::move(snd)).value();

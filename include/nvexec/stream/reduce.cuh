@@ -209,10 +209,6 @@ template <class SenderId, class ReceiverId, class BoundRange, class BoundFun>
 
           std::size_t num_items = ranges::size(rng);
 
-          std::cout << "size: " << num_items << std::endl;
-
-          std::abort();
-
           cudaError_t status;
 
           do {
