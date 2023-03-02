@@ -21,8 +21,8 @@
 #include <exception>
 #include <type_traits>
 
-#include "stdexec/execution.hpp"
-#include "exec/task.hpp"
+#include "../stdexec/execution.hpp"
+#include "task.hpp"
 
 namespace exec {
   namespace __at_coro_exit {

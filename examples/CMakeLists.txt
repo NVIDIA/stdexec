@@ -38,6 +38,7 @@ set(stdexec_examples
                  "example.hello_world : hello_world.cpp"
                   "example.hello_coro : hello_coro.cpp"
                        "example.scope : scope.cpp"
+                 "example.sticky_task : sticky_task.cpp"
                        "example.retry : retry.cpp"
                         "example.then : then.cpp"
       "example.server_theme.let_value : server_theme/let_value.cpp"
