@@ -14,7 +14,7 @@
 # limitations under the License.
 #=============================================================================
 
-set(stdexec_test_sources 
+set(stdexec_test_sources
     test_main.cpp
     stdexec/cpos/test_cpo_bulk.cpp
     stdexec/cpos/test_cpo_ensure_started.cpp
@@ -74,6 +74,7 @@ set(stdexec_test_sources
     exec/test_when_any.cpp
     exec/test_at_coroutine_exit.cpp
     exec/test_materialize.cpp
+    exec/test_system_scheduler.cpp
     )
 
 add_executable(test.stdexec ${stdexec_test_sources})
