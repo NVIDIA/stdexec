@@ -314,15 +314,10 @@ namespace exec {
 
         inner_op_state inner_op_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-        void start(stdexec::start_t) noexcept {
-          stdexec::start(inner_op_);
-        }
-#else
-        friend void tag_invoke(stdexec::start_t, bulk_op_state& op) noexcept {
+        STDEXEC_DEFINE_CUSTOM(auto start)(this bulk_op_state& op, stdexec::start_t) noexcept -> void {
           stdexec::start(op.inner_op_);
         }
-#endif
+
         bulk_op_state(
           static_thread_pool& pool,
           Shape shape,
@@ -481,6 +476,7 @@ namespace exec {
 
   template <typename ReceiverId>
   class operation : task_base {
+    friend ::stdexec::execution_concept_tag;
     using Receiver = stdexec::__t<ReceiverId>;
     friend static_thread_pool::scheduler::sender;
 
@@ -507,17 +503,9 @@ namespace exec {
       pool_.enqueue(op);
     }
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-  public:
-    void start(stdexec::start_t) noexcept {
-      enqueue_(this);
-    }
-  private:
-#else
-    friend void tag_invoke(stdexec::start_t, operation& op) noexcept {
+    STDEXEC_DEFINE_CUSTOM(auto start)(this operation& op, stdexec::start_t) noexcept -> void {
       op.enqueue_(&op);
     }
-#endif
   };
 
   inline static_thread_pool::static_thread_pool()

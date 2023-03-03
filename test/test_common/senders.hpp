@@ -34,17 +34,7 @@ struct fallible_just {
     std::tuple<Values...> values_;
     Receiver rcvr_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-    void start(ex::start_t) noexcept try {
-      std::apply(
-        [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); },
-        values_);
-    } catch (...) {
-
-      ex::set_error(std::move(rcvr_), std::current_exception());
-    }
-#else
-    friend void tag_invoke(ex::start_t, operation& self) noexcept try {
+    STDEXEC_DEFINE_CUSTOM(auto start)(this operation& self, ex::start_t) noexcept -> void try {
       std::apply(
         [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
         self.values_);
@@ -52,7 +42,6 @@ struct fallible_just {
 
       ex::set_error(std::move(self.rcvr_), std::current_exception());
     }
-#endif
   };
 
   template <class Receiver>
@@ -85,19 +74,11 @@ struct just_with_env {
     std::tuple<Values...> values_;
     Receiver rcvr_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-    void start(ex::start_t) noexcept {
-      std::apply(
-        [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); },
-        values_);
-    }
-#else
-    friend void tag_invoke(ex::start_t, operation& self) noexcept {
+    STDEXEC_DEFINE_CUSTOM(auto start)(this operation& self, ex::start_t) noexcept -> void {
       std::apply(
         [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
         self.values_);
     }
-#endif
   };
 
   template <class Receiver>
@@ -152,21 +133,7 @@ struct completes_if {
       typename ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<on_stopped>;
     std::optional<callback_t> on_stop_{};
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-    void start(ex::start_t) noexcept {
-      if (condition_) {
-        ex::set_value(std::move(rcvr_));
-      } else {
-        on_stop_.emplace(ex::get_stop_token(ex::get_env(rcvr_)), on_stopped{*this});
-        state_t expected = state_t::construction;
-        if (!state_.compare_exchange_strong(
-              expected, state_t::emplaced, std::memory_order_acq_rel)) {
-          ex::set_stopped(std::move(rcvr_));
-        }
-      }
-    }
-#else
-    friend void tag_invoke(ex::start_t, operation& self) noexcept {
+    STDEXEC_DEFINE_CUSTOM(auto start)(this operation& self, ex::start_t) noexcept -> void {
       if (self.condition_) {
         ex::set_value(std::move(self.rcvr_));
       } else {
@@ -178,7 +145,6 @@ struct completes_if {
         }
       }
     }
-#endif
   };
 
   template <ex::__decays_to<completes_if> Self, class Receiver>

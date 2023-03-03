@@ -85,3 +85,45 @@
 #ifndef STDEXEC_ASSERT_FN
 #define STDEXEC_ASSERT_FN assert
 #endif
+
+// #if __cpp_explicit_this_parameter >= 202110
+//   #define STDEXEC_USE_EXPLICIT_THIS
+// #endif
+#define STDEXEC_USE_TAG_INVOKE
+
+#define STDEXEC_EAT_THIS_this
+
+#if defined(STDEXEC_USE_EXPLICIT_THIS)
+
+  #define STDEXEC_DEFINE_CUSTOM(AUTO_NAME) \
+    AUTO_NAME \
+    /**/
+  #define STDEXEC_CALL_CUSTOM(NAME, OBJ, ...) \
+    (OBJ).NAME(__VA_ARGS__) \
+    /**/
+
+#elif defined(STDEXEC_USE_TAG_INVOKE)
+
+  #define STDEXEC_DEFINE_CUSTOM(AUTO_NAME) \
+    friend auto tag_invoke(STDEXEC_FUN_ARGS \
+    /**/
+  #define STDEXEC_FUN_ARGS(SELF, TAG, ...) \
+    TAG, STDEXEC_CAT(STDEXEC_EAT_THIS_, SELF) __VA_OPT__(,) __VA_ARGS__) \
+    /**/
+  #define STDEXEC_CALL_CUSTOM(NAME, OBJ, TAG, ...) \
+    tag_invoke(TAG, OBJ, __VA_ARGS__) \
+    /**/
+
+#else
+
+  #define STDEXEC_DEFINE_CUSTOM(AUTO_NAME) \
+    static AUTO_NAME(STDEXEC_FUN_ARGS \
+    /**/
+  #define STDEXEC_FUN_ARGS(...) \
+    STDEXEC_CAT(STDEXEC_EAT_THIS_, __VA_ARGS__)) \
+    /**/
+  #define STDEXEC_CALL_CUSTOM(NAME, OBJ, ...) \
+    (OBJ).NAME((OBJ), __VA_ARGS__) \
+    /**/
+
+#endif

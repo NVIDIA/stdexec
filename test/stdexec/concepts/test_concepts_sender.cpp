@@ -73,7 +73,7 @@ struct oper {
   oper() = default;
   oper(oper&&) = delete;
 
-  friend void tag_invoke(ex::start_t, oper&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(auto start)(this oper&, ex::start_t) noexcept -> void {
   }
 };
 

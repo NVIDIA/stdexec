@@ -602,10 +602,11 @@ namespace exec {
         }
 
        private:
+        friend ::stdexec::execution_concept_tag;
         __rec __rec_{static_cast<__operation_base<_Receiver, _Sigs, _Queries>*>(this)};
         __unique_operation_storage __storage_{};
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
           STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__start_);
           __get_vtable(__self.__storage_)->__start_(__get_object_pointer(__self.__storage_));
         }

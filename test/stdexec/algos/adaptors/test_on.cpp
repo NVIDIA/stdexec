@@ -231,15 +231,9 @@ struct move_checking_inline_scheduler {
   struct oper : immovable {
     R recv_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-    void start(ex::start_t) noexcept {
-      ex::set_value((R&&) recv_);
-    }
-#else
-    friend void tag_invoke(ex::start_t, oper& self) noexcept {
+    STDEXEC_DEFINE_CUSTOM(auto start)(this oper& self, ex::start_t) noexcept -> void {
       ex::set_value((R&&) self.recv_);
     }
-#endif
   };
 
   struct my_sender {

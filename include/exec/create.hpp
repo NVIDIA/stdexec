@@ -46,19 +46,11 @@ namespace exec {
       [[no_unique_address]] _Fun __fun_;
       [[no_unique_address]] _State __state_{};
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-      void start(start_t) noexcept {
-        __state_.emplace(__conv{[&]() noexcept {
-          return ((_Fun&&) __fun_)(__ctx_);
-        }});
-      }
-#else
-      friend void tag_invoke(start_t, __operation& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(auto start)(this __operation& __self, start_t) noexcept -> void {
         __self.__state_.emplace(__conv{[&]() noexcept {
           return ((_Fun&&) __self.__fun_)(__self.__ctx_);
         }});
       }
-#endif
     };
 
     template <class _Fun, class _ArgsId, class... _Sigs>

@@ -55,7 +55,7 @@ namespace nvexec {
           return stream_;
         }
 
-        friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
+        STDEXEC_DEFINE_CUSTOM(auto start)(this operation_state_t& op, stdexec::start_t) noexcept -> void {
           if constexpr (stream_receiver<R>) {
             if (op.status_ == cudaSuccess) {
               stdexec::set_value((R&&) op.rec_);

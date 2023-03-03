@@ -62,7 +62,6 @@ namespace exec {
     struct __when_empty_op : __task {
       using _Constrained = __t<_ConstrainedId>;
       using _Receiver = __t<_ReceiverId>;
-      friend class ::stdexec::execution_concept_tag;
 
       explicit __when_empty_op(const __impl* __scope, _Constrained&& __sndr, _Receiver __rcvr)
         : __task{{}, __scope, __notify_waiter}
@@ -70,12 +69,9 @@ namespace exec {
       }
 
      private:
+      friend ::stdexec::execution_concept_tag;
       static void __notify_waiter(__task* __self) noexcept {
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
         stdexec::start(static_cast<__when_empty_op*>(__self)->__op_);
-#else
-        start(static_cast<__when_empty_op*>(__self)->__op_);
-#endif
       }
 
       void __start_() noexcept {
@@ -87,22 +83,12 @@ namespace exec {
           return;
         }
         __guard.unlock();
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
         stdexec::start(this->__op_);
-#else
-        start(this->__op_);
-#endif
       }
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-      void start(start_t) noexcept {
-        return __start_();
-      }
-#else
-      friend void tag_invoke(start_t, __when_empty_op& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(auto start)(this __when_empty_op& __self, start_t) noexcept -> void {
         return __self.__start_();
       }
-#endif
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       connect_result_t<_Constrained, _Receiver> __op_;
@@ -192,7 +178,6 @@ namespace exec {
     struct __nest_op : __nest_op_base<_ReceiverId> {
       using _Constrained = __t<_ConstrainedId>;
       using _Receiver = __t<_ReceiverId>;
-      friend class ::stdexec::execution_concept_tag;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>> __op_;
 
@@ -202,28 +187,20 @@ namespace exec {
         , __op_(connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {
       }
      private:
+      friend ::stdexec::execution_concept_tag;
+
       void __start_() noexcept {
         STDEXEC_ASSERT(this->__scope_);
         std::unique_lock __guard{this->__scope_->__lock_};
         auto& __active = this->__scope_->__active_;
         ++__active;
         __guard.unlock();
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
         stdexec::start(__op_);
-#else
-        start(__op_);
-#endif
       }
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-      void start(start_t) noexcept {
-        return __start_();
-      }
-#else
-      friend void tag_invoke(start_t, __nest_op& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(auto start)(this __nest_op& __self, start_t) noexcept -> void {
         return __self.__start_();
       }
-#endif
     };
 
     template <class _ConstrainedId>
@@ -291,23 +268,18 @@ namespace exec {
 
     template <class _SenderId, class _EnvId, class _ReceiverId>
     class __future_op : __subscription {
+      friend ::stdexec::execution_concept_tag;
       using _Sender = __t<_SenderId>;
       using _Env = __t<_EnvId>;
       using _Receiver = __t<_ReceiverId>;
-      friend class ::stdexec::execution_concept_tag;
 
       using __forward_consumer =
         typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-      void start(start_t) noexcept {
-        __start_();
-      }
-#else
-      friend void tag_invoke(start_t, __future_op& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(auto start)(this __future_op& __self, start_t) noexcept -> void {
         __self.__start_();
       }
-#endif
+
       void __complete_() noexcept try {
         auto __state = std::move(__state_);
         STDEXEC_ASSERT(__state != nullptr);
@@ -653,7 +625,6 @@ namespace exec {
     struct __spawn_op : __spawn_op_base<_EnvId> {
       using _Env = __t<_EnvId>;
       using _Sender = __t<_SenderId>;
-      friend class ::stdexec::execution_concept_tag;
 
       template <__decays_to<_Sender> _Sndr>
       __spawn_op(_Sndr&& __sndr, _Env __env, const __impl* __scope)
@@ -666,22 +637,12 @@ namespace exec {
       }
 
       void __start_() noexcept {
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
         stdexec::start(__op_);
-#else
-        start(__op_);
-#endif
       }
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-      void start(start_t) noexcept {
-        return __start_();
-      }
-#else
-      friend void tag_invoke(start_t, __spawn_op& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(auto start)(this __spawn_op& __self, start_t) noexcept -> void {
         return __self.__start_();
       }
-#endif
 
       connect_result_t<_Sender, __spawn_receiver_t<_Env>> __op_;
     };

@@ -268,7 +268,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        friend void tag_invoke(stdexec::start_t, __t& self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& self, stdexec::start_t) noexcept -> void {
           sh_state_t<Sender>* shared_state = self.shared_state_.get();
           std::atomic<void*>& op_state1 = shared_state->op_state1_;
           void* const completion_state = static_cast<void*>(shared_state);

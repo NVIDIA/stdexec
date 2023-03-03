@@ -96,19 +96,12 @@ struct _op {
     o_.emplace(_connect()); // potentially throwing
     stdexec::start(*o_);
   } catch (...) {
-
     stdexec::set_error((R&&) r_, std::current_exception());
   }
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-  void start(stdexec::start_t) noexcept {
-    stdexec::start(*o_);
-  }
-#else
-  friend void tag_invoke(stdexec::start_t, _op& o) noexcept {
+  STDEXEC_DEFINE_CUSTOM(auto start)(this _op& o, stdexec::start_t) noexcept -> void {
     stdexec::start(*o.o_);
   }
-#endif
 };
 
 template <class S>

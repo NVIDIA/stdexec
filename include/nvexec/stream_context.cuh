@@ -98,7 +98,7 @@ namespace nvexec {
             : operation_state_base_t<ReceiverId>((Receiver&&) receiver, context_state, false) {
           }
 
-          friend void tag_invoke(stdexec::start_t, __t& op) noexcept {
+          STDEXEC_DEFINE_CUSTOM(auto start)(this __t& op, stdexec::start_t) noexcept -> void {
             op.propagate_completion_signal(stdexec::set_value);
           }
         };

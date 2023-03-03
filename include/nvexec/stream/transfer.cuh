@@ -64,7 +64,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using inner_op_state_t = stdexec::connect_result_t<Sender, enqueue_receiver>;
         inner_op_state_t inner_op_;
 
-        friend void tag_invoke(stdexec::start_t, __t& op) noexcept {
+        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& op, stdexec::start_t) noexcept -> void {
           op.started_.test_and_set(::cuda::std::memory_order::relaxed);
 
           if (op.status_ != cudaSuccess) {

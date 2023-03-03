@@ -31,19 +31,7 @@ struct fail_some {
   struct op {
     R r_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-    void start(stdexec::start_t) noexcept {
-      static int i = 0;
-      if (++i < 3) {
-        std::printf("fail!\n");
-        stdexec::set_error(std::move(r_), std::exception_ptr{});
-      } else {
-        std::printf("success!\n");
-        stdexec::set_value(std::move(r_), 42);
-      }
-    }
-#else
-    friend void tag_invoke(stdexec::start_t, op& self) noexcept {
+    STDEXEC_DEFINE_CUSTOM(auto start)(this op& self, stdexec::start_t) noexcept -> void {
       static int i = 0;
       if (++i < 3) {
         std::printf("fail!\n");
@@ -53,7 +41,6 @@ struct fail_some {
         stdexec::set_value(std::move(self.r_), 42);
       }
     }
-#endif
   };
 
   template <class R>

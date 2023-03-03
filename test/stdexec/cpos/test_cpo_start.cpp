@@ -23,71 +23,41 @@ namespace ex = stdexec;
 struct my_oper : immovable {
   bool started_{false};
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-  void start(ex::start_t) noexcept {
-    started_ = true;
-  }
-#else
-  friend void tag_invoke(ex::start_t, my_oper& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(auto start)(this my_oper& self, ex::start_t) noexcept -> void {
     self.started_ = true;
   }
-#endif
 };
 
 struct op_value /*: immovable*/ { // Intentionally movable!
   bool* started_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-  void start(ex::start_t) noexcept {
-    *started_ = true;
-  }
-#else
-  friend void tag_invoke(ex::start_t, op_value self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(auto start)(this op_value self, ex::start_t) noexcept -> void {
     *self.started_ = true;
   }
-#endif
 };
 
 struct op_rvalref : immovable {
   bool* started_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-  void start(ex::start_t) noexcept {
-    *started_ = true;
-  }
-#else
-  friend void tag_invoke(ex::start_t, op_rvalref&& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(auto start)(this op_rvalref&& self, ex::start_t) noexcept -> void {
     *self.started_ = true;
   }
-#endif
 };
 
 struct op_ref : immovable {
   bool* started_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-  void start(ex::start_t) noexcept {
-    *started_ = true;
-  }
-#else
-  friend void tag_invoke(ex::start_t, op_ref& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(auto start)(this op_ref& self, ex::start_t) noexcept -> void {
     *self.started_ = true;
   }
-#endif
 };
 
 struct op_cref : immovable {
   bool* started_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-  void start(ex::start_t) const noexcept {
-    *started_ = true;
-  }
-#else
-  friend void tag_invoke(ex::start_t, const op_cref& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(auto start)(this const op_cref& self, ex::start_t) noexcept -> void {
     *self.started_ = true;
   }
-#endif
 };
 
 TEST_CASE("can call start on an operation state", "[cpo][cpo_start]") {

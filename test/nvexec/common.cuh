@@ -108,7 +108,7 @@ namespace detail::a_sender {
 
     inner_op_state_t inner_op_;
 
-    friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
+    STDEXEC_DEFINE_CUSTOM(auto start)(this operation_state_t& op, stdexec::start_t) noexcept -> void {
       stdexec::start(op.inner_op_);
     }
 
@@ -205,7 +205,7 @@ namespace detail::a_receiverless_sender {
 
     inner_op_state_t inner_op_;
 
-    friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
+    STDEXEC_DEFINE_CUSTOM(auto start)(this operation_state_t& op, stdexec::start_t) noexcept -> void {
       stdexec::start(op.inner_op_);
     }
 

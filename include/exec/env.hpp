@@ -60,20 +60,7 @@ namespace exec {
       [[no_unique_address]] _Default __default_;
       _Receiver __rcvr_;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-      void start(start_t) noexcept try {
-        if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
-          const auto& __env = get_env(__rcvr_);
-          set_value(std::move(__rcvr_), _Tag{}(__env));
-        } else {
-          set_value(std::move(__rcvr_), std::move(__default_));
-        }
-      } catch (...) {
-
-        set_error(std::move(__rcvr_), std::current_exception());
-      }
-#else
-      friend void tag_invoke(start_t, __operation& __self) noexcept try {
+      STDEXEC_DEFINE_CUSTOM(auto start)(this __operation& __self, start_t) noexcept -> void try {
         if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
           const auto& __env = get_env(__self.__rcvr_);
           set_value(std::move(__self.__rcvr_), _Tag{}(__env));
@@ -84,7 +71,6 @@ namespace exec {
 
         set_error(std::move(__self.__rcvr_), std::current_exception());
       }
-#endif
     };
 
     template <class _Tag, class _DefaultId>
@@ -172,15 +158,9 @@ namespace exec {
         , __state_{connect((_Sender&&) __sndr, __receiver_t{{}, this})} {
       }
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-      void start(start_t) noexcept {
-        stdexec::start(__state_);
+      STDEXEC_DEFINE_CUSTOM(auto start)(this __operation& __self, start_t) noexcept -> void {
+        stdexec::start(__self.__state_);
       }
-#else
-      friend void tag_invoke(start_t, __operation& __self) noexcept {
-        start(__self.__state_);
-      }
-#endif
     };
 
     template <class _SenderId, class... _Withs>

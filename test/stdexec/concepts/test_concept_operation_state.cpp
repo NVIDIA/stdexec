@@ -23,26 +23,16 @@ struct op_except {
   op_except() = default;
   op_except(op_except&&) = delete;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-  void start(ex::start_t) {
+  STDEXEC_DEFINE_CUSTOM(auto start)(this op_except&, ex::start_t) -> void {
   }
-#else
-  friend void tag_invoke(ex::start_t, op_except&) {
-  }
-#endif
 };
 
 struct op_noexcept {
   op_noexcept() = default;
   op_noexcept(op_noexcept&&) = delete;
 
-#ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
-  void start(ex::start_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(auto start)(this op_noexcept&, ex::start_t) noexcept -> void {
   }
-#else
-  friend void tag_invoke(ex::start_t, op_noexcept&) noexcept {
-  }
-#endif
 };
 
 // TEST_CASE(
