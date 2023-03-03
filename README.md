@@ -54,6 +54,14 @@ int main()
 ```
 
 ## Resources
+- [Working with Asynchrony Generically: A Tour of Executors: Part 1](https://www.youtube.com/watch?v=xLboNIf7BTg) ([Part 2](https://www.youtube.com/watch?v=6a0zzUBUNW4)) (Video): A comprehensive introduction to Senders and structured concurrency
+- [From Zero to Sender/Receiver in ~60 Minutes](https://www.youtube.com/watch?v=xiaqNvqRB2E) (Video): Live-coding a toy sender/receiver implementation from scratch
+- [A Unifying Abstraction for Async in C++](https://www.youtube.com/watch?v=h-ExnuD6jms) (Video): A simple introduction to the concepts behind P2300
+- [A Universal Async Abstraction for C++](https://cor3ntin.github.io/posts/executors/) (Blog): An introduction to Senders
+- [A Universal I/O Abstraction for C++](https://cor3ntin.github.io/posts/iouring/) (Blog): A look at how the Senders concepts interact with `io_uring` on Linux
+- [Structured Concurrency](https://www.youtube.com/watch?v=1Wy5sq3s2rg) (Video): An explanation of structured concurrency in C++ and its benefits
+- [Executors: a Change of Perspective](https://accu.org/journals/overload/29/165/teodorescu/) (Article): An article about the computational completeness of Senders
+- [Structured Concurrency in C++](https://accu.org/journals/overload/30/168/teodorescu/) (Article): An article about how Senders manifest the principles of structured concurrency
 - [HPCWire Article](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/): Provides a high-level overview of the Sender model and its benefits
 - [NVIDIA HPC SDK Documentation](https://docs.nvidia.com/hpc-sdk/index.html): Documentation for the NVIDIA HPC SDK
 - [P2300 - `std::execution`](https://wg21.link/p2300): Senders proposal to C++ Standard

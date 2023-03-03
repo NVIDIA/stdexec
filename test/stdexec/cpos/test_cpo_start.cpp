@@ -28,7 +28,7 @@ struct my_oper : immovable {
     started_ = true;
   }
 #else
-  friend void tag_invoke(ex::start_t, my_oper& self) {
+  friend void tag_invoke(ex::start_t, my_oper& self) noexcept {
     self.started_ = true;
   }
 #endif
@@ -42,7 +42,7 @@ struct op_value /*: immovable*/ { // Intentionally movable!
     *started_ = true;
   }
 #else
-  friend void tag_invoke(ex::start_t, op_value self) {
+  friend void tag_invoke(ex::start_t, op_value self) noexcept {
     *self.started_ = true;
   }
 #endif
@@ -56,7 +56,7 @@ struct op_rvalref : immovable {
     *started_ = true;
   }
 #else
-  friend void tag_invoke(ex::start_t, op_rvalref&& self) {
+  friend void tag_invoke(ex::start_t, op_rvalref&& self) noexcept {
     *self.started_ = true;
   }
 #endif
@@ -70,7 +70,7 @@ struct op_ref : immovable {
     *started_ = true;
   }
 #else
-  friend void tag_invoke(ex::start_t, op_ref& self) {
+  friend void tag_invoke(ex::start_t, op_ref& self) noexcept {
     *self.started_ = true;
   }
 #endif
@@ -84,7 +84,7 @@ struct op_cref : immovable {
     *started_ = true;
   }
 #else
-  friend void tag_invoke(ex::start_t, const op_cref& self) {
+  friend void tag_invoke(ex::start_t, const op_cref& self) noexcept {
     *self.started_ = true;
   }
 #endif

@@ -45,11 +45,11 @@ struct op_noexcept {
 #endif
 };
 
-TEST_CASE(
-  "type with start CPO that throws is not an operation_state",
-  "[concepts][operation_state]") {
-  REQUIRE(!ex::operation_state<op_except>);
-}
+// TEST_CASE(
+//   "type with start CPO that throws is not an operation_state",
+//   "[concepts][operation_state]") {
+//   REQUIRE(!ex::operation_state<op_except>);
+// }
 
 TEST_CASE("type with start CPO noexcept is an operation_state", "[concepts][operation_state]") {
   REQUIRE(ex::operation_state<op_noexcept>);

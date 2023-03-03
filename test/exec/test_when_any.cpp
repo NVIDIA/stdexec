@@ -120,3 +120,93 @@ TEST_CASE("when_any is thread-safe", "[adaptors][when_any]") {
   ex::sync_wait(std::move(snd));
   REQUIRE(result == 42);
 }
+
+using namespace stdexec;
+
+namespace stdexec {
+  template <class Haystack>
+  struct __mall_contained_in {
+    template <class... Needles>
+    using __f = __mand<__mapply<__contains<Needles>, Haystack>...>;
+  };
+
+  template <class Needles, class Haystack>
+  using __all_contained_in = __mapply<__mall_contained_in<Haystack>, Needles>;
+
+  template <class Needles, class Haystack>
+  using __equivalent = __mand<
+    __all_contained_in<Needles, Haystack>,
+    std::is_same<ex::__mapply<ex::__msize, Needles>, ex::__mapply<ex::__msize, Haystack>>>;
+}
+
+TEST_CASE("when_any completion signatures", "[adaptors][when_any]") {
+  struct move_throws {
+    move_throws() = default;
+
+    move_throws(move_throws&&) noexcept(false) {
+    }
+
+    move_throws& operator=(move_throws&&) noexcept(false) {
+      return *this;
+    }
+  };
+
+  auto just = exec::when_any(ex::just());
+  static_assert(sender<decltype(just)>);
+  static_assert(__v<__equivalent<
+                  completion_signatures_of_t<decltype(just)>,
+                  completion_signatures<set_value_t(), set_stopped_t()>>>);
+
+  auto just_string = exec::when_any(ex::just(std::string("foo")));
+  static_assert(sender<decltype(just_string)>);
+  static_assert(__v<__equivalent<
+                  completion_signatures_of_t<decltype(just_string)>,
+                  completion_signatures<set_value_t(std::string&&), set_stopped_t()>>>);
+
+  auto just_stopped = exec::when_any(ex::just_stopped());
+  static_assert(sender<decltype(just_stopped)>);
+  static_assert(__v<__equivalent<
+                  completion_signatures_of_t<decltype(just_stopped)>,
+                  completion_signatures<set_stopped_t()>>>);
+
+  auto just_then = exec::when_any(ex::just() | ex::then([] { return 42; }));
+  static_assert(sender<decltype(just_then)>);
+  static_assert(
+    __v<__equivalent<
+      completion_signatures_of_t<decltype(just_then)>,
+      completion_signatures<set_value_t(int&&), set_stopped_t(), set_error_t(std::exception_ptr)>>>);
+
+  auto just_then_noexcept = exec::when_any(ex::just() | ex::then([]() noexcept { return 42; }));
+  static_assert(sender<decltype(just_then_noexcept)>);
+  static_assert(__v<__equivalent<
+                  completion_signatures_of_t<decltype(just_then_noexcept)>,
+                  completion_signatures<set_value_t(int&&), set_stopped_t()>>>);
+
+  auto just_move_throws = exec::when_any(ex::just(move_throws{}));
+  static_assert(sender<decltype(just_move_throws)>);
+  static_assert(
+    __v<__equivalent<
+      completion_signatures_of_t<decltype(just_move_throws)>,
+      completion_signatures<
+        set_value_t(move_throws&&),
+        set_stopped_t(),
+        set_error_t(std::exception_ptr)>>>);
+
+  auto mulitple_senders = exec::when_any(
+    ex::just(3.1415),
+    ex::just(std::string()),
+    ex::just(std::string()),
+    ex::just() | ex::then([] { return 42; }),
+    ex::just() | ex::then([] { return 42; }));
+  static_assert(sender<decltype(mulitple_senders)>);
+  static_assert(
+    __v<__equivalent<
+      completion_signatures_of_t<decltype(mulitple_senders)>,
+      completion_signatures<
+        set_value_t(double&&),
+        set_value_t(std::string&&),
+        set_value_t(int&&),
+        set_stopped_t(),
+        set_error_t(std::exception_ptr)>>>);
+  // wait_for_value(std::move(snd), movable(42));
+}

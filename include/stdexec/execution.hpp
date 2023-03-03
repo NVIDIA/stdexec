@@ -72,6 +72,8 @@
 #define R5_RECEIVER_DEPR_WARNING
 #endif
 
+#define STDEXEC_LEGACY_R5_CONCEPTS() 1
+
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
 STDEXEC_PRAGMA_IGNORE("-Wundefined-internal")
@@ -87,8 +89,14 @@ namespace stdexec {
   template <class T>
   concept queryable = destructible<T>;
 
+  template <class Tag>
+  struct __query {
+    template <class Sig>
+    static inline constexpr Tag (*signature)(Sig) = nullptr;
+  };
+
   // [exec.fwd_env]
-  namespace __forwarding_query {
+  namespace __fwding_query {
     struct forwarding_query_t {
       template <class _Query>
       constexpr bool operator()(_Query __query) const noexcept {
@@ -103,8 +111,11 @@ namespace stdexec {
     };
   }
 
-  inline constexpr __forwarding_query::forwarding_query_t forwarding_query{};
-  using __forwarding_query::forwarding_query_t;
+  inline constexpr __fwding_query::forwarding_query_t forwarding_query{};
+  using __fwding_query::forwarding_query_t;
+
+  template <class _Tag>
+  concept __forwarding_query = forwarding_query(_Tag{});
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -148,7 +159,7 @@ namespace stdexec {
     template <class _Ty>
     using __cref_t = decltype(__scheduler_queries::__cref_fn(__declval<_Ty>()));
 
-    struct execute_may_block_caller_t {
+    struct execute_may_block_caller_t : __query<execute_may_block_caller_t> {
       template <class _T>
         requires tag_invocable<execute_may_block_caller_t, __cref_t<_T>>
       constexpr bool operator()(_T&& __t) const noexcept {
@@ -252,11 +263,9 @@ namespace stdexec {
         [[no_unique_address]] _BaseEnv __base_env_{};
 
         // Forward the receiver queries:
-        template <                                                            //
-          __none_of<__tag_of<_WithIds>..., get_completion_signatures_t> _Tag, //
-          same_as<__t> _Self,                                                 //
-          class... _As>
-          requires __callable<_Tag, const __base_env_of<_Self>&, _As...>
+        template <__forwarding_query _Tag, same_as<__t> _Self, class... _As>
+          requires __none_of<_Tag, __tag_of<_WithIds>...>
+                && __callable<_Tag, const __base_env_of<_Self>&, _As...>
         friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as) noexcept
           -> __call_result_if_t<same_as<_Self, __t>, _Tag, const __base_env_of<_Self>&, _As...> {
           return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
@@ -452,6 +461,8 @@ namespace stdexec {
     __types<__minvoke<_Ty>> __test(_Tag (*)());
     template <class, class = void>
     __types<> __test(...);
+    template <class _Tag, class _Ty = void, class... _Args>
+    void __test(_Tag (*)(_Args...) noexcept) = delete;
 #endif
 
     // To be kept in sync with the promise type used in __connect_awaitable
@@ -658,6 +669,11 @@ namespace stdexec {
               set_error_t(std::exception_ptr)>>{};
           }
         }
+#if STDEXEC_LEGACY_R5_CONCEPTS()
+        else if constexpr (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>) {
+          return __mconst<dependent_completion_signatures<no_env>>{};
+        }
+#endif
       }
 
       template <class _Sender, class _Env>
@@ -665,8 +681,13 @@ namespace stdexec {
 
       template <class _Sender, class _Env = no_env>
         requires(
-          __with_tag_invoke<_Sender, _Env> || __with_member_alias<_Sender>
-          || __awaitable<_Sender, __env_promise<_Env>>)
+          __with_tag_invoke<_Sender, _Env> //
+          || __with_member_alias<_Sender>  //
+          || __awaitable<_Sender, __env_promise<_Env>>
+#if STDEXEC_LEGACY_R5_CONCEPTS()
+          || (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
+#endif
+            )
       constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept
         -> __minvoke<__impl_fn<_Sender, _Env>, _Sender, _Env> {
         return {};
@@ -689,8 +710,6 @@ namespace stdexec {
   concept __with_completion_signatures =
     __callable<get_completion_signatures_t, _Sender, _Env>
     && __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env>;
-
-#define STDEXEC_LEGACY_R5_CONCEPTS() 1
 
 #if !STDEXEC_LEGACY_R5_CONCEPTS()
   // Here is the R7 sender concepts, not yet enabled.
@@ -1023,7 +1042,7 @@ namespace stdexec {
     template <class _Ty>
     using __cref_t = decltype(__scheduler_queries::__cref_fn(__declval<_Ty>()));
 
-    struct get_forward_progress_guarantee_t {
+    struct get_forward_progress_guarantee_t : __query<get_forward_progress_guarantee_t> {
       template <class _T>
         requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>
       constexpr auto operator()(_T&& __t) const
@@ -1037,7 +1056,7 @@ namespace stdexec {
       }
     };
 
-    struct __has_algorithm_customizations_t {
+    struct __has_algorithm_customizations_t : __query<__has_algorithm_customizations_t> {
       template <class _T>
       using __result_t = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
 
@@ -1099,7 +1118,7 @@ namespace stdexec {
     template <class _T0>
     concept __allocator = true;
 
-    struct get_scheduler_t {
+    struct get_scheduler_t : __query<get_scheduler_t> {
       friend constexpr bool tag_invoke(forwarding_query_t, const get_scheduler_t&) noexcept {
         return true;
       }
@@ -1116,7 +1135,7 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
-    struct get_delegatee_scheduler_t {
+    struct get_delegatee_scheduler_t : __query<get_delegatee_scheduler_t> {
       friend constexpr bool
         tag_invoke(forwarding_query_t, const get_delegatee_scheduler_t&) noexcept {
         return true;
@@ -1134,7 +1153,7 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
-    struct get_allocator_t {
+    struct get_allocator_t : __query<get_allocator_t> {
       friend constexpr bool tag_invoke(forwarding_query_t, const get_allocator_t&) noexcept {
         return true;
       }
@@ -1151,7 +1170,7 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
-    struct get_stop_token_t {
+    struct get_stop_token_t : __query<get_stop_token_t> {
       friend constexpr bool tag_invoke(forwarding_query_t, const get_stop_token_t&) noexcept {
         return true;
       }
@@ -1221,7 +1240,8 @@ namespace stdexec {
 #else
       template <class _Op>
         requires tag_invocable<start_t, _Op&>
-      void operator()(_Op& __op) const noexcept(nothrow_tag_invocable<start_t, _Op&>) {
+      void operator()(_Op& __op) const noexcept {
+        static_assert(nothrow_tag_invocable<start_t, _Op&>);
         (void) tag_invoke(start_t{}, __op);
       }
 #endif
@@ -1240,14 +1260,17 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
-  template <class _O>
-  concept operation_state = destructible<_O> && std::is_object_v<_O> && !std::is_pointer_v<_O> && requires(_O& __o) {
+  template <class _Op>
+  concept operation_state =  //
+    destructible<_Op> &&     //
+    std::is_object_v<_Op> /*&& !std::is_pointer_v<_O>*/ && //
+    requires(_Op& __op) {    //
 #ifdef STDEXEC_MEMBER_CUSTOMIZATION_POINTS
     { execution_concept_tag::start(__o) } noexcept;
 #else
-    { start(__o) } noexcept;
+      start(__op);
 #endif
-  };
+    };
 
 #if !_STD_NO_COROUTINES_
   /////////////////////////////////////////////////////////////////////////////
@@ -1268,31 +1291,6 @@ namespace stdexec {
 
       [[noreturn]] void return_void() noexcept {
         std::terminate();
-      }
-
-      template <class _Fun>
-      auto yield_value(_Fun&& __fun) noexcept {
-        struct awaiter {
-          _Fun&& __fun_;
-
-          bool await_ready() noexcept {
-            return false;
-          }
-
-          void await_suspend(__coro::coroutine_handle<>) noexcept(__nothrow_callable<_Fun>) {
-            // If this throws, the runtime catches the exception,
-            // resumes the __connect_awaitable coroutine, and immediately
-            // rethrows the exception. The end result is that an
-            // exception_ptr to the exception gets passed to set_error.
-            ((_Fun&&) __fun_)();
-          }
-
-          [[noreturn]] void await_resume() noexcept {
-            std::terminate();
-          }
-        };
-
-        return awaiter{(_Fun&&) __fun};
       }
     };
 
@@ -1345,7 +1343,7 @@ namespace stdexec {
         }
 
         __coro::coroutine_handle<> unhandled_stopped() noexcept {
-          set_stopped(std::move(__rcvr_));
+          set_stopped((_Receiver&&) __rcvr_);
           // Returning noop_coroutine here causes the __connect_awaitable
           // coroutine to never resume past the point where it co_await's
           // the awaitable.
@@ -1387,34 +1385,44 @@ namespace stdexec {
 
     struct __connect_awaitable_t {
      private:
+      template <class _Fun, class... _Ts>
+      static auto __co_call(_Fun __fun, _Ts&&... __as) noexcept {
+        auto __fn = [&, __fun]() noexcept {
+          __fun((_Ts&&) __as...);
+        };
+
+        struct __awaiter {
+          decltype(__fn) __fn_;
+
+          static constexpr bool await_ready() noexcept {
+            return false;
+          }
+
+          void await_suspend(__coro::coroutine_handle<>) noexcept {
+            __fn_();
+          }
+
+          [[noreturn]] void await_resume() noexcept {
+            std::terminate();
+          }
+        };
+
+        return __awaiter{__fn};
+      };
+
       template <class _Awaitable, class _Receiver>
       static __operation_t<_Receiver> __co_impl(_Awaitable __await, _Receiver __rcvr) {
         using __result_t = __await_result_t<_Awaitable, __promise_t<_Receiver>>;
         std::exception_ptr __eptr;
         try {
-          // This is a bit mind bending control-flow wise.
-          // We are first evaluating the co_await expression.
-          // Then the result of that is passed into a lambda
-          // that curries a reference to the result into another
-          // lambda which is then returned to 'co_yield'.
-          // The 'co_yield' expression then invokes this lambda
-          // after the coroutine is suspended so that it is safe
-          // for the receiver to destroy the coroutine.
-          auto __fun = [&](auto&&... __as) noexcept {
-            return [&]() noexcept -> void {
-              set_value((_Receiver&&) __rcvr, (std::add_rvalue_reference_t<__result_t>) __as...);
-            };
-          };
-          if constexpr (std::is_void_v<__result_t>)
-            co_yield (co_await (_Awaitable&&) __await, __fun());
+          if constexpr (same_as<__result_t, void>)
+            co_await (co_await (_Awaitable&&) __await, __co_call(set_value, (_Receiver&&) __rcvr));
           else
-            co_yield __fun(co_await (_Awaitable&&) __await);
+            co_await __co_call(set_value, (_Receiver&&) __rcvr, co_await (_Awaitable&&) __await);
         } catch (...) {
           __eptr = std::current_exception();
         }
-        co_yield [&]() noexcept -> void {
-          set_error((_Receiver&&) __rcvr, (std::exception_ptr&&) __eptr);
-        };
+        co_await __co_call(set_error, (_Receiver&&) __rcvr, (std::exception_ptr&&) __eptr);
       }
 
       template <receiver _Receiver, class _Awaitable>
@@ -1444,7 +1452,7 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd_queries]
   namespace __sender_queries {
-    struct forwarding_sender_query_t {
+    struct forwarding_sender_query_t : __query<forwarding_sender_query_t> {
       template <class _Tag>
       constexpr bool operator()(_Tag __tag) const noexcept {
         if constexpr (
@@ -1463,6 +1471,9 @@ namespace stdexec {
 
   namespace __debug {
     struct __is_debug_env_t {
+      friend constexpr bool tag_invoke(forwarding_query_t, const __is_debug_env_t&) noexcept {
+        return true;
+      }
       template <class _Env>
         requires tag_invocable<__is_debug_env_t, _Env>
       void operator()(_Env&&) const noexcept;
@@ -1701,7 +1712,7 @@ namespace stdexec {
   // [exec.snd_queries], sender queries
   namespace __sender_queries {
     template <__one_of<set_value_t, set_error_t, set_stopped_t> _CPO>
-    struct get_completion_scheduler_t {
+    struct get_completion_scheduler_t : __query<get_completion_scheduler_t<_CPO>> {
       // NOT TO SPEC:
       friend constexpr bool
         tag_invoke(forwarding_sender_query_t, const get_completion_scheduler_t&) noexcept {
@@ -4815,7 +4826,8 @@ namespace stdexec {
         }
 #endif
 
-        void __complete() noexcept try {
+        void __complete() noexcept {
+          STDEXEC_ASSERT(!__data_.valueless_by_exception());
           std::visit(
             [&]<class _Tup>(_Tup& __tupl) -> void {
               if constexpr (same_as<_Tup, std::monostate>) {
@@ -4829,9 +4841,6 @@ namespace stdexec {
               }
             },
             __data_);
-        } catch (...) {
-
-          set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
       };
     };
@@ -4883,7 +4892,7 @@ namespace stdexec {
         using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Errs> && ...)>;
 
         template <class _Env>
-        using __with_error_t = //
+        using __scheduler_with_error_t = //
           __if_c<
             __v<error_types_of_t<schedule_result_t<_Scheduler>, _Env, __all_nothrow_decay_copyable>>,
             completion_signatures<>,
@@ -4894,15 +4903,25 @@ namespace stdexec {
           __make_completion_signatures<
             schedule_result_t<_Scheduler>,
             _Env,
-            __with_error_t<_Env>,
+            __scheduler_with_error_t<_Env>,
             __mconst<completion_signatures<>>>;
+
+        template <class _Env>
+        using __input_sender_with_error_t = //
+          __if_c<
+            __v<value_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable, __mand>>
+              && __v<error_types_of_t<_Sender, _Env, __all_nothrow_decay_copyable>>,
+            completion_signatures<>,
+            __with_exception_ptr>;
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
           -> __make_completion_signatures<
             __copy_cvref_t<_Self, _Sender>,
             _Env,
-            __scheduler_completions_t<_Env>,
+            __concat_completion_signatures_t<
+              __scheduler_completions_t<_Env>,
+              __input_sender_with_error_t<_Env>>,
             __decay_signature<set_value_t>,
             __decay_signature<set_error_t>>;
       };
@@ -6127,6 +6146,7 @@ namespace stdexec {
   inline constexpr sync_wait_t sync_wait{};
   using __sync_wait::sync_wait_with_variant_t;
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
+
 } // namespace stdexec
 
 #include "__detail/__p2300.hpp"
