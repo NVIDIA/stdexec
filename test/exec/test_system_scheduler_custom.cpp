@@ -17,14 +17,8 @@
 #include <catch2/catch.hpp>
 #include <exec/system_scheduler.hpp>
 
-TEST_CASE("simple schedule init", "[types][system_scheduler]") {
-  exec::system_context ctx;
-  exec::system_scheduler sched = ctx.get_scheduler();
-  // TODO
-}
+// TODO: Custom type using impulse schedler to replace weak symbol APIs
 
-TEST_CASE("simple schedule forward progress guarantee", "[types][system_scheduler]") {
+TEST_CASE("simple schedule init", "[types][system_scheduler_custom]") {
   exec::system_context ctx;
-  exec::system_scheduler sched = ctx.get_scheduler();
-  REQUIRE(stdexec::get_forward_progress_guarantee(sched) == stdexec::forward_progress_guarantee::parallel);
 }
