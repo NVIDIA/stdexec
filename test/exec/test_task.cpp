@@ -120,7 +120,7 @@ namespace {
   }                                           // completes on id1
 }
 
-TEST_CASE("Show old behaviour with one single thread scheduler", "[types][sticky][task]") {
+TEST_CASE("Old behaviour if completes_inline is not used", "[types][sticky][task]") {
   single_thread_context context1;
   single_thread_context context2;
   scheduler auto scheduler1 = context1.get_scheduler();
