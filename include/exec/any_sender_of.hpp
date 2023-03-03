@@ -829,7 +829,7 @@ namespace exec {
     }
 
     template <auto... _SenderQueries>
-    class [[nodiscard]] any_sender {
+    class any_sender {
       using __sender_base = stdexec::__t<
         __any::__sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>>;
       __sender_base __sender_;
