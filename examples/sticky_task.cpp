@@ -55,7 +55,7 @@ task<void> hello_world(auto scheduler1, auto scheduler2, auto id1, auto id2) {
   check_thread_id(id2);
 }
 
-task<void> hello_world(scheduler_arg_t, auto scheduler1, auto scheduler2, auto id1, auto id2) {
+task<void> hello_world_init(auto scheduler1, auto scheduler2, auto id1, auto id2) {
   co_await complete_inline(scheduler1);
   check_thread_id(id1);
   co_await hello_world(scheduler1, scheduler2, id1, id2);
@@ -76,9 +76,8 @@ int main() {
   scheduler auto scheduler2 = context2.get_scheduler();
   auto id1 = context1.get_thread_id();
   auto id2 = context2.get_thread_id();
-  sync_wait(hello_world(scheduler_arg, scheduler1, scheduler2, id1, id2) | then([&] {
-              check_thread_id(id1);
-            }));
+  sync_wait(
+    hello_world_init(scheduler1, scheduler2, id1, id2) | then([&] { check_thread_id(id1); }));
 }
 #else
 int main() {
