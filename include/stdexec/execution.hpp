@@ -5237,6 +5237,8 @@ namespace stdexec {
           __mconst<completion_signatures<>>,
           __mcompose<__q<completion_signatures>, __qf<set_error_t>, __q<__decay_rvalue_ref>>>...>;
 
+    struct __not_an_error { };
+
     struct __tie_fn {
       template <class... _Ty>
       std::tuple<_Ty&...> operator()(_Ty&... __vals) noexcept {
@@ -5252,15 +5254,15 @@ namespace stdexec {
         : __rcvr_(__rcvr) {
       }
 
-      template <__decays_to<std::monostate> _Ty>
-        requires std::same_as<_Tag, set_error_t>
-      void operator()(_Ty&& __x) const noexcept {
-        STDEXEC_ASSERT(false);
+      template <class _Ty, class... _Ts>
+      void operator()(_Ty& __t, _Ts&... __ts) const noexcept {
+        if constexpr (!same_as<_Ty, __not_an_error>) {
+          _Tag{}((_Receiver&&) __rcvr_, (_Ty&&) __t, (_Ts&&) __ts...);
+        }
       }
 
-      template <class... _Ts>
-      void operator()(_Ts&... __ts) const noexcept {
-        _Tag{}((_Receiver&&) __rcvr_, (_Ts&&) __ts...);
+      void operator()() const noexcept {
+        _Tag{}((_Receiver&&) __rcvr_);
       }
     };
 
@@ -5427,9 +5429,11 @@ namespace stdexec {
             __ignore>,
           _Senders...>;
 
+      using __nullable_variant_t_ = __munique<__mbind_front_q<std::variant, __not_an_error>>;
+
       using __error_types = //
         __minvoke<
-          __mconcat<__transform<__q<decay_t>, __nullable_variant_t>>,
+          __mconcat<__transform<__q<decay_t>, __nullable_variant_t_>>,
           error_types_of_t<_Senders, __env_t<__id<_Env>>, __types>... >;
 
       using __errors_variant = //
