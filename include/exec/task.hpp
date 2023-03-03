@@ -516,10 +516,6 @@ namespace exec {
       friend auto tag_invoke(stdexec::get_completion_signatures_t, const basic_task&, auto)
         -> __task_traits_t;
 
-      friend auto tag_invoke(stdexec::get_env_t, const basic_task& __self) noexcept {
-        return __self.__coro_.promise().__context_;
-      }
-
       explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
         : __coro_(__coro) {
       }
