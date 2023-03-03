@@ -66,7 +66,7 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
           -> __concat_completion_signatures_t<
             completion_signatures_of_t<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Env>...>;
 
