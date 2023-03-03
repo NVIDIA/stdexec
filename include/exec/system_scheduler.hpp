@@ -27,13 +27,14 @@ struct __exec_system_sender_impl;
 // Phase 3 will move these to weak symbols and allow replacement in tests
 // Default implementation based on static_thread_pool
 struct __exec_system_context_impl {
-  exec::static_thread_pool pool;
+  exec::static_thread_pool pool_;
 
   __exec_system_scheduler_impl get_scheduler();
 };
 
 struct __exec_system_scheduler_impl {
   __exec_system_context_impl* ctx_;
+  decltype(ctx_->pool_.get_scheduler()) pool_scheduler_;
 
   __exec_system_sender_impl schedule() const;
 
@@ -43,7 +44,7 @@ struct __exec_system_scheduler_impl {
 };
 
 struct __exec_system_sender_impl {
-
+  decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_)) pool_sender_;
 };
 
 
@@ -56,12 +57,12 @@ static __exec_system_context_impl* __get_exec_system_context_impl() {
 }
 
 inline __exec_system_scheduler_impl __exec_system_context_impl::get_scheduler() {
-  return __exec_system_scheduler_impl{this};
+  return __exec_system_scheduler_impl{this, pool_.get_scheduler()};
 }
 
 __exec_system_sender_impl __exec_system_scheduler_impl::schedule() const {
-  // TODO
-  return __exec_system_sender_impl{};
+  // TODO: Can schedule on thread pool, but not absolutely necessary. Doing in start() for now.
+  return __exec_system_sender_impl{stdexec::schedule(pool_scheduler_)};
 }
 
 
@@ -115,28 +116,27 @@ namespace exec {
     using completion_signatures =
       stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
-    system_sender(__exec_system_sender_impl impl) : impl_{impl} {}
+    system_sender(__exec_system_scheduler_impl scheduler_impl, __exec_system_sender_impl impl) :
+        scheduler_impl_{scheduler_impl}, impl_{impl} {}
 
   private:
     template <class R_>
     struct __op {
       using R = stdexec::__t<R_>;
-      [[no_unique_address]] R rec_;
+      decltype(stdexec::connect(std::declval<__exec_system_sender_impl>().pool_sender_, std::declval<R>())) impl_;
 
-  // TODO: Enqueue task
       friend void tag_invoke(stdexec::start_t, __op& op) noexcept {
-        stdexec::set_value((R&&) op.rec_);
+        stdexec::start(op.impl_);
       }
 
-        __exec_system_scheduler_impl impl_;
-      // TODO: Type-erase operation state to allow queue reservation
+      // TODO: Type-erase operation state to remove coupling with pool_sender
     };
 
     template <class R>
-    friend auto tag_invoke(stdexec::connect_t, system_sender, R&& rec) //
+    friend auto tag_invoke(stdexec::connect_t, system_sender snd, R&& rec) //
       noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
         -> __op<stdexec::__x<std::remove_cvref_t<R>>> {
-      return {(R&&) rec};
+      return {stdexec::connect(snd.impl_.pool_sender_, (R&&) rec)};
     }
 
     struct env {
@@ -179,7 +179,7 @@ namespace exec {
 
   system_sender tag_invoke(
       stdexec::schedule_t, const system_scheduler& sched) noexcept {
-    return system_sender(sched.impl_.schedule());
+    return system_sender(sched.impl_, sched.impl_.schedule());
   }
 
   stdexec::forward_progress_guarantee tag_invoke(
