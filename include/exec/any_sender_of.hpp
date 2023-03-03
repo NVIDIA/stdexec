@@ -163,6 +163,29 @@ namespace exec {
       }
     };
 
+    struct __get_vtable_t {
+      template <class _Storage>
+        requires tag_invocable<__get_vtable_t, const _Storage&>
+      const tag_invoke_result_t<__get_vtable_t, const _Storage&>
+        operator()(const _Storage& __storage) const noexcept {
+        static_assert(nothrow_tag_invocable<__get_vtable_t, const _Storage&>);
+        return tag_invoke(__get_vtable_t{}, __storage);
+      }
+    };
+
+    inline constexpr __get_vtable_t __get_vtable{};
+
+    struct __get_object_pointer_t {
+      template <class _Storage>
+        requires __tag_invocable_r<void*, __get_object_pointer_t, const _Storage&>
+      void* operator()(const _Storage& __storage) const noexcept {
+        static_assert(nothrow_tag_invocable<__get_object_pointer_t, const _Storage&>);
+        return tag_invoke(__get_object_pointer_t{}, __storage);
+      }
+    };
+
+    inline constexpr __get_object_pointer_t __get_object_pointer{};
+
     struct __delete_t {
       template <class _Storage, class _T>
         requires tag_invocable<__delete_t, __mtype<_T>, _Storage&>
@@ -362,6 +385,14 @@ namespace exec {
         __object_pointer_ = __pointer;
       }
 
+      friend const _Vtable* tag_invoke(__get_vtable_t, const __t& __self) noexcept {
+        return __self.__vtable_;
+      }
+
+      friend void* tag_invoke(__get_object_pointer_t, const __t& __self) noexcept {
+        return __self.__object_pointer_;
+      }
+
       template <class _T>
       friend void tag_invoke(__delete_t, __mtype<_T>, __t& __self) noexcept {
         if (!__self.__object_pointer_) {
@@ -407,10 +438,8 @@ namespace exec {
         __self.__vtable_ = __other.__vtable_;
       }
 
-     public:
       const __vtable_t* __vtable_{__default_storage_vtable((__vtable_t*) nullptr)};
       void* __object_pointer_{nullptr};
-     private:
       alignas(__alignment) std::byte __buffer_[__buffer_size]{};
       [[no_unique_address]] _Allocator __allocator_{};
     };
@@ -577,8 +606,8 @@ namespace exec {
         __unique_operation_storage __storage_{};
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
-          STDEXEC_ASSERT(__self.__storage_.__vtable_->__start_);
-          __self.__storage_.__vtable_->__start_(__self.__storage_.__object_pointer_);
+          STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__start_);
+          __get_vtable(__self.__storage_)->__start_(__get_object_pointer(__self.__storage_));
         }
       };
     };
@@ -672,12 +701,12 @@ namespace exec {
         }
 
         __unique_operation_storage __connect(__receiver_ref_t __receiver) {
-          return __storage_.__vtable_->__connect_(
-            __storage_.__object_pointer_, (__receiver_ref_t&&) __receiver);
+          return __get_vtable(__storage_)
+            ->__connect_(__get_object_pointer(__storage_), (__receiver_ref_t&&) __receiver);
         }
 
         explicit operator bool() const noexcept {
-          return __storage_.__object_pointer_ != nullptr;
+          return __get_object_pointer(__storage_) != nullptr;
         }
 
        private:
@@ -690,7 +719,7 @@ namespace exec {
         }
 
         friend __env_t tag_invoke(get_env_t, const __t& __self) noexcept {
-          return {__self.__storage_.__vtable_, __self.__storage_.__object_pointer_};
+          return {__get_vtable(__self.__storage_), __get_object_pointer(__self.__storage_)};
         }
       };
     };
@@ -738,8 +767,9 @@ namespace exec {
 
       template <same_as<__scheduler> _Self>
       friend __sender_t tag_invoke(schedule_t, const _Self& __self) noexcept {
-        STDEXEC_ASSERT(__self.__storage_.__vtable_->__schedule_);
-        return __self.__storage_.__vtable_->__schedule_(__self.__storage_.__object_pointer_);
+        STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__schedule_);
+        return __get_vtable(__self.__storage_)
+          ->__schedule_(__get_object_pointer(__self.__storage_));
       }
 
       template <class _Tag, same_as<__scheduler> _Self, class... _As>
@@ -747,18 +777,18 @@ namespace exec {
       friend auto tag_invoke(_Tag, const _Self& __self, _As&&... __as) noexcept(
         __nothrow_callable<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...>)
         -> __call_result_t<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...> {
-        return __self.__storage_.__vtable_->__queries()(
-          _Tag{}, __self.__storage_.__object_pointer_, (_As&&) __as...);
+        return __get_vtable(__self.__storage_)
+          ->__queries()(_Tag{}, __get_object_pointer(__self.__storage_), (_As&&) __as...);
       }
 
       friend bool operator==(const __scheduler& __self, const __scheduler& __other) noexcept {
-        if (__self.__storage_.__vtable_ != __other.__storage_.__vtable_) {
+        if (__get_vtable(__self.__storage_) != __get_vtable(__other.__storage_)) {
           return false;
         }
-        void* __p = __self.__storage_.__object_pointer_;
-        void* __o = __other.__storage_.__object_pointer_;
+        void* __p = __get_object_pointer(__self.__storage_);
+        void* __o = __get_object_pointer(__other.__storage_);
         // if both object pointers are not null, use the virtual equal_to function
-        return (__p && __o && __self.__storage_.__vtable_->__equal_to_(__p, __o))
+        return (__p && __o && __get_vtable(__self.__storage_)->__equal_to_(__p, __o))
             // if both object pointers are nullptrs, they are equal
             || (!__p && !__o);
       }
