@@ -28,10 +28,6 @@
 using namespace exec;
 using namespace stdexec;
 
-void CHECK_THREAD_ID(std::thread::id expected) {
-  CHECK(std::this_thread::get_id() == expected);
-}
-
 namespace {
   task<void> test_stickiness_for_two_single_thread_contexts_nested(
     scheduler auto scheduler1,
