@@ -106,24 +106,20 @@
 
 #elif defined(STDEXEC_USE_TAG_INVOKE)
 
-  #define STDEXEC_PROBE_RETURN_TYPE_auto STDEXEC_PROBE_N(~, 1)
-  #define STDEXEC_PROBE_RETURN_TYPE_void STDEXEC_PROBE_N(~, 2)
+  #define STDEXEC_PROBE_RETURN_TYPE_auto STDEXEC_PROBE(~)
 
-  #define STDEXEC_RETURN_TYPE(TYPE, ...) \
+  #define STDEXEC_RETURN_TYPE(_TY, ...) \
     STDEXEC_CAT( \
       STDEXEC_RETURN_TYPE_, \
       STDEXEC_CHECK( \
-        STDEXEC_CAT(STDEXEC_PROBE_RETURN_TYPE_, TYPE)))( \
-          TYPE __VA_OPT__(,) __VA_ARGS__) \
+        STDEXEC_CAT(STDEXEC_PROBE_RETURN_TYPE_, _TY)))( \
+          _TY __VA_OPT__(,) __VA_ARGS__) \
     /**/
   #define STDEXEC_RETURN_TYPE_0(...) \
-    typename ::stdexec::__arg_type<void(__VA_ARGS__)>>::__t \
+    typename ::stdexec::__arg_type<void(__VA_ARGS__())>::__t \
     /**/
   #define STDEXEC_RETURN_TYPE_1(...) \
     auto \
-    /**/
-  #define STDEXEC_RETURN_TYPE_2(...) \
-    void \
     /**/
   #define STDEXEC_DEFINE_CUSTOM(...) \
     friend STDEXEC_RETURN_TYPE(__VA_ARGS__) tag_invoke(STDEXEC_FUN_ARGS \
@@ -154,7 +150,7 @@ namespace stdexec {
   struct __arg_type;
 
   template <class _Ty>
-  struct __arg_type<void(_Ty)> {
+  struct __arg_type<void(_Ty(*)())> {
     using __t = _Ty;
   };
 }
