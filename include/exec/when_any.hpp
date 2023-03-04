@@ -200,7 +200,7 @@ namespace exec {
         }
 
        private:
-        friend ::stdexec::execution_access;
+        friend ::stdexec::start_t;
 
         template <class _SenderTuple, std::size_t... _Is>
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr, std::index_sequence<_Is...>) //

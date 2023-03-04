@@ -602,7 +602,7 @@ namespace exec {
         }
 
        private:
-        friend ::stdexec::execution_access;
+        friend ::stdexec::start_t;
         __rec __rec_{static_cast<__operation_base<_Receiver, _Sigs, _Queries>*>(this)};
         __unique_operation_storage __storage_{};
 

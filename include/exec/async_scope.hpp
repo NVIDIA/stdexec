@@ -69,7 +69,7 @@ namespace exec {
       }
 
      private:
-      friend ::stdexec::execution_access;
+      friend ::stdexec::start_t;
       static void __notify_waiter(__task* __self) noexcept {
         stdexec::start(static_cast<__when_empty_op*>(__self)->__op_);
       }
@@ -188,7 +188,7 @@ namespace exec {
         , __op_(connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {
       }
      private:
-      friend ::stdexec::execution_access;
+      friend ::stdexec::start_t;
 
       void __start_() noexcept {
         STDEXEC_ASSERT(this->__scope_);
@@ -269,11 +269,11 @@ namespace exec {
 
     template <class _SenderId, class _EnvId, class _ReceiverId>
     class __future_op : __subscription {
-      friend ::stdexec::execution_access;
+      friend ::stdexec::start_t;
       using _Sender = __t<_SenderId>;
       using _Env = __t<_EnvId>;
       using _Receiver = __t<_ReceiverId>;
-      friend ::stdexec::execution_access;
+      friend ::stdexec::start_t;
 
       using __forward_consumer =
         typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;

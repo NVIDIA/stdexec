@@ -1220,24 +1220,19 @@ namespace stdexec {
   extern const start_t start;
 
   /////////////////////////////////////////////////////////////////////////////
-  // execution_access
-  // NOT TO SPEC (YET)
-  struct execution_access {
-    template <class _O>
-      requires requires (_O& __o) {
-        STDEXEC_CALL_CUSTOM(start, __o, stdexec::start);
-      }
-    static void start(_O& __o) //
-      noexcept(noexcept(STDEXEC_CALL_CUSTOM(start, __o, stdexec::start))) {
-      STDEXEC_CALL_CUSTOM(start, __o, stdexec::start);
-    }
-  };
-
-  /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   namespace __start {
     struct start_t {
-#if !defined(STDEXEC_USE_EXPLICIT_THIS) && defined(STDEXEC_USE_TAG_INVOKE)
+#if defined(STDEXEC_USE_EXPLICIT_THIS)
+      template <class _Op>
+        requires requires (_Op& __op) {
+          __op.start(stdexec::start);
+        }
+      void operator()(_Op& __op) const noexcept {
+        static_assert(noexcept(start(__op, stdexec::start)));
+        (void) __op.start(stdexec::start);
+      }
+#elif defined(STDEXEC_USE_TAG_INVOKE)
       template <class _Op>
         requires tag_invocable<start_t, _Op&>
       void operator()(_Op& __op) const noexcept {
@@ -1247,11 +1242,11 @@ namespace stdexec {
 #else
       template <class _Op>
         requires requires (_Op& __op) {
-          execution_access::start(__op);
+          __op.start(__op, stdexec::start);
         }
-      void operator()(_Op& __op) const //
-        noexcept(noexcept(execution_access::start(__op))) {
-        (void) execution_access::start(__op);
+      void operator()(_Op& __op) const noexcept {
+        static_assert(noexcept(__op.start(__op, stdexec::start)));
+        (void) __op.start(__op, stdexec::start);
       }
 #endif
     };
