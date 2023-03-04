@@ -46,7 +46,7 @@ namespace exec {
       [[no_unique_address]] _Fun __fun_;
       [[no_unique_address]] _State __state_{};
 
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __operation& __self, start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __operation& __self, start_t) noexcept {
         __self.__state_.emplace(__conv{[&]() noexcept {
           return ((_Fun&&) __self.__fun_)(__self.__ctx_);
         }});

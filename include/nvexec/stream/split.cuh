@@ -259,7 +259,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& self, stdexec::start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& self, stdexec::start_t) noexcept {
           sh_state_t<Sender>* shared_state = self.shared_state_.get();
           std::atomic<void*>& head = shared_state->head_;
           void* const completion_state = static_cast<void*>(shared_state);

@@ -26,7 +26,7 @@ namespace ex = stdexec;
 namespace {
   struct uncustomized_scheduler {
     struct operation_state {
-      STDEXEC_DEFINE_CUSTOM(auto start)(this operation_state& self, ex::start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this operation_state& self, ex::start_t) noexcept {
       }
     };
 
@@ -69,7 +69,7 @@ namespace {
   template <ex::forward_progress_guarantee fpg>
   struct customized_scheduler {
     struct operation_state {
-      STDEXEC_DEFINE_CUSTOM(auto start)(this operation_state& self, ex::start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this operation_state& self, ex::start_t) noexcept {
       }
     };
 

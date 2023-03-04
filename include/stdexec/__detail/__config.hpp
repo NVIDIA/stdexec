@@ -25,7 +25,8 @@
 #define STDEXEC_CAT(X, ...) STDEXEC_CAT_(X, __VA_ARGS__)
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
-#define STDEXEC_EVAL(M, ...) M(__VA_ARGS__)
+#define STDEXEC_EVAL(_M, ...) _M(__VA_ARGS__)
+#define STDEXEC_EAT(...)
 
 #define STDEXEC_NOT(X) STDEXEC_CAT(STDEXEC_NOT_, X)
 #define STDEXEC_NOT_0 1
@@ -39,9 +40,10 @@
   STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
 #define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _N, ...) _N
 
-#define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0, ))
-#define STDEXEC_CHECK_N(x, n, ...) n
-#define STDEXEC_PROBE(x) x, 1,
+#define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0,))
+#define STDEXEC_CHECK_N(_X, _N, ...) _N
+#define STDEXEC_PROBE(_X) _X, 1,
+#define STDEXEC_PROBE_N(_X, _N) _X, _N,
 
 #if defined(__NVCOMPILER)
 #define STDEXEC_NVHPC() 1
@@ -104,14 +106,32 @@
 
 #elif defined(STDEXEC_USE_TAG_INVOKE)
 
+  #define STDEXEC_PROBE_RETURN_TYPE_auto STDEXEC_PROBE_N(~, 1)
+  #define STDEXEC_PROBE_RETURN_TYPE_void STDEXEC_PROBE_N(~, 2)
+
+  #define STDEXEC_RETURN_TYPE(AUTO_NAME) \
+    STDEXEC_CAT( \
+      STDEXEC_RETURN_TYPE_, \
+      STDEXEC_CHECK(\
+        STDEXEC_CAT(STDEXEC_PROBE_RETURN_TYPE_, AUTO_NAME)))(AUTO_NAME) \
+    /**/
+  #define STDEXEC_RETURN_TYPE_0(AUTO_NAME) \
+    typename ::stdexec::__arg_type<void(AUTO_NAME)>>::__t \
+    /**/
+  #define STDEXEC_RETURN_TYPE_1(AUTO_NAME) \
+    auto \
+    /**/
+  #define STDEXEC_RETURN_TYPE_2(AUTO_NAME) \
+    void \
+    /**/
   #define STDEXEC_DEFINE_CUSTOM(AUTO_NAME) \
-    friend auto tag_invoke(STDEXEC_FUN_ARGS \
+    friend STDEXEC_RETURN_TYPE(AUTO_NAME) tag_invoke(STDEXEC_FUN_ARGS \
     /**/
   #define STDEXEC_FUN_ARGS(SELF, TAG, ...) \
     TAG, STDEXEC_CAT(STDEXEC_EAT_THIS_, SELF) __VA_OPT__(,) __VA_ARGS__) \
     /**/
   #define STDEXEC_CALL_CUSTOM(NAME, OBJ, TAG, ...) \
-    tag_invoke(TAG, OBJ, __VA_ARGS__) \
+    ::stdexec::tag_invoke(TAG, OBJ __VA_OPT__(,) __VA_ARGS__) \
     /**/
 
 #else
@@ -123,7 +143,17 @@
     STDEXEC_CAT(STDEXEC_EAT_THIS_, __VA_ARGS__)) \
     /**/
   #define STDEXEC_CALL_CUSTOM(NAME, OBJ, ...) \
-    (OBJ).NAME((OBJ), __VA_ARGS__) \
+    (OBJ).NAME((OBJ) __VA_OPT__(,) __VA_ARGS__) \
     /**/
 
 #endif
+
+namespace stdexec {
+  template <class>
+  struct __arg_type;
+
+  template <class _Ty>
+  struct __arg_type<void(_Ty)> {
+    using __t = _Ty;
+  };
+}

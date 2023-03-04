@@ -31,7 +31,7 @@ struct throwing_sender {
   struct operation {
     Receiver rcvr_;
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this operation& self, ex::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this operation& self, ex::start_t) noexcept {
       ex::set_value(std::move(self.rcvr_));
     }
   };

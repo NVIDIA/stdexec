@@ -73,7 +73,7 @@ struct oper {
   oper() = default;
   oper(oper&&) = delete;
 
-  STDEXEC_DEFINE_CUSTOM(auto start)(this oper&, ex::start_t) noexcept -> void {
+  STDEXEC_DEFINE_CUSTOM(void start)(this oper&, ex::start_t) noexcept {
   }
 };
 

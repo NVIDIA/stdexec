@@ -99,7 +99,7 @@ struct _op {
     stdexec::set_error((R&&) r_, std::current_exception());
   }
 
-  STDEXEC_DEFINE_CUSTOM(auto start)(this _op& o, stdexec::start_t) noexcept -> void {
+  STDEXEC_DEFINE_CUSTOM(void start)(this _op& o, stdexec::start_t) noexcept {
     stdexec::start(*o.o_);
   }
 };

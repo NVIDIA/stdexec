@@ -66,7 +66,7 @@ struct impulse_scheduler {
 
     oper(oper&&) = delete;
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this oper& self, ex::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this oper& self, ex::start_t) noexcept {
       // Enqueue another command to the list of all commands
       // The scheduler will start this, whenever start_next() is called
       std::unique_lock lock{self.data_->mutex_};
@@ -151,7 +151,7 @@ struct inline_scheduler {
   struct oper : immovable {
     R recv_;
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this oper& self, ex::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this oper& self, ex::start_t) noexcept {
       ex::set_value((R&&) self.recv_);
     }
   };
@@ -197,7 +197,7 @@ struct error_scheduler {
     R recv_;
     E err_;
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this oper& self, ex::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this oper& self, ex::start_t) noexcept {
       ex::set_error((R&&) self.recv_, (E&&) self.err_);
     }
   };
@@ -248,7 +248,7 @@ struct stopped_scheduler {
   struct oper : immovable {
     R recv_;
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this oper& self, ex::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this oper& self, ex::start_t) noexcept {
       ex::set_stopped((R&&) self.recv_);
     }
   };

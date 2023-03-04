@@ -86,7 +86,7 @@ namespace exec {
         stdexec::start(this->__op_);
       }
 
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __when_empty_op& __self, start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __when_empty_op& __self, start_t) noexcept {
         return __self.__start_();
       }
 
@@ -198,7 +198,7 @@ namespace exec {
         stdexec::start(__op_);
       }
 
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __nest_op& __self, start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __nest_op& __self, start_t) noexcept {
         return __self.__start_();
       }
     };
@@ -276,7 +276,7 @@ namespace exec {
       using __forward_consumer =
         typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
 
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __future_op& __self, start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __future_op& __self, start_t) noexcept {
         __self.__start_();
       }
 
@@ -640,7 +640,7 @@ namespace exec {
         stdexec::start(__op_);
       }
 
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __spawn_op& __self, start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __spawn_op& __self, start_t) noexcept {
         return __self.__start_();
       }
 

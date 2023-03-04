@@ -231,7 +231,7 @@ struct move_checking_inline_scheduler {
   struct oper : immovable {
     R recv_;
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this oper& self, ex::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this oper& self, ex::start_t) noexcept {
       ex::set_value((R&&) self.recv_);
     }
   };

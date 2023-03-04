@@ -1213,23 +1213,23 @@ namespace stdexec {
     { get_scheduler(__sp) } -> scheduler<>;
   };
 
-  /////////////////////////////////////////////////////////////////////////////
-  // execution_concept_tag
-  // NOT TO SPEC (YET)
-
   namespace __start {
     struct start_t;
   }
   using __start::start_t;
   extern const start_t start;
 
+  /////////////////////////////////////////////////////////////////////////////
+  // execution_concept_tag
+  // NOT TO SPEC (YET)
   struct execution_concept_tag {
     template <class _O>
       requires requires (_O& __o) {
-        __o.start(__o, stdexec::start);
+        STDEXEC_CALL_CUSTOM(start, __o, stdexec::start);
       }
-    static void start(_O& __o) noexcept(noexcept(__o.start(__o, stdexec::start))) {
-      __o.start(__o, stdexec::start);
+    static void start(_O& __o) //
+      noexcept(noexcept(STDEXEC_CALL_CUSTOM(start, __o, stdexec::start))) {
+      STDEXEC_CALL_CUSTOM(start, __o, stdexec::start);
     }
   };
 
@@ -1237,9 +1237,7 @@ namespace stdexec {
   // [execution.op_state]
   namespace __start {
     struct start_t {
-#ifdef STDEXEC_USE_EXPLICIT_THIS
-  #error not implemented yet
-#elif defined(STDEXEC_USE_TAG_INVOKE)
+#if !defined(STDEXEC_USE_EXPLICIT_THIS) && defined(STDEXEC_USE_TAG_INVOKE)
       template <class _Op>
         requires tag_invocable<start_t, _Op&>
       void operator()(_Op& __op) const noexcept {
@@ -1251,7 +1249,8 @@ namespace stdexec {
         requires requires (_Op& __op) {
           execution_concept_tag::start(__op);
         }
-      void operator()(_Op& __op) const noexcept(noexcept(execution_concept_tag::start(__op))) {
+      void operator()(_Op& __op) const //
+        noexcept(noexcept(execution_concept_tag::start(__op))) {
         (void) execution_concept_tag::start(__op);
       }
 #endif
@@ -1307,7 +1306,7 @@ namespace stdexec {
           __coro_.destroy();
       }
 
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __operation_base& __self, start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __operation_base& __self, start_t) noexcept {
         __self.__coro_.resume();
       }
     };
@@ -1476,7 +1475,7 @@ namespace stdexec {
     struct __debug_op_state {
       __debug_op_state(auto&&);
       __debug_op_state(__debug_op_state&&) = delete;
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __debug_op_state&, start_t) noexcept -> void;
+      STDEXEC_DEFINE_CUSTOM(void start)(this __debug_op_state&, start_t) noexcept ;
     };
 
     template <class _Sig>
@@ -2066,7 +2065,7 @@ namespace stdexec {
           , __op_state_(connect((_Sender&&) __sndr, __receiver{this})) {
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           stdexec::start(__self.__op_state_);
         }
       };
@@ -2093,7 +2092,7 @@ namespace stdexec {
       struct __op : __immovable {
         _Receiver __recv_;
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __op& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __op& __self, start_t) noexcept {
           set_value((_Receiver&&) __self.__recv_);
         }
       };
@@ -2210,7 +2209,7 @@ namespace stdexec {
         std::tuple<_Ts...> __vals_;
         _Receiver __rcvr_;
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __op_state, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __op_state, start_t) noexcept {
           std::apply(
             [&__op_state](_Ts&... __ts) {
               _Tag{}((_Receiver&&) __op_state.__rcvr_, (_Ts&&) __ts...);
@@ -2751,7 +2750,7 @@ namespace stdexec {
           , __op_(connect((_Sender&&) __sndr, __receiver_t{&__data_})) {
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           stdexec::start(__self.__op_);
         }
       };
@@ -3444,7 +3443,7 @@ namespace stdexec {
             __op->__shared_state_->__data_);
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>* __shared_state =
             __self.__shared_state_.get();
           std::atomic<void*>& __head = __shared_state->__head_;
@@ -3763,7 +3762,7 @@ namespace stdexec {
             __op->__shared_state_->__data_);
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           stdexec::__t<__sh_state<_SenderId, _EnvId>>* __shared_state =
             __self.__shared_state_.get();
           std::atomic<void*>& __op_state1 = __shared_state->__op_state1_;
@@ -4048,7 +4047,7 @@ namespace stdexec {
         using __op_base_t = __operation_base<_CvrefSenderId, _ReceiverId, _Fun, _Let>;
         using __receiver_t = __receiver<_CvrefSenderId, _ReceiverId, _Fun, _Let>;
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           stdexec::start(__self.__op_state2_);
         }
 
@@ -4226,7 +4225,7 @@ namespace stdexec {
 
         STDEXEC_IMMOVABLE(__t);
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           stdexec::start(__self.__op_state_);
         }
 
@@ -4369,7 +4368,7 @@ namespace stdexec {
           , __rcvr_{(_Receiver&&) __rcvr} {
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           __self.__start_();
         }
 
@@ -4674,7 +4673,7 @@ namespace stdexec {
 
         STDEXEC_IMMOVABLE(__t);
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __op_state, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __op_state, start_t) noexcept {
           stdexec::start(__op_state.__state1_);
         }
 
@@ -4937,7 +4936,7 @@ namespace stdexec {
         using __receiver_t = stdexec::__t<__receiver<_SchedulerId, _SenderId, _ReceiverId>>;
         using __receiver_ref_t = stdexec::__t<__receiver_ref<_SchedulerId, _SenderId, _ReceiverId>>;
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           stdexec::start(std::get<0>(__self.__data_));
         }
 
@@ -5502,7 +5501,7 @@ namespace stdexec {
           : __t((_SendersTuple&&) __sndrs, (_Receiver&&) __rcvr, _Indices{}) {
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           // register stop callback:
           __self.__on_stop_.emplace(
             get_stop_token(get_env(__self.__recvr_)), __on_stop_requested{__self.__stop_source_});
@@ -5677,7 +5676,7 @@ namespace stdexec {
         using __id = __operation;
         _Receiver __rcvr_;
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void try {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept  try {
           auto __env = get_env(__self.__rcvr_);
           set_value(std::move(__self.__rcvr_), _Tag{}(__env));
         } catch (...) {

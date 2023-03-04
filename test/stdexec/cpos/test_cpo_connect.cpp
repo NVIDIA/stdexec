@@ -26,7 +26,7 @@ struct op_state : immovable {
   int val_;
   R recv_;
 
-  STDEXEC_DEFINE_CUSTOM(auto start)(this op_state& self, ex::start_t) noexcept -> void {
+  STDEXEC_DEFINE_CUSTOM(void start)(this op_state& self, ex::start_t) noexcept {
     ex::set_value((R&&) self.recv_, self.val_);
   }
 };

@@ -357,7 +357,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         STDEXEC_IMMOVABLE(operation_t);
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this operation_t& self, stdexec::start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this operation_t& self, stdexec::start_t) noexcept {
           // register stop callback:
           self.on_stop_.emplace(
             stdexec::get_stop_token(stdexec::get_env(self.recvr_)),

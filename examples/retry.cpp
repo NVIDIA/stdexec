@@ -31,7 +31,7 @@ struct fail_some {
   struct op {
     R r_;
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this op& self, stdexec::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this op& self, stdexec::start_t) noexcept {
       static int i = 0;
       if (++i < 3) {
         std::printf("fail!\n");

@@ -98,7 +98,7 @@ namespace nvexec {
             : operation_state_base_t<ReceiverId>((Receiver&&) receiver, context_state, false) {
           }
 
-          STDEXEC_DEFINE_CUSTOM(auto start)(this __t& op, stdexec::start_t) noexcept -> void {
+          STDEXEC_DEFINE_CUSTOM(void start)(this __t& op, stdexec::start_t) noexcept {
             op.propagate_completion_signal(stdexec::set_value);
           }
         };

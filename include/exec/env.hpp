@@ -60,7 +60,7 @@ namespace exec {
       [[no_unique_address]] _Default __default_;
       _Receiver __rcvr_;
 
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __operation& __self, start_t) noexcept -> void try {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __operation& __self, start_t) noexcept  try {
         if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
           const auto& __env = get_env(__self.__rcvr_);
           set_value(std::move(__self.__rcvr_), _Tag{}(__env));
@@ -158,7 +158,7 @@ namespace exec {
         , __state_{connect((_Sender&&) __sndr, __receiver_t{{}, this})} {
       }
 
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __operation& __self, start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __operation& __self, start_t) noexcept {
         stdexec::start(__self.__state_);
       }
     };

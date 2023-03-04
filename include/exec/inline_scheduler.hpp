@@ -28,7 +28,7 @@ namespace exec {
       using R = stdexec::__t<R_>;
       [[no_unique_address]] R rec_;
 
-      STDEXEC_DEFINE_CUSTOM(auto start)(this __op& op, stdexec::start_t) noexcept -> void {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __op& op, stdexec::start_t) noexcept {
         stdexec::set_value((R&&) op.rec_);
       }
     };

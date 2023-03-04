@@ -217,7 +217,7 @@ namespace exec {
 
         std::tuple<connect_result_t<stdexec::__t<_SenderIds>, __receiver_t>...> __ops_;
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           __self.__on_stop_.emplace(
             get_stop_token(get_env(__self.__receiver_)),
             __on_stop_requested{__self.__stop_source_});

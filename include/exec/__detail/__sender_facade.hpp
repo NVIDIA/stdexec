@@ -239,7 +239,7 @@ namespace exec {
               __receiver_t{&__state_})) {
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this __t& __self, start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           __self.__state_.__kernel_.start(
             __self.__op_, __self.__state_.__data_, __self.__state_.__rcvr_);
         }

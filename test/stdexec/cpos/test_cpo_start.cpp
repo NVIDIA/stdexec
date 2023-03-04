@@ -23,7 +23,7 @@ namespace ex = stdexec;
 struct my_oper : immovable {
   bool started_{false};
 
-  STDEXEC_DEFINE_CUSTOM(auto start)(this my_oper& self, ex::start_t) noexcept -> void {
+  STDEXEC_DEFINE_CUSTOM(void start)(this my_oper& self, ex::start_t) noexcept {
     self.started_ = true;
   }
 };
@@ -31,7 +31,7 @@ struct my_oper : immovable {
 struct op_value /*: immovable*/ { // Intentionally movable!
   bool* started_;
 
-  STDEXEC_DEFINE_CUSTOM(auto start)(this op_value self, ex::start_t) noexcept -> void {
+  STDEXEC_DEFINE_CUSTOM(void start)(this op_value self, ex::start_t) noexcept {
     *self.started_ = true;
   }
 };
@@ -39,7 +39,7 @@ struct op_value /*: immovable*/ { // Intentionally movable!
 struct op_rvalref : immovable {
   bool* started_;
 
-  STDEXEC_DEFINE_CUSTOM(auto start)(this op_rvalref&& self, ex::start_t) noexcept -> void {
+  STDEXEC_DEFINE_CUSTOM(void start)(this op_rvalref&& self, ex::start_t) noexcept {
     *self.started_ = true;
   }
 };
@@ -47,7 +47,7 @@ struct op_rvalref : immovable {
 struct op_ref : immovable {
   bool* started_;
 
-  STDEXEC_DEFINE_CUSTOM(auto start)(this op_ref& self, ex::start_t) noexcept -> void {
+  STDEXEC_DEFINE_CUSTOM(void start)(this op_ref& self, ex::start_t) noexcept {
     *self.started_ = true;
   }
 };
@@ -55,7 +55,7 @@ struct op_ref : immovable {
 struct op_cref : immovable {
   bool* started_;
 
-  STDEXEC_DEFINE_CUSTOM(auto start)(this const op_cref& self, ex::start_t) noexcept -> void {
+  STDEXEC_DEFINE_CUSTOM(void start)(this const op_cref& self, ex::start_t) noexcept {
     *self.started_ = true;
   }
 };

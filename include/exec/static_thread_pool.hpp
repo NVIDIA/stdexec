@@ -314,7 +314,7 @@ namespace exec {
 
         inner_op_state inner_op_;
 
-        STDEXEC_DEFINE_CUSTOM(auto start)(this bulk_op_state& op, stdexec::start_t) noexcept -> void {
+        STDEXEC_DEFINE_CUSTOM(void start)(this bulk_op_state& op, stdexec::start_t) noexcept {
           stdexec::start(op.inner_op_);
         }
 
@@ -503,7 +503,7 @@ namespace exec {
       pool_.enqueue(op);
     }
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this operation& op, stdexec::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this operation& op, stdexec::start_t) noexcept {
       op.enqueue_(&op);
     }
   };

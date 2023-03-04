@@ -34,7 +34,7 @@ struct fallible_just {
     std::tuple<Values...> values_;
     Receiver rcvr_;
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this operation& self, ex::start_t) noexcept -> void try {
+    STDEXEC_DEFINE_CUSTOM(void start)(this operation& self, ex::start_t) noexcept  try {
       std::apply(
         [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
         self.values_);
@@ -74,7 +74,7 @@ struct just_with_env {
     std::tuple<Values...> values_;
     Receiver rcvr_;
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this operation& self, ex::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this operation& self, ex::start_t) noexcept {
       std::apply(
         [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
         self.values_);
@@ -133,7 +133,7 @@ struct completes_if {
       typename ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<on_stopped>;
     std::optional<callback_t> on_stop_{};
 
-    STDEXEC_DEFINE_CUSTOM(auto start)(this operation& self, ex::start_t) noexcept -> void {
+    STDEXEC_DEFINE_CUSTOM(void start)(this operation& self, ex::start_t) noexcept {
       if (self.condition_) {
         ex::set_value(std::move(self.rcvr_));
       } else {
