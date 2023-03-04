@@ -40,6 +40,7 @@ set(stdexec_examples
                        "example.scope : scope.cpp"
                        "example.retry : retry.cpp"
                         "example.then : then.cpp"
+                    "example.io_uring : io_uring.cpp"
       "example.server_theme.let_value : server_theme/let_value.cpp"
     "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
       "example.server_theme.then_upon : server_theme/then_upon.cpp"
