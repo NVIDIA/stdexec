@@ -69,7 +69,7 @@ namespace exec {
       }
 
      private:
-      friend ::stdexec::execution_concept_tag;
+      friend ::stdexec::execution_access;
       static void __notify_waiter(__task* __self) noexcept {
         stdexec::start(static_cast<__when_empty_op*>(__self)->__op_);
       }
@@ -178,6 +178,7 @@ namespace exec {
     struct __nest_op : __nest_op_base<_ReceiverId> {
       using _Constrained = __t<_ConstrainedId>;
       using _Receiver = __t<_ReceiverId>;
+
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>> __op_;
 
@@ -187,7 +188,7 @@ namespace exec {
         , __op_(connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {
       }
      private:
-      friend ::stdexec::execution_concept_tag;
+      friend ::stdexec::execution_access;
 
       void __start_() noexcept {
         STDEXEC_ASSERT(this->__scope_);
@@ -268,10 +269,11 @@ namespace exec {
 
     template <class _SenderId, class _EnvId, class _ReceiverId>
     class __future_op : __subscription {
-      friend ::stdexec::execution_concept_tag;
+      friend ::stdexec::execution_access;
       using _Sender = __t<_SenderId>;
       using _Env = __t<_EnvId>;
       using _Receiver = __t<_ReceiverId>;
+      friend ::stdexec::execution_access;
 
       using __forward_consumer =
         typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
@@ -310,7 +312,6 @@ namespace exec {
             __state->__data_);
         }
       } catch (...) {
-
         set_error((_Receiver&&) __rcvr_, std::current_exception());
       }
 
@@ -325,7 +326,6 @@ namespace exec {
           }
         }
       } catch (...) {
-
         set_error((_Receiver&&) __rcvr_, std::current_exception());
       }
 

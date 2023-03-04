@@ -476,7 +476,7 @@ namespace exec {
 
   template <typename ReceiverId>
   class operation : task_base {
-    friend ::stdexec::execution_concept_tag;
+    friend ::stdexec::execution_access;
     using Receiver = stdexec::__t<ReceiverId>;
     friend static_thread_pool::scheduler::sender;
 

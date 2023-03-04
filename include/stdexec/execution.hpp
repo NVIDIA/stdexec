@@ -1220,9 +1220,9 @@ namespace stdexec {
   extern const start_t start;
 
   /////////////////////////////////////////////////////////////////////////////
-  // execution_concept_tag
+  // execution_access
   // NOT TO SPEC (YET)
-  struct execution_concept_tag {
+  struct execution_access {
     template <class _O>
       requires requires (_O& __o) {
         STDEXEC_CALL_CUSTOM(start, __o, stdexec::start);
@@ -1247,11 +1247,11 @@ namespace stdexec {
 #else
       template <class _Op>
         requires requires (_Op& __op) {
-          execution_concept_tag::start(__op);
+          execution_access::start(__op);
         }
       void operator()(_Op& __op) const //
-        noexcept(noexcept(execution_concept_tag::start(__op))) {
-        (void) execution_concept_tag::start(__op);
+        noexcept(noexcept(execution_access::start(__op))) {
+        (void) execution_access::start(__op);
       }
 #endif
     };
