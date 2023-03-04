@@ -116,7 +116,7 @@
           _TY __VA_OPT__(,) __VA_ARGS__) \
     /**/
   #define STDEXEC_RETURN_TYPE_0(...) \
-    typename ::stdexec::__arg_type<void(__VA_ARGS__())>::__t \
+    ::stdexec::__arg_type_t<void(__VA_ARGS__())> \
     /**/
   #define STDEXEC_RETURN_TYPE_1(...) \
     auto \
@@ -146,11 +146,9 @@
 #endif
 
 namespace stdexec {
-  template <class>
-  struct __arg_type;
+  template <class _Ty>
+  _Ty __arg_type(void(*)(_Ty(*)()));
 
   template <class _Ty>
-  struct __arg_type<void(_Ty(*)())> {
-    using __t = _Ty;
-  };
+  using __arg_type_t = decltype(stdexec::__arg_type((_Ty*) nullptr));
 }
