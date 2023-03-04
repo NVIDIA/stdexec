@@ -97,8 +97,8 @@
 
 #if defined(STDEXEC_USE_EXPLICIT_THIS)
 
-  #define STDEXEC_DEFINE_CUSTOM(AUTO_NAME) \
-    AUTO_NAME \
+  #define STDEXEC_DEFINE_CUSTOM(...) \
+    __VA_ARGS__ \
     /**/
   #define STDEXEC_CALL_CUSTOM(NAME, OBJ, ...) \
     (OBJ).NAME(__VA_ARGS__) \
@@ -109,23 +109,24 @@
   #define STDEXEC_PROBE_RETURN_TYPE_auto STDEXEC_PROBE_N(~, 1)
   #define STDEXEC_PROBE_RETURN_TYPE_void STDEXEC_PROBE_N(~, 2)
 
-  #define STDEXEC_RETURN_TYPE(AUTO_NAME) \
+  #define STDEXEC_RETURN_TYPE(TYPE, ...) \
     STDEXEC_CAT( \
       STDEXEC_RETURN_TYPE_, \
-      STDEXEC_CHECK(\
-        STDEXEC_CAT(STDEXEC_PROBE_RETURN_TYPE_, AUTO_NAME)))(AUTO_NAME) \
+      STDEXEC_CHECK( \
+        STDEXEC_CAT(STDEXEC_PROBE_RETURN_TYPE_, TYPE)))( \
+          TYPE __VA_OPT__(,) __VA_ARGS__) \
     /**/
-  #define STDEXEC_RETURN_TYPE_0(AUTO_NAME) \
-    typename ::stdexec::__arg_type<void(AUTO_NAME)>>::__t \
+  #define STDEXEC_RETURN_TYPE_0(...) \
+    typename ::stdexec::__arg_type<void(__VA_ARGS__)>>::__t \
     /**/
-  #define STDEXEC_RETURN_TYPE_1(AUTO_NAME) \
+  #define STDEXEC_RETURN_TYPE_1(...) \
     auto \
     /**/
-  #define STDEXEC_RETURN_TYPE_2(AUTO_NAME) \
+  #define STDEXEC_RETURN_TYPE_2(...) \
     void \
     /**/
-  #define STDEXEC_DEFINE_CUSTOM(AUTO_NAME) \
-    friend STDEXEC_RETURN_TYPE(AUTO_NAME) tag_invoke(STDEXEC_FUN_ARGS \
+  #define STDEXEC_DEFINE_CUSTOM(...) \
+    friend STDEXEC_RETURN_TYPE(__VA_ARGS__) tag_invoke(STDEXEC_FUN_ARGS \
     /**/
   #define STDEXEC_FUN_ARGS(SELF, TAG, ...) \
     TAG, STDEXEC_CAT(STDEXEC_EAT_THIS_, SELF) __VA_OPT__(,) __VA_ARGS__) \
@@ -136,8 +137,8 @@
 
 #else
 
-  #define STDEXEC_DEFINE_CUSTOM(AUTO_NAME) \
-    static AUTO_NAME(STDEXEC_FUN_ARGS \
+  #define STDEXEC_DEFINE_CUSTOM(...) \
+    static __VA_ARGS__(STDEXEC_FUN_ARGS \
     /**/
   #define STDEXEC_FUN_ARGS(...) \
     STDEXEC_CAT(STDEXEC_EAT_THIS_, __VA_ARGS__)) \
