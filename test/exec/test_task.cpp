@@ -60,6 +60,19 @@ namespace {
     CHECK(std::this_thread::get_id() == id2); // Child task is done, we are still in context2
   }                                           // Reschedules back to context1
 
+  task<void> test_stickiness_for_two_single_thread_contexts_with_sender_(
+    auto scheduler1,
+    auto scheduler2,
+    auto id1,
+    auto id2) {
+    co_await complete_inline(scheduler2);     // Transition to context2
+    CHECK(std::this_thread::get_id() == id2); // Now we are in context2
+    // Child task inherits context2
+    co_await (
+      test_stickiness_for_two_single_thread_contexts_nested(scheduler1, scheduler2, id1, id2)
+      | then([&] { CHECK(std::this_thread::get_id() == id2); }));
+  }
+
   task<void> test_stickiness_for_two_single_thread_contexts(
     auto scheduler1,
     auto scheduler2,
@@ -68,6 +81,18 @@ namespace {
     co_await complete_inline(scheduler1);
     CHECK(std::this_thread::get_id() == id1);
     co_await test_stickiness_for_two_single_thread_contexts_(scheduler1, scheduler2, id1, id2);
+    CHECK(std::this_thread::get_id() == id1);
+  }
+
+  task<void> test_stickiness_for_two_single_thread_contexts_with_sender(
+    auto scheduler1,
+    auto scheduler2,
+    auto id1,
+    auto id2) {
+    co_await complete_inline(scheduler1);
+    CHECK(std::this_thread::get_id() == id1);
+    co_await test_stickiness_for_two_single_thread_contexts_with_sender_(
+      scheduler1, scheduler2, id1, id2);
     CHECK(std::this_thread::get_id() == id1);
   }
 }
@@ -80,6 +105,18 @@ TEST_CASE("Test stickiness with two single threads", "[types][sticky][task]") {
   auto id1 = context1.get_thread_id();
   auto id2 = context2.get_thread_id();
   auto t = test_stickiness_for_two_single_thread_contexts(scheduler1, scheduler2, id1, id2);
+  sync_wait(std::move(t));
+}
+
+TEST_CASE("Test stickiness with two single threads with sender", "[types][sticky][task]") {
+  single_thread_context context1;
+  single_thread_context context2;
+  scheduler auto scheduler1 = context1.get_scheduler();
+  scheduler auto scheduler2 = context2.get_scheduler();
+  auto id1 = context1.get_thread_id();
+  auto id2 = context2.get_thread_id();
+  auto t = test_stickiness_for_two_single_thread_contexts_with_sender(
+    scheduler1, scheduler2, id1, id2);
   sync_wait(std::move(t));
 }
 
