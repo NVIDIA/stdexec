@@ -21,23 +21,23 @@ using __equivalent = __mand<
 
 TEST_CASE("finally is a sender", "[adaptors][finally]") {
   auto s = exec::finally(just(), just());
-  static_assert(sender<decltype(s)>);
+  STATIC_REQUIRE(sender<decltype(s)>);
 }
 
 TEST_CASE("finally is a sender in empty env", "[adaptors][finally]") {
   auto s = exec::finally(just(), just());
-  static_assert(sender_in<decltype(s), empty_env>);
-  static_assert(__v<__equivalent<
-                  completion_signatures_of_t<decltype(s), empty_env>,
-                  completion_signatures<set_value_t()>>>);
+  STATIC_REQUIRE(sender_in<decltype(s), empty_env>);
+  STATIC_REQUIRE(__v<__equivalent<
+                   completion_signatures_of_t<decltype(s), empty_env>,
+                   completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>>);
 }
 
 TEST_CASE("finally executes the final action", "[adaptors][finally]") {
   bool called = false;
   auto s = exec::finally(just(), just() | then([&called]() noexcept { called = true; }));
-  static_assert(__v<__equivalent<
-                  completion_signatures_of_t<decltype(s), empty_env>,
-                  completion_signatures<set_value_t()>>>);
+  STATIC_REQUIRE(__v<__equivalent<
+                   completion_signatures_of_t<decltype(s), empty_env>,
+                   completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>>);
   sync_wait(s);
   CHECK(called);
 }
@@ -45,9 +45,9 @@ TEST_CASE("finally executes the final action", "[adaptors][finally]") {
 TEST_CASE("finally executes the final action and returns integer", "[adaptors][finally]") {
   bool called = false;
   auto s = exec::finally(just(42), just() | then([&called]() noexcept { called = true; }));
-  static_assert(__v<__equivalent<
-                  completion_signatures_of_t<decltype(s), empty_env>,
-                  completion_signatures<set_value_t(int&&)>>>);
+  STATIC_REQUIRE(__v<__equivalent<
+                   completion_signatures_of_t<decltype(s), empty_env>,
+                   completion_signatures<set_error_t(std::exception_ptr), set_value_t(int&&)>>>);
   auto [i] = *sync_wait(s);
   CHECK(called);
   CHECK(i == 42);
@@ -62,25 +62,9 @@ TEST_CASE("finally does not execute the final action and throws integer", "[adap
       return x;
     }),
     just() | then([&called]() noexcept { called = true; }));
-  static_assert(__v<__equivalent<
-                  completion_signatures_of_t<decltype(s), empty_env>,
-                  completion_signatures<set_error_t(std::exception_ptr), set_value_t(int&&)>>>);
-  CHECK_THROWS_AS(sync_wait(s), int);
-  CHECK(!called);
-}
-
-TEST_CASE("finally executes the final action and throws integer", "[adaptors][finally]") {
-  bool called = false;
-
-  auto s = exec::dematerialize(exec::finally(
-    exec::materialize(just(21) | then([](int x) {
-                        throw 42;
-                        return x;
-                      })),
-    just() | then([&called]() noexcept { called = true; })));
-  static_assert(__v<__equivalent<
-                  completion_signatures_of_t<decltype(s), empty_env>,
-                  completion_signatures<set_error_t(std::exception_ptr&&), set_value_t(int&&)>>>);
+  STATIC_REQUIRE(__v<__equivalent<
+                   completion_signatures_of_t<decltype(s), empty_env>,
+                   completion_signatures<set_error_t(std::exception_ptr), set_value_t(int&&)>>>);
   CHECK_THROWS_AS(sync_wait(s), int);
   CHECK(called);
 }
