@@ -37,9 +37,6 @@ namespace exec {
 
        public:
         template <class _Sender, class _Receiver>
-          requires(
-            __one_of<__id<_Sender>, _SenderIds...> && __same_as<__id<_Receiver>, _ReceiverId>
-            && __callable<connect_t, _Sender, _Receiver>)
         __t(_Sender&& __sender, _Receiver&& __receiver) noexcept(
           __nothrow_connectable<_Sender, _Receiver>)
           : __variant_{std::in_place_type<connect_result_t<_Sender, _Receiver>>, __conv{[&] {
@@ -70,7 +67,7 @@ namespace exec {
         std::variant<stdexec::__t<_SenderIds>...> __variant_;
 
         template <__decays_to<__t> _Self, class _Receiver>
-          requires receiver_of<_Receiver, __completion_signatures_t<_Self, env_of_t<_Receiver>>>
+          requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
         friend stdexec::__t<
           __operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __r) noexcept(
@@ -90,14 +87,6 @@ namespace exec {
         __t(_Sender&& __sender) noexcept(
           std::is_nothrow_constructible_v<std::variant<stdexec::__t<_SenderIds>...>, _Sender>)
           : __variant_{(_Sender&&) __sender} {
-        }
-
-        template <class _Sender>
-          requires __one_of<decay_t<_Sender>, stdexec::__t<_SenderIds>...>
-        __t& operator=(_Sender&& __sender) noexcept(
-          std::is_nothrow_assignable_v<std::variant<stdexec::__t<_SenderIds>...>, _Sender>) {
-          __variant_ = (_Sender&&) __sender;
-          return *this;
         }
       };
     };
