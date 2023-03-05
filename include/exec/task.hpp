@@ -420,7 +420,7 @@ namespace exec {
           typename __schedule_task::promise_type>;
 
         __coro::coroutine_handle<__promise> __coro_;
-        stdexec::__if_c<
+        [[no_unique_address]] stdexec::__if_c<
           __indirect_completion_scheduler_provider<__promise>,
           std::optional<__schedule_task>,
           stdexec::__ignore>
@@ -437,7 +437,8 @@ namespace exec {
         }
 
         template <class _ParentPromise2>
-        auto await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept {
+        __coro::coroutine_handle<>
+          await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept {
           static_assert(stdexec::__one_of<_ParentPromise, _ParentPromise2, void>);
           __context_.emplace(__coro_.promise().__context_, __parent.promise());
           if constexpr (__indirect_completion_scheduler_provider<__promise>) {
