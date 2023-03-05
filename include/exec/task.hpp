@@ -71,17 +71,17 @@ namespace exec {
     ////////////////////////////////////////////////////////////////////////////////
     // This is the context that is associated with basic_task's promise type
     // by default. It handles forwarding of stop requests from parent to child.
-    enum class __scheduler_affiinty {
+    enum class __scheduler_affinity {
       __none,
       __sticky
     };
 
-    template <__scheduler_affiinty _SchedulerAffinity = __scheduler_affiinty::__sticky>
+    template <__scheduler_affinity _SchedulerAffinity = __scheduler_affinity::__sticky>
     class __default_task_context_impl {
       template <class _ParentPromise>
       friend struct __default_awaiter_context;
 
-      static constexpr bool __with_scheduler = _SchedulerAffinity == __scheduler_affiinty::__sticky;
+      static constexpr bool __with_scheduler = _SchedulerAffinity == __scheduler_affinity::__sticky;
 
       [[no_unique_address]] stdexec::__if_c<__with_scheduler, __any_scheduler, stdexec::__ignore> //
         __scheduler_{exec::inline_scheduler{}};
@@ -128,10 +128,10 @@ namespace exec {
     };
 
     template <class _Ty>
-    using default_task_context = __default_task_context_impl<__scheduler_affiinty::__sticky>;
+    using default_task_context = __default_task_context_impl<__scheduler_affinity::__sticky>;
 
     template <class _Ty>
-    using __raw_task_context = __default_task_context_impl<__scheduler_affiinty::__none>;
+    using __raw_task_context = __default_task_context_impl<__scheduler_affinity::__none>;
 
     struct complete_inline_t {
       __any_scheduler __scheduler_;
@@ -141,8 +141,7 @@ namespace exec {
       }
 
       template <class _Promise>
-      bool await_suspend(__coro::coroutine_handle<_Promise> __coro) noexcept {
-        return false;
+      static void await_suspend(__coro::coroutine_handle<_Promise> __coro) noexcept {
       }
 
       constexpr void await_resume() noexcept {
@@ -153,13 +152,13 @@ namespace exec {
     // it does nothing.
     template <class _ParentPromise>
     struct __default_awaiter_context {
-      template <__scheduler_affiinty _A>
+      template <__scheduler_affinity _A>
       explicit __default_awaiter_context(
         __default_task_context_impl<_A>& __self,
         _ParentPromise& __parent) noexcept {
         if constexpr (
           __indirect_completion_scheduler_provider<_ParentPromise>
-          && _A == __scheduler_affiinty::__sticky) {
+          && _A == __scheduler_affinity::__sticky) {
           __self.__scheduler_ = stdexec::get_completion_scheduler<stdexec::set_value_t>(
             get_env(__parent));
         }
@@ -176,7 +175,7 @@ namespace exec {
       using __stop_callback_t =
         typename __stop_token_t::template callback_type<__forward_stop_request>;
 
-      template <__scheduler_affiinty _A>
+      template <__scheduler_affinity _A>
       explicit __default_awaiter_context(
         __default_task_context_impl<_A>& __self,
         _ParentPromise& __parent) //
@@ -192,7 +191,7 @@ namespace exec {
             is_nothrow_constructible_v< __stop_callback_t, __stop_token_t, __forward_stop_request>);
         if constexpr (
           __indirect_completion_scheduler_provider<_ParentPromise>
-          && _A == __scheduler_affiinty::__sticky) {
+          && _A == __scheduler_affinity::__sticky) {
           __self.__scheduler_ = stdexec::get_completion_scheduler<stdexec::set_value_t>(
             stdexec::get_env(__parent));
         }
@@ -210,14 +209,14 @@ namespace exec {
         stdexec::in_place_stop_token,
         stdexec::stop_token_of_t<stdexec::env_of_t<_ParentPromise>>>
     struct __default_awaiter_context<_ParentPromise> {
-      template <__scheduler_affiinty _A>
+      template <__scheduler_affinity _A>
       explicit __default_awaiter_context(
         __default_task_context_impl<_A>& __self,
         _ParentPromise& __parent) //
         noexcept {
         if constexpr (
           __indirect_completion_scheduler_provider<_ParentPromise>
-          && _A == __scheduler_affiinty::__sticky) {
+          && _A == __scheduler_affinity::__sticky) {
           __self.__scheduler_ = stdexec::get_completion_scheduler<stdexec::set_value_t>(
             stdexec::get_env(__parent));
         }
@@ -231,13 +230,13 @@ namespace exec {
       requires stdexec::unstoppable_token<
         stdexec::stop_token_of_t<stdexec::env_of_t<_ParentPromise>>>
     struct __default_awaiter_context<_ParentPromise> {
-      template <__scheduler_affiinty _A>
+      template <__scheduler_affinity _A>
       explicit __default_awaiter_context(
         __default_task_context_impl<_A>& __self,
         _ParentPromise& __parent) noexcept {
         if constexpr (
           __indirect_completion_scheduler_provider<_ParentPromise>
-          && _A == __scheduler_affiinty::__sticky) {
+          && _A == __scheduler_affinity::__sticky) {
           __self.__scheduler_ = stdexec::get_completion_scheduler<stdexec::set_value_t>(
             stdexec::get_env(__parent));
         }
@@ -248,17 +247,17 @@ namespace exec {
     // worst and save a type-erased stop callback.
     template <>
     struct __default_awaiter_context<void> {
-      template <__scheduler_affiinty _A, class _Ty>
+      template <__scheduler_affinity _A, class _Ty>
       explicit __default_awaiter_context(__default_task_context_impl<_A>&, _Ty&) noexcept {
       }
 
-      template <__scheduler_affiinty _A, __indirect_stop_token_provider _ParentPromise>
+      template <__scheduler_affinity _A, __indirect_stop_token_provider _ParentPromise>
       explicit __default_awaiter_context(
         __default_task_context_impl<_A>& __self,
         _ParentPromise& __parent) {
         if constexpr (
           __indirect_completion_scheduler_provider<_ParentPromise>
-          && _A == __scheduler_affiinty::__sticky) {
+          && _A == __scheduler_affinity::__sticky) {
           __self.__scheduler_ = stdexec::get_completion_scheduler<stdexec::set_value_t>(
             stdexec::get_env(__parent));
         }
@@ -421,18 +420,14 @@ namespace exec {
           typename __schedule_task::promise_type>;
 
         __coro::coroutine_handle<__promise> __coro_;
-        [[no_unique_address]] stdexec::__if_c<
-          __indirect_completion_scheduler_provider<_ParentPromise>,
-          __coro::coroutine_handle<__schedule_promise>,
+        stdexec::__if_c<
+          __indirect_completion_scheduler_provider<__promise>,
+          std::optional<__schedule_task>,
           stdexec::__ignore>
           __schedule_completion_{};
         std::optional<awaiter_context_t<__promise, _ParentPromise>> __context_{};
 
         ~__task_awaitable() {
-          if constexpr (__indirect_completion_scheduler_provider<_ParentPromise>) {
-            if (__schedule_completion_)
-              __schedule_completion_.destroy();
-          }
           if (__coro_)
             __coro_.destroy();
         }
@@ -442,24 +437,20 @@ namespace exec {
         }
 
         template <class _ParentPromise2>
-        __coro::coroutine_handle<>
-          await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept {
+        auto await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept {
           static_assert(stdexec::__one_of<_ParentPromise, _ParentPromise2, void>);
-          if constexpr (
-            __indirect_completion_scheduler_provider<_ParentPromise2>
-            && __indirect_completion_scheduler_provider<_ParentPromise>) {
+          __context_.emplace(__coro_.promise().__context_, __parent.promise());
+          if constexpr (__indirect_completion_scheduler_provider<__promise>) {
             __any_scheduler __scheduler = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-              stdexec::get_env(__parent.promise()));
-            __schedule_task __schedule_completion = [](__any_scheduler __sched) -> __schedule_task {
+              stdexec::get_env(__coro_.promise()));
+            __schedule_completion_.emplace([](__any_scheduler __sched) -> __schedule_task {
               co_await stdexec::schedule(__sched);
-            }((__any_scheduler&&) __scheduler);
-            __schedule_completion_ = std::exchange(__schedule_completion.__coro_, {});
-            __schedule_completion_.promise().set_continuation(__parent);
-            __coro_.promise().set_continuation(__schedule_completion_);
+            }((__any_scheduler&&) __scheduler));
+            __schedule_completion_->__coro_.promise().set_continuation(__parent);
+            __coro_.promise().set_continuation(__schedule_completion_->__coro_);
           } else {
             __coro_.promise().set_continuation(__parent);
           }
-          __context_.emplace(__coro_.promise().__context_, __parent.promise());
           if constexpr (requires { __coro_.promise().stop_requested() ? 0 : 1; }) {
             if (__coro_.promise().stop_requested())
               return __parent.promise().unhandled_stopped();
