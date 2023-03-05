@@ -1,3 +1,5 @@
+#include "stdexec/execution.hpp"
+
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
@@ -170,8 +172,21 @@ namespace exec {
         return memory_mapped_region{__ptr, __size};
       }
 
+      class __schedule_after_sender;
+
+      class __scheduler {
+        __context* __context_{};
+
+        friend __schedule_after_sender
+          tag_invoke(schedule_after_t, __context& __self, std::chrono::nanoseconds __timeout);
+      };
+
       template <class _Receiver>
       void __submit_timeout(std::chrono::nanoseconds __timeout, _Receiver&& __receiver);
+
+      struct __completion_task {
+        void (*__execute_)(void*, const ::io_uring_cqe*);
+      };
 
       template <class _Receiver>
       struct __schedule_after_operation {
@@ -182,12 +197,25 @@ namespace exec {
         // friend void tag_invoke(start_t, __schedule_after_operation& __self) noexcept;
       };
 
-      struct __schedule_after_sender {
-        std::chrono::nanoseconds __timeout_;
-      };
+      class __schedule_after_sender {
+        struct __env {
+          __scheduler __scheduler_{};
+        } __env_{};
 
-      friend __schedule_after_sender
-        tag_invoke(schedule_after_t, __context& __self, std::chrono::nanoseconds __timeout);
+        std::chrono::nanoseconds __timeout_{};
+
+        friend __env
+          tag_invoke(stdexec::get_env_t, const __schedule_after_sender& __self) noexcept {
+          return __self.__env_;
+        }
+
+        template <class _Self, class _Receiver>
+        friend __schedule_after_operation<_Receiver>
+          tag_invoke(stdexec::connect_t, _Self&& __self, _Receiver&& __receiver) {
+          return {
+            *__self.__env_.__scheduler_.__context_, (_Receiver&&) __receiver, __self.__timeout_};
+        }
+      };
 
       ::io_uring_params __params_{};
       safe_file_descriptor __ring_fd_{};
