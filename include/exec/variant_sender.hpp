@@ -51,9 +51,6 @@ namespace exec {
 
     template <class... _SenderIds>
     struct __sender {
-      template <class _ReceiverId, class... _SndIds>
-      using __operation_t = stdexec::__t<__operation_state<_ReceiverId, _SndIds...>>;
-
       template <class _Self, class _Env>
       using __completion_signatures_t = __concat_completion_signatures_t<
         completion_signatures_of_t<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Env>...>;
@@ -64,7 +61,7 @@ namespace exec {
 
         template <class _S>
         stdexec::__t< __operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
-          operator()(_S&& __s) const noexcept {
+          operator()(_S&& __s) const {
           return {(_S&&) __s, (_Receiver&&) __r};
         }
       };
@@ -76,7 +73,9 @@ namespace exec {
           requires receiver_of<_Receiver, __completion_signatures_t<_Self, env_of_t<_Receiver>>>
         friend stdexec::__t<
           __operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __r) {
+          tag_invoke(connect_t, _Self&& __self, _Receiver&& __r) noexcept(
+            (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
+             && ...)) {
           return std::visit(
             __visitor<_Self, _Receiver>{(_Receiver&&) __r}, ((_Self&&) __self).__variant_);
         }
