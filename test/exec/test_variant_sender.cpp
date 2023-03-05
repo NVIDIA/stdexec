@@ -29,7 +29,7 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-TEST_CASE("variant sender") {
+TEST_CASE("variant sender", "[types][variant_sender]") {
   using just_int_t = decltype(just(0));
   using just_t = decltype(just());
   variant_sender<just_t, just_int_t> variant = just();
