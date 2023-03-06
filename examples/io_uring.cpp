@@ -138,6 +138,8 @@ namespace exec {
     struct schedule_after_t { };
 
     class __context {
+      class __scheduler;
+
      public:
       explicit __context(unsigned __entries, unsigned __flags = 0)
         : __params_{.flags = __flags}
@@ -164,6 +166,18 @@ namespace exec {
         return __params_;
       }
 
+      __scheduler get_scheduler() noexcept {
+        __scheduler __sched{};
+        __sched.__context_ = this;
+        return __sched;
+      }
+
+      void wakeup();
+
+      void complete_ready_operations();
+
+      void stop();
+
      private:
       static memory_mapped_region __map_region(int __fd, off_t __offset, size_t __size) {
         void* __ptr = ::mmap(
@@ -173,33 +187,105 @@ namespace exec {
       }
 
       class __schedule_after_sender;
+      class __schedule_sender;
 
-      class __scheduler {
-        __context* __context_{};
+      struct __scheduler {
+        friend class __context;
+        __context* __context_{nullptr};
 
-        friend __schedule_after_sender
-          tag_invoke(schedule_after_t, __context& __self, std::chrono::nanoseconds __timeout);
+        template <stdexec::__decays_to<__scheduler> _Self>
+        friend __schedule_sender tag_invoke(stdexec::schedule_t, _Self&& __self);
       };
 
       template <class _Receiver>
       void __submit_timeout(std::chrono::nanoseconds __timeout, _Receiver&& __receiver);
 
-      struct __completion_task {
-        void (*__execute_)(void*, const ::io_uring_cqe*);
+      struct __task : stdexec::__immovable {
+        std::atomic<__task*> __next_{nullptr};
+        void (*__execute_)(void*) noexcept;
+      };
+
+      struct __completion_task : stdexec::__immovable {
+        __completion_task* __next_{nullptr};
+        void (*__execute_)(const ::io_uring_cqe*) noexcept;
       };
 
       template <class _Receiver>
       struct __schedule_after_operation {
-        __context& __context_;
-        _Receiver __receiver_;
-        std::chrono::nanoseconds __timeout_;
+        class __t {
+          __context& __context_;
+          _Receiver __receiver_;
+          std::chrono::nanoseconds __timeout_;
 
-        // friend void tag_invoke(start_t, __schedule_after_operation& __self) noexcept;
+          // friend void tag_invoke(start_t, __schedule_after_operation& __self) noexcept;
+        };
+      };
+
+      struct __sched_env {
+        __scheduler __scheduler_{};
+
+        friend const __scheduler& tag_invoke(
+          stdexec::get_completion_scheduler_t<stdexec::set_value_t>,
+          const __sched_env& __self) noexcept {
+          return __self.__scheduler_;
+        }
+      };
+
+      template <class _ReceiverId>
+      struct __schedule_operation {
+        using _Receiver = stdexec::__id<_ReceiverId>;
+
+        class __t : __task {
+          __context& __context_;
+          _Receiver __receiver_;
+          stdexec::in_place_stop_token __stop_token_{};
+
+          friend void tag_invoke(stdexec::start_t, __schedule_operation& __self) noexcept;
+
+          static void __execute_impl(void* __pointer) noexcept {
+            auto __self = static_cast<__t*>(__pointer);
+            if (
+              __self.__stop_token_.stop_requested()
+              || __self.__context_.__stop_source_.stop_requested()) {
+              stdexec::set_stopped((_Receiver&&) __self->__receiver_);
+            } else {
+              stdexec::set_value((_Receiver&&) __self->__receiver_);
+            }
+          }
+
+         public:
+          __t(__context& __context, _Receiver&& __receiver)
+            : __task{&__execute_impl}
+            , __context_{__context}
+            , __receiver_{(_Receiver&&) __receiver} {
+          }
+        };
+      };
+
+      class __schedule_sender {
+        __sched_env __env_{};
+
+        friend __sched_env
+          tag_invoke(stdexec::get_env_t, const __schedule_sender& __self) noexcept {
+          return __self.__env_;
+        }
+
+        template <class _Self, class _Receiver>
+        friend __schedule_operation<_Receiver>
+          tag_invoke(stdexec::connect_t, _Self&& __self, _Receiver&& __receiver) {
+          return {*__self.__env_.__scheduler_.__context_, (_Receiver&&) __receiver};
+        }
       };
 
       class __schedule_after_sender {
         struct __env {
           __scheduler __scheduler_{};
+
+          friend const __scheduler& tag_invoke(
+            stdexec::get_completion_scheduler_t<stdexec::set_value_t>,
+            const __env& __self) noexcept {
+            return __self.__scheduler_;
+          }
         } __env_{};
 
         std::chrono::nanoseconds __timeout_{};
@@ -222,6 +308,8 @@ namespace exec {
       memory_mapped_region __submission_queue_{};
       memory_mapped_region __submission_queue_entries_{};
       memory_mapped_region __completion_queue_{};
+      safe_file_descriptor __wakeup_eventfd_{};
+      stdexec::in_place_stop_source __stop_source_{};
     };
   }
 
