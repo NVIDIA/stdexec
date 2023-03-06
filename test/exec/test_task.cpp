@@ -113,8 +113,6 @@ TEST_CASE("Test stickiness with two single threads", "[types][sticky][task]") {
   sync_wait(when_all(
     schedule(scheduler1) | then([] { __thread_id = 1; }),
     schedule(scheduler2) | then([] { __thread_id = 2; })));
-  // auto id1 = context1.get_thread_id();
-  // auto id2 = context2.get_thread_id();
   auto id1 = 1;
   auto id2 = 2;
   auto t = test_stickiness_for_two_single_thread_contexts(scheduler1, scheduler2, id1, id2);
@@ -144,8 +142,6 @@ TEST_CASE("Test stickiness with two single threads with sender", "[types][sticky
   sync_wait(when_all(
     schedule(scheduler1) | then([] { __thread_id = 1; }),
     schedule(scheduler2) | then([] { __thread_id = 2; })));
-  // auto id1 = context1.get_thread_id();
-  // auto id2 = context2.get_thread_id();
   auto id1 = 1;
   auto id2 = 2;
   auto t = test_stickiness_for_two_single_thread_contexts_with_sender(
@@ -161,8 +157,6 @@ TEST_CASE("Test stickiness with two single threads with sender with on", "[types
   sync_wait(when_all(
     schedule(scheduler1) | then([] { __thread_id = 1; }),
     schedule(scheduler2) | then([] { __thread_id = 2; })));
-  // auto id1 = context1.get_thread_id();
-  // auto id2 = context2.get_thread_id();
   auto id1 = 1;
   auto id2 = 2;
   auto t = on(
@@ -177,8 +171,6 @@ TEST_CASE("Use two inline schedulers", "[types][sticky][task]") {
   sync_wait(when_all(
     schedule(scheduler1) | then([] { __thread_id = 0; }),
     schedule(scheduler2) | then([] { __thread_id = 0; })));
-  // auto id1 = context1.get_thread_id();
-  // auto id2 = context2.get_thread_id();
   auto id1 = 0;
   auto id2 = 0;
   auto t = test_stickiness_for_two_single_thread_contexts(scheduler1, scheduler2, id1, id2);
@@ -205,12 +197,12 @@ namespace {
     [[maybe_unused]] auto id2) {
     CHECK(get_id() == id_main_thread);
     co_await schedule(sched1);
-    CHECK(get_id() == id_main_thread); // We changed from main thread to context1
-    co_await schedule(sched2);         // Try to schedule in context2
-    CHECK(get_id() == id_main_thread); // We changed from context1 to context2
+    CHECK(get_id() == id_main_thread);
+    co_await schedule(sched2);
+    CHECK(get_id() == id_main_thread);
     co_await test_stick_on_main_nested(sched1, sched2, id_main_thread, id1, id2);
-    CHECK(get_id() == id_main_thread); // We changed from context2 to context1
-  }                                    // completes on id1
+    CHECK(get_id() == id_main_thread);
+  }
 }
 
 TEST_CASE("Stick on main thread if completes_inline is not used", "[types][sticky][task]") {
