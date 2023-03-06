@@ -153,6 +153,24 @@ TEST_CASE("Test stickiness with two single threads with sender", "[types][sticky
   sync_wait(std::move(t));
 }
 
+TEST_CASE("Test stickiness with two single threads with sender with on", "[types][sticky][task]") {
+  single_thread_context context1;
+  single_thread_context context2;
+  scheduler auto scheduler1 = context1.get_scheduler();
+  scheduler auto scheduler2 = context2.get_scheduler();
+  sync_wait(when_all(
+    schedule(scheduler1) | then([] { __thread_id = 1; }),
+    schedule(scheduler2) | then([] { __thread_id = 2; })));
+  // auto id1 = context1.get_thread_id();
+  // auto id2 = context2.get_thread_id();
+  auto id1 = 1;
+  auto id2 = 2;
+  auto t = on(
+    scheduler1,
+    test_stickiness_for_two_single_thread_contexts_with_sender_(scheduler1, scheduler2, id1, id2));
+  sync_wait(std::move(t) | then([&] { CHECK(get_id() == id1); }));
+}
+
 TEST_CASE("Use two inline schedulers", "[types][sticky][task]") {
   scheduler auto scheduler1 = exec::inline_scheduler{};
   scheduler auto scheduler2 = exec::inline_scheduler{};
@@ -168,7 +186,7 @@ TEST_CASE("Use two inline schedulers", "[types][sticky][task]") {
 }
 
 namespace {
-  task<void> test_old_behaviour_nested(
+  task<void> test_stick_on_main_nested(
     scheduler auto sched1,
     scheduler auto sched2,
     auto id_main_thread,
@@ -179,7 +197,7 @@ namespace {
     CHECK(get_id() == id_main_thread);
   }
 
-  task<void> test_old_behaviour(
+  task<void> test_stick_on_main(
     scheduler auto sched1,
     scheduler auto sched2,
     auto id_main_thread,
@@ -190,12 +208,12 @@ namespace {
     CHECK(get_id() == id_main_thread); // We changed from main thread to context1
     co_await schedule(sched2);         // Try to schedule in context2
     CHECK(get_id() == id_main_thread); // We changed from context1 to context2
-    co_await test_old_behaviour_nested(sched1, sched2, id_main_thread, id1, id2);
+    co_await test_stick_on_main_nested(sched1, sched2, id_main_thread, id1, id2);
     CHECK(get_id() == id_main_thread); // We changed from context2 to context1
   }                                    // completes on id1
 }
 
-TEST_CASE("Old behaviour if completes_inline is not used", "[types][sticky][task]") {
+TEST_CASE("Stick on main thread if completes_inline is not used", "[types][sticky][task]") {
   single_thread_context context1;
   single_thread_context context2;
   scheduler auto scheduler1 = context1.get_scheduler();
@@ -206,7 +224,7 @@ TEST_CASE("Old behaviour if completes_inline is not used", "[types][sticky][task
   auto id1 = 1;
   auto id2 = 2;
   auto id_main_thread = 0;
-  auto t = test_old_behaviour(scheduler1, scheduler2, id_main_thread, id1, id2);
+  auto t = test_stick_on_main(scheduler1, scheduler2, id_main_thread, id1, id2);
   sync_wait(std::move(t));
 }
 
