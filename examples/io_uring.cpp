@@ -135,6 +135,72 @@ namespace exec {
         __NR_io_uring_enter, __ring_fd, __to_submit, __min_complete, __flags, nullptr, 0);
     }
 
+    template <class _T, _T* _T::*_NextPtr = &_T::__next_>
+    class __intrusive_stack {
+     public:
+      using __node_pointer = _T*;
+
+      static __intrusive_stack __make_reversed(__node_pointer __head) noexcept {
+        __node_pointer __prev = nullptr;
+        while (__head) {
+          __node_pointer __next = __head->*_NextPtr;
+          __head->*_NextPtr = __prev;
+          __prev = __head;
+          __head = __next;
+        }
+        return __intrusive_stack{__prev};
+      }
+
+      [[nodiscard]] bool __empty() const noexcept {
+        return __head_ == nullptr;
+      }
+
+      void __push_front(__node_pointer t) noexcept {
+        t->*_NextPtr = __head_;
+        __head_ = t;
+      }
+
+      __node_pointer __pop_all() noexcept {
+        return std::exchange(__head_, nullptr);
+      }
+
+      __node_pointer __pop_front() noexcept {
+        __node_pointer __result = __head_;
+        if (__result) {
+          __head_ = __result->*_NextPtr;
+        }
+        return __result;
+      }
+
+     private:
+      _T* __head_{nullptr};
+    };
+
+    template <class _T, _T* _T::*_NextPtr = &_T::__next_>
+    class __atomic_intrusive_queue {
+     public:
+      using __node_pointer = _T*;
+      using __atomic_node_pointer = std::atomic<_T*>;
+
+      [[nodiscard]] bool empty() const noexcept {
+        return __head_.load(std::memory_order_relaxed) == nullptr;
+      }
+
+      void push_front(__node_pointer t) noexcept {
+        __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
+        do {
+          t->*_NextPtr = __old_head;
+        } while (!__head_.compare_exchange_weak(__old_head, t, std::memory_order_acq_rel));
+      }
+
+      __intrusive_stack<_T, _NextPtr> pop_all() noexcept {
+        return __head_.exchange(nullptr, std::memory_order_acq_rel);
+      }
+
+     private:
+      __atomic_node_pointer __head_{nullptr};
+    };
+
     struct schedule_after_t { };
 
     class __context {
@@ -201,7 +267,7 @@ namespace exec {
       void __submit_timeout(std::chrono::nanoseconds __timeout, _Receiver&& __receiver);
 
       struct __task : stdexec::__immovable {
-        std::atomic<__task*> __next_{nullptr};
+        __task* __next_{nullptr};
         void (*__execute_)(void*) noexcept;
       };
 
@@ -251,6 +317,10 @@ namespace exec {
             } else {
               stdexec::set_value((_Receiver&&) __self->__receiver_);
             }
+          }
+
+          void tag_invoke(stdexec::start_t, __t& __self) noexcept {
+            __self.__context_.
           }
 
          public:
@@ -310,6 +380,7 @@ namespace exec {
       memory_mapped_region __completion_queue_{};
       safe_file_descriptor __wakeup_eventfd_{};
       stdexec::in_place_stop_source __stop_source_{};
+      __atomic_intrusive_queue<__task, &__task::__next_> __ready_task_queue_;
     };
   }
 
