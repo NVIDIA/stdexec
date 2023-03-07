@@ -37,15 +37,18 @@ namespace stdexec {
 
   template <class _Awaiter, class _Promise>
   concept __with_await_suspend =
-    same_as<_Promise, void> || requires(_Awaiter& __await, __coro::coroutine_handle<_Promise> __h) {
+    same_as<_Promise, void> || //
+    requires(_Awaiter& __await, __coro::coroutine_handle<_Promise> __h) {
       { __await.await_suspend(__h) } -> __await_suspend_result;
     };
 
   template <class _Awaiter, class _Promise = void>
-  concept __awaiter = requires(_Awaiter& __await) {
-    __await.await_ready() ? 1 : 0;
-    __await.await_resume();
-  } && __with_await_suspend<_Awaiter, _Promise>;
+  concept __awaiter = //
+    requires(_Awaiter& __await) {
+      __await.await_ready() ? 1 : 0;
+      __await.await_resume();
+    } && //
+    __with_await_suspend<_Awaiter, _Promise>;
 
   template <class _Awaitable>
   decltype(auto) __get_awaiter(_Awaitable&& __await, void*) {
@@ -74,9 +77,10 @@ namespace stdexec {
   }
 
   template <class _Awaitable, class _Promise = void>
-  concept __awaitable = requires(_Awaitable&& __await, _Promise* __promise) {
-    { stdexec::__get_awaiter((_Awaitable&&) __await, __promise) } -> __awaiter<_Promise>;
-  };
+  concept __awaitable = //
+    requires(_Awaitable&& __await, _Promise* __promise) {
+      { stdexec::__get_awaiter((_Awaitable&&) __await, __promise) } -> __awaiter<_Promise>;
+    };
 
   template <class _T>
   _T& __as_lvalue(_T&&);
