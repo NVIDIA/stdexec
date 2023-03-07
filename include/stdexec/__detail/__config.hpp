@@ -21,24 +21,50 @@
 
 #include <cassert>
 
-#define STDEXEC_CAT_(X, ...) X##__VA_ARGS__
-#define STDEXEC_CAT(X, ...) STDEXEC_CAT_(X, __VA_ARGS__)
+#define STDEXEC_CAT_(_X, ...) _X ## __VA_ARGS__
+#define STDEXEC_CAT(_X, ...) STDEXEC_CAT_(_X, __VA_ARGS__)
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
 #define STDEXEC_EVAL(_M, ...) _M(__VA_ARGS__)
 #define STDEXEC_EAT(...)
 
-#define STDEXEC_NOT(X) STDEXEC_CAT(STDEXEC_NOT_, X)
+////////////////////////////////////////////////////////////////////////////////
+// STDEXEC_FOR_EACH
+//   Inspired by "Recursive macros with C++20 __VA_OPT__", by David Mazières
+//   https://www.scs.stanford.edu/~dm/blog/va-opt.html
+#define STDEXEC_EXPAND_R(...)  \
+  STDEXEC_EXPAND_R1(STDEXEC_EXPAND_R1(STDEXEC_EXPAND_R1(STDEXEC_EXPAND_R1(__VA_ARGS__)))) \
+  /**/
+#define STDEXEC_EXPAND_R1(...) \
+  STDEXEC_EXPAND_R2(STDEXEC_EXPAND_R2(STDEXEC_EXPAND_R2(STDEXEC_EXPAND_R2(__VA_ARGS__)))) \
+  /**/
+#define STDEXEC_EXPAND_R2(...) \
+  STDEXEC_EXPAND_R3(STDEXEC_EXPAND_R3(STDEXEC_EXPAND_R3(STDEXEC_EXPAND_R3(__VA_ARGS__)))) \
+  /**/
+#define STDEXEC_EXPAND_R3(...) \
+  STDEXEC_EXPAND(STDEXEC_EXPAND(STDEXEC_EXPAND(STDEXEC_EXPAND(__VA_ARGS__)))) \
+  /**/
+
+#define STDEXEC_PARENS ()
+#define STDEXEC_FOR_EACH(_M, ...)                                         \
+  __VA_OPT__(STDEXEC_EXPAND_R(STDEXEC_FOR_EACH_HELPER(_M, __VA_ARGS__)))  \
+  /**/
+#define STDEXEC_FOR_EACH_HELPER(_M, _A1, ...)                                   \
+  _M(_A1) __VA_OPT__(STDEXEC_FOR_EACH_AGAIN STDEXEC_PARENS (_M, __VA_ARGS__))   \
+  /**/
+#define STDEXEC_FOR_EACH_AGAIN() STDEXEC_FOR_EACH_HELPER
+////////////////////////////////////////////////////////////////////////////////
+
+#define STDEXEC_NOT(_X) STDEXEC_CAT(STDEXEC_NOT_, _X)
 #define STDEXEC_NOT_0 1
 #define STDEXEC_NOT_1 0
 
-#define STDEXEC_IIF_0(Y, ...) __VA_ARGS__
-#define STDEXEC_IIF_1(Y, ...) Y
-#define STDEXEC_IIF(X, Y, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, X), Y, __VA_ARGS__)
+#define STDEXEC_IIF_0(_Y, ...) __VA_ARGS__
+#define STDEXEC_IIF_1(_Y, ...) _Y
+#define STDEXEC_IIF(_X, _Y, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _X), _Y, __VA_ARGS__)
 
-#define STDEXEC_COUNT(...) \
-  STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
-#define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _N, ...) _N
+#define STDEXEC_COUNT_M(...) +1
+#define STDEXEC_COUNT(...) (0 STDEXEC_FOR_EACH(STDEXEC_COUNT_M, __VA_ARGS_))
 
 #define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0,))
 #define STDEXEC_CHECK_N(_X, _N, ...) _N
