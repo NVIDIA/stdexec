@@ -26,6 +26,7 @@
 #include "../stdexec/__detail/__meta.hpp"
 
 #include "any_sender_of.hpp"
+#include "at_coroutine_exit.hpp"
 #include "inline_scheduler.hpp"
 #include "scope.hpp"
 
@@ -126,21 +127,6 @@ namespace exec {
 
     template <class _Ty>
     using __raw_task_context = __default_task_context_impl<__scheduler_affinity::__none>;
-
-    struct complete_inline_t {
-      __any_scheduler __scheduler_;
-
-      static constexpr std::true_type await_ready() noexcept {
-        return {};
-      }
-
-      template <class _Promise>
-      static void await_suspend(__coro::coroutine_handle<_Promise> __coro) noexcept {
-      }
-
-      constexpr void await_resume() noexcept {
-      }
-    };
 
     // This is the context associated with basic_task's awaiter. By default
     // it does nothing.
@@ -299,6 +285,21 @@ namespace exec {
       failed,
     };
 
+    struct complete_inline_t {
+      __any_scheduler __scheduler_;
+
+      static constexpr std::true_type await_ready() noexcept {
+        return {};
+      }
+
+      template <__indirect_scheduler_provider _Promise>
+      void await_suspend(__coro::coroutine_handle<_Promise> __coro) noexcept {
+      }
+
+      constexpr void await_resume() noexcept {
+      }
+    };
+
     ////////////////////////////////////////////////////////////////////////////////
     // basic_task
     template <class _Ty, class _Context = default_task_context<_Ty>>
@@ -319,9 +320,6 @@ namespace exec {
       }
 
      private:
-      template <class _T, class _C>
-      friend class basic_task;
-
       struct __final_awaitable {
         static std::false_type await_ready() noexcept {
           return {};
@@ -360,10 +358,10 @@ namespace exec {
         }
 
         template <stdexec::sender _Awaitable>
-          requires(
-            !stdexec::__decays_to<_Awaitable, complete_inline_t>
-            && stdexec::__scheduler_provider<_Context>)
+          requires stdexec::__scheduler_provider<_Context>
         decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
+          // TODO: If we have a complete-where-it-starts query then we can optimize
+          // this to avoid the reschedule
           return stdexec::as_awaitable(
             stdexec::transfer((_Awaitable&&) __awaitable, stdexec::get_scheduler(__context_)),
             *this);
@@ -371,6 +369,16 @@ namespace exec {
 
         template <stdexec::__decays_to<complete_inline_t> _Awaitable>
         decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
+          if (!std::exchange(__rescheduled_, true)) {
+            // Create a cleanup action that transitions back onto the current scheduler:
+            __any_scheduler __sched = stdexec::get_scheduler(__context_);
+            auto __cleanup_task = at_coroutine_exit(stdexec::schedule, (__any_scheduler&&) __sched);
+            // Insert the cleanup action into the head of the continuation chain by making
+            // direct calls to the cleanup task's awaiter member functions. See type
+            // _cleanup_task in at_coroutine_exit.hpp:
+            __cleanup_task.await_suspend(__coro::coroutine_handle<__promise>::from_promise(*this));
+            (void) __cleanup_task.await_resume();
+          }
           __context_.set_scheduler(__awaitable.__scheduler_);
           return stdexec::as_awaitable(stdexec::schedule(__awaitable.__scheduler_), *this);
         }
@@ -397,25 +405,12 @@ namespace exec {
         }
 
         __context_t __context_;
+        bool __rescheduled_{false};
       };
 
       template <class _ParentPromise = void>
       struct __task_awaitable {
-        using __schedule_task = stdexec::__if<
-          std::is_same<_Context, __raw_task_context<void>>,
-          basic_task,
-          basic_task<void, __raw_task_context<void>>>;
-        using __schedule_promise = stdexec::__if<
-          std::is_same<__schedule_task, basic_task>,
-          __promise,
-          typename __schedule_task::promise_type>;
-
         __coro::coroutine_handle<__promise> __coro_;
-        [[no_unique_address]] stdexec::__if_c<
-          __indirect_scheduler_provider<__promise>,
-          std::optional<__schedule_task>,
-          stdexec::__ignore>
-          __schedule_completion_{};
         std::optional<awaiter_context_t<__promise, _ParentPromise>> __context_{};
 
         ~__task_awaitable() {
@@ -432,21 +427,7 @@ namespace exec {
           await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept {
           static_assert(stdexec::__one_of<_ParentPromise, _ParentPromise2, void>);
           __context_.emplace(__coro_.promise().__context_, __parent.promise());
-          if constexpr (__indirect_scheduler_provider<__promise>) {
-            // Here we take the initial scheduler of the task and create a schedule task
-            // which we hook as a continuation of this coroutine.
-            __any_scheduler __scheduler = stdexec::get_scheduler(
-              stdexec::get_env(__coro_.promise()));
-            __schedule_completion_.emplace([](__any_scheduler __sched) -> __schedule_task {
-              co_await stdexec::schedule(__sched);
-            }((__any_scheduler&&) __scheduler));
-            // The schedule task will be resumed when the task completes.
-            __coro_.promise().set_continuation(__schedule_completion_->__coro_);
-            // The parent coroutine will be resumed when the schedule task completes.
-            __schedule_completion_->__coro_.promise().set_continuation(__parent);
-          } else {
-            __coro_.promise().set_continuation(__parent);
-          }
+          __coro_.promise().set_continuation(__parent);
           if constexpr (requires { __coro_.promise().stop_requested() ? 0 : 1; }) {
             if (__coro_.promise().stop_requested())
               return __parent.promise().unhandled_stopped();
