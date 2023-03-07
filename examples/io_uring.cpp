@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <linux/io_uring.h>
 
+#include <cstring>
 #include <chrono>
 #include <system_error>
 #include <utility>
@@ -136,32 +137,33 @@ namespace exec {
     }
 
     template <class _T, _T* _T::*_NextPtr = &_T::__next_>
-    class __intrusive_stack {
+    class __intrusive_queue {
      public:
       using __node_pointer = _T*;
 
-      static __intrusive_stack __make_reversed(__node_pointer __head) noexcept {
+      static __intrusive_queue __make_reversed(__node_pointer __head) noexcept {
         __node_pointer __prev = nullptr;
+        __node_pointer __tail = __head;
         while (__head) {
           __node_pointer __next = __head->*_NextPtr;
           __head->*_NextPtr = __prev;
           __prev = __head;
           __head = __next;
         }
-        return __intrusive_stack{__prev};
+        return __intrusive_queue{__prev, __tail};
       }
 
       [[nodiscard]] bool __empty() const noexcept {
         return __head_ == nullptr;
       }
 
-      void __push_front(__node_pointer t) noexcept {
-        t->*_NextPtr = __head_;
-        __head_ = t;
-      }
-
-      __node_pointer __pop_all() noexcept {
-        return std::exchange(__head_, nullptr);
+      void __push_back(__node_pointer t) noexcept {
+        if (__tail_) {
+          __tail_->*_NextPtr = t;
+          __tail_ = t;
+        } else {
+          __head_ = __tail_ = t;
+        }
       }
 
       __node_pointer __pop_front() noexcept {
@@ -169,11 +171,15 @@ namespace exec {
         if (__result) {
           __head_ = __result->*_NextPtr;
         }
+        if (__head_ == nullptr) {
+          __tail_ = nullptr;
+        }
         return __result;
       }
 
      private:
       _T* __head_{nullptr};
+      _T* __tail_{nullptr};
     };
 
     template <class _T, _T* _T::*_NextPtr = &_T::__next_>
@@ -193,8 +199,9 @@ namespace exec {
         } while (!__head_.compare_exchange_weak(__old_head, t, std::memory_order_acq_rel));
       }
 
-      __intrusive_stack<_T, _NextPtr> pop_all() noexcept {
-        return __head_.exchange(nullptr, std::memory_order_acq_rel);
+      __intrusive_queue<_T, _NextPtr> pop_all() noexcept {
+        return __intrusive_queue<_T, _NextPtr>::__make_reversed(
+          __head_.exchange(nullptr, std::memory_order_acq_rel));
       }
 
      private:
@@ -240,11 +247,31 @@ namespace exec {
 
       void wakeup();
 
+      void run() {
+        int __n_submissions = __enqueue(__task_queue_.pop_all());
+        __io_uring_enter(__ring_fd_, __n_submissions, 1, IORING_ENTER_GETEVENTS);
+        complete_ready_operations();
+      }
+
       void complete_ready_operations();
 
       void stop();
 
      private:
+      struct __submission_queue {
+        __u32* __head_;
+        std::atomic_ref<__u32> __tail_;
+        __u32* __mask_;
+        ::io_uring_sqe* __entries_;
+      };
+
+      struct __completion_queue {
+        std::atomic_ref<__u32> __head_;
+        __u32* __tail_;
+        __u32* __mask_;
+        ::io_uring_cqe* __entries_;
+      };
+
       static memory_mapped_region __map_region(int __fd, off_t __offset, size_t __size) {
         void* __ptr = ::mmap(
           nullptr, __size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, __fd, __offset);
@@ -268,8 +295,31 @@ namespace exec {
 
       struct __task : stdexec::__immovable {
         __task* __next_{nullptr};
-        void (*__execute_)(void*) noexcept;
+        bool (*__ready_)(void*) noexcept;
+        void (*__suspend_)(void*, ::io_uring_sqe&) noexcept;
+        void (*__resume_)(const ::io_uring_cqe&) noexcept;
       };
+
+      int __enqueue(__intrusive_queue<__task>& __tasks) {
+        __task* __t = __tasks.__pop_front();
+        __u32 __sqe_head = *__sqe_.__head_ % *__sqe_.__mask_;
+        __u32 __sqe_tail = __sqe_.__tail_.load(std::memory_order_relaxed) % *__sqe_.__mask_;
+        ::io_uring_cqe __cqe{};
+        int __count = 0;
+        while (__sqe_head != __sqe_tail && __t) {
+          if (__t->__ready_(__t)) {
+            std::memcpy(&__cqe.user_data, &__t, sizeof(__t));
+            __t->__resume_(__cqe);
+          } else {
+            __t->__suspend_(__t, __sqe_.__entries_[__sqe_tail]);
+            __sqe_tail += 1;
+            __count += 1;
+          }
+          __t = __tasks.__pop_front();
+        }
+        __sqe_.__tail_.store(__sqe_tail, std::memory_order_release);
+        return __count;
+      }
 
       struct __completion_task : stdexec::__immovable {
         __completion_task* __next_{nullptr};
@@ -378,9 +428,12 @@ namespace exec {
       memory_mapped_region __submission_queue_{};
       memory_mapped_region __submission_queue_entries_{};
       memory_mapped_region __completion_queue_{};
+      __completion_queue __cqe_;
+      __submission_queue __sqe_;
       safe_file_descriptor __wakeup_eventfd_{};
       stdexec::in_place_stop_source __stop_source_{};
-      __atomic_intrusive_queue<__task, &__task::__next_> __ready_task_queue_;
+      __intrusive_queue<__task> __local_task_queue_{};
+      __atomic_intrusive_queue<__task> __remote_task_queue_;
     };
   }
 
