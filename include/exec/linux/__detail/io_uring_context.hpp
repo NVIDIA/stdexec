@@ -19,7 +19,17 @@
 #include "../io_uring_context.hpp"
 
 #include <cstring>
+
+#include <system_error>
+
+#if !__has_include(<linux/io_uring.h>)
+#error "io_uring.h not found. Your kernel is probably too old."
+#else
+#include <linux/io_uring.h>
+#endif
+
 #include <sys/eventfd.h>
+#include <sys/syscall.h>
 
 namespace exec { namespace __io_uring {
   using __task_queue = stdexec::__intrusive_queue<&__task::__next_>;
@@ -89,28 +99,28 @@ namespace exec { namespace __io_uring {
     const ::io_uring_params& __params)
     : __head_{*at_offset_as<__u32*>(__region.data(), __params.cq_off.head)}
     , __tail_{*at_offset_as<__u32*>(__region.data(), __params.cq_off.tail)}
-    , __mask_{*at_offset_as<__u32*>(__region.data(), __params.cq_off.ring_mask)}
-    , __entries_{at_offset_as<::io_uring_cqe*>(__region.data(), __params.cq_off.cqes)} {
+    , __entries_{at_offset_as<::io_uring_cqe*>(__region.data(), __params.cq_off.cqes)}
+    , __mask_{*at_offset_as<__u32*>(__region.data(), __params.cq_off.ring_mask)} {
   }
 
   inline int __completion_queue::complete(__task_queue __ready) noexcept {
     __u32 __tail = __tail_.load(std::memory_order_relaxed);
-    __u32 __mask = __mask_.load(std::memory_order_relaxed);
     __u32 __head = __head_.load(std::memory_order_acquire);
     STDEXEC_ASSERT(__head <= __tail);
     int __count = 0;
-    while (__tail != __head) {
-      const __u32 __index = __tail & __mask;
+    while (__head != __tail) {
+      const __u32 __index = __head & __mask_;
       const ::io_uring_cqe& __cqe = __entries_[__index];
-      __task* __t;
-      std::memcpy(&__t, &__cqe.user_data, sizeof(__t));
-      __t->__vtable_->__complete_(__t, &__cqe);
+      __task* __op;
+      std::memcpy(&__op, &__cqe.user_data, sizeof(__op));
+      __op->__vtable_->__complete_(__op, &__cqe);
       ++__head;
       ++__count;
     }
     __head_.store(__head, std::memory_order_release);
-    while (__task* __t = __ready.pop_front()) {
-      __t->__vtable_->__complete_(__t, nullptr);
+    while (!__ready.empty()) {
+      __task* __op = __ready.pop_front();
+      __op->__vtable_->__complete_(__op, nullptr);
     }
     return __count;
   }
@@ -121,20 +131,21 @@ namespace exec { namespace __io_uring {
     const ::io_uring_params& __params)
     : __head_{*at_offset_as<__u32*>(__region.data(), __params.sq_off.head)}
     , __tail_{*at_offset_as<__u32*>(__region.data(), __params.sq_off.tail)}
+    , __entries_{static_cast<::io_uring_sqe*>(__sqes_region.data())}
     , __mask_{*at_offset_as<__u32*>(__region.data(), __params.sq_off.ring_mask)}
-    , __entries_{static_cast<::io_uring_sqe*>(__sqes_region.data())} {
+    , __n_total_slots_{__params.sq_entries} {
   }
 
   inline __submission_result __submission_queue::submit(__task_queue __tasks) noexcept {
-    __u32 __mask = __mask_.load(std::memory_order_relaxed);
-    __u32 __head = __head_.load(std::memory_order_relaxed);
-    __u32 __tail = __tail_.load(std::memory_order_acquire);
-    int __count = 0;
+    __u32 __tail = __tail_.load(std::memory_order_relaxed);
+    __u32 __head = __head_.load(std::memory_order_acquire);
+    __u32 __total_count = __tail - __head;
+    __u32 __count = 0;
     __task_queue __ready{};
     __task_queue __pending{};
     __task* __op = nullptr;
-    while (!__tasks.empty()) {
-      const __u32 __index = __tail & __mask;
+    while (!__tasks.empty() && __total_count < __n_total_slots_) {
+      const __u32 __index = __tail & __mask_;
       ::io_uring_sqe& __sqe = __entries_[__index];
       __op = __tasks.pop_front();
       STDEXEC_ASSERT(__op->__vtable_);
@@ -142,6 +153,8 @@ namespace exec { namespace __io_uring {
         __ready.push_back(__op);
       } else {
         __op->__vtable_->__submit_(__op, &__sqe);
+        std::memcpy(&__sqe.user_data, &__op, sizeof(__sqe.user_data));
+        ++__total_count;
         ++__count;
         ++__tail;
       }
@@ -185,14 +198,26 @@ namespace exec { namespace __io_uring {
   }
 
   void __wakeup_operation::start() noexcept {
-    __context_->__pending_.push_front(this);
+    if (!__context_->__stop_source_.stop_requested()) {
+      __context_->__pending_.push_front(this);
+    }
   }
 
-  __context::__context(unsigned __entries, unsigned __flags)
-    : __context_base(__entries, __flags)
+  inline __context::__context(unsigned __entries, unsigned __flags)
+    : __context_base(std::max(__entries, 2u), __flags)
     , __completion_queue_{__completion_queue_region_ ? __completion_queue_region_ : __submission_queue_region_, __params_}
     , __submission_queue_{__submission_queue_region_, __submission_queue_entries_, __params_}
     , __wakeup_operation_{this, __eventfd_} {
+  }
+
+  inline void __context::wakeup() {
+    std::uint64_t __wakeup = 1;
+    __throw_error_code_if(::write(__eventfd_, &__wakeup, sizeof(__wakeup)) == -1, errno);
+  }
+
+  inline void __context::request_stop() {
+    __stop_source_.request_stop();
+    wakeup();
   }
 
   inline void __context::submit(__task* __op) noexcept {
@@ -201,7 +226,7 @@ namespace exec { namespace __io_uring {
 
   inline void __context::run() {
     __wakeup_operation_.start();
-    while (true) {
+    while (__n_submitted_ > 0 || !__pending_.empty()) {
       __pending_.append(__requests_.pop_all());
       __submission_result __result = __submission_queue_.submit((__task_queue&&) __pending_);
       __n_submitted_ += __result.__n_submitted_;
@@ -220,6 +245,7 @@ namespace exec { namespace __io_uring {
       int rc = __io_uring_enter(
         __ring_fd_, __result.__n_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
       __throw_error_code_if(rc < 0, -rc);
+      __n_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready_);
     }
   }
 }}

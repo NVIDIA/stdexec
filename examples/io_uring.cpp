@@ -2,17 +2,24 @@
 
 #include "exec/linux/io_uring_context.hpp"
 
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/mman.h>
-#include <linux/io_uring.h>
-
-#include <cstring>
 #include <chrono>
-#include <system_error>
-#include <utility>
+#include <thread>
+
+#include <iostream>
 
 int main() {
   exec::io_uring_context context(1);
-  context.run();
+  std::thread io_thread{[&] {
+    context.run();
+  }};
+  std::thread timer_thread{[&] {
+    for (int i = 0; i < 6; ++i) {
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::cout << "Waking up the io_uring thread #" << i << "...\n";
+      context.wakeup();
+    }
+    context.request_stop();
+  }};
+  io_thread.join();
+  timer_thread.join();
 }

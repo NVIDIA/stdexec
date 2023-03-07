@@ -18,9 +18,10 @@
 
 #include "../../stdexec/execution.hpp"
 
-#include "__detail/atomic_intrusive_queue.hpp"
-#include "safe_file_descriptor.hpp"
-#include "memory_mapped_region.hpp"
+#include "./__detail/atomic_intrusive_queue.hpp"
+#include "./__detail/__atomic_ref.hpp"
+#include "./safe_file_descriptor.hpp"
+#include "./memory_mapped_region.hpp"
 
 #if !__has_include(<linux/io_uring.h>)
 #error "io_uring.h not found. Your kernel is probably too old."
@@ -55,16 +56,17 @@ namespace exec {
     };
 
     struct __submission_result {
-      int __n_submitted_;
+      __u32 __n_submitted_;
       stdexec::__intrusive_queue<&__task::__next_> __pending_;
       stdexec::__intrusive_queue<&__task::__next_> __ready_;
     };
 
     class __submission_queue {
-      std::atomic_ref<__u32> __head_;
-      std::atomic_ref<__u32> __tail_;
-      std::atomic_ref<__u32> __mask_;
+      __atomic_ref<__u32> __head_;
+      __atomic_ref<__u32> __tail_;
       ::io_uring_sqe* __entries_;
+      __u32 __mask_;
+      __u32 __n_total_slots_;
      public:
       explicit __submission_queue(
         const memory_mapped_region& __region,
@@ -75,10 +77,10 @@ namespace exec {
     };
 
     class __completion_queue {
-      std::atomic_ref<__u32> __head_;
-      std::atomic_ref<__u32> __tail_;
-      std::atomic_ref<__u32> __mask_;
+      __atomic_ref<__u32> __head_;
+      __atomic_ref<__u32> __tail_;
       ::io_uring_cqe* __entries_;
+      __u32 __mask_;
      public:
       explicit __completion_queue(
         const memory_mapped_region& __region,
@@ -113,6 +115,10 @@ namespace exec {
 
       void run();
 
+      void wakeup();
+
+      void request_stop();
+
       void submit(__task* __op) noexcept;
 
      private:
@@ -131,4 +137,4 @@ namespace exec {
   using io_uring_context = __io_uring::__context;
 }
 
-#include "__detail/io_uring_context.hpp"
+#include "./__detail/io_uring_context.hpp"
