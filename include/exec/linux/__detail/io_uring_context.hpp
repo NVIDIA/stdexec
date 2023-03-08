@@ -22,16 +22,6 @@
 
 #include <system_error>
 
-#if !__has_include(<linux/version.h>)
-#error "linux/version.h not found. Do you use Linux?"
-#else
-#include <linux/version.h>
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-#define STDEXEC_IORING_OP_READ
-#endif
-
 #if !__has_include(<linux/io_uring.h>)
 #error "io_uring.h not found. Your kernel is probably too old."
 #else
@@ -207,7 +197,7 @@ namespace exec { namespace __io_uring {
   }
 
   __wakeup_operation::__wakeup_operation(__context* __context, int __eventfd)
-    : __task{&__vtable}
+    : __task{__vtable}
     , __context_{__context}
     , __eventfd_{__eventfd} {
   }
@@ -237,6 +227,10 @@ namespace exec { namespace __io_uring {
 
   inline void __context::submit(__task* __op) noexcept {
     __requests_.push_front(__op);
+  }
+
+  inline __scheduler __context::get_scheduler() noexcept {
+    return __scheduler{this};
   }
 
   inline void __context::run() {

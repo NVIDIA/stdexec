@@ -20,6 +20,9 @@ int main() {
     }
     context.request_stop();
   }};
+  auto scheduler = context.get_scheduler();
+  stdexec::sync_wait(
+    stdexec::schedule(scheduler) | stdexec::then([] { std::cout << "Hello, world!\n"; }));
   io_thread.join();
   timer_thread.join();
 }

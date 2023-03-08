@@ -29,7 +29,17 @@
 #include <linux/io_uring.h>
 #endif
 
+#if !__has_include(<linux/version.h>)
+#error "linux/version.h not found. Do you use Linux?"
+#else
+#include <linux/version.h>
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 #include <sys/uio.h>
+#else
+#define STDEXEC_IORING_OP_READ
+#endif
 
 namespace exec {
   namespace __io_uring {
@@ -52,9 +62,13 @@ namespace exec {
       void (*__complete_)(void*, const ::io_uring_cqe*) noexcept;
     };
 
-    struct __task {
+    struct __task : stdexec::__immovable {
       const __task_vtable* __vtable_;
-      __task* __next_;
+      __task* __next_{nullptr};
+
+      explicit __task(const __task_vtable& __vtable)
+        : __vtable_{&__vtable} {
+      }
     };
 
     struct __submission_result {
@@ -117,6 +131,8 @@ namespace exec {
       void start() noexcept;
     };
 
+    class __scheduler;
+
     class __context : __context_base {
      public:
       explicit __context(unsigned __entries, unsigned __flags = 0);
@@ -129,10 +145,12 @@ namespace exec {
 
       void submit(__task* __op) noexcept;
 
-     private:
-      friend struct __wakeup_operation;
+      __scheduler get_scheduler() noexcept;
 
       stdexec::in_place_stop_source __stop_source_{};
+
+     private:
+      friend struct __wakeup_operation;
       __completion_queue __completion_queue_;
       __submission_queue __submission_queue_;
       stdexec::__intrusive_queue<&__task::__next_> __pending_{};
@@ -140,6 +158,94 @@ namespace exec {
       std::ptrdiff_t __n_submitted_{};
       __wakeup_operation __wakeup_operation_;
     };
+
+    template <class _ReceiverId>
+    class __schedule_operation : __task {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+      __context* __context_;
+      _Receiver __receiver_;
+
+      static bool __ready_(void*) noexcept {
+        return true;
+      }
+
+      static void __submit_(void*, ::io_uring_sqe*) noexcept {
+      }
+
+      static void __complete_(void* __pointer, const ::io_uring_cqe*) noexcept {
+        auto __self = static_cast<__schedule_operation*>(__pointer);
+        if (__self->__context_->__stop_source_.stop_requested()) {
+          stdexec::set_stopped((_Receiver&&) __self->__receiver_);
+        } else {
+          stdexec::set_value((_Receiver&&) __self->__receiver_);
+        }
+      }
+
+      static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
+
+      friend void tag_invoke(stdexec::start_t, __schedule_operation& __self) noexcept {
+        if (__self.__context_->__stop_source_.stop_requested()) {
+          stdexec::set_stopped((_Receiver&&) __self.__receiver_);
+        } else {
+          __self.__context_->submit(&__self);
+          __self.__context_->wakeup();
+        }
+      }
+
+     public:
+      __schedule_operation(__context* __context, _Receiver&& __receiver)
+        : __task(__vtable)
+        , __context_{__context}
+        , __receiver_{(_Receiver&&) __receiver} {
+      }
+    };
+
+    class __schedule_sender;
+
+    class __scheduler {
+     public:
+      __context* __context_;
+     private:
+      friend __schedule_sender tag_invoke(stdexec::schedule_t, const __scheduler& __sched);
+    };
+
+    class __schedule_env {
+     public:
+      __scheduler __sched_;
+     private:
+      friend __scheduler tag_invoke(
+        stdexec::get_completion_scheduler_t<stdexec::set_value_t>,
+        const __schedule_env& __env) noexcept {
+        return __env.__sched_;
+      }
+    };
+
+    class __schedule_sender {
+     public:
+      __schedule_env __env_;
+
+     private:
+      friend __schedule_env
+        tag_invoke(stdexec::get_env_t, const __schedule_sender& __sender) noexcept {
+        return __sender.__env_;
+      }
+
+      template <class _Env>
+      friend stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>
+        tag_invoke(stdexec::get_completion_signatures_t, const __schedule_sender&, _Env) noexcept {
+        return {};
+      }
+
+      template <class _Receiver>
+      friend __schedule_operation<stdexec::__id<_Receiver>>
+        tag_invoke(stdexec::connect_t, const __schedule_sender& __sender, _Receiver&& __receiver) {
+        return {__sender.__env_.__sched_.__context_, (_Receiver&&) __receiver};
+      }
+    };
+
+    inline __schedule_sender tag_invoke(stdexec::schedule_t, const __scheduler& __sched) {
+      return __schedule_sender{.__env_ = {.__sched_ = __sched}};
+    }
   }
 
   using io_uring_context = __io_uring::__context;
