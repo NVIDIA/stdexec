@@ -22,6 +22,16 @@
 
 #include <system_error>
 
+#if !__has_include(<linux/version.h>)
+#error "linux/version.h not found. Do you use Linux?"
+#else
+#include <linux/version.h>
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+#define STDEXEC_IORING_OP_READ
+#endif
+
 #if !__has_include(<linux/io_uring.h>)
 #error "io_uring.h not found. Your kernel is probably too old."
 #else
@@ -181,9 +191,14 @@ namespace exec { namespace __io_uring {
   void __wakeup_operation::__submit_(void* __pointer, ::io_uring_sqe* __entry) noexcept {
     __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
     __entry->fd = __self.__eventfd_;
-    __entry->opcode = IORING_OP_READ;
     std::memcpy(&__entry->addr, &__self.__buffer_, sizeof(__entry->addr));
+#ifdef STDEXEC_IORING_OP_READ
+    __entry->opcode = IORING_OP_READ;
     __entry->len = sizeof(__self.__buffer_);
+#else
+    __entry->opcode = IORING_OP_READV;
+    __entry->len = 1;
+#endif
   }
 
   void __wakeup_operation::__complete_(void* __pointer, const ::io_uring_cqe* __entry) noexcept {

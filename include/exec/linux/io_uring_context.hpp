@@ -29,6 +29,8 @@
 #include <linux/io_uring.h>
 #endif
 
+#include <sys/uio.h>
+
 namespace exec {
   namespace __io_uring {
     struct __context_base : stdexec::__immovable {
@@ -94,7 +96,13 @@ namespace exec {
     struct __wakeup_operation : __task {
       __context* __context_ = nullptr;
       int __eventfd_ = -1;
+#ifdef STDEXEC_IORING_OP_READ
       uint64_t __buffer_ = 0;
+#else
+      uint64_t __value_ = 0;
+      ::iovec __buffer_ = {.iov_base = &__value_, .iov_len = sizeof(__value_)};
+#endif
+
 
       static bool __ready_(void*) noexcept;
 
