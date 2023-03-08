@@ -16,7 +16,7 @@ int main() {
     for (int i = 0; i < 6; ++i) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       std::cout << "Waking up the io_uring thread #" << i << "...\n";
-      // context.wakeup();
+      context.wakeup();
     }
     context.request_stop();
   }};
