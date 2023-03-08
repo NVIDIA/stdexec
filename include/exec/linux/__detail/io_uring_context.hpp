@@ -104,17 +104,17 @@ namespace exec { namespace __io_uring {
   }
 
   inline int __completion_queue::complete(__task_queue __ready) noexcept {
-    __u32 __tail = __tail_.load(std::memory_order_relaxed);
-    __u32 __head = __head_.load(std::memory_order_acquire);
-    STDEXEC_ASSERT(__head <= __tail);
+    __u32 __head = __head_.load(std::memory_order_relaxed);
+    __u32 __tail = __tail_.load(std::memory_order_acquire);
     int __count = 0;
     while (__head != __tail) {
       const __u32 __index = __head & __mask_;
-      const ::io_uring_cqe& __cqe = __entries_[__index];
+      const ::io_uring_cqe __cqe = __entries_[__index];
       __task* __op = std::bit_cast<__task*>(__cqe.user_data);
       __op->__vtable_->__complete_(__op, &__cqe);
       ++__head;
       ++__count;
+      __tail = __tail_.load(std::memory_order_acquire);
     }
     __head_.store(__head, std::memory_order_release);
     while (!__ready.empty()) {
@@ -130,6 +130,7 @@ namespace exec { namespace __io_uring {
     const ::io_uring_params& __params)
     : __head_{*at_offset_as<__u32*>(__region.data(), __params.sq_off.head)}
     , __tail_{*at_offset_as<__u32*>(__region.data(), __params.sq_off.tail)}
+    , __array_{at_offset_as<__u32*>(__region.data(), __params.sq_off.array)}
     , __entries_{static_cast<::io_uring_sqe*>(__sqes_region.data())}
     , __mask_{*at_offset_as<__u32*>(__region.data(), __params.sq_off.ring_mask)}
     , __n_total_slots_{__params.sq_entries} {
@@ -153,6 +154,7 @@ namespace exec { namespace __io_uring {
       } else {
         __op->__vtable_->__submit_(__op, &__sqe);
         __sqe.user_data = std::bit_cast<__u64>(__op);
+        __array_[__index] = __index;
         ++__total_count;
         ++__count;
         ++__tail;

@@ -93,6 +93,7 @@ namespace exec {
     class __submission_queue {
       __atomic_ref<__u32> __head_;
       __atomic_ref<__u32> __tail_;
+      __u32* __array_;
       ::io_uring_sqe* __entries_;
       __u32 __mask_;
       __u32 __n_total_slots_;
@@ -124,9 +125,9 @@ namespace exec {
       __context* __context_ = nullptr;
       int __eventfd_ = -1;
 #ifdef STDEXEC_IORING_OP_READ
-      uint64_t __buffer_ = 0;
+      std::uint64_t __buffer_ = 0;
 #else
-      uint64_t __value_ = 0;
+      std::uint64_t __value_ = 0;
       ::iovec __buffer_ = {.iov_base = &__value_, .iov_len = sizeof(__value_)};
 #endif
 
@@ -359,6 +360,13 @@ namespace exec {
           __sender.__env_.__sched_.__context_, __sender.__duration_, (_Receiver&&) __receiver};
       }
     };
+
+    inline __schedule_after_sender tag_invoke(
+      exec::schedule_after_t,
+      const __scheduler& __sched,
+      std::chrono::nanoseconds __duration) {
+      return __schedule_after_sender{.__env_ = {.__sched_ = __sched}, .__duration_ = __duration};
+    }
   }
 
   using io_uring_context = __io_uring::__context;
