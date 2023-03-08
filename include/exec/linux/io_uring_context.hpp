@@ -41,6 +41,8 @@
 #define STDEXEC_IORING_OP_READ
 #endif
 
+#include <cstring>
+
 namespace exec {
   struct schedule_after_t {
     template <class _Scheduler, class _Duration>
@@ -272,7 +274,7 @@ namespace exec {
       ::timespec __duration_;
 
       static constexpr ::timespec __duration_to_timespec(std::chrono::nanoseconds dur) noexcept {
-        auto secs = std::chrono::duration_cast<seconds>(dur);
+        auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
         dur -= secs;
         return ::timespec{secs.count(), dur.count()};
       }
@@ -285,13 +287,12 @@ namespace exec {
         auto __self = static_cast<__schedule_after_operation*>(__pointer);
         std::memset(__sqe, 0, sizeof(*__sqe));
         __sqe->opcode = IORING_OP_TIMEOUT;
-        void* __addr = &__self->__duration_;
-        std::memcpy(&__sqe->addr, &__addr, sizeof(__addr));
+        __sqe->addr = std::bit_cast<__u64>(&__self->__duration_);
         __sqe->len = 1;
       }
 
       static void __complete_(void* __pointer, const ::io_uring_cqe* __cqe) noexcept {
-        auto __self = static_cast<__schedule_operation*>(__pointer);
+        auto __self = static_cast<__schedule_after_operation*>(__pointer);
         if (__self->__context_->stop_requested() || __cqe->res == -ECANCELED) {
           stdexec::set_stopped((_Receiver&&) __self->__receiver_);
         } else if (__cqe->res == -ETIME || __cqe->res == 0) {
@@ -305,7 +306,7 @@ namespace exec {
 
       static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
 
-      friend void tag_invoke(stdexec::start_t, __schedule_operation& __self) noexcept {
+      friend void tag_invoke(stdexec::start_t, __schedule_after_operation& __self) noexcept {
         if (__self.__context_->stop_requested()) {
           stdexec::set_stopped((_Receiver&&) __self.__receiver_);
         } else {
@@ -315,7 +316,7 @@ namespace exec {
       }
 
      public:
-      __schedule_operation(
+      __schedule_after_operation(
         __context* __context,
         std::chrono::nanoseconds __duration,
         _Receiver&& __receiver)
@@ -354,7 +355,8 @@ namespace exec {
         stdexec::connect_t,
         const __schedule_after_sender& __sender,
         _Receiver&& __receiver) {
-        return {__sender.__env_.__sched_.__context_, __duration_, (_Receiver&&) __receiver};
+        return {
+          __sender.__env_.__sched_.__context_, __sender.__duration_, (_Receiver&&) __receiver};
       }
     };
   }

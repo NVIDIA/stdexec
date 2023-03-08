@@ -111,8 +111,7 @@ namespace exec { namespace __io_uring {
     while (__head != __tail) {
       const __u32 __index = __head & __mask_;
       const ::io_uring_cqe& __cqe = __entries_[__index];
-      __task* __op;
-      std::memcpy(&__op, &__cqe.user_data, sizeof(__op));
+      __task* __op = std::bit_cast<__task*>(__cqe.user_data);
       __op->__vtable_->__complete_(__op, &__cqe);
       ++__head;
       ++__count;
@@ -153,7 +152,7 @@ namespace exec { namespace __io_uring {
         __ready.push_back(__op);
       } else {
         __op->__vtable_->__submit_(__op, &__sqe);
-        std::memcpy(&__sqe.user_data, &__op, sizeof(__sqe.user_data));
+        __sqe.user_data = std::bit_cast<__u64>(__op);
         ++__total_count;
         ++__count;
         ++__tail;
@@ -180,8 +179,9 @@ namespace exec { namespace __io_uring {
 
   void __wakeup_operation::__submit_(void* __pointer, ::io_uring_sqe* __entry) noexcept {
     __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
+    std::memset(__entry, 0, sizeof(*__entry));
     __entry->fd = __self.__eventfd_;
-    std::memcpy(&__entry->addr, &__self.__buffer_, sizeof(__entry->addr));
+    __entry->addr = std::bit_cast<__u64>(&__self.__buffer_);
 #ifdef STDEXEC_IORING_OP_READ
     __entry->opcode = IORING_OP_READ;
     __entry->len = sizeof(__self.__buffer_);
@@ -255,8 +255,7 @@ namespace exec { namespace __io_uring {
         break;
       }
       constexpr int __min_complete = 1;
-      int rc = __io_uring_enter(
-        __ring_fd_, __result.__n_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
+      int rc = __io_uring_enter(__ring_fd_, __n_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
       __throw_error_code_if(rc < 0, -rc);
       __n_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready_);
     }
