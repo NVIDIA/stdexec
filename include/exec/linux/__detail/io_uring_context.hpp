@@ -225,6 +225,10 @@ namespace exec { namespace __io_uring {
     wakeup();
   }
 
+  inline bool __context::stop_requested() {
+    return __stop_source_.stop_requested();
+  }
+
   inline void __context::submit(__task* __op) noexcept {
     __requests_.push_front(__op);
   }

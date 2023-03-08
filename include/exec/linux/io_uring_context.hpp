@@ -42,6 +42,17 @@
 #endif
 
 namespace exec {
+  struct schedule_after_t {
+    template <class _Scheduler, class _Duration>
+      requires stdexec::tag_invocable<schedule_after_t, const _Scheduler&, _Duration>
+    auto operator()(const _Scheduler& __scheduler, _Duration __duration) const
+      -> stdexec::tag_invoke_result_t<schedule_after_t, const _Scheduler&, _Duration> {
+      return tag_invoke(*this, __scheduler, __duration);
+    }
+  };
+
+  inline constexpr schedule_after_t schedule_after{};
+
   namespace __io_uring {
     struct __context_base : stdexec::__immovable {
       explicit __context_base(unsigned __entries, unsigned __flags = 0);
@@ -143,14 +154,15 @@ namespace exec {
 
       void request_stop();
 
+      bool stop_requested();
+
       void submit(__task* __op) noexcept;
 
       __scheduler get_scheduler() noexcept;
 
-      stdexec::in_place_stop_source __stop_source_{};
-
      private:
       friend struct __wakeup_operation;
+      stdexec::in_place_stop_source __stop_source_{};
       __completion_queue __completion_queue_;
       __submission_queue __submission_queue_;
       stdexec::__intrusive_queue<&__task::__next_> __pending_{};
@@ -174,7 +186,7 @@ namespace exec {
 
       static void __complete_(void* __pointer, const ::io_uring_cqe*) noexcept {
         auto __self = static_cast<__schedule_operation*>(__pointer);
-        if (__self->__context_->__stop_source_.stop_requested()) {
+        if (__self->__context_->stop_requested()) {
           stdexec::set_stopped((_Receiver&&) __self->__receiver_);
         } else {
           stdexec::set_value((_Receiver&&) __self->__receiver_);
@@ -184,7 +196,7 @@ namespace exec {
       static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
 
       friend void tag_invoke(stdexec::start_t, __schedule_operation& __self) noexcept {
-        if (__self.__context_->__stop_source_.stop_requested()) {
+        if (__self.__context_->stop_requested()) {
           stdexec::set_stopped((_Receiver&&) __self.__receiver_);
         } else {
           __self.__context_->submit(&__self);
@@ -200,6 +212,7 @@ namespace exec {
       }
     };
 
+    class __schedule_after_sender;
     class __schedule_sender;
 
     class __scheduler {
@@ -207,6 +220,10 @@ namespace exec {
       __context* __context_;
      private:
       friend __schedule_sender tag_invoke(stdexec::schedule_t, const __scheduler& __sched);
+      friend __schedule_after_sender tag_invoke(
+        exec::schedule_after_t,
+        const __scheduler& __sched,
+        std::chrono::nanoseconds __duration);
     };
 
     class __schedule_env {
@@ -246,6 +263,100 @@ namespace exec {
     inline __schedule_sender tag_invoke(stdexec::schedule_t, const __scheduler& __sched) {
       return __schedule_sender{.__env_ = {.__sched_ = __sched}};
     }
+
+    template <class _ReceiverId>
+    class __schedule_after_operation : __task {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+      __context* __context_;
+      _Receiver __receiver_;
+      ::timespec __duration_;
+
+      static constexpr ::timespec __duration_to_timespec(std::chrono::nanoseconds dur) noexcept {
+        auto secs = std::chrono::duration_cast<seconds>(dur);
+        dur -= secs;
+        return ::timespec{secs.count(), dur.count()};
+      }
+
+      static bool __ready_(void*) noexcept {
+        return false;
+      }
+
+      static void __submit_(void* __pointer, ::io_uring_sqe* __sqe) noexcept {
+        auto __self = static_cast<__schedule_after_operation*>(__pointer);
+        std::memset(__sqe, 0, sizeof(*__sqe));
+        __sqe->opcode = IORING_OP_TIMEOUT;
+        void* __addr = &__self->__duration_;
+        std::memcpy(&__sqe->addr, &__addr, sizeof(__addr));
+        __sqe->len = 1;
+      }
+
+      static void __complete_(void* __pointer, const ::io_uring_cqe* __cqe) noexcept {
+        auto __self = static_cast<__schedule_operation*>(__pointer);
+        if (__self->__context_->stop_requested() || __cqe->res == -ECANCELED) {
+          stdexec::set_stopped((_Receiver&&) __self->__receiver_);
+        } else if (__cqe->res == -ETIME || __cqe->res == 0) {
+          stdexec::set_value((_Receiver&&) __self->__receiver_);
+        } else {
+          stdexec::set_error(
+            (_Receiver&&) __self->__receiver_,
+            std::make_exception_ptr(std::system_error(-__cqe->res, std::system_category())));
+        }
+      }
+
+      static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
+
+      friend void tag_invoke(stdexec::start_t, __schedule_operation& __self) noexcept {
+        if (__self.__context_->stop_requested()) {
+          stdexec::set_stopped((_Receiver&&) __self.__receiver_);
+        } else {
+          __self.__context_->submit(&__self);
+          __self.__context_->wakeup();
+        }
+      }
+
+     public:
+      __schedule_operation(
+        __context* __context,
+        std::chrono::nanoseconds __duration,
+        _Receiver&& __receiver)
+        : __task(__vtable)
+        , __context_{__context}
+        , __receiver_{(_Receiver&&) __receiver}
+        , __duration_{__duration_to_timespec(__duration)} {
+      }
+    };
+
+    class __schedule_after_sender {
+     public:
+      __schedule_env __env_;
+      std::chrono::nanoseconds __duration_;
+
+     private:
+      friend __schedule_env
+        tag_invoke(stdexec::get_env_t, const __schedule_after_sender& __sender) noexcept {
+        return __sender.__env_;
+      }
+
+      template <class _Env>
+      friend stdexec::completion_signatures<
+        stdexec::set_value_t(),
+        stdexec::set_error_t(std::exception_ptr),
+        stdexec::set_stopped_t()>
+        tag_invoke(
+          stdexec::get_completion_signatures_t,
+          const __schedule_after_sender&,
+          _Env) noexcept {
+        return {};
+      }
+
+      template <class _Receiver>
+      friend __schedule_after_operation<stdexec::__id<_Receiver>> tag_invoke(
+        stdexec::connect_t,
+        const __schedule_after_sender& __sender,
+        _Receiver&& __receiver) {
+        return {__sender.__env_.__sched_.__context_, __duration_, (_Receiver&&) __receiver};
+      }
+    };
   }
 
   using io_uring_context = __io_uring::__context;
