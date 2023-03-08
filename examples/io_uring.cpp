@@ -12,24 +12,19 @@ int main() {
   std::thread io_thread{[&] {
     context.run();
   }};
-  std::thread timer_thread{[&] {
-    for (int i = 0; i < 6; ++i) {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-      std::cout << "Waking up the io_uring thread #" << i << "...\n";
-      context.wakeup();
-    }
-    context.request_stop();
-  }};
   auto scheduler = context.get_scheduler();
   using namespace std::chrono_literals;
-  stdexec::sync_wait(
-    exec::schedule_after(scheduler, 10s)  //
-    | stdexec::then([] {                  //
-        std::cout << "Hello, world!\n";   //
-      })
-    | stdexec::upon_stopped([] {          //
-        std::cout << "Hello, stopped.\n"; //
-      }));
+  stdexec::sync_wait(stdexec::when_all(
+    exec::schedule_after(scheduler, 1s) | stdexec::then([] { std::cout << "Hello, 1!\n"; }),
+    exec::schedule_after(scheduler, 2s) | stdexec::then([] { std::cout << "Hello, 2!\n"; }),
+    exec::schedule_after(scheduler, 3s) | stdexec::then([] { std::cout << "Stop it!\n"; }),
+    exec::schedule_after(scheduler, 4s) | stdexec::then([&] { context.request_stop(); }),
+    exec::schedule_after(scheduler, 10s)    //
+      | stdexec::then([] {                  //
+          std::cout << "Hello, world!\n";   //
+        })
+      | stdexec::upon_stopped([] {          //
+          std::cout << "Hello, stopped.\n"; //
+        })));
   io_thread.join();
-  timer_thread.join();
 }

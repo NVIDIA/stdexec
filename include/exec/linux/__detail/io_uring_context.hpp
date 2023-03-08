@@ -145,7 +145,7 @@ namespace exec { namespace __io_uring {
   }
 
   inline __submission_result
-    __submission_queue::submit(__task_queue __tasks, bool is_stopped) noexcept {
+    __submission_queue::submit(__task_queue __tasks, bool __is_stopped) noexcept {
     __u32 __tail = __tail_.load(std::memory_order_relaxed);
     __u32 __head = __head_.load(std::memory_order_acquire);
     __u32 __total_count = __tail - __head;
@@ -162,7 +162,7 @@ namespace exec { namespace __io_uring {
         __ready.push_back(__op);
       } else {
         __op->__vtable_->__submit_(__op, &__sqe);
-        if (is_stopped && __sqe.opcode != IORING_OP_ASYNC_CANCEL) {
+        if (__is_stopped && __sqe.opcode != IORING_OP_ASYNC_CANCEL) {
           __stop(__op);
         } else {
           __sqe.user_data = bit_cast<__u64>(__op);
