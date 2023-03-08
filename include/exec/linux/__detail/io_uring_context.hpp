@@ -17,6 +17,7 @@
 #pragma once
 
 #include "../io_uring_context.hpp"
+#include "../../__detail/__bit_cast.hpp"
 
 #include <cstring>
 
@@ -110,7 +111,7 @@ namespace exec { namespace __io_uring {
     while (__head != __tail) {
       const __u32 __index = __head & __mask_;
       const ::io_uring_cqe __cqe = __entries_[__index];
-      __task* __op = std::bit_cast<__task*>(__cqe.user_data);
+      __task* __op = bit_cast<__task*>(__cqe.user_data);
       __op->__vtable_->__complete_(__op, &__cqe);
       ++__head;
       ++__count;
@@ -153,7 +154,7 @@ namespace exec { namespace __io_uring {
         __ready.push_back(__op);
       } else {
         __op->__vtable_->__submit_(__op, &__sqe);
-        __sqe.user_data = std::bit_cast<__u64>(__op);
+        __sqe.user_data = bit_cast<__u64>(__op);
         __array_[__index] = __index;
         ++__total_count;
         ++__count;
@@ -183,7 +184,7 @@ namespace exec { namespace __io_uring {
     __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
     std::memset(__entry, 0, sizeof(*__entry));
     __entry->fd = __self.__eventfd_;
-    __entry->addr = std::bit_cast<__u64>(&__self.__buffer_);
+    __entry->addr = bit_cast<__u64>(&__self.__buffer_);
 #ifdef STDEXEC_IORING_OP_READ
     __entry->opcode = IORING_OP_READ;
     __entry->len = sizeof(__self.__buffer_);

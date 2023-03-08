@@ -18,8 +18,10 @@
 
 #include "../../stdexec/execution.hpp"
 
-#include "./__detail/atomic_intrusive_queue.hpp"
-#include "./__detail/__atomic_ref.hpp"
+#include "../__detail/__bit_cast.hpp"
+#include "../__detail/__atomic_intrusive_queue.hpp"
+#include "../__detail/__atomic_ref.hpp"
+
 #include "./safe_file_descriptor.hpp"
 #include "./memory_mapped_region.hpp"
 
@@ -288,7 +290,7 @@ namespace exec {
         auto __self = static_cast<__schedule_after_operation*>(__pointer);
         std::memset(__sqe, 0, sizeof(*__sqe));
         __sqe->opcode = IORING_OP_TIMEOUT;
-        __sqe->addr = std::bit_cast<__u64>(&__self->__duration_);
+        __sqe->addr = bit_cast<__u64>(&__self->__duration_);
         __sqe->len = 1;
       }
 
