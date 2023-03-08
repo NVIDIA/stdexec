@@ -40,7 +40,7 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 #include <sys/uio.h>
 #else
-#define STDEXEC_IORING_OP_READ
+#define STDEXEC_HAS_IORING_OP_READ
 #endif
 
 #include <cstring>
@@ -105,7 +105,8 @@ namespace exec {
         const memory_mapped_region& __sqes_region,
         const ::io_uring_params& __params);
 
-      __submission_result submit(stdexec::__intrusive_queue<&__task::__next_> __task) noexcept;
+      __submission_result
+        submit(stdexec::__intrusive_queue<&__task::__next_> __task, bool is_stopped) noexcept;
     };
 
     class __completion_queue {
@@ -126,7 +127,7 @@ namespace exec {
     struct __wakeup_operation : __task {
       __context* __context_ = nullptr;
       int __eventfd_ = -1;
-#ifdef STDEXEC_IORING_OP_READ
+#ifdef STDEXEC_HAS_IORING_OP_READ
       std::uint64_t __buffer_ = 0;
 #else
       std::uint64_t __value_ = 0;
@@ -160,6 +161,8 @@ namespace exec {
       void request_stop();
 
       bool stop_requested();
+
+      stdexec::in_place_stop_token get_stop_token() const noexcept;
 
       void submit(__task* __op) noexcept;
 
@@ -275,6 +278,58 @@ namespace exec {
       __context* __context_;
       _Receiver __receiver_;
       ::timespec __duration_;
+      std::atomic<int> __n_ops_;
+
+      struct __stop_operation : __task {
+        __schedule_after_operation* __self_;
+
+        static bool __ready_(void* __pointer) noexcept {
+          return false;
+        }
+
+        static void __submit_(void* __pointer, ::io_uring_sqe* __entry) noexcept {
+          auto __cb = static_cast<__stop_operation*>(__pointer);
+          *__entry = ::io_uring_sqe{
+            .opcode = IORING_OP_ASYNC_CANCEL,      //
+            .addr = bit_cast<__u64>(__cb->__self_) //
+          };
+        }
+
+        static void __complete_(void* __pointer, const ::io_uring_cqe* __entry) noexcept {
+          auto __cb = static_cast<__stop_operation*>(__pointer);
+          if (__cb->__self_->__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
+            _Receiver& __receiver = __cb->__self_->__receiver_;
+            __cb->__self_->__stop_callback_.reset();
+            stdexec::set_stopped((_Receiver&&) __receiver);
+          }
+        }
+
+        static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
+
+        explicit __stop_operation(__schedule_after_operation* __self) noexcept
+          : __task(__vtable)
+          , __self_{__self} {
+        }
+
+        void start() noexcept {
+          int expected = 1;
+          if (__self_->__n_ops_.compare_exchange_strong(expected, 2, std::memory_order_relaxed)) {
+            __self_->__context_->submit(this);
+          }
+        }
+      };
+
+      struct __stop_callback {
+        __schedule_after_operation* __self_;
+
+        void operator()() noexcept {
+          __self_->__stop_operation_.emplace(__self_);
+          __self_->__stop_operation_->start();
+        }
+      };
+
+      std::optional<__stop_operation> __stop_operation_;
+      std::optional<stdexec::in_place_stop_callback<__stop_callback>> __stop_callback_;
 
       static constexpr ::timespec __duration_to_timespec(std::chrono::nanoseconds dur) noexcept {
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
@@ -297,10 +352,15 @@ namespace exec {
       static void __complete_(void* __pointer, const ::io_uring_cqe* __cqe) noexcept {
         auto __self = static_cast<__schedule_after_operation*>(__pointer);
         if (__self->__context_->stop_requested() || __cqe->res == -ECANCELED) {
-          stdexec::set_stopped((_Receiver&&) __self->__receiver_);
+          if (__self->__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
+            __self->__stop_callback_.reset();
+            stdexec::set_stopped((_Receiver&&) __self->__receiver_);
+          }
         } else if (__cqe->res == -ETIME || __cqe->res == 0) {
+          __self->__stop_callback_.reset();
           stdexec::set_value((_Receiver&&) __self->__receiver_);
         } else {
+          __self->__stop_callback_.reset();
           stdexec::set_error(
             (_Receiver&&) __self->__receiver_,
             std::make_exception_ptr(std::system_error(-__cqe->res, std::system_category())));
@@ -310,9 +370,12 @@ namespace exec {
       static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
 
       friend void tag_invoke(stdexec::start_t, __schedule_after_operation& __self) noexcept {
+        __self.__n_ops_.store(1, std::memory_order_relaxed);
         if (__self.__context_->stop_requested()) {
           stdexec::set_stopped((_Receiver&&) __self.__receiver_);
         } else {
+          __self.__stop_callback_.emplace(
+            __self.__context_->get_stop_token(), __stop_callback{&__self});
           __self.__context_->submit(&__self);
           __self.__context_->wakeup();
         }

@@ -23,9 +23,12 @@ int main() {
   auto scheduler = context.get_scheduler();
   using namespace std::chrono_literals;
   stdexec::sync_wait(
-    exec::schedule_after(scheduler, 3s) //
-    | stdexec::then([] {                //
-        std::cout << "Hello, world!\n"; //
+    exec::schedule_after(scheduler, 10s)  //
+    | stdexec::then([] {                  //
+        std::cout << "Hello, world!\n";   //
+      })
+    | stdexec::upon_stopped([] {          //
+        std::cout << "Hello, stopped.\n"; //
       }));
   io_thread.join();
   timer_thread.join();

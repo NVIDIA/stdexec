@@ -110,7 +110,7 @@ namespace exec { namespace __io_uring {
     int __count = 0;
     while (__head != __tail) {
       const __u32 __index = __head & __mask_;
-      const ::io_uring_cqe __cqe = __entries_[__index];
+      const ::io_uring_cqe& __cqe = __entries_[__index];
       __task* __op = bit_cast<__task*>(__cqe.user_data);
       __op->__vtable_->__complete_(__op, &__cqe);
       ++__head;
@@ -137,7 +137,15 @@ namespace exec { namespace __io_uring {
     , __n_total_slots_{__params.sq_entries} {
   }
 
-  inline __submission_result __submission_queue::submit(__task_queue __tasks) noexcept {
+  inline void __stop(__task* __op) noexcept {
+    ::io_uring_cqe __cqe{};
+    __cqe.res = -ECANCELED;
+    __cqe.user_data = bit_cast<__u64>(__op);
+    __op->__vtable_->__complete_(__op, &__cqe);
+  }
+
+  inline __submission_result
+    __submission_queue::submit(__task_queue __tasks, bool is_stopped) noexcept {
     __u32 __tail = __tail_.load(std::memory_order_relaxed);
     __u32 __head = __head_.load(std::memory_order_acquire);
     __u32 __total_count = __tail - __head;
@@ -154,11 +162,15 @@ namespace exec { namespace __io_uring {
         __ready.push_back(__op);
       } else {
         __op->__vtable_->__submit_(__op, &__sqe);
-        __sqe.user_data = bit_cast<__u64>(__op);
-        __array_[__index] = __index;
-        ++__total_count;
-        ++__count;
-        ++__tail;
+        if (is_stopped && __sqe.opcode != IORING_OP_ASYNC_CANCEL) {
+          __stop(__op);
+        } else {
+          __sqe.user_data = bit_cast<__u64>(__op);
+          __array_[__index] = __index;
+          ++__total_count;
+          ++__count;
+          ++__tail;
+        }
       }
     }
     __tail_.store(__tail, std::memory_order_release);
@@ -185,7 +197,7 @@ namespace exec { namespace __io_uring {
     std::memset(__entry, 0, sizeof(*__entry));
     __entry->fd = __self.__eventfd_;
     __entry->addr = bit_cast<__u64>(&__self.__buffer_);
-#ifdef STDEXEC_IORING_OP_READ
+#ifdef STDEXEC_HAS_IORING_OP_READ
     __entry->opcode = IORING_OP_READ;
     __entry->len = sizeof(__self.__buffer_);
 #else
@@ -232,6 +244,10 @@ namespace exec { namespace __io_uring {
     return __stop_source_.stop_requested();
   }
 
+  inline stdexec::in_place_stop_token __context::get_stop_token() const noexcept {
+    return __stop_source_.get_token();
+  }
+
   inline void __context::submit(__task* __op) noexcept {
     __requests_.push_front(__op);
   }
@@ -242,15 +258,17 @@ namespace exec { namespace __io_uring {
 
   inline void __context::run() {
     __wakeup_operation_.start();
+    __pending_.append(__requests_.pop_all());
     while (__n_submitted_ > 0 || !__pending_.empty()) {
-      __pending_.append(__requests_.pop_all());
-      __submission_result __result = __submission_queue_.submit((__task_queue&&) __pending_);
+      __submission_result __result = __submission_queue_.submit(
+        (__task_queue&&) __pending_, __stop_source_.stop_requested());
       __n_submitted_ += __result.__n_submitted_;
       __pending_ = (__task_queue&&) __result.__pending_;
       while (!__result.__ready_.empty()) {
         __n_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready_);
         __pending_.append(__requests_.pop_all());
-        __result = __submission_queue_.submit((__task_queue&&) __pending_);
+        __result = __submission_queue_.submit(
+          (__task_queue&&) __pending_, __stop_source_.stop_requested());
         __n_submitted_ += __result.__n_submitted_;
         __pending_ = (__task_queue&&) __result.__pending_;
       }
@@ -261,6 +279,7 @@ namespace exec { namespace __io_uring {
       int rc = __io_uring_enter(__ring_fd_, __n_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
       __throw_error_code_if(rc < 0, -rc);
       __n_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready_);
+      __pending_.append(__requests_.pop_all());
     }
   }
 }}
