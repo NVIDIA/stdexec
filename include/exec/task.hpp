@@ -179,8 +179,9 @@ namespace exec {
     };
 
     template <class _Promise, class _ParentPromise = void>
-    using awaiter_context_t =
-      typename stdexec::env_of_t<_Promise>::template awaiter_context_t<_Promise, _ParentPromise>;
+    using awaiter_context_t =                                   //
+      typename std::remove_cvref_t<stdexec::env_of_t<_Promise>> //
+      ::template awaiter_context_t<_Promise, _ParentPromise>;
 
     ////////////////////////////////////////////////////////////////////////////////
     // In a base class so it can be specialized when _Ty is void:
@@ -269,7 +270,7 @@ namespace exec {
 
         using __context_t = typename _Context::template promise_context_t<__promise>;
 
-        friend __context_t tag_invoke(stdexec::get_env_t, const __promise& __self) {
+        friend const __context_t& tag_invoke(stdexec::get_env_t, const __promise& __self) noexcept {
           return __self.__context_;
         }
 
