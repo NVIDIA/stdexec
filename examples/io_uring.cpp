@@ -34,4 +34,15 @@ int main() {
           std::cout << "Hello, stopped.\n"; //
         })));
   io_thread.join();
+
+  io_thread = std::thread{[&] {
+    context.run();
+  }};
+
+  stdexec::sync_wait(exec::when_any(
+    exec::schedule_after(scheduler, 1s) | stdexec::then([] { std::cout << "Hello, 1!\n"; }),
+    exec::schedule_after(scheduler, 500ms) | stdexec::then([] { std::cout << "Hello, 2!\n"; })));
+
+  context.request_stop();
+  io_thread.join();
 }

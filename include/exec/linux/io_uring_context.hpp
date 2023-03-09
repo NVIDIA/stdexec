@@ -61,25 +61,39 @@ namespace exec {
   inline constexpr schedule_after_t schedule_after{};
 
   namespace __io_uring {
+    // This base class maps the kernel's io_uring data structures into the process.
     struct __context_base : stdexec::__immovable {
       explicit __context_base(unsigned __entries, unsigned __flags = 0);
 
+      // memory mapped regions for submission and completion queue
       memory_mapped_region __submission_queue_region_{};
       memory_mapped_region __completion_queue_region_{};
       memory_mapped_region __submission_queue_entries_{};
       ::io_uring_params __params_{};
+      // file descriptor for io_uring
       safe_file_descriptor __ring_fd_{};
+      // file descriptor for the wakeup event
       safe_file_descriptor __eventfd_{};
     };
 
+    // Each io operation provides the following interface:
     struct __task_vtable {
+      // If this function returns true, the __submit_ function will not be called.
+      // The task is marked ready to be completed and will be returned by the
+      // by the context's completion queue.
+      // If this function returns false, the __submit_ function will be called.
       bool (*__ready_)(void*) noexcept;
-      // __suspend_?
+      // This function is called to submit the task to the io_uring.
+      // Its purpose is to fill the io_uring_sqe structure to describe the io
+      // operation and its completion condition.
       void (*__submit_)(void*, ::io_uring_sqe*) noexcept;
-      // __resume_?
+      // This function is called when the io operation is completed.
+      // The status of the operation is passed as a parameter.
       void (*__complete_)(void*, const ::io_uring_cqe*) noexcept;
     };
 
+    // This is the base class for all io operations.
+    // It provides the vtable and the next pointer for the intrusive queues.
     struct __task : stdexec::__immovable {
       const __task_vtable* __vtable_;
       __task* __next_{nullptr};
@@ -95,6 +109,7 @@ namespace exec {
       stdexec::__intrusive_queue<&__task::__next_> __ready;
     };
 
+    // This class implements the io_uring submission queue.
     class __submission_queue {
       __atomic_ref<__u32> __head_;
       __atomic_ref<__u32> __tail_;
@@ -108,6 +123,14 @@ namespace exec {
         const memory_mapped_region& __sqes_region,
         const ::io_uring_params& __params);
 
+      // This function submits the given queue of tasks to the io_uring.
+      //
+      // Each task that is ready to be completed is moved to the __ready queue.
+      // If the submission queue gets full before all tasks are submitted, the
+      // remaining tasks are moved to the __pending queue.
+      // If is_stopped is true, no new tasks are submitted to the io_uring unless it is a cancellation.
+      // If is_stopped is true and a task is not ready to be completed, the task is completed with
+      // an io_uring_cqe object with the result field set to -ECANCELED.
       __submission_result
         submit(stdexec::__intrusive_queue<&__task::__next_> __task, bool is_stopped) noexcept;
     };
@@ -122,6 +145,9 @@ namespace exec {
         const memory_mapped_region& __region,
         const ::io_uring_params& __params);
 
+      // This function first completes all tasks that are ready in the completion queue of the io_uring.
+      // Then it completes all tasks that are ready in the given queue of ready tasks.
+      // The function returns the number of previously submitted completed tasks.
       int complete(stdexec::__intrusive_queue<&__task::__next_> __ready) noexcept;
     };
 
@@ -136,7 +162,6 @@ namespace exec {
       std::uint64_t __value_ = 0;
       ::iovec __buffer_ = {.iov_base = &__value_, .iov_len = sizeof(__value_)};
 #endif
-
 
       static bool __ready_(void*) noexcept;
 
