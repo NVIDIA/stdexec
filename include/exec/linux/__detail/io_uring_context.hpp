@@ -163,7 +163,7 @@ namespace exec { namespace __io_uring {
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
         if (__is_stopped && __sqe.opcode != IORING_OP_ASYNC_CANCEL) {
 #else
-        if (__is_stopped && __sqe.opcode != IORING_OP_NOP) {
+        if (__is_stopped) {
 #endif
           __stop(__op);
         } else {
@@ -330,7 +330,8 @@ namespace exec { namespace __io_uring {
     }
 
     void complete(const ::io_uring_cqe*) noexcept {
-      if (__context_->stop_requested()) {
+      auto token = stdexec::get_stop_token(stdexec::get_env(__receiver_));
+      if (__context_->stop_requested() || token.stop_requested()) {
         stdexec::set_stopped((_Receiver&&) __receiver_);
       } else {
         stdexec::set_value((_Receiver&&) __receiver_);
@@ -338,7 +339,8 @@ namespace exec { namespace __io_uring {
     }
 
     friend void tag_invoke(stdexec::start_t, __schedule_operation& __self) noexcept {
-      if (__self.__context_->stop_requested()) {
+      auto token = stdexec::get_stop_token(stdexec::get_env(__self.__receiver_));
+      if (__self.__context_->stop_requested() || token.stop_requested()) {
         stdexec::set_stopped((_Receiver&&) __self.__receiver_);
       } else {
         __self.__context_->submit(&__self);
@@ -417,12 +419,12 @@ namespace exec { namespace __io_uring {
 #endif
     }
 
-    void complete(const ::io_uring_cqe* __entry) noexcept {
+    void complete(const ::io_uring_cqe*) noexcept {
       if (__op_->__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
-        auto& __receiver = __op_->__receiver_;
+        _Receiver& __receiver = __op_->__receiver_;
         __op_->__on_context_stop_.reset();
         __op_->__on_receiver_stop_.reset();
-        stdexec::set_stopped((std::decay_t<decltype(__receiver)>&&) __receiver);
+        stdexec::set_stopped((_Receiver&&) __receiver);
       }
     }
 
@@ -554,8 +556,7 @@ namespace exec { namespace __io_uring {
       this->__on_receiver_stop_.reset();
       auto token = stdexec::get_stop_token(stdexec::get_env(this->__receiver_));
       if (
-        this->__context_->stop_requested() || //
-        token.stop_requested() || __cqe->res == -ECANCELED) {
+        this->__context_->stop_requested() || token.stop_requested() || __cqe->res == -ECANCELED) {
         stdexec::set_stopped((_Receiver&&) this->__receiver_);
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
       } else if (__cqe->res == -ETIME || __cqe->res == 0) {
@@ -572,7 +573,8 @@ namespace exec { namespace __io_uring {
 
    private:
     friend void tag_invoke(stdexec::start_t, __schedule_after_operation& __self) noexcept {
-      if (__self.__context_->stop_requested()) {
+      auto token = stdexec::get_stop_token(stdexec::get_env(__self.__receiver_));
+      if (__self.__context_->stop_requested() || token.stop_requested()) {
         stdexec::set_stopped((_Receiver&&) __self.__receiver_);
       } else {
         __self.start();
