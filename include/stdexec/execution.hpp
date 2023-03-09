@@ -5430,7 +5430,7 @@ namespace stdexec {
     using __values_opt_tuple_t = //
       __value_types_of_t<
         _Sender,
-        __env_t<__id<_Env>>,
+        __env_t<_Env>,
         __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
         __q<__msingle>>;
 
@@ -5451,7 +5451,7 @@ namespace stdexec {
       using __error_types = //
         __minvoke<
           __mconcat<__transform<__q<decay_t>, __nullable_variant_t_>>,
-          error_types_of_t<_Senders, __env_t<__id<_Env>>, __types>... >;
+          error_types_of_t<_Senders, __env_t<_Env>, __types>... >;
 
       using __errors_variant = //
         __if<
