@@ -597,9 +597,11 @@ namespace exec { namespace __io_uring {
       , __duration_{__duration_to_timespec(__duration)}
 #endif
     {
+#ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
       int __rc = ::timerfd_settime(
         __timerfd_, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &__duration_, nullptr);
       __throw_error_code_if(__rc < 0, errno);
+#endif
     }
   };
 
