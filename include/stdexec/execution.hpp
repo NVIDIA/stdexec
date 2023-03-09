@@ -1845,10 +1845,20 @@ namespace stdexec {
 
     template <class _Sender, class _Promise>
     concept __awaitable_sender =
-      __single_typed_sender<_Sender, __env_t<_Promise>>
-      && sender_to<_Sender, __receiver_t<_Sender, _Promise>> && requires(_Promise& __promise) {
+      __single_typed_sender<_Sender, __env_t<_Promise>>      //
+      && sender_to<_Sender, __receiver_t<_Sender, _Promise>> //
+      && requires(_Promise& __promise) {
            { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;
          };
+
+    struct __unspecified {
+      __unspecified get_return_object() noexcept;
+      __unspecified initial_suspend() noexcept;
+      __unspecified final_suspend() noexcept;
+      void unhandled_exception() noexcept;
+      void return_void() noexcept;
+      __coro::coroutine_handle<> unhandled_stopped() noexcept;
+    };
 
     struct as_awaitable_t {
       template <class _T, class _Promise>
@@ -1857,7 +1867,7 @@ namespace stdexec {
           using _Result = tag_invoke_result_t<as_awaitable_t, _T, _Promise&>;
           constexpr bool _Nothrow = nothrow_tag_invocable<as_awaitable_t, _T, _Promise&>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__awaitable<_T>) { // NOT __awaitable<_T, _Promise> !!
+        } else if constexpr (__awaitable<_T, __unspecified>) { // NOT __awaitable<_T, _Promise> !!
           return static_cast < _T && (*) () noexcept > (nullptr);
         } else if constexpr (__awaitable_sender<_T, _Promise>) {
           using _Result = __sender_awaitable_t<_Promise, _T>;
@@ -1879,7 +1889,7 @@ namespace stdexec {
           using _Result = tag_invoke_result_t<as_awaitable_t, _T, _Promise&>;
           static_assert(__awaitable<_Result, _Promise>);
           return tag_invoke(*this, (_T&&) __t, __promise);
-        } else if constexpr (__awaitable<_T>) { // NOT __awaitable<_T, _Promise> !!
+        } else if constexpr (__awaitable<_T, __unspecified>) { // NOT __awaitable<_T, _Promise> !!
           return (_T&&) __t;
         } else if constexpr (__awaitable_sender<_T, _Promise>) {
           auto __hcoro = __coro::coroutine_handle<_Promise>::from_promise(__promise);
@@ -5420,7 +5430,7 @@ namespace stdexec {
     using __values_opt_tuple_t = //
       __value_types_of_t<
         _Sender,
-        __env_t<__id<_Env>>,
+        __env_t<_Env>,
         __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
         __q<__msingle>>;
 
@@ -5441,7 +5451,7 @@ namespace stdexec {
       using __error_types = //
         __minvoke<
           __mconcat<__transform<__q<decay_t>, __nullable_variant_t_>>,
-          error_types_of_t<_Senders, __env_t<__id<_Env>>, __types>... >;
+          error_types_of_t<_Senders, __env_t<_Env>, __types>... >;
 
       using __errors_variant = //
         __if<
