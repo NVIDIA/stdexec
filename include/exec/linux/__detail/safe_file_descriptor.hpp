@@ -22,15 +22,16 @@
 #include <unistd.h>
 
 namespace exec {
-  safe_file_descriptor::safe_file_descriptor(int __fd) noexcept
+  inline safe_file_descriptor::safe_file_descriptor(int __fd) noexcept
     : __fd_(__fd) {
   }
 
-  safe_file_descriptor::safe_file_descriptor(safe_file_descriptor&& __other) noexcept
+  inline safe_file_descriptor::safe_file_descriptor(safe_file_descriptor&& __other) noexcept
     : __fd_(std::exchange(__other.__fd_, -1)) {
   }
 
-  safe_file_descriptor& safe_file_descriptor::operator=(safe_file_descriptor&& __other) noexcept {
+  inline safe_file_descriptor&
+    safe_file_descriptor::operator=(safe_file_descriptor&& __other) noexcept {
     if (this != &__other) {
       if (__fd_ != -1) {
         ::close(__fd_);
@@ -40,21 +41,26 @@ namespace exec {
     return *this;
   }
 
-  safe_file_descriptor::~safe_file_descriptor() {
+  inline safe_file_descriptor::~safe_file_descriptor() {
+    reset();
+  }
+
+  inline void safe_file_descriptor::reset(int __fd) noexcept {
     if (__fd_ != -1) {
       ::close(__fd_);
     }
+    __fd_ = __fd;
   }
 
-  safe_file_descriptor::operator bool() const noexcept {
+  inline safe_file_descriptor::operator bool() const noexcept {
     return __fd_ != -1;
   }
 
-  safe_file_descriptor::operator int() const noexcept {
+  inline safe_file_descriptor::operator int() const noexcept {
     return __fd_;
   }
 
-  int safe_file_descriptor::native_handle() const noexcept {
+  inline int safe_file_descriptor::native_handle() const noexcept {
     return __fd_;
   }
 }

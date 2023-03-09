@@ -1,6 +1,7 @@
-#include "stdexec/execution.hpp"
-
 #include "exec/linux/io_uring_context.hpp"
+#include "exec/when_any.hpp"
+
+#include "stdexec/execution.hpp"
 
 #include <chrono>
 #include <thread>
@@ -14,6 +15,12 @@ int main() {
   }};
   auto scheduler = context.get_scheduler();
   using namespace std::chrono_literals;
+
+  stdexec::sync_wait(exec::when_any(
+    exec::schedule_after(scheduler, 1s) | stdexec::then([] { std::cout << "Hello, 1!\n"; }),
+    exec::schedule_after(scheduler, 100s) | stdexec::then([] { std::cout << "Hello, 2!\n"; })
+      | stdexec::upon_stopped([] { std::cout << "Hello, 2, stopped.\n"; })));
+
   stdexec::sync_wait(stdexec::when_all(
     exec::schedule_after(scheduler, 1s) | stdexec::then([] { std::cout << "Hello, 1!\n"; }),
     exec::schedule_after(scheduler, 2s) | stdexec::then([] { std::cout << "Hello, 2!\n"; }),

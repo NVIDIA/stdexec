@@ -33,6 +33,8 @@ namespace exec {
 
     ~safe_file_descriptor();
 
+    void reset(int __fd = -1) noexcept;
+
     explicit operator bool() const noexcept;
 
     operator int() const noexcept;

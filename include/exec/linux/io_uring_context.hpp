@@ -18,7 +18,6 @@
 
 #include "../../stdexec/execution.hpp"
 
-#include "../__detail/__bit_cast.hpp"
 #include "../__detail/__atomic_intrusive_queue.hpp"
 #include "../__detail/__atomic_ref.hpp"
 
@@ -37,13 +36,18 @@
 #include <linux/version.h>
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+#warning "Your kernel is too old to support io_uring with cancellation support."
+#else
+#define STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#endif
+#undef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 #include <sys/uio.h>
 #else
 #define STDEXEC_HAS_IORING_OP_READ
 #endif
-
-#include <cstring>
 
 namespace exec {
   struct schedule_after_t {
@@ -179,47 +183,6 @@ namespace exec {
       __wakeup_operation __wakeup_operation_;
     };
 
-    template <class _ReceiverId>
-    class __schedule_operation : __task {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      __context* __context_;
-      _Receiver __receiver_;
-
-      static bool __ready_(void*) noexcept {
-        return true;
-      }
-
-      static void __submit_(void*, ::io_uring_sqe*) noexcept {
-      }
-
-      static void __complete_(void* __pointer, const ::io_uring_cqe*) noexcept {
-        auto __self = static_cast<__schedule_operation*>(__pointer);
-        if (__self->__context_->stop_requested()) {
-          stdexec::set_stopped((_Receiver&&) __self->__receiver_);
-        } else {
-          stdexec::set_value((_Receiver&&) __self->__receiver_);
-        }
-      }
-
-      static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
-
-      friend void tag_invoke(stdexec::start_t, __schedule_operation& __self) noexcept {
-        if (__self.__context_->stop_requested()) {
-          stdexec::set_stopped((_Receiver&&) __self.__receiver_);
-        } else {
-          __self.__context_->submit(&__self);
-          __self.__context_->wakeup();
-        }
-      }
-
-     public:
-      __schedule_operation(__context* __context, _Receiver&& __receiver)
-        : __task(__vtable)
-        , __context_{__context}
-        , __receiver_{(_Receiver&&) __receiver} {
-      }
-    };
-
     class __schedule_after_sender;
     class __schedule_sender;
 
@@ -228,210 +191,12 @@ namespace exec {
       __context* __context_;
      private:
       friend __schedule_sender tag_invoke(stdexec::schedule_t, const __scheduler& __sched);
+
       friend __schedule_after_sender tag_invoke(
         exec::schedule_after_t,
         const __scheduler& __sched,
         std::chrono::nanoseconds __duration);
     };
-
-    class __schedule_env {
-     public:
-      __scheduler __sched_;
-     private:
-      friend __scheduler tag_invoke(
-        stdexec::get_completion_scheduler_t<stdexec::set_value_t>,
-        const __schedule_env& __env) noexcept {
-        return __env.__sched_;
-      }
-    };
-
-    class __schedule_sender {
-     public:
-      __schedule_env __env_;
-
-     private:
-      friend __schedule_env
-        tag_invoke(stdexec::get_env_t, const __schedule_sender& __sender) noexcept {
-        return __sender.__env_;
-      }
-
-      template <class _Env>
-      friend stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>
-        tag_invoke(stdexec::get_completion_signatures_t, const __schedule_sender&, _Env) noexcept {
-        return {};
-      }
-
-      template <class _Receiver>
-      friend __schedule_operation<stdexec::__id<_Receiver>>
-        tag_invoke(stdexec::connect_t, const __schedule_sender& __sender, _Receiver&& __receiver) {
-        return {__sender.__env_.__sched_.__context_, (_Receiver&&) __receiver};
-      }
-    };
-
-    inline __schedule_sender tag_invoke(stdexec::schedule_t, const __scheduler& __sched) {
-      return __schedule_sender{.__env_ = {.__sched_ = __sched}};
-    }
-
-    template <class _ReceiverId>
-    class __schedule_after_operation : __task {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      __context* __context_;
-      _Receiver __receiver_;
-      ::timespec __duration_;
-      std::atomic<int> __n_ops_;
-
-      struct __stop_operation : __task {
-        __schedule_after_operation* __self_;
-
-        static bool __ready_(void* __pointer) noexcept {
-          return false;
-        }
-
-        static void __submit_(void* __pointer, ::io_uring_sqe* __entry) noexcept {
-          auto __cb = static_cast<__stop_operation*>(__pointer);
-          *__entry = ::io_uring_sqe{
-            .opcode = IORING_OP_ASYNC_CANCEL,      //
-            .addr = bit_cast<__u64>(__cb->__self_) //
-          };
-        }
-
-        static void __complete_(void* __pointer, const ::io_uring_cqe* __entry) noexcept {
-          auto __cb = static_cast<__stop_operation*>(__pointer);
-          if (__cb->__self_->__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
-            _Receiver& __receiver = __cb->__self_->__receiver_;
-            __cb->__self_->__stop_callback_.reset();
-            stdexec::set_stopped((_Receiver&&) __receiver);
-          }
-        }
-
-        static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
-
-        explicit __stop_operation(__schedule_after_operation* __self) noexcept
-          : __task(__vtable)
-          , __self_{__self} {
-        }
-
-        void start() noexcept {
-          int expected = 1;
-          if (__self_->__n_ops_.compare_exchange_strong(expected, 2, std::memory_order_relaxed)) {
-            __self_->__context_->submit(this);
-          }
-        }
-      };
-
-      struct __stop_callback {
-        __schedule_after_operation* __self_;
-
-        void operator()() noexcept {
-          __self_->__stop_operation_.emplace(__self_);
-          __self_->__stop_operation_->start();
-        }
-      };
-
-      std::optional<__stop_operation> __stop_operation_;
-      std::optional<stdexec::in_place_stop_callback<__stop_callback>> __stop_callback_;
-
-      static constexpr ::timespec __duration_to_timespec(std::chrono::nanoseconds dur) noexcept {
-        auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
-        dur -= secs;
-        return ::timespec{secs.count(), dur.count()};
-      }
-
-      static bool __ready_(void*) noexcept {
-        return false;
-      }
-
-      static void __submit_(void* __pointer, ::io_uring_sqe* __sqe) noexcept {
-        auto __self = static_cast<__schedule_after_operation*>(__pointer);
-        std::memset(__sqe, 0, sizeof(*__sqe));
-        __sqe->opcode = IORING_OP_TIMEOUT;
-        __sqe->addr = bit_cast<__u64>(&__self->__duration_);
-        __sqe->len = 1;
-      }
-
-      static void __complete_(void* __pointer, const ::io_uring_cqe* __cqe) noexcept {
-        auto __self = static_cast<__schedule_after_operation*>(__pointer);
-        if (__self->__context_->stop_requested() || __cqe->res == -ECANCELED) {
-          if (__self->__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
-            __self->__stop_callback_.reset();
-            stdexec::set_stopped((_Receiver&&) __self->__receiver_);
-          }
-        } else if (__cqe->res == -ETIME || __cqe->res == 0) {
-          __self->__stop_callback_.reset();
-          stdexec::set_value((_Receiver&&) __self->__receiver_);
-        } else {
-          __self->__stop_callback_.reset();
-          stdexec::set_error(
-            (_Receiver&&) __self->__receiver_,
-            std::make_exception_ptr(std::system_error(-__cqe->res, std::system_category())));
-        }
-      }
-
-      static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
-
-      friend void tag_invoke(stdexec::start_t, __schedule_after_operation& __self) noexcept {
-        __self.__n_ops_.store(1, std::memory_order_relaxed);
-        if (__self.__context_->stop_requested()) {
-          stdexec::set_stopped((_Receiver&&) __self.__receiver_);
-        } else {
-          __self.__stop_callback_.emplace(
-            __self.__context_->get_stop_token(), __stop_callback{&__self});
-          __self.__context_->submit(&__self);
-          __self.__context_->wakeup();
-        }
-      }
-
-     public:
-      __schedule_after_operation(
-        __context* __context,
-        std::chrono::nanoseconds __duration,
-        _Receiver&& __receiver)
-        : __task(__vtable)
-        , __context_{__context}
-        , __receiver_{(_Receiver&&) __receiver}
-        , __duration_{__duration_to_timespec(__duration)} {
-      }
-    };
-
-    class __schedule_after_sender {
-     public:
-      __schedule_env __env_;
-      std::chrono::nanoseconds __duration_;
-
-     private:
-      friend __schedule_env
-        tag_invoke(stdexec::get_env_t, const __schedule_after_sender& __sender) noexcept {
-        return __sender.__env_;
-      }
-
-      template <class _Env>
-      friend stdexec::completion_signatures<
-        stdexec::set_value_t(),
-        stdexec::set_error_t(std::exception_ptr),
-        stdexec::set_stopped_t()>
-        tag_invoke(
-          stdexec::get_completion_signatures_t,
-          const __schedule_after_sender&,
-          _Env) noexcept {
-        return {};
-      }
-
-      template <class _Receiver>
-      friend __schedule_after_operation<stdexec::__id<_Receiver>> tag_invoke(
-        stdexec::connect_t,
-        const __schedule_after_sender& __sender,
-        _Receiver&& __receiver) {
-        return {
-          __sender.__env_.__sched_.__context_, __sender.__duration_, (_Receiver&&) __receiver};
-      }
-    };
-
-    inline __schedule_after_sender tag_invoke(
-      exec::schedule_after_t,
-      const __scheduler& __sched,
-      std::chrono::nanoseconds __duration) {
-      return __schedule_after_sender{.__env_ = {.__sched_ = __sched}, .__duration_ = __duration};
-    }
   }
 
   using io_uring_context = __io_uring::__context;
