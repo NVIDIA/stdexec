@@ -23,10 +23,17 @@
 
 #include "../stdexec/execution.hpp"
 #include "task.hpp"
+#include "inline_scheduler.hpp"
+#include "any_sender_of.hpp"
 
 namespace exec {
   namespace __on_coro_disp {
     using namespace stdexec;
+
+    using __any_scheduler =                                                      //
+      any_receiver_ref<                                                          //
+        completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>> //
+      ::any_sender<>::any_scheduler<>;
 
     template <class _Promise>
     concept __promise_with_disposition =              //
@@ -82,6 +89,7 @@ namespace exec {
               __coro::coroutine_handle<_Promise>::from_address(__parent).promise();
             return __promise.disposition();
           };
+        __coro_.promise().__scheduler_ = get_scheduler(get_env(__parent.promise()));
         __coro_.promise().set_continuation(__parent.promise().continuation());
         __parent.promise().set_continuation(__coro_);
         return false;
@@ -108,6 +116,14 @@ namespace exec {
         }
 
         void await_resume() const noexcept {
+        }
+      };
+
+      struct __env {
+        const __promise& __promise_;
+
+        friend __any_scheduler tag_invoke(get_scheduler_t, __env __self) noexcept {
+          return __self.__promise_.__scheduler_;
         }
       };
 
@@ -150,11 +166,16 @@ namespace exec {
           return as_awaitable(__at_coro_exit::__die_on_stop((_Awaitable&&) __awaitable), *this);
         }
 
+        friend __env tag_invoke(get_env_t, const __promise& __self) noexcept {
+          return {__self};
+        }
+
         bool __is_unhandled_stopped_{false};
         std::tuple<_Ts&...> __args_{};
         using __get_disposition_callback_t = task_disposition (*)(void*) noexcept;
         __coro::coroutine_handle<> __parent_{};
         __get_disposition_callback_t __get_disposition_callback_{nullptr};
+        __any_scheduler __scheduler_{inline_scheduler{}};
       };
 
       __coro::coroutine_handle<__promise> __coro_;

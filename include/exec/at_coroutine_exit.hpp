@@ -22,10 +22,17 @@
 #include <type_traits>
 
 #include "../stdexec/execution.hpp"
+#include "inline_scheduler.hpp"
+#include "any_sender_of.hpp"
 
 namespace exec {
   namespace __at_coro_exit {
     using namespace stdexec;
+
+    using __any_scheduler =                                                      //
+      any_receiver_ref<                                                          //
+        completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>> //
+      ::any_sender<>::any_scheduler<>;
 
     struct __die_on_stop_t {
       template <class _Receiver>
@@ -50,7 +57,7 @@ namespace exec {
             std::terminate();
           }
 
-          friend decltype(auto) tag_invoke(get_env_t, const __t& __self) noexcept {
+          friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
             return get_env(__self.__receiver_);
           }
         };
@@ -111,10 +118,11 @@ namespace exec {
     inline constexpr __die_on_stop_t __die_on_stop;
 
     template <class _Promise>
-    concept __has_continuation = requires(_Promise& __promise, __continuation_handle<> __c) {
-      { __promise.continuation() } -> convertible_to<__continuation_handle<>>;
-      { __promise.set_continuation(__c) };
-    };
+    concept __has_continuation = //
+      requires(_Promise& __promise, __continuation_handle<> __c) {
+        { __promise.continuation() } -> convertible_to<__continuation_handle<>>;
+        { __promise.set_continuation(__c) };
+      };
 
     template <class... _Ts>
     class [[nodiscard]] __task {
@@ -136,6 +144,7 @@ namespace exec {
 
       template <__has_continuation _Promise>
       bool await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept {
+        __coro_.promise().__scheduler_ = get_scheduler(get_env(__parent.promise()));
         __coro_.promise().set_continuation(__parent.promise().continuation());
         __parent.promise().set_continuation(__coro_);
         return false;
@@ -162,6 +171,14 @@ namespace exec {
         }
 
         void await_resume() const noexcept {
+        }
+      };
+
+      struct __env {
+        const __promise& __promise_;
+
+        friend __any_scheduler tag_invoke(get_scheduler_t, __env __self) noexcept {
+          return __self.__promise_.__scheduler_;
         }
       };
 
@@ -200,8 +217,13 @@ namespace exec {
           return as_awaitable(__die_on_stop((_Awaitable&&) __awaitable), *this);
         }
 
+        friend __env tag_invoke(get_env_t, const __promise& __self) noexcept {
+          return {__self};
+        }
+
         bool __is_unhandled_stopped_{false};
         std::tuple<_Ts&...> __args_{};
+        __any_scheduler __scheduler_{inline_scheduler{}};
       };
 
       __coro::coroutine_handle<__promise> __coro_;
