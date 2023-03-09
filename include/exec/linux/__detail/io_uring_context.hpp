@@ -185,9 +185,9 @@ namespace exec { namespace __io_uring {
       }
     }
     return {
-      .__n_submitted_ = __count,
-      .__pending_ = (__task_queue&&) __pending,
-      .__ready_ = (__task_queue&&) __ready};
+      .__n_submitted = __count,
+      .__pending = (__task_queue&&) __pending,
+      .__ready = (__task_queue&&) __ready};
   }
 
   bool __wakeup_operation::__ready_(void*) noexcept {
@@ -220,7 +220,7 @@ namespace exec { namespace __io_uring {
   }
 
   void __wakeup_operation::start() noexcept {
-    if (!__context_->__stop_source_.stop_requested()) {
+    if (!__context_->__stop_source_->stop_requested()) {
       __context_->__pending_.push_front(this);
     }
   }
@@ -238,16 +238,20 @@ namespace exec { namespace __io_uring {
   }
 
   inline void __context::request_stop() {
-    __stop_source_.request_stop();
+    __stop_source_->request_stop();
     wakeup();
   }
 
-  inline bool __context::stop_requested() {
-    return __stop_source_.stop_requested();
+  inline bool __context::stop_requested() const noexcept {
+    return __stop_source_->stop_requested();
   }
 
   inline stdexec::in_place_stop_token __context::get_stop_token() const noexcept {
-    return __stop_source_.get_token();
+    return __stop_source_->get_token();
+  }
+
+  inline bool __context::is_running() const noexcept {
+    return __is_running_.load(std::memory_order_relaxed);
   }
 
   inline void __context::submit(__task* __op) noexcept {
@@ -259,30 +263,38 @@ namespace exec { namespace __io_uring {
   }
 
   inline void __context::run() {
+    bool expected_running = false;
+    if (!__is_running_.compare_exchange_strong(expected_running, true, std::memory_order_relaxed)) {
+      throw std::runtime_error(
+        "std::execution::io_uring_context::run() called on a running context");
+    }
+    std::ptrdiff_t __n_submitted = 0;
     __wakeup_operation_.start();
     __pending_.append(__requests_.pop_all());
-    while (__n_submitted_ > 0 || !__pending_.empty()) {
+    while (__n_submitted > 0 || !__pending_.empty()) {
       __submission_result __result = __submission_queue_.submit(
-        (__task_queue&&) __pending_, __stop_source_.stop_requested());
-      __n_submitted_ += __result.__n_submitted_;
-      __pending_ = (__task_queue&&) __result.__pending_;
-      while (!__result.__ready_.empty()) {
-        __n_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready_);
+        (__task_queue&&) __pending_, __stop_source_->stop_requested());
+      __n_submitted += __result.__n_submitted;
+      __pending_ = (__task_queue&&) __result.__pending;
+      while (!__result.__ready.empty()) {
+        __n_submitted -= __completion_queue_.complete((__task_queue&&) __result.__ready);
         __pending_.append(__requests_.pop_all());
         __result = __submission_queue_.submit(
-          (__task_queue&&) __pending_, __stop_source_.stop_requested());
-        __n_submitted_ += __result.__n_submitted_;
-        __pending_ = (__task_queue&&) __result.__pending_;
+          (__task_queue&&) __pending_, __stop_source_->stop_requested());
+        __n_submitted += __result.__n_submitted;
+        __pending_ = (__task_queue&&) __result.__pending;
       }
-      if (__n_submitted_ <= 0) {
+      if (__n_submitted <= 0) {
         break;
       }
       constexpr int __min_complete = 1;
-      int rc = __io_uring_enter(__ring_fd_, __n_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
+      int rc = __io_uring_enter(__ring_fd_, __n_submitted, __min_complete, IORING_ENTER_GETEVENTS);
       __throw_error_code_if(rc < 0, -rc);
-      __n_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready_);
+      __n_submitted -= __completion_queue_.complete((__task_queue&&) __result.__ready);
       __pending_.append(__requests_.pop_all());
     }
+    __stop_source_.emplace();
+    __is_running_.store(false, std::memory_order_relaxed);
   }
 
   template <class _Op>

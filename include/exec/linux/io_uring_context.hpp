@@ -90,9 +90,9 @@ namespace exec {
     };
 
     struct __submission_result {
-      __u32 __n_submitted_;
-      stdexec::__intrusive_queue<&__task::__next_> __pending_;
-      stdexec::__intrusive_queue<&__task::__next_> __ready_;
+      __u32 __n_submitted;
+      stdexec::__intrusive_queue<&__task::__next_> __pending;
+      stdexec::__intrusive_queue<&__task::__next_> __ready;
     };
 
     class __submission_queue {
@@ -163,7 +163,9 @@ namespace exec {
 
       void request_stop();
 
-      bool stop_requested();
+      bool stop_requested() const noexcept;
+
+      bool is_running() const noexcept;
 
       stdexec::in_place_stop_token get_stop_token() const noexcept;
 
@@ -173,12 +175,12 @@ namespace exec {
 
      private:
       friend struct __wakeup_operation;
-      stdexec::in_place_stop_source __stop_source_{};
+      std::atomic<bool> __is_running_{false};
+      std::optional<stdexec::in_place_stop_source> __stop_source_{std::in_place};
       __completion_queue __completion_queue_;
       __submission_queue __submission_queue_;
       stdexec::__intrusive_queue<&__task::__next_> __pending_{};
       __atomic_intrusive_queue<&__task::__next_> __requests_{};
-      std::ptrdiff_t __n_submitted_{};
       __wakeup_operation __wakeup_operation_;
     };
 
