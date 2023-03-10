@@ -334,22 +334,6 @@ namespace exec { namespace __io_uring {
     __context* __context_;
     _Receiver __receiver_;
 
-    static constexpr std::true_type ready() noexcept {
-      return {};
-    }
-
-    static constexpr void submit(::io_uring_sqe* __entry) noexcept {
-    }
-
-    void complete(const ::io_uring_cqe*) noexcept {
-      auto token = stdexec::get_stop_token(stdexec::get_env(__receiver_));
-      if (__context_->stop_requested() || token.stop_requested()) {
-        stdexec::set_stopped((_Receiver&&) __receiver_);
-      } else {
-        stdexec::set_value((_Receiver&&) __receiver_);
-      }
-    }
-
     friend void tag_invoke(stdexec::start_t, __schedule_operation& __self) noexcept {
       auto token = stdexec::get_stop_token(stdexec::get_env(__self.__receiver_));
       if (__self.__context_->stop_requested() || token.stop_requested()) {
@@ -364,6 +348,22 @@ namespace exec { namespace __io_uring {
     __schedule_operation(__context* __context, _Receiver&& __receiver)
       : __context_{__context}
       , __receiver_{(_Receiver&&) __receiver} {
+    }
+
+    static constexpr std::true_type ready() noexcept {
+      return {};
+    }
+
+    static constexpr void submit(::io_uring_sqe* __entry) noexcept {
+    }
+
+    void complete(const ::io_uring_cqe*) noexcept {
+      auto token = stdexec::get_stop_token(stdexec::get_env(__receiver_));
+      if (__context_->stop_requested() || token.stop_requested()) {
+        stdexec::set_stopped((_Receiver&&) __receiver_);
+      } else {
+        stdexec::set_value((_Receiver&&) __receiver_);
+      }
     }
   };
 
