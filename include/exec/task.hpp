@@ -299,18 +299,15 @@ namespace exec {
       failed,
     };
 
-    struct complete_inline_t {
-      __any_scheduler __scheduler_;
+    struct __reschedule_coroutine_on {
+      template <class _Scheduler>
+      struct __wrap {
+        _Scheduler __sched_;
+      };
 
-      static constexpr std::true_type await_ready() noexcept {
-        return {};
-      }
-
-      template <__indirect_scheduler_provider _Promise>
-      void await_suspend(__coro::coroutine_handle<_Promise> __coro) noexcept {
-      }
-
-      constexpr void await_resume() noexcept {
+      template <scheduler _Scheduler>
+      __wrap<_Scheduler> operator()(_Scheduler __sched) const noexcept {
+        return {(_Scheduler&&) __sched};
       }
     };
 
@@ -380,21 +377,22 @@ namespace exec {
             transfer((_Awaitable&&) __awaitable, get_scheduler(__context_)), *this);
         }
 
-        template <__decays_to<complete_inline_t> _Awaitable>
+        template <class _Scheduler>
           requires __scheduler_provider<_Context>
-        decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
+        decltype(auto)
+          await_transform(__reschedule_coroutine_on::__wrap<_Scheduler> __box) noexcept {
           if (!std::exchange(__rescheduled_, true)) {
             // Create a cleanup action that transitions back onto the current scheduler:
-            __any_scheduler __sched = get_scheduler(__context_);
-            auto __cleanup_task = at_coroutine_exit(schedule, (__any_scheduler&&) __sched);
+            auto __sched = get_scheduler(__context_);
+            auto __cleanup_task = at_coroutine_exit(schedule, std::move(__sched));
             // Insert the cleanup action into the head of the continuation chain by making
             // direct calls to the cleanup task's awaiter member functions. See type
             // _cleanup_task in at_coroutine_exit.hpp:
             __cleanup_task.await_suspend(__coro::coroutine_handle<__promise>::from_promise(*this));
             (void) __cleanup_task.await_resume();
           }
-          __context_.set_scheduler(__awaitable.__scheduler_);
-          return as_awaitable(schedule(__awaitable.__scheduler_), *this);
+          __context_.set_scheduler(__box.__sched_);
+          return as_awaitable(schedule(__box.__sched_), *this);
         }
 
         template <class _Awaitable>
@@ -506,10 +504,7 @@ namespace exec {
   template <class _Ty>
   using task = basic_task<_Ty, default_task_context<_Ty>>;
 
-  template <stdexec::scheduler _Scheduler>
-  __task::complete_inline_t complete_inline(_Scheduler&& __scheduler) noexcept {
-    return __task::complete_inline_t{(_Scheduler&&) __scheduler};
-  }
+  inline constexpr __task::__reschedule_coroutine_on reschedule_coroutine_on{};
 } // namespace exec
 
 STDEXEC_PRAGMA_POP()

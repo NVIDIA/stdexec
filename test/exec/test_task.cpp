@@ -42,12 +42,12 @@ namespace {
     scheduler auto scheduler2,
     auto id1,
     auto id2) {
-    CHECK(get_id() == id2);               // This task is started in context2
-    co_await schedule(scheduler1);        // Try to schedule in context1
-    CHECK(get_id() == id2);               // But this task is still in context2
-    co_await complete_inline(scheduler1); // Transition to context1
-    CHECK(get_id() == id1);               // Now we are in context1
-  }                                       // Reschedules back to context2
+    CHECK(get_id() == id2);                       // This task is started in context2
+    co_await schedule(scheduler1);                // Try to schedule in context1
+    CHECK(get_id() == id2);                       // But this task is still in context2
+    co_await reschedule_coroutine_on(scheduler1); // Transition to context1
+    CHECK(get_id() == id1);                       // Now we are in context1
+  }                                               // Reschedules back to context2
 
   task<void> test_stickiness_for_two_single_thread_contexts_(
     auto scheduler1,
@@ -60,8 +60,8 @@ namespace {
     co_await (schedule(scheduler1) | then([&] { CHECK(get_id() == id1); }));
     co_await (schedule(scheduler2) | then([&] { CHECK(get_id() == id2); }));
     CHECK(get_id() == id1);
-    co_await complete_inline(scheduler2); // Transition to context2
-    CHECK(get_id() == id2);               // Now we are in context2
+    co_await reschedule_coroutine_on(scheduler2); // Transition to context2
+    CHECK(get_id() == id2);                       // Now we are in context2
     // Child task inherits context2
     co_await test_stickiness_for_two_single_thread_contexts_nested(
       scheduler1, scheduler2, id1, id2);
@@ -73,8 +73,8 @@ namespace {
     auto scheduler2,
     auto id1,
     auto id2) {
-    co_await complete_inline(scheduler2); // Transition to context2
-    CHECK(get_id() == id2);               // Now we are in context2
+    co_await reschedule_coroutine_on(scheduler2); // Transition to context2
+    CHECK(get_id() == id2);                       // Now we are in context2
     // Child task inherits context2
     co_await (
       test_stickiness_for_two_single_thread_contexts_nested(scheduler1, scheduler2, id1, id2)
@@ -86,7 +86,7 @@ namespace {
     auto scheduler2,
     auto id1,
     auto id2) {
-    co_await complete_inline(scheduler1);
+    co_await reschedule_coroutine_on(scheduler1);
     CHECK(get_id() == id1);
     co_await test_stickiness_for_two_single_thread_contexts_(scheduler1, scheduler2, id1, id2);
     CHECK(get_id() == id1);
@@ -97,7 +97,7 @@ namespace {
     auto scheduler2,
     auto id1,
     auto id2) {
-    co_await complete_inline(scheduler1);
+    co_await reschedule_coroutine_on(scheduler1);
     CHECK(get_id() == id1);
     co_await test_stickiness_for_two_single_thread_contexts_with_sender_(
       scheduler1, scheduler2, id1, id2);
