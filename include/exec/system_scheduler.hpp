@@ -148,13 +148,14 @@ namespace exec {
     }
 
     struct __env {
-      /*friend system_scheduler
-        tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, const __env& self) noexcept {
-        return {self.impl_};
-      }*/
-
       friend system_scheduler
         tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, const __env& self) //
+        noexcept {
+        return {self.impl_};
+      }
+
+      friend system_scheduler
+        tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_stopped_t>, const __env& self) //
         noexcept {
         return {self.impl_};
       }
