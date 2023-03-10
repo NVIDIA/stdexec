@@ -21,6 +21,8 @@
 #include <exec/system_scheduler.hpp>
 #include <stdexec/execution.hpp>
 
+#include <exec/inline_scheduler.hpp>
+
 namespace ex = stdexec;
 
 TEST_CASE("simple schedule task on system context", "[types][system_scheduler]") {
@@ -40,4 +42,18 @@ TEST_CASE("simple schedule forward progress guarantee", "[types][system_schedule
   exec::system_context ctx;
   exec::system_scheduler sched = ctx.get_scheduler();
   REQUIRE(ex::get_forward_progress_guarantee(sched) == ex::forward_progress_guarantee::parallel);
+}
+
+TEST_CASE("get_completion_scheduler", "[types][system_scheduler]") {
+  exec::system_context ctx;
+  exec::system_scheduler sched = ctx.get_scheduler();
+  auto s = ex::schedule(sched);
+  auto e = ex::get_env(s);
+  auto c = ex::get_completion_scheduler<ex::set_value_t>(e);
+  //REQUIRE(
+    //ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::schedule(sched))) == sched);
+
+  //REQUIRE(ex::get_completion_scheduler<stdexec::set_value_t>(ex::get_env(sched)) == sched);
+  //REQUIRE(ex::get_completion_scheduler<stdexec::set_stopped_t>(ex::get_env(sched)) == sched);
+
 }

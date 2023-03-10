@@ -41,6 +41,10 @@ struct __exec_system_scheduler_impl {
   stdexec::forward_progress_guarantee get_forward_progress_guarantee() const {
     return stdexec::forward_progress_guarantee::parallel;
   }
+
+  bool equals(const __exec_system_scheduler_impl* rhs) const {
+    return rhs == this;
+  }
 };
 
 struct __exec_system_sender_impl {
@@ -96,6 +100,10 @@ namespace exec {
     // Pointer that we ref count?
     system_scheduler(__exec_system_scheduler_impl impl) : impl_(impl) {}
 
+    bool operator==(const system_scheduler& rhs) const noexcept {
+      impl_.equals(&(rhs.impl_));
+    }
+
   private:
     friend system_sender tag_invoke(
       stdexec::schedule_t, const system_scheduler&) noexcept;
@@ -114,7 +122,7 @@ namespace exec {
   public:
     using is_sender = void;
     using completion_signatures =
-      stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
+      stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t() >;
 
     system_sender(__exec_system_scheduler_impl scheduler_impl, __exec_system_sender_impl impl) :
         scheduler_impl_{scheduler_impl}, impl_{impl} {}
@@ -139,27 +147,27 @@ namespace exec {
       return {stdexec::connect(snd.impl_.pool_sender_, (R&&) rec)};
     }
 
-    struct env {
-      template <class CPO>
+    struct __env {
+      /*friend system_scheduler
+        tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, const __env& self) noexcept {
+        return {self.impl_};
+      }*/
+
       friend system_scheduler
-        tag_invoke(stdexec::get_completion_scheduler_t<CPO>, const env& self) noexcept {
+        tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, const __env& self) //
+        noexcept {
         return {self.impl_};
       }
 
       __exec_system_scheduler_impl impl_;
     };
 
-    friend env tag_invoke(stdexec::get_env_t, const system_sender& snd) noexcept {
+    friend __env tag_invoke(stdexec::get_env_t, const system_sender& snd) noexcept {
       // TODO: Ref add
       return {snd.scheduler_impl_};
     }
 
-
-/*
-    friend pair<std::execution::system_scheduler, delegatee_scheduler> tag_invoke(
-      std::execution::get_completion_scheduler_t<set_value_t>,
-      const system_scheduler&) noexcept;
-
+    /*
     friend system_bulk_sender tag_invoke(
       std::execution::bulk_t,
       const system_scheduler&,
@@ -189,11 +197,6 @@ namespace exec {
   }
 
 /*
-  friend pair<std::execution::system_scheduler, delegatee_scheduler> tag_invoke(
-      std::execution::get_completion_scheduler_t<set_value_t>,
-      const system_scheduler& sched) noexcept {
-  }
-
   friend system_bulk_sender tag_invoke(
       std::execution::bulk_t,
       const system_scheduler& sched,
