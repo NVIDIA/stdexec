@@ -190,11 +190,11 @@ namespace exec { namespace __io_uring {
       .__ready = (__task_queue&&) __ready};
   }
 
-  bool __wakeup_operation::__ready_(void*) noexcept {
+  bool __wakeup_operation::__ready_(__task*) noexcept {
     return false;
   }
 
-  void __wakeup_operation::__submit_(void* __pointer, ::io_uring_sqe* __entry) noexcept {
+  void __wakeup_operation::__submit_(__task* __pointer, ::io_uring_sqe* __entry) noexcept {
     __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
     std::memset(__entry, 0, sizeof(*__entry));
     __entry->fd = __self.__eventfd_;
@@ -208,7 +208,7 @@ namespace exec { namespace __io_uring {
 #endif
   }
 
-  void __wakeup_operation::__complete_(void* __pointer, const ::io_uring_cqe* __entry) noexcept {
+  void __wakeup_operation::__complete_(__task* __pointer, const ::io_uring_cqe* __entry) noexcept {
     __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
     __self.start();
   }
@@ -304,20 +304,20 @@ namespace exec { namespace __io_uring {
     { __op.complete(__cqe) } noexcept;
   };
 
-  template <class _BaseOperation>
+  template <class _Derived>
   struct __io_task_base : __task {
-    static bool __ready_(void* __pointer) noexcept {
-      _BaseOperation* __self = static_cast<_BaseOperation*>(__pointer);
+    static bool __ready_(__task* __pointer) noexcept {
+      _Derived* __self = static_cast<_Derived*>(__pointer);
       return __self->ready();
     }
 
-    static void __submit_(void* __pointer, ::io_uring_sqe* __sqe) noexcept {
-      _BaseOperation* __self = static_cast<_BaseOperation*>(__pointer);
+    static void __submit_(__task* __pointer, ::io_uring_sqe* __sqe) noexcept {
+      _Derived* __self = static_cast<_Derived*>(__pointer);
       __self->submit(__sqe);
     }
 
-    static void __complete_(void* __pointer, const ::io_uring_cqe* __cqe) noexcept {
-      _BaseOperation* __self = static_cast<_BaseOperation*>(__pointer);
+    static void __complete_(__task* __pointer, const ::io_uring_cqe* __cqe) noexcept {
+      _Derived* __self = static_cast<_Derived*>(__pointer);
       __self->complete(__cqe);
     }
 
@@ -329,7 +329,7 @@ namespace exec { namespace __io_uring {
   };
 
   template <class _ReceiverId>
-  class __schedule_operation : __io_task_base<__schedule_operation<_ReceiverId>> {
+  class __schedule_operation : public __io_task_base<__schedule_operation<_ReceiverId>> {
     using _Receiver = stdexec::__t<_ReceiverId>;
     __context* __context_;
     _Receiver __receiver_;

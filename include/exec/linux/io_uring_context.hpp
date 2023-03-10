@@ -76,20 +76,22 @@ namespace exec {
       safe_file_descriptor __eventfd_{};
     };
 
+    struct __task;
+
     // Each io operation provides the following interface:
     struct __task_vtable {
       // If this function returns true, the __submit_ function will not be called.
       // The task is marked ready to be completed and will be returned by the
       // by the context's completion queue.
       // If this function returns false, the __submit_ function will be called.
-      bool (*__ready_)(void*) noexcept;
+      bool (*__ready_)(__task*) noexcept;
       // This function is called to submit the task to the io_uring.
       // Its purpose is to fill the io_uring_sqe structure to describe the io
       // operation and its completion condition.
-      void (*__submit_)(void*, ::io_uring_sqe*) noexcept;
+      void (*__submit_)(__task*, ::io_uring_sqe*) noexcept;
       // This function is called when the io operation is completed.
       // The status of the operation is passed as a parameter.
-      void (*__complete_)(void*, const ::io_uring_cqe*) noexcept;
+      void (*__complete_)(__task*, const ::io_uring_cqe*) noexcept;
     };
 
     // This is the base class for all io operations.
@@ -163,11 +165,11 @@ namespace exec {
       ::iovec __buffer_ = {.iov_base = &__value_, .iov_len = sizeof(__value_)};
 #endif
 
-      static bool __ready_(void*) noexcept;
+      static bool __ready_(__task*) noexcept;
 
-      static void __submit_(void* __pointer, ::io_uring_sqe* __entry) noexcept;
+      static void __submit_(__task* __pointer, ::io_uring_sqe* __entry) noexcept;
 
-      static void __complete_(void* __pointer, const ::io_uring_cqe* __entry) noexcept;
+      static void __complete_(__task* __pointer, const ::io_uring_cqe* __entry) noexcept;
 
       static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
 
@@ -180,7 +182,7 @@ namespace exec {
 
     class __context : __context_base {
      public:
-      explicit __context(unsigned __entries, unsigned __flags = 0);
+      explicit __context(unsigned __entries = 1024, unsigned __flags = 0);
 
       void run();
 
