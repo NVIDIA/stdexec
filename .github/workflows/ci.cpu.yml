@@ -25,8 +25,9 @@ jobs:
         with:
           cc: gcc-11
           checks: build test
+          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
           prebuild_command: |
-            apt update && apt install -y --no-install-recommends git;
+            apt update && apt install -y --no-install-recommends git libtbb-dev;
 
   build-cpu-clang12:
     runs-on: ubuntu-latest
@@ -42,5 +43,6 @@ jobs:
           cc: clang-12
           checks: build test
           cxxflags: "-stdlib=libc++"
+          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
           prebuild_command: |
-            apt update && apt install -y --no-install-recommends git;
+            apt update && apt install -y --no-install-recommends git libtbb-dev;
