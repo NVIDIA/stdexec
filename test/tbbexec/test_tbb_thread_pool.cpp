@@ -81,11 +81,13 @@ TEST_CASE(
   "exec::on works when changing threads with tbbexec::tbb_thread_pool",
   "[adaptors][exec::on]") {
   tbbexec::tbb_thread_pool pool;
+  auto pool_sched = pool.get_scheduler();
   CHECK(
-    stdexec::get_forward_progress_guarantee(pool) == stdexec::forward_progress_guarantee::parallel);
+    stdexec::get_forward_progress_guarantee(pool_sched)
+    == stdexec::forward_progress_guarantee::parallel);
   bool called{false};
   // launch some work on the thread pool
-  ex::sender auto snd = exec::on(pool.get_scheduler(), ex::just()) //
+  ex::sender auto snd = exec::on(pool_sched, ex::just()) //
                       | ex::then([&] { called = true; }) | _with_scheduler();
   stdexec::sync_wait(std::move(snd));
   // the work should be executed

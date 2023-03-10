@@ -394,10 +394,13 @@ namespace tbbexec {
           return bulk_sender_t<S, Shape, Fn>{*sch.pool_, (S&&) sndr, shape, (Fn&&) fun};
         }
 
-        friend constexpr stdexec::forward_progress_guarantee tag_invoke(
-          stdexec::get_forward_progress_guarantee_t,
-          const DerivedPoolType& pool) noexcept {
-          return pool.forward_progress_guarantee();
+        constexpr stdexec::forward_progress_guarantee forward_progress_guarantee() const noexcept {
+          return pool_->forward_progress_guarantee();
+        }
+
+        friend constexpr stdexec::forward_progress_guarantee
+          tag_invoke(stdexec::get_forward_progress_guarantee_t, scheduler self) noexcept {
+          return self.forward_progress_guarantee();
         }
 
         friend thread_pool_base;
