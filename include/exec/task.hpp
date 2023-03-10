@@ -435,7 +435,6 @@ namespace exec {
         __coro::coroutine_handle<>
           await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept {
           static_assert(stdexec::__one_of<_ParentPromise, _ParentPromise2, void>);
-          static_assert(__indirect_scheduler_provider<_ParentPromise2>);
           __context_.emplace(__coro_.promise().__context_, __parent.promise());
           __coro_.promise().set_continuation(__parent);
           if constexpr (requires { __coro_.promise().stop_requested() ? 0 : 1; }) {
