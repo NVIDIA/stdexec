@@ -448,7 +448,13 @@ class operation : task_base {
         };
     }
 
-    friend void tag_invoke(stdexec::start_t, operation& op) noexcept { op.pool_.enqueue(&op); }
+    void enqueue() noexcept {
+      pool_.enqueue(this);
+    }
+
+    friend void tag_invoke(stdexec::start_t, operation& op) noexcept {
+      op.enqueue();
+    }
 };
 
 
