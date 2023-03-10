@@ -10,6 +10,7 @@ using stdexec::sync_wait;
 
 //! Sender that throws exception when connected
 struct throwing_sender {
+  using is_sender = void;
   using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
   template <class Receiver>
@@ -23,7 +24,7 @@ struct throwing_sender {
 
   template <class Receiver>
   friend auto tag_invoke(ex::connect_t, throwing_sender&& self, Receiver&& rcvr)
-      -> operation<std::decay_t<Receiver>> {
+    -> operation<std::decay_t<Receiver>> {
     throw std::logic_error("cannot connect");
     return {std::forward<Receiver>(rcvr)};
   }
@@ -58,7 +59,8 @@ TEST_CASE("spawn will start sender before returning", "[async_scope][spawn]") {
 
 #if !NO_TESTS_WITH_EXCEPTIONS
 TEST_CASE(
-    "spawn will propagate exceptions encountered during op creation", "[async_scope][spawn]") {
+  "spawn will propagate exceptions encountered during op creation",
+  "[async_scope][spawn]") {
   async_scope scope;
   try {
     scope.spawn(throwing_sender{} | ex::then([&] { FAIL("work should not be executed"); }));
@@ -71,8 +73,9 @@ TEST_CASE(
 }
 #endif
 
-TEST_CASE("TODO: spawn will keep the scope non-empty until the work is executed",
-    "[async_scope][spawn]") {
+TEST_CASE(
+  "TODO: spawn will keep the scope non-empty until the work is executed",
+  "[async_scope][spawn]") {
   impulse_scheduler sch;
   bool executed{false};
   async_scope scope;
@@ -100,7 +103,8 @@ TEST_CASE("TODO: spawn will keep the scope non-empty until the work is executed"
 }
 
 TEST_CASE(
-    "TODO: spawn will keep track on how many operations are in flight", "[async_scope][spawn]") {
+  "TODO: spawn will keep track on how many operations are in flight",
+  "[async_scope][spawn]") {
   impulse_scheduler sch;
   std::size_t num_executed{0};
   async_scope scope;
@@ -116,7 +120,7 @@ TEST_CASE(
     size_t num_expected_ops = i + 1;
     // TODO: reenable this
     // REQUIRE(P2519::__scope::op_count(scope) == num_expected_ops);
-    (void)num_expected_ops;
+    (void) num_expected_ops;
   }
 
   // Now execute the operations
@@ -125,7 +129,7 @@ TEST_CASE(
     size_t num_expected_ops = num_oper - i - 1;
     // TODO: reenable this
     // REQUIRE(P2519::__scope::op_count(scope) == num_expected_ops);
-    (void)num_expected_ops;
+    (void) num_expected_ops;
   }
 
   // The scope is empty after all the operations are executed
@@ -141,14 +145,20 @@ TEST_CASE("TODO: spawn work can be cancelled by cancelling the scope", "[async_s
   bool cancelled1{false};
   bool cancelled2{false};
 
-  scope.spawn(ex::on(sch, ex::just() | ex::let_stopped([&] {
-    cancelled1 = true;
-    return ex::just();
-  })));
-  scope.spawn(ex::on(sch, ex::just() | ex::let_stopped([&] {
-    cancelled2 = true;
-    return ex::just();
-  })));
+  scope.spawn(ex::on(
+    sch,
+    ex::just() //
+      | ex::let_stopped([&] {
+          cancelled1 = true;
+          return ex::just();
+        })));
+  scope.spawn(ex::on(
+    sch,
+    ex::just() //
+      | ex::let_stopped([&] {
+          cancelled2 = true;
+          return ex::just();
+        })));
 
   // TODO: reenable this
   // REQUIRE(P2519::__scope::op_count(scope) == 2);
@@ -180,22 +190,27 @@ concept is_spawn_worthy = requires(async_scope& scope, S&& snd) { scope.spawn(st
 TEST_CASE("spawn accepts void senders", "[async_scope][spawn]") {
   static_assert(is_spawn_worthy<decltype(ex::just())>);
 }
+
 TEST_CASE("spawn doesn't accept non-void senders", "[async_scope][spawn]") {
   static_assert(!is_spawn_worthy<decltype(ex::just(13))>);
   static_assert(!is_spawn_worthy<decltype(ex::just(3.14))>);
   static_assert(!is_spawn_worthy<decltype(ex::just("hello"))>);
 }
+
 TEST_CASE("TODO: spawn doesn't accept senders of errors", "[async_scope][spawn]") {
   // TODO: check if just_error(exception_ptr) should be allowed
   static_assert(is_spawn_worthy<decltype(ex::just_error(std::exception_ptr{}))>);
   static_assert(!is_spawn_worthy<decltype(ex::just_error(std::error_code{}))>);
   static_assert(!is_spawn_worthy<decltype(ex::just_error(-1))>);
 }
+
 TEST_CASE("spawn should accept senders that send stopped signal", "[async_scope][spawn]") {
   static_assert(is_spawn_worthy<decltype(ex::just_stopped())>);
 }
+
 TEST_CASE(
-    "TODO: spawn works with senders that complete with stopped signal", "[async_scope][spawn]") {
+  "TODO: spawn works with senders that complete with stopped signal",
+  "[async_scope][spawn]") {
   impulse_scheduler sch;
   async_scope scope;
 

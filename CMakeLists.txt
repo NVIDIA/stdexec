@@ -116,6 +116,7 @@ set_target_properties(stdexec PROPERTIES
                       SOVERSION "${STDEXEC_VERSION_MAJOR}")
 
 # Declare the public include directories
+include(GNUInstallDirs)
 target_include_directories(stdexec INTERFACE
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
                            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -300,7 +301,6 @@ endif()
 # Install targets ------------------------------------------------------------
 
 include(CPack)
-include(GNUInstallDirs)
 
 install(TARGETS stdexec
         DESTINATION ${CMAKE_INSTALL_LIBDIR}

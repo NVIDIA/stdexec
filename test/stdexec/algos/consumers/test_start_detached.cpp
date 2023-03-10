@@ -45,12 +45,14 @@ TEST_CASE("start_detached works with multi-value senders", "[consumers][start_de
 // We don't want that
 
 TEST_CASE(
-    "start_detached works with sender ending with `set_stopped`", "[consumers][start_detached]") {
+  "start_detached works with sender ending with `set_stopped`",
+  "[consumers][start_detached]") {
   ex::start_detached(ex::just_stopped());
 }
 
-TEST_CASE("start_detached works with senders that do not complete immediately",
-    "[consumers][start_detached]") {
+TEST_CASE(
+  "start_detached works with senders that do not complete immediately",
+  "[consumers][start_detached]") {
   impulse_scheduler sched;
   bool called{false};
   // Start the sender
@@ -68,7 +70,7 @@ TEST_CASE("start_detached works when changing threads", "[consumers][start_detac
   {
     // lunch some work on the thread pool
     ex::sender auto snd = ex::transfer_just(pool.get_scheduler()) //
-                          | ex::then([&] { called.store(true); });
+                        | ex::then([&] { called.store(true); });
     ex::start_detached(std::move(snd));
   }
   // wait for the work to be executed, with timeout
@@ -81,15 +83,16 @@ TEST_CASE("start_detached works when changing threads", "[consumers][start_detac
 }
 
 struct custom_sender {
+  using is_sender = void;
   bool* called;
 
   template <class Receiver>
-    friend auto tag_invoke(ex::connect_t, custom_sender, Receiver&& rcvr) {
-      return ex::connect(ex::schedule(inline_scheduler{}), (Receiver&&) rcvr);
-    }
+  friend auto tag_invoke(ex::connect_t, custom_sender, Receiver&& rcvr) {
+    return ex::connect(ex::schedule(inline_scheduler{}), (Receiver&&) rcvr);
+  }
   template <class Env>
-    friend auto tag_invoke(ex::get_completion_signatures_t, custom_sender, Env) noexcept
-      -> ex::completion_signatures<ex::set_value_t()>;
+  friend auto tag_invoke(ex::get_completion_signatures_t, custom_sender, Env) noexcept
+    -> ex::completion_signatures<ex::set_value_t()>;
 
   friend void tag_invoke(ex::start_detached_t, custom_sender sndr) {
     *sndr.called = true;
@@ -104,23 +107,26 @@ struct custom_scheduler {
   struct sender : ex::schedule_result_t<inline_scheduler> {
     struct env {
       template <class Tag>
-        friend custom_scheduler tag_invoke(ex::get_completion_scheduler_t<Tag>, const env&) noexcept {
-          return {};
-        }
+      friend custom_scheduler tag_invoke(ex::get_completion_scheduler_t<Tag>, const env&) noexcept {
+        return {};
+      }
     };
+
     friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
       return {};
     }
   };
+
   friend sender tag_invoke(ex::schedule_t, custom_scheduler) noexcept {
     return {};
   }
+
   bool operator==(const custom_scheduler&) const = default;
 
   template <class Sender>
-    friend void tag_invoke(ex::start_detached_t, custom_scheduler, Sender&&) {
-      // Drop the sender on the floor
-    }
+  friend void tag_invoke(ex::start_detached_t, custom_scheduler, Sender&&) {
+    // Drop the sender on the floor
+  }
 };
 
 TEST_CASE("start_detached can be customized on sender", "[consumers][start_detached]") {
@@ -133,7 +139,7 @@ TEST_CASE("start_detached can be customized on sender", "[consumers][start_detac
 TEST_CASE("start_detached can be customized on scheduler", "[consumers][start_detached]") {
   bool called = false;
   ex::start_detached(
-    ex::just() | ex::then([&]{ called = true; }),
+    ex::just() | ex::then([&] { called = true; }),
     exec::make_env(exec::with(ex::get_scheduler, custom_scheduler{})));
   CHECK_FALSE(called);
 }

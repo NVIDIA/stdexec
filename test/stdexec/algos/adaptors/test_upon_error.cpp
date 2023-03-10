@@ -25,17 +25,21 @@ namespace ex = stdexec;
 TEST_CASE("upon_error returns a sender", "[adaptors][upon_error]") {
   auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) {});
   static_assert(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("upon_error with environment returns a sender", "[adaptors][upon_error]") {
   auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) {});
-  static_assert(ex::sender<decltype(snd), empty_env>);
-  (void)snd;
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
+  (void) snd;
 }
+
 TEST_CASE("upon_error simple example", "[adaptors][upon_error]") {
   bool called{false};
-  auto snd = ex::upon_error(
-      ex::just_error(std::exception_ptr{}), [&](std::exception_ptr) { called = true; return 0; });
+  auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [&](std::exception_ptr) {
+    called = true;
+    return 0;
+  });
   auto op = ex::connect(std::move(snd), expect_value_receiver{0});
   ex::start(op);
   // The receiver checks that it's called

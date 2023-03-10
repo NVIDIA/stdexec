@@ -12,7 +12,7 @@ TEST_CASE("let_value returns a sender", "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::let_value(ex::schedule(stream_ctx.get_scheduler()), [] { return ex::just(); });
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("let_value executes on GPU", "[cuda][stream][adaptors][let_value]") {
@@ -40,7 +40,7 @@ TEST_CASE("let_value accepts values on GPU", "[cuda][stream][adaptors][let_value
   auto flags = flags_storage.get();
 
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-           | ex::then([]() -> int { return 42; })
+           | ex::then([]() -> int { return 42; })     //
            | ex::let_value([=](int val) {
                if (is_on_gpu()) {
                  if (val == 42) {
@@ -78,9 +78,7 @@ TEST_CASE("let_value returns values on GPU", "[cuda][stream][adaptors][let_value
   nvexec::stream_context stream_ctx{};
 
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-           | ex::let_value([=]() {
-               return ex::just(is_on_gpu());
-             });
+           | ex::let_value([=]() { return ex::just(is_on_gpu()); });
   const auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
   REQUIRE(result == 1);
@@ -116,9 +114,8 @@ TEST_CASE("let_value can succeed a sender", "[cuda][stream][adaptors][let_value]
   flags_storage_t flags_storage{};
   auto flags = flags_storage.get();
 
-  auto snd = ex::schedule(sch)
-           | a_sender([]() noexcept {})
-           | ex::let_value([=] {
+  auto snd = ex::schedule(sch) //
+           | a_sender([]() noexcept {}) | ex::let_value([=] {
                if (is_on_gpu()) {
                  flags.set();
                }
@@ -129,4 +126,3 @@ TEST_CASE("let_value can succeed a sender", "[cuda][stream][adaptors][let_value]
 
   REQUIRE(flags_storage.all_set_once());
 }
-

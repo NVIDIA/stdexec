@@ -24,85 +24,113 @@ STDEXEC_PRAGMA_IGNORE("-Wunused-function")
 namespace ex = stdexec;
 
 namespace {
-struct uncustomized_scheduler {
-  struct operation_state {
-    friend void tag_invoke(ex::start_t, operation_state& self) noexcept {}
-  };
+  struct uncustomized_scheduler {
+    struct operation_state {
+      friend void tag_invoke(ex::start_t, operation_state& self) noexcept {
+      }
+    };
 
-  struct sender {
-    using completion_signatures =
+    struct sender {
+      using is_sender = void;
+      using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
-    template <typename R>
-    friend operation_state tag_invoke(ex::connect_t, sender, R&&) {
-      return {};
-    }
 
-    struct env {
-      template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
-      friend uncustomized_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, const env&) noexcept {
+      template <typename R>
+      friend operation_state tag_invoke(ex::connect_t, sender, R&&) {
+        return {};
+      }
+
+      struct env {
+        template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
+        friend uncustomized_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, const env&) //
+          noexcept {
+          return {};
+        }
+      };
+
+      friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
         return {};
       }
     };
 
-    friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
+    friend sender tag_invoke(ex::schedule_t, uncustomized_scheduler) {
       return {};
+    }
+
+    friend bool operator==(uncustomized_scheduler, uncustomized_scheduler) noexcept {
+      return true;
+    }
+
+    friend bool operator!=(uncustomized_scheduler, uncustomized_scheduler) noexcept {
+      return false;
     }
   };
 
-  friend sender tag_invoke(ex::schedule_t, uncustomized_scheduler) { return {}; }
-  friend bool operator==(uncustomized_scheduler, uncustomized_scheduler) noexcept { return true; }
-  friend bool operator!=(uncustomized_scheduler, uncustomized_scheduler) noexcept { return false; }
-};
+  template <ex::forward_progress_guarantee fpg>
+  struct customized_scheduler {
+    struct operation_state {
+      friend void tag_invoke(ex::start_t, operation_state& self) noexcept {
+      }
+    };
 
-template <ex::forward_progress_guarantee fpg>
-struct customized_scheduler {
-  struct operation_state {
-    friend void tag_invoke(ex::start_t, operation_state& self) noexcept {}
-  };
-
-  struct sender {
-    using completion_signatures =
+    struct sender {
+      using is_sender = void;
+      using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
-    template <typename R>
-    friend operation_state tag_invoke(ex::connect_t, sender, R&&) {
-      return {};
-    }
 
-    struct env {
-      template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
-      friend customized_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, const env&) noexcept {
+      template <typename R>
+      friend operation_state tag_invoke(ex::connect_t, sender, R&&) {
+        return {};
+      }
+
+      struct env {
+        template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
+        friend customized_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, const env&) //
+          noexcept {
+          return {};
+        }
+      };
+
+      friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
         return {};
       }
     };
 
-    friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
+    friend sender tag_invoke(ex::schedule_t, customized_scheduler) {
       return {};
     }
+
+    friend bool operator==(customized_scheduler, customized_scheduler) noexcept {
+      return true;
+    }
+
+    friend bool operator!=(customized_scheduler, customized_scheduler) noexcept {
+      return false;
+    }
+
+    constexpr friend ex::forward_progress_guarantee
+      tag_invoke(ex::get_forward_progress_guarantee_t, customized_scheduler) {
+      return fpg;
+    }
   };
-
-  friend sender tag_invoke(ex::schedule_t, customized_scheduler) { return {}; }
-  friend bool operator==(customized_scheduler, customized_scheduler) noexcept { return true; }
-  friend bool operator!=(customized_scheduler, customized_scheduler) noexcept { return false; }
-
-  constexpr friend ex::forward_progress_guarantee tag_invoke(
-      ex::get_forward_progress_guarantee_t, customized_scheduler) {
-    return fpg;
-  }
-};
-}
+} // namespace
 
 TEST_CASE("get_forward_progress_guarantee ", "[sched_queries][get_forward_progress_guarantee]") {
-  STATIC_REQUIRE(ex::get_forward_progress_guarantee(uncustomized_scheduler{}) ==
-                 ex::forward_progress_guarantee::weakly_parallel);
-  STATIC_REQUIRE(ex::get_forward_progress_guarantee(
-                     customized_scheduler<ex::forward_progress_guarantee::concurrent>{}) ==
-                 ex::forward_progress_guarantee::concurrent);
-  STATIC_REQUIRE(ex::get_forward_progress_guarantee(
-                     customized_scheduler<ex::forward_progress_guarantee::parallel>{}) ==
-                 ex::forward_progress_guarantee::parallel);
-  STATIC_REQUIRE(ex::get_forward_progress_guarantee(
-                     customized_scheduler<ex::forward_progress_guarantee::weakly_parallel>{}) ==
-                 ex::forward_progress_guarantee::weakly_parallel);
+  STATIC_REQUIRE(
+    ex::get_forward_progress_guarantee(uncustomized_scheduler{})
+    == ex::forward_progress_guarantee::weakly_parallel);
+  STATIC_REQUIRE(
+    ex::get_forward_progress_guarantee(
+      customized_scheduler<ex::forward_progress_guarantee::concurrent>{})
+    == ex::forward_progress_guarantee::concurrent);
+  STATIC_REQUIRE(
+    ex::get_forward_progress_guarantee(
+      customized_scheduler<ex::forward_progress_guarantee::parallel>{})
+    == ex::forward_progress_guarantee::parallel);
+  STATIC_REQUIRE(
+    ex::get_forward_progress_guarantee(
+      customized_scheduler<ex::forward_progress_guarantee::weakly_parallel>{})
+    == ex::forward_progress_guarantee::weakly_parallel);
 }
 
 STDEXEC_PRAGMA_POP()

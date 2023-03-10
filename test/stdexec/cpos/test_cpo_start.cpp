@@ -22,24 +22,42 @@ namespace ex = stdexec;
 
 struct my_oper : immovable {
   bool started_{false};
-  friend void tag_invoke(ex::start_t, my_oper& self) { self.started_ = true; }
+
+  friend void tag_invoke(ex::start_t, my_oper& self) noexcept {
+    self.started_ = true;
+  }
 };
 
 struct op_value /*: immovable*/ { // Intentionally movable!
   bool* started_;
-  friend void tag_invoke(ex::start_t, op_value self) { *self.started_ = true; }
+
+  friend void tag_invoke(ex::start_t, op_value self) noexcept {
+    *self.started_ = true;
+  }
 };
+
 struct op_rvalref : immovable {
   bool* started_;
-  friend void tag_invoke(ex::start_t, op_rvalref&& self) { *self.started_ = true; }
+
+  friend void tag_invoke(ex::start_t, op_rvalref&& self) noexcept {
+    *self.started_ = true;
+  }
 };
+
 struct op_ref : immovable {
   bool* started_;
-  friend void tag_invoke(ex::start_t, op_ref& self) { *self.started_ = true; }
+
+  friend void tag_invoke(ex::start_t, op_ref& self) noexcept {
+    *self.started_ = true;
+  }
 };
+
 struct op_cref : immovable {
   bool* started_;
-  friend void tag_invoke(ex::start_t, const op_cref& self) { *self.started_ = true; }
+
+  friend void tag_invoke(ex::start_t, const op_cref& self) noexcept {
+    *self.started_ = true;
+  }
 };
 
 TEST_CASE("can call start on an operation state", "[cpo][cpo_start]") {
@@ -55,10 +73,12 @@ TEST_CASE("can call start on an oper with plain value type", "[cpo][cpo_start]")
   ex::start(op);
   REQUIRE(started);
 }
+
 TEST_CASE("can call start on an oper with r-value ref type", "[cpo][cpo_start]") {
   static_assert(
-      !std::invocable<ex::start_t, op_rvalref&&>, "should not be able to call start on op_rvalref");
+    !std::invocable<ex::start_t, op_rvalref&&>, "should not be able to call start on op_rvalref");
 }
+
 TEST_CASE("can call start on an oper with ref type", "[cpo][cpo_start]") {
   static_assert(std::invocable<ex::start_t, op_ref&>, "cannot call start on op_ref");
   bool started{false};
@@ -66,6 +86,7 @@ TEST_CASE("can call start on an oper with ref type", "[cpo][cpo_start]") {
   ex::start(op);
   REQUIRE(started);
 }
+
 TEST_CASE("can call start on an oper with const ref type", "[cpo][cpo_start]") {
   static_assert(std::invocable<ex::start_t, const op_cref&>, "cannot call start on op_cref");
   bool started{false};

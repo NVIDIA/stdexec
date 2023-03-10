@@ -40,8 +40,8 @@
 // struct recv_set_value_noexcept {
 //   friend void tag_invoke(ex::set_value_t, recv_set_value_noexcept) noexcept {}
 //   friend void tag_invoke(ex::set_stopped_t, recv_set_value_noexcept) noexcept {}
-//   friend void tag_invoke(ex::set_error_t, recv_set_value_noexcept, std::exception_ptr) noexcept {}
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_set_value_noexcept&) noexcept {
+//   friend void tag_invoke(ex::set_error_t, recv_set_value_noexcept, std::exception_ptr) noexcept
+//   {} friend empty_env tag_invoke(ex::get_env_t, const recv_set_value_noexcept&) noexcept {
 //     return {};
 //   }
 // };
@@ -58,9 +58,10 @@
 // };
 // struct recv_set_stopped_except {
 //   friend void tag_invoke(ex::set_value_t, recv_set_stopped_except) noexcept {}
-//   friend void tag_invoke(ex::set_stopped_t, recv_set_stopped_except) { throw std::logic_error{"err"}; }
-//   friend void tag_invoke(ex::set_error_t, recv_set_stopped_except, std::exception_ptr) noexcept {}
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_set_stopped_except&) noexcept {
+//   friend void tag_invoke(ex::set_stopped_t, recv_set_stopped_except) { throw
+//   std::logic_error{"err"}; } friend void tag_invoke(ex::set_error_t, recv_set_stopped_except,
+//   std::exception_ptr) noexcept {} friend empty_env tag_invoke(ex::get_env_t, const
+//   recv_set_stopped_except&) noexcept {
 //     return {};
 //   }
 // };

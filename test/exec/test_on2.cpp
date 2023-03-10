@@ -29,12 +29,15 @@ inline auto _with_scheduler(Sched sched = {}) {
   return exec::write(exec::with(ex::get_scheduler, std::move(sched)));
 }
 
-TEST_CASE("exec::on transitions back to the receiver's scheduler when completing with a value", "[adaptors][exec::on]") {
+TEST_CASE(
+  "exec::on transitions back to the receiver's scheduler when completing with a value",
+  "[adaptors][exec::on]") {
   bool called{false};
-  auto snd_base = ex::just() | ex::then([&]() -> int {
-    called = true;
-    return 19;
-  });
+  auto snd_base = ex::just() //
+                | ex::then([&]() -> int {
+                    called = true;
+                    return 19;
+                  });
 
   int recv_value{0};
   impulse_scheduler sched1;
@@ -60,12 +63,15 @@ TEST_CASE("exec::on transitions back to the receiver's scheduler when completing
   CHECK(recv_value == 19);
 }
 
-TEST_CASE("exec::on transitions back to the receiver's scheduler when completing with an error", "[adaptors][exec::on]") {
+TEST_CASE(
+  "exec::on transitions back to the receiver's scheduler when completing with an error",
+  "[adaptors][exec::on]") {
   bool called{false};
-  auto snd_base = ex::just() | ex::let_value([&]() {
-    called = true;
-    return ex::just_error(19);
-  });
+  auto snd_base = ex::just() //
+                | ex::let_value([&]() {
+                    called = true;
+                    return ex::just_error(19);
+                  });
 
   int recv_error{0};
   impulse_scheduler sched1;
@@ -91,20 +97,21 @@ TEST_CASE("exec::on transitions back to the receiver's scheduler when completing
   CHECK(recv_error == 19);
 }
 
-TEST_CASE("inner on transitions back to outer on's scheduler when completing with a value", "[adaptors][exec::on]") {
+TEST_CASE(
+  "inner on transitions back to outer on's scheduler when completing with a value",
+  "[adaptors][exec::on]") {
   bool called{false};
-  auto snd_base = ex::just() | ex::then([&]() -> int {
-    called = true;
-    return 19;
-  });
+  auto snd_base = ex::just() //
+                | ex::then([&]() -> int {
+                    called = true;
+                    return 19;
+                  });
 
   int recv_value{0};
   impulse_scheduler sched1;
   impulse_scheduler sched2;
   impulse_scheduler sched3;
-  auto snd =
-      exec::on(sched1, exec::on(sched2, std::move(snd_base)))
-    | _with_scheduler(sched3);
+  auto snd = exec::on(sched1, exec::on(sched2, std::move(snd_base))) | _with_scheduler(sched3);
   auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task
@@ -142,20 +149,21 @@ TEST_CASE("inner on transitions back to outer on's scheduler when completing wit
   CHECK(recv_value == 19);
 }
 
-TEST_CASE("inner on transitions back to outer on's scheduler when completing with an error", "[adaptors][exec::on]") {
+TEST_CASE(
+  "inner on transitions back to outer on's scheduler when completing with an error",
+  "[adaptors][exec::on]") {
   bool called{false};
-  auto snd_base = ex::just() | ex::let_value([&]() {
-    called = true;
-    return ex::just_error(19);
-  });
+  auto snd_base = ex::just() //
+                | ex::let_value([&]() {
+                    called = true;
+                    return ex::just_error(19);
+                  });
 
   int recv_error{0};
   impulse_scheduler sched1;
   impulse_scheduler sched2;
   impulse_scheduler sched3;
-  auto snd =
-      exec::on(sched1, exec::on(sched2, std::move(snd_base)))
-    | _with_scheduler(sched3);
+  auto snd = exec::on(sched1, exec::on(sched2, std::move(snd_base))) | _with_scheduler(sched3);
   auto op = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task
@@ -193,7 +201,9 @@ TEST_CASE("inner on transitions back to outer on's scheduler when completing wit
   CHECK(recv_error == 19);
 }
 
-TEST_CASE("exec::on(closure) transitions onto and back off of the scheduler when completing with a value", "[adaptors][exec::on]") {
+TEST_CASE(
+  "exec::on(closure) transitions onto and back off of the scheduler when completing with a value",
+  "[adaptors][exec::on]") {
   bool called{false};
   auto closure = ex::then([&]() -> int {
     called = true;
@@ -203,10 +213,7 @@ TEST_CASE("exec::on(closure) transitions onto and back off of the scheduler when
   int recv_value{0};
   impulse_scheduler sched1;
   impulse_scheduler sched2;
-  auto snd =
-      ex::just()
-    | exec::on(sched1, std::move(closure))
-    | _with_scheduler(sched2);
+  auto snd = ex::just() | exec::on(sched1, std::move(closure)) | _with_scheduler(sched2);
   auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task
@@ -227,7 +234,10 @@ TEST_CASE("exec::on(closure) transitions onto and back off of the scheduler when
   CHECK(recv_value == 19);
 }
 
-TEST_CASE("exec::on(closure) transitions onto and back off of the scheduler when completing with an error", "[adaptors][exec::on]") {
+TEST_CASE(
+  "exec::on(closure) transitions onto and back off of the scheduler when completing with "
+  "an error",
+  "[adaptors][exec::on]") {
   bool called{false};
   auto closure = ex::let_value([&]() {
     called = true;
@@ -237,10 +247,7 @@ TEST_CASE("exec::on(closure) transitions onto and back off of the scheduler when
   int recv_error{0};
   impulse_scheduler sched1;
   impulse_scheduler sched2;
-  auto snd =
-      ex::just()
-    | exec::on(sched1, std::move(closure))
-    | _with_scheduler(sched2);
+  auto snd = ex::just() | exec::on(sched1, std::move(closure)) | _with_scheduler(sched2);
   auto op = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task
@@ -261,7 +268,9 @@ TEST_CASE("exec::on(closure) transitions onto and back off of the scheduler when
   CHECK(recv_error == 19);
 }
 
-TEST_CASE("inner on(closure) transitions back to outer on's scheduler when completing with a value", "[adaptors][exec::on]") {
+TEST_CASE(
+  "inner on(closure) transitions back to outer on's scheduler when completing with a value",
+  "[adaptors][exec::on]") {
   bool called{false};
   auto closure = ex::then([&](int i) -> int {
     called = true;
@@ -272,10 +281,8 @@ TEST_CASE("inner on(closure) transitions back to outer on's scheduler when compl
   impulse_scheduler sched1;
   impulse_scheduler sched2;
   impulse_scheduler sched3;
-  auto snd =
-      exec::on(sched1, ex::just(19))
-    | exec::on(sched2, std::move(closure))
-    | _with_scheduler(sched3);
+  auto snd = exec::on(sched1, ex::just(19)) | exec::on(sched2, std::move(closure))
+           | _with_scheduler(sched3);
   auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task
@@ -313,7 +320,9 @@ TEST_CASE("inner on(closure) transitions back to outer on's scheduler when compl
   CHECK(recv_value == 19);
 }
 
-TEST_CASE("inner on(closure) transitions back to outer on's scheduler when completing with an error", "[adaptors][exec::on]") {
+TEST_CASE(
+  "inner on(closure) transitions back to outer on's scheduler when completing with an error",
+  "[adaptors][exec::on]") {
   bool called{false};
   auto closure = ex::let_value([&](int i) {
     called = true;
@@ -324,10 +333,8 @@ TEST_CASE("inner on(closure) transitions back to outer on's scheduler when compl
   impulse_scheduler sched1;
   impulse_scheduler sched2;
   impulse_scheduler sched3;
-  auto snd =
-      exec::on(sched1, ex::just(19))
-    | exec::on(sched2, std::move(closure))
-    | _with_scheduler(sched3);
+  auto snd = exec::on(sched1, ex::just(19)) | exec::on(sched2, std::move(closure))
+           | _with_scheduler(sched3);
   auto op = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
   ex::start(op);
   // Up until this point, the scheduler didn't start any task

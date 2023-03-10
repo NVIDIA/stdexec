@@ -23,22 +23,24 @@
 #include <barrier>
 
 template <class Shape>
-std::pair<Shape, Shape>
-even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
+std::pair<Shape, Shape> even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
   const auto avg_per_thread = n / size;
   const auto n_big_share = avg_per_thread + 1;
   const auto big_shares = n % size;
   const auto is_big_share = rank < big_shares;
   const auto begin = is_big_share ? n_big_share * rank
-                                  : n_big_share * big_shares +
-                                      (rank - big_shares) * avg_per_thread;
+                                  : n_big_share * big_shares + (rank - big_shares) * avg_per_thread;
   const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
 
   return std::make_pair(begin, end);
 }
 
-void run_std(float dt, bool write_vtk, std::size_t n_iterations,
-             grid_t &grid, std::string_view method) {
+void run_std(
+  float dt,
+  bool write_vtk,
+  std::size_t n_iterations,
+  grid_t &grid,
+  std::string_view method) {
   fields_accessor accessor = grid.accessor();
 
   const std::size_t n_threads = std::thread::hardware_concurrency();
@@ -63,13 +65,11 @@ void run_std(float dt, bool write_vtk, std::size_t n_iterations,
 
       const bool writer_thread = write_vtk && tid == 0;
       auto writer = dump_vtk(writer_thread, accessor);
-      
+
       barrier.arrive_and_wait();
       begins[tid] = std::chrono::system_clock::now();
 
-      for (std::size_t compute_step = 0;
-           compute_step < n_iterations;
-           compute_step++) {
+      for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
         for (std::size_t i = begin; i < end; i++) {
           h_updater(i);
         }
@@ -101,8 +101,5 @@ void run_std(float dt, bool write_vtk, std::size_t n_iterations,
   }
 
   report_performance(
-      grid.cells, 
-      n_iterations, 
-      method, 
-      std::chrono::duration<double>(end - begin).count());
+    grid.cells, n_iterations, method, std::chrono::duration<double>(end - begin).count());
 }
