@@ -350,7 +350,13 @@ public:
             }
         };
 
-        friend sender tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept { return sender{*s.pool_}; }
+        sender make_sender() const {
+          return sender{*pool_};
+        }
+
+        friend sender tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept {
+          return s.make_sender();
+        }
 
         template <stdexec::sender Sender, std::integral Shape, class Fun>
         using bulk_sender_t =
