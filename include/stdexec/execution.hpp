@@ -1772,13 +1772,9 @@ namespace stdexec {
 
         // Forward get_env query to the coroutine promise
         friend __env_t<_Promise&> tag_invoke(get_env_t, const __t& __self) {
-          if constexpr (__callable<get_env_t, _Promise&>) {
-            auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
-              __self.__continuation_.address());
-            return get_env(__continuation.promise());
-          } else {
-            return empty_env{};
-          }
+          auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
+            __self.__continuation_.address());
+          return get_env(__continuation.promise());
         }
       };
     };
@@ -4407,7 +4403,7 @@ namespace stdexec {
             template <class _CPO>
             friend __scheduler
               tag_invoke(get_completion_scheduler_t<_CPO>, const __env& __self) noexcept {
-              return __scheduler{__self.__loop_};
+              return __self.__loop_->get_scheduler();
             }
           };
 
@@ -5833,7 +5829,6 @@ namespace stdexec {
           __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
           __rcvr.__loop_->finish();
         } catch (...) {
-
           __rcvr.__set_error(std::current_exception());
         }
 
