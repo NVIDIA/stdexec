@@ -36,14 +36,15 @@ namespace exec {
   using __schedule_after::schedule_after_t;
   inline constexpr schedule_after_t schedule_after{};
 
-  template <class _Scheduler>
-  concept __has_schedule_after = requires(_Scheduler&& __sched) {
-    { schedule_after((_Scheduler&&) __sched) } -> stdexec::sender;
+  template <class _Scheduler, class _Duration>
+  concept __has_schedule_after = requires(_Scheduler&& __sched, _Duration&& __duration) {
+    { schedule_after((_Scheduler&&) __sched, __duration) } -> stdexec::sender;
   };
 
   // TODO: Add more requirements such as __has_schedule_at or __has_now
   template <class _Scheduler>
-  concept timed_scheduler = stdexec::scheduler<_Scheduler> && __has_schedule_after<_Scheduler>;
+  concept timed_scheduler =
+    stdexec::scheduler<_Scheduler> && __has_schedule_after<_Scheduler, std::chrono::seconds>;
 
   template <timed_scheduler _Scheduler>
   using schedule_after_result_t = stdexec::__call_result_t<schedule_after_t, _Scheduler>;
