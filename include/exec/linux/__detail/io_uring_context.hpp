@@ -701,4 +701,16 @@ namespace exec { namespace __io_uring {
     std::chrono::nanoseconds __duration) {
     return __schedule_after_sender{.__env_ = {.__sched_ = __sched}, .__duration_ = __duration};
   }
+
+  template <class _Clock, class _Duration>
+  __schedule_after_sender tag_invoke(
+    exec::schedule_at_t,
+    const __scheduler& __sched,
+    std::chrono::time_point<_Clock, _Duration> __time_point) {
+    auto __duration = __time_point - _Clock::now();
+    if (__duration < std::chrono::nanoseconds(1)) {
+      __duration = std::chrono::nanoseconds(1);
+    }
+    return __schedule_after_sender{.__env_ = {.__sched_ = __sched}, .__duration_ = __duration};
+  }
 }}
