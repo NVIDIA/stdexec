@@ -51,6 +51,12 @@ struct __exec_system_sender_impl {
   decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_)) pool_sender_;
 };
 
+// bulk function for scheduler to transmit from, will wrap actual function stub stored in real type
+using bulk_function = void(long);
+
+struct __exec_system_bulk_sender_impl {
+  decltype(stdexec::bulk(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_), std::declval<long>(), std::declval<bulk_function*>()) ) pool_bulk_sender_;
+};
 
 
 // Phase 1 implementation, single single implementation
@@ -80,6 +86,8 @@ namespace exec {
 
   class system_scheduler;
   class system_sender;
+  template<stdexec::sender S, std::integral Shape, class Fn>
+  class system_bulk_sender;
 
   class system_context {
   public:
@@ -101,7 +109,7 @@ namespace exec {
     system_scheduler(__exec_system_scheduler_impl impl) : impl_(impl) {}
 
     bool operator==(const system_scheduler& rhs) const noexcept {
-      impl_.equals(&(rhs.impl_));
+      return impl_.equals(&(rhs.impl_));
     }
 
   private:
@@ -112,7 +120,14 @@ namespace exec {
       stdexec::get_forward_progress_guarantee_t,
       const system_scheduler&) noexcept;
 
-
+    template <stdexec::sender S, std::integral Shape, class Fn>
+    friend system_bulk_sender<S, Shape, Fn> tag_invoke(       //
+      stdexec::bulk_t,                                        //
+      const system_scheduler& sch,                            //
+      S&& sndr,                                               //
+      Shape shape,                                            //
+      Fn fun)                                                 //
+      noexcept;
 
     __exec_system_scheduler_impl impl_;
     friend class system_context;
@@ -168,17 +183,32 @@ namespace exec {
       return {snd.scheduler_impl_};
     }
 
-    /*
-    friend system_bulk_sender tag_invoke(
-      std::execution::bulk_t,
-      const system_scheduler&,
-      Sh&& sh,
-      F&& f) noexcept;
-    */
-
       // TODO: Do we need both? Should we get scheduler from sender or do we need sender at all?
     __exec_system_scheduler_impl scheduler_impl_;
     __exec_system_sender_impl impl_;
+  };
+
+   template<stdexec::sender S, std::integral Shape, class Fn>
+   class system_bulk_sender {
+  public:
+    using is_sender = void;
+    using completion_signatures =
+      stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t() >;
+
+    system_bulk_sender(__exec_system_scheduler_impl sched_impl, S&& snd, Shape&& shp, Fn&& fn) :
+        scheduler_impl_{sched_impl},
+        snd_(std::move(snd)),
+        shp_(std::move(shp)),
+        fn_(std::move(fn)) {
+      // TODO: On connect, connect input sender and construct operation that calls into the scheduler to
+      // construct a bulk sender with a very simple function type
+    }
+
+  private:
+    __exec_system_scheduler_impl scheduler_impl_;
+    S snd_;
+    Shape shp_;
+    Fn fn_;
   };
 
 
@@ -197,13 +227,16 @@ namespace exec {
     return sched.impl_.get_forward_progress_guarantee();
   }
 
-/*
-  friend system_bulk_sender tag_invoke(
-      std::execution::bulk_t,
-      const system_scheduler& sched,
-      Sh&& sh,
-      F&& f) noexcept {
-    return system_bulk_sender(impl.bulk_schedule(TBD…));
+
+  template <stdexec::sender S, std::integral Shape, class Fn>
+  system_bulk_sender<S, Shape, Fn> tag_invoke(              //
+    stdexec::bulk_t,                                        //
+    const system_scheduler& sch,                            //
+    S&& sndr,                                               //
+    Shape shape,                                            //
+    Fn fun)                                                 //
+    noexcept {
+    return system_bulk_sender<S, Shape, Fn>{
+      sch.impl_, (S&&) sndr, shape, (Fn&&) fun};
   }
-*/
 } // namespace exec
