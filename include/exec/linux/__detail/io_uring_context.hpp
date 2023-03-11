@@ -706,7 +706,7 @@ namespace exec { namespace __io_uring {
   __schedule_after_sender tag_invoke(
     exec::schedule_at_t,
     const __scheduler& __sched,
-    std::chrono::time_point<_Clock, _Duration> __time_point) {
+    const std::chrono::time_point<_Clock, _Duration>& __time_point) {
     auto __duration = __time_point - _Clock::now();
     if (__duration < std::chrono::nanoseconds(1)) {
       __duration = std::chrono::nanoseconds(1);
