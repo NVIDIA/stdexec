@@ -75,9 +75,9 @@ namespace exec {
 
   // TODO: Add more requirements such as __has_schedule_at or __has_now
   template <class _Scheduler, class _Clock = std::chrono::system_clock>
-  concept timed_scheduler = std::chrono::is_clock_v<_Clock> && stdexec::scheduler<_Scheduler>
-                         && __has_schedule_after<_Scheduler, typename _Clock::duration>
-                         && __has_schedule_at<_Scheduler, typename _Clock::time_point>;
+  concept timed_scheduler = /* std::chrono::is_clock_v<_Clock> && */
+    stdexec::scheduler<_Scheduler> && __has_schedule_after<_Scheduler, typename _Clock::duration>
+    && __has_schedule_at<_Scheduler, typename _Clock::time_point>;
 
   template <timed_scheduler _Scheduler>
   using schedule_after_result_t = stdexec::__call_result_t<schedule_after_t, _Scheduler>;
