@@ -20,15 +20,19 @@
 
 namespace exec {
   namespace __schedule_after {
+    using namespace stdexec;
+    using std::chrono::duration;
+
     struct schedule_after_t {
-      template <class _Scheduler, class _Duration>
-        requires stdexec::tag_invocable<schedule_after_t, _Scheduler, _Duration>
-              && stdexec::sender<
-                   stdexec::tag_invoke_result_t<schedule_after_t, _Scheduler, _Duration>>
-      auto operator()(_Scheduler&& __sched, _Duration&& __duration) const
-        noexcept(stdexec::nothrow_tag_invocable<schedule_after_t, _Scheduler, _Duration>)
-          -> stdexec::tag_invoke_result_t<schedule_after_t, _Scheduler, _Duration> {
-        return tag_invoke(schedule_after_t{}, (_Scheduler&&) __sched, (_Duration&&) __duration);
+      template <class _Scheduler, class _Rep, class _Period>
+        requires tag_invocable<schedule_after_t, _Scheduler, const duration<_Rep, _Period>&>
+              && sender<
+                   tag_invoke_result_t<schedule_after_t, _Scheduler, const duration<_Rep, _Period>&>>
+      auto operator()(_Scheduler&& __sched, const duration<_Rep, _Period>& __duration) const
+        noexcept(
+          nothrow_tag_invocable<schedule_after_t, _Scheduler, const duration<_Rep, _Period>&>)
+          -> tag_invoke_result_t<schedule_after_t, _Scheduler, const duration<_Rep, _Period>&> {
+        return tag_invoke(schedule_after_t{}, (_Scheduler&&) __sched, __duration);
       }
     };
   }
@@ -36,15 +40,44 @@ namespace exec {
   using __schedule_after::schedule_after_t;
   inline constexpr schedule_after_t schedule_after{};
 
+  namespace __schedule_at {
+    using namespace stdexec;
+    using std::chrono::time_point;
+
+    struct schedule_at_t {
+      template <class _Scheduler, class _Clock, class _Duration>
+        requires tag_invocable<schedule_at_t, _Scheduler, const time_point<_Clock, _Duration>&>
+              && sender<tag_invoke_result_t<
+                schedule_at_t,
+                _Scheduler,
+                const time_point<_Clock, _Duration>&>>
+      auto operator()(_Scheduler&& __sched, const time_point<_Clock, _Duration>& __time_point) const
+        noexcept(
+          nothrow_tag_invocable< schedule_at_t, _Scheduler, const time_point<_Clock, _Duration>&>)
+          -> tag_invoke_result_t< schedule_at_t, _Scheduler, const time_point<_Clock, _Duration>&> {
+        return tag_invoke(schedule_at_t{}, (_Scheduler&&) __sched, __time_point);
+      }
+    };
+  }
+
+  using __schedule_at::schedule_at_t;
+  inline constexpr schedule_at_t schedule_at{};
+
   template <class _Scheduler, class _Duration>
-  concept __has_schedule_after = requires(_Scheduler&& __sched, _Duration&& __duration) {
+  concept __has_schedule_after = requires(_Scheduler&& __sched, const _Duration& __duration) {
     { schedule_after((_Scheduler&&) __sched, __duration) } -> stdexec::sender;
+  };
+
+  template <class _Scheduler, class _TimePoint>
+  concept __has_schedule_at = requires(_Scheduler&& __sched, const _TimePoint& __time_point) {
+    { schedule_after((_Scheduler&&) __sched, __time_point) } -> stdexec::sender;
   };
 
   // TODO: Add more requirements such as __has_schedule_at or __has_now
   template <class _Scheduler>
   concept timed_scheduler =
-    stdexec::scheduler<_Scheduler> && __has_schedule_after<_Scheduler, std::chrono::seconds>;
+    stdexec::scheduler<_Scheduler> && __has_schedule_after<_Scheduler, std::chrono::nanoseconds>
+    && __has_schedule_at<_Scheduler, std::chrono::system_clock::time_point>;
 
   template <timed_scheduler _Scheduler>
   using schedule_after_result_t = stdexec::__call_result_t<schedule_after_t, _Scheduler>;
