@@ -70,7 +70,7 @@ namespace exec {
 
   template <class _Scheduler, class _TimePoint>
   concept __has_schedule_at = requires(_Scheduler&& __sched, const _TimePoint& __time_point) {
-    { schedule_after((_Scheduler&&) __sched, __time_point) } -> stdexec::sender;
+    { schedule_at((_Scheduler&&) __sched, __time_point) } -> stdexec::sender;
   };
 
   // TODO: Add more requirements such as __has_schedule_at or __has_now

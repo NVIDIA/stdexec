@@ -215,6 +215,9 @@ namespace exec {
     class __scheduler {
      public:
       __context* __context_;
+
+      friend bool operator==(const __scheduler& __lhs, const __scheduler& __rhs) = default;
+
      private:
       friend __schedule_sender tag_invoke(stdexec::schedule_t, const __scheduler& __sched);
 
@@ -232,6 +235,7 @@ namespace exec {
   }
 
   using io_uring_context = __io_uring::__context;
+  using io_uring_scheduler = __io_uring::__scheduler;
 }
 
 #include "./__detail/io_uring_context.hpp"

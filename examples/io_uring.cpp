@@ -102,6 +102,8 @@ int main() {
                        std::cout << "Hello, schedule_at!\n";
                      }));
 
+  static_assert(exec::timed_scheduler<exec::io_uring_scheduler>);
+
   context.request_stop();
   io_thread.join();
 }
