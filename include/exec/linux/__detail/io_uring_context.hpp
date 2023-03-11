@@ -565,10 +565,13 @@ namespace exec { namespace __io_uring {
     static constexpr ::itimerspec __duration_to_timespec(std::chrono::nanoseconds __nsec) noexcept {
       ::itimerspec __timerspec{};
       ::clock_gettime(CLOCK_REALTIME, &__timerspec.it_value);
+      __nsec = std::chrono::nanoseconds{__timerspec.it_value.tv_nsec} + __nsec;
       auto __sec = std::chrono::duration_cast<std::chrono::seconds>(__nsec);
       __nsec -= __sec;
       __timerspec.it_value.tv_sec += __sec.count();
-      __timerspec.it_value.tv_nsec += __nsec.count();
+      __timerspec.it_value.tv_nsec = __nsec.count();
+      STDEXEC_ASSERT(
+        0 <= __timerspec.it_value.tv_nsec && __timerspec.it_value.tv_nsec < 1'000'000'000);
       return __timerspec;
     }
 #endif
