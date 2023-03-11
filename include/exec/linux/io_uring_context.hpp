@@ -78,10 +78,10 @@ namespace exec {
       // This function is called to submit the task to the io_uring.
       // Its purpose is to fill the io_uring_sqe structure to describe the io
       // operation and its completion condition.
-      void (*__submit_)(__task*, ::io_uring_sqe*) noexcept;
+      void (*__submit_)(__task*, ::io_uring_sqe&) noexcept;
       // This function is called when the io operation is completed.
       // The status of the operation is passed as a parameter.
-      void (*__complete_)(__task*, const ::io_uring_cqe*) noexcept;
+      void (*__complete_)(__task*, const ::io_uring_cqe&) noexcept;
     };
 
     // This is the base class for all io operations.
@@ -157,9 +157,9 @@ namespace exec {
 
       static bool __ready_(__task*) noexcept;
 
-      static void __submit_(__task* __pointer, ::io_uring_sqe* __entry) noexcept;
+      static void __submit_(__task* __pointer, ::io_uring_sqe& __entry) noexcept;
 
-      static void __complete_(__task* __pointer, const ::io_uring_cqe* __entry) noexcept;
+      static void __complete_(__task* __pointer, const ::io_uring_cqe& __entry) noexcept;
 
       static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
 

@@ -110,7 +110,7 @@ namespace exec { namespace __io_uring {
       const __u32 __index = __head & __mask_;
       const ::io_uring_cqe& __cqe = __entries_[__index];
       __task* __op = bit_cast<__task*>(__cqe.user_data);
-      __op->__vtable_->__complete_(__op, &__cqe);
+      __op->__vtable_->__complete_(__op, __cqe);
       ++__head;
       ++__count;
       __tail = __tail_.load(std::memory_order_acquire);
@@ -118,7 +118,8 @@ namespace exec { namespace __io_uring {
     __head_.store(__head, std::memory_order_release);
     while (!__ready.empty()) {
       __task* __op = __ready.pop_front();
-      __op->__vtable_->__complete_(__op, nullptr);
+      ::io_uring_cqe __dummy_cqe{.user_data = bit_cast<__u64>(__op)};
+      __op->__vtable_->__complete_(__op, __dummy_cqe);
     }
     return __count;
   }
@@ -139,7 +140,7 @@ namespace exec { namespace __io_uring {
     ::io_uring_cqe __cqe{};
     __cqe.res = -ECANCELED;
     __cqe.user_data = bit_cast<__u64>(__op);
-    __op->__vtable_->__complete_(__op, &__cqe);
+    __op->__vtable_->__complete_(__op, __cqe);
   }
 
   inline __submission_result
@@ -159,7 +160,7 @@ namespace exec { namespace __io_uring {
       if (__op->__vtable_->__ready_(__op)) {
         __ready.push_back(__op);
       } else {
-        __op->__vtable_->__submit_(__op, &__sqe);
+        __op->__vtable_->__submit_(__op, __sqe);
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
         if (__is_stopped && __sqe.opcode != IORING_OP_ASYNC_CANCEL) {
 #else
@@ -194,21 +195,21 @@ namespace exec { namespace __io_uring {
     return false;
   }
 
-  void __wakeup_operation::__submit_(__task* __pointer, ::io_uring_sqe* __entry) noexcept {
+  void __wakeup_operation::__submit_(__task* __pointer, ::io_uring_sqe& __entry) noexcept {
     __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
-    std::memset(__entry, 0, sizeof(*__entry));
-    __entry->fd = __self.__eventfd_;
-    __entry->addr = bit_cast<__u64>(&__self.__buffer_);
+    std::memset(&__entry, 0, sizeof(__entry));
+    __entry.fd = __self.__eventfd_;
+    __entry.addr = bit_cast<__u64>(&__self.__buffer_);
 #ifdef STDEXEC_HAS_IORING_OP_READ
-    __entry->opcode = IORING_OP_READ;
-    __entry->len = sizeof(__self.__buffer_);
+    __entry.opcode = IORING_OP_READ;
+    __entry.len = sizeof(__self.__buffer_);
 #else
-    __entry->opcode = IORING_OP_READV;
-    __entry->len = 1;
+    __entry.opcode = IORING_OP_READV;
+    __entry.len = 1;
 #endif
   }
 
-  void __wakeup_operation::__complete_(__task* __pointer, const ::io_uring_cqe* __entry) noexcept {
+  void __wakeup_operation::__complete_(__task* __pointer, const ::io_uring_cqe& __entry) noexcept {
     __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
     __self.start();
   }
@@ -347,7 +348,7 @@ namespace exec { namespace __io_uring {
   }
 
   template <class _Op>
-  concept __io_task = requires(_Op& __op, ::io_uring_sqe* __sqe, ::io_uring_cqe* __cqe) {
+  concept __io_task = requires(_Op& __op, ::io_uring_sqe& __sqe, const ::io_uring_cqe& __cqe) {
     { __op.ready() } noexcept -> std::convertible_to<bool>;
     { __op.submit(__sqe) } noexcept;
     { __op.complete(__cqe) } noexcept;
@@ -360,12 +361,12 @@ namespace exec { namespace __io_uring {
       return __self->ready();
     }
 
-    static void __submit_(__task* __pointer, ::io_uring_sqe* __sqe) noexcept {
+    static void __submit_(__task* __pointer, ::io_uring_sqe& __sqe) noexcept {
       _Derived* __self = static_cast<_Derived*>(__pointer);
       __self->submit(__sqe);
     }
 
-    static void __complete_(__task* __pointer, const ::io_uring_cqe* __cqe) noexcept {
+    static void __complete_(__task* __pointer, const ::io_uring_cqe& __cqe) noexcept {
       _Derived* __self = static_cast<_Derived*>(__pointer);
       __self->complete(__cqe);
     }
@@ -399,12 +400,12 @@ namespace exec { namespace __io_uring {
       return {};
     }
 
-    static constexpr void submit(::io_uring_sqe* __entry) noexcept {
+    static constexpr void submit(::io_uring_sqe& __entry) noexcept {
     }
 
-    void complete(const ::io_uring_cqe*) noexcept {
+    void complete(const ::io_uring_cqe& __cqe) noexcept {
       auto token = stdexec::get_stop_token(stdexec::get_env(__receiver_));
-      if (__context_->stop_requested() || token.stop_requested()) {
+      if (__cqe.res == -ECANCELED || __context_->stop_requested() || token.stop_requested()) {
         stdexec::set_stopped((_Receiver&&) __receiver_);
       } else {
         stdexec::set_value((_Receiver&&) __receiver_);
@@ -461,12 +462,12 @@ namespace exec { namespace __io_uring {
       return {};
     }
 
-    void submit(::io_uring_sqe* __sqe) noexcept {
+    void submit(::io_uring_sqe& __sqe) noexcept {
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-      if constexpr (requires(_Derived* __op, ::io_uring_sqe* __sqe) { __op->submit_stop(__sqe); }) {
+      if constexpr (requires(_Derived* __op, ::io_uring_sqe& __sqe) { __op->submit_stop(__sqe); }) {
         __op_->submit_stop(__sqe);
       } else {
-        *__sqe = ::io_uring_sqe{
+        __sqe = ::io_uring_sqe{
           .opcode = IORING_OP_ASYNC_CANCEL, //
           .addr = bit_cast<__u64>(__op_)    //
         };
@@ -476,7 +477,7 @@ namespace exec { namespace __io_uring {
 #endif
     }
 
-    void complete(const ::io_uring_cqe*) noexcept {
+    void complete(const ::io_uring_cqe&) noexcept {
       if (__op_->__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
         _Receiver& __receiver = __op_->__receiver_;
         __op_->__on_context_stop_.reset();
@@ -582,53 +583,52 @@ namespace exec { namespace __io_uring {
     }
 
 #ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-    void submit_stop(::io_uring_sqe* __sqe) noexcept {
+    void submit_stop(::io_uring_sqe& __sqe) noexcept {
       __duration_.it_value.tv_sec = 1;
       __duration_.it_value.tv_nsec = 0;
       ::timerfd_settime(
         __timerfd_, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &__duration_, nullptr);
-      __sqe->opcode = IORING_OP_NOP;
+      __sqe = ::io_uring_sqe{.opcode = IORING_OP_NOP};
     }
 #endif
 
-    void submit(::io_uring_sqe* __sqe) noexcept {
+    void submit(::io_uring_sqe& __sqe) noexcept {
       this->prepare_submission();
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
       ::io_uring_sqe __sqe_{};
       __sqe_.opcode = IORING_OP_TIMEOUT;
       __sqe_.addr = bit_cast<__u64>(&__duration_);
       __sqe_.len = 1;
-      *__sqe = __sqe_;
+      __sqe = __sqe_;
 #else
       ::io_uring_sqe __sqe_{};
       __sqe_.opcode = IORING_OP_READV;
       __sqe_.fd = __timerfd_;
       __sqe_.addr = bit_cast<__u64>(&__iov_);
       __sqe_.len = 1;
-      *__sqe = __sqe_;
+      __sqe = __sqe_;
 #endif
     }
 
-    void complete(const ::io_uring_cqe* __cqe) noexcept {
+    void complete(const ::io_uring_cqe& __cqe) noexcept {
       if (this->__n_ops_.fetch_sub(1, std::memory_order_relaxed) != 1) {
         return;
       }
       this->__on_context_stop_.reset();
       this->__on_receiver_stop_.reset();
       auto token = stdexec::get_stop_token(stdexec::get_env(this->__receiver_));
-      if (
-        this->__context_->stop_requested() || token.stop_requested() || __cqe->res == -ECANCELED) {
+      if (__cqe.res == -ECANCELED || this->__context_->stop_requested() || token.stop_requested()) {
         stdexec::set_stopped((_Receiver&&) this->__receiver_);
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-      } else if (__cqe->res == -ETIME || __cqe->res == 0) {
+      } else if (__cqe.res == -ETIME || __cqe.res == 0) {
 #else
-      } else if (__cqe->res == 8) {
+      } else if (__cqe.res == 8) {
 #endif
         stdexec::set_value((_Receiver&&) this->__receiver_);
       } else {
         stdexec::set_error(
           (_Receiver&&) this->__receiver_,
-          std::make_exception_ptr(std::system_error(-__cqe->res, std::system_category())));
+          std::make_exception_ptr(std::system_error(-__cqe.res, std::system_category())));
       }
     }
 
