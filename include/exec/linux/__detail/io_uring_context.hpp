@@ -255,7 +255,25 @@ namespace exec { namespace __io_uring {
   }
 
   inline void __context::submit(__task* __op) noexcept {
-    __requests_.push_front(__op);
+    // As long as the number of in-flight submissions is not -1, we can
+    // increment the counter and push the operation onto the queue.
+    // If the number of in-flight submissions is -1, we have already
+    // finished the stop operation of the io context and we can immediately stop the operation inline.
+    // Remark: As long as the stopping is in progress we can still submit new operations.
+    // But no operation will be submitted to io uring unless it is a cancellation operation.
+    int __n = __n_submissions_in_flight_.load(std::memory_order_relaxed);
+    while (
+      __n != -1
+      && !__n_submissions_in_flight_.compare_exchange_weak(__n, __n + 1, std::memory_order_relaxed))
+      ;
+    if (__n == -1) {
+      __stop(__op);
+    } else {
+      __requests_.push_front(__op);
+      [[maybe_unused]] int __prev = __n_submissions_in_flight_.fetch_sub(
+        1, std::memory_order_relaxed);
+      STDEXEC_ASSERT(__prev > 0);
+    }
   }
 
   inline __scheduler __context::get_scheduler() noexcept {
@@ -268,6 +286,7 @@ namespace exec { namespace __io_uring {
       throw std::runtime_error(
         "std::execution::io_uring_context::run() called on a running context");
     }
+    __n_submissions_in_flight_.store(0, std::memory_order_relaxed);
     std::ptrdiff_t __n_submitted = 0;
     __wakeup_operation_.start();
     __pending_.append(__requests_.pop_all());
@@ -285,6 +304,23 @@ namespace exec { namespace __io_uring {
         __pending_ = (__task_queue&&) __result.__pending;
       }
       if (__n_submitted <= 0) {
+        STDEXEC_ASSERT(__n_submitted == 0);
+        STDEXEC_ASSERT(__pending_.empty());
+        STDEXEC_ASSERT(__stop_source_->stop_requested());
+        // try to shutdown the request queue
+        int __n_in_flight_expected = 0;
+        while (!__n_submissions_in_flight_.compare_exchange_weak(
+          __n_in_flight_expected, -1, std::memory_order_relaxed)) {
+          STDEXEC_ASSERT(__n_in_flight_expected >= 0);
+          __n_in_flight_expected = 0;
+        }
+        // There could have been requests in flight. Complete all of them
+        // and then stop it, finally.
+        __pending_.append(__requests_.pop_all());
+        __result = __submission_queue_.submit((__task_queue&&) __pending_, true);
+        STDEXEC_ASSERT(__result.__n_submitted == 0);
+        STDEXEC_ASSERT(__result.__pending.empty());
+        __completion_queue_.complete((__task_queue&&) __result.__ready);
         break;
       }
       constexpr int __min_complete = 1;

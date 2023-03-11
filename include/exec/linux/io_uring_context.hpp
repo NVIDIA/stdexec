@@ -203,6 +203,7 @@ namespace exec {
      private:
       friend struct __wakeup_operation;
       std::atomic<bool> __is_running_{false};
+      std::atomic<int> __n_submissions_in_flight_{0};
       std::optional<stdexec::in_place_stop_source> __stop_source_{std::in_place};
       __completion_queue __completion_queue_;
       __submission_queue __submission_queue_;
