@@ -21,7 +21,7 @@
 #include <sys/mman.h>
 
 namespace exec {
-  memory_mapped_region::memory_mapped_region(void* __ptr, std::size_t __size) noexcept
+  inline memory_mapped_region::memory_mapped_region(void* __ptr, std::size_t __size) noexcept
     : __ptr_(__ptr)
     , __size_(__size) {
     if (__ptr_ == MAP_FAILED) {
@@ -29,18 +29,19 @@ namespace exec {
     }
   }
 
-  memory_mapped_region::~memory_mapped_region() {
+  inline memory_mapped_region::~memory_mapped_region() {
     if (__ptr_) {
       ::munmap(__ptr_, __size_);
     }
   }
 
-  memory_mapped_region::memory_mapped_region(memory_mapped_region&& __other) noexcept
+  inline memory_mapped_region::memory_mapped_region(memory_mapped_region&& __other) noexcept
     : __ptr_(std::exchange(__other.__ptr_, nullptr))
     , __size_(std::exchange(__other.__size_, 0)) {
   }
 
-  memory_mapped_region& memory_mapped_region::operator=(memory_mapped_region&& __other) noexcept {
+  inline memory_mapped_region&
+    memory_mapped_region::operator=(memory_mapped_region&& __other) noexcept {
     if (this != &__other) {
       if (__ptr_) {
         ::munmap(__ptr_, __size_);
@@ -51,15 +52,15 @@ namespace exec {
     return *this;
   }
 
-  memory_mapped_region::operator bool() const noexcept {
+  inline memory_mapped_region::operator bool() const noexcept {
     return __ptr_ != nullptr;
   }
 
-  void* memory_mapped_region::data() const noexcept {
+  inline void* memory_mapped_region::data() const noexcept {
     return __ptr_;
   }
 
-  std::size_t memory_mapped_region::size() const noexcept {
+  inline std::size_t memory_mapped_region::size() const noexcept {
     return __size_;
   }
 }
