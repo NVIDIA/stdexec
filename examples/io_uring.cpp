@@ -97,6 +97,11 @@ int main() {
     exec::schedule_after(scheduler, 1s) | stdexec::then([] { std::cout << "Hello, 1!\n"; }),
     exec::schedule_after(scheduler, 500ms) | stdexec::then([] { std::cout << "Hello, 2!\n"; })));
 
+  auto time_point = std::chrono::steady_clock::now() + 1s;
+  stdexec::sync_wait(exec::schedule_at(scheduler, time_point) | stdexec::then([] {
+                       std::cout << "Hello, schedule_at!\n";
+                     }));
+
   context.request_stop();
   io_thread.join();
 }
