@@ -494,8 +494,9 @@ namespace exec { namespace __io_uring {
     void start() noexcept {
       int expected = 1;
       if (__op_->__n_ops_.compare_exchange_strong(expected, 2, std::memory_order_relaxed)) {
-        __op_->__context_->submit(this);
-        __op_->__context_->wakeup();
+        if (__op_->__context_->submit(this)) {
+          __op_->__context_->wakeup();
+        }
       }
     }
   };
