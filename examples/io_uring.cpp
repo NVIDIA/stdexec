@@ -77,10 +77,22 @@ int main() {
   io_thread.join();
   io_thread2.join();
 
+  stdexec::sync_wait(
+    stdexec::schedule(scheduler)
+    | stdexec::then([] { std::cout << "This should not print, because the context is stopped.\n"; })
+    | stdexec::upon_stopped([] { std::cout << "The context is stopped!\n"; }));
+
+  stdexec::sync_wait(
+    stdexec::schedule(scheduler2)
+    | stdexec::then([] { std::cout << "This should not print, because the context is stopped.\n"; })
+    | stdexec::upon_stopped([] { std::cout << "The context is stopped!\n"; }));
+
   io_thread = std::thread{[&] {
     context.run();
   }};
 
+  while (!context.is_running())
+    ;
   stdexec::sync_wait(exec::when_any(
     exec::schedule_after(scheduler, 1s) | stdexec::then([] { std::cout << "Hello, 1!\n"; }),
     exec::schedule_after(scheduler, 500ms) | stdexec::then([] { std::cout << "Hello, 2!\n"; })));

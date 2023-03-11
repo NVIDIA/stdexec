@@ -254,25 +254,27 @@ namespace exec { namespace __io_uring {
     return __is_running_.load(std::memory_order_relaxed);
   }
 
-  inline void __context::submit(__task* __op) noexcept {
-    // As long as the number of in-flight submissions is not -1, we can
+  inline bool __context::submit(__task* __op) noexcept {
+    // As long as the number of in-flight submissions is not __no_new_submissions, we can
     // increment the counter and push the operation onto the queue.
-    // If the number of in-flight submissions is -1, we have already
+    // If the number of in-flight submissions is __no_new_submissions, we have already
     // finished the stop operation of the io context and we can immediately stop the operation inline.
     // Remark: As long as the stopping is in progress we can still submit new operations.
     // But no operation will be submitted to io uring unless it is a cancellation operation.
-    int __n = __n_submissions_in_flight_.load(std::memory_order_relaxed);
-    while (
-      __n != -1
-      && !__n_submissions_in_flight_.compare_exchange_weak(__n, __n + 1, std::memory_order_relaxed))
+    int __n = 0;
+    while (__n != __no_new_submissions
+           && !__n_submissions_in_flight_.compare_exchange_weak(
+             __n, __n + 1, std::memory_order_acquire, std::memory_order_relaxed))
       ;
-    if (__n == -1) {
+    if (__n == __no_new_submissions) {
       __stop(__op);
+      return false;
     } else {
       __requests_.push_front(__op);
       [[maybe_unused]] int __prev = __n_submissions_in_flight_.fetch_sub(
         1, std::memory_order_relaxed);
       STDEXEC_ASSERT(__prev > 0);
+      return true;
     }
   }
 
@@ -282,11 +284,19 @@ namespace exec { namespace __io_uring {
 
   inline void __context::run() {
     bool expected_running = false;
+    // Only one thread of execution is allowed to drive the io context.
     if (!__is_running_.compare_exchange_strong(expected_running, true, std::memory_order_relaxed)) {
-      throw std::runtime_error(
-        "std::execution::io_uring_context::run() called on a running context");
+      throw std::runtime_error("exec::io_uring_context::run() called on a running context");
+    } else {
+      // Check whether we restart the context after a context-wide stop.
+      // We have to reset the stop source in this case.
+      int __in_flight = __n_submissions_in_flight_.load(std::memory_order_relaxed);
+      if (__in_flight == __no_new_submissions) {
+        __stop_source_.emplace();
+      }
+      // Make emplacement of stop source visible to other threads and open the door for new submissions.
+      __n_submissions_in_flight_.store(0, std::memory_order_release);
     }
-    __n_submissions_in_flight_.store(0, std::memory_order_relaxed);
     std::ptrdiff_t __n_submitted = 0;
     __wakeup_operation_.start();
     __pending_.append(__requests_.pop_all());
@@ -304,23 +314,6 @@ namespace exec { namespace __io_uring {
         __pending_ = (__task_queue&&) __result.__pending;
       }
       if (__n_submitted <= 0) {
-        STDEXEC_ASSERT(__n_submitted == 0);
-        STDEXEC_ASSERT(__pending_.empty());
-        STDEXEC_ASSERT(__stop_source_->stop_requested());
-        // try to shutdown the request queue
-        int __n_in_flight_expected = 0;
-        while (!__n_submissions_in_flight_.compare_exchange_weak(
-          __n_in_flight_expected, -1, std::memory_order_relaxed)) {
-          STDEXEC_ASSERT(__n_in_flight_expected >= 0);
-          __n_in_flight_expected = 0;
-        }
-        // There could have been requests in flight. Complete all of them
-        // and then stop it, finally.
-        __pending_.append(__requests_.pop_all());
-        __result = __submission_queue_.submit((__task_queue&&) __pending_, true);
-        STDEXEC_ASSERT(__result.__n_submitted == 0);
-        STDEXEC_ASSERT(__result.__pending.empty());
-        __completion_queue_.complete((__task_queue&&) __result.__ready);
         break;
       }
       constexpr int __min_complete = 1;
@@ -329,7 +322,27 @@ namespace exec { namespace __io_uring {
       __n_submitted -= __completion_queue_.complete((__task_queue&&) __result.__ready);
       __pending_.append(__requests_.pop_all());
     }
-    __stop_source_.emplace();
+    STDEXEC_ASSERT(__n_submitted == 0);
+    STDEXEC_ASSERT(__pending_.empty());
+    STDEXEC_ASSERT_FN(__stop_source_->stop_requested());
+    // try to shutdown the request queue
+    int __n_in_flight_expected = 0;
+    while (!__n_submissions_in_flight_.compare_exchange_weak(
+      __n_in_flight_expected, __no_new_submissions, std::memory_order_relaxed)) {
+      if (__n_in_flight_expected == __no_new_submissions) {
+        break;
+      }
+      __n_in_flight_expected = 0;
+    }
+    STDEXEC_ASSERT(
+      __n_submissions_in_flight_.load(std::memory_order_relaxed) == __no_new_submissions);
+    // There could have been requests in flight. Complete all of them
+    // and then stop it, finally.
+    __pending_.append(__requests_.pop_all());
+    __submission_result __result = __submission_queue_.submit((__task_queue&&) __pending_, true);
+    STDEXEC_ASSERT(__result.__n_submitted == 0);
+    STDEXEC_ASSERT(__result.__pending.empty());
+    __completion_queue_.complete((__task_queue&&) __result.__ready);
     __is_running_.store(false, std::memory_order_relaxed);
   }
 
@@ -371,11 +384,7 @@ namespace exec { namespace __io_uring {
     _Receiver __receiver_;
 
     friend void tag_invoke(stdexec::start_t, __schedule_operation& __self) noexcept {
-      auto token = stdexec::get_stop_token(stdexec::get_env(__self.__receiver_));
-      if (__self.__context_->stop_requested() || token.stop_requested()) {
-        stdexec::set_stopped((_Receiver&&) __self.__receiver_);
-      } else {
-        __self.__context_->submit(&__self);
+      if (__self.__context_->submit(&__self)) {
         __self.__context_->wakeup();
       }
     }
@@ -517,7 +526,7 @@ namespace exec { namespace __io_uring {
       , __stop_operation_{static_cast<_Derived*>(this)} {
     }
 
-    void start() {
+    void prepare_submission() {
       if (__n_ops_.fetch_add(1, std::memory_order_relaxed) == 0) {
         __on_context_stop_.emplace(__context_->get_stop_token(), __stop_callback{this});
         __on_receiver_stop_.emplace(
@@ -580,6 +589,7 @@ namespace exec { namespace __io_uring {
 #endif
 
     void submit(::io_uring_sqe* __sqe) noexcept {
+      this->prepare_submission();
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
       ::io_uring_sqe __sqe_{};
       __sqe_.opcode = IORING_OP_TIMEOUT;
@@ -621,12 +631,7 @@ namespace exec { namespace __io_uring {
 
    private:
     friend void tag_invoke(stdexec::start_t, __schedule_after_operation& __self) noexcept {
-      auto token = stdexec::get_stop_token(stdexec::get_env(__self.__receiver_));
-      if (__self.__context_->stop_requested() || token.stop_requested()) {
-        stdexec::set_stopped((_Receiver&&) __self.__receiver_);
-      } else {
-        __self.start();
-        __self.__context_->submit(&__self);
+      if (__self.__context_->submit(&__self)) {
         __self.__context_->wakeup();
       }
     }

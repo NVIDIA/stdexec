@@ -196,12 +196,19 @@ namespace exec {
 
       stdexec::in_place_stop_token get_stop_token() const noexcept;
 
-      void submit(__task* __op) noexcept;
+      /// \brief Submits the given task to the io_uring.
+      /// \returns true if the task was submitted, false if this io context and this task is have been stopped.
+      bool submit(__task* __op) noexcept;
 
       __scheduler get_scheduler() noexcept;
 
      private:
       friend struct __wakeup_operation;
+
+      // This constant is used for __n_submissions_in_flight to indicate that no new submissions
+      // to this context will be completed by this context.
+      static constexpr int __no_new_submissions = -1;
+
       std::atomic<bool> __is_running_{false};
       std::atomic<int> __n_submissions_in_flight_{0};
       std::optional<stdexec::in_place_stop_source> __stop_source_{std::in_place};
