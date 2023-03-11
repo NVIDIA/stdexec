@@ -222,6 +222,12 @@ namespace exec {
         exec::schedule_after_t,
         const __scheduler& __sched,
         std::chrono::nanoseconds __duration);
+
+      template <class _Clock, class _Duration>
+      friend __schedule_after_sender tag_invoke(
+        exec::schedule_at_t,
+        const __scheduler& __sched,
+        const std::chrono::time_point<_Clock, _Duration>& __time_point);
     };
   }
 
