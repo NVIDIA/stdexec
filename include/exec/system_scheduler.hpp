@@ -19,6 +19,8 @@
 // For the default implementation, test will override
 #include "exec/static_thread_pool.hpp"
 
+#include <iostream>
+
 struct __exec_system_scheduler_impl;
 struct __exec_system_sender_impl;
 
@@ -29,10 +31,14 @@ struct __exec_system_sender_impl;
 struct __exec_system_context_impl {
   exec::static_thread_pool pool_;
 
-  __exec_system_scheduler_impl get_scheduler();
+  __exec_system_scheduler_impl* get_scheduler();
 };
 
 struct __exec_system_scheduler_impl {
+  __exec_system_scheduler_impl(
+      __exec_system_context_impl* ctx, decltype(ctx->pool_.get_scheduler()) pool_scheduler) :
+      ctx_{ctx}, pool_scheduler_{pool_scheduler} {}
+
   __exec_system_context_impl* ctx_;
   decltype(ctx_->pool_.get_scheduler()) pool_scheduler_;
 
@@ -43,19 +49,28 @@ struct __exec_system_scheduler_impl {
   }
 
   bool equals(const __exec_system_scheduler_impl* rhs) const {
+    std::cerr << "rhs: " << rhs << "; this: " << this << "\n";
     return rhs == this;
   }
 };
 
 struct __exec_system_sender_impl {
+  struct op_ {
+
+  };
   decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_)) pool_sender_;
+  // TODO: Connect
 };
 
 // bulk function for scheduler to transmit from, will wrap actual function stub stored in real type
 using bulk_function = void(long);
 
 struct __exec_system_bulk_sender_impl {
+  struct op_ {
+
+  };
   decltype(stdexec::bulk(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_), std::declval<long>(), std::declval<bulk_function*>()) ) pool_bulk_sender_;
+  // TODO: Connect
 };
 
 
@@ -66,8 +81,9 @@ static __exec_system_context_impl* __get_exec_system_context_impl() {
   return &impl_;
 }
 
-inline __exec_system_scheduler_impl __exec_system_context_impl::get_scheduler() {
-  return __exec_system_scheduler_impl{this, pool_.get_scheduler()};
+inline __exec_system_scheduler_impl* __exec_system_context_impl::get_scheduler() {
+  // TODO: ref counting etc
+  return new __exec_system_scheduler_impl(this, pool_.get_scheduler());
 }
 
 __exec_system_sender_impl __exec_system_scheduler_impl::schedule() const {
@@ -106,10 +122,10 @@ namespace exec {
   class system_scheduler {
   public:
     // Pointer that we ref count?
-    system_scheduler(__exec_system_scheduler_impl impl) : impl_(impl) {}
+    system_scheduler(__exec_system_scheduler_impl* impl) : impl_(impl) {}
 
     bool operator==(const system_scheduler& rhs) const noexcept {
-      return impl_.equals(&(rhs.impl_));
+      return impl_->equals(rhs.impl_);
     }
 
   private:
@@ -129,7 +145,7 @@ namespace exec {
       Fn fun)                                                 //
       noexcept;
 
-    __exec_system_scheduler_impl impl_;
+    __exec_system_scheduler_impl* impl_;
     friend class system_context;
   };
 
@@ -139,7 +155,7 @@ namespace exec {
     using completion_signatures =
       stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t() >;
 
-    system_sender(__exec_system_scheduler_impl scheduler_impl, __exec_system_sender_impl impl) :
+    system_sender(__exec_system_scheduler_impl* scheduler_impl, __exec_system_sender_impl impl) :
         scheduler_impl_{scheduler_impl}, impl_{impl} {}
 
   private:
@@ -153,6 +169,8 @@ namespace exec {
       }
 
       // TODO: Type-erase operation state to remove coupling with pool_sender
+      // Or, specifically, we can't pass R through to the pool sender, we need to store R and type erase a
+      // set of three callbacks representing R.
     };
 
     template <class R>
@@ -175,7 +193,7 @@ namespace exec {
         return {self.impl_};
       }
 
-      __exec_system_scheduler_impl impl_;
+      __exec_system_scheduler_impl* impl_;
     };
 
     friend __env tag_invoke(stdexec::get_env_t, const system_sender& snd) noexcept {
@@ -184,7 +202,7 @@ namespace exec {
     }
 
       // TODO: Do we need both? Should we get scheduler from sender or do we need sender at all?
-    __exec_system_scheduler_impl scheduler_impl_;
+    __exec_system_scheduler_impl* scheduler_impl_;
     __exec_system_sender_impl impl_;
   };
 
@@ -195,7 +213,7 @@ namespace exec {
     using completion_signatures =
       stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t() >;
 
-    system_bulk_sender(__exec_system_scheduler_impl sched_impl, S&& snd, Shape&& shp, Fn&& fn) :
+    system_bulk_sender(__exec_system_scheduler_impl* sched_impl, S&& snd, Shape&& shp, Fn&& fn) :
         scheduler_impl_{sched_impl},
         snd_(std::move(snd)),
         shp_(std::move(shp)),
@@ -205,7 +223,33 @@ namespace exec {
     }
 
   private:
-    __exec_system_scheduler_impl scheduler_impl_;
+    template <class R_>
+    struct __op {
+      using R = stdexec::__t<R_>;
+      // TODO: Impl of bulk operation that completes to R
+
+      friend void tag_invoke(stdexec::start_t, __op& op) noexcept {
+        // TODO
+      }
+
+      R recv_;
+      S snd_;
+      Shape shape_;
+      Fn fn_;
+      __exec_system_bulk_sender_impl bulk_sender_impl_;
+    };
+
+    template <class R>
+    friend auto tag_invoke(                                                //
+        stdexec::connect_t, system_bulk_sender<S, Shape, Fn> snd, R&& rec) //
+      noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
+        -> __op<stdexec::__x<std::remove_cvref_t<R>>> {
+      //return {stdexec::connect(snd.impl_.pool_sender_, (R&&) rec)};
+
+      // TODO constructing op and the actual bulk part on the scheduler
+    }
+
+    __exec_system_scheduler_impl* scheduler_impl_;
     S snd_;
     Shape shp_;
     Fn fn_;
@@ -218,13 +262,13 @@ namespace exec {
 
   system_sender tag_invoke(
       stdexec::schedule_t, const system_scheduler& sched) noexcept {
-    return system_sender(sched.impl_, sched.impl_.schedule());
+    return system_sender(sched.impl_, sched.impl_->schedule());
   }
 
   stdexec::forward_progress_guarantee tag_invoke(
       stdexec::get_forward_progress_guarantee_t,
       const system_scheduler& sched) noexcept {
-    return sched.impl_.get_forward_progress_guarantee();
+    return sched.impl_->get_forward_progress_guarantee();
   }
 
 
