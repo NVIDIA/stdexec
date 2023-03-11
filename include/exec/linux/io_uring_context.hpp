@@ -17,6 +17,7 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include "../timed_scheduler.hpp"
 
 #include "../__detail/__atomic_intrusive_queue.hpp"
 #include "../__detail/__atomic_ref.hpp"
@@ -49,17 +50,6 @@
 #endif
 
 namespace exec {
-  struct schedule_after_t {
-    template <class _Scheduler, class _Duration>
-      requires stdexec::tag_invocable<schedule_after_t, const _Scheduler&, _Duration>
-    auto operator()(const _Scheduler& __scheduler, _Duration __duration) const
-      -> stdexec::tag_invoke_result_t<schedule_after_t, const _Scheduler&, _Duration> {
-      return tag_invoke(*this, __scheduler, __duration);
-    }
-  };
-
-  inline constexpr schedule_after_t schedule_after{};
-
   namespace __io_uring {
     // This base class maps the kernel's io_uring data structures into the process.
     struct __context_base : stdexec::__immovable {
