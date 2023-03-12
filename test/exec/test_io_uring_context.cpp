@@ -20,6 +20,7 @@
 #include "exec/scope.hpp"
 #include "exec/single_thread_context.hpp"
 #include "exec/finally.hpp"
+#include "exec/when_any.hpp"
 
 #include "catch2/catch.hpp"
 
@@ -27,15 +28,45 @@ using namespace stdexec;
 using namespace exec;
 using namespace std::chrono_literals;
 
-TEST_CASE("Satisfy concepts", "[types][io_uring_context][schedulers]") {
+// clang-12 does not know jthread yet
+class jthread {
+  std::thread thread_;
+
+ public:
+  template <typename Callable, typename... Args>
+  explicit jthread(Callable&& callable, Args&&... args)
+    : thread_(std::forward<Callable>(callable), std::forward<Args>(args)...) {
+  }
+
+  jthread(jthread&& other) noexcept
+    : thread_(std::move(other.thread_)) {
+  }
+
+  jthread& operator=(jthread&& other) noexcept {
+    thread_ = std::move(other.thread_);
+    return *this;
+  }
+
+  ~jthread() {
+    if (thread_.joinable()) {
+      thread_.join();
+    }
+  }
+
+  std::thread::id get_id() const noexcept {
+    return thread_.get_id();
+  }
+};
+
+TEST_CASE("Satisfy concepts", "[types][io_uring][schedulers]") {
   STATIC_REQUIRE(timed_scheduler<io_uring_scheduler>);
   STATIC_REQUIRE_FALSE(std::is_move_assignable_v<io_uring_context>);
 }
 
-TEST_CASE("Schedule runs in io thread", "[types][io_uring_context][schedulers]") {
+TEST_CASE("Schedule runs in io thread", "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
-  std::jthread io_thread{[&] {
+  jthread io_thread{[&] {
     context.run();
   }};
   {
@@ -58,107 +89,99 @@ TEST_CASE("Schedule runs in io thread", "[types][io_uring_context][schedulers]")
   }
 }
 
-TEST_CASE(
-  "Thread-safe to schedule from multiple threads",
-  "[types][io_uring_context][schedulers]") {
+TEST_CASE("Thread-safe to schedule from multiple threads", "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
-  std::jthread io_thread{[&] {
+  jthread io_thread{[&] {
     context.run();
   }};
-  auto call_100_times = [&] {
-    for (int i = 0; i < 10; ++i) {
-      sync_wait(when_all(
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule(scheduler)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); })));
-    }
-  };
-  auto call_100_times_after = [&] {
-    for (int i = 0; i < 10; ++i) {
-      sync_wait(when_all(
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_after(scheduler, 500us)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); })));
-    }
-  };
-  auto call_100_times_at = [&] {
-    for (int i = 0; i < 10; ++i) {
-      auto tp = std::chrono::steady_clock::now() + 500us;
-      sync_wait(when_all(
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-        schedule_at(scheduler, tp)
-          | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); })));
-    }
-  };
   {
     scope_guard guard{[&]() noexcept {
       context.request_stop();
     }};
-    std::jthread thread1{call_100_times};
-    std::jthread thread2{call_100_times_after};
-    std::jthread thread3{call_100_times_at};
-    thread1.join();
-    thread2.join();
-    thread3.join();
+    jthread thread1{[&] {
+      for (int i = 0; i < 10; ++i) {
+        sync_wait(when_all(
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule(scheduler)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); })));
+      }
+    }};
+    jthread thread2{[&] {
+      for (int i = 0; i < 10; ++i) {
+        auto tp = std::chrono::steady_clock::now() + 500us;
+        sync_wait(when_all(
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_at(scheduler, tp)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); })));
+      }
+    }};
+    jthread thread3{[&] {
+      for (int i = 0; i < 10; ++i) {
+        sync_wait(when_all(
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
+          schedule_after(scheduler, 500us)
+            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); })));
+      }
+    }};
   }
 }
 
-TEST_CASE("Stop io_uring_context", "[types][io_uring_context]") {
+TEST_CASE("Stop io_uring_context", "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
-  std::jthread io_thread{[&] {
+  jthread io_thread{[&] {
     context.run();
   }};
   {
@@ -166,13 +189,55 @@ TEST_CASE("Stop io_uring_context", "[types][io_uring_context]") {
     auto sch1 = ctx1.get_scheduler();
     bool is_called = false;
     sync_wait(finally(
-      schedule(scheduler) | then([&] { is_called = true; }),
-      schedule(sch1) | then([&] { context.request_stop(); })));
+      schedule(scheduler) | then([&]() noexcept { is_called = true; }),
+      schedule(sch1) | then([&]() noexcept { context.request_stop(); })));
     CHECK(is_called);
   }
   bool is_called = false;
   sync_wait(schedule(scheduler) | then([&] { is_called = true; }));
   CHECK_FALSE(is_called);
+}
+
+TEST_CASE("After 0s", "[types][io_uring][schedulers]") {
+  io_uring_context context;
+  io_uring_scheduler scheduler = context.get_scheduler();
+  jthread io_thread{[&] {
+    context.run();
+  }};
+  {
+    scope_guard guard{[&]() noexcept {
+      context.request_stop();
+    }};
+    bool is_called = false;
+    sync_wait(when_any(
+      schedule_after(scheduler, 0s) | then([&] {
+        CHECK(io_thread.get_id() == std::this_thread::get_id());
+        is_called = true;
+      }),
+      schedule_after(scheduler, 5ms)));
+    CHECK(is_called);
+  }
+}
+
+TEST_CASE("After -1s", "[types][io_uring][schedulers]") {
+  io_uring_context context;
+  io_uring_scheduler scheduler = context.get_scheduler();
+  jthread io_thread{[&] {
+    context.run();
+  }};
+  {
+    scope_guard guard{[&]() noexcept {
+      context.request_stop();
+    }};
+    bool is_called = false;
+    sync_wait(when_any(
+      schedule_after(scheduler, -1ns) | then([&] {
+        CHECK(io_thread.get_id() == std::this_thread::get_id());
+        is_called = true;
+      }),
+      schedule_after(scheduler, 5ms)));
+    CHECK(is_called);
+  }
 }
 
 #endif
