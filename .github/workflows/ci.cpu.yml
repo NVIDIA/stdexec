@@ -49,7 +49,7 @@ jobs:
 
   build-cpu-gcc11-ubuntu2204:
     runs-on: ubuntu-22.04
-    name: CPU (gcc 11, ubuntu 22.04)
+    name: CPU (gcc 11, ubuntu 22.04, TSAN)
     steps:
       - name: Checkout stdexec
         uses: actions/checkout@v3
@@ -60,6 +60,6 @@ jobs:
         with:
           cc: gcc-11
           checks: build test
-          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
+          cxxflags: "-fsanitize=thread"
           prebuild_command: |
-            apt update && apt install -y --no-install-recommends git libtbb-dev;
+            apt update && apt install -y --no-install-recommends git;
