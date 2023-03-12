@@ -283,7 +283,7 @@ namespace tbbexec {
 
           inner_op_state inner_op_;
 
-          friend void tag_invoke(stdexec::start_t, bulk_op_state& op) noexcept {
+          STDEXEC_DEFINE_CUSTOM(void start)(this bulk_op_state& op, stdexec::start_t) noexcept {
             stdexec::start(op.inner_op_);
           }
 
@@ -500,7 +500,7 @@ namespace tbbexec {
       pool_.enqueue(this);
     }
 
-    friend void tag_invoke(stdexec::start_t, operation& op) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void start)(this operation& op, stdexec::start_t) noexcept {
       op.enqueue();
     }
   };

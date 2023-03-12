@@ -31,7 +31,7 @@ namespace exec {
         std::variant<connect_result_t<stdexec::__t<_SenderIds>, stdexec::__t<_ReceiverId>>...>
           __variant_;
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           std::visit([](auto& __s) { start(__s); }, __self.__variant_);
         }
 

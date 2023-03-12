@@ -188,8 +188,7 @@ namespace exec {
 
       std::variant<__initial_op_t, __final_op_t> __op_;
 
-      template <std::same_as<__t> _Self>
-      friend void tag_invoke(start_t, _Self& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
         STDEXEC_ASSERT(__self.__op_.index() == 0);
         start(std::get_if<0>(&__self.__op_)->__initial_operation_);
       }
