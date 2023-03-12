@@ -44,3 +44,19 @@ jobs:
           cxxflags: "-stdlib=libc++"
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git;
+
+  build-cpu-gcc11-22.04:
+    runs-on: ubuntu-22.04
+    name: CPU (gcc 11, ubuntu 22.04)
+    steps:
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Build and test CPU schedulers
+        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu22.04
+        with:
+          cc: gcc-11
+          checks: build test
+          prebuild_command: |
+            apt update && apt install -y --no-install-recommends git;
