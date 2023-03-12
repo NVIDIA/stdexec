@@ -126,7 +126,7 @@ namespace exec {
       __submission_result submit(
         stdexec::__intrusive_queue<&__task::__next_> __task,
         std::ptrdiff_t __max_submissions,
-        bool is_stopped) noexcept;
+        bool __is_stopped) noexcept;
     };
 
     class __completion_queue {
