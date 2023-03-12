@@ -7,6 +7,7 @@ if(POLICY CMP0135)
   set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
 endif()
 
+
 ##############################################################################
 # - Download and initialize RAPIDS CMake helpers -----------------------------
 
@@ -248,8 +249,31 @@ if(STDEXEC_ENABLE_CUDA)
             INSTALL_EXPORT_SET stdexec-exports)
 
         target_link_libraries(stdexec INTERFACE libcudacxx::libcudacxx)
-    endif()
-endif()
+    endif ()
+endif ()
+
+
+option(STDEXEC_ENABLE_TBB "Enable TBB targets" OFF)
+
+if (STDEXEC_ENABLE_TBB)
+    include(rapids-find)
+    rapids_find_package(
+        TBB REQUIRED
+        BUILD_EXPORT_SET stdexec-exports
+        INSTALL_EXPORT_SET stdexec-exports
+    )
+
+    file(GLOB_RECURSE tbbexec_sources include/tbbexec/*.hpp)
+    add_library(tbbexec INTERFACE ${tbbexec_sources})
+    list(APPEND stdexec_export_targets tbbexec)
+    add_library(STDEXEC::tbbexec ALIAS tbbexec)
+
+    target_link_libraries(tbbexec
+        INTERFACE
+        STDEXEC::stdexec
+        TBB::tbb
+        )
+endif ()
 
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
@@ -257,7 +281,7 @@ option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
 
 # Don't build tests if configuring stdexec as a submodule of another
 # CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE
-if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR STDEXEC_BUILD_TESTS)
+if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR STDEXEC_BUILD_TESTS)
     # CTest automatically calls enable_testing() if BUILD_TESTING is ON
     # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
     include(CTest)

@@ -19,6 +19,7 @@
 
 #if !_STD_NO_COROUTINES_
 #include <exec/at_coroutine_exit.hpp>
+#include <exec/on_coro_disposition.hpp>
 #include <catch2/catch.hpp>
 
 #include <test_common/schedulers.hpp>
@@ -263,6 +264,8 @@ namespace {
     result *= 3;
   }
 
+#ifdef STDEXEC_HAS_FORK
+
   void test_cancel_in_cleanup_action_causes_death(int& result) {
     task<void> t = []() -> task<void> {
       co_await at_coroutine_exit([]() -> task<void> { co_await stop(); });
@@ -310,6 +313,9 @@ namespace {
     }();
     REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
   }
+
+#endif // STDEXEC_HAS_FORK
+
 } // unnamed namespace
 
 TEST_CASE("OneCleanupAction", "[task][at_coroutine_exit]") {

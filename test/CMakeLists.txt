@@ -60,6 +60,7 @@ set(stdexec_test_sources
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/queries/test_forwarding_queries.cpp
     exec/test_any_sender.cpp
+    exec/test_task.cpp
     exec/test_variant_sender.cpp
     exec/test_type_async_scope.cpp
     exec/test_create.cpp
@@ -77,12 +78,18 @@ set(stdexec_test_sources
     exec/test_at_coroutine_exit.cpp
     exec/test_materialize.cpp
     exec/test_io_uring_context.cpp
+    $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
     )
 
 add_executable(test.stdexec ${stdexec_test_sources})
 
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
-target_link_libraries(test.stdexec PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2)
+target_link_libraries(test.stdexec
+    PUBLIC
+    STDEXEC::stdexec
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+    stdexec_executable_flags
+    Catch2::Catch2)
 
 # Discover the Catch2 test built by the application
 include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
