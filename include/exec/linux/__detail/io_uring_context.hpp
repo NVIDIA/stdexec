@@ -143,8 +143,10 @@ namespace exec { namespace __io_uring {
     __op->__vtable_->__complete_(__op, __cqe);
   }
 
-  inline __submission_result
-    __submission_queue::submit(__task_queue __tasks, bool __is_stopped) noexcept {
+  inline __submission_result __submission_queue::submit(
+    __task_queue __tasks,
+    std::ptrdiff_t __max_submissions,
+    bool __is_stopped) noexcept {
     __u32 __tail = __tail_.load(std::memory_order_relaxed);
     __u32 __head = __head_.load(std::memory_order_acquire);
     __u32 __total_count = __tail - __head;
@@ -152,7 +154,7 @@ namespace exec { namespace __io_uring {
     __task_queue __ready{};
     __task_queue __pending{};
     __task* __op = nullptr;
-    while (!__tasks.empty() && __total_count < __n_total_slots_) {
+    while (!__tasks.empty() && __total_count < __n_total_slots_ && __count < __max_submissions) {
       const __u32 __index = __tail & __mask_;
       ::io_uring_sqe& __sqe = __entries_[__index];
       __op = __tasks.pop_front();
@@ -299,18 +301,23 @@ namespace exec { namespace __io_uring {
       __n_submissions_in_flight_.store(0, std::memory_order_release);
     }
     std::ptrdiff_t __n_submitted = 0;
+    const std::ptrdiff_t __max_completions = __params_.cq_entries;
     __wakeup_operation_.start();
     __pending_.append(__requests_.pop_all());
     while (__n_submitted > 0 || !__pending_.empty()) {
       __submission_result __result = __submission_queue_.submit(
-        (__task_queue&&) __pending_, __stop_source_->stop_requested());
+        (__task_queue&&) __pending_,
+        __max_completions - __n_submitted,
+        __stop_source_->stop_requested());
       __n_submitted += __result.__n_submitted;
       __pending_ = (__task_queue&&) __result.__pending;
       while (!__result.__ready.empty()) {
         __n_submitted -= __completion_queue_.complete((__task_queue&&) __result.__ready);
         __pending_.append(__requests_.pop_all());
         __result = __submission_queue_.submit(
-          (__task_queue&&) __pending_, __stop_source_->stop_requested());
+          (__task_queue&&) __pending_,
+          __max_completions - __n_submitted,
+          __stop_source_->stop_requested());
         __n_submitted += __result.__n_submitted;
         __pending_ = (__task_queue&&) __result.__pending;
       }
@@ -340,7 +347,8 @@ namespace exec { namespace __io_uring {
     // There could have been requests in flight. Complete all of them
     // and then stop it, finally.
     __pending_.append(__requests_.pop_all());
-    __submission_result __result = __submission_queue_.submit((__task_queue&&) __pending_, true);
+    __submission_result __result = __submission_queue_.submit(
+      (__task_queue&&) __pending_, __max_completions, true);
     STDEXEC_ASSERT(__result.__n_submitted == 0);
     STDEXEC_ASSERT(__result.__pending.empty());
     __completion_queue_.complete((__task_queue&&) __result.__ready);

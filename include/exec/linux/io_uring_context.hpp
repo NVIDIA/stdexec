@@ -123,8 +123,10 @@ namespace exec {
       // If is_stopped is true, no new tasks are submitted to the io_uring unless it is a cancellation.
       // If is_stopped is true and a task is not ready to be completed, the task is completed with
       // an io_uring_cqe object with the result field set to -ECANCELED.
-      __submission_result
-        submit(stdexec::__intrusive_queue<&__task::__next_> __task, bool is_stopped) noexcept;
+      __submission_result submit(
+        stdexec::__intrusive_queue<&__task::__next_> __task,
+        std::ptrdiff_t __max_submissions,
+        bool is_stopped) noexcept;
     };
 
     class __completion_queue {
