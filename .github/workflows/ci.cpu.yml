@@ -63,3 +63,20 @@ jobs:
           cxxflags: "-fsanitize=thread"
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git;
+
+  build-cpu-clang12-ubuntu2204:
+    runs-on: ubuntu-22.04
+    name: CPU (clang 12, ubuntu 22.04, TSAN)
+    steps:
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Build and test CPU schedulers
+        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12
+        with:
+          cc: clang-12
+          checks: build test
+          cxxflags: "-stdlib=libc++ -fsanitize=thread"
+          prebuild_command: |
+            apt update && apt install -y --no-install-recommends git;
