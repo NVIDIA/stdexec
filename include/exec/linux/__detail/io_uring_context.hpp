@@ -556,6 +556,8 @@ namespace exec { namespace __io_uring {
       __duration_to_timespec(std::chrono::nanoseconds dur) noexcept {
       auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
       dur -= secs;
+      secs = std::max(secs, std::chrono::seconds{0});
+      dur = std::clamp(dur, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
       return __kernel_timespec{secs.count(), dur.count()};
     }
 #else
