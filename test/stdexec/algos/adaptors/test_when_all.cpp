@@ -270,19 +270,19 @@ TEST_CASE(
 }
 
 TEST_CASE("when_all has the error_types based on the children", "[adaptors][when_all]") {
-  check_err_types<type_array<std::exception_ptr&&, int&&>>(ex::when_all(ex::just_error(13)));
-  check_err_types<type_array<std::exception_ptr&&, double&&>>(ex::when_all(ex::just_error(3.14)));
+  check_err_types<type_array<int&&>>(ex::when_all(ex::just_error(13)));
+  check_err_types<type_array<double&&>>(ex::when_all(ex::just_error(3.14)));
 
-  check_err_types<type_array<std::exception_ptr&&>>(ex::when_all(ex::just()));
+  check_err_types<type_array<>>(ex::when_all(ex::just()));
 
-  check_err_types<type_array<std::exception_ptr&&, int&&, double&&>>(
+  check_err_types<type_array<int&&, double&&>>(
     ex::when_all(ex::just_error(3), ex::just_error(0.14)));
-  check_err_types<type_array<std::exception_ptr&&, int&&, double&&, std::string&&>>( //
-    ex::when_all(                                                                    //
-      ex::just_error(3),                                                             //
-      ex::just_error(0.14),                                                          //
-      ex::just_error(std::string{"err"})                                             //
-      )                                                                              //
+  check_err_types<type_array<int&&, double&&, std::string&&>>( //
+    ex::when_all(                                              //
+      ex::just_error(3),                                       //
+      ex::just_error(0.14),                                    //
+      ex::just_error(std::string{"err"})                       //
+      )                                                        //
   );
 
   check_err_types<type_array<std::exception_ptr&&>>( //

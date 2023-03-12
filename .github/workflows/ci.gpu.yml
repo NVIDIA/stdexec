@@ -1,11 +1,10 @@
----
-name: CI
+name: CI (GPU)
 
 on:
-  pull_request:
   push:
     branches:
       - main
+      - "pull-request/[0-9]+"
 
 concurrency:
   group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
@@ -13,40 +12,8 @@ concurrency:
 
 jobs:
 
-  build-cpu-gcc11:
-    runs-on: ubuntu-latest
-    name: CPU (gcc 11)
-    steps:
-      - name: Checkout stdexec
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-      - name: Build and test CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu20.04
-        with:
-          cc: gcc-11
-          checks: build test
-          prebuild_command: |
-            apt update && apt install -y --no-install-recommends git;
-
-  build-cpu-clang12:
-    runs-on: ubuntu-latest
-    name: CPU (clang 12)
-    steps:
-      - name: Checkout stdexec
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-      - name: Build and test CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12-ubuntu20.04
-        with:
-          cc: clang-12
-          checks: build test
-          cxxflags: "-stdlib=libc++"
-          prebuild_command: |
-            apt update && apt install -y --no-install-recommends git;
-
   build-gpu:
+    if: github.repository == 'nvidia/stdexec'
     name: GPU (${{ matrix.name }}, CUDA ${{ matrix.cuda }})
     strategy:
       fail-fast: false

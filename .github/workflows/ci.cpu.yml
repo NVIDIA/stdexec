@@ -1,0 +1,48 @@
+name: CI (CPU)
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+
+  build-cpu-gcc11:
+    runs-on: ubuntu-latest
+    name: CPU (gcc 11)
+    steps:
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Build and test CPU schedulers
+        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu20.04
+        with:
+          cc: gcc-11
+          checks: build test
+          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
+          prebuild_command: |
+            apt update && apt install -y --no-install-recommends git libtbb-dev;
+
+  build-cpu-clang12:
+    runs-on: ubuntu-latest
+    name: CPU (clang 12)
+    steps:
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Build and test CPU schedulers
+        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12-ubuntu20.04
+        with:
+          cc: clang-12
+          checks: build test
+          cxxflags: "-stdlib=libc++"
+          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
+          prebuild_command: |
+            apt update && apt install -y --no-install-recommends git libtbb-dev;
