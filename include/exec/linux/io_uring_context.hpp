@@ -125,7 +125,7 @@ namespace exec {
       // an io_uring_cqe object with the result field set to -ECANCELED.
       __submission_result submit(
         stdexec::__intrusive_queue<&__task::__next_> __task,
-        std::ptrdiff_t __max_submissions,
+        __u32 __max_submissions,
         bool __is_stopped) noexcept;
     };
 

@@ -145,16 +145,18 @@ namespace exec { namespace __io_uring {
 
   inline __submission_result __submission_queue::submit(
     __task_queue __tasks,
-    std::ptrdiff_t __max_submissions,
+    __u32 __max_submissions,
     bool __is_stopped) noexcept {
     __u32 __tail = __tail_.load(std::memory_order_relaxed);
     __u32 __head = __head_.load(std::memory_order_acquire);
-    __u32 __total_count = __tail - __head;
+    __u32 __current_count = __tail - __head;
+    STDEXEC_ASSERT(__current_count <= __n_total_slots_);
+    __max_submissions = std::min(__max_submissions, __n_total_slots_ - __current_count);
     __u32 __count = 0;
     __task_queue __ready{};
     __task_queue __pending{};
     __task* __op = nullptr;
-    while (!__tasks.empty() && __total_count < __n_total_slots_ && __count < __max_submissions) {
+    while (!__tasks.empty() && __count < __max_submissions) {
       const __u32 __index = __tail & __mask_;
       ::io_uring_sqe& __sqe = __entries_[__index];
       __op = __tasks.pop_front();
@@ -172,7 +174,6 @@ namespace exec { namespace __io_uring {
         } else {
           __sqe.user_data = bit_cast<__u64>(__op);
           __array_[__index] = __index;
-          ++__total_count;
           ++__count;
           ++__tail;
         }
@@ -301,22 +302,25 @@ namespace exec { namespace __io_uring {
       __n_submissions_in_flight_.store(0, std::memory_order_release);
     }
     std::ptrdiff_t __n_submitted = 0;
-    const std::ptrdiff_t __max_completions = __params_.cq_entries;
+    const __u32 __max_completions = __params_.cq_entries;
     __wakeup_operation_.start();
     __pending_.append(__requests_.pop_all());
     while (__n_submitted > 0 || !__pending_.empty()) {
+      STDEXEC_ASSERT(__n_submitted <= static_cast<std::ptrdiff_t>(__max_completions));
       __submission_result __result = __submission_queue_.submit(
         (__task_queue&&) __pending_,
-        __max_completions - __n_submitted,
+        __max_completions - static_cast<__u32>(__n_submitted),
         __stop_source_->stop_requested());
       __n_submitted += __result.__n_submitted;
+      STDEXEC_ASSERT(__n_submitted <= static_cast<std::ptrdiff_t>(__max_completions));
       __pending_ = (__task_queue&&) __result.__pending;
       while (!__result.__ready.empty()) {
         __n_submitted -= __completion_queue_.complete((__task_queue&&) __result.__ready);
+        STDEXEC_ASSERT(0 <= __n_submitted);
         __pending_.append(__requests_.pop_all());
         __result = __submission_queue_.submit(
           (__task_queue&&) __pending_,
-          __max_completions - __n_submitted,
+          __max_completions - static_cast<__u32>(__n_submitted),
           __stop_source_->stop_requested());
         __n_submitted += __result.__n_submitted;
         __pending_ = (__task_queue&&) __result.__pending;
