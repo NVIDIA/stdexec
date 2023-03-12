@@ -47,7 +47,7 @@ jobs:
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git libtbb-dev;
 
-  build-cpu-gcc11-22.04:
+  build-cpu-gcc11-ubuntu2204:
     runs-on: ubuntu-22.04
     name: CPU (gcc 11, ubuntu 22.04)
     steps:
