@@ -63,3 +63,21 @@ jobs:
           cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git libtbb-dev;
+
+  build-cpu-clang12-ubuntu2204:
+    runs-on: ubuntu-22.04
+    name: CPU (clang 12, ubuntu 22.04)
+    steps:
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Build and test CPU schedulers
+        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12-ubuntu22.04
+        with:
+          cc: clang-12
+          checks: build test
+          cxxflags: "-stdlib=libc++"
+          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
+          prebuild_command: |
+            apt update && apt install -y --no-install-recommends git libtbb-dev;
