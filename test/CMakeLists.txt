@@ -69,6 +69,7 @@ set(stdexec_test_sources
     exec/test_on.cpp
     exec/test_on2.cpp
     exec/test_on3.cpp
+    exec/test_repeat_effect_until.cpp
     exec/async_scope/test_dtor.cpp
     exec/async_scope/test_spawn.cpp
     exec/async_scope/test_spawn_future.cpp
