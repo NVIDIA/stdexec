@@ -201,7 +201,7 @@ namespace exec {
         this->__result_.__construct(
           std::in_place_type<__decayed_tuple<_Args...>>, (_Args&&) __args...);
         STDEXEC_ASSERT(__op_.index() == 0);
-        _FinalSender& __final_sender = std::get_if<0>(&__op_)->__sender_;
+        _FinalSender __final_sender = (_FinalSender&&) std::get_if<0>(&__op_)->__sender_;
         __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {
           return connect((_FinalSender&&) __final_sender, __final_receiver_t{this});
         }});
