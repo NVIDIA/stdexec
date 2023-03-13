@@ -710,6 +710,11 @@ namespace exec { namespace __io_uring {
     }
   };
 
+  inline std::chrono::time_point<std::chrono::steady_clock>
+    tag_invoke(exec::now_t, const __scheduler& __sched) noexcept {
+    return std::chrono::steady_clock::now();
+  }
+
   inline __schedule_after_sender tag_invoke(
     exec::schedule_after_t,
     const __scheduler& __sched,

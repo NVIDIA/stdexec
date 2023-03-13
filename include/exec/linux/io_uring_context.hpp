@@ -223,6 +223,9 @@ namespace exec {
      private:
       friend __schedule_sender tag_invoke(stdexec::schedule_t, const __scheduler& __sched);
 
+      friend std::chrono::time_point<std::chrono::steady_clock>
+        tag_invoke(exec::now_t, const __scheduler& __sched) noexcept;
+
       friend __schedule_after_sender tag_invoke(
         exec::schedule_after_t,
         const __scheduler& __sched,
