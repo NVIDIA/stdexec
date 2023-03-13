@@ -5089,6 +5089,7 @@ namespace stdexec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
+        using __id = __receiver;
         using _Receiver = stdexec::__t<_ReceiverId>;
         _Receiver __rcvr_;
 
