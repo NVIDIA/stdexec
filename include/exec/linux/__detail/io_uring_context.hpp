@@ -33,12 +33,6 @@
 namespace exec { namespace __io_uring {
   using __task_queue = stdexec::__intrusive_queue<&__task::__next_>;
 
-  inline void __throw_on_error(int __ec) {
-    if (__ec) {
-      throw std::system_error(__ec, std::system_category());
-    }
-  }
-
   inline void __throw_error_code_if(bool __cond, int __ec) {
     if (__cond) {
       throw std::system_error(__ec, std::system_category());
@@ -71,9 +65,7 @@ namespace exec { namespace __io_uring {
     : __params_{.flags = __flags}
     , __ring_fd_{__io_uring_setup(__entries, __params_)}
     , __eventfd_{::eventfd(0, EFD_CLOEXEC)} {
-    if (!__eventfd_) {
-      throw std::system_error(errno, std::system_category());
-    }
+    __throw_error_code_if(!__eventfd_, errno);
     auto __sring_sz = __params_.sq_off.array + __params_.sq_entries * sizeof(unsigned);
     auto __cring_sz = __params_.cq_off.cqes + __params_.cq_entries * sizeof(::io_uring_cqe);
     auto __sqes_sz = __params_.sq_entries * sizeof(::io_uring_sqe);
@@ -89,17 +81,17 @@ namespace exec { namespace __io_uring {
   }
 
   template <class _Ty>
-  inline _Ty at_offset_as(void* __pointer, __u32 __offset) {
+  inline _Ty __at_offset_as(void* __pointer, __u32 __offset) {
     return reinterpret_cast<_Ty>(static_cast<std::byte*>(__pointer) + __offset);
   }
 
   __completion_queue::__completion_queue(
     const memory_mapped_region& __region,
     const ::io_uring_params& __params)
-    : __head_{*at_offset_as<__u32*>(__region.data(), __params.cq_off.head)}
-    , __tail_{*at_offset_as<__u32*>(__region.data(), __params.cq_off.tail)}
-    , __entries_{at_offset_as<::io_uring_cqe*>(__region.data(), __params.cq_off.cqes)}
-    , __mask_{*at_offset_as<__u32*>(__region.data(), __params.cq_off.ring_mask)} {
+    : __head_{*__at_offset_as<__u32*>(__region.data(), __params.cq_off.head)}
+    , __tail_{*__at_offset_as<__u32*>(__region.data(), __params.cq_off.tail)}
+    , __entries_{__at_offset_as<::io_uring_cqe*>(__region.data(), __params.cq_off.cqes)}
+    , __mask_{*__at_offset_as<__u32*>(__region.data(), __params.cq_off.ring_mask)} {
   }
 
   inline int __completion_queue::complete(__task_queue __ready) noexcept {
@@ -128,11 +120,11 @@ namespace exec { namespace __io_uring {
     const memory_mapped_region& __region,
     const memory_mapped_region& __sqes_region,
     const ::io_uring_params& __params)
-    : __head_{*at_offset_as<__u32*>(__region.data(), __params.sq_off.head)}
-    , __tail_{*at_offset_as<__u32*>(__region.data(), __params.sq_off.tail)}
-    , __array_{at_offset_as<__u32*>(__region.data(), __params.sq_off.array)}
+    : __head_{*__at_offset_as<__u32*>(__region.data(), __params.sq_off.head)}
+    , __tail_{*__at_offset_as<__u32*>(__region.data(), __params.sq_off.tail)}
+    , __array_{__at_offset_as<__u32*>(__region.data(), __params.sq_off.array)}
     , __entries_{static_cast<::io_uring_sqe*>(__sqes_region.data())}
-    , __mask_{*at_offset_as<__u32*>(__region.data(), __params.sq_off.ring_mask)}
+    , __mask_{*__at_offset_as<__u32*>(__region.data(), __params.sq_off.ring_mask)}
     , __n_total_slots_{__params.sq_entries} {
   }
 
@@ -152,17 +144,15 @@ namespace exec { namespace __io_uring {
     __u32 __current_count = __tail - __head;
     STDEXEC_ASSERT(__current_count <= __n_total_slots_);
     __max_submissions = std::min(__max_submissions, __n_total_slots_ - __current_count);
-    __u32 __count = 0;
-    __task_queue __ready{};
-    __task_queue __pending{};
+    __submission_result __result{};
     __task* __op = nullptr;
-    while (!__tasks.empty() && __count < __max_submissions) {
+    while (!__tasks.empty() && __result.__n_submitted < __max_submissions) {
       const __u32 __index = __tail & __mask_;
       ::io_uring_sqe& __sqe = __entries_[__index];
       __op = __tasks.pop_front();
       STDEXEC_ASSERT(__op->__vtable_);
       if (__op->__vtable_->__ready_(__op)) {
-        __ready.push_back(__op);
+        __result.__ready.push_back(__op);
       } else {
         __op->__vtable_->__submit_(__op, __sqe);
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
@@ -174,7 +164,7 @@ namespace exec { namespace __io_uring {
         } else {
           __sqe.user_data = bit_cast<__u64>(__op);
           __array_[__index] = __index;
-          ++__count;
+          ++__result.__n_submitted;
           ++__tail;
         }
       }
@@ -183,15 +173,12 @@ namespace exec { namespace __io_uring {
     while (!__tasks.empty()) {
       __op = __tasks.pop_front();
       if (__op->__vtable_->__ready_(__op)) {
-        __ready.push_back(__op);
+        __result.__ready.push_back(__op);
       } else {
-        __pending.push_back(__op);
+        __result.__pending.push_back(__op);
       }
     }
-    return {
-      .__n_submitted = __count,
-      .__pending = (__task_queue&&) __pending,
-      .__ready = (__task_queue&&) __ready};
+    return __result;
   }
 
   bool __wakeup_operation::__ready_(__task*) noexcept {
