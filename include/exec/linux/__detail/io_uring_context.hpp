@@ -87,7 +87,7 @@ namespace exec { namespace __io_uring {
     return reinterpret_cast<_Ty>(static_cast<std::byte*>(__pointer) + __offset);
   }
 
-  __completion_queue::__completion_queue(
+  inline __completion_queue::__completion_queue(
     const memory_mapped_region& __region,
     const ::io_uring_params& __params)
     : __head_{*__at_offset_as<__u32*>(__region.data(), __params.cq_off.head)}
@@ -118,7 +118,7 @@ namespace exec { namespace __io_uring {
     return __count;
   }
 
-  __submission_queue::__submission_queue(
+  inline __submission_queue::__submission_queue(
     const memory_mapped_region& __region,
     const memory_mapped_region& __sqes_region,
     const ::io_uring_params& __params)
@@ -183,11 +183,11 @@ namespace exec { namespace __io_uring {
     return __result;
   }
 
-  bool __wakeup_operation::__ready_(__task*) noexcept {
+  inline bool __wakeup_operation::__ready_(__task*) noexcept {
     return false;
   }
 
-  void __wakeup_operation::__submit_(__task* __pointer, ::io_uring_sqe& __entry) noexcept {
+  inline void __wakeup_operation::__submit_(__task* __pointer, ::io_uring_sqe& __entry) noexcept {
     __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
     std::memset(&__entry, 0, sizeof(__entry));
     __entry.fd = __self.__eventfd_;
@@ -201,18 +201,19 @@ namespace exec { namespace __io_uring {
 #endif
   }
 
-  void __wakeup_operation::__complete_(__task* __pointer, const ::io_uring_cqe& __entry) noexcept {
+  inline void
+    __wakeup_operation::__complete_(__task* __pointer, const ::io_uring_cqe& __entry) noexcept {
     __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
     __self.start();
   }
 
-  __wakeup_operation::__wakeup_operation(__context* __context, int __eventfd)
+  inline __wakeup_operation::__wakeup_operation(__context* __context, int __eventfd)
     : __task{__vtable}
     , __context_{__context}
     , __eventfd_{__eventfd} {
   }
 
-  void __wakeup_operation::start() noexcept {
+  inline void __wakeup_operation::start() noexcept {
     if (
       !__context_->__break_loop_.load(std::memory_order_acquire)
       && !__context_->__stop_source_->stop_requested()) {
