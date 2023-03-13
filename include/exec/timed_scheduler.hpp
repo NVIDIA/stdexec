@@ -23,10 +23,12 @@ namespace exec {
     using namespace stdexec;
 
     template <class _Tp>
-    concept time_point = //
-      regular<_Tp> &&    //
-      totally_ordered<_Tp> && requires(_Tp __tp, const _Tp __ctp, typename _Tp::duration __dur) {
+    concept time_point =      //
+      regular<_Tp> &&         //
+      totally_ordered<_Tp> && //
+      requires(_Tp __tp, const _Tp __ctp, typename _Tp::duration __dur) {
         { __ctp + __dur } -> same_as<_Tp>;
+        { __dur + __ctp } -> same_as<_Tp>;
         { __ctp - __dur } -> same_as<_Tp>;
         { __ctp - __ctp } -> same_as<typename _Tp::duration>;
         { __tp += __dur } -> same_as<_Tp&>;
@@ -133,10 +135,10 @@ namespace exec {
       template <class _Scheduler>
         requires __has_custom_schedule_at<_Scheduler>
       auto operator()(_Scheduler&& __sched, const time_point_of_t<_Scheduler>& __time_point) const
-        noexcept(noexcept(tag_invoke(schedule_at_t{}, (_Scheduler&&) __sched, __time_point)))
+        noexcept(noexcept(tag_invoke(schedule_at, (_Scheduler&&) __sched, __time_point)))
           -> __custom_schedule_at_sender_t<_Scheduler> {
         static_assert(sender<__custom_schedule_at_sender_t<_Scheduler>>);
-        return tag_invoke(schedule_at_t{}, (_Scheduler&&) __sched, __time_point);
+        return tag_invoke(schedule_at, (_Scheduler&&) __sched, __time_point);
       }
 
       template <class _Scheduler>
