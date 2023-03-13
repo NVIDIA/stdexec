@@ -5767,29 +5767,40 @@ namespace stdexec {
   // [execution.senders.consumers.sync_wait]
   // [execution.senders.consumers.sync_wait_with_variant]
   namespace __sync_wait {
+    template <class _Context>
+    concept __driveable_context = requires(_Context& __ctx) {
+      { __ctx.get_scheduler() } noexcept -> scheduler;
+      { __ctx.run() };
+      { __ctx.finish() };
+    };
+
     template <class _Sender>
     using __into_variant_result_t = decltype(stdexec::into_variant(__declval<_Sender>()));
 
-    struct __env {
-      using __t = __env;
-      using __id = __env;
-      stdexec::run_loop::__scheduler __sched_;
+    template <class _Context>
+    struct __base_env {
+      using __t = __base_env;
+      using __id = __base_env;
+      using _Scheduler = decltype(__declval<_Context>().get_scheduler());
+      _Scheduler __sched_;
 
-      friend auto tag_invoke(stdexec::get_scheduler_t, const __env& __self) noexcept
-        -> stdexec::run_loop::__scheduler {
+      friend auto tag_invoke(stdexec::get_scheduler_t, const __base_env& __self) noexcept
+        -> _Scheduler {
         return __self.__sched_;
       }
 
-      friend auto tag_invoke(stdexec::get_delegatee_scheduler_t, const __env& __self) noexcept
-        -> stdexec::run_loop::__scheduler {
+      friend auto tag_invoke(stdexec::get_delegatee_scheduler_t, const __base_env& __self) noexcept
+        -> _Scheduler {
         return __self.__sched_;
       }
     };
 
+    using __env = __base_env<stdexec::run_loop>;
+
     // What should sync_wait(just_stopped()) return?
     template <class _Sender, class _Continuation>
     using __sync_wait_result_impl =
-      __value_types_of_t< _Sender, __env, __transform<__q<decay_t>, _Continuation>, __q<__msingle>>;
+      __value_types_of_t<_Sender, __env, __transform<__q<decay_t>, _Continuation>, __q<__msingle>>;
 
     template <stdexec::sender_in<__env> _Sender>
     using __sync_wait_result_t = __sync_wait_result_impl<_Sender, __q<std::tuple>>;
@@ -5804,12 +5815,12 @@ namespace stdexec {
       std::variant<std::monostate, _Tuple, std::exception_ptr, set_stopped_t> __data_{};
     };
 
-    template <class... _Values>
+    template <class _Context, class... _Values>
     struct __receiver {
       struct __t {
         using __id = __receiver;
         __state<_Values...>* __state_;
-        stdexec::run_loop* __loop_;
+        _Context* __loop_;
 
         template <class _Error>
         void __set_error(_Error __err) noexcept {
@@ -5842,7 +5853,7 @@ namespace stdexec {
           __rcvr.__loop_->finish();
         }
 
-        friend __env tag_invoke(stdexec::get_env_t, const __t& __rcvr) noexcept {
+        friend __base_env<_Context> tag_invoke(stdexec::get_env_t, const __t& __rcvr) noexcept {
           return {__rcvr.__loop_->get_scheduler()};
         }
       };
@@ -5854,8 +5865,9 @@ namespace stdexec {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
-      template <class _Sender>
-      using __receiver_t = __t<__sync_wait_result_impl<_Sender, __q<__receiver>>>;
+      template <class _Context, class _Sender>
+      using __receiver_t =
+        __t<__sync_wait_result_impl<_Sender, __mbind_front_q<__receiver, _Context>>>;
 
       // TODO: constrain on return type
       template <__single_value_variant_sender<__env> _Sender> // NOT TO SPEC
@@ -5879,18 +5891,21 @@ namespace stdexec {
         return tag_invoke(sync_wait_t{}, (_Sender&&) __sndr);
       }
 
-      template <__single_value_variant_sender<__env> _Sender>
+      template <
+        __sync_wait::__driveable_context _Context,
+        __single_value_variant_sender<__env> _Sender>
         requires(!__tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>)
              && (!tag_invocable<sync_wait_t, _Sender>) && sender_in<_Sender, __env>
-             && sender_to<_Sender, __receiver_t<_Sender>>
-      auto operator()(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
+             && sender_to<_Sender, __receiver_t<_Context, _Sender>>
+      auto operator()(_Context& __loop, _Sender&& __sndr) const
+        -> std::optional<__sync_wait_result_t<_Sender>> {
         using state_t = __sync_wait_result_impl<_Sender, __q<__state>>;
         state_t __state{};
-        run_loop __loop;
 
         // Launch the sender with a continuation that will fill in a variant
         // and notify a condition variable.
-        auto __op_state = connect((_Sender&&) __sndr, __receiver_t<_Sender>{&__state, &__loop});
+        auto __op_state = connect(
+          (_Sender&&) __sndr, __receiver_t<_Context, _Sender>{&__state, &__loop});
         start(__op_state);
 
         // Wait for the variant to be filled in.
@@ -5903,6 +5918,15 @@ namespace stdexec {
           return std::nullopt;
 
         return std::move(std::get<1>(__state.__data_));
+      }
+
+      template < __single_value_variant_sender<__env> _Sender>
+        requires(!__tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>)
+             && (!tag_invocable<sync_wait_t, _Sender>) && sender_in<_Sender, __env>
+             && sender_to<_Sender, __receiver_t<stdexec::run_loop, _Sender>>
+      auto operator()(_Sender&& __sndr) const {
+        stdexec::run_loop __loop{};
+        return operator()(__loop, (_Sender&&) __sndr);
       }
     };
 

@@ -217,9 +217,6 @@ namespace exec {
 
       void run();
 
-      template <stdexec::__single_value_variant_sender<__sync_wait_env> _Sender>
-      std::optional<__sync_wait_result_t<_Sender>> sync_wait(_Sender&& __sender);
-
       /// @brief Submit any pending tasks and complete any ready tasks.
       ///
       /// This function is not thread-safe and must only be called from the thread that drives the io context.
