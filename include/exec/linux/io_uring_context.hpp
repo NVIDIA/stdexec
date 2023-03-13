@@ -214,7 +214,6 @@ namespace exec {
     class __context : __context_base {
      public:
       explicit __context(unsigned __entries = 1024, unsigned __flags = 0);
-      ~__context();
 
       void run();
 

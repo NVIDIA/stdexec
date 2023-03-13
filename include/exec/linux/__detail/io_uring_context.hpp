@@ -213,7 +213,9 @@ namespace exec { namespace __io_uring {
   }
 
   void __wakeup_operation::start() noexcept {
-    if (!__context_->__stop_source_->stop_requested()) {
+    if (
+      !__context_->__break_loop_.load(std::memory_order_acquire)
+      && !__context_->__stop_source_->stop_requested()) {
       __context_->__pending_.push_front(this);
     }
   }
@@ -223,17 +225,6 @@ namespace exec { namespace __io_uring {
     , __completion_queue_{__completion_queue_region_ ? __completion_queue_region_ : __submission_queue_region_, __params_}
     , __submission_queue_{__submission_queue_region_, __submission_queue_entries_, __params_}
     , __wakeup_operation_{this, __eventfd_} {
-    __wakeup_operation_.start();
-  }
-
-  inline __context::~__context() {
-    // It is a fatal error if the context is destroyed while it is still in a running state.
-    STDEXEC_ASSERT(!__is_running_.load(std::memory_order_relaxed));
-    if (__n_submissions_in_flight_.load(std::memory_order_relaxed) != __no_new_submissions) {
-      request_stop();
-      __break_loop_.store(false, std::memory_order_release);
-      run();
-    }
   }
 
   inline void __context::wakeup() {
@@ -332,14 +323,12 @@ namespace exec { namespace __io_uring {
     scope_guard __not_running{[&]() noexcept {
       __is_running_.store(false, std::memory_order_relaxed);
     }};
+    __wakeup_operation_.start();
     __pending_.append(__requests_.pop_all());
     while (__n_submitted_ > 0 || !__pending_.empty()) {
       run_some();
       if (__n_submitted_ == 0) {
         break;
-      }
-      if (__break_loop_.exchange(false, std::memory_order_acquire)) {
-        return;
       }
       constexpr int __min_complete = 1;
       STDEXEC_ASSERT(
@@ -351,27 +340,27 @@ namespace exec { namespace __io_uring {
       __pending_.append(__requests_.pop_all());
     }
     STDEXEC_ASSERT(__n_submitted_ == 0);
-    STDEXEC_ASSERT(__pending_.empty());
-    STDEXEC_ASSERT_FN(__stop_source_->stop_requested());
-    // try to shutdown the request queue
-    int __n_in_flight_expected = 0;
-    while (!__n_submissions_in_flight_.compare_exchange_weak(
-      __n_in_flight_expected, __no_new_submissions, std::memory_order_relaxed)) {
-      if (__n_in_flight_expected == __no_new_submissions) {
-        break;
+    if (__stop_source_->stop_requested() && __pending_.empty()) {
+      // try to shutdown the request queue
+      int __n_in_flight_expected = 0;
+      while (!__n_submissions_in_flight_.compare_exchange_weak(
+        __n_in_flight_expected, __no_new_submissions, std::memory_order_relaxed)) {
+        if (__n_in_flight_expected == __no_new_submissions) {
+          break;
+        }
+        __n_in_flight_expected = 0;
       }
-      __n_in_flight_expected = 0;
+      STDEXEC_ASSERT(
+        __n_submissions_in_flight_.load(std::memory_order_relaxed) == __no_new_submissions);
+      // There could have been requests in flight. Complete all of them
+      // and then stop it, finally.
+      __pending_.append(__requests_.pop_all());
+      __submission_result __result = __submission_queue_.submit(
+        (__task_queue&&) __pending_, __params_.cq_entries, true);
+      STDEXEC_ASSERT(__result.__n_submitted == 0);
+      STDEXEC_ASSERT(__result.__pending.empty());
+      __completion_queue_.complete((__task_queue&&) __result.__ready);
     }
-    STDEXEC_ASSERT(
-      __n_submissions_in_flight_.load(std::memory_order_relaxed) == __no_new_submissions);
-    // There could have been requests in flight. Complete all of them
-    // and then stop it, finally.
-    __pending_.append(__requests_.pop_all());
-    __submission_result __result = __submission_queue_.submit(
-      (__task_queue&&) __pending_, __params_.cq_entries, true);
-    STDEXEC_ASSERT(__result.__n_submitted == 0);
-    STDEXEC_ASSERT(__result.__pending.empty());
-    __completion_queue_.complete((__task_queue&&) __result.__ready);
   }
 
   template <class... _Values>
