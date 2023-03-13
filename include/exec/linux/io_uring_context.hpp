@@ -170,47 +170,6 @@ namespace exec {
       void start() noexcept;
     };
 
-    class __scheduler;
-
-    class __context : __context_base {
-     public:
-      explicit __context(unsigned __entries = 1024, unsigned __flags = 0);
-
-      void run();
-
-      void wakeup();
-
-      void request_stop();
-
-      bool stop_requested() const noexcept;
-
-      bool is_running() const noexcept;
-
-      stdexec::in_place_stop_token get_stop_token() const noexcept;
-
-      /// \brief Submits the given task to the io_uring.
-      /// \returns true if the task was submitted, false if this io context and this task is have been stopped.
-      bool submit(__task* __op) noexcept;
-
-      __scheduler get_scheduler() noexcept;
-
-     private:
-      friend struct __wakeup_operation;
-
-      // This constant is used for __n_submissions_in_flight to indicate that no new submissions
-      // to this context will be completed by this context.
-      static constexpr int __no_new_submissions = -1;
-
-      std::atomic<bool> __is_running_{false};
-      std::atomic<int> __n_submissions_in_flight_{0};
-      std::optional<stdexec::in_place_stop_source> __stop_source_{std::in_place};
-      __completion_queue __completion_queue_;
-      __submission_queue __submission_queue_;
-      stdexec::__intrusive_queue<&__task::__next_> __pending_{};
-      __atomic_intrusive_queue<&__task::__next_> __requests_{};
-      __wakeup_operation __wakeup_operation_;
-    };
-
     class __schedule_after_sender;
     class __schedule_sender;
 
@@ -236,6 +195,73 @@ namespace exec {
         exec::schedule_at_t,
         const __scheduler& __sched,
         const std::chrono::time_point<_Clock, _Duration>& __time_point);
+    };
+
+    class __sync_wait_env {
+     public:
+      __scheduler __sched_;
+     private:
+      friend __scheduler
+        tag_invoke(stdexec::get_scheduler_t, const __sync_wait_env& __env) noexcept {
+        return __env.__sched_;
+      }
+    };
+
+    template <stdexec::sender_in<__sync_wait_env> _Sender>
+    using __sync_wait_result_t =
+      stdexec::__sync_wait::__sync_wait_result_impl<_Sender, stdexec::__q< std::tuple >>;
+
+    class __context : __context_base {
+     public:
+      explicit __context(unsigned __entries = 1024, unsigned __flags = 0);
+      ~__context();
+
+      void run();
+
+      template <stdexec::__single_value_variant_sender<__sync_wait_env> _Sender>
+      std::optional<__sync_wait_result_t<_Sender>> sync_wait(_Sender&& __sender);
+
+      /// @brief Submit any pending tasks and complete any ready tasks.
+      ///
+      /// This function is not thread-safe and must only be called from the thread that drives the io context.
+      void run_some() noexcept;
+
+      void wakeup();
+
+      /// @brief  Breaks out of the run loop of the io context without stopping the context.
+      void finish();
+
+      void request_stop();
+
+      bool stop_requested() const noexcept;
+
+      bool is_running() const noexcept;
+
+      stdexec::in_place_stop_token get_stop_token() const noexcept;
+
+      /// \brief Submits the given task to the io_uring.
+      /// \returns true if the task was submitted, false if this io context and this task is have been stopped.
+      bool submit(__task* __op) noexcept;
+
+      __scheduler get_scheduler() noexcept;
+
+     private:
+      friend struct __wakeup_operation;
+
+      // This constant is used for __n_submissions_in_flight to indicate that no new submissions
+      // to this context will be completed by this context.
+      static constexpr int __no_new_submissions = -1;
+
+      std::atomic<bool> __is_running_{false};
+      std::atomic<int> __n_submissions_in_flight_{0};
+      std::atomic<bool> __break_loop_{false};
+      std::ptrdiff_t __n_submitted_{0};
+      std::optional<stdexec::in_place_stop_source> __stop_source_{std::in_place};
+      __completion_queue __completion_queue_;
+      __submission_queue __submission_queue_;
+      stdexec::__intrusive_queue<&__task::__next_> __pending_{};
+      __atomic_intrusive_queue<&__task::__next_> __requests_{};
+      __wakeup_operation __wakeup_operation_;
     };
   }
 

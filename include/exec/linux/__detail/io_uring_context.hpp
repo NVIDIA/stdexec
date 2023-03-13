@@ -19,6 +19,8 @@
 #include "../io_uring_context.hpp"
 #include "../../__detail/__bit_cast.hpp"
 
+#include "../../scope.hpp"
+
 #include <cstring>
 #include <system_error>
 
@@ -94,7 +96,7 @@ namespace exec { namespace __io_uring {
     , __mask_{*__at_offset_as<__u32*>(__region.data(), __params.cq_off.ring_mask)} {
   }
 
-  inline int __completion_queue::complete(__task_queue __ready) noexcept {
+  inline int __completion_queue::complete(__task_queue __ready = __task_queue{}) noexcept {
     __u32 __head = __head_.load(std::memory_order_relaxed);
     __u32 __tail = __tail_.load(std::memory_order_acquire);
     int __count = 0;
@@ -221,6 +223,17 @@ namespace exec { namespace __io_uring {
     , __completion_queue_{__completion_queue_region_ ? __completion_queue_region_ : __submission_queue_region_, __params_}
     , __submission_queue_{__submission_queue_region_, __submission_queue_entries_, __params_}
     , __wakeup_operation_{this, __eventfd_} {
+    __wakeup_operation_.start();
+  }
+
+  inline __context::~__context() {
+    if (__n_submitted_ > 0) {
+      // It should be a fatal error if the context is destroyed while it is still in a running state.
+      STDEXEC_ASSERT(!__is_running_.load(std::memory_order_relaxed));
+      request_stop();
+      __break_loop_.store(false, std::memory_order_release);
+      run();
+    }
   }
 
   inline void __context::wakeup() {
@@ -273,6 +286,34 @@ namespace exec { namespace __io_uring {
     return __scheduler{this};
   }
 
+  inline void __context::run_some() noexcept {
+    __n_submitted_ -= __completion_queue_.complete();
+    STDEXEC_ASSERT(
+      0 <= __n_submitted_ && __n_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+    __u32 __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_submitted_);
+    __submission_result __result = __submission_queue_.submit(
+      (__task_queue&&) __pending_, __max_submissions, __stop_source_->stop_requested());
+    __n_submitted_ += __result.__n_submitted;
+    STDEXEC_ASSERT(__n_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+    __pending_ = (__task_queue&&) __result.__pending;
+    while (!__result.__ready.empty()) {
+      __n_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready);
+      STDEXEC_ASSERT(0 <= __n_submitted_);
+      __pending_.append(__requests_.pop_all());
+      __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_submitted_);
+      __result = __submission_queue_.submit(
+        (__task_queue&&) __pending_, __max_submissions, __stop_source_->stop_requested());
+      __n_submitted_ += __result.__n_submitted;
+      STDEXEC_ASSERT(__n_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+      __pending_ = (__task_queue&&) __result.__pending;
+    }
+  }
+
+  inline void __context::finish() {
+    __break_loop_.store(true, std::memory_order_release);
+    wakeup();
+  }
+
   inline void __context::run() {
     bool expected_running = false;
     // Only one thread of execution is allowed to drive the io context.
@@ -284,44 +325,32 @@ namespace exec { namespace __io_uring {
       int __in_flight = __n_submissions_in_flight_.load(std::memory_order_relaxed);
       if (__in_flight == __no_new_submissions) {
         __stop_source_.emplace();
+        // Make emplacement of stop source visible to other threads and open the door for new submissions.
+        __n_submissions_in_flight_.store(0, std::memory_order_release);
       }
-      // Make emplacement of stop source visible to other threads and open the door for new submissions.
-      __n_submissions_in_flight_.store(0, std::memory_order_release);
     }
-    std::ptrdiff_t __n_submitted = 0;
-    const __u32 __max_completions = __params_.cq_entries;
-    __wakeup_operation_.start();
+    scope_guard __not_running{[&]() noexcept {
+      __is_running_.store(false, std::memory_order_relaxed);
+    }};
     __pending_.append(__requests_.pop_all());
-    while (__n_submitted > 0 || !__pending_.empty()) {
-      STDEXEC_ASSERT(__n_submitted <= static_cast<std::ptrdiff_t>(__max_completions));
-      __submission_result __result = __submission_queue_.submit(
-        (__task_queue&&) __pending_,
-        __max_completions - static_cast<__u32>(__n_submitted),
-        __stop_source_->stop_requested());
-      __n_submitted += __result.__n_submitted;
-      STDEXEC_ASSERT(__n_submitted <= static_cast<std::ptrdiff_t>(__max_completions));
-      __pending_ = (__task_queue&&) __result.__pending;
-      while (!__result.__ready.empty()) {
-        __n_submitted -= __completion_queue_.complete((__task_queue&&) __result.__ready);
-        STDEXEC_ASSERT(0 <= __n_submitted);
-        __pending_.append(__requests_.pop_all());
-        __result = __submission_queue_.submit(
-          (__task_queue&&) __pending_,
-          __max_completions - static_cast<__u32>(__n_submitted),
-          __stop_source_->stop_requested());
-        __n_submitted += __result.__n_submitted;
-        __pending_ = (__task_queue&&) __result.__pending;
-      }
-      if (__n_submitted <= 0) {
+    while (__n_submitted_ > 0 || !__pending_.empty()) {
+      run_some();
+      if (__n_submitted_ == 0) {
         break;
       }
+      if (__break_loop_.exchange(false, std::memory_order_acquire)) {
+        return;
+      }
       constexpr int __min_complete = 1;
-      int rc = __io_uring_enter(__ring_fd_, __n_submitted, __min_complete, IORING_ENTER_GETEVENTS);
+      STDEXEC_ASSERT(
+        0 <= __n_submitted_ && __n_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+      int rc = __io_uring_enter(__ring_fd_, __n_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
       __throw_error_code_if(rc < 0, -rc);
-      __n_submitted -= __completion_queue_.complete((__task_queue&&) __result.__ready);
+      __n_submitted_ -= __completion_queue_.complete();
+      STDEXEC_ASSERT(0 <= __n_submitted_);
       __pending_.append(__requests_.pop_all());
     }
-    STDEXEC_ASSERT(__n_submitted == 0);
+    STDEXEC_ASSERT(__n_submitted_ == 0);
     STDEXEC_ASSERT(__pending_.empty());
     STDEXEC_ASSERT_FN(__stop_source_->stop_requested());
     // try to shutdown the request queue
@@ -339,11 +368,80 @@ namespace exec { namespace __io_uring {
     // and then stop it, finally.
     __pending_.append(__requests_.pop_all());
     __submission_result __result = __submission_queue_.submit(
-      (__task_queue&&) __pending_, __max_completions, true);
+      (__task_queue&&) __pending_, __params_.cq_entries, true);
     STDEXEC_ASSERT(__result.__n_submitted == 0);
     STDEXEC_ASSERT(__result.__pending.empty());
     __completion_queue_.complete((__task_queue&&) __result.__ready);
-    __is_running_.store(false, std::memory_order_relaxed);
+  }
+
+  template <class... _Values>
+  struct __sync_wait_receiver {
+    struct __t {
+      using __id = __sync_wait_receiver;
+      stdexec::__sync_wait::__state<_Values...>* __state_;
+      __context* __loop_;
+
+      template <class _Error>
+      void __set_error(_Error __err) noexcept {
+        if constexpr (stdexec::__decays_to<_Error, std::exception_ptr>)
+          __state_->__data_.template emplace<2>((_Error&&) __err);
+        else if constexpr (stdexec::__decays_to<_Error, std::error_code>)
+          __state_->__data_.template emplace<2>(std::make_exception_ptr(std::system_error(__err)));
+        else
+          __state_->__data_.template emplace<2>(std::make_exception_ptr((_Error&&) __err));
+        __loop_->finish();
+      }
+
+      template <class... _As>
+        requires stdexec::constructible_from<std::tuple<_Values...>, _As...>
+      friend void tag_invoke(stdexec::set_value_t, __t&& __rcvr, _As&&... __as) noexcept try {
+        __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
+        __rcvr.__loop_->finish();
+      } catch (...) {
+
+        __rcvr.__set_error(std::current_exception());
+      }
+
+      template <class _Error>
+      friend void tag_invoke(stdexec::set_error_t, __t&& __rcvr, _Error __err) noexcept {
+        __rcvr.__set_error((_Error&&) __err);
+      }
+
+      friend void tag_invoke(stdexec::set_stopped_t __d, __t&& __rcvr) noexcept {
+        __rcvr.__state_->__data_.template emplace<3>(__d);
+        __rcvr.__loop_->finish();
+      }
+
+      template <std::same_as<__t> _Self>
+      friend __sync_wait_env tag_invoke(stdexec::get_env_t, const _Self& __rcvr) noexcept {
+        return __sync_wait_env{__rcvr.__loop_->get_scheduler()};
+      }
+    };
+  };
+
+  template <stdexec::__single_value_variant_sender<__sync_wait_env> _Sender>
+  std::optional<__sync_wait_result_t<_Sender>> __context::sync_wait(_Sender&& __sender) {
+    using __state_t = stdexec::__sync_wait::
+      __sync_wait_result_impl<_Sender, stdexec::__q<stdexec::__sync_wait::__state>>;
+    using __receiver_t = stdexec::__t<
+      stdexec::__sync_wait::__sync_wait_result_impl<_Sender, stdexec::__q<__sync_wait_receiver>>>;
+    __state_t __state{};
+
+    // Launch the sender with a continuation that will fill in a variant
+    // and notify a condition variable.
+    auto __op_state = stdexec::connect((_Sender&&) __sender, __receiver_t{&__state, this});
+    stdexec::start(__op_state);
+
+    // Wait for the variant to be filled in.
+    run();
+
+    if (__state.__data_.index() == 2)
+      std::rethrow_exception(std::get<2>(__state.__data_));
+
+    if (__state.__data_.index() == 3)
+      return std::nullopt;
+
+    return std::move(std::get<1>(__state.__data_));
   }
 
   template <class _Op>
