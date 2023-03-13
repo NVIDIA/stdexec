@@ -227,9 +227,9 @@ namespace exec { namespace __io_uring {
   }
 
   inline __context::~__context() {
-    if (__n_submitted_ > 0) {
-      // It should be a fatal error if the context is destroyed while it is still in a running state.
-      STDEXEC_ASSERT(!__is_running_.load(std::memory_order_relaxed));
+    // It is a fatal error if the context is destroyed while it is still in a running state.
+    STDEXEC_ASSERT(!__is_running_.load(std::memory_order_relaxed));
+    if (__n_submissions_in_flight_.load(std::memory_order_relaxed) != __no_new_submissions) {
       request_stop();
       __break_loop_.store(false, std::memory_order_release);
       run();
