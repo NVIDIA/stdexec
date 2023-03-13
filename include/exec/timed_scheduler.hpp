@@ -82,20 +82,20 @@ namespace exec {
     __timed_scheduler<_TimedScheduler> && //
     stdexec::tag_invocable<schedule_after_t, _TimedScheduler, const duration_of_t<_TimedScheduler>&>;
 
-  template <class _TimedScheduler>
+  template <__has_custom_schedule_after _TimedScheduler>
   using __custom_schedule_after_sender_t = //
     stdexec::
       tag_invoke_result_t<schedule_after_t, _TimedScheduler, const duration_of_t<_TimedScheduler>&>;
 
   template <class _TimedScheduler>
-  using __custom_schedule_at_sender_t = //
-    stdexec::
-      tag_invoke_result_t<schedule_at_t, _TimedScheduler, const time_point_of_t<_TimedScheduler>&>;
-
-  template <class _TimedScheduler>
   concept __has_custom_schedule_at =      //
     __timed_scheduler<_TimedScheduler> && //
     stdexec::tag_invocable<schedule_at_t, _TimedScheduler, const time_point_of_t<_TimedScheduler>&>;
+
+  template <__has_custom_schedule_at _TimedScheduler>
+  using __custom_schedule_at_sender_t = //
+    stdexec::
+      tag_invoke_result_t<schedule_at_t, _TimedScheduler, const time_point_of_t<_TimedScheduler>&>;
 
   namespace __schedule_after {
     using namespace stdexec;
