@@ -27,7 +27,7 @@ jobs:
       - gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
       - ${{ matrix.arch }}
     container:
-      options: -u coder
+      options: -u root
       image: rapidsai/devcontainers:23.04-cpp-${{ matrix.tag }}-ubuntu22.04
       env:
         CUDA_VERSION: "${{ matrix.cuda }}"
