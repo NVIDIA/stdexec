@@ -123,7 +123,7 @@ namespace exec {
                 __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
                 (_ResultType&&) __result);
             } catch (...) {
-              std::set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
+              stdexec::set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
             }
           }
         }
