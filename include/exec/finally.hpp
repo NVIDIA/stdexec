@@ -109,10 +109,23 @@ namespace exec {
 
         template <__decays_to<__t> _Self>
         friend void tag_invoke(set_value_t, _Self&& __self) noexcept {
-          std::visit(
-            __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
-            (_ResultType&&) __self.__op_->__result_);
-          __self.__op_->__result_.__destruct();
+          if constexpr (std::is_nothrow_move_constructible_v<_ResultType>) {
+            _ResultType __result = (_ResultType&&) __self.__op_->__result_;
+            __self.__op_->__result_.__destruct();
+            std::visit(
+              __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
+              (_ResultType&&) __result);
+          } else {
+            try {
+              _ResultType __result = (_ResultType&&) __self.__op_->__result_;
+              __self.__op_->__result_.__destruct();
+              std::visit(
+                __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
+                (_ResultType&&) __result);
+            } catch (...) {
+              std::set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
+            }
+          }
         }
 
         template <__one_of<set_error_t, set_stopped_t> _Tag, __decays_to<__t> _Self, class... _Error>
