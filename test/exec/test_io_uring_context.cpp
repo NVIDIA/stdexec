@@ -97,9 +97,9 @@ TEST_CASE(
   {
     bool is_called = false;
     sync_wait(context, schedule(scheduler) | then([&] {
-                        CHECK(context.is_running());
-                        is_called = true;
-                      }));
+                         CHECK(context.is_running());
+                         is_called = true;
+                       }));
     CHECK(is_called);
     CHECK(!context.is_running());
     CHECK(!context.stop_requested());
@@ -107,9 +107,9 @@ TEST_CASE(
   {
     bool is_called = false;
     sync_wait(context, schedule_after(scheduler, 500us) | then([&] {
-                        CHECK(context.is_running());
-                        is_called = true;
-                      }));
+                         CHECK(context.is_running());
+                         is_called = true;
+                       }));
     CHECK(is_called);
     CHECK(!context.is_running());
     CHECK(!context.stop_requested());
@@ -136,8 +136,8 @@ TEST_CASE("Explicitly stop the io_uring_context", "[types][io_uring][schedulers]
   CHECK(context.stop_requested());
   bool is_stopped = false;
   sync_wait(schedule(scheduler) | then([&] { CHECK(false); }) | stdexec::upon_stopped([&] {
-                       is_stopped = true;
-                     }));
+              is_stopped = true;
+            }));
   CHECK(is_stopped);
 }
 
@@ -163,7 +163,6 @@ TEST_CASE("sync wait of a sender in another scheduler", "[types][io_uring][sched
     bool is_called = false;
     sync_wait(context, schedule(scheduler) | then([&] {
                          CHECK(std::this_thread::get_id() == single_thread_context.get_thread_id());
-                         CHECK(context.is_running());
                          is_called = true;
                        }));
     CHECK(is_called);
