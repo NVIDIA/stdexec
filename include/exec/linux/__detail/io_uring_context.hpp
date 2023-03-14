@@ -282,6 +282,7 @@ namespace exec { namespace __io_uring {
     STDEXEC_ASSERT(
       0 <= __n_submitted_ && __n_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
     __u32 __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_submitted_);
+    __pending_.append(__requests_.pop_all());
     __submission_result __result = __submission_queue_.submit(
       (__task_queue&&) __pending_, __max_submissions, __stop_source_->stop_requested());
     __n_submitted_ += __result.__n_submitted;
