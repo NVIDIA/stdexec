@@ -23,6 +23,8 @@
 #endif
 #endif
 
+#include <cstring>
+
 namespace exec {
 
 #if defined(STDEXEC_HAS_BIT_CAST)
