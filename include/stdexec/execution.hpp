@@ -5829,7 +5829,6 @@ namespace stdexec {
           __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
           __rcvr.__loop_->finish();
         } catch (...) {
-
           __rcvr.__set_error(std::current_exception());
         }
 
