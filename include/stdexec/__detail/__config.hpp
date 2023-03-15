@@ -66,6 +66,12 @@
 #define STDEXEC_MSVC() 0
 #endif
 
+#ifdef __has_builtin
+#define STDEXEC_HAS_BUILTIN __has_builtin
+#else
+#define STDEXEC_HAS_BUILTIN(...) 0
+#endif
+
 #if STDEXEC_CLANG() && defined(__CUDACC__)
 #define STDEXEC_DETAIL_CUDACC_HOST_DEVICE __host__ __device__
 #else
