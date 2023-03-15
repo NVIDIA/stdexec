@@ -24,6 +24,13 @@
 #endif
 
 #include <cstring>
+#include <type_traits>
+
+#ifdef __has_builtin
+#define STDEXEC_HAS_BUILTIN __has_builtin
+#else
+#define STDEXEC_HAS_BUILTIN(...) 0
+#endif
 
 namespace exec {
 
@@ -37,9 +44,13 @@ namespace exec {
       std::is_trivially_copyable_v<_From>, "bit_cast requires _From to be trivially copyable");
     static_assert(
       std::is_trivially_copyable_v<_To>, "bit_cast requires _To to be trivially copyable");
+#if STDEXEC_HAS_BUILTIN(__builtin_bit_cast) || (_MSC_VER >= 1926)
+    return __builtin_bit_cast(_To, __from);
+#else
     _To __to;
     std::memcpy(&__to, &__from, sizeof(_From));
     return __to;
+#endif
   }
 #endif
 }
