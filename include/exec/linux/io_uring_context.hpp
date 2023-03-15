@@ -485,6 +485,11 @@ namespace exec {
         }
       }
 
+      void run_until_empty() {
+        __break_loop_.store(true, std::memory_order_relaxed);
+        run();
+      }
+
       __scheduler get_scheduler() noexcept;
 
      private:

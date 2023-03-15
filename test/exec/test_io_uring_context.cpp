@@ -58,12 +58,12 @@ class jthread {
   }
 };
 
-TEST_CASE("Satisfy concepts", "[types][io_uring][schedulers]") {
+TEST_CASE("io_uring_context Satisfy concepts", "[types][io_uring][schedulers]") {
   STATIC_REQUIRE(timed_scheduler<io_uring_scheduler>);
   STATIC_REQUIRE_FALSE(std::is_move_assignable_v<io_uring_context>);
 }
 
-TEST_CASE("Schedule runs in io thread", "[types][io_uring][schedulers]") {
+TEST_CASE("io_uring_context Schedule runs in io thread", "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
@@ -90,26 +90,28 @@ TEST_CASE("Schedule runs in io thread", "[types][io_uring][schedulers]") {
 }
 
 TEST_CASE(
-  "Call io_uring::sync_wait runs and returns but does not stop",
+  "io_uring_context Call io_uring::run_until_empty runs and returns but does not stop",
   "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   {
     bool is_called = false;
-    sync_wait(context, schedule(scheduler) | then([&] {
-                         CHECK(context.is_running());
-                         is_called = true;
-                       }));
+    start_detached(schedule(scheduler) | then([&] {
+                     CHECK(context.is_running());
+                     is_called = true;
+                   }));
+    context.run_until_empty();
     CHECK(is_called);
     CHECK(!context.is_running());
     CHECK(!context.stop_requested());
   }
   {
     bool is_called = false;
-    sync_wait(context, schedule_after(scheduler, 500us) | then([&] {
-                         CHECK(context.is_running());
-                         is_called = true;
-                       }));
+    start_detached(schedule_after(scheduler, 500us) | then([&] {
+                     CHECK(context.is_running());
+                     is_called = true;
+                   }));
+    context.run_until_empty();
     CHECK(is_called);
     CHECK(!context.is_running());
     CHECK(!context.stop_requested());
@@ -117,15 +119,18 @@ TEST_CASE(
   // Destructor stops the wakeup operation and blocks the thread until everything is done
 }
 
-TEST_CASE("Explicitly stop the io_uring_context", "[types][io_uring][schedulers]") {
+TEST_CASE(
+  "io_uring_context Explicitly stop the io_uring_context",
+  "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   {
     bool is_called = false;
-    sync_wait(context, schedule(scheduler) | then([&] {
-                         CHECK(context.is_running());
-                         is_called = true;
-                       }));
+    start_detached(schedule(scheduler) | then([&] {
+                     CHECK(context.is_running());
+                     is_called = true;
+                   }));
+    context.run_until_empty();
     CHECK(is_called);
     CHECK(!context.is_running());
     CHECK(!context.stop_requested());
@@ -141,36 +146,9 @@ TEST_CASE("Explicitly stop the io_uring_context", "[types][io_uring][schedulers]
   CHECK(is_stopped);
 }
 
-TEST_CASE("Sync wait returns a value", "[types][io_uring][schedulers]") {
-  io_uring_context context;
-  io_uring_scheduler scheduler = context.get_scheduler();
-  {
-    auto [value] = sync_wait(context, schedule(scheduler) | then([] { return 42; })).value();
-    CHECK(value == 42);
-  }
-  {
-    auto [value] =
-      sync_wait(context, schedule_after(scheduler, 500us) | then([] { return 42; })).value();
-    CHECK(value == 42);
-  }
-}
-
-TEST_CASE("sync wait of a sender in another scheduler", "[types][io_uring][schedulers]") {
-  io_uring_context context;
-  exec::single_thread_context single_thread_context;
-  auto scheduler = single_thread_context.get_scheduler();
-  {
-    bool is_called = false;
-    sync_wait(context, schedule(scheduler) | then([&] {
-                         CHECK(std::this_thread::get_id() == single_thread_context.get_thread_id());
-                         is_called = true;
-                       }));
-    CHECK(is_called);
-    CHECK(!context.is_running());
-  }
-}
-
-TEST_CASE("Thread-safe to schedule from multiple threads", "[types][io_uring][schedulers]") {
+TEST_CASE(
+  "io_uring_context Thread-safe to schedule from multiple threads",
+  "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
@@ -259,7 +237,7 @@ TEST_CASE("Thread-safe to schedule from multiple threads", "[types][io_uring][sc
   }
 }
 
-TEST_CASE("Stop io_uring_context", "[types][io_uring][schedulers]") {
+TEST_CASE("io_uring_context Stop io_uring_context", "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
@@ -279,7 +257,7 @@ TEST_CASE("Stop io_uring_context", "[types][io_uring][schedulers]") {
   CHECK_FALSE(is_called);
 }
 
-TEST_CASE("After 0s", "[types][io_uring][schedulers]") {
+TEST_CASE("io_uring_context schedule_after 0s", "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
@@ -300,7 +278,7 @@ TEST_CASE("After 0s", "[types][io_uring][schedulers]") {
   }
 }
 
-TEST_CASE("After -1s", "[types][io_uring][schedulers]") {
+TEST_CASE("io_uring_context schedule_after -1s", "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
@@ -312,7 +290,7 @@ TEST_CASE("After -1s", "[types][io_uring][schedulers]") {
     }};
     bool is_called = false;
     sync_wait(when_any(
-      schedule_after(scheduler, -1ns) | then([&] {
+      schedule_after(scheduler, -1s) | then([&] {
         CHECK(io_thread.get_id() == std::this_thread::get_id());
         is_called = true;
       }),
