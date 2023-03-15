@@ -26,24 +26,19 @@
 #include <cstring>
 #include <type_traits>
 
-#ifdef __has_builtin
-#define STDEXEC_HAS_BUILTIN __has_builtin
-#else
-#define STDEXEC_HAS_BUILTIN(...) 0
-#endif
+#include "../../stdexec/__detail/__config.hpp"
 
 namespace exec {
+
+  template <class _Ty>
+  concept __trivially_copyable = std::is_trivially_copyable_v<_Ty>;
 
 #if defined(STDEXEC_HAS_BIT_CAST)
   using std::bit_cast;
 #else
-  template <class _To, class _From>
+  template <__trivially_copyable _To, __trivially_copyable _From>
+    requires(sizeof(_To) == sizeof(_From))
   [[nodiscard]] constexpr _To bit_cast(const _From& __from) noexcept {
-    static_assert(sizeof(_From) == sizeof(_To), "bit_cast requires sizeof(_From) == sizeof(_To)");
-    static_assert(
-      std::is_trivially_copyable_v<_From>, "bit_cast requires _From to be trivially copyable");
-    static_assert(
-      std::is_trivially_copyable_v<_To>, "bit_cast requires _To to be trivially copyable");
 #if STDEXEC_HAS_BUILTIN(__builtin_bit_cast) || (_MSC_VER >= 1926)
     return __builtin_bit_cast(_To, __from);
 #else
