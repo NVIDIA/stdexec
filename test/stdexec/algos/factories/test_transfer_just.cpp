@@ -133,7 +133,9 @@ TEST_CASE("transfer_just keeps error_types from scheduler's sender", "[factories
   check_err_types<type_array<int>>(ex::transfer_just(sched3, 3));
 }
 
-TEST_CASE("transfer_just sends an exception_ptr if value types are potentially throwing when copied", "[factories][transfer_just]") {
+TEST_CASE(
+  "transfer_just sends an exception_ptr if value types are potentially throwing when copied",
+  "[factories][transfer_just]") {
   inline_scheduler sched{};
 
   check_err_types<type_array<std::exception_ptr>>(ex::transfer_just(sched, potentially_throwing{}));

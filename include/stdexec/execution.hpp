@@ -30,6 +30,7 @@
 
 #include "__detail/__intrusive_ptr.hpp"
 #include "__detail/__meta.hpp"
+#include "__detail/__scope.hpp"
 #include "functional.hpp"
 #include "concepts.hpp"
 #include "coroutine.hpp"
@@ -2005,49 +2006,69 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC: __submit
   namespace __submit_ {
-    template <class _SenderId, class _ReceiverId>
-    struct __operation {
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      struct __t;
+    template <class _ReceiverId>
+    struct __operation_base;
 
-      struct __receiver {
-        using __t = __receiver;
+    template <class _ReceiverId>
+    struct __operation_base {
+      using _Receiver = __t<_ReceiverId>;
+      _Receiver __rcvr_;
+
+      using __delete_fn_t = void(__operation_base<_ReceiverId>*) noexcept;
+      __delete_fn_t* __delete_;
+    };
+
+    template <class _ReceiverId>
+    struct __receiver {
+      using is_receiver = void;
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      struct __t {
         using __id = __receiver;
-        __operation::__t* __op_state_;
+        __operation_base<_ReceiverId>* __op_state_;
 
         // Forward all the receiver ops, and delete the operation state.
         template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
           requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) //
-          noexcept(__nothrow_callable<_Tag, _Receiver, _As...>) {
+        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept(
+          __nothrow_callable<_Tag, _Receiver, _As...>) {
           // Delete the state as cleanup:
-          std::unique_ptr<__operation::__t> __g{__self.__op_state_};
+          auto __g = __scope_guard{__self.__op_state_->__delete_, __self.__op_state_};
           return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
         }
 
         // Forward all receiever queries.
-        friend auto tag_invoke(get_env_t, const __receiver& __self) -> env_of_t<_Receiver> {
+        friend auto tag_invoke(get_env_t, const __t& __self) -> env_of_t<_Receiver> {
           return get_env((const _Receiver&) __self.__op_state_->__rcvr_);
         }
       };
+    };
+    template <class _ReceiverId>
+    using __receiver_t = __t<__receiver<_ReceiverId>>;
 
-      struct __t {
-        using __id = __operation;
-        _Receiver __rcvr_;
-        connect_result_t<_Sender, __receiver> __op_state_;
 
-        __t(_Sender&& __sndr, _Receiver&& __rcvr)
-          : __rcvr_((_Receiver&&) __rcvr)
-          , __op_state_(connect((_Sender&&) __sndr, __receiver{this})) {
-        }
-      };
+    template <class _SenderId, class _ReceiverId>
+    struct __operation : __operation_base<_ReceiverId> {
+      using _Sender = stdexec::__t<_SenderId>;
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      connect_result_t<_Sender, __receiver_t<_ReceiverId>> __op_state_;
+
+      template <__decays_to<_Receiver> _CvrefReceiver>
+      __operation(_Sender&& __sndr, _CvrefReceiver&& __rcvr)
+        : __operation_base<_ReceiverId>{
+            (_CvrefReceiver&&) __rcvr,
+            [](__operation_base<_ReceiverId>* __self) noexcept {
+              delete static_cast<__operation*>(__self);
+            }}
+        , __op_state_(connect((_Sender&&) __sndr, __receiver_t<_ReceiverId>{this})) {
+      }
     };
 
     struct __submit_t {
       template <receiver _Receiver, sender_to<_Receiver> _Sender>
       void operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(false) {
-        start((new __t<__operation<__id<_Sender>, __id<_Receiver>>>{
+        start((new __operation<__id<_Sender>, __id<_Receiver>>{
                  (_Sender&&) __sndr, (_Receiver&&) __rcvr})
                 ->__op_state_);
       }
@@ -5829,6 +5850,7 @@ namespace stdexec {
           __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
           __rcvr.__loop_->finish();
         } catch (...) {
+
           __rcvr.__set_error(std::current_exception());
         }
 
