@@ -532,11 +532,16 @@ namespace stdexec {
   using __cvref_id = __copy_cvref_t<_From, __id<_To>>;
 
   template <class _Fun, class... _As>
-  concept __callable = requires(_Fun&& __fun, _As&&... __as) { ((_Fun&&) __fun)((_As&&) __as...); };
+  concept __callable =                      //
+    requires(_Fun&& __fun, _As&&... __as) { //
+      ((_Fun&&) __fun)((_As&&) __as...);    //
+    };
   template <class _Fun, class... _As>
-  concept __nothrow_callable = __callable<_Fun, _As...> && requires(_Fun&& __fun, _As&&... __as) {
-    { ((_Fun&&) __fun)((_As&&) __as...) } noexcept;
-  };
+  concept __nothrow_callable =  //
+    __callable<_Fun, _As...> && //
+    requires(_Fun&& __fun, _As&&... __as) {
+      { ((_Fun&&) __fun)((_As&&) __as...) } noexcept;
+    };
 
 #if STDEXEC_NVHPC()
   // nvc++ doesn't cache the results of alias template specializations.

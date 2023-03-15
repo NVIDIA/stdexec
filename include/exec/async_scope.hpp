@@ -276,53 +276,56 @@ namespace exec {
         __self.__start_();
       }
 
-      void __complete_() noexcept try {
-        auto __state = std::move(__state_);
-        STDEXEC_ASSERT(__state != nullptr);
-        std::unique_lock __guard{__state->__mutex_};
-        // either the future is still in use or it has passed ownership to __state->__no_future_
-        if (__state->__no_future_.get() != nullptr || __state->__step_ != __future_step::__future) {
-          // invalid state - there is a code bug in the state machine
-          std::terminate();
-        } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
-          __guard.unlock();
-          set_stopped((_Receiver&&) __rcvr_);
-          __guard.lock();
-        } else {
-          std::visit(
-            [this, &__guard]<class _Tup>(_Tup& __tup) {
-              if constexpr (same_as<_Tup, std::monostate>) {
-                std::terminate();
-              } else {
-                std::apply(
-                  [this, &__guard]<class... _As>(auto tag, _As&... __as) {
-                    __guard.unlock();
-                    tag((_Receiver&&) __rcvr_, (_As&&) __as...);
-                    __guard.lock();
-                  },
-                  __tup);
-              }
-            },
-            __state->__data_);
+      void __complete_() noexcept {
+        try {
+          auto __state = std::move(__state_);
+          STDEXEC_ASSERT(__state != nullptr);
+          std::unique_lock __guard{__state->__mutex_};
+          // either the future is still in use or it has passed ownership to __state->__no_future_
+          if (
+            __state->__no_future_.get() != nullptr || __state->__step_ != __future_step::__future) {
+            // invalid state - there is a code bug in the state machine
+            std::terminate();
+          } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
+            __guard.unlock();
+            set_stopped((_Receiver&&) __rcvr_);
+            __guard.lock();
+          } else {
+            std::visit(
+              [this, &__guard]<class _Tup>(_Tup& __tup) {
+                if constexpr (same_as<_Tup, std::monostate>) {
+                  std::terminate();
+                } else {
+                  std::apply(
+                    [this, &__guard]<class... _As>(auto tag, _As&... __as) {
+                      __guard.unlock();
+                      tag((_Receiver&&) __rcvr_, (_As&&) __as...);
+                      __guard.lock();
+                    },
+                    __tup);
+                }
+              },
+              __state->__data_);
+          }
+        } catch (...) {
+          set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
-      } catch (...) {
-
-        set_error((_Receiver&&) __rcvr_, std::current_exception());
       }
 
-      void __start_() noexcept try {
-        if (!!__state_) {
-          std::unique_lock __guard{__state_->__mutex_};
-          if (__state_->__data_.index() != 0) {
-            __guard.unlock();
-            __complete_();
-          } else {
-            __state_->__subscribers_.push_back(this);
+      void __start_() noexcept {
+        try {
+          if (!!__state_) {
+            std::unique_lock __guard{__state_->__mutex_};
+            if (__state_->__data_.index() != 0) {
+              __guard.unlock();
+              __complete_();
+            } else {
+              __state_->__subscribers_.push_back(this);
+            }
           }
+        } catch (...) {
+          set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
-      } catch (...) {
-
-        set_error((_Receiver&&) __rcvr_, std::current_exception());
       }
 
       [[no_unique_address]] _Receiver __rcvr_;

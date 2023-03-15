@@ -205,8 +205,11 @@ namespace stdexec {
     swappable_with<_Ty, _Ty>;
 
   template < class _Ty >
-  concept movable = std::is_object_v<_Ty> && move_constructible<_Ty> && assignable_from<_Ty&, _Ty>
-                 && swappable<_Ty>;
+  concept movable =               //
+    std::is_object_v<_Ty> &&      //
+    move_constructible<_Ty> &&    //
+    assignable_from<_Ty&, _Ty> && //
+    swappable<_Ty>;
 
   template <class _Ty>
   concept copyable =                     //

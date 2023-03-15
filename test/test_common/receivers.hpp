@@ -316,13 +316,14 @@ struct expect_stopped_receiver_ex {
   Env env_;
 };
 
-inline std::pair<const std::type_info&, std::string> to_comparable(std::exception_ptr eptr) try {
-  std::rethrow_exception(eptr);
-} catch (const std::exception& e) {
-
-  return {typeid(e), e.what()};
-} catch (...) {
-  return {typeid(void), "<unknown>"};
+inline std::pair<const std::type_info&, std::string> to_comparable(std::exception_ptr eptr) {
+  try {
+    std::rethrow_exception(eptr);
+  } catch (const std::exception& e) {
+    return {typeid(e), e.what()};
+  } catch (...) {
+    return {typeid(void), "<unknown>"};
+  }
 }
 
 template <typename T>
@@ -495,11 +496,12 @@ struct fun_receiver {
   F f_;
 
   template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, fun_receiver&& self, Ts... vals) noexcept try {
-    std::move(self.f_)((Ts&&) vals...);
-  } catch (...) {
-
-    ex::set_error(std::move(self), std::current_exception());
+  friend void tag_invoke(ex::set_value_t, fun_receiver&& self, Ts... vals) noexcept {
+    try {
+      std::move(self.f_)((Ts&&) vals...);
+    } catch (...) {
+      ex::set_error(std::move(self), std::current_exception());
+    }
   }
 
   friend void tag_invoke(ex::set_stopped_t, fun_receiver) noexcept {

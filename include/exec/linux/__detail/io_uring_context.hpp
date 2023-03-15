@@ -360,11 +360,12 @@ namespace exec { namespace __io_uring {
   }
 
   template <class _Op>
-  concept __io_task = requires(_Op& __op, ::io_uring_sqe& __sqe, const ::io_uring_cqe& __cqe) {
-    { __op.ready() } noexcept -> std::convertible_to<bool>;
-    { __op.submit(__sqe) } noexcept;
-    { __op.complete(__cqe) } noexcept;
-  };
+  concept __io_task = //
+    requires(_Op& __op, ::io_uring_sqe& __sqe, const ::io_uring_cqe& __cqe) {
+      { __op.ready() } noexcept -> std::convertible_to<bool>;
+      { __op.submit(__sqe) } noexcept;
+      { __op.complete(__cqe) } noexcept;
+    };
 
   template <class _Derived>
   struct __io_task_base : __task {

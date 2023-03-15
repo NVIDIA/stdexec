@@ -146,9 +146,9 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   template <class _Sender>
-  concept __enable_sender = requires {
-    typename _Sender::is_sender;
-  } || __awaitable<_Sender, __compl_sigs::__env_promise<empty_env>>;
+  concept __enable_sender =                      //
+    requires { typename _Sender::is_sender; } || //
+    __awaitable<_Sender, __compl_sigs::__env_promise<empty_env>>;
 
   template <class _Sender>
   inline constexpr bool enable_sender = __enable_sender<_Sender>;
@@ -343,12 +343,13 @@ namespace stdexec {
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
 
   template <class _EnvProvider>
-  concept environment_provider = requires(_EnvProvider& __ep) {
-    { get_env(std::as_const(__ep)) } -> queryable;
-    // NOT TO SPEC: Remove the following line when we deprecate all
-    // R5 entities.
-    { get_env(std::as_const(__ep)) } -> __none_of<no_env, void>;
-  };
+  concept environment_provider = //
+    requires(_EnvProvider& __ep) {
+      { get_env(std::as_const(__ep)) } -> queryable;
+      // NOT TO SPEC: Remove the following line when we deprecate all
+      // R5 entities.
+      { get_env(std::as_const(__ep)) } -> __none_of<no_env, void>;
+    };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -609,8 +610,12 @@ namespace stdexec {
       -> decltype((__has_completion<_Receiver>((_Sigs*) 0), ...));
 
     template <class _Completion, class _Receiver>
-    concept __is_valid_completion = _Completion::template _WITH_RECEIVER_<_Receiver>::value;
-  } // namespace __receiver_concepts
+    concept __is_valid_completion = //
+      _Completion::template _WITH_RECEIVER_<_Receiver>::value;
+  }                                 // namespace __receiver_concepts
+
+  using __receiver_concepts::__has_completions;
+  using __receiver_concepts::__is_valid_completion;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -624,18 +629,20 @@ namespace stdexec {
     // explicit get_env. All R5 receivers provided an explicit get_env,
     // so this is backwards compatible.
     //  NOTE: Double-negation here is to make the constraint atomic
-    !!(
-      enable_receiver<_Receiver>
-      || tag_invocable<get_env_t, __cref_t<_Receiver>>) &&environment_provider<__cref_t<_Receiver>>
-    && move_constructible<remove_cvref_t<_Receiver>>
-    && constructible_from<remove_cvref_t<_Receiver>, _Receiver>;
+    (!!(enable_receiver<_Receiver> || tag_invocable<get_env_t, __cref_t<_Receiver>>) ) && //
+    environment_provider<__cref_t<_Receiver>> &&                                          //
+    move_constructible<remove_cvref_t<_Receiver>> &&                                      //
+    constructible_from<remove_cvref_t<_Receiver>, _Receiver>;
 
   template <class _Receiver, class _Completions>
-  concept receiver_of = receiver<_Receiver> && requires(_Completions* __required_completions) {
-    {
-      __receiver_concepts::__has_completions<remove_cvref_t<_Receiver>>(__required_completions)
-    } -> __receiver_concepts::__is_valid_completion<remove_cvref_t<_Receiver>>;
-  };
+  concept receiver_of =    //
+    receiver<_Receiver> && //
+    requires(_Completions* __required_completions) {
+      {
+        __has_completions<remove_cvref_t<_Receiver>>(__required_completions)
+      } //
+        ->__is_valid_completion<remove_cvref_t<_Receiver>>;
+    };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
@@ -715,12 +722,16 @@ namespace stdexec {
 #if !STDEXEC_LEGACY_R5_CONCEPTS()
   // Here is the R7 sender concepts, not yet enabled.
   template <class _Sender>
-  concept sender = enable_sender<remove_cvref_t<_Sender>> && environment_provider<__cref_t<_Sender>>
-                && move_constructible<remove_cvref_t<_Sender>>
-                && constructible_from<remove_cvref_t<_Sender>, _Sender>;
+  concept sender =                                 //
+    enable_sender<remove_cvref_t<_Sender>> &&      //
+    environment_provider<__cref_t<_Sender>> &&     //
+    move_constructible<remove_cvref_t<_Sender>> && //
+    constructible_from<remove_cvref_t<_Sender>, _Sender>;
 
   template <class _Sender, class _Env = empty_env>
-  concept sender_in = sender<_Sender> && __with_completion_signatures<_Sender, _Env>;
+  concept sender_in =  //
+    sender<_Sender> && //
+    __with_completion_signatures<_Sender, _Env>;
 
 #else
   // Here are the sender concepts that provide backward compatibility
@@ -728,9 +739,9 @@ namespace stdexec {
   template <class _Sender, class _Env = no_env>
   concept __sender =
     // Double-negation here is to make this an atomic constraint
-    !!(
+    (!!(
       (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
-      || __with_completion_signatures<_Sender, _Env>);
+      || __with_completion_signatures<_Sender, _Env>) );
 
   template <class _Sender, class _Env = no_env>
   concept sender =
@@ -738,9 +749,11 @@ namespace stdexec {
     // The sender related concepts are temporarily "in flight" being
     // upgraded from P2300R5 to the get_env / enable_sender aware version
     // in P2300R7.
-    __sender<_Sender> && __sender<_Sender, _Env> && environment_provider<__cref_t<_Sender>>
-    && move_constructible<remove_cvref_t<_Sender>>
-    && constructible_from<remove_cvref_t<_Sender>, _Sender>;
+    __sender<_Sender> &&                           //
+    __sender<_Sender, _Env> &&                     //
+    environment_provider<__cref_t<_Sender>> &&     //
+    move_constructible<remove_cvref_t<_Sender>> && //
+    constructible_from<remove_cvref_t<_Sender>, _Sender>;
 
   template <class _Sender, class _Env = empty_env>
   concept sender_in = sender<_Sender, _Env>;
@@ -1031,10 +1044,11 @@ namespace stdexec {
 
   // NOT TO SPEC
   template <class _Tag, const auto& _Predicate>
-  concept tag_category = requires {
-    typename __bool<bool{_Predicate(_Tag{})}>;
-    requires bool{_Predicate(_Tag{})};
-  };
+  concept tag_category = //
+    requires {
+      typename __bool<bool{_Predicate(_Tag{})}>;
+      requires bool{_Predicate(_Tag{})};
+    };
 
   // [execution.schedulers.queries], scheduler queries
   namespace __scheduler_queries {
@@ -1091,9 +1105,10 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.schedulers]
   template <class _Scheduler>
-  concept __has_schedule = requires(_Scheduler&& __sched) {
-    { schedule((_Scheduler&&) __sched) } -> sender;
-  };
+  concept __has_schedule = //
+    requires(_Scheduler&& __sched) {
+      { schedule((_Scheduler&&) __sched) } -> sender;
+    };
 
   template <class _Scheduler>
   concept __sender_has_completion_scheduler =
@@ -1104,9 +1119,11 @@ namespace stdexec {
     };
 
   template <class _Scheduler>
-  concept scheduler = __has_schedule<_Scheduler> && __sender_has_completion_scheduler<_Scheduler>
-                   && equality_comparable<remove_cvref_t<_Scheduler>>
-                   && copy_constructible<remove_cvref_t<_Scheduler>>;
+  concept scheduler =                                  //
+    __has_schedule<_Scheduler> &&                      //
+    __sender_has_completion_scheduler<_Scheduler> &&   //
+    equality_comparable<remove_cvref_t<_Scheduler>> && //
+    copy_constructible<remove_cvref_t<_Scheduler>>;
 
   // NOT TO SPEC
   template <scheduler _Scheduler>
@@ -1210,9 +1227,10 @@ namespace stdexec {
   using __current_scheduler_t = __call_result_t<get_scheduler_t, env_of_t<_Receiver>>;
 
   template <class _SchedulerProvider>
-  concept __scheduler_provider = requires(const _SchedulerProvider& __sp) {
-    { get_scheduler(__sp) } -> scheduler<>;
-  };
+  concept __scheduler_provider = //
+    requires(const _SchedulerProvider& __sp) {
+      { get_scheduler(__sp) } -> scheduler<>;
+    };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
@@ -1645,10 +1663,12 @@ namespace stdexec {
   // [exec.snd]
   template <class _Sender, class _Receiver>
   concept sender_to =
-    receiver<_Receiver> && sender_in<_Sender, env_of_t<_Receiver>>
-    && __receiver_from<_Receiver, _Sender> && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-         connect((_Sender&&) __sndr, (_Receiver&&) __rcvr);
-       };
+    receiver<_Receiver> &&                     //
+    sender_in<_Sender, env_of_t<_Receiver>> && //
+    __receiver_from<_Receiver, _Sender> &&     //
+    requires(_Sender&& __sndr, _Receiver&& __rcvr) {
+      connect((_Sender&&) __sndr, (_Receiver&&) __rcvr);
+    };
 
   template <class _Tag, class... _Args>
   _Tag __tag_of_sig_(_Tag (*)(_Args...));
@@ -1733,12 +1753,13 @@ namespace stdexec {
     struct __receiver_base {
       template <class... _Us>
         requires constructible_from<__value_or_void_t<_Value>, _Us...>
-      friend void tag_invoke(set_value_t, __receiver_base&& __self, _Us&&... __us) noexcept try {
-        __self.__result_->template emplace<1>((_Us&&) __us...);
-        __self.__continuation_.resume();
-      } catch (...) {
-
-        set_error((__receiver_base&&) __self, std::current_exception());
+      friend void tag_invoke(set_value_t, __receiver_base&& __self, _Us&&... __us) noexcept {
+        try {
+          __self.__result_->template emplace<1>((_Us&&) __us...);
+          __self.__continuation_.resume();
+        } catch (...) {
+          set_error((__receiver_base&&) __self, std::current_exception());
+        }
       }
 
       template <class _Error>
@@ -1842,11 +1863,11 @@ namespace stdexec {
 
     template <class _Sender, class _Promise>
     concept __awaitable_sender =
-      __single_typed_sender<_Sender, __env_t<_Promise>>      //
-      && sender_to<_Sender, __receiver_t<_Sender, _Promise>> //
-      && requires(_Promise& __promise) {
-           { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;
-         };
+      __single_typed_sender<_Sender, __env_t<_Promise>> &&   //
+      sender_to<_Sender, __receiver_t<_Sender, _Promise>> && //
+      requires(_Promise& __promise) {
+        { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;
+      };
 
     struct __unspecified {
       __unspecified get_return_object() noexcept;
@@ -2045,7 +2066,6 @@ namespace stdexec {
     };
     template <class _ReceiverId>
     using __receiver_t = __t<__receiver<_ReceiverId>>;
-
 
     template <class _SenderId, class _ReceiverId>
     struct __operation : __operation_base<_ReceiverId> {
@@ -2308,11 +2328,12 @@ namespace stdexec {
     struct __as_receiver {
       _Fun __fun_;
 
-      friend void tag_invoke(set_value_t, __as_receiver&& __rcvr) noexcept try {
-        __rcvr.__fun_();
-      } catch (...) {
-
-        set_error((__as_receiver&&) __rcvr, std::exception_ptr());
+      friend void tag_invoke(set_value_t, __as_receiver&& __rcvr) noexcept {
+        try {
+          __rcvr.__fun_();
+        } catch (...) {
+          set_error((__as_receiver&&) __rcvr, std::exception_ptr());
+        }
       }
 
       [[noreturn]] friend void
@@ -3902,9 +3923,8 @@ namespace stdexec {
     void __test_ensure_started_sender(__sender<_SenderId, _EnvId> const & __sndr2){};
 
     template <class _Sender>
-    concept __ensure_started_sender = requires(typename _Sender::__id __sndr1) {
-      __test_ensure_started_sender(__sndr1);
-    };
+    concept __ensure_started_sender = //
+      requires(typename _Sender::__id __sndr1) { __test_ensure_started_sender(__sndr1); };
 
     struct ensure_started_t {
       template <sender _Sender, class _Env = empty_env>
@@ -3996,19 +4016,21 @@ namespace stdexec {
         template <__one_of<_Let> _Tag, class... _As>
           requires __minvocable<__result_sender<_Fun>, _As...>
                 && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept try {
-          using __tuple_t = __decayed_tuple<_As...>;
-          using __op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
-          auto& __args = __self.__op_state_->__args_.template emplace<__tuple_t>((_As&&) __as...);
-          auto& __op = __self.__op_state_->__op_state3_.template emplace<__op_state_t>(__conv{[&] {
-            return connect(
-              std::apply(std::move(__self.__op_state_->__fun_), __args),
-              std::move(__self.__op_state_->__rcvr_));
-          }});
-          start(__op);
-        } catch (...) {
-
-          set_error(std::move(__self.__op_state_->__rcvr_), std::current_exception());
+        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
+          try {
+            using __tuple_t = __decayed_tuple<_As...>;
+            using __op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
+            auto& __args = __self.__op_state_->__args_.template emplace<__tuple_t>((_As&&) __as...);
+            auto& __op = __self.__op_state_->__op_state3_.template emplace<__op_state_t>(
+              __conv{[&] {
+                return connect(
+                  std::apply(std::move(__self.__op_state_->__fun_), __args),
+                  std::move(__self.__op_state_->__rcvr_));
+              }});
+            start(__op);
+          } catch (...) {
+            set_error(std::move(__self.__op_state_->__rcvr_), std::current_exception());
+          }
         }
 
         template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
@@ -4193,13 +4215,14 @@ namespace stdexec {
         }
 
         template <class _Ty>
-        void set_value(_Ty&& __a) && noexcept try {
-          using _Value = __single_sender_value_t<_Sender, env_of_t<_Receiver>>;
-          static_assert(constructible_from<_Value, _Ty>);
-          stdexec::set_value(((__t&&) *this).base(), std::optional<_Value>{(_Ty&&) __a});
-        } catch (...) {
-
-          stdexec::set_error(((__t&&) *this).base(), std::current_exception());
+        void set_value(_Ty&& __a) && noexcept {
+          try {
+            using _Value = __single_sender_value_t<_Sender, env_of_t<_Receiver>>;
+            static_assert(constructible_from<_Value, _Ty>);
+            stdexec::set_value(((__t&&) *this).base(), std::optional<_Value>{(_Ty&&) __a});
+          } catch (...) {
+            stdexec::set_error(((__t&&) *this).base(), std::current_exception());
+          }
         }
 
         void set_stopped() && noexcept {
@@ -4486,11 +4509,12 @@ namespace stdexec {
     };
 
     template <class _ReceiverId>
-    inline void __operation<_ReceiverId>::__t::__start_() noexcept try {
-      __loop_->__push_back_(this);
-    } catch (...) {
-
-      set_error((_Receiver&&) __rcvr_, std::current_exception());
+    inline void __operation<_ReceiverId>::__t::__start_() noexcept {
+      try {
+        __loop_->__push_back_(this);
+      } catch (...) {
+        set_error((_Receiver&&) __rcvr_, std::current_exception());
+      }
     }
 
     inline void run_loop::run() {
@@ -5090,14 +5114,15 @@ namespace stdexec {
         // Customize set_value by building a variant and passing the result
         // to the base class
         template <class... _As>
-        void set_value(_As&&... __as) && noexcept try {
-          using __variant_t = __into_variant_result_t<_Sender, env_of_t<_Receiver>>;
-          static_assert(constructible_from<__variant_t, std::tuple<_As&&...>>);
-          stdexec::set_value(
-            ((__t&&) *this).base(), __variant_t{std::tuple<_As&&...>{(_As&&) __as...}});
-        } catch (...) {
-
-          stdexec::set_error(((__t&&) *this).base(), std::current_exception());
+        void set_value(_As&&... __as) && noexcept {
+          try {
+            using __variant_t = __into_variant_result_t<_Sender, env_of_t<_Receiver>>;
+            static_assert(constructible_from<__variant_t, std::tuple<_As&&...>>);
+            stdexec::set_value(
+              ((__t&&) *this).base(), __variant_t{std::tuple<_As&&...>{(_As&&) __as...}});
+          } catch (...) {
+            stdexec::set_error(((__t&&) *this).base(), std::current_exception());
+          }
         }
 
        public:
@@ -5714,12 +5739,13 @@ namespace stdexec {
         using __id = __operation;
         _Receiver __rcvr_;
 
-        friend void tag_invoke(start_t, __t& __self) noexcept try {
-          auto __env = get_env(__self.__rcvr_);
-          set_value(std::move(__self.__rcvr_), _Tag{}(__env));
-        } catch (...) {
-
-          set_error(std::move(__self.__rcvr_), std::current_exception());
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          try {
+            auto __env = get_env(__self.__rcvr_);
+            set_value(std::move(__self.__rcvr_), _Tag{}(__env));
+          } catch (...) {
+            set_error(std::move(__self.__rcvr_), std::current_exception());
+          }
         }
       };
     };
@@ -5846,12 +5872,13 @@ namespace stdexec {
 
         template <class... _As>
           requires constructible_from<std::tuple<_Values...>, _As...>
-        friend void tag_invoke(stdexec::set_value_t, __t&& __rcvr, _As&&... __as) noexcept try {
-          __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
-          __rcvr.__loop_->finish();
-        } catch (...) {
-
-          __rcvr.__set_error(std::current_exception());
+        friend void tag_invoke(stdexec::set_value_t, __t&& __rcvr, _As&&... __as) noexcept {
+          try {
+            __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
+            __rcvr.__loop_->finish();
+          } catch (...) {
+            __rcvr.__set_error(std::current_exception());
+          }
         }
 
         template <class _Error>
