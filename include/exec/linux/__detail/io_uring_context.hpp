@@ -297,8 +297,8 @@ namespace exec { namespace __io_uring {
       int __in_flight = __n_submissions_in_flight_.load(std::memory_order_relaxed);
       if (__in_flight == __no_new_submissions) {
         __stop_source_.emplace();
-      // Make emplacement of stop source visible to other threads and open the door for new submissions.
-      __n_submissions_in_flight_.store(0, std::memory_order_release);
+        // Make emplacement of stop source visible to other threads and open the door for new submissions.
+        __n_submissions_in_flight_.store(0, std::memory_order_release);
       }
     }
     std::ptrdiff_t __n_submitted = 0;

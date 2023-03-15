@@ -197,10 +197,13 @@ TEST_CASE("schedule_from keeps error_types from scheduler's sender", "[adaptors]
   check_err_types<type_array<int>>(ex::schedule_from(sched3, ex::just(3)));
 }
 
-TEST_CASE("schedule_from sends an exception_ptr if value types are potentially throwing when copied", "[adaptors][schedule_from]") {
+TEST_CASE(
+  "schedule_from sends an exception_ptr if value types are potentially throwing when copied",
+  "[adaptors][schedule_from]") {
   inline_scheduler sched{};
 
-  check_err_types<type_array<std::exception_ptr>>(ex::schedule_from(sched, ex::just(potentially_throwing{})));
+  check_err_types<type_array<std::exception_ptr>>(
+    ex::schedule_from(sched, ex::just(potentially_throwing{})));
 }
 
 TEST_CASE(
