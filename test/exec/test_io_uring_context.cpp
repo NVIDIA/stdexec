@@ -90,33 +90,37 @@ TEST_CASE("io_uring_context Schedule runs in io thread", "[types][io_uring][sche
 }
 
 TEST_CASE(
-  "io_uring_context Call io_uring::run_until_empty runs and returns but does not stop",
+  "io_uring_context Call io_uring::run_until_empty with start_detached",
   "[types][io_uring][schedulers]") {
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
-  {
-    bool is_called = false;
-    start_detached(schedule(scheduler) | then([&] {
-                     CHECK(context.is_running());
-                     is_called = true;
-                   }));
-    context.run_until_empty();
-    CHECK(is_called);
-    CHECK(!context.is_running());
-    CHECK(!context.stop_requested());
-  }
-  {
-    bool is_called = false;
-    start_detached(schedule_after(scheduler, 500us) | then([&] {
-                     CHECK(context.is_running());
-                     is_called = true;
-                   }));
-    context.run_until_empty();
-    CHECK(is_called);
-    CHECK(!context.is_running());
-    CHECK(!context.stop_requested());
-  }
-  // Destructor stops the wakeup operation and blocks the thread until everything is done
+  bool is_called = false;
+  start_detached(schedule(scheduler) | then([&] {
+                   CHECK(context.is_running());
+                   is_called = true;
+                 }));
+  context.run_until_empty();
+  CHECK(is_called);
+  CHECK(!context.is_running());
+  CHECK(!context.stop_requested());
+}
+
+TEST_CASE(
+  "io_uring_context Call io_uring::run_until_empty with sync_wait",
+  "[types][io_uring][schedulers]") {
+  io_uring_context context;
+  io_uring_scheduler scheduler = context.get_scheduler();
+  auto just_run = just() | then([&] { context.run_until_empty(); });
+  bool is_called = false;
+  sync_wait(when_all(
+    schedule_after(scheduler, 500us) | then([&] {
+      CHECK(context.is_running());
+      is_called = true;
+    }),
+    just_run));
+  CHECK(is_called);
+  CHECK(!context.is_running());
+  CHECK(!context.stop_requested());
 }
 
 TEST_CASE(
