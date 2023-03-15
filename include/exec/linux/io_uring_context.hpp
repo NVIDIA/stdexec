@@ -821,6 +821,8 @@ namespace exec {
           __nsec = std::chrono::nanoseconds{__timerspec.it_value.tv_nsec} + __nsec;
           auto __sec = std::chrono::duration_cast<std::chrono::seconds>(__nsec);
           __nsec -= __sec;
+          __nsec = std::clamp(
+            __nsec, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
           __timerspec.it_value.tv_sec += __sec.count();
           __timerspec.it_value.tv_nsec = __nsec.count();
           STDEXEC_ASSERT(
