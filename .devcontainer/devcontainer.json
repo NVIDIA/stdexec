@@ -3,7 +3,7 @@
 
   "hostRequirements": { "gpu": true },
 
-  "initializeCommand": "mkdir -p .cache",
+  "initializeCommand": ["/bin/bash", "-c", "mkdir -p .cache/.{aws,config}"],
 
   "containerEnv": {
     "SCCACHE_REGION": "us-east-2",
