@@ -929,16 +929,18 @@ namespace exec {
           return __sender.__env_;
         }
 
+        using __completion_sigs =
+          stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
+
         template <class _Env>
-        friend stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>
-          tag_invoke(
-            stdexec::get_completion_signatures_t,
-            const __schedule_sender&,
-            _Env) noexcept {
+        friend __completion_sigs tag_invoke(
+          stdexec::get_completion_signatures_t,
+          const __schedule_sender&,
+          _Env) noexcept {
           return {};
         }
 
-        template <class _Receiver>
+        template <stdexec::receiver_of<__completion_sigs> _Receiver>
         friend stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>> tag_invoke(
           stdexec::connect_t,
           const __schedule_sender& __sender,
@@ -958,19 +960,20 @@ namespace exec {
           return __sender.__env_;
         }
 
-        template <class _Env>
-        friend stdexec::completion_signatures<
+        using __completion_sigs = stdexec::completion_signatures<
           stdexec::set_value_t(),
           stdexec::set_error_t(std::exception_ptr),
-          stdexec::set_stopped_t()>
-          tag_invoke(
-            stdexec::get_completion_signatures_t,
-            const __schedule_after_sender&,
-            _Env) noexcept {
+          stdexec::set_stopped_t()>;
+
+        template <class _Env>
+        friend __completion_sigs tag_invoke(
+          stdexec::get_completion_signatures_t,
+          const __schedule_after_sender&,
+          _Env) noexcept {
           return {};
         }
 
-        template <class _Receiver>
+        template <stdexec::receiver_of<__completion_sigs> _Receiver>
         friend stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>> tag_invoke(
           stdexec::connect_t,
           const __schedule_after_sender& __sender,
