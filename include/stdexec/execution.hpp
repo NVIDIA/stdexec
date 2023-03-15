@@ -2021,30 +2021,38 @@ namespace stdexec {
     template <class _ReceiverId>
     struct __receiver {
       using is_receiver = void;
-      using _Receiver = __t<_ReceiverId>;
-      __operation_base<_ReceiverId>* __op_state_;
+      using _Receiver = stdexec::__t<_ReceiverId>;
 
-      // Forward all the receiver ops, and delete the operation state.
-      template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
-        requires __callable<_Tag, _Receiver, _As...>
-      friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept(
-        __nothrow_callable<_Tag, _Receiver, _As...>) {
-        // Delete the state as cleanup:
-        auto __g = __scope_guard{__self.__op_state_->__delete_, __self.__op_state_};
-        return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
-      }
+      struct __t {
+        using __id = __receiver;
+        __operation_base<_ReceiverId>* __op_state_;
 
-      // Forward all receiever queries.
-      friend auto tag_invoke(get_env_t, const __receiver& __self) -> env_of_t<_Receiver> {
-        return get_env((const _Receiver&) __self.__op_state_->__rcvr_);
-      }
+        // Forward all the receiver ops, and delete the operation state.
+        template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+          requires __callable<_Tag, _Receiver, _As...>
+        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept(
+          __nothrow_callable<_Tag, _Receiver, _As...>) {
+          // Delete the state as cleanup:
+          auto __g = __scope_guard{__self.__op_state_->__delete_, __self.__op_state_};
+          return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
+        }
+
+        // Forward all receiever queries.
+        friend auto tag_invoke(get_env_t, const __t& __self) -> env_of_t<_Receiver> {
+          return get_env((const _Receiver&) __self.__op_state_->__rcvr_);
+        }
+      };
     };
+    template <class _ReceiverId>
+    using __receiver_t = __t<__receiver<_ReceiverId>>;
+
 
     template <class _SenderId, class _ReceiverId>
     struct __operation : __operation_base<_ReceiverId> {
-      using _Sender = __t<_SenderId>;
-      using _Receiver = __t<_ReceiverId>;
-      connect_result_t<_Sender, __receiver<_ReceiverId>> __op_state_;
+      using _Sender = stdexec::__t<_SenderId>;
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      connect_result_t<_Sender, __receiver_t<_ReceiverId>> __op_state_;
 
       template <__decays_to<_Receiver> _CvrefReceiver>
       __operation(_Sender&& __sndr, _CvrefReceiver&& __rcvr)
@@ -2053,14 +2061,14 @@ namespace stdexec {
             [](__operation_base<_ReceiverId>* __self) noexcept {
               delete static_cast<__operation*>(__self);
             }}
-        , __op_state_(connect((_Sender&&) __sndr, __receiver<_ReceiverId>{this})) {
+        , __op_state_(connect((_Sender&&) __sndr, __receiver_t<_ReceiverId>{this})) {
       }
     };
 
     struct __submit_t {
       template <receiver _Receiver, sender_to<_Receiver> _Sender>
-      void operator()(_Sender&& __sndr, _Receiver&& __rcvr) const noexcept(false) {
-        start((new __operation<__x<_Sender>, __x<decay_t<_Receiver>>>{
+      void operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(false) {
+        start((new __operation<__id<_Sender>, __id<_Receiver>>{
                  (_Sender&&) __sndr, (_Receiver&&) __rcvr})
                 ->__op_state_);
       }
