@@ -47,10 +47,6 @@
 #define STDEXEC_PRAGMA_IGNORE(__arg)
 #endif
 
-#if STDEXEC_NVHPC() || STDEXEC_GCC()
-#define STDEXEC_NON_LEXICAL_FRIENDSHIP 1
-#endif
-
 #ifdef __EDG__
 #pragma diagnostic push
 #pragma diag_suppress 1302
