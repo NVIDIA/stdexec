@@ -80,10 +80,6 @@ STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
 STDEXEC_PRAGMA_IGNORE("-Wundefined-internal")
 
 namespace stdexec {
-  // BUGBUG
-  namespace execution = stdexec;
-  namespace this_thread = stdexec;
-
   using std::remove_cvref_t;
 
   // [exec.queries.queryable]
@@ -4478,8 +4474,7 @@ namespace stdexec {
         }
 
         // BUGBUG NOT TO SPEC
-        friend bool
-          tag_invoke(this_thread::execute_may_block_caller_t, const __scheduler&) noexcept {
+        friend bool tag_invoke(execute_may_block_caller_t, const __scheduler&) noexcept {
           return false;
         }
 

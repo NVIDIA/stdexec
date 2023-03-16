@@ -420,7 +420,7 @@ int main(int argc, char *argv[]) {
     };
   };
 
-  stdexec::this_thread::sync_wait(
+  stdexec::sync_wait(
     ex::schedule(gpu)
     | ex::bulk(accessor.own_cells(), distributed::grid_initializer(dt, accessor)));
 
@@ -486,8 +486,8 @@ int main(int argc, char *argv[]) {
       ex::just() | exec::on(gpu_with_priority, ex::bulk(border_cells, border_e_update))
         | ex::then(exchange_ez));
 
-    stdexec::this_thread::sync_wait(std::move(compute_h));
-    stdexec::this_thread::sync_wait(std::move(compute_e));
+    stdexec::sync_wait(std::move(compute_h));
+    stdexec::sync_wait(std::move(compute_e));
   }
 
   write();
@@ -503,8 +503,8 @@ int main(int argc, char *argv[]) {
         gpu, ex::bulk(accessor.own_cells(), distributed::update_e(time.get(), dt, accessor)))
       | ex::then(exchange_ez);
 
-    stdexec::this_thread::sync_wait(std::move(compute_h));
-    stdexec::this_thread::sync_wait(std::move(compute_e));
+    stdexec::sync_wait(std::move(compute_h));
+    stdexec::sync_wait(std::move(compute_e));
   }
 
   write();
