@@ -321,7 +321,7 @@ namespace std {
     STDEXEC_STD_DEPRECATED
     inline constexpr auto execute = stdexec::execute;
 
-#if !_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES_
     // [exec.as_awaitable]
     using as_awaitable_t STDEXEC_STD_DEPRECATED = stdexec::as_awaitable_t;
     STDEXEC_STD_DEPRECATED
@@ -330,7 +330,7 @@ namespace std {
     // [exec.with_awaitable_senders]
     template <class _Promise>
     using with_awaitable_senders STDEXEC_STD_DEPRECATED = stdexec::with_awaitable_senders<_Promise>;
-#endif // !_STD_NO_COROUTINES_
+#endif // !STDEXEC_STD_NO_COROUTINES_
   }    // namespace execution
 
   namespace this_thread {
