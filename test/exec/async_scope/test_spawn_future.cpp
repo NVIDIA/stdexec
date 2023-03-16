@@ -338,9 +338,8 @@ TEST_CASE(
 }
 
 template <typename S>
-concept is_spawn_future_worthy = requires(async_scope& scope, S&& snd) {
-  scope.spawn_future(std::move(snd));
-};
+concept is_spawn_future_worthy = //
+  requires(async_scope& scope, S&& snd) { scope.spawn_future(std::move(snd)); };
 
 TEST_CASE("spawn_future accepts void senders", "[async_scope][spawn_future]") {
   static_assert(is_spawn_future_worthy<decltype(ex::just())>);

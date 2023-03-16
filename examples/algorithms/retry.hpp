@@ -92,12 +92,13 @@ struct _op {
     }};
   }
 
-  void _retry() noexcept try {
-    o_.emplace(_connect()); // potentially throwing
-    stdexec::start(*o_);
-  } catch (...) {
-
-    stdexec::set_error((R&&) r_, std::current_exception());
+  void _retry() noexcept {
+    try {
+      o_.emplace(_connect()); // potentially throwing
+      stdexec::start(*o_);
+    } catch (...) {
+      stdexec::set_error((R&&) r_, std::current_exception());
+    }
   }
 
   friend void tag_invoke(stdexec::start_t, _op& o) noexcept {

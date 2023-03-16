@@ -35,11 +35,12 @@ class _then_receiver : stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
   // Customize set_value by invoking the callable and passing the result to the inner receiver
   template <class... As>
     requires stdexec::receiver_of<R, _completions<As...>>
-  void set_value(As&&... as) && noexcept try {
-    stdexec::set_value(std::move(*this).base(), std::invoke((F&&) f_, (As&&) as...));
-  } catch (...) {
-
-    stdexec::set_error(std::move(*this).base(), std::current_exception());
+  void set_value(As&&... as) && noexcept {
+    try {
+      stdexec::set_value(std::move(*this).base(), std::invoke((F&&) f_, (As&&) as...));
+    } catch (...) {
+      stdexec::set_error(std::move(*this).base(), std::current_exception());
+    }
   }
 
  public:
