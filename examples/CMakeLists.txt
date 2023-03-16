@@ -40,12 +40,17 @@ set(stdexec_examples
                        "example.scope : scope.cpp"
                        "example.retry : retry.cpp"
                         "example.then : then.cpp"
-                    "example.io_uring : io_uring.cpp"
       "example.server_theme.let_value : server_theme/let_value.cpp"
     "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
       "example.server_theme.then_upon : server_theme/then_upon.cpp"
      "example.server_theme.split_bulk : server_theme/split_bulk.cpp"
 )
+
+if (LINUX)
+  set(stdexect_examples ${stdexec_examples}
+                    "example.io_uring : io_uring.cpp"
+  )
+endif (LINUX)
 
 foreach(example ${stdexec_examples})
     def_example(${example})
