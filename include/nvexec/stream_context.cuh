@@ -252,8 +252,7 @@ namespace nvexec {
       }
 
       template <stdexec::sender S>
-      friend auto
-        tag_invoke(stdexec::this_thread::sync_wait_t, const stream_scheduler& self, S&& sndr) {
+      friend auto tag_invoke(stdexec::sync_wait_t, const stream_scheduler& self, S&& sndr) {
         return sync_wait::sync_wait_t{}(self.context_state_, (S&&) sndr);
       }
 
