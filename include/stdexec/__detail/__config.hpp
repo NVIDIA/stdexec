@@ -25,7 +25,7 @@
 #define STDEXEC_CAT(_X, ...) STDEXEC_CAT_(_X, __VA_ARGS__)
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
-#define STDEXEC_EVAL(M, ...) M(__VA_ARGS__)
+#define STDEXEC_EVAL(_M, ...) _M(__VA_ARGS__)
 
 #define STDEXEC_NOT(_X) STDEXEC_CAT(STDEXEC_NOT_, _X)
 #define STDEXEC_NOT_0 1
