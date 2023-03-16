@@ -29,7 +29,11 @@
 namespace ex = stdexec;
 
 template <class Sender>
-concept sender_with_env = ex::sender<Sender> && requires(const Sender& s) { ex::get_env(s); };
+concept sender_with_env =     //
+  ex::sender<Sender> &&       //
+  requires(const Sender& s) { //
+    ex::get_env(s);
+  };
 
 template <typename Awaiter>
 struct promise {

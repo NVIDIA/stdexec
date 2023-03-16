@@ -77,11 +77,12 @@ namespace exec {
       , __with_dummy_transform_sender { };
 
     template <class _Kernel>
-    concept __lacks_transform_sender = requires {
-      {
-        &__test_for_transform_sender<_Kernel>::transform_sender
-      } -> same_as<int __test_for_transform_sender<_Kernel>::*>;
-    };
+    concept __lacks_transform_sender = //
+      requires {
+        {
+          &__test_for_transform_sender<_Kernel>::transform_sender
+        } -> same_as<int __test_for_transform_sender<_Kernel>::*>;
+      };
 
     template <class _Kernel, class _Sender, class _Env>
     using __tfx_sender_ = decltype(__declval<_Kernel&>().transform_sender(
@@ -249,9 +250,10 @@ namespace exec {
     template <class _Self>
     __minvoke<__id_<>, _Self> __is_derived_sender_(const _Self&);
     template <class _Self, class _Derived>
-    concept __is_derived_sender = requires(_Self&& __self) {
-      { __is_derived_sender_((_Self&&) __self) } -> same_as<_Derived>;
-    };
+    concept __is_derived_sender = //
+      requires(_Self&& __self) {
+        { __is_derived_sender_((_Self&&) __self) } -> same_as<_Derived>;
+      };
 
     template <class _Derived, class _Sender, class _Kernel>
     struct __sender {

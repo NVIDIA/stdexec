@@ -518,19 +518,23 @@ namespace exec {
     }
 
     template <class _Op>
-    concept __io_task = requires(_Op& __op, ::io_uring_sqe& __sqe, const ::io_uring_cqe& __cqe) {
-      { __op.context() } noexcept -> std::convertible_to<__context&>;
-      { __op.ready() } noexcept -> std::convertible_to<bool>;
-      { __op.submit(__sqe) } noexcept;
-      { __op.complete(__cqe) } noexcept;
-    };
+    concept __io_task = //
+      requires(_Op& __op, ::io_uring_sqe& __sqe, const ::io_uring_cqe& __cqe) {
+        { __op.context() } noexcept -> std::convertible_to<__context&>;
+        { __op.ready() } noexcept -> std::convertible_to<bool>;
+        { __op.submit(__sqe) } noexcept;
+        { __op.complete(__cqe) } noexcept;
+      };
 
     template <class _Op>
-    concept __stoppable_task = __io_task<_Op> && requires(_Op& __op) {
-      {
-        __op.receiver()
-      } noexcept -> stdexec::receiver_of< stdexec::completion_signatures<stdexec::set_stopped_t()>>;
-    };
+    concept __stoppable_task = //
+      __io_task<_Op> &&        //
+      requires(_Op& __op) {
+        {
+          __op.receiver()
+        } noexcept
+          -> stdexec::receiver_of< stdexec::completion_signatures<stdexec::set_stopped_t()>>;
+      };
 
     template <__stoppable_task _Op>
     using __receiver_of_t = std::decay_t<decltype(std::declval<_Op&>().receiver())>;
