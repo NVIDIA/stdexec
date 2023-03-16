@@ -5099,35 +5099,39 @@ namespace stdexec {
       requires sender_in<_Sender, _Env>
     using __into_variant_result_t = value_types_of_t<_Sender, _Env>;
 
-    template <class _SenderId, class _ReceiverId>
+    template <class _ReceiverId, class _Variant>
     struct __receiver {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      class __t : receiver_adaptor<__t, _Receiver> {
-#if STDEXEC_NON_LEXICAL_FRIENDSHIP
-       public:
-#endif
-        using _Sender = stdexec::__t<_SenderId>;
+      struct __t {
         using _Receiver = stdexec::__t<_ReceiverId>;
-        friend receiver_adaptor<__t, _Receiver>;
+        _Receiver __rcvr_;
 
         // Customize set_value by building a variant and passing the result
         // to the base class
         template <class... _As>
-        void set_value(_As&&... __as) && noexcept {
+          requires constructible_from<_Variant, std::tuple<_As&&...>>
+        friend void tag_invoke(set_value_t, __t&& __self, _As&&... __as) noexcept {
           try {
-            using __variant_t = __into_variant_result_t<_Sender, env_of_t<_Receiver>>;
-            static_assert(constructible_from<__variant_t, std::tuple<_As&&...>>);
-            stdexec::set_value(
-              ((__t&&) *this).base(), __variant_t{std::tuple<_As&&...>{(_As&&) __as...}});
+            set_value(
+              (_Receiver&&) __self.__rcvr_, _Variant{std::tuple<_As&&...>{(_As&&) __as...}});
           } catch (...) {
-            stdexec::set_error(((__t&&) *this).base(), std::current_exception());
+            set_error((_Receiver&&) __self.__rcvr_, std::current_exception());
           }
         }
 
-       public:
-        using __id = __receiver;
-        using receiver_adaptor<__t, _Receiver>::receiver_adaptor;
+        template <class _Error>
+        friend void tag_invoke(set_error_t, __t&& __self, _Error&& __err) noexcept {
+          set_error((_Receiver&&) __self.__rcvr_, (_Error&&) __err);
+        }
+
+        friend void tag_invoke(set_stopped_t, __t&& __self) noexcept {
+          set_stopped((_Receiver&&) __self.__rcvr_);
+        }
+
+        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) {
+          return get_env(__self.__rcvr_);
+        }
       };
     };
 
@@ -5135,8 +5139,12 @@ namespace stdexec {
     struct __sender {
       using _Sender = stdexec::__t<_SenderId>;
 
+      template <class _Env>
+      using __variant_t = __into_variant_result_t<_Sender, _Env>;
+
       template <class _Receiver>
-      using __receiver_t = stdexec::__t<__receiver<_SenderId, stdexec::__id<_Receiver>>>;
+      using __receiver_t = //
+        stdexec::__t< __receiver<__id<_Receiver>, __variant_t<env_of_t<_Receiver>>>>;
 
       struct __t {
         using __id = __sender;
@@ -5156,9 +5164,7 @@ namespace stdexec {
           make_completion_signatures<
             _Sender,
             _Env,
-            completion_signatures<
-              set_value_t(__into_variant_result_t<_Sender, _Env>),
-              set_error_t(std::exception_ptr)>,
+            completion_signatures< set_value_t(__variant_t<_Env>), set_error_t(std::exception_ptr)>,
             __value_t>;
 
         _Sender __sndr_;
@@ -5179,7 +5185,8 @@ namespace stdexec {
         }
 
         template <class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, __t&&, _Env) -> __compl_sigs<_Env>;
+        friend auto tag_invoke(get_completion_signatures_t, __t&&, _Env) //
+          -> __compl_sigs<_Env>;
       };
     };
 
