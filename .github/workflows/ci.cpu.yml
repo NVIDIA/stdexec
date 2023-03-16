@@ -63,3 +63,32 @@ jobs:
           cxxflags: "-fsanitize=thread"
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git;
+
+  build-cpu-gcc-msys2:
+    runs-on: windows-2022
+    name: CPU (gcc (msys2/mingw-w64), windows)
+    strategy:
+      matrix:
+        include:
+          - { sys: ucrt64,  env: ucrt-x86_64 }
+    steps:
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{matrix.sys}}
+          install:
+            mingw-w64-${{matrix.env}}-gcc
+            mingw-w64-${{matrix.env}}-libwinpthread-git
+            mingw-w64-${{matrix.env}}-cmake
+            mingw-w64-${{matrix.env}}-ninja
+          update: true
+      - name: Build and test
+        shell: msys2 {0}
+        run: |
+          cmake -S . -B build -G Ninja
+          cmake --build build -j --verbose
+          cmake --build build --target test
