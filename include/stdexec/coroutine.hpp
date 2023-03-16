@@ -25,11 +25,11 @@ namespace __coro = std;
 #include <experimental/coroutine>
 namespace __coro = std::experimental;
 #else
-#define _STD_NO_COROUTINES_ 1
+#define STDEXEC_STD_NO_COROUTINES_ 1
 #endif
 
 namespace stdexec {
-#if !_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES_
   // Define some concepts and utilities for working with awaitables
   template <class _T>
   concept __await_suspend_result =

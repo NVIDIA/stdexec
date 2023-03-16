@@ -36,17 +36,6 @@
 #include "coroutine.hpp"
 #include "stop_token.hpp"
 
-#if STDEXEC_CLANG()
-#define STDEXEC_STRINGIZE(__arg) #__arg
-#define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
-#define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
-#define STDEXEC_PRAGMA_IGNORE(__arg) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __arg))
-#else
-#define STDEXEC_PRAGMA_PUSH()
-#define STDEXEC_PRAGMA_POP()
-#define STDEXEC_PRAGMA_IGNORE(__arg)
-#endif
-
 #ifdef __EDG__
 #pragma diagnostic push
 #pragma diag_suppress 1302
@@ -54,19 +43,19 @@
 #endif
 
 #ifdef STDEXEC_ENABLE_R5_DEPRECATIONS
-#define R5_SENDER_DEPR_WARNING \
+#define STDEXEC_R5_SENDER_DEPR_WARNING \
   [[deprecated( \
     "Deprecated sender type detected. Please update the type to satisfy the boolean " \
     "stdexec::enable_sender<S> trait. " \
     "Defining a member type alias named 'is_sender' is one way to do this.")]]
-#define R5_RECEIVER_DEPR_WARNING \
+#define STDEXEC_R5_RECEIVER_DEPR_WARNING \
   [[deprecated( \
     "Deprecated receiver type detected. Please update the type for to satisfy the boolean " \
     "stdexec::enable_receiver<R> trait. Defining a member type alias named 'is_receiver' is one " \
     "way to do this.")]]
 #else
-#define R5_SENDER_DEPR_WARNING
-#define R5_RECEIVER_DEPR_WARNING
+#define STDEXEC_R5_SENDER_DEPR_WARNING
+#define STDEXEC_R5_RECEIVER_DEPR_WARNING
 #endif
 
 #define STDEXEC_LEGACY_R5_CONCEPTS() 1
@@ -480,7 +469,7 @@ namespace stdexec {
 
     // BUGBUG not to spec!
     struct __dependent {
-#if !_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES_
       bool await_ready();
       template <class _Env>
       void await_suspend(__coro::coroutine_handle<__env_promise<_Env>>);
@@ -1250,7 +1239,7 @@ namespace stdexec {
       start(__op);
     };
 
-#if !_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES_
   /////////////////////////////////////////////////////////////////////////////
   // __connect_awaitable_
   namespace __connect_awaitable_ {
@@ -1505,18 +1494,23 @@ namespace stdexec {
     struct connect_t;
 
     template <class _T>
-    R5_SENDER_DEPR_WARNING void __update_sender_type_to_p2300r7_by_adding_enable_sender_trait() {
+    STDEXEC_R5_SENDER_DEPR_WARNING //
+      void
+      __update_sender_type_to_p2300r7_by_adding_enable_sender_trait() {
     }
 
     template <class _T>
-    R5_RECEIVER_DEPR_WARNING void
+    STDEXEC_R5_RECEIVER_DEPR_WARNING //
+      void
       __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait() {
     }
 
     template <class _Sender, class _Receiver>
     concept __connectable_with_tag_invoke =
-      receiver<_Receiver> && sender_in<_Sender, env_of_t<_Receiver>>
-      && __receiver_from<_Receiver, _Sender> && tag_invocable<connect_t, _Sender, _Receiver>;
+      receiver<_Receiver> &&                     //
+      sender_in<_Sender, env_of_t<_Receiver>> && //
+      __receiver_from<_Receiver, _Sender> &&     //
+      tag_invocable<connect_t, _Sender, _Receiver>;
 
     struct connect_t {
       template <class _Sender, class _Receiver>
@@ -1728,7 +1722,7 @@ namespace stdexec {
     __has_completion_scheduler<_Sender, _CPO>
     && tag_invocable<_Fun, __completion_scheduler_for<_Sender, _CPO>, _Sender, _As...>;
 
-#if !_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES_
   /////////////////////////////////////////////////////////////////////////////
   // stdexec::as_awaitable [execution.coro_utils.as_awaitable]
   namespace __as_awaitable {
