@@ -21,20 +21,43 @@
 
 #include <iostream>
 
+struct __exec_system_scheduler_interface;
+struct __exec_system_sender_interface;
 struct __exec_system_scheduler_impl;
 struct __exec_system_sender_impl;
+
+// Virtual interfaces to underlying implementations for initial simplicit
+// TODO: Potentially move to custom vtable implementations
+struct __exec_system_context_interface {
+  virtual __exec_system_scheduler_interface* get_scheduler() noexcept = 0;
+};
+
+struct __exec_system_scheduler_interface {
+  virtual stdexec::forward_progress_guarantee get_forward_progress_guarantee() const = 0;
+  virtual __exec_system_sender_interface* schedule() const = 0;
+  virtual bool equals(const __exec_system_scheduler_interface* rhs) const = 0;
+};
+
+struct __exec_system_sender_interface {
+
+};
+
+struct __exec_system_bulk_sender_interface {
+
+};
 
 // Low-level APIs
 // Phase 2 will move to pointers and ref counting ala COM
 // Phase 3 will move these to weak symbols and allow replacement in tests
 // Default implementation based on static_thread_pool
-struct __exec_system_context_impl {
+struct __exec_system_context_impl : public __exec_system_context_interface {
   exec::static_thread_pool pool_;
 
-  __exec_system_scheduler_impl* get_scheduler();
+  __exec_system_scheduler_interface* get_scheduler() noexcept override;
 };
 
-struct __exec_system_scheduler_impl {
+
+struct __exec_system_scheduler_impl : public __exec_system_scheduler_interface {
   __exec_system_scheduler_impl(
       __exec_system_context_impl* ctx, decltype(ctx->pool_.get_scheduler()) pool_scheduler) :
       ctx_{ctx}, pool_scheduler_{pool_scheduler} {}
@@ -42,22 +65,29 @@ struct __exec_system_scheduler_impl {
   __exec_system_context_impl* ctx_;
   decltype(ctx_->pool_.get_scheduler()) pool_scheduler_;
 
-  __exec_system_sender_impl schedule() const;
+  __exec_system_sender_interface* schedule() const override;
 
-  stdexec::forward_progress_guarantee get_forward_progress_guarantee() const {
+  stdexec::forward_progress_guarantee get_forward_progress_guarantee() const override {
     return stdexec::forward_progress_guarantee::parallel;
   }
 
-  bool equals(const __exec_system_scheduler_impl* rhs) const {
+  bool equals(const __exec_system_scheduler_interface* rhs) const override {
     std::cerr << "rhs: " << rhs << "; this: " << this << "\n";
-    return rhs == this;
+    return dynamic_cast<const __exec_system_scheduler_impl*>(rhs) == this;
   }
 };
 
-struct __exec_system_sender_impl {
+
+struct __exec_system_sender_impl : public __exec_system_sender_interface {
   struct op_ {
 
   };
+  __exec_system_sender_impl(
+      decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_))&& pool_sender
+      ) : pool_sender_(std::move(pool_sender)) {
+
+  }
+
   decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_)) pool_sender_;
   // TODO: Connect
 };
@@ -65,7 +95,8 @@ struct __exec_system_sender_impl {
 // bulk function for scheduler to transmit from, will wrap actual function stub stored in real type
 using bulk_function = void(long);
 
-struct __exec_system_bulk_sender_impl {
+
+struct __exec_system_bulk_sender_impl : public __exec_system_bulk_sender_interface {
   struct op_ {
 
   };
@@ -81,14 +112,14 @@ static __exec_system_context_impl* __get_exec_system_context_impl() {
   return &impl_;
 }
 
-inline __exec_system_scheduler_impl* __exec_system_context_impl::get_scheduler() {
+inline __exec_system_scheduler_interface* __exec_system_context_impl::get_scheduler() noexcept {
   // TODO: ref counting etc
   return new __exec_system_scheduler_impl(this, pool_.get_scheduler());
 }
 
-__exec_system_sender_impl __exec_system_scheduler_impl::schedule() const {
+inline __exec_system_sender_interface* __exec_system_scheduler_impl::schedule() const {
   // TODO: Can schedule on thread pool, but not absolutely necessary. Doing in start() for now.
-  return __exec_system_sender_impl{stdexec::schedule(pool_scheduler_)};
+  return new __exec_system_sender_impl(stdexec::schedule(pool_scheduler_));
 }
 
 
@@ -115,17 +146,17 @@ namespace exec {
     system_scheduler get_scheduler();
 
   private:
-    __exec_system_context_impl* impl_ = nullptr;
+    __exec_system_context_interface* impl_ = nullptr;
 
   };
 
   class system_scheduler {
   public:
     // Pointer that we ref count?
-    system_scheduler(__exec_system_scheduler_impl* impl) : impl_(impl) {}
+    system_scheduler(__exec_system_scheduler_interface* scheduler_interface) : scheduler_interface_(scheduler_interface) {}
 
     bool operator==(const system_scheduler& rhs) const noexcept {
-      return impl_->equals(rhs.impl_);
+      return scheduler_interface_->equals(rhs.scheduler_interface_);
     }
 
   private:
@@ -145,7 +176,7 @@ namespace exec {
       Fn fun)                                                 //
       noexcept;
 
-    __exec_system_scheduler_impl* impl_;
+    __exec_system_scheduler_interface* scheduler_interface_;
     friend class system_context;
   };
 
@@ -155,17 +186,17 @@ namespace exec {
     using completion_signatures =
       stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t() >;
 
-    system_sender(__exec_system_scheduler_impl* scheduler_impl, __exec_system_sender_impl impl) :
-        scheduler_impl_{scheduler_impl}, impl_{impl} {}
+    system_sender(__exec_system_scheduler_interface* scheduler_interface, __exec_system_sender_interface* sender_interface) :
+        scheduler_interface_{scheduler_interface}, sender_interface_{sender_interface} {}
 
   private:
     template <class R_>
     struct __op {
       using R = stdexec::__t<R_>;
-      decltype(stdexec::connect(std::declval<__exec_system_sender_impl>().pool_sender_, std::declval<R>())) impl_;
+      decltype(stdexec::connect(std::declval<__exec_system_sender_impl>().pool_sender_, std::declval<R>())) scheduler_impl_;
 
       friend void tag_invoke(stdexec::start_t, __op& op) noexcept {
-        stdexec::start(op.impl_);
+        stdexec::start(op.scheduler_impl_);
       }
 
       // TODO: Type-erase operation state to remove coupling with pool_sender
@@ -177,33 +208,35 @@ namespace exec {
     friend auto tag_invoke(stdexec::connect_t, system_sender snd, R&& rec) //
       noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
         -> __op<stdexec::__x<std::remove_cvref_t<R>>> {
-      return {stdexec::connect(snd.impl_.pool_sender_, (R&&) rec)};
+      // TODO: Temporary hack through type erasure
+      auto impl = static_cast<__exec_system_sender_impl*>(snd.sender_interface_);
+      return {stdexec::connect(impl->pool_sender_, (R&&) rec)};
     }
 
     struct __env {
       friend system_scheduler
         tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, const __env& self) //
         noexcept {
-        return {self.impl_};
+        return {self.scheduler_interface_};
       }
 
       friend system_scheduler
         tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_stopped_t>, const __env& self) //
         noexcept {
-        return {self.impl_};
+        return {self.scheduler_interface_};
       }
 
-      __exec_system_scheduler_impl* impl_;
+      __exec_system_scheduler_interface* scheduler_interface_;
     };
 
     friend __env tag_invoke(stdexec::get_env_t, const system_sender& snd) noexcept {
       // TODO: Ref add
-      return {snd.scheduler_impl_};
+      return {snd.scheduler_interface_};
     }
 
       // TODO: Do we need both? Should we get scheduler from sender or do we need sender at all?
-    __exec_system_scheduler_impl* scheduler_impl_;
-    __exec_system_sender_impl impl_;
+    __exec_system_scheduler_interface* scheduler_interface_;
+    __exec_system_sender_interface* sender_interface_;
   };
 
    template<stdexec::sender S, std::integral Shape, class Fn>
@@ -262,13 +295,13 @@ namespace exec {
 
   system_sender tag_invoke(
       stdexec::schedule_t, const system_scheduler& sched) noexcept {
-    return system_sender(sched.impl_, sched.impl_->schedule());
+    return system_sender(sched.scheduler_interface_, sched.scheduler_interface_->schedule());
   }
 
   stdexec::forward_progress_guarantee tag_invoke(
       stdexec::get_forward_progress_guarantee_t,
       const system_scheduler& sched) noexcept {
-    return sched.impl_->get_forward_progress_guarantee();
+    return sched.scheduler_interface_->get_forward_progress_guarantee();
   }
 
 
@@ -281,6 +314,6 @@ namespace exec {
     Fn fun)                                                 //
     noexcept {
     return system_bulk_sender<S, Shape, Fn>{
-      sch.impl_, (S&&) sndr, shape, (Fn&&) fun};
+      sch.scheduler_interface_, (S&&) sndr, shape, (Fn&&) fun};
   }
 } // namespace exec
