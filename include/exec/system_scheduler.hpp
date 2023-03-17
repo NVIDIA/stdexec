@@ -186,8 +186,8 @@ namespace exec {
     using completion_signatures =
       stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t() >;
 
-    system_sender(__exec_system_scheduler_interface* scheduler_interface, __exec_system_sender_interface* sender_interface) :
-        scheduler_interface_{scheduler_interface}, sender_interface_{sender_interface} {}
+    system_sender(__exec_system_scheduler_interface* scheduler_impl, __exec_system_sender_interface* sender_impl) :
+        scheduler_impl_{scheduler_impl}, sender_impl_{sender_impl} {}
 
   private:
     template <class R_>
@@ -209,7 +209,7 @@ namespace exec {
       noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
         -> __op<stdexec::__x<std::remove_cvref_t<R>>> {
       // TODO: Temporary hack through type erasure
-      auto impl = static_cast<__exec_system_sender_impl*>(snd.sender_interface_);
+      auto impl = static_cast<__exec_system_sender_impl*>(snd.sender_impl_);
       return {stdexec::connect(impl->pool_sender_, (R&&) rec)};
     }
 
@@ -217,26 +217,26 @@ namespace exec {
       friend system_scheduler
         tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_value_t>, const __env& self) //
         noexcept {
-        return {self.scheduler_interface_};
+        return {self.scheduler_impl_};
       }
 
       friend system_scheduler
         tag_invoke(stdexec::get_completion_scheduler_t<stdexec::set_stopped_t>, const __env& self) //
         noexcept {
-        return {self.scheduler_interface_};
+        return {self.scheduler_impl_};
       }
 
-      __exec_system_scheduler_interface* scheduler_interface_;
+      __exec_system_scheduler_interface* scheduler_impl_;
     };
 
     friend __env tag_invoke(stdexec::get_env_t, const system_sender& snd) noexcept {
       // TODO: Ref add
-      return {snd.scheduler_interface_};
+      return {snd.scheduler_impl_};
     }
 
       // TODO: Do we need both? Should we get scheduler from sender or do we need sender at all?
-    __exec_system_scheduler_interface* scheduler_interface_;
-    __exec_system_sender_interface* sender_interface_;
+    __exec_system_scheduler_interface* scheduler_impl_;
+    __exec_system_sender_interface* sender_impl_;
   };
 
    template<stdexec::sender S, std::integral Shape, class Fn>
