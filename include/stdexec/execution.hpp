@@ -281,7 +281,9 @@ namespace stdexec {
         return {};
       }
     };
+  } // namespace __env
 
+  namespace __get_env {
     // For getting an evaluation environment from a receiver
     STDEXEC_DEFINE_CPO(get_env) {
       template <class _EnvProvider>
@@ -307,19 +309,18 @@ namespace stdexec {
         }
       }
     };
-  } // namespace __env
+  } // namespace __get_env
 
   using __env::__with;
   using __env::__with_;
+  using __env::no_env;
+  using __get_env::get_env_t;
 
   inline constexpr __env::__make_env_t __make_env{};
-  inline constexpr __env::get_env_t get_env{};
+  inline constexpr get_env_t get_env{};
 
   template <class... _Ts>
   using __make_env_t = decltype(__make_env(__declval<_Ts>()...));
-
-  using __env::no_env;
-  using __env::get_env_t;
 
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;

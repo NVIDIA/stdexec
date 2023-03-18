@@ -140,16 +140,21 @@
       using tag_invoke_t = __inner::__base::tag_invoke_t; \
       inline constexpr tag_invoke_t tag_invoke {};\
     }\
-    \
-    namespace stdexec = __stdexec; \
-    using __stdexec::tag_invoke; \
-    using __stdexec::tag_invoke_t; \
-    using __stdexec::tag_invocable; \
-    using __stdexec::nothrow_tag_invocable; \
-    using __stdexec::tag_invoke_result_t; \
   } /* namespace __hidden */ \
   \
+  namespace stdexec = __hidden::__stdexec; \
+  using __hidden::__stdexec::tag_invoke; \
+  using __hidden::__stdexec::tag_invoke_t; \
+  using __hidden::__stdexec::tag_invocable; \
+  using __hidden::__stdexec::nothrow_tag_invocable; \
+  using __hidden::__stdexec::tag_invoke_result_t; \
+  \
   struct STDEXEC_CAT(_NAME, _t) : __hidden::__inner::__base \
+  /**/
+
+#define STDEXEC_CPO_ACCESS(_TAG) \
+  friend _TAG; \
+  friend ::stdexec::__accessor_of<_TAG> \
   /**/
 
 namespace stdexec {

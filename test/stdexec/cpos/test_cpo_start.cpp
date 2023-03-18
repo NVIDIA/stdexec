@@ -63,7 +63,7 @@ struct op_cref : immovable {
 struct my_oper_member : immovable {
   bool started_{false};
 private:
-  friend ::ex::__accessor_of<::ex::start_t>;
+  STDEXEC_CPO_ACCESS(::ex::start_t);
 
   void start(ex::start_t) & noexcept {
     started_ = true;
@@ -73,7 +73,7 @@ private:
 struct my_oper_static_member : immovable {
   bool started_{false};
 private:
-  friend ::ex::__accessor_of<::ex::start_t>;
+  STDEXEC_CPO_ACCESS(::ex::start_t);
 
   static void start(my_oper_static_member& self, ex::start_t) noexcept {
     self.started_ = true;
