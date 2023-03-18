@@ -781,12 +781,27 @@ namespace stdexec {
     using __f = __minvoke<_Tag2, _Tuple, _Args...>;
   };
 
+  template <class _Tuple>
+  struct __invoke_completions {
+    template <class _Tag, class... _Args>
+    using __f = __minvoke<_Tag, _Tuple, _Args...>;
+  };
+
   template <class _Tag, class _Tuple>
   using __select_completions_for_or = __with_default< __select_completions_for<_Tag, _Tuple>, __>;
 
+  template <class _Tag, class... _Args>
+  using __set_tag_type = _Tag(_Args...);
+
+  template <class _Tag, class _Completions>
+  using __only_gather_signal = __compl_sigs::__for_all_sigs<
+    _Completions,
+    __select_completions_for_or<_Tag, __mbind_front_q<__set_tag_type, _Tag>>,
+    __remove<__, __q<completion_signatures>>>;
+
   template <class _Tag, class _Completions, class _Tuple, class _Variant>
   using __gather_signal = __compl_sigs::
-    __for_all_sigs< _Completions, __select_completions_for_or<_Tag, _Tuple>, __remove<__, _Variant>>;
+    __for_all_sigs<__only_gather_signal<_Tag, _Completions>, __invoke_completions<_Tuple>, _Variant>;
 
   template <class _Tag, class _Sender, class _Env, class _Tuple, class _Variant>
     requires sender_in<_Sender, _Env>
