@@ -2692,6 +2692,7 @@ namespace stdexec {
   }
 
   template <class _Fun, class... _Args>
+    requires invocable<_Fun, _Args...>
   using __non_throwing_ = __bool<__nothrow_invocable<_Fun, _Args...>>;
 
   template <class _Tag, class _Fun, class _Sender, class _Env>
@@ -3185,6 +3186,9 @@ namespace stdexec {
       };
     };
 
+    template <class _Ty>
+    using __decay_ref = decay_t<_Ty>&;
+
     template <class _SenderId, integral _Shape, class _Fun>
     struct __sender {
       using _Sender = stdexec::__t<_SenderId>;
@@ -3206,7 +3210,7 @@ namespace stdexec {
             __v<__value_types_of_t<
               _Sender,
               _Env,
-              __mbind_front_q<__non_throwing_, _Fun, _Shape>,
+              __transform<__q<__decay_ref>, __mbind_front_q<__non_throwing_, _Fun, _Shape>>,
               __q<__mand>>>,
             completion_signatures<>,
             __with_exception_ptr>;
