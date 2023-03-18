@@ -70,6 +70,7 @@ namespace exec {
 
      private:
       friend ::stdexec::start_t;
+
       static void __notify_waiter(__task* __self) noexcept {
         stdexec::start(static_cast<__when_empty_op*>(__self)->__op_);
       }

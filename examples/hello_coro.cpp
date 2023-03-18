@@ -19,7 +19,7 @@
 #include <stdexec/execution.hpp>
 
 #if !STDEXEC_STD_NO_COROUTINES_ && !STDEXEC_NVHPC()
-#include <exec/task.hpp>
+#  include <exec/task.hpp>
 
 using namespace stdexec;
 

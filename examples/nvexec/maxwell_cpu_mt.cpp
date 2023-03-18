@@ -20,7 +20,7 @@
 #include "maxwell/cpp.cuh"
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-#include "maxwell/cuda.cuh"
+#  include "maxwell/cuda.cuh"
 #endif
 
 int main(int argc, char *argv[]) {

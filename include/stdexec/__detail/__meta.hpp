@@ -34,18 +34,18 @@ namespace stdexec {
 
   // Before gcc-12, gcc really didn't like tuples or variants of immovable types
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
-#define STDEXEC_IMMOVABLE(_X) _X(_X&&)
+#  define STDEXEC_IMMOVABLE(_X) _X(_X&&)
 #else
-#define STDEXEC_IMMOVABLE(_X) _X(_X&&) = delete
+#  define STDEXEC_IMMOVABLE(_X) _X(_X&&) = delete
 #endif
 
   // BUG (gcc PR93711): copy elision fails when initializing a
   // [[no_unique_address]] field from a function returning an object
   // of class type by value
 #if defined(__GNUC__) && !defined(__clang__)
-#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #else
-#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
   struct __none_such { };

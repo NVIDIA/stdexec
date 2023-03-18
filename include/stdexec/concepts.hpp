@@ -16,22 +16,22 @@
 #pragma once
 
 #if __cpp_concepts < 201907L
-#error This library requires support for C++20 concepts
+#  error This library requires support for C++20 concepts
 #endif
 
 #include <version>
 
 // Perhaps the stdlib lacks support for concepts though:
 #if __has_include(<concepts>) && __cpp_lib_concepts >= 202002
-#define STDEXEC_HAS_STD_CONCEPTS_HEADER() 1
+#  define STDEXEC_HAS_STD_CONCEPTS_HEADER() 1
 #else
-#define STDEXEC_HAS_STD_CONCEPTS_HEADER() 0
+#  define STDEXEC_HAS_STD_CONCEPTS_HEADER() 0
 #endif
 
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
-#include <concepts>
+#  include <concepts>
 #else
-#include <type_traits>
+#  include <type_traits>
 #endif
 
 namespace stdexec::__std_concepts {

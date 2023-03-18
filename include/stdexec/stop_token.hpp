@@ -24,7 +24,7 @@
 #include <thread>
 
 #if __has_include(<stop_token>) && __cpp_lib_jthread >= 201911
-#include <stop_token>
+#  include <stop_token>
 #endif
 
 #include "concepts.hpp"

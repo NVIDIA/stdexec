@@ -62,7 +62,7 @@ struct op_cref : immovable {
 
 struct my_oper_member : immovable {
   bool started_{false};
-private:
+ private:
   STDEXEC_CPO_ACCESS(::ex::start_t);
 
   void start(ex::start_t) & noexcept {
@@ -72,7 +72,7 @@ private:
 
 struct my_oper_static_member : immovable {
   bool started_{false};
-private:
+ private:
   STDEXEC_CPO_ACCESS(::ex::start_t);
 
   static void start(my_oper_static_member& self, ex::start_t) noexcept {
@@ -82,7 +82,7 @@ private:
 
 struct my_oper_tag_invoke : immovable {
   bool started_{false};
-private:
+ private:
   friend void tag_invoke(ex::start_t, my_oper_tag_invoke& self) noexcept {
     self.started_ = true;
   }
@@ -133,13 +133,17 @@ TEST_CASE("can call start on an operation state with start() as a member", "[cpo
   REQUIRE(op.started_);
 }
 
-TEST_CASE("can call start on an operation state with start() as a static member", "[cpo][cpo_start]") {
+TEST_CASE(
+  "can call start on an operation state with start() as a static member",
+  "[cpo][cpo_start]") {
   my_oper_static_member op;
   ex::start(op);
   REQUIRE(op.started_);
 }
 
-TEST_CASE("can call start on an operation state with start() as a tag_invoke hidden friend", "[cpo][cpo_start]") {
+TEST_CASE(
+  "can call start on an operation state with start() as a tag_invoke hidden friend",
+  "[cpo][cpo_start]") {
   my_oper_tag_invoke op;
   ex::start(op);
   REQUIRE(op.started_);

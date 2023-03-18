@@ -29,8 +29,8 @@
 #include <math.h>
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-#define STDEXEC_STDERR
-#include "nvexec/detail/throw_on_cuda_error.cuh"
+#  define STDEXEC_STDERR
+#  include "nvexec/detail/throw_on_cuda_error.cuh"
 #endif
 
 struct deleter_t {

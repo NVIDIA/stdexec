@@ -19,13 +19,13 @@
 
 #include <version>
 #if __cpp_impl_coroutine >= 201902 && __cpp_lib_coroutine >= 201902
-#include <coroutine>
+#  include <coroutine>
 namespace __coro = std;
 #elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
-#include <experimental/coroutine>
+#  include <experimental/coroutine>
 namespace __coro = std::experimental;
 #else
-#define STDEXEC_STD_NO_COROUTINES_ 1
+#  define STDEXEC_STD_NO_COROUTINES_ 1
 #endif
 
 namespace stdexec {

@@ -16,16 +16,16 @@
 #pragma once
 
 #ifdef _CUDA_ATOMIC
-#error This file must be included before <cuda/atomic> from libcudacxx
+#  error This file must be included before <cuda/atomic> from libcudacxx
 #endif
 
 #include "config.cuh"
 #include <cuda/std/detail/__config>
 
 #if _LIBCUDACXX_STD_VER > 17 && _LIBCUDACXX_CUDA_API_VERSION < 1009000
-#define STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND() 1
+#  define STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND() 1
 #else
-#define STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND() 0
+#  define STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND() 0
 #endif
 
 #if STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND()
@@ -40,12 +40,12 @@ namespace __detail {
 
   __device__ void __atomic_signal_fence_cuda(memory_order __order);
 
-#if STDEXEC_CLANG()
+#  if STDEXEC_CLANG()
   template <class _Tag>
   __device__ void __atomic_thread_fence_cuda(int __memorder, _Tag);
 
   __device__ void __atomic_signal_fence_cuda(int __order);
-#endif
+#  endif
 
   template <class _Type, class _Tag>
   __device__ _Type __atomic_load_n_cuda(const volatile _Type *__ptr, memory_order __memorder, _Tag);

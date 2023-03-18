@@ -18,19 +18,19 @@
 #include <stdexec/coroutine.hpp>
 
 #if !STDEXEC_STD_NO_COROUTINES_
-#include <exec/at_coroutine_exit.hpp>
-#include <exec/on_coro_disposition.hpp>
-#include <catch2/catch.hpp>
+#  include <exec/at_coroutine_exit.hpp>
+#  include <exec/on_coro_disposition.hpp>
+#  include <catch2/catch.hpp>
 
-#include <test_common/schedulers.hpp>
+#  include <test_common/schedulers.hpp>
 
-#if __has_include(<unistd.h>) && __has_include(<sys/wait.h>)
-#include <unistd.h>
-#include <sys/wait.h>
-#define STDEXEC_HAS_FORK
-#endif
+#  if __has_include(<unistd.h>) && __has_include(<sys/wait.h>)
+#    include <unistd.h>
+#    include <sys/wait.h>
+#    define STDEXEC_HAS_FORK
+#  endif
 
-#ifdef STDEXEC_HAS_FORK
+#  ifdef STDEXEC_HAS_FORK
 namespace {
   template <class F, class... Args>
   void REQUIRE_TERMINATE(F&& f, Args&&... args) {
@@ -66,7 +66,7 @@ namespace {
     REQUIRE(aborted);
   }
 } // namespace
-#endif
+#  endif
 
 using namespace exec;
 using stdexec::sync_wait;
@@ -264,7 +264,7 @@ namespace {
     result *= 3;
   }
 
-#ifdef STDEXEC_HAS_FORK
+#  ifdef STDEXEC_HAS_FORK
 
   void test_cancel_in_cleanup_action_causes_death(int& result) {
     task<void> t = []() -> task<void> {
@@ -314,7 +314,7 @@ namespace {
     REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
   }
 
-#endif // STDEXEC_HAS_FORK
+#  endif // STDEXEC_HAS_FORK
 
 } // unnamed namespace
 
@@ -450,7 +450,7 @@ TEST_CASE("OnSuccessCleanupActionWithMutableStateful", "[task][at_coroutine_exit
   REQUIRE(result == 10);
 }
 
-#ifdef STDEXEC_HAS_FORK
+#  ifdef STDEXEC_HAS_FORK
 
 TEST_CASE("CancelInCleanupActionCallsTerminate", "[task][at_coroutine_exit]") {
   int result = 0;
@@ -484,6 +484,6 @@ TEST_CASE(
   test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(result);
 }
 
-#endif // STDEXEC_HAS_FORK
+#  endif // STDEXEC_HAS_FORK
 
-#endif // !STDEXEC_STD_NO_COROUTINES_
+#endif   // !STDEXEC_STD_NO_COROUTINES_

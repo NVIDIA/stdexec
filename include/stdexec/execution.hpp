@@ -38,25 +38,26 @@
 #include "stop_token.hpp"
 
 #ifdef __EDG__
-#pragma diagnostic push
-#pragma diag_suppress 1302
-#pragma diag_suppress 497
+#  pragma diagnostic push
+#  pragma diag_suppress 1302
+#  pragma diag_suppress 497
 #endif
 
 #ifdef STDEXEC_ENABLE_R5_DEPRECATIONS
-#define STDEXEC_R5_SENDER_DEPR_WARNING \
-  [[deprecated( \
-    "Deprecated sender type detected. Please update the type to satisfy the boolean " \
-    "stdexec::enable_sender<S> trait. " \
-    "Defining a member type alias named 'is_sender' is one way to do this.")]]
-#define STDEXEC_R5_RECEIVER_DEPR_WARNING \
-  [[deprecated( \
-    "Deprecated receiver type detected. Please update the type for to satisfy the boolean " \
-    "stdexec::enable_receiver<R> trait. Defining a member type alias named 'is_receiver' is one " \
-    "way to do this.")]]
+#  define STDEXEC_R5_SENDER_DEPR_WARNING                                                           \
+    [[deprecated(                                                                                  \
+      "Deprecated sender type detected. Please update the type to satisfy the boolean "            \
+      "stdexec::enable_sender<S> trait. "                                                          \
+      "Defining a member type alias named 'is_sender' is one way to do this.")]]
+#  define STDEXEC_R5_RECEIVER_DEPR_WARNING                                                         \
+    [[deprecated(                                                                                  \
+      "Deprecated receiver type detected. Please update the type for to satisfy the boolean "      \
+      "stdexec::enable_receiver<R> trait. Defining a member type alias named 'is_receiver' is "    \
+      "one "                                                                                       \
+      "way to do this.")]]
 #else
-#define STDEXEC_R5_SENDER_DEPR_WARNING
-#define STDEXEC_R5_RECEIVER_DEPR_WARNING
+#  define STDEXEC_R5_SENDER_DEPR_WARNING
+#  define STDEXEC_R5_RECEIVER_DEPR_WARNING
 #endif
 
 #define STDEXEC_LEGACY_R5_CONCEPTS() 1
@@ -2515,28 +2516,28 @@ namespace stdexec {
 // don't shadow type aliases of the same name in base classes. :-O
 // On mingw gcc, 'bool(type::existing_member_function)' evaluates to true,
 // but 'int(type::existing_member_function)' is an error (as desired).
-#define _DISPATCH_MEMBER(_TAG) \
-  template <class _Self, class... _Ts> \
-  STDEXEC_DETAIL_CUDACC_HOST_DEVICE static auto __call_##_TAG( \
-    _Self&& __self, _Ts&&... __ts) noexcept(noexcept(((_Self&&) __self)._TAG((_Ts&&) __ts...))) \
-    ->decltype(((_Self&&) __self)._TAG((_Ts&&) __ts...)) { \
-    return ((_Self&&) __self)._TAG((_Ts&&) __ts...); \
+#define _DISPATCH_MEMBER(_TAG)                                                                     \
+  template <class _Self, class... _Ts>                                                             \
+  STDEXEC_DETAIL_CUDACC_HOST_DEVICE static auto __call_##_TAG(                                     \
+    _Self&& __self, _Ts&&... __ts) noexcept(noexcept(((_Self&&) __self)._TAG((_Ts&&) __ts...)))    \
+    ->decltype(((_Self&&) __self)._TAG((_Ts&&) __ts...)) {                                         \
+    return ((_Self&&) __self)._TAG((_Ts&&) __ts...);                                               \
   } /**/
 #define _CALL_MEMBER(_TAG, ...) __call_##_TAG(__VA_ARGS__)
 
 #if STDEXEC_CLANG()
 // Only clang gets this right.
-#define _MISSING_MEMBER(_D, _TAG) requires { typename _D::_TAG; }
-#define _DEFINE_MEMBER(_TAG) _DISPATCH_MEMBER(_TAG) using _TAG = void
+#  define _MISSING_MEMBER(_D, _TAG) requires { typename _D::_TAG; }
+#  define _DEFINE_MEMBER(_TAG) _DISPATCH_MEMBER(_TAG) using _TAG = void
 #else
-#define _MISSING_MEMBER(_D, _TAG) (__missing_##_TAG<_D>())
-#define _DEFINE_MEMBER(_TAG) \
-  template <class _D> \
-  static constexpr bool __missing_##_TAG() noexcept { \
-    return requires { requires bool(int(_D::_TAG)); }; \
-  } \
-  _DISPATCH_MEMBER(_TAG) \
-  static constexpr int _TAG = 1 /**/
+#  define _MISSING_MEMBER(_D, _TAG) (__missing_##_TAG<_D>())
+#  define _DEFINE_MEMBER(_TAG)                                                                     \
+    template <class _D>                                                                            \
+    static constexpr bool __missing_##_TAG() noexcept {                                            \
+      return requires { requires bool(int(_D::_TAG)); };                                           \
+    }                                                                                              \
+    _DISPATCH_MEMBER(_TAG)                                                                         \
+    static constexpr int _TAG = 1 /**/
 #endif
 
     template <__class _Derived, class _Base>
@@ -6029,7 +6030,7 @@ namespace stdexec {
 #include "__detail/__p2300.hpp"
 
 #ifdef __EDG__
-#pragma diagnostic pop
+#  pragma diagnostic pop
 #endif
 
 STDEXEC_PRAGMA_POP()

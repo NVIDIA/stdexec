@@ -17,41 +17,41 @@
 #pragma once
 
 #if !__has_include(<linux/io_uring.h>)
-#error "io_uring.h not found. Your kernel is probably too old."
+#  error "io_uring.h not found. Your kernel is probably too old."
 #else
-#include <linux/io_uring.h>
+#  include <linux/io_uring.h>
 
-#include "../../stdexec/execution.hpp"
-#include "../timed_scheduler.hpp"
+#  include "../../stdexec/execution.hpp"
+#  include "../timed_scheduler.hpp"
 
-#include "../__detail/__atomic_intrusive_queue.hpp"
-#include "../__detail/__atomic_ref.hpp"
-#include "../__detail/__bit_cast.hpp"
+#  include "../__detail/__atomic_intrusive_queue.hpp"
+#  include "../__detail/__atomic_ref.hpp"
+#  include "../__detail/__bit_cast.hpp"
 
-#include "./safe_file_descriptor.hpp"
-#include "./memory_mapped_region.hpp"
+#  include "./safe_file_descriptor.hpp"
+#  include "./memory_mapped_region.hpp"
 
-#include "../scope.hpp"
+#  include "../scope.hpp"
 
-#if !__has_include(<linux/version.h>)
-#error "linux/version.h not found. Do you use Linux?"
-#else
-#include <linux/version.h>
+#  if !__has_include(<linux/version.h>)
+#    error "linux/version.h not found. Do you use Linux?"
+#  else
+#    include <linux/version.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
-#warning "Your kernel is too old to support io_uring with cancellation support."
-#include <sys/timerfd.h>
-#else
-#define STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-#endif
+#    if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+#      warning "Your kernel is too old to support io_uring with cancellation support."
+#      include <sys/timerfd.h>
+#    else
+#      define STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-#define STDEXEC_HAS_IORING_OP_READ
-#endif
+#    if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+#      define STDEXEC_HAS_IORING_OP_READ
+#    endif
 
-#include <sys/uio.h>
-#include <sys/eventfd.h>
-#include <sys/syscall.h>
+#    include <sys/uio.h>
+#    include <sys/eventfd.h>
+#    include <sys/syscall.h>
 
 namespace exec {
   namespace __io_uring {
@@ -212,11 +212,11 @@ namespace exec {
             __result.__ready.push_back(__op);
           } else {
             __op->__vtable_->__submit_(__op, __sqe);
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
             if (__is_stopped && __sqe.opcode != IORING_OP_ASYNC_CANCEL) {
-#else
+#    else
             if (__is_stopped) {
-#endif
+#    endif
               __stop(__op);
             } else {
               __sqe.user_data = bit_cast<__u64>(__op);
@@ -286,12 +286,12 @@ namespace exec {
     struct __wakeup_operation : __task {
       __context* __context_ = nullptr;
       int __eventfd_ = -1;
-#ifdef STDEXEC_HAS_IORING_OP_READ
+#    ifdef STDEXEC_HAS_IORING_OP_READ
       std::uint64_t __buffer_ = 0;
-#else
+#    else
       std::uint64_t __value_ = 0;
       ::iovec __buffer_ = {.iov_base = &__value_, .iov_len = sizeof(__value_)};
-#endif
+#    endif
 
       static bool __ready_(__task*) noexcept {
         return false;
@@ -302,13 +302,13 @@ namespace exec {
         __entry = ::io_uring_sqe{};
         __entry.fd = __self.__eventfd_;
         __entry.addr = bit_cast<__u64>(&__self.__buffer_);
-#ifdef STDEXEC_HAS_IORING_OP_READ
+#    ifdef STDEXEC_HAS_IORING_OP_READ
         __entry.opcode = IORING_OP_READ;
         __entry.len = sizeof(__self.__buffer_);
-#else
+#    else
         __entry.opcode = IORING_OP_READV;
         __entry.len = 1;
-#endif
+#    endif
       }
 
       static void __complete_(__task* __pointer, const ::io_uring_cqe& __entry) noexcept {
@@ -642,7 +642,7 @@ namespace exec {
         }
 
         void submit(::io_uring_sqe& __sqe) noexcept {
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           if constexpr (
             requires(_Base* __op, ::io_uring_sqe& __sqe) { __op->submit_stop(__sqe); }) {
             __op_->submit_stop(__sqe);
@@ -652,9 +652,9 @@ namespace exec {
               .addr = bit_cast<__u64>(__op_)    //
             };
           }
-#else
+#    else
           __op_->submit_stop(__sqe);
-#endif
+#    endif
         }
 
         void complete(const ::io_uring_cqe&) noexcept {
@@ -796,7 +796,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       class __impl : public __stoppable_op_base<_Receiver> {
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
         struct __kernel_timespec {
           __s64 __tv_sec;
           __s64 __tv_nsec;
@@ -812,7 +812,7 @@ namespace exec {
           dur = std::clamp(dur, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
           return __kernel_timespec{secs.count(), dur.count()};
         }
-#else
+#    else
         safe_file_descriptor __timerfd_;
         ::itimerspec __duration_;
         std::uint64_t __n_expirations_{0};
@@ -833,14 +833,14 @@ namespace exec {
             0 <= __timerspec.it_value.tv_nsec && __timerspec.it_value.tv_nsec < 1'000'000'000);
           return __timerspec;
         }
-#endif
+#    endif
 
        public:
         static constexpr std::false_type ready() noexcept {
           return {};
         }
 
-#ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
         void submit_stop(::io_uring_sqe& __sqe) noexcept {
           __duration_.it_value.tv_sec = 1;
           __duration_.it_value.tv_nsec = 0;
@@ -848,31 +848,31 @@ namespace exec {
             __timerfd_, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &__duration_, nullptr);
           __sqe = ::io_uring_sqe{.opcode = IORING_OP_NOP};
         }
-#endif
+#    endif
 
         void submit(::io_uring_sqe& __sqe) noexcept {
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           ::io_uring_sqe __sqe_{};
           __sqe_.opcode = IORING_OP_TIMEOUT;
           __sqe_.addr = bit_cast<__u64>(&__duration_);
           __sqe_.len = 1;
           __sqe = __sqe_;
-#else
+#    else
           ::io_uring_sqe __sqe_{};
           __sqe_.opcode = IORING_OP_READV;
           __sqe_.fd = __timerfd_;
           __sqe_.addr = bit_cast<__u64>(&__iov_);
           __sqe_.len = 1;
           __sqe = __sqe_;
-#endif
+#    endif
         }
 
         void complete(const ::io_uring_cqe& __cqe) noexcept {
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           if (__cqe.res == -ETIME || __cqe.res == 0) {
-#else
+#    else
           if (__cqe.res == sizeof(std::uint64_t)) {
-#endif
+#    endif
             stdexec::set_value((_Receiver&&) this->__receiver_);
           } else {
             STDEXEC_ASSERT(__cqe.res < 0);
@@ -885,18 +885,18 @@ namespace exec {
        public:
         __impl(__context& __context, std::chrono::nanoseconds __duration, _Receiver&& __receiver)
           : __stoppable_op_base<_Receiver>{__context, (_Receiver&&) __receiver}
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           , __duration_{__duration_to_timespec(__duration)}
-#else
+#    else
           , __timerfd_{::timerfd_create(CLOCK_REALTIME, 0)}
           , __duration_{__duration_to_timespec(__duration)}
-#endif
+#    endif
         {
-#ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           int __rc = ::timerfd_settime(
             __timerfd_, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &__duration_, nullptr);
           __throw_error_code_if(__rc < 0, errno);
-#endif
+#    endif
         }
       };
 
@@ -1022,5 +1022,5 @@ namespace exec {
   using io_uring_scheduler = __io_uring::__scheduler;
 }
 
-#endif // if __has_include(<linux/verison.h>)
-#endif // if __has_include(<linux/io_uring.h>)
+#  endif // if __has_include(<linux/verison.h>)
+#endif   // if __has_include(<linux/io_uring.h>)

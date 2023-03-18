@@ -17,10 +17,10 @@
 #pragma once
 
 #if __has_include(<bit>)
-#include <bit>
-#if __cpp_lib_bit_cast >= 201806L
-#define STDEXEC_HAS_BIT_CAST
-#endif
+#  include <bit>
+#  if __cpp_lib_bit_cast >= 201806L
+#    define STDEXEC_HAS_BIT_CAST
+#  endif
 #endif
 
 #include <cstring>
@@ -39,13 +39,13 @@ namespace exec {
   template <__trivially_copyable _To, __trivially_copyable _From>
     requires(sizeof(_To) == sizeof(_From))
   [[nodiscard]] constexpr _To bit_cast(const _From& __from) noexcept {
-#if STDEXEC_HAS_BUILTIN(__builtin_bit_cast) || (_MSC_VER >= 1926)
+#  if STDEXEC_HAS_BUILTIN(__builtin_bit_cast) || (_MSC_VER >= 1926)
     return __builtin_bit_cast(_To, __from);
-#else
+#  else
     _To __to;
     std::memcpy(&__to, &__from, sizeof(_From));
     return __to;
-#endif
+#  endif
   }
 #endif
 }

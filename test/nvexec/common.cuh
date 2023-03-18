@@ -35,8 +35,8 @@ namespace nvexec {
     }
   }
 
-#define THROW_ON_CUDA_ERROR(...) \
-  ::nvexec::throw_on_cuda_error(__VA_ARGS__, __FILE__, __LINE__); \
+#define THROW_ON_CUDA_ERROR(...)                                                                   \
+  ::nvexec::throw_on_cuda_error(__VA_ARGS__, __FILE__, __LINE__);                                  \
   /**/
 } // namespace nvexec
 

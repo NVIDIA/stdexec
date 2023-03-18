@@ -18,9 +18,9 @@
 #include "../../stdexec/execution.hpp"
 
 #ifdef __EDG__
-#pragma diagnostic push
-#pragma diag_suppress 1302
-#pragma diag_suppress 497
+#  pragma diagnostic push
+#  pragma diag_suppress 1302
+#  pragma diag_suppress 497
 #endif
 
 namespace exec {
@@ -400,5 +400,5 @@ namespace exec {
 } // namespace exec
 
 #ifdef __EDG__
-#pragma diagnostic pop
+#  pragma diagnostic pop
 #endif

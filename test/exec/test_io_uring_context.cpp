@@ -16,13 +16,13 @@
  */
 
 #if __has_include(<linux/io_uring.h>)
-#include "exec/linux/io_uring_context.hpp"
-#include "exec/scope.hpp"
-#include "exec/single_thread_context.hpp"
-#include "exec/finally.hpp"
-#include "exec/when_any.hpp"
+#  include "exec/linux/io_uring_context.hpp"
+#  include "exec/scope.hpp"
+#  include "exec/single_thread_context.hpp"
+#  include "exec/finally.hpp"
+#  include "exec/when_any.hpp"
 
-#include "catch2/catch.hpp"
+#  include "catch2/catch.hpp"
 
 using namespace stdexec;
 using namespace exec;

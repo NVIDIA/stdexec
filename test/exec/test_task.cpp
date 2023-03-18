@@ -18,12 +18,12 @@
 #include <stdexec/coroutine.hpp>
 
 #if !STDEXEC_STD_NO_COROUTINES_
-#include <exec/task.hpp>
-#include <exec/single_thread_context.hpp>
+#  include <exec/task.hpp>
+#  include <exec/single_thread_context.hpp>
 
-#include <catch2/catch.hpp>
+#  include <catch2/catch.hpp>
 
-#include <thread>
+#  include <thread>
 
 using namespace exec;
 using namespace stdexec;

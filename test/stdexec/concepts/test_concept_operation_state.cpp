@@ -23,7 +23,7 @@ struct op_except {
   op_except() = default;
   op_except(op_except&&) = delete;
 
-  STDEXEC_DEFINE_CUSTOM(void start)(this op_except&, ex::start_t)  {
+  STDEXEC_DEFINE_CUSTOM(void start)(this op_except&, ex::start_t) {
   }
 };
 
