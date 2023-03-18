@@ -283,7 +283,7 @@ namespace stdexec {
     };
 
     // For getting an evaluation environment from a receiver
-    struct get_env_t {
+    STDEXEC_DEFINE_CPO(get_env) {
       template <class _EnvProvider>
         requires tag_invocable<get_env_t, const _EnvProvider&>
       constexpr auto operator()(const _EnvProvider& __with_env) const
