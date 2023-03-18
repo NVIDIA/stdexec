@@ -28,6 +28,7 @@
 #include <type_traits>
 #include <variant>
 
+#include "__detail/__cpo.hpp"
 #include "__detail/__intrusive_ptr.hpp"
 #include "__detail/__meta.hpp"
 #include "__detail/__scope.hpp"
@@ -1213,44 +1214,22 @@ namespace stdexec {
       { get_scheduler(__sp) } -> scheduler<>;
     };
 
-  namespace __start {
-    struct start_t;
-  }
-  using __start::start_t;
-  extern const start_t start;
-
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   namespace __start {
-    struct start_t {
-#if defined(STDEXEC_USE_EXPLICIT_THIS)
-      template <class _Op>
-        requires requires (_Op& __op) {
-          __op.start(stdexec::start);
-        }
-      void operator()(_Op& __op) const noexcept {
-        static_assert(noexcept(start(__op, stdexec::start)));
-        (void) __op.start(stdexec::start);
-      }
-#elif defined(STDEXEC_USE_TAG_INVOKE)
+    STDEXEC_DEFINE_CPO(start) {
       template <class _Op>
         requires tag_invocable<start_t, _Op&>
       void operator()(_Op& __op) const noexcept {
-        static_assert(nothrow_tag_invocable<start_t, _Op&>);
-        (void) tag_invoke(start_t{}, __op);
+        static_assert(same_as<tag_invoke_result_t<start_t, _Op&>, void>);
+        static_assert(
+          nothrow_tag_invocable<start_t, _Op&>, "customizations of start must be noexcept");
+        tag_invoke(*this, __op);
       }
-#else
-      template <class _Op>
-        requires requires (_Op& __op) {
-          __op.start(__op, stdexec::start);
-        }
-      void operator()(_Op& __op) const noexcept {
-        static_assert(noexcept(__op.start(__op, stdexec::start)));
-        (void) __op.start(__op, stdexec::start);
-      }
-#endif
     };
-  }
+  } // namespace __start
+
+  using __start::start_t;
   inline constexpr start_t start{};
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1470,7 +1449,7 @@ namespace stdexec {
     struct __debug_op_state {
       __debug_op_state(auto&&);
       __debug_op_state(__debug_op_state&&) = delete;
-      STDEXEC_DEFINE_CUSTOM(void start)(this __debug_op_state&, start_t) noexcept ;
+      STDEXEC_DEFINE_CUSTOM(void start)(this __debug_op_state&, start_t) noexcept;
     };
 
     template <class _Sig>
@@ -2103,7 +2082,7 @@ namespace stdexec {
       template <receiver _Receiver, sender_to<_Receiver> _Sender>
       void operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(false) {
         start(*(new __operation<__id<_Sender>, __id<_Receiver>>{
-                 (_Sender&&) __sndr, (_Receiver&&) __rcvr}));
+          (_Sender&&) __sndr, (_Receiver&&) __rcvr}));
       }
     };
   } // namespace __submit_
