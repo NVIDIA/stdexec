@@ -109,10 +109,23 @@ namespace exec {
 
         template <__decays_to<__t> _Self>
         friend void tag_invoke(set_value_t, _Self&& __self) noexcept {
-          std::visit(
-            __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
-            (_ResultType&&) __self.__op_->__result_);
-          __self.__op_->__result_.__destruct();
+          if constexpr (std::is_nothrow_move_constructible_v<_ResultType>) {
+            _ResultType __result = (_ResultType&&) __self.__op_->__result_;
+            __self.__op_->__result_.__destruct();
+            std::visit(
+              __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
+              (_ResultType&&) __result);
+          } else {
+            try {
+              _ResultType __result = (_ResultType&&) __self.__op_->__result_;
+              __self.__op_->__result_.__destruct();
+              std::visit(
+                __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
+                (_ResultType&&) __result);
+            } catch (...) {
+              stdexec::set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
+            }
+          }
         }
 
         template <__one_of<set_error_t, set_stopped_t> _Tag, __decays_to<__t> _Self, class... _Error>
@@ -200,7 +213,7 @@ namespace exec {
         this->__result_.__construct(
           std::in_place_type<__decayed_tuple<_Args...>>, (_Args&&) __args...);
         STDEXEC_ASSERT(__op_.index() == 0);
-        _FinalSender& __final_sender = std::get_if<0>(&__op_)->__sender_;
+        _FinalSender __final_sender = (_FinalSender&&) std::get_if<0>(&__op_)->__sender_;
         __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {
           return connect((_FinalSender&&) __final_sender, __final_receiver_t{this});
         }});

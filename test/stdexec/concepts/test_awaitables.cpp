@@ -24,12 +24,16 @@
 
 #include <test_common/type_helpers.hpp>
 
-#if !_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES_
 
 namespace ex = stdexec;
 
 template <class Sender>
-concept sender_with_env = ex::sender<Sender> && requires(const Sender& s) { ex::get_env(s); };
+concept sender_with_env =     //
+  ex::sender<Sender> &&       //
+  requires(const Sender& s) { //
+    ex::get_env(s);
+  };
 
 template <typename Awaiter>
 struct promise {
@@ -244,4 +248,4 @@ TEST_CASE("env_promise bug when CWG 2369 is fixed", "[sndtraits][awaitables]") {
   static_assert(!ex::__awaitable<_Awaitable, _Promise>);
 }
 
-#endif // !_STD_NO_COROUTINES_
+#endif // !STDEXEC_STD_NO_COROUTINES_

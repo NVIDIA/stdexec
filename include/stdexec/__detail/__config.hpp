@@ -94,6 +94,23 @@
 #define STDEXEC_MSVC() 0
 #endif
 
+#if STDEXEC_CLANG()
+#define STDEXEC_STRINGIZE(__arg) #__arg
+#define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
+#define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
+#define STDEXEC_PRAGMA_IGNORE(__arg) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __arg))
+#else
+#define STDEXEC_PRAGMA_PUSH()
+#define STDEXEC_PRAGMA_POP()
+#define STDEXEC_PRAGMA_IGNORE(__arg)
+#endif
+
+#ifdef __has_builtin
+#define STDEXEC_HAS_BUILTIN __has_builtin
+#else
+#define STDEXEC_HAS_BUILTIN(...) 0
+#endif
+
 #if STDEXEC_CLANG() && defined(__CUDACC__)
 #define STDEXEC_DETAIL_CUDACC_HOST_DEVICE __host__ __device__
 #else

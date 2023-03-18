@@ -29,9 +29,8 @@ namespace stdexec::__std_concepts {
   using std::invocable;
 #else
   template <class _F, class... _As>
-  concept invocable = requires(_F&& __f, _As&&... __as) {
-    std::invoke((_F&&) __f, (_As&&) __as...);
-  };
+  concept invocable = //
+    requires(_F&& __f, _As&&... __as) { std::invoke((_F&&) __f, (_As&&) __as...); };
 #endif
 } // stdexec::__std_concepts
 
@@ -41,9 +40,11 @@ namespace std {
 
 namespace stdexec {
   template <class _F, class... _As>
-  concept __nothrow_invocable = invocable<_F, _As...> && requires(_F&& __f, _As&&... __as) {
-    { std::invoke((_F&&) __f, (_As&&) __as...) } noexcept;
-  };
+  concept __nothrow_invocable = //
+    invocable<_F, _As...> &&    //
+    requires(_F&& __f, _As&&... __as) {
+      { std::invoke((_F&&) __f, (_As&&) __as...) } noexcept;
+    };
 
   template <auto _Fun>
   struct __fun_c_t {
@@ -68,19 +69,20 @@ namespace stdexec {
     // std::invoke is more expensive at compile time than necessary,
     // and results in diagnostics that are more verbose than necessary.
     template <class _Tag, class... _Args>
-    concept tag_invocable = requires(_Tag __tag, _Args&&... __args) {
-      tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
-    };
+    concept tag_invocable = //
+      requires(_Tag __tag, _Args&&... __args) { tag_invoke((_Tag&&) __tag, (_Args&&) __args...); };
 
     template <class _Ret, class _Tag, class... _Args>
-    concept __tag_invocable_r = requires(_Tag __tag, _Args&&... __args) {
-      { static_cast<_Ret>(tag_invoke((_Tag&&) __tag, (_Args&&) __args...)) };
-    };
+    concept __tag_invocable_r = //
+      requires(_Tag __tag, _Args&&... __args) {
+        { static_cast<_Ret>(tag_invoke((_Tag&&) __tag, (_Args&&) __args...)) };
+      };
 
     // NOT TO SPEC: nothrow_tag_invocable subsumes tag_invocable
     template <class _Tag, class... _Args>
     concept nothrow_tag_invocable =
-      tag_invocable<_Tag, _Args...> && requires(_Tag __tag, _Args&&... __args) {
+      tag_invocable<_Tag, _Args...> && //
+      requires(_Tag __tag, _Args&&... __args) {
         { tag_invoke((_Tag&&) __tag, (_Args&&) __args...) } noexcept;
       };
 

@@ -34,13 +34,14 @@ struct fallible_just {
     std::tuple<Values...> values_;
     Receiver rcvr_;
 
-    STDEXEC_DEFINE_CUSTOM(void start)(this operation& self, ex::start_t) noexcept  try {
-      std::apply(
-        [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
-        self.values_);
-    } catch (...) {
-
-      ex::set_error(std::move(self.rcvr_), std::current_exception());
+    STDEXEC_DEFINE_CUSTOM(void start)(this operation& self, ex::start_t) noexcept {
+      try {
+        std::apply(
+          [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
+          self.values_);
+      } catch (...) {
+        ex::set_error(std::move(self.rcvr_), std::current_exception());
+      }
     }
   };
 

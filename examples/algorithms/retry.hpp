@@ -92,11 +92,13 @@ struct _op {
     }};
   }
 
-  void _retry() noexcept try {
-    o_.emplace(_connect()); // potentially throwing
-    stdexec::start(*o_);
-  } catch (...) {
-    stdexec::set_error((R&&) r_, std::current_exception());
+  void _retry() noexcept {
+    try {
+      o_.emplace(_connect()); // potentially throwing
+      stdexec::start(*o_);
+    } catch (...) {
+      stdexec::set_error((R&&) r_, std::current_exception());
+    }
   }
 
   STDEXEC_DEFINE_CUSTOM(void start)(this _op& o, stdexec::start_t) noexcept {

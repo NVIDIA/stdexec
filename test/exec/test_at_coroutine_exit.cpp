@@ -17,7 +17,7 @@
 
 #include <stdexec/coroutine.hpp>
 
-#if !_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES_
 #include <exec/at_coroutine_exit.hpp>
 #include <exec/on_coro_disposition.hpp>
 #include <catch2/catch.hpp>
@@ -486,4 +486,4 @@ TEST_CASE(
 
 #endif // STDEXEC_HAS_FORK
 
-#endif // !_STD_NO_COROUTINES_
+#endif // !STDEXEC_STD_NO_COROUTINES_

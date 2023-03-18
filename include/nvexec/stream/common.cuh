@@ -246,12 +246,14 @@ namespace nvexec {
     }
 
     template <class S>
-    concept stream_sender = stdexec::sender<S>
-                         && std::is_base_of_v<stream_sender_base, std::decay_t<S>>;
+    concept stream_sender = //
+      stdexec::sender<S> && //
+      std::is_base_of_v<stream_sender_base, std::decay_t<S>>;
 
     template <class R>
-    concept stream_receiver =
-      stdexec::receiver<R> && std::is_base_of_v<stream_receiver_base, std::decay_t<R>>;
+    concept stream_receiver = //
+      stdexec::receiver<R> && //
+      std::is_base_of_v<stream_receiver_base, std::decay_t<R>>;
 
     struct stream_op_state_base { };
 
@@ -596,19 +598,23 @@ namespace nvexec {
     }
 
     template <class S>
-    concept stream_completing_sender = stdexec::sender<S> && requires(const S& sndr) {
-      {
-        stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr))
-          .context_state_
-      } -> stdexec::__decays_to<context_state_t>;
-    };
+    concept stream_completing_sender = //
+      stdexec::sender<S> &&            //
+      requires(const S& sndr) {
+        {
+          stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr))
+            .context_state_
+        } -> stdexec::__decays_to<context_state_t>;
+      };
 
     template <class R>
-    concept receiver_with_stream_env = stdexec::receiver<R> && requires(const R& rcvr) {
-      {
-        stdexec::get_scheduler(stdexec::get_env(rcvr)).context_state_
-      } -> stdexec::__decays_to<context_state_t>;
-    };
+    concept receiver_with_stream_env = //
+      stdexec::receiver<R> &&          //
+      requires(const R& rcvr) {
+        {
+          stdexec::get_scheduler(stdexec::get_env(rcvr)).context_state_
+        } -> stdexec::__decays_to<context_state_t>;
+      };
 
     template <class InnerReceiverProvider, class OuterReceiver>
     using inner_receiver_t = //
