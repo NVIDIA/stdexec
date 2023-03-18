@@ -3141,6 +3141,9 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.bulk]
   namespace __bulk {
+    template <class _Ty>
+    using __decay_ref = decay_t<_Ty>&;
+
     template <class _ReceiverId, integral _Shape, class _Fun>
     struct __receiver {
       using _Receiver = stdexec::__t<_ReceiverId>;
@@ -3207,7 +3210,7 @@ namespace stdexec {
             __v<__value_types_of_t<
               _Sender,
               _Env,
-              __mbind_front_q<__non_throwing_, _Fun, _Shape>,
+              __mcompose<__mbind_front_q<__non_throwing_, _Fun, _Shape>, __q<__decay_ref>>,
               __q<__mand>>>,
             completion_signatures<>,
             __with_exception_ptr>;
