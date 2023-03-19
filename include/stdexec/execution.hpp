@@ -800,8 +800,29 @@ namespace stdexec {
     __remove<__, __q<completion_signatures>>>;
 
   template <class _Tag, class _Completions, class _Tuple, class _Variant>
+  struct _ERRONEOUS_SIGNAL_TRANSFORMATION_ {
+    template <class _Sig>
+    struct _WITH_SIGNAL_ { };
+  };
+
+  template <class _Fn, class _Alt>
+  struct __with_fn {
+    template <class... _Args>
+    using __f = __minvoke<__if_c<__minvocable<_Fn, _Args...>, _Fn, _Alt>, _Args...>;
+  };
+
+  template <class _Tag, class _Completions, class _Tuple, class _Variant>
+  using error_transformation_t =
+    __q<_ERRONEOUS_SIGNAL_TRANSFORMATION_<_Tag, _Completions, _Tuple, _Variant>::template _WITH_SIGNAL_>;
+
+  template <class _Tag, class _Completions, class _Tuple, class _Variant>
   using __gather_signal = __compl_sigs::
-    __for_all_sigs<__only_gather_signal<_Tag, _Completions>, __invoke_completions<_Tuple>, _Variant>;
+    __for_all_sigs<
+      __only_gather_signal<_Tag, _Completions>, 
+      __with_fn<
+        __invoke_completions<_Tuple>, 
+        __invoke_completions<__mcompose<error_transformation_t<_Tag, _Completions, _Tuple, _Variant>, __mbind_front_q<__set_tag_type, _Tag>>>>,
+      _Variant>;
 
   template <class _Tag, class _Sender, class _Env, class _Tuple, class _Variant>
     requires sender_in<_Sender, _Env>
