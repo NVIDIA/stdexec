@@ -68,3 +68,5 @@ jobs:
     name: CI (GPU)
     needs:
       - build-gpu
+    steps:
+      - run: echo "CI (GPU) success"
