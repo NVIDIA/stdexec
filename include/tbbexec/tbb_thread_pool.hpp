@@ -89,7 +89,6 @@ namespace tbbexec {
         };
 
         template <class Fun, class Shape, class... Args>
-          requires stdexec::__callable<Fun, Shape, Args...>
         using bulk_non_throwing = stdexec::__bool<
           // If function invocation doesn't throw
           stdexec::__nothrow_callable<Fun, Shape, Args...> &&
@@ -298,6 +297,9 @@ namespace tbbexec {
           }
         };
 
+        template <class _Ty>
+        using __decay_ref = stdexec::decay_t<_Ty>&;
+
         template <class SenderId, std::integral Shape, class FunId>
         struct bulk_sender {
           using Sender = stdexec::__t<SenderId>;
@@ -313,7 +315,7 @@ namespace tbbexec {
             stdexec::__v<stdexec::__value_types_of_t<
               Sender,
               Env,
-              stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
+              stdexec::__transform<stdexec::__q<__decay_ref>, stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>>,
               stdexec::__q<stdexec::__mand>>>,
             stdexec::completion_signatures<>,
             stdexec::__with_exception_ptr>;

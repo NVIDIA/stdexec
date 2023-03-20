@@ -559,15 +559,19 @@ namespace exec {
       static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
 
       template <class... _Args>
-        requires stdexec::constructible_from<_Base, _Args...>
-      __io_task_facade(_Args&&... __args) noexcept(std::is_nothrow_constructible_v<_Base, _Args...>)
+        requires stdexec::constructible_from<_Base, std::in_place_t, _Args...>
+      __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
+        std::is_nothrow_constructible_v<_Base, _Args...>)
         : __task{__vtable}
-        , __base_{(_Args&&) __args...} {
+        , __base_(std::in_place, (_Args&&) __args...) {
       }
 
-      __io_task_facade(_Base&& __base) noexcept
+      template <class... _Args>
+        requires stdexec::constructible_from<_Base, _Args...>
+      __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
+        std::is_nothrow_constructible_v<_Base, _Args...>)
         : __task{__vtable}
-        , __base_{(_Base&&) __base} {
+        , __base_((_Args&&) __args...) {
       }
 
       _Base& base() noexcept {
@@ -683,11 +687,44 @@ namespace exec {
       };
     };
 
+    template <class _Base, bool _False>
+    struct __impl_base {
+      _Base __base_;
+
+      template <class... _Args>
+      __impl_base(std::in_place_t, _Args&&... __args) noexcept(
+        std::is_nothrow_constructible_v<_Base, _Args...>)
+        : __base_((_Args&&) __args...) {
+      }
+    };
+
+    template <class _Base>
+    struct __impl_base<_Base, true> {
+      _Base __base_;
+
+      template <class... _Args>
+      __impl_base(std::in_place_t, _Args&&... __args) noexcept(
+        std::is_nothrow_constructible_v<_Base, _Args...>)
+        : __base_((_Args&&) __args...) {
+      }
+
+      void submit_stop(::io_uring_sqe& __sqe) noexcept {
+        __base_.submit_stop(__sqe);
+      }
+    };
+
     template <__stoppable_task _Base>
     struct __stoppable_task_facade {
       using _Receiver = __receiver_of_t<_Base>;
 
-      struct __impl {
+      template <class _Ty>
+      static constexpr bool __has_submit_stop_v = requires(_Ty& __base, ::io_uring_sqe& __sqe) {
+        __base.submit_stop(__sqe);
+      };
+
+      using __base_t = __impl_base<_Base, __has_submit_stop_v<_Base>>;
+
+      struct __impl : __base_t {
         struct __stop_callback {
           __impl* __self_;
 
@@ -700,7 +737,6 @@ namespace exec {
         using __on_receiver_stop_t = std::optional<typename stdexec::stop_token_of_t<
           stdexec::env_of_t<_Receiver>&>::template callback_type<__stop_callback>>;
 
-        _Base __base_;
         stdexec::__t<__stop_operation<__impl>> __stop_operation_;
         std::atomic<int> __n_ops_{0};
         __on_context_stop_t __on_context_stop_{};
@@ -708,60 +744,50 @@ namespace exec {
 
         template <class... _Args>
           requires stdexec::constructible_from<_Base, _Args...>
-        __impl(_Args&&... __args) noexcept(std::is_nothrow_constructible_v<_Base, _Args...>)
-          : __base_{(_Args&&) __args...}
-          , __stop_operation_{this} {
-        }
-
-        explicit __impl(_Base&& __base)
-          : __base_{(_Base&&) __base}
+        __impl(std::in_place_t, _Args&&... __args) noexcept(
+          std::is_nothrow_constructible_v<_Base, _Args...>)
+          : __base_t(std::in_place, (_Args&&) __args...)
           , __stop_operation_{this} {
         }
 
         __context& context() noexcept {
-          return __base_.context();
+          return this->__base_.context();
         }
 
         _Receiver& receiver() & noexcept {
-          return __base_.receiver();
+          return this->__base_.receiver();
         }
 
         _Receiver&& receiver() && noexcept {
-          return (_Receiver&&) __base_.receiver();
+          return (_Receiver&&) this->__base_.receiver();
         }
 
         bool ready() const noexcept {
-          return __base_.ready();
-        }
-
-        void submit_stop(::io_uring_sqe& __sqe) noexcept
-          requires requires(_Base& __base, ::io_uring_sqe& __sqe) { __base_.submit_stop(__sqe); }
-        {
-          __base_.submit_stop(__sqe);
+          return this->__base_.ready();
         }
 
         void submit(::io_uring_sqe& __sqe) noexcept {
           [[maybe_unused]] int prev = __n_ops_.fetch_add(1, std::memory_order_relaxed);
           STDEXEC_ASSERT(prev == 0);
-          __context& __context_ = __base_.context();
-          _Receiver& __receiver = __base_.receiver();
+          __context& __context_ = this->__base_.context();
+          _Receiver& __receiver = this->__base_.receiver();
           __on_context_stop_.emplace(__context_.get_stop_token(), __stop_callback{this});
           __on_receiver_stop_.emplace(
             stdexec::get_stop_token(stdexec::get_env(__receiver)), __stop_callback{this});
-          __base_.submit(__sqe);
+          this->__base_.submit(__sqe);
         }
 
         void complete(const ::io_uring_cqe& __cqe) noexcept {
           if (__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
             __on_context_stop_.reset();
             __on_receiver_stop_.reset();
-            _Receiver& __receiver = __base_.receiver();
-            __context& __context_ = __base_.context();
+            _Receiver& __receiver = this->__base_.receiver();
+            __context& __context_ = this->__base_.context();
             auto token = stdexec::get_stop_token(stdexec::get_env(__receiver));
             if (__cqe.res == -ECANCELED || __context_.stop_requested() || token.stop_requested()) {
               stdexec::set_stopped((_Receiver&&) __receiver);
             } else {
-              __base_.complete(__cqe);
+              this->__base_.complete(__cqe);
             }
           }
         }
@@ -882,7 +908,6 @@ namespace exec {
           }
         }
 
-       public:
         __impl(__context& __context, std::chrono::nanoseconds __duration, _Receiver&& __receiver)
           : __stoppable_op_base<_Receiver>{__context, (_Receiver&&) __receiver}
 #    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
@@ -923,6 +948,9 @@ namespace exec {
       class __schedule_sender {
         __schedule_env __env_;
        public:
+        using __id = __schedule_sender;
+        using __t = __schedule_sender;
+
         explicit __schedule_sender(__schedule_env __env) noexcept
           : __env_{__env} {
         }
@@ -949,12 +977,16 @@ namespace exec {
           stdexec::connect_t,
           const __schedule_sender& __sender,
           _Receiver&& __receiver) {
-          return {*__sender.__env_.__context_, (_Receiver&&) __receiver};
+          return stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>>(
+            std::in_place, *__sender.__env_.__context_, (_Receiver&&) __receiver);
         }
       };
 
       class __schedule_after_sender {
        public:
+        using __id = __schedule_after_sender;
+        using __t = __schedule_after_sender;
+
         __schedule_env __env_;
         std::chrono::nanoseconds __duration_;
 
@@ -982,7 +1014,11 @@ namespace exec {
           stdexec::connect_t,
           const __schedule_after_sender& __sender,
           _Receiver&& __receiver) {
-          return {*__sender.__env_.__context_, __sender.__duration_, (_Receiver&&) __receiver};
+          return stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>>(
+            std::in_place,
+            *__sender.__env_.__context_,
+            __sender.__duration_,
+            (_Receiver&&) __receiver);
         }
       };
 
