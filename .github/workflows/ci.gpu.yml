@@ -65,6 +65,7 @@ jobs:
           ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler
 
   ci-gpu:
+    runs-on: ubuntu-latest
     name: CI (GPU)
     needs:
       - build-gpu

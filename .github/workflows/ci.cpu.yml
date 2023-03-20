@@ -63,6 +63,7 @@ jobs:
             apt update && apt install -y --no-install-recommends git;
 
   ci-cpu:
+    runs-on: ubuntu-latest
     name: CI (CPU)
     needs:
       - build-cpu-gcc11
