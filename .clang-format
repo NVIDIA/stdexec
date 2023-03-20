@@ -80,7 +80,7 @@ KeepEmptyLinesAtTheStartOfBlocks: true
 LambdaBodyIndentation: Signature
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
-NamespaceMacros: ['STDEXEC_DEFINE_CPO']
+NamespaceMacros: ['STDEXEC_DEFINE_CPO_STRUCT']
 PackConstructorInitializers: Never
 PenaltyBreakAssignment: 64
 PenaltyBreakBeforeFirstCallParameter: 64

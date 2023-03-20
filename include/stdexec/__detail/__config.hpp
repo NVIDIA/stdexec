@@ -27,6 +27,7 @@
 #define STDEXEC_EXPAND(...) __VA_ARGS__
 #define STDEXEC_EVAL(_M, ...) _M(__VA_ARGS__)
 #define STDEXEC_EAT(...)
+#define STDEXEC_FRONT(_X, ...) _X
 
 ////////////////////////////////////////////////////////////////////////////////
 // STDEXEC_FOR_EACH

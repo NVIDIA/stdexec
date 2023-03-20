@@ -284,38 +284,35 @@ namespace stdexec {
     };
   } // namespace __env
 
-  namespace __get_env {
-    // For getting an evaluation environment from a receiver
-    STDEXEC_DEFINE_CPO(get_env) {
-      template <class _EnvProvider>
-        requires tag_invocable<get_env_t, const _EnvProvider&>
-      constexpr auto operator()(const _EnvProvider& __with_env) const
-        noexcept(nothrow_tag_invocable<get_env_t, const _EnvProvider&>)
-          -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
-        static_assert(queryable<tag_invoke_result_t<get_env_t, const _EnvProvider&> >);
-        return tag_invoke(*this, __with_env);
-      }
+  // For getting an evaluation environment from a receiver
+  STDEXEC_DEFINE_CPO_STRUCT(get_env) {
+    template <class _EnvProvider>
+      requires tag_invocable<get_env_t, const _EnvProvider&>
+    constexpr auto operator()(const _EnvProvider& __with_env) const
+      noexcept(nothrow_tag_invocable<get_env_t, const _EnvProvider&>)
+        -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
+      static_assert(queryable<tag_invoke_result_t<get_env_t, const _EnvProvider&> >);
+      return tag_invoke(*this, __with_env);
+    }
 
-      // NOT TO SPEC: The overload below checks the non-standard
-      // enable_sender to determine whether to provide backwards
-      // compatible behavior for R5 version sender types. When we
-      // deprecate R5 support, we can bring this overload in line with
-      // P2300R7.
-      template <class _EnvProvider>
-      constexpr decltype(auto) operator()(const _EnvProvider& __with_env) const noexcept {
-        if constexpr (!enable_sender<_EnvProvider>) {
-          return __with_env;
-        } else {
-          return empty_env{};
-        }
+    // NOT TO SPEC: The overload below checks the non-standard
+    // enable_sender to determine whether to provide backwards
+    // compatible behavior for R5 version sender types. When we
+    // deprecate R5 support, we can bring this overload in line with
+    // P2300R7.
+    template <class _EnvProvider>
+    constexpr decltype(auto) operator()(const _EnvProvider& __with_env) const noexcept {
+      if constexpr (!enable_sender<_EnvProvider>) {
+        return __with_env;
+      } else {
+        return empty_env{};
       }
-    };
-  } // namespace __get_env
+    }
+  };
 
   using __env::__with;
   using __env::__with_;
   using __env::no_env;
-  using __get_env::get_env_t;
 
   inline constexpr __env::__make_env_t __make_env{};
   inline constexpr get_env_t get_env{};
@@ -1218,20 +1215,17 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
-  namespace __start {
-    STDEXEC_DEFINE_CPO(start) {
-      template <class _Op>
-        requires tag_invocable<start_t, _Op&>
-      void operator()(_Op& __op) const noexcept {
-        static_assert(same_as<tag_invoke_result_t<start_t, _Op&>, void>);
-        static_assert(
-          nothrow_tag_invocable<start_t, _Op&>, "customizations of start must be noexcept");
-        tag_invoke(*this, __op);
-      }
-    };
-  } // namespace __start
+  STDEXEC_DEFINE_CPO_STRUCT(start) {
+    template <class _Op>
+      requires tag_invocable<start_t, _Op&>
+    void operator()(_Op& __op) const noexcept {
+      static_assert(same_as<tag_invoke_result_t<start_t, _Op&>, void>);
+      static_assert(
+        nothrow_tag_invocable<start_t, _Op&>, "customizations of start must be noexcept");
+      tag_invoke(*this, __op);
+    }
+  };
 
-  using __start::start_t;
   inline constexpr start_t start{};
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1375,7 +1369,7 @@ namespace stdexec {
         };
 
         return __awaiter{__fn};
-      };
+      }
 
       template <class _Awaitable, class _Receiver>
       static __operation_t<_Receiver> __co_impl(_Awaitable __await, _Receiver __rcvr) {
