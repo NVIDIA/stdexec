@@ -29,12 +29,10 @@ jobs:
 
   build-cpu:
     name: CI (CPU)
-    needs: check-event
-    if: needs.check-event.outputs.ok == 'true'
     uses: ./.github/workflows/ci.cpu.yml
 
   build-gpu:
     name: CI (GPU)
     needs: check-event
-    if: needs.check-event.outputs.ok == 'true'
+    if: needs.check-event.outputs.ok == 'true' && github.event_name == 'push'
     uses: ./.github/workflows/ci.gpu.yml
