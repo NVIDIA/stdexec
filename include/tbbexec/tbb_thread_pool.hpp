@@ -502,7 +502,7 @@ namespace tbbexec {
       pool_.enqueue(this);
     }
 
-    STDEXEC_CPO_ACCESS(start_t);
+    STDEXEC_CPO_ACCESS(stdexec::start_t);
 
     STDEXEC_DEFINE_CUSTOM(void start)(this operation& op, stdexec::start_t) noexcept {
       op.enqueue();
