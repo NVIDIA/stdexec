@@ -28,7 +28,6 @@ jobs:
           cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git libtbb-dev;
-
   build-cpu-clang12:
     runs-on: ubuntu-latest
     name: CPU (clang 12, ubuntu 20.04)
@@ -46,7 +45,6 @@ jobs:
           cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git libtbb-dev;
-
   build-cpu-gcc11-ubuntu2204:
     runs-on: ubuntu-22.04
     name: CPU (gcc 11, ubuntu 22.04, TSAN)
@@ -63,3 +61,13 @@ jobs:
           cxxflags: "-fsanitize=thread"
           prebuild_command: |
             apt update && apt install -y --no-install-recommends git;
+
+  ci-cpu:
+    runs-on: ubuntu-latest
+    name: CI (CPU)
+    needs:
+      - build-cpu-gcc11
+      - build-cpu-clang12
+      - build-cpu-gcc11-ubuntu2204
+    steps:
+      - run: echo "CI (CPU) success"
