@@ -1,11 +1,19 @@
 name: CI (GPU)
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - main
+      - "pull-request/[0-9]+"
+
+concurrency:
+  group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
 
-  build-and-test-gpu:
+  build-gpu:
+    if: github.repository == 'nvidia/stdexec'
     name: GPU (${{ matrix.name }}, CUDA ${{ matrix.cuda }})
     strategy:
       fail-fast: false
@@ -37,26 +45,26 @@ jobs:
           cxx: "${{ matrix.cxx }}"
         run: |
           set -x;
-
           sudo mkdir -p /workspaces/stdexec/;
           sudo cp -ar . /workspaces/stdexec/;
           sudo chown -R $(id -u):$(id -g) /workspaces;
           cd /workspaces/stdexec;
-
           # Configure
           cmake -S . -B build -GNinja \
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CXX_COMPILER="$cxx" \
             -DCMAKE_CUDA_COMPILER="$cxx" \
             -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }}-real;
-
           # Compile
           cmake --build build;
-
           # Tests
           ctest --test-dir build --verbose --output-on-failure;
-
           # Examples
           ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
           ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler
           ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler
+
+  ci-gpu:
+    name: CI (GPU)
+    needs:
+      - build-gpu
