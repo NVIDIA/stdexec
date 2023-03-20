@@ -1,14 +1,7 @@
 name: CI (CPU)
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
-
-concurrency:
-  group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
-  cancel-in-progress: true
+  workflow_call:
 
 jobs:
 
