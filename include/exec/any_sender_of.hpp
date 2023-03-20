@@ -844,7 +844,15 @@ namespace exec {
         requires stdexec::tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __sender_base>, _As...>
       friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
         std::is_nothrow_invocable_v< _Tag, stdexec::__copy_cvref_t<Self, __sender_base>, _As...>) {
-        return tag_invoke(_Tag{}, ((Self&&) __self).__sender_, (_As&&) __as...);
+        return stdexec::tag_invoke(_Tag{}, ((Self&&) __self).__sender_, (_As&&) __as...);
+      }
+
+      STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(
+        this const any_sender& __self,
+        stdexec::get_env_t) noexcept -> typename __sender_base::__id::__env_t {
+        return stdexec::get_env(__self.__sender_);
       }
      public:
       using is_sender = void;
