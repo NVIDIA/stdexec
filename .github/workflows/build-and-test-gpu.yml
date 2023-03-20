@@ -1,0 +1,62 @@
+name: CI (GPU)
+
+on:
+  workflow_call:
+
+jobs:
+
+  build-and-test-gpu:
+    name: GPU (${{ matrix.name }}, CUDA ${{ matrix.cuda }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "nvc++ 23.1", cuda: "12.0", cxx: "mpic++",  tag: "nvhpc23.1",       gpu: "v100", sm: "70", driver: "525", arch: "amd64" }
+          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "525", arch: "amd64" }
+    runs-on:
+      - self-hosted
+      - linux
+      - gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
+      - ${{ matrix.arch }}
+    container:
+      options: -u root
+      image: rapidsai/devcontainers:23.04-cpp-${{ matrix.tag }}-ubuntu22.04
+      env:
+        CUDA_VERSION: "${{ matrix.cuda }}"
+        NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
+    steps:
+      - name: Run nvidia-smi to make sure GPU is working
+        run: nvidia-smi
+      - name: Checkout stdexec
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Build and test GPU schedulers
+        shell: bash -l {0}
+        env:
+          cxx: "${{ matrix.cxx }}"
+        run: |
+          set -x;
+
+          sudo mkdir -p /workspaces/stdexec/;
+          sudo cp -ar . /workspaces/stdexec/;
+          sudo chown -R $(id -u):$(id -g) /workspaces;
+          cd /workspaces/stdexec;
+
+          # Configure
+          cmake -S . -B build -GNinja \
+            -DSTDEXEC_ENABLE_CUDA=ON \
+            -DCMAKE_CXX_COMPILER="$cxx" \
+            -DCMAKE_CUDA_COMPILER="$cxx" \
+            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }}-real;
+
+          # Compile
+          cmake --build build;
+
+          # Tests
+          ctest --test-dir build --verbose --output-on-failure;
+
+          # Examples
+          ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
+          ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler
+          ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler
