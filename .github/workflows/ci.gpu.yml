@@ -13,7 +13,7 @@ concurrency:
 jobs:
 
   build-gpu:
-    if: github.repository == 'nvidia/stdexec'
+    if: github.repository == 'NVIDIA/stdexec'
     name: GPU (${{ matrix.name }}, CUDA ${{ matrix.cuda }})
     strategy:
       fail-fast: false
