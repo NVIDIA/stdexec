@@ -41,9 +41,13 @@ namespace exec {
           set_value((_Receiver&&) __self.__upstream_, tag, (_Args&&) __args...);
         }
 
+        STDEXEC_CPO_ACCESS(get_env_t);
+
         template <std::same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
-          return get_env(__self.__upstream_);
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
+          this const _Self& __self,
+          get_env_t) noexcept {
+          return stdexec::get_env(__self.__upstream_);
         }
       };
     };
@@ -140,9 +144,13 @@ namespace exec {
           tag((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
         }
 
+        STDEXEC_CPO_ACCESS(get_env_t);
+
         template <std::same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
-          return get_env(__self.__upstream_);
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
+          this const _Self& __self,
+          get_env_t) noexcept {
+          return stdexec::get_env(__self.__upstream_);
         }
       };
     };

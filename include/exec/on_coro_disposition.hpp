@@ -166,7 +166,7 @@ namespace exec {
           return as_awaitable(__at_coro_exit::__die_on_stop((_Awaitable&&) __awaitable), *this);
         }
 
-        friend __env tag_invoke(get_env_t, const __promise& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(__env get_env)(this const __promise& __self, get_env_t) noexcept {
           return {__self};
         }
 

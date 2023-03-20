@@ -71,6 +71,14 @@
 #define STDEXEC_PROBE(_X) _X, 1,
 #define STDEXEC_PROBE_N(_X, _N) _X, _N,
 
+#define STDEXEC_IF(_IF, _TRUE, ...) STDEXEC_CAT(STDEXEC_IF_, _IF)(_TRUE, __VA_ARGS__) /**/
+
+#define STDEXEC_IF_0(_TRUE, ...)                                                                   \
+  __VA_OPT__(STDEXEC_EXPAND __VA_ARGS__)                                                           \
+  /**/
+
+#define STDEXEC_IF_1(_TRUE, ...) STDEXEC_EXPAND _TRUE /**/
+
 #if defined(__NVCOMPILER)
 #  define STDEXEC_NVHPC() 1
 #elif defined(__clang__)
@@ -115,6 +123,12 @@
 #  define STDEXEC_DETAIL_CUDACC_HOST_DEVICE __host__ __device__
 #else
 #  define STDEXEC_DETAIL_CUDACC_HOST_DEVICE
+#endif
+
+#if STDEXEC_GCC()
+#  define STDEXEC_NON_LEXICAL_FRIENDSHIP() 1
+#else
+#  define STDEXEC_NON_LEXICAL_FRIENDSHIP() 0
 #endif
 
 #ifdef STDEXEC_ASSERT

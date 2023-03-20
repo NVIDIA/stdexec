@@ -31,8 +31,10 @@ namespace exec {
         std::variant<connect_result_t<stdexec::__t<_SenderIds>, stdexec::__t<_ReceiverId>>...>
           __variant_;
 
+        STDEXEC_CPO_ACCESS(start_t);
+
         STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
-          std::visit([](auto& __s) { start(__s); }, __self.__variant_);
+          std::visit([](auto& __s) { stdexec::start(__s); }, __self.__variant_);
         }
 
        public:

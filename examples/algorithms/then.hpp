@@ -83,7 +83,7 @@ struct _then_sender {
     return stdexec::connect((S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
   }
 
-  friend auto tag_invoke(stdexec::get_env_t, const _then_sender& self) //
+  STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _then_sender& self, stdexec::get_env_t) //
     noexcept(noexcept(stdexec::get_env(self.s_))) -> std::invoke_result_t<stdexec::get_env_t, S> {
     return stdexec::get_env(self.s_);
   }

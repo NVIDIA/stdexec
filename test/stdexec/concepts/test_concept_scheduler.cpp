@@ -35,7 +35,9 @@ struct my_scheduler {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend default_env<my_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(default_env<my_scheduler> get_env)(
+      this const my_sender&,
+      ex::get_env_t) noexcept {
       return {};
     }
   };
@@ -75,7 +77,9 @@ struct my_scheduler_except {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend default_env<my_scheduler_except> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(default_env<my_scheduler_except> get_env)(
+      this const my_sender&,
+      ex::get_env_t) noexcept {
       return {};
     }
   };
@@ -105,7 +109,9 @@ struct noeq_sched {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend default_env<noeq_sched> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(default_env<noeq_sched> get_env)(
+      this const my_sender&,
+      ex::get_env_t) noexcept {
       return {};
     }
   };
@@ -134,7 +140,7 @@ struct sched_no_completion {
       }
     };
 
-    friend env tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(env get_env)(this const my_sender&, ex::get_env_t) noexcept {
       return {};
     }
   };

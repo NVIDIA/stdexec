@@ -68,7 +68,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.shared_state_.reset();
         }
 
-        friend env_t tag_invoke(stdexec::get_env_t, const __t& self) {
+        STDEXEC_DEFINE_CUSTOM(env_t get_env)(this const __t& self, stdexec::get_env_t) {
           return self.shared_state_->make_env();
         }
       };
@@ -328,7 +328,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return operation_t<Receiver>{(Receiver&&) rcvr, std::move(self).shared_state_};
       }
 
-      friend auto tag_invoke(stdexec::get_env_t, const __t& self) //
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, stdexec::get_env_t) //
         noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
           -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
         return stdexec::get_env(self.sndr_);

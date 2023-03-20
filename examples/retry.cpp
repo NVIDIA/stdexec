@@ -50,7 +50,7 @@ struct fail_some {
 
   struct empty_env { };
 
-  friend empty_env tag_invoke(stdexec::get_env_t, const fail_some&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const fail_some&, stdexec::get_env_t) noexcept {
     return {};
   }
 };

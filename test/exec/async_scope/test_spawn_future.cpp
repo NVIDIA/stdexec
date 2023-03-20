@@ -43,7 +43,9 @@ struct throwing_sender {
     return {std::forward<Receiver>(rcvr)};
   }
 
-  friend empty_env tag_invoke(stdexec::get_env_t, const throwing_sender&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(
+    this const throwing_sender&,
+    stdexec::get_env_t) noexcept {
     return {};
   }
 };

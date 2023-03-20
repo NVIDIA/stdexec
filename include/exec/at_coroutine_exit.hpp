@@ -57,8 +57,10 @@ namespace exec {
             std::terminate();
           }
 
-          friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
-            return get_env(__self.__receiver_);
+          STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
+            this const __t& __self,
+            get_env_t) noexcept {
+            return stdexec::get_env(__self.__receiver_);
           }
         };
       };
@@ -95,7 +97,9 @@ namespace exec {
             -> __completion_signatures<_Env>
             requires true;
 
-          friend env_of_t<_Sender> tag_invoke(get_env_t, const __t& __self) noexcept {
+          STDEXEC_DEFINE_CUSTOM(env_of_t<_Sender> get_env)(
+            this const __t& __self,
+            get_env_t) noexcept {
             return get_env(__self.__sender_);
           }
         };
@@ -217,7 +221,7 @@ namespace exec {
           return as_awaitable(__die_on_stop((_Awaitable&&) __awaitable), *this);
         }
 
-        friend __env tag_invoke(get_env_t, const __promise& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(__env get_env)(this const __promise& __self, get_env_t) noexcept {
           return {__self};
         }
 

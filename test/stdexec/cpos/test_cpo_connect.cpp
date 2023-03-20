@@ -42,7 +42,7 @@ struct my_sender {
     return {{}, s.value_, (R&&) r};
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const my_sender&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -58,7 +58,9 @@ struct my_sender_unconstrained {
     return {{}, s.value_, (R&&) r};
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const my_sender_unconstrained&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(
+    this const my_sender_unconstrained&,
+    ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -94,7 +96,7 @@ struct strange_receiver {
   friend void tag_invoke(ex::set_error_t, strange_receiver, std::exception_ptr) noexcept {
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const strange_receiver&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const strange_receiver&, ex::get_env_t) noexcept {
     return {};
   }
 };

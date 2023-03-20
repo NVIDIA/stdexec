@@ -98,7 +98,7 @@ struct custom_sender {
     *sndr.called = true;
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const custom_sender&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const custom_sender&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -112,7 +112,7 @@ struct custom_scheduler {
       }
     };
 
-    friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(env get_env)(this const sender&, ex::get_env_t) noexcept {
       return {};
     }
   };

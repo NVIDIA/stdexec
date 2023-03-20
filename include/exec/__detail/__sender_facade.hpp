@@ -56,7 +56,7 @@ namespace exec {
       }
 
       template <same_as<__receiver_placeholder> _Self>
-      [[noreturn]] friend _Env tag_invoke(get_env_t, _Self) {
+      [[noreturn]] STDEXEC_DEFINE_CUSTOM(_Env get_env)(this _Self, get_env_t) {
         static_assert(
           __never_true<_Self>, "we should never be instantiating the body of this function");
         std::terminate();
@@ -343,7 +343,7 @@ namespace exec {
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
           -> __minvoke<__impl_fn<_Self, _Env>, _Self, _Env>;
 
-        friend auto tag_invoke(stdexec::get_env_t, const __t& __self) //
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, stdexec::get_env_t) //
           noexcept(__nothrow_callable<stdexec::get_env_t, const _Sender&>)
             -> __call_result_t<stdexec::get_env_t, const _Sender&> {
           return stdexec::get_env(__self.__sndr_);

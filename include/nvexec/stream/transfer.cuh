@@ -44,7 +44,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             Tag{}(std::move(self.op_state_.receiver_), (As&&) as...);
           }
 
-          friend Env tag_invoke(stdexec::get_env_t, const receiver_t& self) {
+          STDEXEC_DEFINE_CUSTOM(Env get_env)(this const receiver_t& self, stdexec::get_env_t) {
             return self.op_state_.make_env();
           }
         };
@@ -146,7 +146,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         -> completion_signatures<Self, Env>
         requires true;
 
-      friend auto tag_invoke(stdexec::get_env_t, const __t& self) //
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, stdexec::get_env_t) //
         noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
           -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
         return stdexec::get_env(self.sndr_);

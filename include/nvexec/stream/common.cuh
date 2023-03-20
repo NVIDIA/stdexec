@@ -291,7 +291,7 @@ namespace nvexec {
           self.producer_(self.task_);
         }
 
-        friend Env tag_invoke(stdexec::get_env_t, const __t& self) {
+        STDEXEC_DEFINE_CUSTOM(Env get_env)(this const __t& self, stdexec::get_env_t) {
           return self.env_;
         }
 

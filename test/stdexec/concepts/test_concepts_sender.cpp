@@ -88,7 +88,7 @@ struct my_sender0 {
     return {};
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const my_sender0&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const my_sender0&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -122,7 +122,7 @@ struct my_sender_int {
     return {};
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const my_sender_int&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const my_sender_int&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -180,7 +180,7 @@ struct multival_sender {
     return {};
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const multival_sender&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const multival_sender&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -205,7 +205,7 @@ struct ec_sender {
     return {};
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const ec_sender&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const ec_sender&, ex::get_env_t) noexcept {
     return {};
   }
 };

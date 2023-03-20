@@ -417,7 +417,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
         -> completion_sigs<stdexec::__copy_cvref_t<Self, Env>>;
 
-      friend const env& tag_invoke(stdexec::get_env_t, const __t& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(const env& get_env)(
+        this const __t& __self,
+        stdexec::get_env_t) noexcept {
         return __self.env_;
       }
 

@@ -87,6 +87,8 @@ namespace exec {
         stdexec::start(this->__op_);
       }
 
+      STDEXEC_CPO_ACCESS(start_t);
+
       STDEXEC_DEFINE_CUSTOM(void start)(this __when_empty_op& __self, start_t) noexcept {
         return __self.__start_();
       }
@@ -116,7 +118,9 @@ namespace exec {
       friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
         -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-      friend empty_env tag_invoke(get_env_t, const __when_empty_sender& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(empty_env get_env)(
+        this const __when_empty_sender& __self,
+        get_env_t) noexcept {
         return {};
       }
 
@@ -200,6 +204,8 @@ namespace exec {
         stdexec::start(__op_);
       }
 
+      STDEXEC_CPO_ACCESS(start_t);
+
       STDEXEC_DEFINE_CUSTOM(void start)(this __nest_op& __self, start_t) noexcept {
         return __self.__start_();
       }
@@ -229,7 +235,9 @@ namespace exec {
       friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
         -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-      friend empty_env tag_invoke(get_env_t, const __nest_sender& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(empty_env get_env)(
+        this const __nest_sender& __self,
+        get_env_t) noexcept {
         return {};
       }
     };
@@ -278,6 +286,8 @@ namespace exec {
 
       using __forward_consumer =
         typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
+
+      STDEXEC_CPO_ACCESS(start_t);
 
       STDEXEC_DEFINE_CUSTOM(void start)(this __future_op& __self, start_t) noexcept {
         __self.__start_();
@@ -515,7 +525,9 @@ namespace exec {
         }
       }
 
-      friend const __env_t<_Env>& tag_invoke(get_env_t, const __future_rcvr& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(const __env_t<_Env>& get_env)(
+        this const __future_rcvr& __self,
+        get_env_t) noexcept {
         return __self.__state_->__env_;
       }
     };
@@ -583,7 +595,9 @@ namespace exec {
       friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv)
         -> __completions_t<_Self>;
 
-      friend empty_env tag_invoke(get_env_t, const __future& __self) noexcept {
+      STDEXEC_CPO_ACCESS(get_env_t);
+
+      STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const __future& __self, get_env_t) noexcept {
         return {};
       }
 
@@ -619,7 +633,9 @@ namespace exec {
         std::terminate();
       }
 
-      friend const __env_t<_Env>& tag_invoke(get_env_t, const __spawn_rcvr& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(const __env_t<_Env>& get_env)(
+        this const __spawn_rcvr& __self,
+        get_env_t) noexcept {
         return __self.__op_->__env_;
       }
     };

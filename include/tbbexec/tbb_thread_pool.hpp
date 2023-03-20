@@ -258,7 +258,7 @@ namespace tbbexec {
             tag((Receiver&&) state.receiver_, (As&&) as...);
           }
 
-          friend auto tag_invoke(stdexec::get_env_t, const bulk_receiver& self)
+          STDEXEC_DEFINE_CUSTOM(auto get_env)(this const bulk_receiver& self, stdexec::get_env_t)
             -> stdexec::env_of_t<Receiver> {
             return stdexec::get_env(self.shared_state_.receiver_);
           }
@@ -499,6 +499,8 @@ namespace tbbexec {
     void enqueue() noexcept {
       pool_.enqueue(this);
     }
+
+    STDEXEC_CPO_ACCESS(start_t);
 
     STDEXEC_DEFINE_CUSTOM(void start)(this operation& op, stdexec::start_t) noexcept {
       op.enqueue();

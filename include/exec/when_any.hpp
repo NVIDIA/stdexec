@@ -170,10 +170,13 @@ namespace exec {
           __self.__op_->notify(_CPO{}, (_Args&&) __args...);
         }
 
-        friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
+        STDEXEC_CPO_ACCESS(get_env_t);
+
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) noexcept
+          -> __env_t<env_of_t<_Receiver>> {
           using __with_token = __with<get_stop_token_t, in_place_stop_token>;
           auto __token = __with_token{__self.__op_->__stop_source_.get_token()};
-          return __make_env(get_env(__self.__op_->__receiver_), (__with_token&&) __token);
+          return __make_env(stdexec::get_env(__self.__op_->__receiver_), (__with_token&&) __token);
         }
       };
     };
@@ -216,6 +219,8 @@ namespace exec {
         }
 
         std::tuple<connect_result_t<stdexec::__t<_SenderIds>, __receiver_t>...> __ops_;
+
+        STDEXEC_CPO_ACCESS(start_t);
 
         STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           __self.__on_stop_.emplace(

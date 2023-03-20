@@ -464,7 +464,8 @@ namespace stdexec {
         return tag_invoke(as_awaitable, (_Ty&&) __value, *this);
       }
 
-      friend auto tag_invoke(get_env_t, const __env_promise&) noexcept -> const _Env&;
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __env_promise&, get_env_t) noexcept
+        -> const _Env&;
     };
 
     // BUGBUG not to spec!
@@ -1330,8 +1331,9 @@ namespace stdexec {
         }
 
         // Pass through the get_env receiver query
-        friend auto tag_invoke(get_env_t, const __t& __self) -> env_of_t<_Receiver> {
-          return get_env(__self.__rcvr_);
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
+          -> env_of_t<_Receiver> {
+          return stdexec::get_env(__self.__rcvr_);
         }
 
         _Receiver& __rcvr_;
@@ -1461,7 +1463,7 @@ namespace stdexec {
 
     template <class _Env, class... _Sigs>
     struct __debug_receiver<_Env, completion_signatures<_Sigs...>> : __completion<_Sigs>... {
-      friend __debug_env_t<_Env> tag_invoke(get_env_t, __debug_receiver) noexcept;
+      STDEXEC_DEFINE_CUSTOM(__debug_env_t<_Env> get_env)(this __debug_receiver, get_env_t) noexcept;
     };
 
     template <class _Env>
@@ -1471,7 +1473,9 @@ namespace stdexec {
       template <class _Error>
       friend void tag_invoke(set_error_t, __any_debug_receiver&&, _Error&&) noexcept;
       friend void tag_invoke(set_stopped_t, __any_debug_receiver&&) noexcept;
-      friend __debug_env_t<_Env> tag_invoke(get_env_t, __any_debug_receiver) noexcept;
+      STDEXEC_DEFINE_CUSTOM(__debug_env_t<_Env> get_env)(
+        this __any_debug_receiver,
+        get_env_t) noexcept;
     };
   } // namespace __debug
 
@@ -1511,6 +1515,10 @@ namespace stdexec {
       __receiver_from<_Receiver, _Sender> &&     //
       tag_invocable<connect_t, _Sender, _Receiver>;
 
+    struct __dummy_operation : __immovable {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __dummy_operation&, start_t) noexcept;
+    };
+
     struct connect_t {
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
@@ -1530,7 +1538,7 @@ namespace stdexec {
           using _Result = __call_result_t<__connect_awaitable_t, _Sender, _Receiver>;
           return static_cast<_Result (*)()>(nullptr);
         } else {
-          return static_cast<void (*)() noexcept>(nullptr);
+          return static_cast<__dummy_operation (*)() noexcept>(nullptr);
         }
       }
 
@@ -1557,6 +1565,7 @@ namespace stdexec {
           // debugging information.
           using __tag_invoke::tag_invoke;
           tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+          return __dummy_operation{};
         }
       }
 
@@ -1778,10 +1787,10 @@ namespace stdexec {
         }
 
         // Forward get_env query to the coroutine promise
-        friend __env_t<_Promise&> tag_invoke(get_env_t, const __t& __self) {
+        STDEXEC_DEFINE_CUSTOM(__env_t<_Promise&> get_env)(this const __t& __self, get_env_t) {
           auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
             __self.__continuation_.address());
-          return get_env(__continuation.promise());
+          return stdexec::get_env(__continuation.promise());
         }
       };
     };
@@ -2044,8 +2053,9 @@ namespace stdexec {
         }
 
         // Forward all receiever queries.
-        friend auto tag_invoke(get_env_t, const __t& __self) -> env_of_t<_Receiver> {
-          return get_env((const _Receiver&) __self.__op_state_->__rcvr_);
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
+          -> env_of_t<_Receiver> {
+          return stdexec::get_env((const _Receiver&) __self.__op_state_->__rcvr_);
         }
       };
     };
@@ -2143,7 +2153,7 @@ namespace stdexec {
         friend void tag_invoke(set_stopped_t, __t&&) noexcept {
         }
 
-        friend const _Env& tag_invoke(get_env_t, const __t& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(const _Env& get_env)(this const __t& __self, get_env_t) noexcept {
           // BUGBUG NOT TO SPEC
           return __self.__env_;
         }
@@ -2247,7 +2257,7 @@ namespace stdexec {
           return {{}, ((__t&&) __sndr).__vals_, (_Receiver&&) __rcvr};
         }
 
-        friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
+        STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const __t&, get_env_t) noexcept {
           return {};
         }
       };
@@ -2332,7 +2342,7 @@ namespace stdexec {
       friend void tag_invoke(set_stopped_t, __as_receiver&&) noexcept {
       }
 
-      friend empty_env tag_invoke(get_env_t, const __as_receiver&) {
+      STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const __as_receiver&, get_env_t) {
         return {};
       }
     };
@@ -2731,9 +2741,9 @@ namespace stdexec {
           __tag((_Receiver&&) __self.__op_->__rcvr_, (_As&&) __as...);
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self)
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
           -> __call_result_t<get_env_t, const _Receiver&> {
-          return get_env(__self.__op_->__rcvr_);
+          return stdexec::get_env(__self.__op_->__rcvr_);
         }
       };
     };
@@ -2806,10 +2816,10 @@ namespace stdexec {
           -> __completion_signatures<_Self, _Env>
           requires true;
 
-        friend auto tag_invoke(get_env_t, const __t& __self) //
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
           noexcept(__nothrow_callable<get_env_t, const _Sender&>)
             -> __call_result_t<get_env_t, const _Sender&> {
-          return get_env(__self.__sndr_);
+          return stdexec::get_env(__self.__sndr_);
         }
       };
     };
@@ -2889,8 +2899,10 @@ namespace stdexec {
           set_stopped((_Receiver&&) __self.__rcvr_);
         }
 
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
-          return get_env(__self.__rcvr_);
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
+          this const __t& __self,
+          get_env_t) noexcept {
+          return stdexec::get_env(__self.__rcvr_);
         }
       };
     };
@@ -2936,10 +2948,10 @@ namespace stdexec {
           -> __completion_signatures<_Self, _Env>
           requires true;
 
-        friend auto tag_invoke(get_env_t, const __t& __self) //
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
           noexcept(__nothrow_callable<get_env_t, const _Sender&>)
             -> __call_result_t<get_env_t, const _Sender&> {
-          return get_env(__self.__sndr_);
+          return stdexec::get_env(__self.__sndr_);
         }
       };
     };
@@ -3013,8 +3025,10 @@ namespace stdexec {
           stdexec::__set_value_invoke((_Receiver&&) __self.__rcvr_, (_Fun&&) __self.__fun_);
         }
 
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
-          return get_env(__self.__rcvr_);
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
+          this const __t& __self,
+          get_env_t) noexcept {
+          return stdexec::get_env(__self.__rcvr_);
         }
       };
     };
@@ -3062,10 +3076,10 @@ namespace stdexec {
           -> __completion_signatures<_Self, _Env>
           requires true;
 
-        friend auto tag_invoke(get_env_t, const __t& __self) //
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
           noexcept(__nothrow_callable<get_env_t, const _Sender&>)
             -> __call_result_t<get_env_t, const _Sender&> {
-          return get_env(__self.__sndr_);
+          return stdexec::get_env(__self.__sndr_);
         }
       };
     };
@@ -3226,10 +3240,10 @@ namespace stdexec {
           -> __completion_signatures<_Self, _Env>
           requires true;
 
-        friend auto tag_invoke(get_env_t, const __t& __self) //
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
           noexcept(__nothrow_callable<get_env_t, const _Sender&>)
             -> __call_result_t<get_env_t, const _Sender&> {
-          return get_env(__self.__sndr_);
+          return stdexec::get_env(__self.__sndr_);
         }
       };
     };
@@ -3329,7 +3343,9 @@ namespace stdexec {
           __state.__notify();
         }
 
-        friend const __env_t<_Env>& tag_invoke(get_env_t, const __t& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(const __env_t<_Env>& get_env)(
+          this const __t& __self,
+          get_env_t) noexcept {
           return __self.__sh_state_.__env_;
         }
 
@@ -3643,7 +3659,7 @@ namespace stdexec {
           __self.__shared_state_.reset();
         }
 
-        friend const __env_t<_Env>& tag_invoke(get_env_t, const __t& __self) {
+        STDEXEC_DEFINE_CUSTOM(const __env_t<_Env>& get_env)(this const __t& __self, get_env_t) {
           return __self.__shared_state_->__env_;
         }
       };
@@ -4027,8 +4043,9 @@ namespace stdexec {
           __tag(std::move(__self.__op_state_->__rcvr_), (_As&&) __as...);
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) -> env_of_t<_Receiver> {
-          return get_env(__self.__op_state_->__rcvr_);
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
+          -> env_of_t<_Receiver> {
+          return stdexec::get_env(__self.__op_state_->__rcvr_);
         }
 
         using __operation_base_t =
@@ -4106,10 +4123,10 @@ namespace stdexec {
             ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) //
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
           noexcept(__nothrow_callable<get_env_t, const _Sender&>)
             -> __call_result_t<get_env_t, const _Sender&> {
-          return get_env(__self.__sndr_);
+          return stdexec::get_env(__self.__sndr_);
         }
 
         template <__decays_to<__t> _Self, class _Env>
@@ -4270,10 +4287,10 @@ namespace stdexec {
           return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) //
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
           noexcept(__nothrow_callable<get_env_t, const _Sender&>)
             -> __call_result_t<get_env_t, const _Sender&> {
-          return get_env(__self.__sndr_);
+          return stdexec::get_env(__self.__sndr_);
         }
 
         template <class... _Tys>
@@ -4439,7 +4456,11 @@ namespace stdexec {
             }
           };
 
-          friend __env tag_invoke(get_env_t, const __schedule_task& __self) noexcept {
+          STDEXEC_CPO_ACCESS(get_env_t);
+
+          STDEXEC_DEFINE_CUSTOM(__env get_env)(
+            this const __schedule_task& __self,
+            get_env_t) noexcept {
             return __env{__self.__loop_};
           }
 
@@ -4605,8 +4626,9 @@ namespace stdexec {
           _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) -> env_of_t<_Receiver> {
-          return get_env(__self.__op_state_->__rcvr_);
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
+          -> env_of_t<_Receiver> {
+          return stdexec::get_env(__self.__op_state_->__rcvr_);
         }
       };
     };
@@ -4654,8 +4676,9 @@ namespace stdexec {
             (_Args&&) __args...);
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) -> env_of_t<_Receiver> {
-          return get_env(__self.__op_state_->__rcvr_);
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
+          -> env_of_t<_Receiver> {
+          return stdexec::get_env(__self.__op_state_->__rcvr_);
         }
       };
     };
@@ -4748,7 +4771,7 @@ namespace stdexec {
           return {__self.__env_.__sched_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
         }
 
-        friend const _Attrs& tag_invoke(get_env_t, const __t& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(const _Attrs& get_env)(this const __t& __self, get_env_t) noexcept {
           return __self.__env_;
         }
 
@@ -5004,10 +5027,10 @@ namespace stdexec {
             ((_Self&&) __self).__scheduler_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) //
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
           noexcept(__nothrow_callable<get_env_t, const _Sender&>)
             -> __call_result_t<get_env_t, const _Sender&> {
-          return get_env(__self.__sndr_);
+          return stdexec::get_env(__self.__sndr_);
         }
 
         template <class...>
@@ -5117,8 +5140,8 @@ namespace stdexec {
           set_stopped((_Receiver&&) __self.__rcvr_);
         }
 
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) {
-          return get_env(__self.__rcvr_);
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(this const __t& __self, get_env_t) {
+          return stdexec::get_env(__self.__rcvr_);
         }
       };
     };
@@ -5166,10 +5189,12 @@ namespace stdexec {
             (_Sender&&) __self.__sndr_, __receiver_t<_Receiver>{(_Receiver&&) __rcvr});
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) //
+        STDEXEC_CPO_ACCESS(get_env_t);
+
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
           noexcept(__nothrow_callable<get_env_t, const _Sender&>)
             -> __call_result_t<get_env_t, const _Sender&> {
-          return get_env(__self.__sndr_);
+          return stdexec::get_env(__self.__sndr_);
         }
 
         template <class _Env>
@@ -5453,7 +5478,9 @@ namespace stdexec {
           __self.__op_state_->__arrive();
         }
 
-        friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) {
+        STDEXEC_DEFINE_CUSTOM(__env_t<env_of_t<_Receiver>> get_env)(
+          this const __t& __self,
+          get_env_t) {
           return {
             stdexec::get_env(__self.__op_state_->__recvr_),
             __self.__op_state_->__stop_source_.get_token()};
@@ -5628,7 +5655,9 @@ namespace stdexec {
           -> __completions_t<_Self, _Env>
           requires true;
 
-        friend empty_env tag_invoke(get_env_t, const __t& __self) noexcept {
+        STDEXEC_CPO_ACCESS(get_env_t);
+
+        STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const __t& __self, get_env_t) noexcept {
           return {};
         }
 
@@ -5772,7 +5801,7 @@ namespace stdexec {
       template <__none_of<no_env> _Env>
       friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) -> __completions_t<_Env>;
 
-      friend empty_env tag_invoke(get_env_t, const __t& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const __t& __self, get_env_t) noexcept {
         return {};
       }
     };
@@ -5886,7 +5915,7 @@ namespace stdexec {
           __rcvr.__loop_->finish();
         }
 
-        friend __env tag_invoke(stdexec::get_env_t, const __t& __rcvr) noexcept {
+        STDEXEC_DEFINE_CUSTOM(__env get_env)(this const __t& __rcvr, stdexec::get_env_t) noexcept {
           return {__rcvr.__loop_->get_scheduler()};
         }
       };

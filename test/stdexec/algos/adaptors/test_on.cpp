@@ -245,7 +245,7 @@ struct move_checking_inline_scheduler {
       return {{}, (R&&) r};
     }
 
-    friend auto tag_invoke(ex::get_env_t, const my_sender&) noexcept
+    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const my_sender&, ex::get_env_t) noexcept
       -> scheduler_env<move_checking_inline_scheduler> {
       return {};
     }

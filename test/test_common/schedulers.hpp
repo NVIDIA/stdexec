@@ -96,7 +96,9 @@ struct impulse_scheduler {
       return {self.shared_data_, (R&&) r};
     }
 
-    friend scheduler_env<impulse_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(scheduler_env<impulse_scheduler> get_env)(
+      this const my_sender&,
+      ex::get_env_t) noexcept {
       return {};
     }
   };
@@ -168,7 +170,9 @@ struct inline_scheduler {
       return {{}, (R&&) r};
     }
 
-    friend scheduler_env<inline_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(scheduler_env<inline_scheduler> get_env)(
+      this const my_sender&,
+      ex::get_env_t) noexcept {
       return {};
     }
   };
@@ -219,7 +223,9 @@ struct error_scheduler {
       return {{}, (R&&) r, (E&&) self.err_};
     }
 
-    friend scheduler_env<error_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(scheduler_env<error_scheduler> get_env)(
+      this const my_sender&,
+      ex::get_env_t) noexcept {
       return {};
     }
   };
@@ -267,7 +273,9 @@ struct stopped_scheduler {
       return {{}, (R&&) r};
     }
 
-    friend scheduler_env<stopped_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(scheduler_env<stopped_scheduler> get_env)(
+      this const my_sender&,
+      ex::get_env_t) noexcept {
       return {};
     }
   };

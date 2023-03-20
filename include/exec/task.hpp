@@ -402,7 +402,9 @@ namespace exec {
 
         using __context_t = typename _Context::template promise_context_t<__promise>;
 
-        friend const __context_t& tag_invoke(get_env_t, const __promise& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(const __context_t& get_env)(
+          this const __promise& __self,
+          get_env_t) noexcept {
           return __self.__context_;
         }
 

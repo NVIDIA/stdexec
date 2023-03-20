@@ -56,7 +56,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             *storage);
         }
 
-        friend Env tag_invoke(stdexec::get_env_t, const __t& self) {
+        STDEXEC_DEFINE_CUSTOM(Env get_env)(this const __t& self, stdexec::get_env_t) {
           return self.operation_state_.make_env();
         }
       };
@@ -70,7 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return stdexec::connect(((Self&&) self).sender_, (Receiver&&) rcvr);
       }
 
-      friend auto tag_invoke(stdexec::get_env_t, const source_sender_t& self) //
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const source_sender_t& self, stdexec::get_env_t) //
         noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
           -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
         // TODO - this code is not exercised by any test
@@ -127,7 +127,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.env_.context_state_);
       }
 
-      friend const __env& tag_invoke(stdexec::get_env_t, const __t& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(const __env& get_env)(
+        this const __t& __self,
+        stdexec::get_env_t) noexcept {
         return __self.env_;
       }
 

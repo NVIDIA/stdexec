@@ -37,6 +37,8 @@ TEST_CASE("when_any with environment returns a sender", "[adaptors][when_any]") 
 }
 
 TEST_CASE("when_any simple example", "[adaptors][when_any]") {
+  // struct local {};
+  // local l = ex::get_env(expect_value_receiver<local, int>{0});
   auto snd = exec::when_any(ex::just(3.0));
   auto snd1 = std::move(snd) | ex::then([](double y) { return y + 0.1415; });
   const double expected = 3.0 + 0.1415;

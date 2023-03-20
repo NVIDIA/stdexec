@@ -534,7 +534,7 @@ namespace exec {
         }
 
         template <std::same_as<__ref> Self>
-        friend const __env_t& tag_invoke(get_env_t, const Self& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(const __env_t& get_env)(this const Self& __self, get_env_t) noexcept {
           return __self.__env_;
         }
       };
@@ -585,8 +585,9 @@ namespace exec {
           _CPO{}((_Receiver&&) __self.__op_->__receiver_, (_Args&&) __args...);
         }
 
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __rec& __self) noexcept {
-          return get_env(__self.__op_->__receiver_);
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __rec& __self, get_env_t) noexcept
+          -> env_of_t<_Receiver> {
+          return stdexec::get_env(__self.__op_->__receiver_);
         }
       };
 
@@ -605,6 +606,8 @@ namespace exec {
         friend ::stdexec::start_t;
         __rec __rec_{static_cast<__operation_base<_Receiver, _Sigs, _Queries>*>(this)};
         __unique_operation_storage __storage_{};
+
+        STDEXEC_CPO_ACCESS(start_t);
 
         STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           STDEXEC_ASSERT(__get_vtable(__self.__storage_)->__start_);
@@ -719,7 +722,9 @@ namespace exec {
           return {(__t&&) __self, (_Rcvr&&) __rcvr};
         }
 
-        friend __env_t tag_invoke(get_env_t, const __t& __self) noexcept {
+        STDEXEC_CPO_ACCESS(get_env_t);
+
+        STDEXEC_DEFINE_CUSTOM(__env_t get_env)(this const __t& __self, get_env_t) noexcept {
           return {__get_vtable(__self.__storage_), __get_object_pointer(__self.__storage_)};
         }
       };

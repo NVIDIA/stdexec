@@ -135,9 +135,13 @@ namespace exec {
           __tag((_Receiver&&) __self.__op_->__receiver_, (_Error&&) __error...);
         }
 
+        STDEXEC_CPO_ACCESS(get_env_t);
+
         template <std::same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
-          return get_env(__self.__op_->__receiver_);
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
+          this const _Self& __self,
+          get_env_t) noexcept {
+          return stdexec::get_env(__self.__op_->__receiver_);
         }
       };
     };
@@ -182,9 +186,13 @@ namespace exec {
           }
         }
 
+        STDEXEC_CPO_ACCESS(get_env_t);
+
         template <std::same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
-          return get_env(__self.__op_->__receiver_);
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
+          this const _Self& __self,
+          get_env_t) noexcept {
+          return stdexec::get_env(__self.__op_->__receiver_);
         }
       };
     };
@@ -201,9 +209,11 @@ namespace exec {
 
       std::variant<__initial_op_t, __final_op_t> __op_;
 
+      STDEXEC_CPO_ACCESS(start_t);
+
       STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
         STDEXEC_ASSERT(__self.__op_.index() == 0);
-        start(std::get_if<0>(&__self.__op_)->__initial_operation_);
+        stdexec::start(std::get_if<0>(&__self.__op_)->__initial_operation_);
       }
 
      public:
@@ -217,7 +227,7 @@ namespace exec {
         __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {
           return connect((_FinalSender&&) __final_sender, __final_receiver_t{this});
         }});
-        start(__final_op);
+        stdexec::start(__final_op);
       }
 
       __t(_InitialSender&& __initial_sender, _FinalSender&& __final_sender, _Receiver __receiver)

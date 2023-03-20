@@ -52,7 +52,7 @@ namespace exec {
         }
       };
 
-      friend __env tag_invoke(stdexec::get_env_t, const __sender&) noexcept {
+      STDEXEC_DEFINE_CUSTOM(__env get_env)(this const __sender&, stdexec::get_env_t) noexcept {
         return {};
       }
     };

@@ -185,7 +185,7 @@ namespace exec {
         return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__withs_};
       }
 
-      friend auto tag_invoke(stdexec::get_env_t, const __sender& __self) //
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __sender& __self, stdexec::get_env_t) //
         noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const _Sender&>)
           -> stdexec::__call_result_t<stdexec::get_env_t, const _Sender&> {
         return stdexec::get_env(__self.__sndr_);

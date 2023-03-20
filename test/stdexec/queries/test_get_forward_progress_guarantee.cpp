@@ -48,7 +48,7 @@ namespace {
         }
       };
 
-      friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
+      STDEXEC_DEFINE_CUSTOM(env get_env)(this const sender&, ex::get_env_t) noexcept {
         return {};
       }
     };
@@ -91,7 +91,7 @@ namespace {
         }
       };
 
-      friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
+      STDEXEC_DEFINE_CUSTOM(env get_env)(this const sender&, ex::get_env_t) noexcept {
         return {};
       }
     };

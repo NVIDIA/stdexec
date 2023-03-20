@@ -75,7 +75,7 @@ namespace exec {
         };
       }
 
-      friend empty_env tag_invoke(get_env_t, const __sender&) noexcept {
+      STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const __sender&, get_env_t) noexcept {
         return {};
       }
     };

@@ -34,7 +34,7 @@ struct cpo_t {
     ex::set_error_t(std::exception_ptr),                   //
     ex::set_stopped_t()>;
 
-  friend empty_env tag_invoke(ex::get_env_t, const cpo_t&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const cpo_t&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -52,7 +52,9 @@ struct free_standing_sender_t {
     return cpo_t<scope_t::free_standing>{};
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const free_standing_sender_t&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(
+    this const free_standing_sender_t&,
+    ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -73,7 +75,7 @@ struct scheduler_t {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend env_t tag_invoke(ex::get_env_t, const sender_t&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(env_t get_env)(this const sender_t&, ex::get_env_t) noexcept {
       return {};
     }
   };

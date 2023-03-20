@@ -23,7 +23,7 @@
 // struct recv_no_set_value {
 //   friend void tag_invoke(ex::set_stopped_t, recv_no_set_value) noexcept {}
 //   friend void tag_invoke(ex::set_error_t, recv_no_set_value, std::exception_ptr) noexcept {}
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_no_set_value&) noexcept {
+//   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_no_set_value&, ex::get_env_t) noexcept {
 //     return {};
 //   }
 // };
@@ -32,7 +32,7 @@
 //   friend void tag_invoke(ex::set_value_t, recv_set_value_except) {}
 //   friend void tag_invoke(ex::set_stopped_t, recv_set_value_except) noexcept {}
 //   friend void tag_invoke(ex::set_error_t, recv_set_value_except, std::exception_ptr) noexcept {}
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_set_value_except&) noexcept {
+//   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_set_value_except&, ex::get_env_t) noexcept {
 //     return {};
 //   }
 // };
@@ -41,7 +41,7 @@
 //   friend void tag_invoke(ex::set_value_t, recv_set_value_noexcept) noexcept {}
 //   friend void tag_invoke(ex::set_stopped_t, recv_set_value_noexcept) noexcept {}
 //   friend void tag_invoke(ex::set_error_t, recv_set_value_noexcept, std::exception_ptr) noexcept
-//   {} friend empty_env tag_invoke(ex::get_env_t, const recv_set_value_noexcept&) noexcept {
+//   {} STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_set_value_noexcept&, ex::get_env_t) noexcept {
 //     return {};
 //   }
 // };
@@ -52,7 +52,7 @@
 //   friend void tag_invoke(ex::set_error_t, recv_set_error_except, std::exception_ptr) {
 //     throw std::logic_error{"err"};
 //   }
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_set_error_except&) noexcept {
+//   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_set_error_except&, ex::get_env_t) noexcept {
 //     return {};
 //   }
 // };
@@ -77,7 +77,7 @@
 //   friend void tag_invoke(ex::set_value_t, recv_non_movable) noexcept {}
 //   friend void tag_invoke(ex::set_stopped_t, recv_non_movable) noexcept {}
 //   friend void tag_invoke(ex::set_error_t, recv_non_movable, std::exception_ptr) noexcept {}
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_non_movable&) noexcept {
+//   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_non_movable&, ex::get_env_t) noexcept {
 //     return {};
 //   }
 // };

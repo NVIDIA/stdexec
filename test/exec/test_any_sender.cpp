@@ -66,7 +66,7 @@ struct sink_receiver {
     r.value_ = set_stopped;
   }
 
-  friend env tag_invoke(get_env_t, const sink_receiver& r) noexcept {
+  STDEXEC_DEFINE_CUSTOM(env get_env)(this const sink_receiver& r, get_env_t) noexcept {
     return {static_cast<const void*>(&r)};
   }
 };
@@ -353,7 +353,9 @@ struct stopped_receiver : stopped_receiver_base {
     CHECK(r.expect_stop_);
   }
 
-  friend stopped_receiver_env tag_invoke(get_env_t, const stopped_receiver& r) noexcept {
+  STDEXEC_DEFINE_CUSTOM(stopped_receiver_env get_env)(
+    this const stopped_receiver& r,
+    get_env_t) noexcept {
     return {&r};
   }
 };

@@ -90,7 +90,9 @@ namespace exec {
           }
         };
 
-        friend env tag_invoke(stdexec::get_env_t, const sender& self) noexcept {
+        STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+
+        STDEXEC_DEFINE_CUSTOM(env get_env)(this const sender& self, stdexec::get_env_t) noexcept {
           return env{self.pool_};
         }
 
@@ -288,7 +290,7 @@ namespace exec {
           tag((Receiver&&) state.receiver_, (As&&) as...);
         }
 
-        friend auto tag_invoke(stdexec::get_env_t, const bulk_receiver& self)
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const bulk_receiver& self, stdexec::get_env_t)
           -> stdexec::env_of_t<Receiver> {
           return stdexec::get_env(self.shared_state_.receiver_);
         }
@@ -396,7 +398,7 @@ namespace exec {
           -> completion_signatures<Self, Env>
           requires true;
 
-        friend auto tag_invoke(stdexec::get_env_t, const bulk_sender& self) //
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const bulk_sender& self, stdexec::get_env_t) //
           noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
             -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
           return stdexec::get_env(self.sndr_);
@@ -502,6 +504,8 @@ namespace exec {
     void enqueue_(task_base* op) const {
       pool_.enqueue(op);
     }
+
+    STDEXEC_CPO_ACCESS(stdexec::start_t);
 
     STDEXEC_DEFINE_CUSTOM(void start)(this operation& op, stdexec::start_t) noexcept {
       op.enqueue_(&op);

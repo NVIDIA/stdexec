@@ -188,7 +188,7 @@ namespace detail::a_sender {
       -> completion_signatures<Self, Env>
       requires true;
 
-    friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
+    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender_t& self, stdexec::get_env_t) //
       noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
         -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
       return stdexec::get_env(self.sndr_);
@@ -249,7 +249,7 @@ namespace detail::a_receiverless_sender {
       -> completion_signatures<Self, Env>
       requires true;
 
-    friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
+    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender_t& self, stdexec::get_env_t) //
       noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
         -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
       return stdexec::get_env(self.sndr_);

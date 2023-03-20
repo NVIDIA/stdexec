@@ -42,7 +42,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::submit {
       }
 
       // Forward all receiever queries.
-      friend auto tag_invoke(stdexec::get_env_t, const receiver_t& self)
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const receiver_t& self, stdexec::get_env_t)
         -> stdexec::env_of_t<Receiver> {
         return stdexec::get_env((const Receiver&) self.op_state_->rcvr_);
       }

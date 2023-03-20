@@ -38,7 +38,7 @@ struct recv_value {
     *self.target_ = INT_MAX;
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const recv_value&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_value&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -58,7 +58,7 @@ struct recv_rvalref {
     *self.target_ = INT_MAX;
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const recv_rvalref&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_rvalref&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -78,7 +78,7 @@ struct recv_ref {
     *self.target_ = INT_MAX;
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const recv_ref&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_ref&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -98,7 +98,7 @@ struct recv_cref {
     *self.target_ = INT_MAX;
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const recv_cref&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_cref&, ex::get_env_t) noexcept {
     return {};
   }
 };

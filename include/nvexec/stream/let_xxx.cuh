@@ -141,7 +141,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __self.__op_state_->propagate_completion_signal(_Tag{}, (_As&&) __as...);
         }
 
-        friend _Env tag_invoke(stdexec::get_env_t, const __t& __self) {
+        STDEXEC_DEFINE_CUSTOM(_Env get_env)(this const __t& __self, stdexec::get_env_t) {
           return __self.__op_state_->make_env();
         }
 
@@ -244,7 +244,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};
       }
 
-      friend auto tag_invoke(stdexec::get_env_t, const __t& __self) //
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, stdexec::get_env_t) //
         noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const _Sender&>)
           -> stdexec::__call_result_t<stdexec::get_env_t, const _Sender&> {
         return stdexec::get_env(__self.__sndr_);

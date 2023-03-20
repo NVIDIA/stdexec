@@ -29,7 +29,7 @@ struct my_sender {
 
   bool from_scheduler_{false};
 
-  friend empty_env tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const my_sender&, ex::get_env_t) noexcept {
     return {};
   }
 };

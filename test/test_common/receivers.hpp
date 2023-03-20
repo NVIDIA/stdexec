@@ -40,7 +40,7 @@ namespace empty_recv {
     friend void tag_invoke(set_error_t, recv0&&, std::exception_ptr) noexcept {
     }
 
-    friend empty_env tag_invoke(get_env_t, const recv0&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv0&, get_env_t) noexcept {
       return {};
     }
   };
@@ -55,7 +55,7 @@ namespace empty_recv {
     friend void tag_invoke(set_error_t, recv_int&&, std::exception_ptr) noexcept {
     }
 
-    friend empty_env tag_invoke(get_env_t, const recv_int&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_int&, get_env_t) noexcept {
       return {};
     }
   };
@@ -73,7 +73,7 @@ namespace empty_recv {
     friend void tag_invoke(set_error_t, recv0_ec&&, std::exception_ptr) noexcept {
     }
 
-    friend empty_env tag_invoke(get_env_t, const recv0_ec&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv0_ec&, get_env_t) noexcept {
       return {};
     }
   };
@@ -91,7 +91,7 @@ namespace empty_recv {
     friend void tag_invoke(set_error_t, recv_int_ec&&, std::exception_ptr) noexcept {
     }
 
-    friend empty_env tag_invoke(get_env_t, const recv_int_ec&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_int_ec&, get_env_t) noexcept {
       return {};
     }
   };
@@ -103,7 +103,10 @@ class base_expect_receiver {
   std::atomic<bool> called_{false};
   _Env env_{};
 
-  friend _Env tag_invoke(ex::get_env_t, const base_expect_receiver& self) noexcept {
+  STDEXEC_CPO_ACCESS(ex::get_env_t);
+
+  template <ex::derived_from<base_expect_receiver> Self>
+  STDEXEC_DEFINE_CUSTOM(_Env get_env)(this const Self& self, ex::get_env_t) noexcept {
     return self.env_;
   }
 
@@ -181,7 +184,11 @@ struct expect_void_receiver_ex {
     FAIL_CHECK("set_error called on expect_void_receiver_ex");
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const expect_void_receiver_ex&) noexcept {
+  STDEXEC_CPO_ACCESS(ex::get_env_t);
+
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(
+    this const expect_void_receiver_ex&,
+    ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -255,7 +262,9 @@ class expect_value_receiver_ex {
     FAIL_CHECK("set_error called on expect_value_receiver_ex");
   }
 
-  friend Env tag_invoke(ex::get_env_t, const expect_value_receiver_ex& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(Env get_env)(
+    this const expect_value_receiver_ex& self,
+    ex::get_env_t) noexcept {
     return self.env_;
   }
 };
@@ -308,7 +317,11 @@ struct expect_stopped_receiver_ex {
     FAIL_CHECK("set_error called on expect_stopped_receiver_ex");
   }
 
-  friend Env tag_invoke(ex::get_env_t, const expect_stopped_receiver_ex& self) noexcept {
+  STDEXEC_CPO_ACCESS(ex::get_env_t);
+
+  STDEXEC_DEFINE_CUSTOM(Env get_env)(
+    this const expect_stopped_receiver_ex& self,
+    ex::get_env_t) noexcept {
     return self.env_;
   }
 
@@ -414,7 +427,11 @@ struct expect_error_receiver_ex {
     *self.value_ = std::move(value);
   }
 
-  friend Env tag_invoke(ex::get_env_t, const expect_error_receiver_ex& self) noexcept {
+  STDEXEC_CPO_ACCESS(ex::get_env_t);
+
+  STDEXEC_DEFINE_CUSTOM(Env get_env)(
+    this const expect_error_receiver_ex& self,
+    ex::get_env_t) noexcept {
     return self.env_;
   }
 };
@@ -441,7 +458,9 @@ struct logging_receiver {
     *self.state_ = 2;
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const logging_receiver&) noexcept {
+  STDEXEC_CPO_ACCESS(ex::get_env_t);
+
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const logging_receiver&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -486,7 +505,7 @@ struct typecat_receiver {
     FAIL_CHECK("set_error called");
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const typecat_receiver&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const typecat_receiver&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -518,7 +537,7 @@ struct fun_receiver {
     }
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const fun_receiver&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const fun_receiver&, ex::get_env_t) noexcept {
     return {};
   }
 };

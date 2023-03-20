@@ -226,7 +226,9 @@ struct my_other_string_sender_t {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const my_other_string_sender_t&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(
+    this const my_other_string_sender_t&,
+    ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -270,7 +272,9 @@ struct my_multi_value_sender_t {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const my_multi_value_sender_t&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(
+    this const my_multi_value_sender_t&,
+    ex::get_env_t) noexcept {
     return {};
   }
 };

@@ -82,7 +82,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
         ex::start(inner_op_state);
       }
 
-      friend typename OpT::env_t tag_invoke(ex::get_env_t, const receiver_2_t& self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(typename OpT::env_t get_env)(
+        this const receiver_2_t& self,
+        ex::get_env_t) noexcept {
         return self.op_state_.make_env();
       }
 
@@ -123,7 +125,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
         }
       }
 
-      friend typename OpT::env_t tag_invoke(ex::get_env_t, const receiver_1_t& self) noexcept {
+      STDEXEC_CPO_ACCESS(ex::get_env_t);
+
+      STDEXEC_DEFINE_CUSTOM(typename OpT::env_t get_env)(
+        this const receiver_1_t& self,
+        ex::get_env_t) noexcept {
         return self.op_state_.make_env();
       }
 
@@ -210,7 +216,7 @@ namespace repeat_n_detail {
       stdexec::set_value(std::move(op_state.receiver_));
     }
 
-    friend auto tag_invoke(ex::get_env_t, const receiver_t& self) noexcept
+    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const receiver_t& self, ex::get_env_t) noexcept
       -> stdexec::env_of_t<Receiver> {
       return stdexec::get_env(self.op_state_.receiver_);
     }
@@ -293,7 +299,7 @@ struct repeat_n_t {
     }
 #endif
 
-    friend auto tag_invoke(stdexec::get_env_t, const repeat_n_sender_t& s) //
+    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const repeat_n_sender_t& s, stdexec::get_env_t) //
       noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
         -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
       return stdexec::get_env(s.sender_);

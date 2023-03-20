@@ -135,5 +135,6 @@ SpacesInContainerLiterals: true
 SpacesInParentheses: false
 Standard: c++20
 TabWidth: 0
+TypenameMacros: ['STDEXEC_DEFINE_CUSTOM']
 UseCRLF: true
 UseTab: Never

@@ -101,7 +101,9 @@ namespace nvexec {
           return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec);
         }
 
-        friend const env& tag_invoke(stdexec::get_env_t, const sender_t& self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(const env& get_env)(
+          this const sender_t& self,
+          stdexec::get_env_t) noexcept {
           return self.env_;
         }
 

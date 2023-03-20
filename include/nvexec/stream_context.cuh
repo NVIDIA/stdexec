@@ -135,7 +135,9 @@ namespace nvexec {
               (R&&) rec, self.env_.context_state_);
           }
 
-          friend const env& tag_invoke(stdexec::get_env_t, const __t& self) noexcept {
+          STDEXEC_DEFINE_CUSTOM(const env& get_env)(
+            this const __t& self,
+            stdexec::get_env_t) noexcept {
             return self.env_;
           };
 

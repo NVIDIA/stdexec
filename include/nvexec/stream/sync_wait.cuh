@@ -101,7 +101,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace sync_wait {
         rcvr.loop_->finish();
       }
 
-      friend stdexec::empty_env tag_invoke(stdexec::get_env_t, const __t& rcvr) noexcept {
+      STDEXEC_DEFINE_CUSTOM(stdexec::empty_env get_env)(
+        this const __t& rcvr,
+        stdexec::get_env_t) noexcept {
         return {};
       }
     };

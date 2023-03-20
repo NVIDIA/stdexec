@@ -51,7 +51,7 @@ struct fallible_just {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const fallible_just&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const fallible_just&, ex::get_env_t) noexcept {
     return {};
   }
 };
@@ -88,7 +88,7 @@ struct just_with_env {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
 
-  friend Attrs tag_invoke(ex::get_env_t, const just_with_env& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(Attrs get_env)(this const just_with_env& self, ex::get_env_t) noexcept {
     return self.env_;
   }
 };
@@ -154,7 +154,7 @@ struct completes_if {
     return {self.condition_, std::forward<Receiver>(rcvr)};
   }
 
-  friend empty_env tag_invoke(ex::get_env_t, const completes_if&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const completes_if&, ex::get_env_t) noexcept {
     return {};
   }
 };
