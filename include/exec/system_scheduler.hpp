@@ -34,7 +34,7 @@ struct __exec_system_context_interface {
 
 struct __exec_system_scheduler_interface {
   virtual stdexec::forward_progress_guarantee get_forward_progress_guarantee() const = 0;
-  virtual __exec_system_sender_interface* schedule() const = 0;
+  virtual __exec_system_sender_interface* schedule() = 0;
   virtual bool equals(const __exec_system_scheduler_interface* rhs) const = 0;
 };
 
@@ -51,6 +51,7 @@ struct __exec_system_recever {
 
 struct __exec_system_sender_interface {
   virtual __exec_system_operation_state_interface* connect(__exec_system_recever recv) noexcept = 0;
+  virtual __exec_system_scheduler_interface* get_completion_scheduler() noexcept = 0;
 };
 
 struct __exec_system_bulk_sender_interface {
@@ -81,7 +82,7 @@ struct __exec_system_scheduler_impl : public __exec_system_scheduler_interface {
   __exec_system_context_impl* ctx_;
   decltype(ctx_->pool_.get_scheduler()) pool_scheduler_;
 
-  __exec_system_sender_interface* schedule() const override;
+  __exec_system_sender_interface* schedule() override;
 
   stdexec::forward_progress_guarantee get_forward_progress_guarantee() const override {
     return stdexec::forward_progress_guarantee::parallel;
@@ -148,8 +149,9 @@ inline void tag_invoke(stdexec::set_stopped_t, __exec_system_pool_receiver&& rec
 
 
 struct __exec_system_sender_impl : public __exec_system_sender_interface {
-  __exec_system_sender_impl(__exec_pool_sender_t&& pool_sender) :
-      pool_sender_(std::move(pool_sender)) {
+  __exec_system_sender_impl(
+        __exec_system_scheduler_impl* scheduler, __exec_pool_sender_t&& pool_sender) :
+      scheduler_{scheduler}, pool_sender_(std::move(pool_sender)) {
 
   }
 
@@ -158,6 +160,11 @@ struct __exec_system_sender_impl : public __exec_system_sender_interface {
       new __exec_system_operation_state_impl(std::move(pool_sender_), std::move(recv));
   }
 
+  __exec_system_scheduler_interface* get_completion_scheduler() noexcept override {
+    return scheduler_;
+  };
+
+   __exec_system_scheduler_impl* scheduler_;
    __exec_pool_sender_t pool_sender_;
 };
 
@@ -184,8 +191,8 @@ inline __exec_system_scheduler_interface* __exec_system_context_impl::get_schedu
   return new __exec_system_scheduler_impl(this, pool_.get_scheduler());
 }
 
-inline __exec_system_sender_interface* __exec_system_scheduler_impl::schedule() const {
-  return new __exec_system_sender_impl(stdexec::schedule(pool_scheduler_));
+inline __exec_system_sender_interface* __exec_system_scheduler_impl::schedule() {
+  return new __exec_system_sender_impl(this, stdexec::schedule(pool_scheduler_));
 }
 
 
@@ -252,8 +259,7 @@ namespace exec {
     using completion_signatures =
       stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t() >;
 
-    system_sender(__exec_system_scheduler_interface* scheduler_impl, __exec_system_sender_interface* sender_impl) :
-        scheduler_impl_{scheduler_impl}, sender_impl_{sender_impl} {}
+    system_sender(__exec_system_sender_interface* sender_impl) : sender_impl_{sender_impl} {}
 
   private:
     template <class S, class R_>
@@ -319,11 +325,9 @@ namespace exec {
     };
 
     friend __env tag_invoke(stdexec::get_env_t, const system_sender& snd) noexcept {
-      return {snd.scheduler_impl_};
+      return {snd.sender_impl_->get_completion_scheduler()};
     }
 
-      // TODO: Do we need both? Should we get scheduler from sender or do we need sender at all?
-    __exec_system_scheduler_interface* scheduler_impl_ = nullptr;
     __exec_system_sender_interface* sender_impl_ = nullptr;
   };
 
@@ -383,7 +387,7 @@ namespace exec {
 
   system_sender tag_invoke(
       stdexec::schedule_t, const system_scheduler& sched) noexcept {
-    return system_sender(sched.scheduler_interface_, sched.scheduler_interface_->schedule());
+    return system_sender(sched.scheduler_interface_->schedule());
   }
 
   stdexec::forward_progress_guarantee tag_invoke(
