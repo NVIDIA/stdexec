@@ -38,13 +38,29 @@ struct __exec_system_scheduler_interface {
   virtual bool equals(const __exec_system_scheduler_interface* rhs) const = 0;
 };
 
-struct __exec_system_sender_interface {
+struct __exec_system_operation_state_interface {
+  virtual void start() noexcept = 0;
+};
 
+struct __exec_system_recever {
+  void* cpp_recv_ = nullptr;
+  void (*set_value)(void* cpp_recv);
+  void (*set_stopped)(void* cpp_recv);
+  // TODO: set_error
+};
+
+struct __exec_system_sender_interface {
+  virtual __exec_system_operation_state_interface* connect(__exec_system_recever recv) noexcept = 0;
 };
 
 struct __exec_system_bulk_sender_interface {
 
 };
+
+
+
+
+
 
 // Low-level APIs
 // Phase 2 will move to pointers and ref counting ala COM
@@ -72,24 +88,77 @@ struct __exec_system_scheduler_impl : public __exec_system_scheduler_interface {
   }
 
   bool equals(const __exec_system_scheduler_interface* rhs) const override {
-    std::cerr << "rhs: " << rhs << "; this: " << this << "\n";
     return dynamic_cast<const __exec_system_scheduler_impl*>(rhs) == this;
   }
 };
 
+struct __exec_system_operation_state_impl;
+using __exec_pool_sender_t = decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_));
+
+struct __exec_system_pool_receiver {
+  friend void tag_invoke(stdexec::set_value_t, __exec_system_pool_receiver&&) noexcept;
+
+  friend void tag_invoke(stdexec::set_stopped_t, __exec_system_pool_receiver&&) noexcept;
+
+  friend void tag_invoke(stdexec::set_error_t, __exec_system_pool_receiver&&, std::exception_ptr) noexcept {
+  }
+
+  friend stdexec::empty_env tag_invoke(stdexec::get_env_t, const __exec_system_pool_receiver&) noexcept {
+    return {};
+  }
+
+  __exec_system_operation_state_impl* os_ = nullptr;
+};
+
+struct __exec_system_operation_state_impl : public __exec_system_operation_state_interface {
+  __exec_system_operation_state_impl(
+    __exec_pool_sender_t pool_sender,
+    __exec_system_recever&& recv) :
+    recv_{std::move(recv)},
+    pool_operation_state_{
+      [&](){return stdexec::connect(std::move(pool_sender), __exec_system_pool_receiver{this});}()} {
+  }
+
+  __exec_system_operation_state_impl(const __exec_system_operation_state_impl&) = delete;
+  __exec_system_operation_state_impl(__exec_system_operation_state_impl&&) = delete;
+  __exec_system_operation_state_impl& operator= (const __exec_system_operation_state_impl&) = delete;
+  __exec_system_operation_state_impl& operator= (__exec_system_operation_state_impl&&) = delete;
+
+
+  void start() noexcept override {
+    stdexec::start(pool_operation_state_);
+  }
+
+  __exec_system_recever recv_;
+  decltype(stdexec::connect(
+      std::move(std::declval<__exec_pool_sender_t>()), std::move(std::declval<__exec_system_pool_receiver>())))
+    pool_operation_state_;
+};
+
+inline void tag_invoke(stdexec::set_value_t, __exec_system_pool_receiver&& recv) noexcept {
+  __exec_system_recever &system_recv = recv.os_->recv_;
+  system_recv.set_value((system_recv.cpp_recv_));
+}
+
+inline void tag_invoke(stdexec::set_stopped_t, __exec_system_pool_receiver&& recv) noexcept {
+  __exec_system_recever &system_recv = recv.os_->recv_;
+  recv.os_->recv_.set_stopped(&(system_recv.cpp_recv_));
+}
+
+
 
 struct __exec_system_sender_impl : public __exec_system_sender_interface {
-  struct op_ {
-
-  };
-  __exec_system_sender_impl(
-      decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_))&& pool_sender
-      ) : pool_sender_(std::move(pool_sender)) {
+  __exec_system_sender_impl(__exec_pool_sender_t&& pool_sender) :
+      pool_sender_(std::move(pool_sender)) {
 
   }
 
-  decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_)) pool_sender_;
-  // TODO: Connect
+  __exec_system_operation_state_interface* connect(__exec_system_recever recv) noexcept override {
+    return
+      new __exec_system_operation_state_impl(std::move(pool_sender_), std::move(recv));
+  }
+
+   __exec_pool_sender_t pool_sender_;
 };
 
 // bulk function for scheduler to transmit from, will wrap actual function stub stored in real type
@@ -97,15 +166,13 @@ using bulk_function = void(long);
 
 
 struct __exec_system_bulk_sender_impl : public __exec_system_bulk_sender_interface {
-  struct op_ {
 
-  };
   decltype(stdexec::bulk(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_), std::declval<long>(), std::declval<bulk_function*>()) ) pool_bulk_sender_;
   // TODO: Connect
 };
 
 
-// Phase 1 implementation, single single implementation
+// Phase 1 implementation, single implementation
 static __exec_system_context_impl* __get_exec_system_context_impl() {
   static __exec_system_context_impl impl_;
 
@@ -118,7 +185,6 @@ inline __exec_system_scheduler_interface* __exec_system_context_impl::get_schedu
 }
 
 inline __exec_system_sender_interface* __exec_system_scheduler_impl::schedule() const {
-  // TODO: Can schedule on thread pool, but not absolutely necessary. Doing in start() for now.
   return new __exec_system_sender_impl(stdexec::schedule(pool_scheduler_));
 }
 
@@ -190,27 +256,50 @@ namespace exec {
         scheduler_impl_{scheduler_impl}, sender_impl_{sender_impl} {}
 
   private:
-    template <class R_>
+    template <class S, class R_>
     struct __op {
       using R = stdexec::__t<R_>;
-      decltype(stdexec::connect(std::declval<__exec_system_sender_impl>().pool_sender_, std::declval<R>())) scheduler_impl_;
+
+      template<class F>
+      __op(system_sender&& snd, R&& recv, F&& initFunc) :
+          snd_{std::move(snd)}, recv_{std::move(recv)}, os_{initFunc(*this)} {
+      }
+      __op(const __op&) = delete;
+      __op(__op&&) = delete;
+      __op& operator= (const __op&) = delete;
+      __op& operator= (__op&&) = delete;
 
       friend void tag_invoke(stdexec::start_t, __op& op) noexcept {
-        stdexec::start(op.scheduler_impl_);
+        if(auto os = op.os_) {
+          os->start();
+        }
       }
 
-      // TODO: Type-erase operation state to remove coupling with pool_sender
-      // Or, specifically, we can't pass R through to the pool sender, we need to store R and type erase a
-      // set of three callbacks representing R.
+      S snd_;
+      R recv_;
+      __exec_system_operation_state_interface* os_ = nullptr;
     };
 
     template <class R>
-    friend auto tag_invoke(stdexec::connect_t, system_sender snd, R&& rec) //
+    friend auto tag_invoke(stdexec::connect_t, system_sender&& snd, R&& rec) //
       noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-        -> __op<stdexec::__x<std::remove_cvref_t<R>>> {
-      // TODO: Temporary hack through type erasure
-      auto impl = static_cast<__exec_system_sender_impl*>(snd.sender_impl_);
-      return {stdexec::connect(impl->pool_sender_, (R&&) rec)};
+        -> __op<system_sender, stdexec::__x<std::remove_cvref_t<R>>> {
+
+      return __op<system_sender, stdexec::__x<std::remove_cvref_t<R>>>{
+        std::move(snd),
+        std::move(rec),
+        [](auto& op){
+          __exec_system_recever receiver_impl{
+            &op.recv_,
+            [](void* cpp_recv){
+              stdexec::set_value(std::move(*static_cast<R*>(cpp_recv)));
+            },
+            [](void* cpp_recv){
+              stdexec::set_stopped(std::move(*static_cast<R*>(cpp_recv)));
+            }};
+
+          return op.snd_.sender_impl_->connect(std::move(receiver_impl));
+        }};
     }
 
     struct __env {
@@ -230,13 +319,12 @@ namespace exec {
     };
 
     friend __env tag_invoke(stdexec::get_env_t, const system_sender& snd) noexcept {
-      // TODO: Ref add
       return {snd.scheduler_impl_};
     }
 
       // TODO: Do we need both? Should we get scheduler from sender or do we need sender at all?
-    __exec_system_scheduler_interface* scheduler_impl_;
-    __exec_system_sender_interface* sender_impl_;
+    __exec_system_scheduler_interface* scheduler_impl_ = nullptr;
+    __exec_system_sender_interface* sender_impl_ = nullptr;
   };
 
    template<stdexec::sender S, std::integral Shape, class Fn>
@@ -282,7 +370,7 @@ namespace exec {
       // TODO constructing op and the actual bulk part on the scheduler
     }
 
-    __exec_system_scheduler_impl* scheduler_impl_;
+    __exec_system_scheduler_impl* scheduler_impl_ = nullptr;
     S snd_;
     Shape shp_;
     Fn fn_;

@@ -16,25 +16,41 @@
 
 #include <thread>
 #include <iostream>
+#include <chrono>
 
 #include <catch2/catch.hpp>
 #include <exec/system_scheduler.hpp>
 #include <stdexec/execution.hpp>
 
 #include <exec/inline_scheduler.hpp>
+#include <test_common/receivers.hpp>
+
 
 namespace ex = stdexec;
+
+
+TEST_CASE("trivial schedule task on system context", "[types][system_scheduler]") {
+  exec::system_context ctx;
+  exec::system_scheduler sched = ctx.get_scheduler();
+
+  ex::sync_wait(ex::schedule(sched));
+}
 
 TEST_CASE("simple schedule task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
   exec::system_context ctx;
   exec::system_scheduler sched = ctx.get_scheduler();
-  auto snd = ex::then(ex::schedule(sched), [&] {pool_id = std::this_thread::get_id();});
-  ex::sync_wait(snd);
+
+  auto snd = ex::then(ex::schedule(sched),
+    [&] {
+      pool_id = std::this_thread::get_id();
+    });
+
+  ex::sync_wait(std::move(snd));
+
   REQUIRE(pool_id != std::thread::id{});
   REQUIRE(this_id!=pool_id);
-  std::cout << "This: " << this_id << "; pool: " << pool_id << "\n";
   (void) snd;
 }
 
