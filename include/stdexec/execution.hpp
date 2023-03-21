@@ -284,8 +284,17 @@ namespace stdexec {
     };
   } // namespace __env
 
+  using __env::__with;
+  using __env::__with_;
+  using __env::no_env;
+
+  inline constexpr __env::__make_env_t __make_env{};
+
+  template <class... _Ts>
+  using __make_env_t = decltype(__make_env(__declval<_Ts>()...));
+
   // For getting an evaluation environment from a receiver
-  STDEXEC_DEFINE_CPO_STRUCT(get_env) {
+  STDEXEC_DEFINE_CPO(struct get_env_t, get_env) {
     template <class _EnvProvider>
       requires tag_invocable<get_env_t, const _EnvProvider&>
     constexpr auto operator()(const _EnvProvider& __with_env) const
@@ -310,15 +319,7 @@ namespace stdexec {
     }
   };
 
-  using __env::__with;
-  using __env::__with_;
-  using __env::no_env;
-
-  inline constexpr __env::__make_env_t __make_env{};
   inline constexpr get_env_t get_env{};
-
-  template <class... _Ts>
-  using __make_env_t = decltype(__make_env(__declval<_Ts>()...));
 
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
@@ -1231,7 +1232,7 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
-  STDEXEC_DEFINE_CPO_STRUCT(start) {
+  STDEXEC_DEFINE_CPO(struct start_t, start) {
     template <class _Op>
       requires tag_invocable<start_t, _Op&>
     void operator()(_Op& __op) const noexcept {
