@@ -21,27 +21,27 @@
 
 #include <cassert>
 
-#define STDEXEC_CAT_(_X, ...) _X##__VA_ARGS__
-#define STDEXEC_CAT(_X, ...) STDEXEC_CAT_(_X, __VA_ARGS__)
+#define STDEXEC_CAT_(_Xp, ...) _Xp##__VA_ARGS__
+#define STDEXEC_CAT(_Xp, ...) STDEXEC_CAT_(_Xp, __VA_ARGS__)
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
 #define STDEXEC_EVAL(_M, ...) _M(__VA_ARGS__)
 
-#define STDEXEC_NOT(_X) STDEXEC_CAT(STDEXEC_NOT_, _X)
+#define STDEXEC_NOT(_Xp) STDEXEC_CAT(STDEXEC_NOT_, _Xp)
 #define STDEXEC_NOT_0 1
 #define STDEXEC_NOT_1 0
 
-#define STDEXEC_IIF_0(_Y, ...) __VA_ARGS__
-#define STDEXEC_IIF_1(_Y, ...) _Y
-#define STDEXEC_IIF(_X, _Y, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _X), _Y, __VA_ARGS__)
+#define STDEXEC_IIF_0(_Yp, ...) __VA_ARGS__
+#define STDEXEC_IIF_1(_Yp, ...) _Yp
+#define STDEXEC_IIF(_Xp, _Yp, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _Xp), _Yp, __VA_ARGS__)
 
 #define STDEXEC_COUNT(...) \
   STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
-#define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _N, ...) _N
+#define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _Np, ...) _Np
 
 #define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0, ))
-#define STDEXEC_CHECK_N(_X, _N, ...) _N
-#define STDEXEC_PROBE(_X) _X, 1,
+#define STDEXEC_CHECK_N(_Xp, _Np, ...) _Np
+#define STDEXEC_PROBE(_Xp) _Xp, 1,
 
 #if defined(__NVCOMPILER)
 #define STDEXEC_NVHPC() 1
@@ -93,10 +93,10 @@
 #error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif
 
-#define STDEXEC_ASSERT(_X) \
+#define STDEXEC_ASSERT(_Xp) \
   do { \
-    static_assert(noexcept(_X)); \
-    STDEXEC_ASSERT_FN(_X); \
+    static_assert(noexcept(_Xp)); \
+    STDEXEC_ASSERT_FN(_Xp); \
   } while (false)
 
 #ifndef STDEXEC_ASSERT_FN
