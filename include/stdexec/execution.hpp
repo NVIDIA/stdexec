@@ -2769,8 +2769,8 @@ namespace stdexec {
         connect_result_t<_Sender, __receiver_t> __op_;
 
         __t(_Sender&& __sndr, _Receiver __rcvr, _Fun __fun) //
-          noexcept(__nothrow_decay_copyable<_Receiver&&>    //
-                     && __nothrow_decay_copyable<_Fun&&>    //
+          noexcept(__nothrow_decay_copyable<_Receiver>      //
+                     && __nothrow_decay_copyable<_Fun>      //
                        && __nothrow_connectable<_Sender, __receiver_t>)
           : __data_{(_Receiver&&) __rcvr, (_Fun&&) __fun}
           , __op_(connect((_Sender&&) __sndr, __receiver_t{&__data_})) {
