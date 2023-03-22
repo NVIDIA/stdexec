@@ -22,35 +22,33 @@ namespace exec {
   using namespace stdexec;
 
   template <class T>
-    concept __contextually_convertible_to_bool =
-      requires(const T c) {
-        { (static_cast<const T&&>(c) ? false : false) } -> same_as<bool>;
-      };
+  concept __contextually_convertible_to_bool = requires(const T c) {
+    { (static_cast<const T&&>(c) ? false : false) } -> same_as<bool>;
+  };
 
   template <class T>
-    static constexpr bool __nothrow_contextually_convertible_to_bool_v =
-      noexcept((std::declval<const T&&>() ? (void)0 : (void)0));
+  static constexpr bool __nothrow_contextually_convertible_to_bool_v =
+    noexcept((std::declval<const T&&>() ? (void) 0 : (void) 0));
 
   template <class T>
-    concept __nothrow_contextually_convertible_to_bool =
-      __contextually_convertible_to_bool<T> &&
-      __nothrow_contextually_convertible_to_bool_v<T>;
+  concept __nothrow_contextually_convertible_to_bool =
+    __contextually_convertible_to_bool<T> && __nothrow_contextually_convertible_to_bool_v<T>;
 
   namespace __unwind {
     struct unwind_t {
       template <class _Op>
-          requires std::tag_invocable<unwind_t, _Op&>
-        void operator()(_Op& __op) const noexcept(std::nothrow_tag_invocable<unwind_t, _Op&>) {
-          (void) tag_invoke(unwind_t{}, __op);
-        }
+        requires std::tag_invocable<unwind_t, _Op&>
+      void operator()(_Op& __op) const noexcept(std::nothrow_tag_invocable<unwind_t, _Op&>) {
+        (void) tag_invoke(unwind_t{}, __op);
+      }
     };
   }
+
   using __unwind::unwind_t;
   inline constexpr unwind_t unwind{};
 
   template <class _T>
-  struct c_t {
-  };
+  struct c_t { };
   template <class _T>
   inline constexpr c_t<_T> c_v{};
 
@@ -58,71 +56,93 @@ namespace exec {
     template <class _Ty>
     const _Ty& __cref_fn(const _Ty&);
     template <class _Ty>
-    using __cref_t =
-      decltype(__sender_queries::__cref_fn(__declval<_Ty>()));
+    using __cref_t = decltype(__sender_queries::__cref_fn(__declval<_Ty>()));
 
     struct always_completes_inline_t {
       template <class _Sender, class _Env = no_env>
-          requires std::tag_invocable<always_completes_inline_t, __cref_t<_Sender>, __cref_t<_Env>>
-        constexpr bool operator()(_Sender&& __s, _Env&& __e) const noexcept {
-          static_assert(same_as<bool, tag_invoke_result_t<always_completes_inline_t, __cref_t<_Sender>, __cref_t<_Env>>>);
-          static_assert(std::nothrow_tag_invocable<always_completes_inline_t, __cref_t<_Sender>, __cref_t<_Env>>);
-          return tag_invoke(always_completes_inline_t{}, std::as_const(__s), std::as_const(__e));
-        }
+        requires std::tag_invocable<always_completes_inline_t, __cref_t<_Sender>, __cref_t<_Env>>
+      constexpr bool operator()(_Sender&& __s, _Env&& __e) const noexcept {
+        static_assert(
+          same_as<
+            bool,
+            tag_invoke_result_t<always_completes_inline_t, __cref_t<_Sender>, __cref_t<_Env>>>);
+        static_assert(
+          std::nothrow_tag_invocable<always_completes_inline_t, __cref_t<_Sender>, __cref_t<_Env>>);
+        return tag_invoke(always_completes_inline_t{}, std::as_const(__s), std::as_const(__e));
+      }
+
       template <class _Sender, class _Env = no_env>
-          requires std::tag_invocable<always_completes_inline_t, c_t<std::decay_t<_Sender>>, c_t<std::decay_t<_Env>>>
-        constexpr bool operator()(c_t<std::decay_t<_Sender>>&& __s, c_t<std::decay_t<_Env>>&& __e) const noexcept {
-          static_assert(same_as<bool, tag_invoke_result_t<always_completes_inline_t, c_t<std::decay_t<_Sender>>, c_t<std::decay_t<_Env>>>>);
-          static_assert(std::nothrow_tag_invocable<always_completes_inline_t, c_t<std::decay_t<_Sender>>, c_t<std::decay_t<_Env>>>);
-          return tag_invoke(always_completes_inline_t{}, __s, __e);
-        }
+        requires std::tag_invocable<
+          always_completes_inline_t,
+          c_t<std::decay_t<_Sender>>,
+          c_t<std::decay_t<_Env>>>
+      constexpr bool
+        operator()(c_t<std::decay_t<_Sender>>&& __s, c_t<std::decay_t<_Env>>&& __e) const noexcept {
+        static_assert(
+          same_as<
+            bool,
+            tag_invoke_result_t<
+              always_completes_inline_t,
+              c_t<std::decay_t<_Sender>>,
+              c_t<std::decay_t<_Env>>>>);
+        static_assert(std::nothrow_tag_invocable<
+                      always_completes_inline_t,
+                      c_t<std::decay_t<_Sender>>,
+                      c_t<std::decay_t<_Env>>>);
+        return tag_invoke(always_completes_inline_t{}, __s, __e);
+      }
+
       constexpr bool operator()(auto&&, auto&&) const noexcept {
-          return false;
+        return false;
       }
     };
   } // namespace __sender_queries
+
   using __sender_queries::always_completes_inline_t;
   inline constexpr always_completes_inline_t always_completes_inline{};
 
   template <class _TailOperationState>
-    concept tail_operation_state =
-      operation_state<_TailOperationState> &&
-      std::is_nothrow_destructible_v<_TailOperationState> &&
-      std::is_trivially_destructible_v<_TailOperationState> &&
-      (!std::is_copy_constructible_v<_TailOperationState>) &&
-      (!std::is_move_constructible_v<_TailOperationState>) &&
-      (!std::is_copy_assignable_v<_TailOperationState>) &&
-      (!std::is_move_assignable_v<_TailOperationState>) &&
-      requires (_TailOperationState& __o) {
-          { unwind(__o) } noexcept;
-      };
+  concept tail_operation_state =
+    operation_state<_TailOperationState> && std::is_nothrow_destructible_v<_TailOperationState>
+    && std::is_trivially_destructible_v<_TailOperationState>
+    && (!std::is_copy_constructible_v<_TailOperationState>) &&(
+      !std::is_move_constructible_v<
+        _TailOperationState>) &&(!std::
+                                   is_copy_assignable_v<
+                                     _TailOperationState>) &&(!std::
+                                                                is_move_assignable_v<
+                                                                  _TailOperationState>) &&requires(_TailOperationState&
+                                                                                                     __o) {
+         { unwind(__o) } noexcept;
+       };
 
   template <class _Sender, class _Env = no_env>
-    constexpr bool always_completes_inline_v =
-      always_completes_inline(c_v<std::decay_t<_Sender>>, c_v<std::decay_t<_Env>>);
+  constexpr bool always_completes_inline_v =
+    always_completes_inline(c_v<std::decay_t<_Sender>>, c_v<std::decay_t<_Env>>);
 
   template <class _TailSender, class _Env = no_env>
-    concept tail_sender =
-      sender<_TailSender, _Env> &&
-      same_as<__single_sender_value_t<_TailSender, _Env>, void> &&
-      always_completes_inline_v<_TailSender, _Env> &&
-      std::is_nothrow_move_constructible_v<_TailSender> &&
-      std::is_nothrow_destructible_v<_TailSender> &&
-      std::is_trivially_destructible_v<_TailSender>;
+  concept tail_sender =
+    sender<_TailSender, _Env> && same_as<__single_sender_value_t<_TailSender, _Env>, void>
+    && always_completes_inline_v<_TailSender, _Env>
+    && std::is_nothrow_move_constructible_v<_TailSender>
+    && std::is_nothrow_destructible_v<_TailSender> && std::is_trivially_destructible_v<_TailSender>;
 
   template <class _TailReceiver>
-    concept tail_receiver =
-      receiver<_TailReceiver> &&
-      std::is_nothrow_copy_constructible_v<_TailReceiver> &&
-      std::is_nothrow_move_constructible_v<_TailReceiver> &&
-      std::is_nothrow_copy_assignable_v<_TailReceiver> &&
-      std::is_nothrow_move_assignable_v<_TailReceiver> &&
-      std::is_nothrow_destructible_v<_TailReceiver> &&
-      std::is_trivially_destructible_v<_TailReceiver>;
+  concept tail_receiver =
+    receiver<_TailReceiver> && std::is_nothrow_copy_constructible_v<_TailReceiver>
+    && std::is_nothrow_move_constructible_v<_TailReceiver>
+    && std::is_nothrow_copy_assignable_v<_TailReceiver>
+    && std::is_nothrow_move_assignable_v<_TailReceiver>
+    && std::is_nothrow_destructible_v<_TailReceiver>
+    && std::is_trivially_destructible_v<_TailReceiver>;
 
   struct __null_tail_receiver {
-    friend void tag_invoke(set_value_t, __null_tail_receiver&&, auto&&...) noexcept {}
-    friend void tag_invoke(set_stopped_t, __null_tail_receiver&&) noexcept {}
+    friend void tag_invoke(set_value_t, __null_tail_receiver&&, auto&&...) noexcept {
+    }
+
+    friend void tag_invoke(set_stopped_t, __null_tail_receiver&&) noexcept {
+    }
+
     friend __empty_env tag_invoke(get_env_t, const __null_tail_receiver& __self) {
       return {};
     }
@@ -134,15 +154,19 @@ namespace exec {
 
       // this is a nullable_tail_sender that always returns false to prevent
       // callers from calling start() and unwind()
-      inline constexpr operator bool() const noexcept { return false; }
+      inline constexpr operator bool() const noexcept {
+        return false;
+      }
 
       friend void tag_invoke(start_t, op& self) noexcept {
-        printf("__null_tail_sender start\n"); fflush(stdout);
+        printf("__null_tail_sender start\n");
+        fflush(stdout);
         std::terminate();
       }
 
       friend void tag_invoke(unwind_t, op& self) noexcept {
-        printf("__null_tail_sender unwind\n"); fflush(stdout);
+        printf("__null_tail_sender unwind\n");
+        fflush(stdout);
         std::terminate();
       }
     };
@@ -150,426 +174,453 @@ namespace exec {
     using completion_signatures = completion_signatures<set_value_t(), set_stopped_t()>;
 
     template <class _TailReceiver>
-      friend auto tag_invoke(connect_t, __null_tail_sender&&, _TailReceiver&&) noexcept
-          -> op {
-        return {};
-      }
+    friend auto tag_invoke(connect_t, __null_tail_sender&&, _TailReceiver&&) noexcept -> op {
+      return {};
+    }
 
-    template<class _Env>
-      friend constexpr bool tag_invoke(
-          exec::always_completes_inline_t, exec::c_t<__null_tail_sender>, exec::c_t<_Env>) noexcept {
-        return true;
-      }
+    template <class _Env>
+    friend constexpr bool tag_invoke(
+      exec::always_completes_inline_t,
+      exec::c_t<__null_tail_sender>,
+      exec::c_t<_Env>) noexcept {
+      return true;
+    }
   };
 
   template <typename... _TailSenderN>
   struct __variant_tail_sender;
 
   template <tail_operation_state _TailOperationState>
-    using __next_tail_from_operation_t =
-      __call_result_t<start_t, _TailOperationState&>;
+  using __next_tail_from_operation_t = __call_result_t<start_t, _TailOperationState&>;
 
   template <tail_operation_state _TailOperationState>
-    using next_tail_from_operation_t =
-      __if<__bool<std::is_void_v<__call_result_t<start_t, _TailOperationState&>>>,
-        __null_tail_sender,
-      __call_result_t<start_t, _TailOperationState&>>;
+  using next_tail_from_operation_t = __if<
+    __bool<std::is_void_v<__call_result_t<start_t, _TailOperationState&>>>,
+    __null_tail_sender,
+    __call_result_t<start_t, _TailOperationState&>>;
 
   template <tail_sender _TailSender, tail_receiver _TailReceiver>
-    using __next_tail_from_sender_to_t =
-      __next_tail_from_operation_t<stdexec::connect_result_t<_TailSender, _TailReceiver>>;
+  using __next_tail_from_sender_to_t =
+    __next_tail_from_operation_t<stdexec::connect_result_t<_TailSender, _TailReceiver>>;
 
   template <tail_sender _TailSender, tail_receiver _TailReceiver>
-    using next_tail_from_sender_to_t =
-      next_tail_from_operation_t<stdexec::connect_result_t<_TailSender, _TailReceiver>>;
+  using next_tail_from_sender_to_t =
+    next_tail_from_operation_t<stdexec::connect_result_t<_TailSender, _TailReceiver>>;
 
   template <class _TailSender, class _TailReceiver>
-    concept tail_sender_to =
-      tail_sender<_TailSender> &&
-      tail_receiver<_TailReceiver> &&
-      requires(_TailSender&& __s, _TailReceiver&& __r) {
-        { stdexec::connect((_TailSender&&) __s, (_TailReceiver&&) __r) } noexcept ->
-          tail_operation_state;
-      } &&
-      tail_sender<next_tail_from_sender_to_t<_TailSender, _TailReceiver>>;
+  concept tail_sender_to = tail_sender<_TailSender> && tail_receiver<_TailReceiver>
+                        && requires(_TailSender&& __s, _TailReceiver&& __r) {
+                             {
+                               stdexec::connect((_TailSender&&) __s, (_TailReceiver&&) __r)
+                             } noexcept -> tail_operation_state;
+                           } && tail_sender<next_tail_from_sender_to_t<_TailSender, _TailReceiver>>;
 
   template <class _TailOperationState>
-    concept __terminal_tail_operation_state =
-      tail_operation_state<_TailOperationState> &&
-      same_as<__next_tail_from_operation_t<_TailOperationState>, void>;
+  concept __terminal_tail_operation_state =
+    tail_operation_state<_TailOperationState>
+    && same_as<__next_tail_from_operation_t<_TailOperationState>, void>;
 
   template <class _TailSender, class _TailReceiver>
-    concept __terminal_tail_sender_to =
-      tail_sender_to<_TailSender, _TailReceiver> &&
-      same_as<__next_tail_from_sender_to_t<_TailSender, _TailReceiver>, void>;
+  concept __terminal_tail_sender_to =
+    tail_sender_to<_TailSender, _TailReceiver>
+    && same_as<__next_tail_from_sender_to_t<_TailSender, _TailReceiver>, void>;
 
   template <class _TailSender, class _TailReceiver, class... _ValidTailSender>
-    concept __recursive_tail_sender_to =
-      tail_sender_to<_TailSender, _TailReceiver> &&
-      tail_operation_state<connect_result_t<_TailSender, _TailReceiver>> &&
-      __one_of<next_tail_from_sender_to_t<_TailSender, _TailReceiver>, _ValidTailSender...>;
+  concept __recursive_tail_sender_to =
+    tail_sender_to<_TailSender, _TailReceiver>
+    && tail_operation_state<connect_result_t<_TailSender, _TailReceiver>>
+    && __one_of<next_tail_from_sender_to_t<_TailSender, _TailReceiver>, _ValidTailSender...>;
 
   template <class _TailOperationState>
-    concept __nullable_tail_operation_state =
-      tail_operation_state<_TailOperationState> &&
-      __nothrow_contextually_convertible_to_bool<_TailOperationState>;
+  concept __nullable_tail_operation_state =
+    tail_operation_state<_TailOperationState>
+    && __nothrow_contextually_convertible_to_bool<_TailOperationState>;
 
   template <class _TailSender, class _TailReceiver>
-    concept __nullable_tail_sender_to =
-      tail_sender_to<_TailSender, _TailReceiver> &&
-      __nullable_tail_operation_state<connect_result_t<_TailSender, _TailReceiver>>;
+  concept __nullable_tail_sender_to =
+    tail_sender_to<_TailSender, _TailReceiver>
+    && __nullable_tail_operation_state<connect_result_t<_TailSender, _TailReceiver>>;
 
 } // namespace exec
 
-
-
 #include "variant_tail_sender.hpp"
-
-
 
 namespace exec {
 
-  template<tail_sender _To, tail_sender _From>
-    constexpr std::decay_t<_To> result_from(_From&& __f) noexcept {
-      if constexpr (
-          __is_instance_of<std::decay_t<_From>, __variant_tail_sender> &&
-          __is_instance_of<std::decay_t<_To>, __variant_tail_sender>) {
-        return variant_cast<std::decay_t<_To>>((_From&&)__f);
-      } else if constexpr (
-          __is_instance_of<std::decay_t<_From>, __variant_tail_sender> &&
-          !__is_instance_of<std::decay_t<_To>, __variant_tail_sender>) {
-        return get<std::decay_t<_To>>((_From&&)__f);
-      } else {
-        static_assert(std::is_constructible_v<_To, _From>, "result_from cannot convert");
-        return (_From&&)__f;
+  template <tail_sender _To, tail_sender _From>
+  constexpr std::decay_t<_To> result_from(_From&& __f) noexcept {
+    if constexpr (
+      __is_instance_of<std::decay_t<_From>, __variant_tail_sender>
+      && __is_instance_of<std::decay_t<_To>, __variant_tail_sender>) {
+      return variant_cast<std::decay_t<_To>>((_From&&) __f);
+    } else if constexpr (
+      __is_instance_of<std::decay_t<_From>, __variant_tail_sender>
+      && !__is_instance_of<std::decay_t<_To>, __variant_tail_sender>) {
+      return get<std::decay_t<_To>>((_From&&) __f);
+    } else {
+      static_assert(std::is_constructible_v<_To, _From>, "result_from cannot convert");
+      return (_From&&) __f;
+    }
+  }
+
+  template <tail_sender _TailSender>
+    requires(!same_as<__null_tail_sender, _TailSender>)
+  struct maybe_tail_sender {
+    maybe_tail_sender() noexcept = default;
+
+    maybe_tail_sender(__null_tail_sender) noexcept {
+    }
+
+    maybe_tail_sender(_TailSender __t) noexcept
+      : tail_sender_(__t) {
+    }
+
+    template <class _TailReceiver>
+    struct op : __immovable {
+      using op_t = connect_result_t<_TailSender, _TailReceiver>;
+      op() = default;
+
+      explicit op(_TailSender __t, _TailReceiver __r)
+        : op_(stdexec::__conv{[&] {
+          return stdexec::connect(__t, __r);
+        }}) {
+      }
+
+      operator bool() const noexcept {
+        if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
+          return !!op_ && !!*op_;
+        } else {
+          return !!op_;
+        }
+      }
+
+      [[nodiscard]] friend auto tag_invoke(start_t, op& __self) noexcept {
+        if (!__self.op_) {
+          printf("maybe_tail_sender start optional\n");
+          fflush(stdout);
+          std::terminate();
+        }
+        if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
+          if (!*__self.op_) {
+            printf("maybe_tail_sender start nullable\n");
+            fflush(stdout);
+            std::terminate();
+          }
+        }
+        return stdexec::start(*__self.op_);
+      }
+
+      friend void tag_invoke(unwind_t, op& __self) noexcept {
+        if (!__self.op_) {
+          printf("maybe_tail_sender unwind optional\n");
+          fflush(stdout);
+          std::terminate();
+        }
+        if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
+          if (!*__self.op_) {
+            printf("maybe_tail_sender unwind nullable\n");
+            fflush(stdout);
+            std::terminate();
+          }
+        }
+        exec::unwind(*__self.op_);
+      }
+
+      std::optional<op_t> op_;
+    };
+
+    using completion_signatures = completion_signatures<set_value_t(), set_stopped_t()>;
+
+    template <class _TailReceiver>
+    [[nodiscard]] friend auto
+      tag_invoke(connect_t, maybe_tail_sender&& __self, _TailReceiver&& __r) noexcept
+      -> op<std::decay_t<_TailReceiver>> {
+      if (!__self.tail_sender_) {
+        return {};
+      }
+      return op<std::decay_t<_TailReceiver>>{*((maybe_tail_sender&&) __self).tail_sender_, __r};
+    }
+
+    template <class _Env>
+    friend constexpr bool tag_invoke(
+      exec::always_completes_inline_t,
+      exec::c_t<maybe_tail_sender>,
+      exec::c_t<_Env>) noexcept {
+      return true;
+    }
+
+   private:
+    std::optional<_TailSender> tail_sender_;
+  };
+
+  template <tail_sender _TailSender, tail_receiver _TailReceiver = __null_tail_receiver>
+  struct scoped_tail_sender {
+    explicit scoped_tail_sender(_TailSender __t, _TailReceiver __r = _TailReceiver{}) noexcept
+      : t_(__t)
+      , r_(__r)
+      , valid_(true) {
+    }
+
+    scoped_tail_sender(scoped_tail_sender&& other) noexcept
+      : t_(other.s_)
+      , r_(other.r_)
+      , valid_(std::exchange(other.valid_, false)) {
+    }
+
+    ~scoped_tail_sender() {
+      if (valid_) {
+        auto op = stdexec::connect(t_, r_);
+        if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
+          if (!!op) {
+            exec::unwind(op);
+          }
+        } else {
+          exec::unwind(op);
+        }
       }
     }
 
-  template<tail_sender _TailSender>
-      requires (!same_as<__null_tail_sender, _TailSender>)
-    struct maybe_tail_sender {
-      maybe_tail_sender() noexcept = default;
-      maybe_tail_sender(__null_tail_sender) noexcept {}
-      maybe_tail_sender(_TailSender __t) noexcept : tail_sender_(__t) {}
-      template <class _TailReceiver>
-      struct op : __immovable {
-        using op_t = connect_result_t<_TailSender, _TailReceiver>;
-        op() = default;
+    _TailSender get() noexcept {
+      return t_;
+    }
 
-        explicit op(_TailSender __t, _TailReceiver __r)
-          : op_(stdexec::__conv{
-              [&] {
-                return stdexec::connect(__t, __r);
-              }
-            }) {}
-        operator bool() const noexcept {
-          if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
-            return !!op_ && !!*op_;
-          } else {
-            return !!op_;
-          }
-        }
+    _TailSender release() noexcept {
+      valid_ = false;
+      return t_;
+    }
 
-        [[nodiscard]]
-        friend auto tag_invoke(start_t, op& __self) noexcept {
-          if (!__self.op_) {
-            printf("maybe_tail_sender start optional\n"); fflush(stdout);
-            std::terminate();
-          }
-          if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
-            if (!*__self.op_) {
-              printf("maybe_tail_sender start nullable\n"); fflush(stdout);
-              std::terminate();
-            }
-          }
-          return stdexec::start(*__self.op_);
-        }
-
-        friend void tag_invoke(unwind_t, op& __self) noexcept {
-          if (!__self.op_) {
-            printf("maybe_tail_sender unwind optional\n"); fflush(stdout);
-            std::terminate();
-          }
-          if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
-            if (!*__self.op_) {
-              printf("maybe_tail_sender unwind nullable\n"); fflush(stdout);
-              std::terminate();
-            }
-          }
-          exec::unwind(*__self.op_);
-        }
-        std::optional<op_t> op_;
-      };
-
-      using completion_signatures = completion_signatures<set_value_t(), set_stopped_t()>;
-
-      template <class _TailReceiver>
-      [[nodiscard]]
-        friend auto tag_invoke(connect_t, maybe_tail_sender&& __self, _TailReceiver&& __r) noexcept
-            -> op<std::decay_t<_TailReceiver>> {
-          if (!__self.tail_sender_) { return {}; }
-          return op<std::decay_t<_TailReceiver>>{*((maybe_tail_sender&&)__self).tail_sender_, __r};
-        }
-
-      template<class _Env>
-        friend constexpr bool tag_invoke(
-          exec::always_completes_inline_t, exec::c_t<maybe_tail_sender>, exec::c_t<_Env>) noexcept {
-          return true;
-        }
-
-    private:
-      std::optional<_TailSender> tail_sender_;
-    };
-
-  template<tail_sender _TailSender, tail_receiver _TailReceiver = __null_tail_receiver>
-    struct scoped_tail_sender {
-      explicit scoped_tail_sender(_TailSender __t, _TailReceiver __r = _TailReceiver{}) noexcept
-        : t_(__t)
-        , r_(__r)
-        , valid_(true) {}
-
-      scoped_tail_sender(scoped_tail_sender&& other) noexcept
-        : t_(other.s_)
-        , r_(other.r_)
-        , valid_(std::exchange(other.valid_, false)) {}
-
-      ~scoped_tail_sender() {
-        if (valid_) {
-          auto op = stdexec::connect(t_, r_);
-          if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
-            if (!!op) {
-              exec::unwind(op);
-            }
-          } else {
-            exec::unwind(op);
-          }
-        }
-      }
-
-      _TailSender get() noexcept { return t_; }
-
-      _TailSender release() noexcept {
-        valid_ = false;
-        return t_;
-      }
-
-    private:
-      _TailSender t_;
-      _TailReceiver r_;
-      bool valid_;
-    };
+   private:
+    _TailSender t_;
+    _TailReceiver r_;
+    bool valid_;
+  };
 
   struct __all_resumed_tail_sender {
 
     using completion_signatures = completion_signatures<set_value_t(), set_stopped_t()>;
 
     template <class _TailReceiver>
-      friend auto tag_invoke(connect_t, __all_resumed_tail_sender&&, _TailReceiver&& __r) noexcept
-          -> __call_result_t<connect_t, __null_tail_sender, _TailReceiver> {
-        return stdexec::connect(__null_tail_sender{}, __r);
-      }
+    friend auto tag_invoke(connect_t, __all_resumed_tail_sender&&, _TailReceiver&& __r) noexcept
+      -> __call_result_t<connect_t, __null_tail_sender, _TailReceiver> {
+      return stdexec::connect(__null_tail_sender{}, __r);
+    }
 
-    template<class _Env>
-      friend constexpr bool tag_invoke(
-        exec::always_completes_inline_t, exec::c_t<__all_resumed_tail_sender>, exec::c_t<_Env>) noexcept {
-        return true;
-      }
+    template <class _Env>
+    friend constexpr bool tag_invoke(
+      exec::always_completes_inline_t,
+      exec::c_t<__all_resumed_tail_sender>,
+      exec::c_t<_Env>) noexcept {
+      return true;
+    }
   };
 
   namespace __start_until_nullable_ {
 
     struct __start_until_nullable_t;
 
-    template<tail_sender _TailSender, tail_receiver _TailReceiver>
-      struct __start_until_nullable_result;
+    template <tail_sender _TailSender, tail_receiver _TailReceiver>
+    struct __start_until_nullable_result;
 
-    template<class _TailSender, class _TailReceiver>
-      using __start_until_nullable_result_t =
-        typename __start_until_nullable_result<_TailSender, _TailReceiver>::type;
+    template <class _TailSender, class _TailReceiver>
+    using __start_until_nullable_result_t =
+      typename __start_until_nullable_result<_TailSender, _TailReceiver>::type;
 
-    template<tail_sender _TailSender, tail_receiver _TailReceiver>
-      struct __start_until_nullable_result {
-        using type =
-          __if<
-            __bool<__nullable_tail_sender_to<_TailSender, _TailReceiver>>, _TailSender,
-            __if<
-              __bool<__terminal_tail_sender_to<_TailSender, _TailReceiver>>, __all_resumed_tail_sender,
-              __minvoke<__with_default<__q<__start_until_nullable_result_t>, __all_resumed_tail_sender>,
-                __next_tail_from_sender_to_t<_TailSender, _TailReceiver>,
-                _TailReceiver>
-              >
-            >;
-      };
+    template <tail_sender _TailSender, tail_receiver _TailReceiver>
+    struct __start_until_nullable_result {
+      using type = __if<
+        __bool<__nullable_tail_sender_to<_TailSender, _TailReceiver>>,
+        _TailSender,
+        __if<
+          __bool<__terminal_tail_sender_to<_TailSender, _TailReceiver>>,
+          __all_resumed_tail_sender,
+          __minvoke<
+            __with_default<__q<__start_until_nullable_result_t>, __all_resumed_tail_sender>,
+            __next_tail_from_sender_to_t<_TailSender, _TailReceiver>,
+            _TailReceiver> > >;
+    };
 
     struct __start_until_nullable_t {
-      template<tail_sender _TailSender, tail_receiver _TailReceiver>
-        auto operator()(_TailSender __t, _TailReceiver __r) const noexcept
-          -> __start_until_nullable_result_t<_TailSender, _TailReceiver> {
-          if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
-            return __t;
-          } else if constexpr (__terminal_tail_sender_to<_TailSender, _TailReceiver>) {
-            // restrict scope of op
-            {
-              auto op = stdexec::connect(std::move(__t), std::move(__r));
-              stdexec::start(op);
-            }
-            return __all_resumed_tail_sender{};
-          } else {
-            auto op = stdexec::connect(std::move(__t), __r);
-            return __start_until_nullable_t{}(stdexec::start(op), std::move(__r));
+      template <tail_sender _TailSender, tail_receiver _TailReceiver>
+      auto operator()(_TailSender __t, _TailReceiver __r) const noexcept
+        -> __start_until_nullable_result_t<_TailSender, _TailReceiver> {
+        if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
+          return __t;
+        } else if constexpr (__terminal_tail_sender_to<_TailSender, _TailReceiver>) {
+          // restrict scope of op
+          {
+            auto op = stdexec::connect(std::move(__t), std::move(__r));
+            stdexec::start(op);
           }
+          return __all_resumed_tail_sender{};
+        } else {
+          auto op = stdexec::connect(std::move(__t), __r);
+          return __start_until_nullable_t{}(stdexec::start(op), std::move(__r));
         }
+      }
     };
 
   } // namespace __start_until_nullable_
+
   using __start_until_nullable_::__start_until_nullable_t;
   inline constexpr __start_until_nullable_t __start_until_nullable{};
 
-  template <tail_sender _NextTailSender, tail_sender _TailSender, tail_receiver _TailReceiver, tail_sender... _PrevTailSenders>
-    auto __start_next(_NextTailSender __next, _TailReceiver __r) noexcept;
+  template <
+    tail_sender _NextTailSender,
+    tail_sender _TailSender,
+    tail_receiver _TailReceiver,
+    tail_sender... _PrevTailSenders>
+  auto __start_next(_NextTailSender __next, _TailReceiver __r) noexcept;
 
-  template<tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
-    struct __start_sequential_result;
+  template <tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
+  struct __start_sequential_result;
 
-  template<tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
-    using __start_sequential_result_t = typename __start_sequential_result<_TailSender, _TailReceiver>::type;
+  template <tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
+  using __start_sequential_result_t =
+    typename __start_sequential_result<_TailSender, _TailReceiver>::type;
 
-  template<tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
-    struct __start_sequential_result {
-        using next_t = next_tail_from_sender_to_t<_TailSender, _TailReceiver>;
-        using start_next_t = __call_result_t<
-                decltype(__start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>),
-                  next_t,
-                  _TailReceiver>;
-        using type =
-          __if<
-              __bool<
-                __nullable_tail_sender_to<_TailSender, _TailReceiver> &&
-                __terminal_tail_sender_to<_TailSender, _TailReceiver>>,
-            _TailSender,
-            __if< // elseif
-                __bool<__nullable_tail_sender_to<_TailSender, _TailReceiver>>,
-              variant_tail_sender<__all_resumed_tail_sender, start_next_t>,
-              __if< // elseif
-                  __bool<!__terminal_tail_sender_to<_TailSender, _TailReceiver>>,
-                start_next_t,
-                __all_resumed_tail_sender // else
-                >
-              >
-            >;
-        };
+  template <tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
+  struct __start_sequential_result {
+    using next_t = next_tail_from_sender_to_t<_TailSender, _TailReceiver>;
+    using start_next_t = __call_result_t<
+      decltype(__start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>),
+      next_t,
+      _TailReceiver>;
+    using type = __if<
+      __bool<
+        __nullable_tail_sender_to<_TailSender, _TailReceiver>
+        && __terminal_tail_sender_to<_TailSender, _TailReceiver>>,
+      _TailSender,
+      __if< // elseif
+        __bool<__nullable_tail_sender_to<_TailSender, _TailReceiver>>,
+        variant_tail_sender<__all_resumed_tail_sender, start_next_t>,
+        __if< // elseif
+          __bool<!__terminal_tail_sender_to<_TailSender, _TailReceiver>>,
+          start_next_t,
+          __all_resumed_tail_sender // else
+          > > >;
+  };
 
-  template<tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
-    auto __start_sequential(_TailSender c, _TailReceiver r) noexcept
-        -> __start_sequential_result_t<_TailSender, _TailReceiver, _PrevTailSenders...>;
+  template <tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
+  auto __start_sequential(_TailSender c, _TailReceiver r) noexcept
+    -> __start_sequential_result_t<_TailSender, _TailReceiver, _PrevTailSenders...>;
 
-  template <tail_sender _NextTailSender, tail_sender _TailSender, tail_receiver _TailReceiver, tail_sender... _PrevTailSenders>
-    auto __start_next(_NextTailSender __next, _TailReceiver __r) noexcept {
-      if constexpr (__one_of<_NextTailSender, _TailSender, _PrevTailSenders...>) {
-        static_assert(
-            (__nullable_tail_sender_to<_TailSender, _TailReceiver> ||
-            (__nullable_tail_sender_to<_PrevTailSenders, _TailReceiver> || ...)),
-            "At least one tail_sender in a cycle must be nullable to avoid "
-            "entering an infinite loop");
-        return __start_until_nullable(__next, std::move(__r));
-      } else {
-        return __start_sequential<_NextTailSender, _TailReceiver, _TailSender, _PrevTailSenders...>(__next, std::move(__r));
-      }
+  template <
+    tail_sender _NextTailSender,
+    tail_sender _TailSender,
+    tail_receiver _TailReceiver,
+    tail_sender... _PrevTailSenders>
+  auto __start_next(_NextTailSender __next, _TailReceiver __r) noexcept {
+    if constexpr (__one_of<_NextTailSender, _TailSender, _PrevTailSenders...>) {
+      static_assert(
+        (__nullable_tail_sender_to<_TailSender, _TailReceiver>
+         || (__nullable_tail_sender_to<_PrevTailSenders, _TailReceiver> || ...)),
+        "At least one tail_sender in a cycle must be nullable to avoid "
+        "entering an infinite loop");
+      return __start_until_nullable(__next, std::move(__r));
+    } else {
+      return __start_sequential<_NextTailSender, _TailReceiver, _TailSender, _PrevTailSenders...>(
+        __next, std::move(__r));
     }
+  }
 
-  template<tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
-    auto __start_sequential(_TailSender c, _TailReceiver r) noexcept
-        -> __start_sequential_result_t<_TailSender, _TailReceiver, _PrevTailSenders...> {
-      using next_t = next_tail_from_sender_to_t<_TailSender, _TailReceiver>;
-      using result_t = __start_sequential_result_t<_TailSender, _TailReceiver, _PrevTailSenders...>;
+  template <tail_sender _TailSender, tail_receiver _TailReceiver, class... _PrevTailSenders>
+  auto __start_sequential(_TailSender c, _TailReceiver r) noexcept
+    -> __start_sequential_result_t<_TailSender, _TailReceiver, _PrevTailSenders...> {
+    using next_t = next_tail_from_sender_to_t<_TailSender, _TailReceiver>;
+    using result_t = __start_sequential_result_t<_TailSender, _TailReceiver, _PrevTailSenders...>;
 
-      if constexpr (
-          __nullable_tail_sender_to<_TailSender, _TailReceiver> &&
-          __terminal_tail_sender_to<_TailSender, _TailReceiver>) {
-        // halt the recursion
-        return c;
-      } else if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
-        // recurse if the nullable tail-sender is valid otherwise return
-        // a nullable and terminal tail-sender
-        auto op = stdexec::connect(std::move(c), r);
-        if (!op) {
-          return __all_resumed_tail_sender{};
-        }
-        return result_from<result_t>(
-          __start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>(
-            stdexec::start(op), r));
-      } else if constexpr (!__terminal_tail_sender_to<_TailSender, _TailReceiver>) {
-        auto op = stdexec::connect(std::move(c), r);
-        return result_from<result_t>(
-          __start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>(
-            stdexec::start(op), r));
-      } else {
-        // run the terminal and not nullable tail-sender and return
-        // a nullable and terminal tail-sender
-        auto op = stdexec::connect(std::move(c), r);
-        stdexec::start(op);
+    if constexpr (
+      __nullable_tail_sender_to<_TailSender, _TailReceiver>
+      && __terminal_tail_sender_to<_TailSender, _TailReceiver>) {
+      // halt the recursion
+      return c;
+    } else if constexpr (__nullable_tail_sender_to<_TailSender, _TailReceiver>) {
+      // recurse if the nullable tail-sender is valid otherwise return
+      // a nullable and terminal tail-sender
+      auto op = stdexec::connect(std::move(c), r);
+      if (!op) {
         return __all_resumed_tail_sender{};
       }
+      return result_from<result_t>(
+        __start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>(
+          stdexec::start(op), r));
+    } else if constexpr (!__terminal_tail_sender_to<_TailSender, _TailReceiver>) {
+      auto op = stdexec::connect(std::move(c), r);
+      return result_from<result_t>(
+        __start_next<next_t, _TailSender, _TailReceiver, _PrevTailSenders...>(
+          stdexec::start(op), r));
+    } else {
+      // run the terminal and not nullable tail-sender and return
+      // a nullable and terminal tail-sender
+      auto op = stdexec::connect(std::move(c), r);
+      stdexec::start(op);
+      return __all_resumed_tail_sender{};
     }
+  }
 
+  template <tail_receiver _TailReceiver>
+  inline __null_tail_sender resume_tail_senders_until_one_remaining(_TailReceiver&&) noexcept {
+    return {};
+  }
 
-  template<tail_receiver _TailReceiver>
-    inline __null_tail_sender resume_tail_senders_until_one_remaining(_TailReceiver&&) noexcept {
-      return {};
-    }
+  template <tail_receiver _TailReceiver, tail_sender C>
+  C resume_tail_senders_until_one_remaining(_TailReceiver&&, C c) noexcept {
+    return c;
+  }
 
-  template<tail_receiver _TailReceiver, tail_sender C>
-    C resume_tail_senders_until_one_remaining(_TailReceiver&&, C c) noexcept {
-      return c;
-    }
+  template <tail_receiver _TailReceiver, tail_sender... Cs, std::size_t... Is>
+  auto _resume_tail_senders_until_one_remaining(
+    _TailReceiver&& __r,
+    std::index_sequence<Is...>,
+    Cs... cs) noexcept {
+    using result_type =
+      variant_tail_sender<decltype(__start_sequential(__start_sequential(cs, __r), __r))...>;
+    result_type result;
 
-  template<tail_receiver _TailReceiver, tail_sender... Cs, std::size_t... Is>
-    auto _resume_tail_senders_until_one_remaining(_TailReceiver&& __r, std::index_sequence<Is...>, Cs... cs) noexcept {
-      using result_type = variant_tail_sender<decltype(__start_sequential(__start_sequential(cs, __r), __r))...>;
-      result_type result;
+    auto cs2_tuple = std::make_tuple(
+      variant_tail_sender<
+        __all_resumed_tail_sender,
+        decltype(__start_sequential(__start_sequential(cs, __r), __r))>{
+        __start_sequential(__start_sequential(cs, __r), __r)}...);
+    while (true) {
+      std::size_t remaining = sizeof...(cs);
+      ((remaining > 1 ? (
+          !holds_alternative<__all_resumed_tail_sender>(std::get<Is>(cs2_tuple))
+            ? (void) (result = result_from<result_type>(
+                        std::get<Is>(cs2_tuple) = result_from<decltype(std::get<Is>(cs2_tuple))>(
+                          __start_sequential(std::get<Is>(cs2_tuple), __r))))
+            : (void) --remaining)
+                      : (void) (result = result_from<result_type>(std::get<Is>(cs2_tuple)))),
+       ...);
 
-      auto cs2_tuple = std::make_tuple(
-        variant_tail_sender<
-          __all_resumed_tail_sender,
-          decltype(__start_sequential(__start_sequential(cs, __r), __r))>{
-            __start_sequential(__start_sequential(cs, __r), __r)}...);
-      while (true) {
-        std::size_t remaining = sizeof...(cs);
-        ((remaining > 1 ?
-          (!holds_alternative<__all_resumed_tail_sender>(std::get<Is>(cs2_tuple)) ?
-            (void)(result = result_from<result_type>(
-              std::get<Is>(cs2_tuple) = result_from<decltype(std::get<Is>(cs2_tuple))>(
-                __start_sequential(std::get<Is>(cs2_tuple), __r)))) :
-            (void)--remaining) :
-          (void)(result = result_from<result_type>(std::get<Is>(cs2_tuple)))), ...);
-
-        if (remaining <= 1) {
-          return result;
-        }
+      if (remaining <= 1) {
+        return result;
       }
     }
+  }
 
-  template<tail_receiver _TailReceiver, tail_sender... Cs>
-    auto resume_tail_senders_until_one_remaining(_TailReceiver&& __r, Cs... cs) noexcept {
-      return _resume_tail_senders_until_one_remaining(__r, std::index_sequence_for<Cs...>{}, cs...);
-    }
+  template <tail_receiver _TailReceiver, tail_sender... Cs>
+  auto resume_tail_senders_until_one_remaining(_TailReceiver&& __r, Cs... cs) noexcept {
+    return _resume_tail_senders_until_one_remaining(__r, std::index_sequence_for<Cs...>{}, cs...);
+  }
 
-  template<tail_receiver _TailReceiver, tail_sender... Cs>
-    void resume_tail_senders(_TailReceiver&& __r, Cs... cs) noexcept {
-      auto __last_tail = _resume_tail_senders_until_one_remaining(__r, std::index_sequence_for<Cs...>{}, cs...);
-      for(;;) {
-        auto __op = connect(__last_tail, __r);
-        if (!__op) {
-          return;
-        }
-        if constexpr (__terminal_tail_sender_to<decltype(__last_tail), _TailReceiver>) {
-          start(__last_tail);
-          return;
-        } else {
-          __last_tail = __start_sequential(start(__last_tail), __r);
-        }
+  template <tail_receiver _TailReceiver, tail_sender... Cs>
+  void resume_tail_senders(_TailReceiver&& __r, Cs... cs) noexcept {
+    auto __last_tail = _resume_tail_senders_until_one_remaining(
+      __r, std::index_sequence_for<Cs...>{}, cs...);
+    for (;;) {
+      auto __op = connect(__last_tail, __r);
+      if (!__op) {
+        return;
+      }
+      if constexpr (__terminal_tail_sender_to<decltype(__last_tail), _TailReceiver>) {
+        start(__last_tail);
+        return;
+      } else {
+        __last_tail = __start_sequential(start(__last_tail), __r);
       }
     }
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
@@ -578,80 +629,87 @@ namespace exec {
 
     struct __task : __immovable {
       __task* __next_ = this;
+
       union {
         void (*__execute_)(__task*) noexcept;
         __task* __tail_;
       };
 
-      void __execute() noexcept { (*__execute_)(this); }
+      void __execute() noexcept {
+        (*__execute_)(this);
+      }
     };
 
     template <class _ReceiverId>
-      struct __operation {
-        using _Receiver = stdexec::__t<_ReceiverId>;
+    struct __operation {
+      using _Receiver = stdexec::__t<_ReceiverId>;
 
-        struct __t : __task {
-          using __id = __operation;
+      struct __t : __task {
+        using __id = __operation;
 
-          run_loop* __loop_;
-          [[no_unique_address]] _Receiver __rcvr_;
+        run_loop* __loop_;
+        [[no_unique_address]] _Receiver __rcvr_;
 
-          static void __execute_impl(__task* __p) noexcept {
-            auto& __rcvr = ((__t*) __p)->__rcvr_;
-            try {
-              if (get_stop_token(get_env(__rcvr)).stop_requested()) {
-                set_stopped((_Receiver&&) __rcvr);
-              } else {
-                set_value((_Receiver&&) __rcvr);
-              }
-            } catch(...) {
-              set_error((_Receiver&&) __rcvr, std::current_exception());
+        static void __execute_impl(__task* __p) noexcept {
+          auto& __rcvr = ((__t*) __p)->__rcvr_;
+          try {
+            if (get_stop_token(get_env(__rcvr)).stop_requested()) {
+              set_stopped((_Receiver&&) __rcvr);
+            } else {
+              set_value((_Receiver&&) __rcvr);
             }
+          } catch (...) {
+            set_error((_Receiver&&) __rcvr, std::current_exception());
           }
+        }
 
-          explicit __t(__task* __tail) noexcept
-            : __task{.__tail_ = __tail} {}
-          __t(__task* __next, run_loop* __loop, _Receiver __rcvr)
-            : __task{{}, __next, {&__execute_impl}}
-            , __loop_{__loop}
-            , __rcvr_{(_Receiver&&) __rcvr} {}
+        explicit __t(__task* __tail) noexcept
+          : __task{.__tail_ = __tail} {
+        }
 
-          friend void tag_invoke(start_t, __t& __self) noexcept {
-            __self.__start_();
-          }
+        __t(__task* __next, run_loop* __loop, _Receiver __rcvr)
+          : __task{{}, __next, {&__execute_impl}}
+          , __loop_{__loop}
+          , __rcvr_{(_Receiver&&) __rcvr} {
+        }
 
-          void __start_() noexcept;
-        };
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          __self.__start_();
+        }
+
+        void __start_() noexcept;
       };
+    };
 
     template <class _ReceiverId>
-      struct __run_operation {
-        using _Receiver = stdexec::__t<_ReceiverId>;
+    struct __run_operation {
+      using _Receiver = stdexec::__t<_ReceiverId>;
 
-        struct __t {
-          using __id = __run_operation;
+      struct __t {
+        using __id = __run_operation;
 
-          run_loop* __loop_;
-          [[no_unique_address]] _Receiver __rcvr_;
+        run_loop* __loop_;
+        [[no_unique_address]] _Receiver __rcvr_;
 
-          __t(run_loop* __loop, _Receiver __rcvr)
-            : __loop_{__loop}
-            , __rcvr_{(_Receiver&&) __rcvr} {}
+        __t(run_loop* __loop, _Receiver __rcvr)
+          : __loop_{__loop}
+          , __rcvr_{(_Receiver&&) __rcvr} {
+        }
 
-          friend void tag_invoke(start_t, __t& __self) noexcept {
-            __self.__start_();
-          }
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          __self.__start_();
+        }
 
-          void __start_() noexcept;
-        };
+        void __start_() noexcept;
       };
+    };
 
     class run_loop {
-      template<class... Ts>
-        using __completion_signatures_ = completion_signatures<Ts...>;
+      template <class... Ts>
+      using __completion_signatures_ = completion_signatures<Ts...>;
 
       template <class>
-        friend struct __operation;
+      friend struct __operation;
      public:
       struct __scheduler {
         using __t = __scheduler;
@@ -662,38 +720,37 @@ namespace exec {
         struct __schedule_task {
           using __t = __schedule_task;
           using __id = __schedule_task;
-          using completion_signatures =
-            __completion_signatures_<
-              set_value_t(),
-              set_error_t(std::exception_ptr),
-              set_stopped_t()>;
+          using completion_signatures = __completion_signatures_<
+            set_value_t(),
+            set_error_t(std::exception_ptr),
+            set_stopped_t()>;
 
          private:
           friend __scheduler;
 
           template <class _Receiver>
-            using __operation = stdexec::__t<__operation<stdexec::__id<_Receiver>>>;
+          using __operation = stdexec::__t<__operation<stdexec::__id<_Receiver>>>;
 
           template <class _Receiver>
           friend __operation<_Receiver>
-          tag_invoke(connect_t, const __schedule_task& __self, _Receiver __rcvr) {
-            return __self.__connect_((_Receiver &&) __rcvr);
+            tag_invoke(connect_t, const __schedule_task& __self, _Receiver __rcvr) {
+            return __self.__connect_((_Receiver&&) __rcvr);
           }
 
           template <class _Receiver>
           __operation<_Receiver> __connect_(_Receiver&& __rcvr) const {
-            return {&__loop_->__head_, __loop_, (_Receiver &&) __rcvr};
+            return {&__loop_->__head_, __loop_, (_Receiver&&) __rcvr};
           }
 
           template <class _CPO>
           friend __scheduler
-          tag_invoke(get_completion_scheduler_t<_CPO>, const __schedule_task& __self) noexcept {
+            tag_invoke(get_completion_scheduler_t<_CPO>, const __schedule_task& __self) noexcept {
             return __scheduler{__self.__loop_};
           }
 
           explicit __schedule_task(run_loop* __loop) noexcept
-            : __loop_(__loop)
-          {}
+            : __loop_(__loop) {
+          }
 
           run_loop* const __loop_;
         };
@@ -701,20 +758,21 @@ namespace exec {
         friend run_loop;
 
         explicit __scheduler(run_loop* __loop) noexcept
-          : __loop_(__loop) {}
+          : __loop_(__loop) {
+        }
 
         friend __schedule_task tag_invoke(schedule_t, const __scheduler& __self) noexcept {
           return __self.__schedule();
         }
 
-        friend stdexec::forward_progress_guarantee tag_invoke(
-            get_forward_progress_guarantee_t, const __scheduler&) noexcept {
+        friend stdexec::forward_progress_guarantee
+          tag_invoke(get_forward_progress_guarantee_t, const __scheduler&) noexcept {
           return stdexec::forward_progress_guarantee::parallel;
         }
 
         // BUGBUG NOT TO SPEC
-        friend bool tag_invoke(
-            this_thread::execute_may_block_caller_t, const __scheduler&) noexcept {
+        friend bool
+          tag_invoke(this_thread::execute_may_block_caller_t, const __scheduler&) noexcept {
           return false;
         }
 
@@ -724,6 +782,7 @@ namespace exec {
 
         run_loop* __loop_;
       };
+
       __scheduler get_scheduler() noexcept {
         return __scheduler{this};
       }
@@ -731,42 +790,39 @@ namespace exec {
       struct __run_sender {
         using __t = __run_sender;
         using __id = __run_sender;
-        using completion_signatures =
-          __completion_signatures_<
-            set_value_t(),
-            set_stopped_t()>;
+        using completion_signatures = __completion_signatures_< set_value_t(), set_stopped_t()>;
 
-        private:
+       private:
         friend __scheduler;
 
         template <class _Receiver>
-          using __operation = stdexec::__t<__operation<stdexec::__id<_Receiver>>>;
+        using __operation = stdexec::__t<__operation<stdexec::__id<_Receiver>>>;
 
         template <class _Receiver>
         friend __operation<_Receiver>
-        tag_invoke(connect_t, const __run_sender& __self, _Receiver __rcvr) {
-          return __self.__connect_((_Receiver &&) __rcvr);
+          tag_invoke(connect_t, const __run_sender& __self, _Receiver __rcvr) {
+          return __self.__connect_((_Receiver&&) __rcvr);
         }
 
         template <class _Receiver>
         __operation<_Receiver> __connect_(_Receiver&& __rcvr) const {
-          return {&__loop_->__head_, __loop_, (_Receiver &&) __rcvr};
+          return {&__loop_->__head_, __loop_, (_Receiver&&) __rcvr};
         }
 
         template <class _CPO>
         friend __scheduler
-        tag_invoke(get_completion_scheduler_t<_CPO>, const __run_sender& __self) noexcept {
+          tag_invoke(get_completion_scheduler_t<_CPO>, const __run_sender& __self) noexcept {
           return __scheduler{__self.__loop_};
         }
 
         explicit __run_sender(run_loop* __loop) noexcept
-          : __loop_(__loop)
-        {}
+          : __loop_(__loop) {
+        }
 
         run_loop* __loop_;
       };
-      template<class _Sender>
-      __run_sender run(_Sender&&  __s);
+      template <class _Sender>
+      __run_sender run(_Sender&& __s);
 
       void run();
 
@@ -785,13 +841,14 @@ namespace exec {
     template <class _ReceiverId>
     inline void __operation<_ReceiverId>::__t::__start_() noexcept try {
       __loop_->__push_back_(this);
-    } catch(...) {
+    } catch (...) {
+
       set_error((_Receiver&&) __rcvr_, std::current_exception());
     }
 
-    template<class _Sender>
-    run_loop::__run_sender run_loop::run(_Sender&&  __s) {
-      return {this, (_Sender &&)__s};
+    template <class _Sender>
+    run_loop::__run_sender run_loop::run(_Sender&& __s) {
+      return {this, (_Sender&&) __s};
     }
 
     inline void run_loop::run() {
@@ -815,7 +872,7 @@ namespace exec {
 
     inline __task* run_loop::__pop_front_() {
       std::unique_lock __lock{__mutex_};
-      __cv_.wait(__lock, [this]{ return __head_.__next_ != &__head_ || __stop_; });
+      __cv_.wait(__lock, [this] { return __head_.__next_ != &__head_ || __stop_; });
       if (__head_.__tail_ == __head_.__next_)
         __head_.__tail_ = &__head_;
       return std::exchange(__head_.__next_, __head_.__next_->__next_);
@@ -830,8 +887,7 @@ namespace exec {
   // [execution.senders.consumers.sync_wait_with_variant]
   namespace __sync_wait {
     template <class _Sender>
-      using __into_variant_result_t =
-        decltype(stdexec::into_variant(__declval<_Sender>()));
+    using __into_variant_result_t = decltype(stdexec::into_variant(__declval<_Sender>()));
 
     struct __env {
       using __t = __env;
@@ -851,125 +907,111 @@ namespace exec {
 
     // What should sync_wait(just_stopped()) return?
     template <class _Sender, class _Continuation>
-      using __sync_wait_result_impl =
-        __value_types_of_t<
-          _Sender,
-          __env,
-          __transform<__q<decay_t>, _Continuation>,
-          __q<__msingle>>;
+    using __sync_wait_result_impl =
+      __value_types_of_t< _Sender, __env, __transform<__q<decay_t>, _Continuation>, __q<__msingle>>;
 
     template <stdexec::sender<__env> _Sender>
-      using __sync_wait_result_t =
-        __sync_wait_result_impl<_Sender, __q<std::tuple>>;
+    using __sync_wait_result_t = __sync_wait_result_impl<_Sender, __q<std::tuple>>;
 
     template <class _Sender>
-      using __sync_wait_with_variant_result_t =
-        __sync_wait_result_t<__into_variant_result_t<_Sender>>;
+    using __sync_wait_with_variant_result_t =
+      __sync_wait_result_t<__into_variant_result_t<_Sender>>;
 
     template <class... _Values>
-      struct __state {
-        using _Tuple = std::tuple<_Values...>;
-        std::variant<std::monostate, _Tuple, std::exception_ptr, set_stopped_t> __data_{};
-      };
+    struct __state {
+      using _Tuple = std::tuple<_Values...>;
+      std::variant<std::monostate, _Tuple, std::exception_ptr, set_stopped_t> __data_{};
+    };
 
     template <class... _Values>
-      struct __receiver {
-        struct __t {
-          using __id = __receiver;
-          __state<_Values...>* __state_;
-          stdexec::run_loop* __loop_;
-          template <class _Error>
-          void __set_error(_Error __err) noexcept {
-            if constexpr (__decays_to<_Error, std::exception_ptr>)
-              __state_->__data_.template emplace<2>((_Error&&) __err);
-            else if constexpr (__decays_to<_Error, std::error_code>)
-              __state_->__data_.template emplace<2>(std::make_exception_ptr(std::system_error(__err)));
-            else
-              __state_->__data_.template emplace<2>(std::make_exception_ptr((_Error&&) __err));
-            __loop_->finish();
-          }
-          template <class... _As>
-            requires constructible_from<std::tuple<_Values...>, _As...>
-          friend void tag_invoke(stdexec::set_value_t, __t&& __rcvr, _As&&... __as) noexcept try {
-            __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
-            __rcvr.__loop_->finish();
-          } catch(...) {
-            __rcvr.__set_error(std::current_exception());
-          }
-          template <class _Error>
-          friend void tag_invoke(stdexec::set_error_t, __t&& __rcvr, _Error __err) noexcept {
-            __rcvr.__set_error((_Error &&) __err);
-          }
-          friend void tag_invoke(stdexec::set_stopped_t __d, __t&& __rcvr) noexcept {
-            __rcvr.__state_->__data_.template emplace<3>(__d);
-            __rcvr.__loop_->finish();
-          }
-          friend __env
-          tag_invoke(stdexec::get_env_t, const __t& __rcvr) noexcept {
-            return {__rcvr.__loop_->get_scheduler()};
-          }
-        };
+    struct __receiver {
+      struct __t {
+        using __id = __receiver;
+        __state<_Values...>* __state_;
+        stdexec::run_loop* __loop_;
+
+        template <class _Error>
+        void __set_error(_Error __err) noexcept {
+          if constexpr (__decays_to<_Error, std::exception_ptr>)
+            __state_->__data_.template emplace<2>((_Error&&) __err);
+          else if constexpr (__decays_to<_Error, std::error_code>)
+            __state_->__data_.template emplace<2>(
+              std::make_exception_ptr(std::system_error(__err)));
+          else
+            __state_->__data_.template emplace<2>(std::make_exception_ptr((_Error&&) __err));
+          __loop_->finish();
+        }
+
+        template <class... _As>
+          requires constructible_from<std::tuple<_Values...>, _As...>
+        friend void tag_invoke(stdexec::set_value_t, __t&& __rcvr, _As&&... __as) noexcept try {
+          __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
+          __rcvr.__loop_->finish();
+        } catch (...) {
+
+          __rcvr.__set_error(std::current_exception());
+        }
+
+        template <class _Error>
+        friend void tag_invoke(stdexec::set_error_t, __t&& __rcvr, _Error __err) noexcept {
+          __rcvr.__set_error((_Error&&) __err);
+        }
+
+        friend void tag_invoke(stdexec::set_stopped_t __d, __t&& __rcvr) noexcept {
+          __rcvr.__state_->__data_.template emplace<3>(__d);
+          __rcvr.__loop_->finish();
+        }
+
+        friend __env tag_invoke(stdexec::get_env_t, const __t& __rcvr) noexcept {
+          return {__rcvr.__loop_->get_scheduler()};
+        }
       };
+    };
 
     template <class _Sender>
-      using __into_variant_result_t =
-        decltype(stdexec::into_variant(__declval<_Sender>()));
+    using __into_variant_result_t = decltype(stdexec::into_variant(__declval<_Sender>()));
 
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
       template <class _Sender>
-        using __receiver_t = __t<__sync_wait_result_impl<_Sender, __q<__receiver>>>;
+      using __receiver_t = __t<__sync_wait_result_impl<_Sender, __q<__receiver>>>;
 
       // TODO: constrain on return type
       template <__single_value_variant_sender<__env> _Sender> // NOT TO SPEC
-        requires
-          __tag_invocable_with_completion_scheduler<
-            sync_wait_t, set_value_t, _Sender>
-      tag_invoke_result_t<
-        sync_wait_t,
-        __completion_scheduler_for<_Sender, set_value_t>,
-        _Sender>
-      operator()(_Sender&& __sndr) const noexcept(
-        nothrow_tag_invocable<
-          sync_wait_t,
-          __completion_scheduler_for<_Sender, set_value_t>,
-          _Sender>) {
-        auto __sched =
-          get_completion_scheduler<set_value_t>(__sndr);
+        requires __tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>
+      tag_invoke_result_t< sync_wait_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender>
+        operator()(_Sender&& __sndr) const
+        noexcept(nothrow_tag_invocable<
+                 sync_wait_t,
+                 __completion_scheduler_for<_Sender, set_value_t>,
+                 _Sender>) {
+        auto __sched = get_completion_scheduler<set_value_t>(__sndr);
         return tag_invoke(sync_wait_t{}, std::move(__sched), (_Sender&&) __sndr);
       }
 
       // TODO: constrain on return type
       template <__single_value_variant_sender<__env> _Sender> // NOT TO SPEC
-        requires
-          (!__tag_invocable_with_completion_scheduler<
-            sync_wait_t, set_value_t, _Sender>) &&
-          tag_invocable<sync_wait_t, _Sender>
-      tag_invoke_result_t<sync_wait_t, _Sender>
-      operator()(_Sender&& __sndr) const noexcept(
-        nothrow_tag_invocable<sync_wait_t, _Sender>) {
+        requires(!__tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>)
+             && tag_invocable<sync_wait_t, _Sender>
+      tag_invoke_result_t<sync_wait_t, _Sender> operator()(_Sender&& __sndr) const
+        noexcept(nothrow_tag_invocable<sync_wait_t, _Sender>) {
         return tag_invoke(sync_wait_t{}, (_Sender&&) __sndr);
       }
 
       template <__single_value_variant_sender<__env> _Sender>
-        requires
-          (!__tag_invocable_with_completion_scheduler<
-            sync_wait_t, set_value_t, _Sender>) &&
-          (!tag_invocable<sync_wait_t, _Sender>) &&
-          sender<_Sender, __env> &&
-          sender_to<_Sender, __receiver_t<_Sender>>
-      auto operator()(_Sender&& __sndr) const
-        -> std::optional<__sync_wait_result_t<_Sender>> {
+        requires(!__tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>)
+             && (!tag_invocable<sync_wait_t, _Sender>) && sender<_Sender, __env>
+             && sender_to<_Sender, __receiver_t<_Sender>>
+      auto operator()(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
         using state_t = __sync_wait_result_impl<_Sender, __q<__state>>;
         using tail_t = next_tail_from_sender_to_t<_Sender, __receiver_t<_Sender>>;
-        state_t __state {};
+        state_t __state{};
         run_loop __loop;
 
         // Launch the sender with a continuation that will fill in a variant
         // and notify a condition variable.
-        auto __op_state =
-          connect((_Sender&&) __sndr, __receiver_t<_Sender>{&__state, &__loop});
+        auto __op_state = connect((_Sender&&) __sndr, __receiver_t<_Sender>{&__state, &__loop});
         tail_t __tail = start(__op_state);
 
         // Wait for the variant to be filled in.
@@ -987,6 +1029,7 @@ namespace exec {
       }
     };
   } // namespace __sync_wait
+
   using __sync_wait::sync_wait_t;
   inline constexpr sync_wait_t sync_wait{};
 } // namespace exec

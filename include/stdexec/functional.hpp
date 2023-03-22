@@ -41,7 +41,7 @@ namespace std {
 namespace stdexec {
   template <class _Fun, class... _As>
   concept __nothrow_invocable = //
-    invocable<_Fun, _As...> &&    //
+    invocable<_Fun, _As...> &&  //
     requires(_Fun&& __f, _As&&... __as) {
       { std::invoke((_Fun&&) __f, (_As&&) __as...) } noexcept;
     };

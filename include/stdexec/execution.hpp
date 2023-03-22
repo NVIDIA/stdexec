@@ -145,7 +145,8 @@ namespace stdexec {
       template <class _Tp>
         requires tag_invocable<execute_may_block_caller_t, __cref_t<_Tp>>
       constexpr bool operator()(_Tp&& __t) const noexcept {
-        static_assert(same_as<bool, tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_Tp>>>);
+        static_assert(
+          same_as<bool, tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_Tp>>>);
         static_assert(nothrow_tag_invocable<execute_may_block_caller_t, __cref_t<_Tp>>);
         return tag_invoke(execute_may_block_caller_t{}, std::as_const(__t));
       }
@@ -342,7 +343,8 @@ namespace stdexec {
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      auto operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept
+        auto
+        operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept
         -> tag_invoke_result_t<set_value_t, _Receiver, _As...> {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         return tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
@@ -357,7 +359,8 @@ namespace stdexec {
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      auto operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept
+        auto
+        operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept
         -> tag_invoke_result_t<set_error_t, _Receiver, _Error> {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         return tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
@@ -372,7 +375,8 @@ namespace stdexec {
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      auto operator()(_Receiver&& __rcvr) const noexcept
+        auto
+        operator()(_Receiver&& __rcvr) const noexcept
         -> tag_invoke_result_t<set_stopped_t, _Receiver> {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
         return tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
