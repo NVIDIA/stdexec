@@ -21,13 +21,13 @@
 
 #include <cassert>
 
-#define STDEXEC_CAT_(_X, ...) _X##__VA_ARGS__
-#define STDEXEC_CAT(_X, ...) STDEXEC_CAT_(_X, __VA_ARGS__)
+#define STDEXEC_CAT_(_XP, ...) _XP##__VA_ARGS__
+#define STDEXEC_CAT(_XP, ...) STDEXEC_CAT_(_XP, __VA_ARGS__)
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
-#define STDEXEC_EVAL(_M, ...) _M(__VA_ARGS__)
+#define STDEXEC_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
 #define STDEXEC_EAT(...)
-#define STDEXEC_FRONT(_X, ...) _X
+#define STDEXEC_FRONT(_XP, ...) _XP
 
 ////////////////////////////////////////////////////////////////////////////////
 // STDEXEC_FOR_EACH
@@ -47,29 +47,29 @@
   /**/
 
 #define STDEXEC_PARENS ()
-#define STDEXEC_FOR_EACH(_M, ...)                                                                  \
-  __VA_OPT__(STDEXEC_EXPAND_R(STDEXEC_FOR_EACH_HELPER(_M, __VA_ARGS__)))                           \
+#define STDEXEC_FOR_EACH(_MACRO, ...)                                                              \
+  __VA_OPT__(STDEXEC_EXPAND_R(STDEXEC_FOR_EACH_HELPER(_MACRO, __VA_ARGS__)))                       \
   /**/
-#define STDEXEC_FOR_EACH_HELPER(_M, _A1, ...)                                                      \
-  _M(_A1) __VA_OPT__(STDEXEC_FOR_EACH_AGAIN STDEXEC_PARENS(_M, __VA_ARGS__)) /**/
+#define STDEXEC_FOR_EACH_HELPER(_MACRO, _A1, ...)                                                  \
+  _MACRO(_A1) __VA_OPT__(STDEXEC_FOR_EACH_AGAIN STDEXEC_PARENS(_MACRO, __VA_ARGS__)) /**/
 #define STDEXEC_FOR_EACH_AGAIN() STDEXEC_FOR_EACH_HELPER
 ////////////////////////////////////////////////////////////////////////////////
 
-#define STDEXEC_NOT(_X) STDEXEC_CAT(STDEXEC_NOT_, _X)
+#define STDEXEC_NOT(_XP) STDEXEC_CAT(STDEXEC_NOT_, _XP)
 #define STDEXEC_NOT_0 1
 #define STDEXEC_NOT_1 0
 
-#define STDEXEC_IIF_0(_Y, ...) __VA_ARGS__
-#define STDEXEC_IIF_1(_Y, ...) _Y
-#define STDEXEC_IIF(_X, _Y, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _X), _Y, __VA_ARGS__)
+#define STDEXEC_IIF_0(_YP, ...) __VA_ARGS__
+#define STDEXEC_IIF_1(_YP, ...) _YP
+#define STDEXEC_IIF(_XP, _YP, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _XP), _YP, __VA_ARGS__)
 
 #define STDEXEC_COUNT_M(...) +1
-#define STDEXEC_COUNT(...) (0 STDEXEC_FOR_EACH(STDEXEC_COUNT_M, __VA_ARGS_))
+#define STDEXEC_COUNT(...) (0 STDEXEC_FOR_EACH(STDEXEC_COUNT_M, __VA_ARGS__))
 
 #define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0, ))
-#define STDEXEC_CHECK_N(_X, _N, ...) _N
-#define STDEXEC_PROBE(_X) _X, 1,
-#define STDEXEC_PROBE_N(_X, _N) _X, _N,
+#define STDEXEC_CHECK_N(_XP, _NP, ...) _NP
+#define STDEXEC_PROBE(_XP) _XP, 1,
+#define STDEXEC_PROBE_N(_XP, _NP) _XP, _NP,
 
 #define STDEXEC_IF(_IF, _TRUE, ...) STDEXEC_CAT(STDEXEC_IF_, _IF)(_TRUE, __VA_ARGS__) /**/
 
@@ -103,14 +103,14 @@
 #endif
 
 #if STDEXEC_CLANG()
-#  define STDEXEC_STRINGIZE(__arg) #__arg
+#  define STDEXEC_STRINGIZE(_ARG) #_ARG
 #  define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
 #  define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
-#  define STDEXEC_PRAGMA_IGNORE(__arg) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __arg))
+#  define STDEXEC_PRAGMA_IGNORE(_ARG) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored _ARG))
 #else
 #  define STDEXEC_PRAGMA_PUSH()
 #  define STDEXEC_PRAGMA_POP()
-#  define STDEXEC_PRAGMA_IGNORE(__arg)
+#  define STDEXEC_PRAGMA_IGNORE(_ARG)
 #endif
 
 #ifdef __has_builtin
@@ -135,10 +135,10 @@
 #  error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif
 
-#define STDEXEC_ASSERT(_X)                                                                         \
+#define STDEXEC_ASSERT(_XP)                                                                        \
   do {                                                                                             \
-    static_assert(noexcept(_X));                                                                   \
-    STDEXEC_ASSERT_FN(_X);                                                                         \
+    static_assert(noexcept(_XP));                                                                  \
+    STDEXEC_ASSERT_FN(_XP);                                                                        \
   } while (false)
 
 #ifndef STDEXEC_ASSERT_FN
@@ -157,7 +157,7 @@
 #  define STDEXEC_DEFINE_CUSTOM(...)                                                               \
     __VA_ARGS__                                                                                    \
     /**/
-#  define STDEXEC_CALL_CUSTOM(NAME, OBJ, ...) (OBJ).NAME(__VA_ARGS__) /**/
+#  define STDEXEC_CALL_CUSTOM(_NAME, _OBJ, ...) (_OBJ)._NAME(__VA_ARGS__) /**/
 
 #elif defined(STDEXEC_USE_TAG_INVOKE)
 
@@ -171,11 +171,11 @@
 #  define STDEXEC_DEFINE_CUSTOM(...)                                                               \
     friend STDEXEC_RETURN_TYPE(__VA_ARGS__) tag_invoke(STDEXEC_FUN_ARGS \
     /**/
-#  define STDEXEC_FUN_ARGS(SELF, TAG, ...)                                                         \
-    TAG, STDEXEC_CAT(STDEXEC_EAT_THIS_, SELF) __VA_OPT__(,) __VA_ARGS__) \
+#  define STDEXEC_FUN_ARGS(_SELF, _TAG, ...)                                                       \
+    _TAG, STDEXEC_CAT(STDEXEC_EAT_THIS_, _SELF) __VA_OPT__(,) __VA_ARGS__) \
     /**/
-#  define STDEXEC_CALL_CUSTOM(NAME, OBJ, TAG, ...)                                                 \
-    ::stdexec::tag_invoke(TAG, OBJ __VA_OPT__(, ) __VA_ARGS__) /**/
+#  define STDEXEC_CALL_CUSTOM(_NAME, _OBJ, _TAG, ...)                                              \
+    ::stdexec::tag_invoke(_TAG, _OBJ __VA_OPT__(, ) __VA_ARGS__) /**/
 
 #else
 
@@ -185,7 +185,7 @@
 #  define STDEXEC_FUN_ARGS(...)                                                                    \
     STDEXEC_CAT(STDEXEC_EAT_THIS_, __VA_ARGS__)) \
     /**/
-#  define STDEXEC_CALL_CUSTOM(NAME, OBJ, ...) (OBJ).NAME((OBJ) __VA_OPT__(, ) __VA_ARGS__) /**/
+#  define STDEXEC_CALL_CUSTOM(_NAME, _OBJ, ...) (_OBJ)._NAME((_OBJ) __VA_OPT__(, ) __VA_ARGS__) /**/
 
 #endif
 

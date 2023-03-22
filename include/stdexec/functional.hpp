@@ -28,9 +28,9 @@ namespace stdexec::__std_concepts {
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
   using std::invocable;
 #else
-  template <class _F, class... _As>
+  template <class _Fun, class... _As>
   concept invocable = //
-    requires(_F&& __f, _As&&... __as) { std::invoke((_F&&) __f, (_As&&) __as...); };
+    requires(_Fun&& __f, _As&&... __as) { std::invoke((_Fun&&) __f, (_As&&) __as...); };
 #endif
 } // stdexec::__std_concepts
 
@@ -39,11 +39,11 @@ namespace std {
 }
 
 namespace stdexec {
-  template <class _F, class... _As>
+  template <class _Fun, class... _As>
   concept __nothrow_invocable = //
-    invocable<_F, _As...> &&    //
-    requires(_F&& __f, _As&&... __as) {
-      { std::invoke((_F&&) __f, (_As&&) __as...) } noexcept;
+    invocable<_Fun, _As...> &&  //
+    requires(_Fun&& __f, _As&&... __as) {
+      { std::invoke((_Fun&&) __f, (_As&&) __as...) } noexcept;
     };
 
   template <auto _Fun>

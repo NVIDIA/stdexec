@@ -114,20 +114,20 @@
         template <bool _TryTagInvoke = true, class _Ty, class... _Args>                            \
         static constexpr auto __meta(_Ty &&__t, _Args &&...__args) noexcept {                      \
           if constexpr (__has_customized_member<_Ty, _Args...>) {                                  \
-            using _R = decltype(((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...));                \
-            constexpr bool _N = noexcept(((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...));       \
-            return (_R(*)() noexcept(_N)) nullptr;                                                 \
+            using _Rp = decltype(((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...));               \
+            constexpr bool _Np = noexcept(((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...));      \
+            return (_Rp(*)() noexcept(_Np)) nullptr;                                               \
           } else if constexpr (__has_customized_static_member<_Ty, _Args...>) {                    \
-            using _R = decltype(__t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...));             \
-            constexpr bool _N = noexcept(__t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...));    \
-            return (_R(*)() noexcept(_N)) nullptr;                                                 \
+            using _Rp = decltype(__t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...));            \
+            constexpr bool _Np = noexcept(__t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...));   \
+            return (_Rp(*)() noexcept(_Np)) nullptr;                                               \
           } else if constexpr (_TryTagInvoke) {                                                    \
             if constexpr (__has_customized_tag_invoke<_Ty, _Args...>) {                            \
-              using _R =                                                                           \
+              using _Rp =                                                                          \
                 decltype(::stdexec::tag_invoke(_NAME, (_Ty &&) __t, (_Args &&) __args...));        \
-              constexpr bool _N = noexcept(                                                        \
+              constexpr bool _Np = noexcept(                                                       \
                 ::stdexec::tag_invoke(_NAME, (_Ty &&) __t, (_Args &&) __args...));                 \
-              return (_R(*)() noexcept(_N)) nullptr;                                               \
+              return (_Rp(*)() noexcept(_Np)) nullptr;                                             \
             } else {                                                                               \
               return (void (*)() noexcept) nullptr;                                                \
             }                                                                                      \

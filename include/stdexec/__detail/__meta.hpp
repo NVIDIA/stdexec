@@ -34,9 +34,9 @@ namespace stdexec {
 
   // Before gcc-12, gcc really didn't like tuples or variants of immovable types
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
-#  define STDEXEC_IMMOVABLE(_X) _X(_X&&)
+#  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
 #else
-#  define STDEXEC_IMMOVABLE(_X) _X(_X&&) = delete
+#  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
 #endif
 
   // BUG (gcc PR93711): copy elision fails when initializing a
@@ -66,11 +66,11 @@ namespace stdexec {
     __move_only& operator=(const __move_only&) = delete;
   };
 
-  template <class _T>
-  using __t = typename _T::__t;
+  template <class _Tp>
+  using __t = typename _Tp::__t;
 
-  template <bool _B>
-  using __bool = std::bool_constant<_B>;
+  template <bool _Bp>
+  using __bool = std::bool_constant<_Bp>;
 
   template <class _Ty>
   struct __mtype {
@@ -84,26 +84,26 @@ namespace stdexec {
   template <class... _Ts>
   concept __typename = requires { typename __types<_Ts...>; };
 
-  template <class _T>
-  using __midentity = _T;
+  template <class _Tp>
+  using __midentity = _Tp;
 
-  template <std::size_t _N>
-  using __msize_t = char[_N + 1];
+  template <std::size_t _Np>
+  using __msize_t = char[_Np + 1];
 
-  template <class _T>
-  inline constexpr auto __v = _T::value;
+  template <class _Tp>
+  inline constexpr auto __v = _Tp::value;
 
-  template <class _T, class _U>
-  inline constexpr bool __v<std::is_same<_T, _U>> = false;
+  template <class _Tp, class _Up>
+  inline constexpr bool __v<std::is_same<_Tp, _Up>> = false;
 
-  template <class _T>
-  inline constexpr bool __v<std::is_same<_T, _T>> = true;
+  template <class _Tp>
+  inline constexpr bool __v<std::is_same<_Tp, _Tp>> = true;
 
-  template <class _T, _T _I>
-  inline constexpr _T __v<std::integral_constant<_T, _I>> = _I;
+  template <class _Tp, _Tp _Ip>
+  inline constexpr _Tp __v<std::integral_constant<_Tp, _Ip>> = _Ip;
 
-  template <std::size_t _I>
-  inline constexpr std::size_t __v<char[_I]> = _I - 1;
+  template <std::size_t _Ip>
+  inline constexpr std::size_t __v<char[_Ip]> = _Ip - 1;
 
   template <bool>
   struct __i {
@@ -147,8 +147,8 @@ namespace stdexec {
   template <class _Fn, class... _Back>
   using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
-  template <template <class...> class _T, class... _Args>
-  concept __valid = requires { typename __meval<_T, _Args...>; };
+  template <template <class...> class _Tp, class... _Args>
+  concept __valid = requires { typename __meval<_Tp, _Args...>; };
 
   template <class _Fn, class... _Args>
   concept __minvocable = __valid<_Fn::template __f, _Args...>;
@@ -196,10 +196,10 @@ namespace stdexec {
     requires(sizeof...(_False) <= 1)
   using __if_c = __minvoke<__if_<_Pred>, _True, _False...>;
 
-  template <class _T>
+  template <class _Tp>
   struct __mconst {
     template <class...>
-    using __f = _T;
+    using __f = _Tp;
   };
 
   template <class _Fn, class _Default>
@@ -242,57 +242,57 @@ namespace stdexec {
     using __t = __minvoke<_Continuation, _As...>;
   };
 
-  template <class _Continuation, template <class...> class _A, class... _As>
+  template <class _Continuation, template <class...> class _Ap, class... _As>
     requires __minvocable<_Continuation, _As...>
-  struct __mconcat_<_Continuation, _A<_As...>> {
+  struct __mconcat_<_Continuation, _Ap<_As...>> {
     using __t = __minvoke<_Continuation, _As...>;
   };
 
   template <             //
     class _Continuation, //
     template <class...>
-    class _A,
+    class _Ap,
     class... _As, //
     template <class...>
-    class _B,
+    class _Bp,
     class... _Bs>
     requires __minvocable<_Continuation, _As..., _Bs...>
-  struct __mconcat_<_Continuation, _A<_As...>, _B<_Bs...>> {
+  struct __mconcat_<_Continuation, _Ap<_As...>, _Bp<_Bs...>> {
     using __t = __minvoke<_Continuation, _As..., _Bs...>;
   };
 
   template <             //
     class _Continuation, //
     template <class...>
-    class _A,
+    class _Ap,
     class... _As, //
     template <class...>
-    class _B,
+    class _Bp,
     class... _Bs, //
     template <class...>
-    class _C,
+    class _Cp,
     class... _Cs>
     requires __minvocable<_Continuation, _As..., _Bs..., _Cs...>
-  struct __mconcat_<_Continuation, _A<_As...>, _B<_Bs...>, _C<_Cs...>> {
+  struct __mconcat_<_Continuation, _Ap<_As...>, _Bp<_Bs...>, _Cp<_Cs...>> {
     using __t = __minvoke<_Continuation, _As..., _Bs..., _Cs...>;
   };
 
   template <             //
     class _Continuation, //
     template <class...>
-    class _A,
+    class _Ap,
     class... _As, //
     template <class...>
-    class _B,
+    class _Bp,
     class... _Bs, //
     template <class...>
-    class _C,
+    class _Cp,
     class... _Cs, //
     template <class...>
-    class _D,
+    class _Dp,
     class... _Ds, //
     class... _Tail>
-  struct __mconcat_<_Continuation, _A<_As...>, _B<_Bs...>, _C<_Cs...>, _D<_Ds...>, _Tail...>
+  struct __mconcat_<_Continuation, _Ap<_As...>, _Bp<_Bs...>, _Cp<_Cs...>, _Dp<_Ds...>, _Tail...>
     : __mconcat_<_Continuation, __types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> { };
 
   template <class _Continuation = __q<__types>>
@@ -307,19 +307,19 @@ namespace stdexec {
     using __f = __minvoke<_Fn, _Ts...>;
   };
 
-  template <class _Fn, class _T>
+  template <class _Fn, class _Tp>
   struct __uncurry_;
 
-  template <class _Fn, template <class...> class _A, class... _As>
+  template <class _Fn, template <class...> class _Ap, class... _As>
     requires __minvocable<_Fn, _As...>
-  struct __uncurry_<_Fn, _A<_As...>> {
+  struct __uncurry_<_Fn, _Ap<_As...>> {
     using __t = __minvoke<_Fn, _As...>;
   };
 
   template <class _Fn>
   struct __uncurry {
-    template <class _T>
-    using __f = __t<__uncurry_<_Fn, _T>>;
+    template <class _Tp>
+    using __f = __t<__uncurry_<_Fn, _Tp>>;
   };
   template <class _Fn, class _List>
   using __mapply = __minvoke<__uncurry<_Fn>, _List>;
@@ -341,10 +341,10 @@ namespace stdexec {
     using __f = __msize_t<(bool(__v<__minvoke<_Fn, _Ts>>) + ... + 0)>;
   };
 
-  template <class _T>
+  template <class _Tp>
   struct __contains {
     template <class... _Args>
-    using __f = __bool<(__v<std::is_same<_T, _Args>> || ...)>;
+    using __f = __bool<(__v<std::is_same<_Tp, _Args>> || ...)>;
   };
 
   template <class _Continuation = __q<__types>>
@@ -418,54 +418,54 @@ namespace stdexec {
   };
 
   // A very simple std::declval replacement that doesn't handle void
-  template <class _T>
-  _T&& __declval() noexcept;
+  template <class _Tp>
+  _Tp&& __declval() noexcept;
 
   // For copying cvref from one type to another:
   struct __cp {
-    template <class _T>
-    using __f = _T;
+    template <class _Tp>
+    using __f = _Tp;
   };
 
   struct __cpc {
-    template <class _T>
-    using __f = const _T;
+    template <class _Tp>
+    using __f = const _Tp;
   };
 
   struct __cplr {
-    template <class _T>
-    using __f = _T&;
+    template <class _Tp>
+    using __f = _Tp&;
   };
 
   struct __cprr {
-    template <class _T>
-    using __f = _T&&;
+    template <class _Tp>
+    using __f = _Tp&&;
   };
 
   struct __cpclr {
-    template <class _T>
-    using __f = const _T&;
+    template <class _Tp>
+    using __f = const _Tp&;
   };
 
   struct __cpcrr {
-    template <class _T>
-    using __f = const _T&&;
+    template <class _Tp>
+    using __f = const _Tp&&;
   };
 
   template <class>
   extern __cp __cpcvr;
-  template <class _T>
-  extern __cpc __cpcvr<const _T>;
-  template <class _T>
-  extern __cplr __cpcvr<_T&>;
-  template <class _T>
-  extern __cprr __cpcvr<_T&&>;
-  template <class _T>
-  extern __cpclr __cpcvr<const _T&>;
-  template <class _T>
-  extern __cpcrr __cpcvr<const _T&&>;
-  template <class _T>
-  using __copy_cvref_fn = decltype(__cpcvr<_T>);
+  template <class _Tp>
+  extern __cpc __cpcvr<const _Tp>;
+  template <class _Tp>
+  extern __cplr __cpcvr<_Tp&>;
+  template <class _Tp>
+  extern __cprr __cpcvr<_Tp&&>;
+  template <class _Tp>
+  extern __cpclr __cpcvr<const _Tp&>;
+  template <class _Tp>
+  extern __cpcrr __cpcvr<const _Tp&&>;
+  template <class _Tp>
+  using __copy_cvref_fn = decltype(__cpcvr<_Tp>);
 
   template <class _From, class _To>
   using __copy_cvref_t = __minvoke<__copy_cvref_fn<_From>, _To>;
@@ -488,19 +488,19 @@ namespace stdexec {
 
   // For hiding a template type parameter from ADL
   template <class _Ty>
-  struct _X {
-    using __t = struct _T {
+  struct _Xp {
+    using __t = struct _Up {
       using __t = _Ty;
     };
   };
   template <class _Ty>
-  using __x = __t<_X<_Ty>>;
+  using __x = __t<_Xp<_Ty>>;
 
   template <class _Ty>
   concept __has_id = requires { typename _Ty::__id; };
 
   template <class _Ty>
-  struct _Y {
+  struct _Yp {
     using __t = _Ty;
 
     // Uncomment the line below to find any code that likely misuses the
@@ -520,7 +520,7 @@ namespace stdexec {
   template <>
   struct __id_<false> {
     template <class _Ty>
-    using __f = _Y<_Ty>;
+    using __f = _Yp<_Ty>;
   };
   template <class _Ty>
   using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
@@ -584,8 +584,8 @@ namespace stdexec {
   template <class _Fn>
   __conv(_Fn) -> __conv<_Fn>;
 
-  template <class _T>
-  using __cref_t = const std::remove_reference_t<_T>&;
+  template <class _Tp>
+  using __cref_t = const std::remove_reference_t<_Tp>&;
 
   template <class, class, class, class>
   struct __mzip_with2_;
@@ -594,20 +594,20 @@ namespace stdexec {
     class _Fn,           //
     class _Continuation, //
     template <class...>
-    class _C,
+    class _Cp,
     class... _Cs, //
     template <class...>
-    class _D,
+    class _Dp,
     class... _Ds>
     requires requires { typename __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>; }
-  struct __mzip_with2_<_Fn, _Continuation, _C<_Cs...>, _D<_Ds...>> {
+  struct __mzip_with2_<_Fn, _Continuation, _Cp<_Cs...>, _Dp<_Ds...>> {
     using __t = __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>;
   };
 
   template <class _Fn, class _Continuation = __q<__types>>
   struct __mzip_with2 {
-    template <class _C, class _D>
-    using __f = __t<__mzip_with2_<_Fn, _Continuation, _C, _D>>;
+    template <class _Cp, class _Dp>
+    using __f = __t<__mzip_with2_<_Fn, _Continuation, _Cp, _Dp>>;
   };
 
 #if STDEXEC_GCC() && (__GNUC__ < 12)
@@ -615,15 +615,15 @@ namespace stdexec {
   extern int __mconvert_indices;
   template <std::size_t... _Indices>
   extern __types<__msize_t<_Indices>...> __mconvert_indices<std::index_sequence<_Indices...>>;
-  template <std::size_t _N>
+  template <std::size_t _Np>
   using __mmake_index_sequence =
-    decltype(stdexec::__mconvert_indices<std::make_index_sequence<_N>>);
+    decltype(stdexec::__mconvert_indices<std::make_index_sequence<_Np>>);
 #else
   template <std::size_t... _Indices>
   __types<__msize_t<_Indices>...> __mconvert_indices(std::index_sequence<_Indices...>*);
-  template <std::size_t _N>
+  template <std::size_t _Np>
   using __mmake_index_sequence =
-    decltype(stdexec::__mconvert_indices((std::make_index_sequence<_N>*) nullptr));
+    decltype(stdexec::__mconvert_indices((std::make_index_sequence<_Np>*) nullptr));
 #endif
 
   template <class... _Ts>
@@ -685,8 +685,8 @@ namespace stdexec {
   };
 
 #if __has_builtin(__type_pack_element)
-  template <std::size_t _N, class... _Ts>
-  using __m_at = __type_pack_element<_N, _Ts...>;
+  template <std::size_t _Np, class... _Ts>
+  using __m_at = __type_pack_element<_Np, _Ts...>;
 #else
   template <std::size_t>
   using __void_ptr = void*;
@@ -699,20 +699,20 @@ namespace stdexec {
 
   template <std::size_t... _Is>
   struct __m_at_<std::index_sequence<_Is...>> {
-    template <class _U, class... _Us>
-    static _U __f_(__void_ptr<_Is>..., _U*, _Us*...);
+    template <class _Up, class... _Us>
+    static _Up __f_(__void_ptr<_Is>..., _Up*, _Us*...);
     template <class... _Ts>
     using __f = __t<decltype(__m_at_::__f_(__mtype_ptr<_Ts>()...))>;
   };
 
-  template <std::size_t _N, class... _Ts>
-  using __m_at = __minvoke<__m_at_<std::make_index_sequence<_N>>, _Ts...>;
+  template <std::size_t _Np, class... _Ts>
+  using __m_at = __minvoke<__m_at_<std::make_index_sequence<_Np>>, _Ts...>;
 #endif
 
-  template <std::size_t _N>
+  template <std::size_t _Np>
   struct __placeholder_;
-  template <std::size_t _N>
-  using __placeholder = __placeholder_<_N>*;
+  template <std::size_t _Np>
+  using __placeholder = __placeholder_<_Np>*;
 
   using __0 = __placeholder<0>;
   using __1 = __placeholder<1>;
@@ -728,8 +728,8 @@ namespace stdexec {
     }
   };
 
-  template <template <class...> class _C, class _Noexcept = __bool<true>>
-  using __mconstructor_for = __mcompose<__q<__mconstruct>, __q<_C>>;
+  template <template <class...> class _Cp, class _Noexcept = __bool<true>>
+  using __mconstructor_for = __mcompose<__q<__mconstruct>, __q<_Cp>>;
 
   template <std::size_t>
   using __ignore_t = __ignore;
@@ -739,11 +739,11 @@ namespace stdexec {
     return (_Ty&&) __t;
   }
 
-  template <std::size_t _N, class... _Ts>
+  template <std::size_t _Np, class... _Ts>
   constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
     return [&]<std::size_t... _Is>(std::index_sequence<_Is...>*) noexcept -> decltype(auto) {
       return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
-    }((std::make_index_sequence<_N>*) nullptr);
+    }((std::make_index_sequence<_Np>*) nullptr);
   }
 
   template <class _Ty>
@@ -754,35 +754,35 @@ namespace stdexec {
     }
   };
 
-  template <std::size_t _N>
-  struct __mdispatch_<__placeholder<_N>> {
+  template <std::size_t _Np>
+  struct __mdispatch_<__placeholder<_Np>> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      return stdexec::__nth_pack_element<_N>((_Ts&&) __ts...);
+      return stdexec::__nth_pack_element<_Np>((_Ts&&) __ts...);
     }
   };
 
-  template <std::size_t _N>
-  struct __mdispatch_<__placeholder<_N>&> {
+  template <std::size_t _Np>
+  struct __mdispatch_<__placeholder<_Np>&> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      return stdexec::__nth_pack_element<_N>(__ts...);
+      return stdexec::__nth_pack_element<_Np>(__ts...);
     }
   };
 
-  template <std::size_t _N>
-  struct __mdispatch_<__placeholder<_N>&&> {
+  template <std::size_t _Np>
+  struct __mdispatch_<__placeholder<_Np>&&> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      return std::move(stdexec::__nth_pack_element<_N>(__ts...));
+      return std::move(stdexec::__nth_pack_element<_Np>(__ts...));
     }
   };
 
-  template <std::size_t _N>
-  struct __mdispatch_<const __placeholder<_N>&> {
+  template <std::size_t _Np>
+  struct __mdispatch_<const __placeholder<_Np>&> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      return std::as_const(stdexec::__nth_pack_element<_N>(__ts...));
+      return std::as_const(stdexec::__nth_pack_element<_Np>(__ts...));
     }
   };
 
@@ -827,8 +827,8 @@ namespace stdexec {
   template <class _Signatures, class _Continuation = __q<__mfront>>
   struct __which { };
 
-  template <template <class...> class _C, class... _Signatures, class _Continuation>
-  struct __which<_C<_Signatures...>, _Continuation> {
+  template <template <class...> class _Cp, class... _Signatures, class _Continuation>
+  struct __which<_Cp<_Signatures...>, _Continuation> {
     template <class... _Args>
     using __f = //
       __minvoke<

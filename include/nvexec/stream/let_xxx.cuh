@@ -28,8 +28,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       new (result) ResultSenderT(fn((As&&) as...));
     }
 
-    template <class _T>
-    using __decay_ref = stdexec::decay_t<_T>&;
+    template <class _Tp>
+    using __decay_ref = stdexec::decay_t<_Tp>&;
 
     template <class _Fun>
     using __result_sender = //

@@ -64,8 +64,8 @@ namespace exec {
           }
         };
       };
-      template <class _R>
-      using __receiver = __t<__receiver_id<_R>>;
+      template <class _Rec>
+      using __receiver = __t<__receiver_id<_Rec>>;
 
       template <class _Sender>
       struct __sender_id {

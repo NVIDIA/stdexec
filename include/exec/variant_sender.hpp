@@ -34,7 +34,7 @@ namespace exec {
         STDEXEC_CPO_ACCESS(start_t);
 
         STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
-          std::visit([](auto& __s) { stdexec::start(__s); }, __self.__variant_);
+          std::visit([](auto& __op) { stdexec::start(__op); }, __self.__variant_);
         }
 
        public:
@@ -58,10 +58,10 @@ namespace exec {
       struct __visitor {
         _Receiver __r;
 
-        template <class _S>
+        template <class _Sender>
         stdexec::__t< __operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
-          operator()(_S&& __s) const {
-          return {(_S&&) __s, (_Receiver&&) __r};
+          operator()(_Sender&& __sndr) const {
+          return {(_Sender&&) __sndr, (_Receiver&&) __r};
         }
       };
 

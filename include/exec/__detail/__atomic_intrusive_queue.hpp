@@ -22,11 +22,11 @@ namespace exec {
   template <auto _NextPtr>
   class __atomic_intrusive_queue;
 
-  template <class _T, _T* _T::*_NextPtr>
+  template <class _Tp, _Tp* _Tp::*_NextPtr>
   class __atomic_intrusive_queue<_NextPtr> {
    public:
-    using __node_pointer = _T*;
-    using __atomic_node_pointer = std::atomic<_T*>;
+    using __node_pointer = _Tp*;
+    using __atomic_node_pointer = std::atomic<_Tp*>;
 
     [[nodiscard]] bool empty() const noexcept {
       return __head_.load(std::memory_order_relaxed) == nullptr;

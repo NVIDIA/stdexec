@@ -47,8 +47,8 @@ disable_compiler_launcher(LANG CUDA VAR _cuda_launcher)
 
 project(STDEXEC VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
 
-enable_compiler_launcher(LANG CXX VAR _cxx_launcher)
-enable_compiler_launcher(LANG CUDA VAR _cuda_launcher)
+# enable_compiler_launcher(LANG CXX VAR _cxx_launcher)
+# enable_compiler_launcher(LANG CUDA VAR _cuda_launcher)
 
 # Print CMake configuration
 message(STATUS "System           : ${CMAKE_SYSTEM}")

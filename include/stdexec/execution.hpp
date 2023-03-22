@@ -144,11 +144,12 @@ namespace stdexec {
     using __cref_t = decltype(__scheduler_queries::__cref_fn(__declval<_Ty>()));
 
     struct execute_may_block_caller_t : __query<execute_may_block_caller_t> {
-      template <class _T>
-        requires tag_invocable<execute_may_block_caller_t, __cref_t<_T>>
-      constexpr bool operator()(_T&& __t) const noexcept {
-        static_assert(same_as<bool, tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_T>>>);
-        static_assert(nothrow_tag_invocable<execute_may_block_caller_t, __cref_t<_T>>);
+      template <class _Tp>
+        requires tag_invocable<execute_may_block_caller_t, __cref_t<_Tp>>
+      constexpr bool operator()(_Tp&& __t) const noexcept {
+        static_assert(
+          same_as<bool, tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_Tp>>>);
+        static_assert(nothrow_tag_invocable<execute_may_block_caller_t, __cref_t<_Tp>>);
         return tag_invoke(execute_may_block_caller_t{}, std::as_const(__t));
       }
 
@@ -200,8 +201,8 @@ namespace stdexec {
           : __value_(((__with&&) __w).__value_) {
         }
 
-        template <same_as<_Tag> _T, class... _Ts>
-        friend __val_or_ref_t tag_invoke(_T, const __t& __self, _Ts&&...) //
+        template <same_as<_Tag> _Tp, class... _Ts>
+        friend __val_or_ref_t tag_invoke(_Tp, const __t& __self, _Ts&&...) //
           noexcept(std::is_nothrow_copy_constructible_v<__val_or_ref_t>) {
           return __self.__value_;
         }
@@ -219,8 +220,8 @@ namespace stdexec {
         __t(__with) {
         }
 
-        template <same_as<_Tag> _T, class... _Ts>
-        friend void tag_invoke(_T, const __t&, _Ts&&...) = delete;
+        template <same_as<_Tag> _Tp, class... _Ts>
+        friend void tag_invoke(_Tp, const __t&, _Ts&&...) = delete;
       };
     };
 
@@ -1056,11 +1057,11 @@ namespace stdexec {
     using __cref_t = decltype(__scheduler_queries::__cref_fn(__declval<_Ty>()));
 
     struct get_forward_progress_guarantee_t : __query<get_forward_progress_guarantee_t> {
-      template <class _T>
-        requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>
-      constexpr auto operator()(_T&& __t) const
-        noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_T>>)
-          -> tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_T>> {
+      template <class _Tp>
+        requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_Tp>>
+      constexpr auto operator()(_Tp&& __t) const
+        noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_Tp>>)
+          -> tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_Tp>> {
         return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t));
       }
 
@@ -1070,13 +1071,13 @@ namespace stdexec {
     };
 
     struct __has_algorithm_customizations_t : __query<__has_algorithm_customizations_t> {
-      template <class _T>
-      using __result_t = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
+      template <class _Tp>
+      using __result_t = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_Tp>>;
 
-      template <class _T>
-        requires tag_invocable<__has_algorithm_customizations_t, __cref_t<_T>>
-      constexpr __result_t<_T> operator()(_T&& __t) const noexcept(noexcept(__result_t<_T>{})) {
-        using _Boolean = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_T>>;
+      template <class _Tp>
+        requires tag_invocable<__has_algorithm_customizations_t, __cref_t<_Tp>>
+      constexpr __result_t<_Tp> operator()(_Tp&& __t) const noexcept(noexcept(__result_t<_Tp>{})) {
+        using _Boolean = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_Tp>>;
         static_assert(_Boolean{} ? true : true); // must be contextually convertible to bool
         return _Boolean{};
       }
@@ -1157,12 +1158,12 @@ namespace stdexec {
         return true;
       }
 
-      template <class _T>
-        requires nothrow_tag_invocable<get_delegatee_scheduler_t, __cref_t<_T>>
-              && scheduler<tag_invoke_result_t<get_delegatee_scheduler_t, __cref_t<_T>>>
-      auto operator()(_T&& __t) const
-        noexcept(nothrow_tag_invocable<get_delegatee_scheduler_t, __cref_t<_T>>)
-          -> tag_invoke_result_t<get_delegatee_scheduler_t, __cref_t<_T>> {
+      template <class _Tp>
+        requires nothrow_tag_invocable<get_delegatee_scheduler_t, __cref_t<_Tp>>
+              && scheduler<tag_invoke_result_t<get_delegatee_scheduler_t, __cref_t<_Tp>>>
+      auto operator()(_Tp&& __t) const
+        noexcept(nothrow_tag_invocable<get_delegatee_scheduler_t, __cref_t<_Tp>>)
+          -> tag_invoke_result_t<get_delegatee_scheduler_t, __cref_t<_Tp>> {
         return tag_invoke(get_delegatee_scheduler_t{}, std::as_const(__t));
       }
 
@@ -1218,8 +1219,8 @@ namespace stdexec {
   inline constexpr get_allocator_t get_allocator{};
   inline constexpr get_stop_token_t get_stop_token{};
 
-  template <class _T>
-  using stop_token_of_t = remove_cvref_t<decltype(get_stop_token(__declval<_T>()))>;
+  template <class _Tp>
+  using stop_token_of_t = remove_cvref_t<decltype(get_stop_token(__declval<_Tp>()))>;
 
   template <receiver _Receiver>
   using __current_scheduler_t = __call_result_t<get_scheduler_t, env_of_t<_Receiver>>;
@@ -1512,13 +1513,13 @@ namespace stdexec {
   namespace __connect {
     struct connect_t;
 
-    template <class _T>
+    template <class _Tp>
     STDEXEC_R5_SENDER_DEPR_WARNING //
       void
       __update_sender_type_to_p2300r7_by_adding_enable_sender_trait() {
     }
 
-    template <class _T>
+    template <class _Tp>
     STDEXEC_R5_RECEIVER_DEPR_WARNING //
       void
       __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait() {
@@ -1889,41 +1890,41 @@ namespace stdexec {
     };
 
     struct as_awaitable_t {
-      template <class _T, class _Promise>
+      template <class _Tp, class _Promise>
       static constexpr auto __select_impl_() noexcept {
-        if constexpr (tag_invocable<as_awaitable_t, _T, _Promise&>) {
-          using _Result = tag_invoke_result_t<as_awaitable_t, _T, _Promise&>;
-          constexpr bool _Nothrow = nothrow_tag_invocable<as_awaitable_t, _T, _Promise&>;
+        if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
+          using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
+          constexpr bool _Nothrow = nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__awaitable<_T, __unspecified>) { // NOT __awaitable<_T, _Promise> !!
-          return static_cast < _T && (*) () noexcept > (nullptr);
-        } else if constexpr (__awaitable_sender<_T, _Promise>) {
-          using _Result = __sender_awaitable_t<_Promise, _T>;
+        } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
+          return static_cast < _Tp && (*) () noexcept > (nullptr);
+        } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
+          using _Result = __sender_awaitable_t<_Promise, _Tp>;
           constexpr bool _Nothrow =
-            __nothrow_constructible_from<_Result, _T, __coro::coroutine_handle<_Promise>>;
+            __nothrow_constructible_from<_Result, _Tp, __coro::coroutine_handle<_Promise>>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else {
-          return static_cast < _T && (*) () noexcept > (nullptr);
+          return static_cast < _Tp && (*) () noexcept > (nullptr);
         }
       }
-      template <class _T, class _Promise>
-      using __select_impl_t = decltype(__select_impl_<_T, _Promise>());
+      template <class _Tp, class _Promise>
+      using __select_impl_t = decltype(__select_impl_<_Tp, _Promise>());
 
-      template <class _T, class _Promise>
-      auto operator()(_T&& __t, _Promise& __promise) const
-        noexcept(__nothrow_callable<__select_impl_t<_T, _Promise>>)
-          -> __call_result_t<__select_impl_t<_T, _Promise>> {
-        if constexpr (tag_invocable<as_awaitable_t, _T, _Promise&>) {
-          using _Result = tag_invoke_result_t<as_awaitable_t, _T, _Promise&>;
+      template <class _Tp, class _Promise>
+      auto operator()(_Tp&& __t, _Promise& __promise) const
+        noexcept(__nothrow_callable<__select_impl_t<_Tp, _Promise>>)
+          -> __call_result_t<__select_impl_t<_Tp, _Promise>> {
+        if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
+          using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
           static_assert(__awaitable<_Result, _Promise>);
-          return tag_invoke(*this, (_T&&) __t, __promise);
-        } else if constexpr (__awaitable<_T, __unspecified>) { // NOT __awaitable<_T, _Promise> !!
-          return (_T&&) __t;
-        } else if constexpr (__awaitable_sender<_T, _Promise>) {
+          return tag_invoke(*this, (_Tp&&) __t, __promise);
+        } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
+          return (_Tp&&) __t;
+        } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
           auto __hcoro = __coro::coroutine_handle<_Promise>::from_promise(__promise);
-          return __sender_awaitable_t<_Promise, _T>{(_T&&) __t, __hcoro};
+          return __sender_awaitable_t<_Promise, _Tp>{(_Tp&&) __t, __hcoro};
         } else {
-          return (_T&&) __t;
+          return (_Tp&&) __t;
         }
       }
     };
@@ -2387,22 +2388,22 @@ namespace stdexec {
 
   // NOT TO SPEC:
   namespace __closure {
-    template <__class _D>
+    template <__class _Dp>
     struct sender_adaptor_closure;
   }
 
   using __closure::sender_adaptor_closure;
 
-  template <class _T>
+  template <class _Tp>
   concept __sender_adaptor_closure =
-    derived_from<remove_cvref_t<_T>, sender_adaptor_closure<remove_cvref_t<_T>>>
-    && move_constructible<remove_cvref_t<_T>> && constructible_from<remove_cvref_t<_T>, _T>;
+    derived_from<remove_cvref_t<_Tp>, sender_adaptor_closure<remove_cvref_t<_Tp>>>
+    && move_constructible<remove_cvref_t<_Tp>> && constructible_from<remove_cvref_t<_Tp>, _Tp>;
 
-  template <class _T, class _Sender>
+  template <class _Tp, class _Sender>
   concept __sender_adaptor_closure_for =
-    __sender_adaptor_closure<_T> && sender<remove_cvref_t<_Sender>>
-    && __callable<_T, remove_cvref_t<_Sender>>
-    && sender<__call_result_t<_T, remove_cvref_t<_Sender>>>;
+    __sender_adaptor_closure<_Tp> && sender<remove_cvref_t<_Sender>>
+    && __callable<_Tp, remove_cvref_t<_Sender>>
+    && sender<__call_result_t<_Tp, remove_cvref_t<_Sender>>>;
 
   namespace __closure {
     template <class _T0, class _T1>
@@ -2424,7 +2425,7 @@ namespace stdexec {
       }
     };
 
-    template <__class _D>
+    template <__class _Dp>
     struct sender_adaptor_closure { };
 
     template <sender _Sender, __sender_adaptor_closure_for<_Sender> _Closure>
@@ -2469,15 +2470,15 @@ namespace stdexec {
   namespace __adaptors {
     // A derived-to-base cast that works even when the base is not
     // accessible from derived.
-    template <class _T, class _U>
+    template <class _Tp, class _Up>
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      __copy_cvref_t<_U&&, _T>
-      __c_cast(_U&& u) noexcept
-      requires __decays_to<_T, _T>
+      __copy_cvref_t<_Up&&, _Tp>
+      __c_cast(_Up&& u) noexcept
+      requires __decays_to<_Tp, _Tp>
     {
-      static_assert(std::is_reference_v<__copy_cvref_t<_U&&, _T>>);
-      static_assert(std::is_base_of_v<_T, std::remove_reference_t<_U>>);
-      return (__copy_cvref_t<_U&&, _T>) (_U&&) u;
+      static_assert(std::is_reference_v<__copy_cvref_t<_Up&&, _Tp>>);
+      static_assert(std::is_base_of_v<_Tp, std::remove_reference_t<_Up>>);
+      return (__copy_cvref_t<_Up&&, _Tp>) (_Up&&) u;
     }
 
     namespace __no {
@@ -2547,14 +2548,14 @@ namespace stdexec {
 
 #if STDEXEC_CLANG()
 // Only clang gets this right.
-#  define _MISSING_MEMBER(_D, _TAG) requires { typename _D::_TAG; }
+#  define _MISSING_MEMBER(_Dp, _TAG) requires { typename _Dp::_TAG; }
 #  define _DEFINE_MEMBER(_TAG) _DISPATCH_MEMBER(_TAG) using _TAG = void
 #else
-#  define _MISSING_MEMBER(_D, _TAG) (__missing_##_TAG<_D>())
+#  define _MISSING_MEMBER(_Dp, _TAG) (__missing_##_TAG<_Dp>())
 #  define _DEFINE_MEMBER(_TAG)                                                                     \
-    template <class _D>                                                                            \
+    template <class _Dp>                                                                           \
     static constexpr bool __missing_##_TAG() noexcept {                                            \
-      return requires { requires bool(int(_D::_TAG)); };                                           \
+      return requires { requires bool(int(_Dp::_TAG)); };                                          \
     }                                                                                              \
     _DISPATCH_MEMBER(_TAG)                                                                         \
     static constexpr int _TAG = 1 /**/
@@ -2571,23 +2572,23 @@ namespace stdexec {
 
         static constexpr bool __has_base = !derived_from<_Base, __no::__nope>;
 
-        template <class _D>
-        using __base_from_derived_t = decltype(__declval<_D>().base());
+        template <class _Dp>
+        using __base_from_derived_t = decltype(__declval<_Dp>().base());
 
         using __get_base_t =
           __if_c< __has_base, __mbind_back_q<__copy_cvref_t, _Base>, __q<__base_from_derived_t>>;
 
-        template <class _D>
-        using __base_t = __minvoke<__get_base_t, _D&&>;
+        template <class _Dp>
+        using __base_t = __minvoke<__get_base_t, _Dp&&>;
 
-        template <class _D>
+        template <class _Dp>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          static __base_t<_D>
-          __get_base(_D&& __self) noexcept {
+          static __base_t<_Dp>
+          __get_base(_Dp&& __self) noexcept {
           if constexpr (__has_base) {
-            return __c_cast<__t>((_D&&) __self).base();
+            return __c_cast<__t>((_Dp&&) __self).base();
           } else {
-            return ((_D&&) __self).base();
+            return ((_Dp&&) __self).base();
           }
         }
 
@@ -2600,12 +2601,12 @@ namespace stdexec {
           _CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...);
         }
 
-        template <same_as<set_value_t> _SetValue, class _D = _Derived, class... _As>
-          requires _MISSING_MEMBER(_D, set_value)
-                && tag_invocable<set_value_t, __base_t<_D>, _As...>
+        template <same_as<set_value_t> _SetValue, class _Dp = _Derived, class... _As>
+          requires _MISSING_MEMBER(_Dp, set_value)
+                && tag_invocable<set_value_t, __base_t<_Dp>, _As...>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
-          stdexec::set_value(__get_base((_D&&) __self), (_As&&) __as...);
+          stdexec::set_value(__get_base((_Dp&&) __self), (_As&&) __as...);
         }
 
         template <same_as<set_error_t> _SetError, class _Error>
@@ -2617,44 +2618,44 @@ namespace stdexec {
           _CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err);
         }
 
-        template <same_as<set_error_t> _SetError, class _Error, class _D = _Derived>
-          requires _MISSING_MEMBER(_D, set_error)
-                && tag_invocable<set_error_t, __base_t<_D>, _Error>
+        template <same_as<set_error_t> _SetError, class _Error, class _Dp = _Derived>
+          requires _MISSING_MEMBER(_Dp, set_error)
+                && tag_invocable<set_error_t, __base_t<_Dp>, _Error>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend void tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
           stdexec::set_error(__get_base((_Derived&&) __self), (_Error&&) __err);
         }
 
-        template <same_as<set_stopped_t> _SetStopped, class _D = _Derived>
+        template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto
           tag_invoke(_SetStopped, _Derived&& __self) noexcept
-          -> decltype(_CALL_MEMBER(set_stopped, (_D&&) __self)) {
+          -> decltype(_CALL_MEMBER(set_stopped, (_Dp&&) __self)) {
           static_assert(noexcept(_CALL_MEMBER(set_stopped, (_Derived&&) __self)));
           _CALL_MEMBER(set_stopped, (_Derived&&) __self);
         }
 
-        template <same_as<set_stopped_t> _SetStopped, class _D = _Derived>
-          requires _MISSING_MEMBER(_D, set_stopped) && tag_invocable<set_stopped_t, __base_t<_D>>
+        template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
+          requires _MISSING_MEMBER(_Dp, set_stopped) && tag_invocable<set_stopped_t, __base_t<_Dp>>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend void tag_invoke(_SetStopped, _Derived&& __self) noexcept {
           stdexec::set_stopped(__get_base((_Derived&&) __self));
         }
 
         // Pass through the get_env receiver query
-        template <same_as<get_env_t> _GetEnv, class _D = _Derived>
+        template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto
           tag_invoke(_GetEnv, const _Derived& __self)
-            -> decltype(_CALL_MEMBER(get_env, (const _D&) __self)) {
+            -> decltype(_CALL_MEMBER(get_env, (const _Dp&) __self)) {
           return _CALL_MEMBER(get_env, __self);
         }
 
-        template <same_as<get_env_t> _GetEnv, class _D = _Derived>
-          requires _MISSING_MEMBER(_D, get_env)
+        template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
+          requires _MISSING_MEMBER(_Dp, get_env)
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto tag_invoke(_GetEnv, const _Derived& __self)
-            -> __call_result_t<get_env_t, __base_t<const _D&>> {
+            -> __call_result_t<get_env_t, __base_t<const _Dp&>> {
           return stdexec::get_env(__get_base(__self));
         }
 
@@ -3979,8 +3980,8 @@ namespace stdexec {
   // [execution.senders.adaptors.let_error]
   // [execution.senders.adaptors.let_stopped]
   namespace __let {
-    template <class _T>
-    using __decay_ref = decay_t<_T>&;
+    template <class _Tp>
+    using __decay_ref = decay_t<_Tp>&;
 
     template <class _Fun>
     using __result_sender = __transform< __q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>;
@@ -5289,8 +5290,8 @@ namespace stdexec {
     template <class _Env>
     using __env_t = __t<__if_c<same_as<_Env, no_env>, no_env, __env<__id<_Env>>>>;
 
-    template <class _T>
-    using __decay_rvalue_ref = decay_t<_T>&&;
+    template <class _Tp>
+    using __decay_rvalue_ref = decay_t<_Tp>&&;
 
     template <class _Sender, class _Env>
     concept __max1_sender =
