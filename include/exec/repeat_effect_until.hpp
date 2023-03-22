@@ -79,10 +79,10 @@ namespace exec {
         STDEXEC_ASSERT(__op_ != nullptr);
       }
 
-      template <convertible_to<bool> _Done>
+      template <same_as<__t> _Self, convertible_to<bool> _Done>
         requires __callable<set_value_t, _Receiver>
               && __callable<set_error_t, _Receiver, std::exception_ptr>
-      friend void tag_invoke(set_value_t, __t &&__self, _Done &&__done_ish) noexcept {
+      friend void tag_invoke(set_value_t, _Self &&__self, _Done &&__done_ish) noexcept {
         bool __done = static_cast<bool>(__done_ish); // BUGBUG potentially throwing.
         auto *__op = __self.__op_;
 
@@ -104,17 +104,17 @@ namespace exec {
         }
       }
 
-      friend void tag_invoke(set_stopped_t, __t &&__self) noexcept
+      template <same_as<__t> _Self>
         requires __callable<set_stopped_t, _Receiver>
-      {
+      friend void tag_invoke(set_stopped_t, _Self &&__self) noexcept {
         auto *__op = __self.__op_;
         __op->__source_op_.__destruct();
         stdexec::set_stopped((_Receiver &&) __op->__rcvr_);
       }
 
-      template <class _Error>
+      template <same_as<__t> _Self, class _Error>
         requires __callable<set_error_t, _Receiver, _Error>
-      friend void tag_invoke(set_error_t, __t &&__self, _Error __error) noexcept {
+      friend void tag_invoke(set_error_t, _Self &&__self, _Error __error) noexcept {
         auto *__op = __self.__op_;
         __op->__source_op_.__destruct();
         stdexec::set_error((_Receiver &&) __op->__rcvr_, (_Error &&) __error);
