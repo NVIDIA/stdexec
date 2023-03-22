@@ -659,11 +659,15 @@ namespace stdexec {
     using __f = __msize_t<(sizeof...(_Args) - __v<__minvoke<__mfind_if<_Fn, __msize>, _Args...>>)>;
   };
 
-  template <class... _Booleans>
-  using __mand = __bool<(__v<_Booleans> && ...)>;
-  template <class... _Booleans>
-  using __mor = __bool<(__v<_Booleans> || ...)>;
+
   template <class _Boolean>
+  concept __has_value = requires { _Boolean::value; };
+
+  template <__has_value... _Booleans>
+  using __mand = __bool<(__v<_Booleans> && ...)>;
+  template <__has_value... _Booleans>
+  using __mor = __bool<(__v<_Booleans> || ...)>;
+  template <__has_value _Boolean>
   using __mnot = __bool<!__v<_Boolean>>;
 
   template <class _Fn>

@@ -33,21 +33,21 @@ namespace exec {
       set_value_t,
       _Sigs,
       __mbind_front_q<__decayed_tuple, set_value_t>,
-      __q<__types>>;
+      __q<__types>, true>;
 
     template <class _Sigs>
     using __error_types_ = __gather_signal<
       set_error_t,
       _Sigs,
       __mbind_front_q<__decayed_tuple, set_error_t>,
-      __q<__types>>;
+      __q<__types>, true>;
 
     template <class _Sigs>
     using __stopped_types_ = __gather_signal<
       set_stopped_t,
       _Sigs,
       __mbind_front_q<__decayed_tuple, set_stopped_t>,
-      __q<__types>>;
+      __q<__types>, true>;
 
     template <class _Sigs>
     using __result_variant = __minvoke<

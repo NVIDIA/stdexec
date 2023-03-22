@@ -413,6 +413,20 @@ namespace stdexec {
   using __as_awaitable::as_awaitable_t;
   extern const as_awaitable_t as_awaitable;
 
+
+  template <class _Fn, class... _Args>
+  struct _ERRONEOUS_SUBSTITUTION_ {
+    friend auto operator,(_ERRONEOUS_SUBSTITUTION_, auto) -> _ERRONEOUS_SUBSTITUTION_ {
+      return {};
+    }
+  };
+
+  
+  template <class _Fn>
+  using error_transformation_t =
+    __mbind_front_q<_ERRONEOUS_SUBSTITUTION_, _Fn>;
+
+
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   namespace __compl_sigs {
@@ -435,7 +449,8 @@ namespace stdexec {
     inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
 
 #else
-
+    template <class _Fn, class... _Args>
+    __types<_ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>> __test(_ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>*);
     template <same_as<set_value_t> _Tag, class _Ty = __q<__types>, class... _Args>
     __types<__minvoke<_Ty, _Args...>> __test(_Tag (*)(_Args...));
     template <same_as<set_error_t> _Tag, class _Ty = __q<__types>, class _Error>
@@ -687,10 +702,47 @@ namespace stdexec {
   using __get_completion_signatures::get_completion_signatures_t;
   inline constexpr get_completion_signatures_t get_completion_signatures{};
 
+  namespace __debug {
+    struct __is_debug_env_t {
+      friend constexpr bool tag_invoke(forwarding_query_t, const __is_debug_env_t&) noexcept {
+        return true;
+      }
+      template <class _Env>
+        requires tag_invocable<__is_debug_env_t, _Env>
+      void operator()(_Env&&) const noexcept;
+    };
+    template <class _Env>
+    using __debug_env_t = __make_env_t<_Env, __with<__is_debug_env_t, bool>>;
+  } // namespace __debug
+
+  using __debug::__is_debug_env_t;
+  using __debug::__debug_env_t;
+
+  template <class _Sig>
+  std::true_type __is_successful_signal_transform_fn(_Sig*);
+
+  template <class _Fn, class... _Args>
+  std::false_type __is_successful_signal_transform_fn(_ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>*);
+
+  template <class _Type>
+  using __is_successful_signal_transform = decltype(__is_successful_signal_transform_fn((decay_t<_Type>*) 0));
+
+  template <class... _Sigs>
+  auto __has_successful_signal_transforms(completion_signatures<_Sigs...>*)
+    -> decltype((__declval<_Sigs>(), ...));
+
+  auto __has_successful_signal_transforms(__compl_sigs::__dependent*) -> std::true_type;
+
+  template <class _Completions>
+  concept __is_valid_completion_signal_transform = __is_successful_signal_transform<decltype(__has_successful_signal_transforms((_Completions*) 0))>::value;
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
   template <class _Sender, class _Env>
   using __completion_signatures_of_t = __call_result_t< get_completion_signatures_t, _Sender, _Env>;
+
+  template <class _Sender, class _Env>
+  concept __has_no_substition_errors_in_completion_signatures = __is_valid_completion_signal_transform<__completion_signatures_of_t<_Sender, __debug_env_t<_Env>>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
@@ -719,6 +771,7 @@ namespace stdexec {
   // with R5-style senders.
   template <class _Sender, class _Env = no_env>
   concept __sender =
+    __has_no_substition_errors_in_completion_signatures<_Sender, _Env> &&
     // Double-negation here is to make this an atomic constraint
     (!!(
       (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
@@ -799,35 +852,32 @@ namespace stdexec {
     __select_completions_for_or<_Tag, __mbind_front_q<__set_tag_type, _Tag>>,
     __remove<__, __q<completion_signatures>>>;
 
-  template <class _Tag, class _Completions, class _Tuple, class _Variant>
-  struct _ERRONEOUS_SIGNAL_TRANSFORMATION_ {
-    template <class _Sig>
-    struct _WITH_SIGNAL_ { };
-  };
-
   template <class _Fn, class _Alt>
   struct __with_fn {
     template <class... _Args>
     using __f = __minvoke<__if_c<__minvocable<_Fn, _Args...>, _Fn, _Alt>, _Args...>;
   };
 
-  template <class _Tag, class _Completions, class _Tuple, class _Variant>
-  using error_transformation_t =
-    __q<_ERRONEOUS_SIGNAL_TRANSFORMATION_<_Tag, _Completions, _Tuple, _Variant>::template _WITH_SIGNAL_>;
+  template <class _Variant>
+  struct __check_for_errors {
+    template <class... _Types>
+      requires (__is_successful_signal_transform<_Types>::value && ...)
+    using __f = __minvoke<_Variant, _Types...>;
+  };
 
-  template <class _Tag, class _Completions, class _Tuple, class _Variant>
+  template <class _Tag, class _Completions, class _Tuple, class _Variant, bool _WithCheck>
   using __gather_signal = __compl_sigs::
     __for_all_sigs<
       __only_gather_signal<_Tag, _Completions>, 
       __with_fn<
         __invoke_completions<_Tuple>, 
-        __invoke_completions<__mcompose<error_transformation_t<_Tag, _Completions, _Tuple, _Variant>, __mbind_front_q<__set_tag_type, _Tag>>>>,
-      _Variant>;
+        __invoke_completions<__mcompose<error_transformation_t<_Tuple>, __mbind_front_q<__set_tag_type, _Tag>>>>,
+      __if_c<_WithCheck, __check_for_errors<_Variant>, __with_fn<_Variant, error_transformation_t<_Variant>>>>;
 
   template <class _Tag, class _Sender, class _Env, class _Tuple, class _Variant>
     requires sender_in<_Sender, _Env>
   using __gather_completions_for =
-    __gather_signal<_Tag, completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
+    __gather_signal<_Tag, completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant, !tag_invocable<__is_debug_env_t, _Env>>;
 
   template <                             //
     class _Sender,                       //
@@ -910,7 +960,10 @@ namespace stdexec {
     using __compl_sigs_t = //
       __concat_completion_signatures_t<
         _Sigs,
-        __value_types_of_t<_Sender, _Env, _SetValue, __q<__ensure_concat>>,
+        __value_types_of_t<_Sender, _Env, _SetValue, 
+            __with_fn<
+              __q<__ensure_concat>, 
+              __mcompose<__q<completion_signatures>, error_transformation_t<__q<__ensure_concat>>>>>,
         __error_types_of_t<_Sender, _Env, __transform<_SetError, __q<__ensure_concat>>>,
         __if_c<sends_stopped<_Sender, _Env>, _SetStopped, completion_signatures<>>>;
 
@@ -1468,17 +1521,6 @@ namespace stdexec {
   inline constexpr forwarding_sender_query_t forwarding_sender_query{};
 
   namespace __debug {
-    struct __is_debug_env_t {
-      friend constexpr bool tag_invoke(forwarding_query_t, const __is_debug_env_t&) noexcept {
-        return true;
-      }
-      template <class _Env>
-        requires tag_invocable<__is_debug_env_t, _Env>
-      void operator()(_Env&&) const noexcept;
-    };
-    template <class _Env>
-    using __debug_env_t = __make_env_t<_Env, __with<__is_debug_env_t, bool>>;
-
     struct __debug_op_state {
       __debug_op_state(auto&&);
       __debug_op_state(__debug_op_state&&) = delete;
@@ -2717,14 +2759,23 @@ namespace stdexec {
   using __non_throwing_ = __bool<__nothrow_invocable<_Fun, _Args...>>;
 
   template <class _Tag, class _Fun, class _Sender, class _Env>
-  using __with_error_invoke_t = //
-    __if_c<
-      __v<__gather_completions_for<
+  using __with_error_invoke_t_ = //
+    __gather_completions_for<
         _Tag,
         _Sender,
         _Env,
         __mbind_front_q<__non_throwing_, _Fun>,
-        __q<__mand>>>,
+        __q<__mand>>;
+
+  template <__has_value _Boolean>
+  using __as_boolean = __bool<__v<_Boolean>>;
+
+  template <class _Tag, class _Fun, class _Sender, class _Env>
+  using __with_error_invoke_t = //
+    __if_c<
+      __v<__minvoke<
+        __with_fn<__q<__as_boolean>, __mconst<std::false_type>>,
+        __with_error_invoke_t_<_Tag, _Fun, _Sender, _Env>>>,
       completion_signatures<>,
       __with_exception_ptr>;
 
