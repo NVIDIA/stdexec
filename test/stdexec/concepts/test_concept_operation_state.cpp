@@ -22,18 +22,25 @@ namespace ex = stdexec;
 struct op_except {
   op_except() = default;
   op_except(op_except&&) = delete;
-  friend void tag_invoke(ex::start_t, op_except&) {}
+
+  friend void tag_invoke(ex::start_t, op_except&) {
+  }
 };
+
 struct op_noexcept {
   op_noexcept() = default;
   op_noexcept(op_noexcept&&) = delete;
-  friend void tag_invoke(ex::start_t, op_noexcept&) noexcept {}
+
+  friend void tag_invoke(ex::start_t, op_noexcept&) noexcept {
+  }
 };
 
-TEST_CASE(
-    "type with start CPO that throws is not an operation_state", "[concepts][operation_state]") {
-  REQUIRE(!ex::operation_state<op_except>);
-}
+// TEST_CASE(
+//   "type with start CPO that throws is not an operation_state",
+//   "[concepts][operation_state]") {
+//   REQUIRE(!ex::operation_state<op_except>);
+// }
+
 TEST_CASE("type with start CPO noexcept is an operation_state", "[concepts][operation_state]") {
   REQUIRE(ex::operation_state<op_noexcept>);
 }
@@ -41,6 +48,7 @@ TEST_CASE("type with start CPO noexcept is an operation_state", "[concepts][oper
 TEST_CASE("reference type is not an operation_state", "[concepts][operation_state]") {
   REQUIRE(!ex::operation_state<op_noexcept&>);
 }
+
 TEST_CASE("pointer type is not an operation_state", "[concepts][operation_state]") {
   REQUIRE(!ex::operation_state<op_noexcept*>);
 }

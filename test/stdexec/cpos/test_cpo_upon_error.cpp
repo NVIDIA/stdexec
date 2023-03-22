@@ -18,7 +18,8 @@
 #include <catch2/catch.hpp>
 
 TEST_CASE("upon_error is customizable", "[cpo][cpo_upon_error]") {
-  const auto f = [](std::exception_ptr) {};
+  const auto f = [](std::exception_ptr) {
+  };
 
   SECTION("by free standing sender") {
     free_standing_sender_t<ex::upon_error_t> snd{};

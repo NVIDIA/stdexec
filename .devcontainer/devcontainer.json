@@ -1,15 +1,21 @@
 {
-  "image": "docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-llvmdev-cuda11.8-nvhpc22.11",
+  "image": "rapidsai/devcontainers:23.04-cpp-llvm16-cuda12.0-nvhpc23.1-ubuntu22.04",
 
   "hostRequirements": { "gpu": true },
 
-  "initializeCommand": "mkdir -p .cache",
-  "postAttachCommand": ["/opt/devcontainer/bin/post-attach-command.sh"],
+  "initializeCommand": ["/bin/bash", "-c", "mkdir -p .cache/.{aws,config}"],
 
   "containerEnv": {
+    "SCCACHE_REGION": "us-east-2",
+    "SCCACHE_BUCKET": "rapids-sccache-devs",
     "VAULT_HOST": "https://vault.ops.k8s.rapids.ai",
     "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history"
   },
+
+  "mounts": [
+    "source=${localWorkspaceFolder}/.cache/.aws,target=/home/coder/.aws,type=bind,consistency=consistent",
+    "source=${localWorkspaceFolder}/.cache/.config,target=/home/coder/.config,type=bind,consistency=consistent"
+  ],
 
   "customizations": {
     "vscode": {

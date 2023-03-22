@@ -1,11 +1,10 @@
----
-name: CI
+name: CI (GPU)
 
 on:
-  pull_request:
   push:
     branches:
       - main
+      - "pull-request/[0-9]+"
 
 concurrency:
   group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
@@ -13,56 +12,23 @@ concurrency:
 
 jobs:
 
-  build-cpu-gcc11:
-    runs-on: ubuntu-latest
-    name: CPU (gcc 11)
-    steps:
-      - name: Checkout stdexec
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-      - name: Build and test CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu20.04
-        with:
-          cc: gcc-11
-          checks: build test
-          prebuild_command: |
-            apt update && apt install -y --no-install-recommends git;
-
-  build-cpu-clang12:
-    runs-on: ubuntu-latest
-    name: CPU (clang 12)
-    steps:
-      - name: Checkout stdexec
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-      - name: Build and test CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12-ubuntu20.04
-        with:
-          cc: clang-12
-          checks: build test
-          cxxflags: "-stdlib=libc++"
-          prebuild_command: |
-            apt update && apt install -y --no-install-recommends git;
-
   build-gpu:
+    if: github.repository == 'NVIDIA/stdexec'
     name: GPU (${{ matrix.name }}, CUDA ${{ matrix.cuda }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: "nvc++ 22.11", cuda: "11.8", cxx: "mpic++",  tag: "nvhpc22.11",       gpu: "v100", driver: "520", arch: "amd64" }
-          - { name: "clang 16", cuda: "11.8",    cxx: "clang++", tag: "llvmdev-cuda11.8", gpu: "v100", driver: "520", arch: "amd64" }
-        # - { name: "clang 16", cuda: "12.0",    cxx: "clang++", tag: "llvmdev-cuda12.0", gpu: "v100", driver: "525", arch: "amd64" }
+          - { name: "nvc++ 23.1", cuda: "12.0", cxx: "mpic++",  tag: "nvhpc23.1",       gpu: "v100", sm: "70", driver: "525", arch: "amd64" }
+          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "525", arch: "amd64" }
     runs-on:
       - self-hosted
       - linux
       - gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
       - ${{ matrix.arch }}
     container:
-      options: -u coder
-      image: docker.io/pauletaylor/devcontainers:cmake-ninja-sccache-${{ matrix.tag }}
+      options: -u root
+      image: rapidsai/devcontainers:23.04-cpp-${{ matrix.tag }}-ubuntu22.04
       env:
         CUDA_VERSION: "${{ matrix.cuda }}"
         NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
@@ -79,26 +45,29 @@ jobs:
           cxx: "${{ matrix.cxx }}"
         run: |
           set -x;
-
           sudo mkdir -p /workspaces/stdexec/;
           sudo cp -ar . /workspaces/stdexec/;
           sudo chown -R $(id -u):$(id -g) /workspaces;
           cd /workspaces/stdexec;
-
           # Configure
           cmake -S . -B build -GNinja \
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CXX_COMPILER="$cxx" \
             -DCMAKE_CUDA_COMPILER="$cxx" \
-            -DCMAKE_CUDA_ARCHITECTURES=native;
-
+            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }}-real;
           # Compile
           cmake --build build;
-
           # Tests
           ctest --test-dir build --verbose --output-on-failure;
-
           # Examples
           ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
           ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler
           ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler
+
+  ci-gpu:
+    runs-on: ubuntu-latest
+    name: CI (GPU)
+    needs:
+      - build-gpu
+    steps:
+      - run: echo "CI (GPU) success"

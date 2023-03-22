@@ -46,6 +46,12 @@ set(stdexec_examples
      "example.server_theme.split_bulk : server_theme/split_bulk.cpp"
 )
 
+if (LINUX)
+  set(stdexect_examples ${stdexec_examples}
+                    "example.io_uring : io_uring.cpp"
+  )
+endif (LINUX)
+
 foreach(example ${stdexec_examples})
     def_example(${example})
 endforeach()

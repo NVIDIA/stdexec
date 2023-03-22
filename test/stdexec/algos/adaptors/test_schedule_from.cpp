@@ -30,13 +30,15 @@ using namespace std::chrono_literals;
 TEST_CASE("schedule_from returns a sender", "[adaptors][schedule_from]") {
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(13));
   static_assert(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("schedule_from with environment returns a sender", "[adaptors][schedule_from]") {
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(13));
-  static_assert(ex::sender<decltype(snd), empty_env>);
-  (void)snd;
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
+  (void) snd;
 }
+
 TEST_CASE("schedule_from simple example", "[adaptors][schedule_from]") {
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(13));
   auto op = ex::connect(std::move(snd), expect_value_receiver{13});
@@ -45,7 +47,8 @@ TEST_CASE("schedule_from simple example", "[adaptors][schedule_from]") {
 }
 
 TEST_CASE(
-    "schedule_from calls the receiver when the scheduler dictates", "[adaptors][schedule_from]") {
+  "schedule_from calls the receiver when the scheduler dictates",
+  "[adaptors][schedule_from]") {
   int recv_value{0};
   impulse_scheduler sched;
   auto snd = ex::schedule_from(sched, ex::just(13));
@@ -59,13 +62,15 @@ TEST_CASE(
   CHECK(recv_value == 13);
 }
 
-TEST_CASE("schedule_from calls the given sender when the scheduler dictates",
-    "[adaptors][schedule_from]") {
+TEST_CASE(
+  "schedule_from calls the given sender when the scheduler dictates",
+  "[adaptors][schedule_from]") {
   bool called{false};
-  auto snd_base = ex::just() | ex::then([&]() -> int {
-    called = true;
-    return 19;
-  });
+  auto snd_base = ex::just() //
+                | ex::then([&]() -> int {
+                    called = true;
+                    return 19;
+                  });
 
   int recv_value{0};
   impulse_scheduler sched;
@@ -91,7 +96,7 @@ TEST_CASE("schedule_from works when changing threads", "[adaptors][schedule_from
   {
     // lunch some work on the thread pool
     ex::sender auto snd = ex::schedule_from(pool.get_scheduler(), ex::just()) //
-                          | ex::then([&] { called.store(true); });
+                        | ex::then([&] { called.store(true); });
     ex::start_detached(std::move(snd));
   }
   // wait for the work to be executed, with timeout
@@ -105,13 +110,16 @@ TEST_CASE("schedule_from works when changing threads", "[adaptors][schedule_from
 }
 
 struct non_default_constructible {
-    int x;
+  int x;
 
-    non_default_constructible(int x) : x(x) {}
+  non_default_constructible(int x)
+    : x(x) {
+  }
 
-    friend bool operator==(non_default_constructible const& lhs, non_default_constructible const& rhs) {
-        return lhs.x == rhs.x;
-    }
+  friend bool
+    operator==(non_default_constructible const & lhs, non_default_constructible const & rhs) {
+    return lhs.x == rhs.x;
+  }
 };
 
 TEST_CASE("schedule_from can accept non-default constructible types", "[adaptors][schedule_from]") {
@@ -127,6 +135,7 @@ TEST_CASE("schedule_from can be called with rvalue ref scheduler", "[adaptors][s
   ex::start(op);
   // The receiver checks if we receive the right value
 }
+
 TEST_CASE("schedule_from can be called with const ref scheduler", "[adaptors][schedule_from]") {
   const inline_scheduler sched;
   auto snd = ex::schedule_from(sched, ex::just(13));
@@ -134,6 +143,7 @@ TEST_CASE("schedule_from can be called with const ref scheduler", "[adaptors][sc
   ex::start(op);
   // The receiver checks if we receive the right value
 }
+
 TEST_CASE("schedule_from can be called with ref scheduler", "[adaptors][schedule_from]") {
   inline_scheduler sched;
   auto snd = ex::schedule_from(sched, ex::just(13));
@@ -149,6 +159,7 @@ TEST_CASE("schedule_from forwards set_error calls", "[adaptors][schedule_from]")
   ex::start(op);
   // The receiver checks if we receive an error
 }
+
 TEST_CASE("schedule_from forwards set_error calls of other types", "[adaptors][schedule_from]") {
   error_scheduler<std::string> sched{std::string{"error"}};
   auto snd = ex::schedule_from(sched, ex::just(13));
@@ -156,6 +167,7 @@ TEST_CASE("schedule_from forwards set_error calls of other types", "[adaptors][s
   ex::start(op);
   // The receiver checks if we receive an error
 }
+
 TEST_CASE("schedule_from forwards set_stopped calls", "[adaptors][schedule_from]") {
   stopped_scheduler sched{};
   auto snd = ex::schedule_from(sched, ex::just(13));
@@ -164,15 +176,17 @@ TEST_CASE("schedule_from forwards set_stopped calls", "[adaptors][schedule_from]
   // The receiver checks if we receive the stopped signal
 }
 
-TEST_CASE("schedule_from has the values_type corresponding to the given values",
-    "[adaptors][schedule_from]") {
+TEST_CASE(
+  "schedule_from has the values_type corresponding to the given values",
+  "[adaptors][schedule_from]") {
   inline_scheduler sched{};
 
   check_val_types<type_array<type_array<int>>>(ex::schedule_from(sched, ex::just(1)));
   check_val_types<type_array<type_array<int, double>>>(ex::schedule_from(sched, ex::just(3, 0.14)));
   check_val_types<type_array<type_array<int, double, std::string>>>(
-      ex::schedule_from(sched, ex::just(3, 0.14, std::string{"pi"})));
+    ex::schedule_from(sched, ex::just(3, 0.14, std::string{"pi"})));
 }
+
 TEST_CASE("schedule_from keeps error_types from scheduler's sender", "[adaptors][schedule_from]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
@@ -182,7 +196,19 @@ TEST_CASE("schedule_from keeps error_types from scheduler's sender", "[adaptors]
   check_err_types<type_array<std::exception_ptr>>(ex::schedule_from(sched2, ex::just(2)));
   check_err_types<type_array<int>>(ex::schedule_from(sched3, ex::just(3)));
 }
-TEST_CASE("schedule_from keeps sends_stopped from scheduler's sender", "[adaptors][schedule_from]") {
+
+TEST_CASE(
+  "schedule_from sends an exception_ptr if value types are potentially throwing when copied",
+  "[adaptors][schedule_from]") {
+  inline_scheduler sched{};
+
+  check_err_types<type_array<std::exception_ptr>>(
+    ex::schedule_from(sched, ex::just(potentially_throwing{})));
+}
+
+TEST_CASE(
+  "schedule_from keeps sends_stopped from scheduler's sender",
+  "[adaptors][schedule_from]") {
   inline_scheduler sched1{};
   error_scheduler sched2{};
   stopped_scheduler sched3{};
@@ -193,11 +219,13 @@ TEST_CASE("schedule_from keeps sends_stopped from scheduler's sender", "[adaptor
 }
 
 using just_string_sender_t = decltype(ex::just(std::string{}));
+
 // Customization of schedule_from
 // Return a different sender
 auto tag_invoke(decltype(ex::schedule_from), inline_scheduler sched, just_string_sender_t) {
   return ex::just(std::string{"hijacked"});
 }
+
 TEST_CASE("schedule_from can be customized", "[adaptors][schedule_from]") {
   // The customization will return a different value
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(std::string{"transfer"}));

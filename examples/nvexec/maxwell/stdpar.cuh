@@ -33,24 +33,25 @@ bool is_gpu_policy(Policy&& policy) {
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
   bool* flag{};
   STDEXEC_DBG_ERR(cudaMallocHost(&flag, sizeof(bool)));
-  std::for_each(policy, flag, flag + 1, [](bool& f) {
-    f = nvexec::is_on_gpu();
-  });
+  std::for_each(policy, flag, flag + 1, [](bool& f) { f = nvexec::is_on_gpu(); });
 
   bool h_flag = *flag;
   STDEXEC_DBG_ERR(cudaFreeHost(flag));
 
   return h_flag;
-#else 
+#else
   return false;
 #endif
 }
 
 template <class Policy>
-void run_stdpar(float dt, bool write_vtk, 
-                std::size_t n_iterations, grid_t &grid,
-                Policy&& policy,
-                std::string_view method) {
+void run_stdpar(
+  float dt,
+  bool write_vtk,
+  std::size_t n_iterations,
+  grid_t& grid,
+  Policy&& policy,
+  std::string_view method) {
   fields_accessor accessor = grid.accessor();
   time_storage_t time{is_gpu_policy(policy)};
 
@@ -59,18 +60,14 @@ void run_stdpar(float dt, bool write_vtk,
 
   std::for_each(policy, begin, end, grid_initializer(dt, accessor));
 
-  report_performance(grid.cells, n_iterations, method,
-                     [&]() {
-                       auto writer = dump_vtk(write_vtk, accessor);
-                       for (std::size_t compute_step = 0;
-                            compute_step < n_iterations;
-                            compute_step++) {
+  report_performance(grid.cells, n_iterations, method, [&]() {
+    auto writer = dump_vtk(write_vtk, accessor);
+    for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
 
-                         std::for_each(policy, begin, end, update_h(accessor));
-                         std::for_each(policy, begin, end, update_e(time.get(), dt, accessor));
-                       }
+      std::for_each(policy, begin, end, update_h(accessor));
+      std::for_each(policy, begin, end, update_e(time.get(), dt, accessor));
+    }
 
-                       writer();
-                     });
+    writer();
+  });
 }
-

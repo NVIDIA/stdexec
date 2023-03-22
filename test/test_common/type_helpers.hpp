@@ -23,6 +23,7 @@ namespace ex = stdexec;
 //! Used for to make a class non-movable without giving up aggregate initialization
 struct immovable {
   immovable() = default;
+
  private:
   STDEXEC_IMMOVABLE(immovable);
 };
@@ -30,13 +31,36 @@ struct immovable {
 //! A move-only type
 struct movable {
   movable(int value)
-    : value_(value)
-  {}
+    : value_(value) {
+  }
+
   movable(movable&&) = default;
   bool operator==(const movable&) const noexcept = default;
-  int value() {return value_;} // silence warning of unused private field
-private:
+
+  int value() {
+    return value_;
+  } // silence warning of unused private field
+ private:
   int value_;
+};
+
+//! A type with potentially throwing move/copy constructors
+struct potentially_throwing {
+  potentially_throwing() = default;
+
+  potentially_throwing(potentially_throwing&&) noexcept(false) {
+  }
+
+  potentially_throwing(const potentially_throwing&) noexcept(false) {
+  }
+
+  potentially_throwing& operator=(potentially_throwing&&) noexcept(false) {
+    return *this;
+  }
+
+  potentially_throwing& operator=(const potentially_throwing&) noexcept(false) {
+    return *this;
+  }
 };
 
 //! Used for debugging, to generate errors to the console
@@ -45,10 +69,10 @@ struct type_printer;
 
 //! Used in various sender types queries
 template <typename... Ts>
-struct type_array {};
+struct type_array { };
 
 //! Used as a default empty context
-struct empty_env {};
+using ex::empty_env;
 
 //! Check that the value_types of a sender matches the expected type
 template <typename ExpectedValType, typename Env = empty_env, typename S>

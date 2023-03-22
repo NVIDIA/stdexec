@@ -33,16 +33,18 @@ TEST_CASE("just_stopped returns a sender", "[factories][just_stopped]") {
 
 TEST_CASE("just_stopped returns a typed sender", "[factories][just_stopped]") {
   using t = decltype(ex::just_stopped());
-  static_assert(ex::sender<t, empty_env>, "ex::just_stopped must return a sender");
+  static_assert(ex::sender_in<t, empty_env>, "ex::just_stopped must return a sender");
 }
 
 TEST_CASE("value types are properly set for just_stopped", "[factories][just_stopped]") {
   check_val_types<type_array<>>(ex::just_stopped());
 }
+
 TEST_CASE("error types are properly set for just_stopped", "[factories][just_stopped]") {
   // no errors sent by just_stopped
   check_err_types<type_array<>>(ex::just_stopped());
 }
+
 TEST_CASE("just_stopped advertises that it can call set_stopped", "[factories][just_stopped]") {
   check_sends_stopped<true>(ex::just_stopped());
 }

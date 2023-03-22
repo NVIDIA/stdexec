@@ -48,10 +48,10 @@
 namespace ex = stdexec;
 
 struct sync_stream {
-private:
+ private:
   static std::mutex s_mtx_;
 
-public:
+ public:
   std::ostream& sout_;
   std::unique_lock<std::mutex> lock_{s_mtx_};
 
@@ -60,11 +60,13 @@ public:
     self.sout_ << value;
     return std::move(self);
   }
-  friend sync_stream&& operator<<(sync_stream&& self, std::ostream& (*manip)(std::ostream&)) {
+
+  friend sync_stream&& operator<<(sync_stream&& self, std::ostream& (*manip)(std::ostream&) ) {
     self.sout_ << manip;
     return std::move(self);
   }
 };
+
 std::mutex sync_stream::s_mtx_{};
 
 size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {
@@ -87,7 +89,7 @@ int main() {
   exec::static_thread_pool io_pool{1};
   ex::scheduler auto io_sched = io_pool.get_scheduler();
 
-  std::array<std::byte, 16*1024> buffer;
+  std::array<std::byte, 16 * 1024> buffer;
 
   exec::async_scope scope;
 
@@ -100,14 +102,14 @@ int main() {
     auto snd_read = ex::just(sock, buf, buffer.size()) | ex::then(legacy_read_from_socket);
     // The entire flow
     auto snd =
-        // start by reading data on the I/O thread
-        ex::on(io_sched, std::move(snd_read))
-        // do the processing on the worker threads pool
-        | ex::transfer(work_sched)
-        // process the incoming data (on worker threads)
-        | ex::then([buf](int read_len) { process_read_data(buf, read_len); })
-        // done
-        ;
+      // start by reading data on the I/O thread
+      ex::on(io_sched, std::move(snd_read))
+      // do the processing on the worker threads pool
+      | ex::transfer(work_sched)
+      // process the incoming data (on worker threads)
+      | ex::then([buf](int read_len) { process_read_data(buf, read_len); })
+      // done
+      ;
 
     // execute the whole flow asynchronously
     scope.spawn(std::move(snd));

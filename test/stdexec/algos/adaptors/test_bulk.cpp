@@ -33,7 +33,7 @@ void function(Shape i) {
 
 template <class Shape>
 struct function_object_t {
-  int *Counter;
+  int* Counter;
 
   void operator()(Shape i) {
     Counter[i]++;
@@ -43,18 +43,18 @@ struct function_object_t {
 TEST_CASE("bulk returns a sender", "[adaptors][bulk]") {
   auto snd = ex::bulk(ex::just(19), 8, [](int idx, int val) {});
   static_assert(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("bulk with environment returns a sender", "[adaptors][bulk]") {
   auto snd = ex::bulk(ex::just(19), 8, [](int idx, int val) {});
-  static_assert(ex::sender<decltype(snd), empty_env>);
-  (void)snd;
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
+  (void) snd;
 }
 
 TEST_CASE("bulk can be piped", "[adaptors][bulk]") {
   ex::sender auto snd = ex::just() | ex::bulk(42, [](int i) {});
-  (void)snd;
+  (void) snd;
 }
 
 TEST_CASE("bulk keeps values_type from input sender", "[adaptors][bulk]") {
@@ -62,7 +62,7 @@ TEST_CASE("bulk keeps values_type from input sender", "[adaptors][bulk]") {
   check_val_types<type_array<type_array<>>>(ex::just() | ex::bulk(n, [](int) {}));
   check_val_types<type_array<type_array<double>>>(ex::just(4.2) | ex::bulk(n, [](int, double) {}));
   check_val_types<type_array<type_array<double, std::string>>>(
-      ex::just(4.2, std::string{}) | ex::bulk(n, [](int, double, std::string) {}));
+    ex::just(4.2, std::string{}) | ex::bulk(n, [](int, double, std::string) {}));
 }
 
 TEST_CASE("bulk keeps error_types from input sender", "[adaptors][bulk]") {
@@ -71,16 +71,16 @@ TEST_CASE("bulk keeps error_types from input sender", "[adaptors][bulk]") {
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
-  check_err_types<type_array<>>( //
-      ex::transfer_just(sched1) | ex::bulk(n, [](int) noexcept {}));
-  check_err_types<type_array<std::exception_ptr>>( //
-      ex::transfer_just(sched2) | ex::bulk(n, [](int) noexcept {}));
-  check_err_types<type_array<int>>( //
-      ex::just_error(n) | ex::bulk(n, [](int) noexcept {}));
-  check_err_types<type_array<int>>( //
-      ex::transfer_just(sched3) | ex::bulk(n, [](int) noexcept {}));
+  check_err_types<type_array<>>(                        //
+    ex::transfer_just(sched1) | ex::bulk(n, [](int) noexcept {}));
+  check_err_types<type_array<std::exception_ptr>>(      //
+    ex::transfer_just(sched2) | ex::bulk(n, [](int) noexcept {}));
+  check_err_types<type_array<int>>(                     //
+    ex::just_error(n) | ex::bulk(n, [](int) noexcept {}));
+  check_err_types<type_array<int>>(                     //
+    ex::transfer_just(sched3) | ex::bulk(n, [](int) noexcept {}));
   check_err_types<type_array<std::exception_ptr, int>>( //
-      ex::transfer_just(sched3) | ex::bulk(n, [](int) { throw std::logic_error{"err"}; }));
+    ex::transfer_just(sched3) | ex::bulk(n, [](int) { throw std::logic_error{"err"}; }));
 }
 
 TEST_CASE("bulk can be used with a function", "[adaptors][bulk]") {
@@ -129,7 +129,7 @@ TEST_CASE("bulk forwards values", "[adaptors][bulk]") {
   constexpr int magic_number = 42;
   int counter[n]{0};
 
-  auto snd = ex::just(magic_number)
+  auto snd = ex::just(magic_number) //
            | ex::bulk(n, [&](int i, int val) {
                if (val == magic_number) {
                  counter[i]++;
@@ -148,9 +148,7 @@ TEST_CASE("bulk cannot be used to change the value type", "[adaptors][bulk]") {
   constexpr int n = 2;
 
   auto snd = ex::just(magic_number)
-           | ex::bulk(n, [](int i, int) {
-               return function_object_t<int>{nullptr};
-             });
+           | ex::bulk(n, [](int i, int) { return function_object_t<int>{nullptr}; });
 
   auto op = ex::connect(std::move(snd), expect_value_receiver{magic_number});
   ex::start(op);
@@ -160,9 +158,7 @@ TEST_CASE("bulk can throw, and set_error will be called", "[adaptors][bulk]") {
   constexpr int n = 2;
 
   auto snd = ex::just() //
-           | ex::bulk(n, [](int i) -> int {
-               throw std::logic_error{"err"};
-             });
+           | ex::bulk(n, [](int i) -> int { throw std::logic_error{"err"}; });
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
 }
@@ -171,8 +167,7 @@ TEST_CASE("bulk function is not called on error", "[adaptors][bulk]") {
   constexpr int n = 2;
   int called{};
 
-  auto snd = ex::just_error(std::string{"err"})
-           | ex::bulk(n, [&called](int) { called++; });
+  auto snd = ex::just_error(std::string{"err"}) | ex::bulk(n, [&called](int) { called++; });
   auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
   ex::start(op);
 }
@@ -181,8 +176,7 @@ TEST_CASE("bulk function in not called on stop", "[adaptors][bulk]") {
   constexpr int n = 2;
   int called{};
 
-  auto snd = ex::just_stopped()
-           | ex::bulk(n, [&called](int) { called++; });
+  auto snd = ex::just_stopped() | ex::bulk(n, [&called](int) { called++; });
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
 }
@@ -195,8 +189,7 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
     for (int n = 0; n < 9; n++) {
       std::vector<int> counter(n, 42);
 
-      auto snd = ex::transfer_just(sch)
-               | ex::bulk(n, [&counter](int idx) { counter[idx] = 0; })
+      auto snd = ex::transfer_just(sch) | ex::bulk(n, [&counter](int idx) { counter[idx] = 0; })
                | ex::bulk(n, [&counter](int idx) { counter[idx]++; });
       stdexec::sync_wait(std::move(snd));
 
@@ -212,8 +205,18 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
       std::vector<int> counter(n, 42);
 
       auto snd = ex::transfer_just(sch, 42)
-               | ex::bulk(n, [&counter](int idx, int val) { if (val == 42) { counter[idx] = 0; } })
-               | ex::bulk(n, [&counter](int idx, int val) { if (val == 42) { counter[idx]++; } });
+               | ex::bulk(
+                   n,
+                   [&counter](int idx, int val) {
+                     if (val == 42) {
+                       counter[idx] = 0;
+                     }
+                   })
+               | ex::bulk(n, [&counter](int idx, int val) {
+                   if (val == 42) {
+                     counter[idx]++;
+                   }
+                 });
       auto [val] = stdexec::sync_wait(std::move(snd)).value();
 
       CHECK(val == 42);
@@ -228,9 +231,7 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
   SECTION("With exception") {
     constexpr int n = 9;
     auto snd = ex::transfer_just(sch)
-             | ex::bulk(n, [](int idx) {
-                 throw std::runtime_error("bulk");
-               });
+             | ex::bulk(n, [](int idx) { throw std::runtime_error("bulk"); });
 
     CHECK_THROWS_AS(stdexec::sync_wait(std::move(snd)), std::runtime_error);
   }
@@ -250,4 +251,3 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
     CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == n);
   }
 }
-

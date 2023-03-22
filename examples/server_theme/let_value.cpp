@@ -128,20 +128,20 @@ int main() {
   for (int i = 0; i < 10; i++) {
     // The whole flow for transforming incoming requests into responses
     ex::sender auto snd =
-        // get a sender when a new request comes
-        schedule_request_start(sched, i)
-        // make sure the request is valid; throw if not
-        | ex::let_value(validate_request)
-        // process the request in a function that may be using a different execution context
-        | ex::let_value(handle_request)
-        // If there are errors transform them into proper responses
-        | ex::let_error(error_to_response)
-        // If the flow is cancelled, send back a proper response
-        | ex::let_stopped(stopped_to_response)
-        // write the result back to the client
-        | ex::let_value(send_response)
-        // done
-        ;
+      // get a sender when a new request comes
+      schedule_request_start(sched, i)
+      // make sure the request is valid; throw if not
+      | ex::let_value(validate_request)
+      // process the request in a function that may be using a different execution context
+      | ex::let_value(handle_request)
+      // If there are errors transform them into proper responses
+      | ex::let_error(error_to_response)
+      // If the flow is cancelled, send back a proper response
+      | ex::let_stopped(stopped_to_response)
+      // write the result back to the client
+      | ex::let_value(send_response)
+      // done
+      ;
 
     // execute the whole flow asynchronously
     ex::start_detached(std::move(snd));

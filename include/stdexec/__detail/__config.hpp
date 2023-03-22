@@ -21,28 +21,27 @@
 
 #include <cassert>
 
-#define STDEXEC_CAT_(X, ...) X ## __VA_ARGS__
-#define STDEXEC_CAT(X, ...) STDEXEC_CAT_(X, __VA_ARGS__)
+#define STDEXEC_CAT_(_Xp, ...) _Xp##__VA_ARGS__
+#define STDEXEC_CAT(_Xp, ...) STDEXEC_CAT_(_Xp, __VA_ARGS__)
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
-#define STDEXEC_EVAL(M, ...) M(__VA_ARGS__)
+#define STDEXEC_EVAL(_M, ...) _M(__VA_ARGS__)
 
-#define STDEXEC_NOT(X) STDEXEC_CAT(STDEXEC_NOT_, X)
+#define STDEXEC_NOT(_Xp) STDEXEC_CAT(STDEXEC_NOT_, _Xp)
 #define STDEXEC_NOT_0 1
 #define STDEXEC_NOT_1 0
 
-#define STDEXEC_IIF_0(Y,...) __VA_ARGS__
-#define STDEXEC_IIF_1(Y,...) Y
-#define STDEXEC_IIF(X,Y,...) \
-    STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, X), Y, __VA_ARGS__)
+#define STDEXEC_IIF_0(_Yp, ...) __VA_ARGS__
+#define STDEXEC_IIF_1(_Yp, ...) _Yp
+#define STDEXEC_IIF(_Xp, _Yp, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _Xp), _Yp, __VA_ARGS__)
 
 #define STDEXEC_COUNT(...) \
-    STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__,10,9,8,7,6,5,4,3,2,1))
-#define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _N, ...) _N
+  STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
+#define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _Np, ...) _Np
 
-#define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0,))
-#define STDEXEC_CHECK_N(x, n, ...) n
-#define STDEXEC_PROBE(x) x, 1,
+#define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0, ))
+#define STDEXEC_CHECK_N(_Xp, _Np, ...) _Np
+#define STDEXEC_PROBE(_Xp) _Xp, 1,
 
 #if defined(__NVCOMPILER)
 #define STDEXEC_NVHPC() 1
@@ -67,6 +66,23 @@
 #define STDEXEC_MSVC() 0
 #endif
 
+#if STDEXEC_CLANG()
+#define STDEXEC_STRINGIZE(__arg) #__arg
+#define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
+#define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
+#define STDEXEC_PRAGMA_IGNORE(__arg) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __arg))
+#else
+#define STDEXEC_PRAGMA_PUSH()
+#define STDEXEC_PRAGMA_POP()
+#define STDEXEC_PRAGMA_IGNORE(__arg)
+#endif
+
+#ifdef __has_builtin
+#define STDEXEC_HAS_BUILTIN __has_builtin
+#else
+#define STDEXEC_HAS_BUILTIN(...) 0
+#endif
+
 #if STDEXEC_CLANG() && defined(__CUDACC__)
 #define STDEXEC_DETAIL_CUDACC_HOST_DEVICE __host__ __device__
 #else
@@ -77,11 +93,11 @@
 #error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif
 
-#define STDEXEC_ASSERT(_X) \
+#define STDEXEC_ASSERT(_Xp) \
   do { \
-    static_assert(noexcept(_X)); \
-    STDEXEC_ASSERT_FN(_X); \
-  } while(false)
+    static_assert(noexcept(_Xp)); \
+    STDEXEC_ASSERT_FN(_Xp); \
+  } while (false)
 
 #ifndef STDEXEC_ASSERT_FN
 #define STDEXEC_ASSERT_FN assert

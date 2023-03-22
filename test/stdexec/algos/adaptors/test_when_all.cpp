@@ -28,13 +28,15 @@ namespace ex = stdexec;
 TEST_CASE("when_all returns a sender", "[adaptors][when_all]") {
   auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
   static_assert(ex::sender<decltype(snd)>);
-  (void)snd;
+  (void) snd;
 }
+
 TEST_CASE("when_all with environment returns a sender", "[adaptors][when_all]") {
   auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender<decltype(snd), empty_env>);
-  (void)snd;
+  static_assert(ex::sender_in<decltype(snd), empty_env>);
+  (void) snd;
 }
+
 TEST_CASE("when_all simple example", "[adaptors][when_all]") {
   auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
   auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
@@ -44,33 +46,33 @@ TEST_CASE("when_all simple example", "[adaptors][when_all]") {
 
 TEST_CASE("when_all returning two values can we waited on", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all( //
-      ex::just(2),                    //
-      ex::just(3)                     //
+    ex::just(2),                      //
+    ex::just(3)                       //
   );
   wait_for_value(std::move(snd), 2, 3);
 }
 
 TEST_CASE("when_all with 5 senders", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all( //
-      ex::just(2),                    //
-      ex::just(3),                    //
-      ex::just(5),                    //
-      ex::just(7),                    //
-      ex::just(11)                    //
+    ex::just(2),                      //
+    ex::just(3),                      //
+    ex::just(5),                      //
+    ex::just(7),                      //
+    ex::just(11)                      //
   );
   wait_for_value(std::move(snd), 2, 3, 5, 7, 11);
 }
 
 TEST_CASE("when_all with just one sender", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all( //
-      ex::just(2)                     //
+    ex::just(2)                       //
   );
   wait_for_value(std::move(snd), 2);
 }
 
 TEST_CASE("when_all with move-only types", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all( //
-      ex::just(movable(2))            //
+    ex::just(movable(2))              //
   );
   wait_for_value(std::move(snd), movable(2));
 }
@@ -82,28 +84,28 @@ TEST_CASE("when_all with no senders", "[adaptors][when_all]") {
 
 TEST_CASE("when_all when one sender sends void", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all( //
-      ex::just(2),                    //
-      ex::just()                      //
+    ex::just(2),                      //
+    ex::just()                        //
   );
   wait_for_value(std::move(snd), 2);
 }
 
 TEST_CASE("when_all_with_variant basic example", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all_with_variant( //
-      ex::just(2),                                 //
-      ex::just(3.14)                               //
+    ex::just(2),                                   //
+    ex::just(3.14)                                 //
   );
   wait_for_value(
-      std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
+    std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
 }
 
 TEST_CASE("when_all_with_variant with same type", "[adaptors][when_all]") {
   ex::sender auto snd = ex::when_all_with_variant( //
-      ex::just(2),                                 //
-      ex::just(3)                                  //
+    ex::just(2),                                   //
+    ex::just(3)                                    //
   );
   wait_for_value(
-      std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<int>>{3});
+    std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<int>>{3});
 }
 
 TEST_CASE("when_all_with_variant with no senders", "[adaptors][when_all]") {
@@ -114,16 +116,16 @@ TEST_CASE("when_all_with_variant with no senders", "[adaptors][when_all]") {
 TEST_CASE("when_all completes when children complete", "[adaptors][when_all]") {
   impulse_scheduler sched;
   bool called{false};
-  ex::sender auto snd =                 //
-      ex::when_all(                     //
-          ex::transfer_just(sched, 11), //
-          ex::transfer_just(sched, 13), //
-          ex::transfer_just(sched, 17)  //
-          )                             //
-      | ex::then([&](int a, int b, int c) {
-          called = true;
-          return a + b + c;
-        });
+  ex::sender auto snd =             //
+    ex::when_all(                   //
+      ex::transfer_just(sched, 11), //
+      ex::transfer_just(sched, 13), //
+      ex::transfer_just(sched, 17)  //
+      )                             //
+    | ex::then([&](int a, int b, int c) {
+        called = true;
+        return a + b + c;
+      });
   auto op = ex::connect(std::move(snd), expect_value_receiver{41});
   ex::start(op);
   // The when_all scheduler will complete only after 3 impulses
@@ -137,22 +139,23 @@ TEST_CASE("when_all completes when children complete", "[adaptors][when_all]") {
 }
 
 TEST_CASE("when_all can be used with just_*", "[adaptors][when_all]") {
-  ex::sender auto snd = ex::when_all(       //
-      ex::just(2),                          //
-      ex::just_error(std::exception_ptr{}), //
-      ex::just_stopped()                    //
+  ex::sender auto snd = ex::when_all(     //
+    ex::just(2),                          //
+    ex::just_error(std::exception_ptr{}), //
+    ex::just_stopped()                    //
   );
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
 }
 
 TEST_CASE(
-    "when_all terminates with error if one child terminates with error", "[adaptors][when_all]") {
+  "when_all terminates with error if one child terminates with error",
+  "[adaptors][when_all]") {
   error_scheduler sched;
   ex::sender auto snd = ex::when_all( //
-      ex::just(2),                    //
-      ex::transfer_just(sched, 5),    //
-      ex::just(7)                     //
+    ex::just(2),                      //
+    ex::transfer_just(sched, 5),      //
+    ex::just(7)                       //
   );
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
@@ -161,9 +164,9 @@ TEST_CASE(
 TEST_CASE("when_all terminates with stopped if one child is cancelled", "[adaptors][when_all]") {
   stopped_scheduler sched;
   ex::sender auto snd = ex::when_all( //
-      ex::just(2),                    //
-      ex::transfer_just(sched, 5),    //
-      ex::just(7)                     //
+    ex::just(2),                      //
+    ex::transfer_just(sched, 5),      //
+    ex::just(7)                       //
   );
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
@@ -175,15 +178,15 @@ TEST_CASE("when_all cancels remaining children if error is detected", "[adaptors
   bool called1{false};
   bool called3{false};
   bool cancelled{false};
-  ex::sender auto snd = ex::when_all(                                //
-      ex::on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
-      ex::on(sched, ex::transfer_just(err_sched, 5)),                //
-      ex::on(sched, ex::just())                                      //
-          | ex::then([&] { called3 = true; })                        //
-          | ex::let_stopped([&] {
-              cancelled = true;
-              return ex::just();
-            }) //
+  ex::sender auto snd = ex::when_all(                              //
+    ex::on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
+    ex::on(sched, ex::transfer_just(err_sched, 5)),                //
+    ex::on(sched, ex::just())                                      //
+      | ex::then([&] { called3 = true; })                          //
+      | ex::let_stopped([&] {
+          cancelled = true;
+          return ex::just();
+        }) //
   );
   auto op = ex::connect(std::move(snd), expect_error_receiver{});
   ex::start(op);
@@ -205,15 +208,15 @@ TEST_CASE("when_all cancels remaining children if cancel is detected", "[adaptor
   bool called1{false};
   bool called3{false};
   bool cancelled{false};
-  ex::sender auto snd = ex::when_all(                                //
-      ex::on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
-      ex::on(sched, ex::transfer_just(stopped_sched, 5)),            //
-      ex::on(sched, ex::just())                                      //
-          | ex::then([&] { called3 = true; })                        //
-          | ex::let_stopped([&] {
-              cancelled = true;
-              return ex::just();
-            }) //
+  ex::sender auto snd = ex::when_all(                              //
+    ex::on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
+    ex::on(sched, ex::transfer_just(stopped_sched, 5)),            //
+    ex::on(sched, ex::just())                                      //
+      | ex::then([&] { called3 = true; })                          //
+      | ex::let_stopped([&] {
+          cancelled = true;
+          return ex::just();
+        }) //
   );
   auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
   ex::start(op);
@@ -229,62 +232,65 @@ TEST_CASE("when_all cancels remaining children if cancel is detected", "[adaptor
   CHECK(cancelled);
 }
 
-TEST_CASE("when_all has the values_type based on the children, decayed and as rvalue references", "[adaptors][when_all]") {
+TEST_CASE(
+  "when_all has the values_type based on the children, decayed and as rvalue references",
+  "[adaptors][when_all]") {
   check_val_types<type_array<type_array<int&&>>>(ex::when_all(ex::just(13)));
   check_val_types<type_array<type_array<double&&>>>(ex::when_all(ex::just(3.14)));
   check_val_types<type_array<type_array<int&&, double&&>>>(ex::when_all(ex::just(3, 0.14)));
 
   check_val_types<type_array<type_array<>>>(ex::when_all(ex::just()));
 
-  check_val_types<type_array<type_array<int&&, double&&>>>(ex::when_all(ex::just(3),
-  ex::just(0.14))); check_val_types<type_array<type_array<int&&, double&&, int&&, double&&>>>( //
-      ex::when_all(                                                                            //
-          ex::just(3),                                                                         //
-          ex::just(0.14),                                                                      //
-          ex::just(1, 0.4142)                                                                  //
-          )                                                                                    //
+  check_val_types<type_array<type_array<int&&, double&&>>>(
+    ex::when_all(ex::just(3), ex::just(0.14)));
+  check_val_types<type_array<type_array<int&&, double&&, int&&, double&&>>>( //
+    ex::when_all(                                                            //
+      ex::just(3),                                                           //
+      ex::just(0.14),                                                        //
+      ex::just(1, 0.4142)                                                    //
+      )                                                                      //
   );
 
   // if one child returns void, then the value is simply missing
   check_val_types<type_array<type_array<int&&, double&&>>>( //
-      ex::when_all(                                         //
-          ex::just(3),                                      //
-          ex::just(),                                       //
-          ex::just(0.14)                                    //
-          )                                                 //
+    ex::when_all(                                           //
+      ex::just(3),                                          //
+      ex::just(),                                           //
+      ex::just(0.14)                                        //
+      )                                                     //
   );
 
   // if children send references, they get decayed
   check_val_types<type_array<type_array<int&&, double&&>>>( //
-      ex::when_all(                                         //
-          ex::split(ex::just(3)),                           //
-          ex::split(ex::just(0.14))                         //
-          )                                                 //
+    ex::when_all(                                           //
+      ex::split(ex::just(3)),                               //
+      ex::split(ex::just(0.14))                             //
+      )                                                     //
   );
 }
 
 TEST_CASE("when_all has the error_types based on the children", "[adaptors][when_all]") {
-  check_err_types<type_array<std::exception_ptr&&, int&&>>(ex::when_all(ex::just_error(13)));
-  check_err_types<type_array<std::exception_ptr&&, double&&>>(ex::when_all(ex::just_error(3.14)));
+  check_err_types<type_array<int&&>>(ex::when_all(ex::just_error(13)));
+  check_err_types<type_array<double&&>>(ex::when_all(ex::just_error(3.14)));
 
-  check_err_types<type_array<std::exception_ptr&&>>(ex::when_all(ex::just()));
+  check_err_types<type_array<>>(ex::when_all(ex::just()));
 
-  check_err_types<type_array<std::exception_ptr&&, int&&, double&&>>(
-      ex::when_all(ex::just_error(3), ex::just_error(0.14)));
-  check_err_types<type_array<std::exception_ptr&&, int&&, double&&, std::string&&>>( //
-      ex::when_all(                                                          //
-          ex::just_error(3),                                                 //
-          ex::just_error(0.14),                                              //
-          ex::just_error(std::string{"err"})                                 //
-          )                                                                  //
+  check_err_types<type_array<int&&, double&&>>(
+    ex::when_all(ex::just_error(3), ex::just_error(0.14)));
+  check_err_types<type_array<int&&, double&&, std::string&&>>( //
+    ex::when_all(                                              //
+      ex::just_error(3),                                       //
+      ex::just_error(0.14),                                    //
+      ex::just_error(std::string{"err"})                       //
+      )                                                        //
   );
 
   check_err_types<type_array<std::exception_ptr&&>>( //
-      ex::when_all(                                //
-          ex::just(13),                            //
-          ex::just_error(std::exception_ptr{}),    //
-          ex::just_stopped()                       //
-          )                                        //
+    ex::when_all(                                    //
+      ex::just(13),                                  //
+      ex::just_error(std::exception_ptr{}),          //
+      ex::just_stopped()                             //
+      )                                              //
   );
 }
 
@@ -294,31 +300,33 @@ TEST_CASE("when_all has the sends_stopped == true", "[adaptors][when_all]") {
   check_sends_stopped<true>(ex::when_all(ex::just_stopped()));
 
   check_sends_stopped<true>(ex::when_all(ex::just(3), ex::just(0.14)));
-  check_sends_stopped<true>(  //
-      ex::when_all(           //
-          ex::just(3),        //
-          ex::just_error(-1), //
-          ex::just_stopped()  //
-          )                   //
+  check_sends_stopped<true>( //
+    ex::when_all(            //
+      ex::just(3),           //
+      ex::just_error(-1),    //
+      ex::just_stopped()     //
+      )                      //
   );
 }
 
 struct my_string_sender_t {
   std::string str_;
 
+  using is_sender = void;
   using completion_signatures = typename decltype(ex::just(std::string{}))::completion_signatures;
 
   template <class Recv>
   friend auto tag_invoke(ex::connect_t, my_string_sender_t&& self, Recv&& recv) {
     return ex::connect(ex::just(std::move(self.str_)), std::forward<Recv>(recv));
   }
+
   template <class Recv>
   friend auto tag_invoke(ex::connect_t, const my_string_sender_t& self, Recv&& recv) {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
 
   friend empty_env tag_invoke(ex::get_env_t, const my_string_sender_t&) noexcept {
-    return{};
+    return {};
   }
 };
 
@@ -329,9 +337,9 @@ auto tag_invoke(ex::when_all_t, my_string_sender_t, my_string_sender_t) {
 
 TEST_CASE("when_all can be customized", "[adaptors][when_all]") {
   // The customization will return a different value
-  auto snd = ex::when_all(                       //
-      my_string_sender_t{std::string{"hello,"}}, //
-      my_string_sender_t{std::string{" world!"}} //
+  auto snd = ex::when_all(                     //
+    my_string_sender_t{std::string{"hello,"}}, //
+    my_string_sender_t{std::string{" world!"}} //
   );
   wait_for_value(std::move(snd), std::string{"first program"});
 }
@@ -343,9 +351,9 @@ auto tag_invoke(ex::when_all_with_variant_t, my_string_sender_t, my_string_sende
 
 TEST_CASE("when_all_with_variant can be customized", "[adaptors][when_all]") {
   // The customization will return a different value
-  auto snd = ex::when_all_with_variant(          //
-      my_string_sender_t{std::string{"hello,"}}, //
-      my_string_sender_t{std::string{" world!"}} //
+  auto snd = ex::when_all_with_variant(        //
+    my_string_sender_t{std::string{"hello,"}}, //
+    my_string_sender_t{std::string{" world!"}} //
   );
   wait_for_value(std::move(snd), std::string{"first program"});
 }
@@ -358,16 +366,17 @@ auto tag_invoke(ex::when_all_t, my_string_variant_sender_t, my_string_variant_se
 }
 
 TEST_CASE(
-    "when_all_with_variant take into account when_all cusomizations", "[adaptors][when_all]") {
+  "when_all_with_variant take into account when_all cusomizations",
+  "[adaptors][when_all]") {
   // when_all_with_variant must be using the `when_all` implementation that allows cusomizations
   // The customization will return a different value
-  auto snd = ex::when_all_with_variant(          //
-      my_string_sender_t{std::string{"hello,"}}, //
-      my_string_sender_t{std::string{" world!"}} //
+  auto snd = ex::when_all_with_variant(        //
+    my_string_sender_t{std::string{"hello,"}}, //
+    my_string_sender_t{std::string{" world!"}} //
   );
   wait_for_value(std::move(snd), std::string{"first program"});
 }
 
 TEST_CASE("when_all returns empty env", "[adaptors][when_all]") {
-  check_env_type<ex::__empty_env>(ex::when_all(ex::just(), ex::just()));
+  check_env_type<ex::empty_env>(ex::when_all(ex::just(), ex::just()));
 }

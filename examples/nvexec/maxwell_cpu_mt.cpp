@@ -27,14 +27,15 @@ int main(int argc, char *argv[]) {
   auto params = parse_cmd(argc, argv);
 
   if (value(params, "help") || value(params, "h")) {
-    std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
-              << "\t--write-vtk\n"
-              << "\t--iterations\n"
-              << "\t--run-std\n"
-              << "\t--run-stdpar\n"
-              << "\t--run-thread-pool-scheduler\n"
-              << "\t--N\n"
-              << std::endl;
+    std::cout
+      << "Usage: " << argv[0] << " [OPTION]...\n"
+      << "\t--write-vtk\n"
+      << "\t--iterations\n"
+      << "\t--run-std\n"
+      << "\t--run-stdpar\n"
+      << "\t--run-thread-pool-scheduler\n"
+      << "\t--N\n"
+      << std::endl;
     return 0;
   }
 
@@ -42,15 +43,19 @@ int main(int argc, char *argv[]) {
   const std::size_t n_iterations = value(params, "iterations", 100);
   const std::size_t N = value(params, "N", 512);
 
-  auto run_snr_on = [&](std::string_view scheduler_name,
-                        stdexec::scheduler auto &&scheduler) {
+  auto run_snr_on = [&](std::string_view scheduler_name, stdexec::scheduler auto &&scheduler) {
     grid_t grid{N, is_gpu_scheduler(scheduler)};
 
     auto accessor = grid.accessor();
     auto dt = calculate_dt(accessor.dx, accessor.dy);
 
-    run_snr(dt, write_vtk, n_iterations, grid, 
-            scheduler_name, std::forward<decltype(scheduler)>(scheduler));
+    run_snr(
+      dt,
+      write_vtk,
+      n_iterations,
+      grid,
+      scheduler_name,
+      std::forward<decltype(scheduler)>(scheduler));
   };
 
   report_header();
@@ -80,4 +85,3 @@ int main(int argc, char *argv[]) {
     run_stdpar(dt, write_vtk, n_iterations, grid, std::execution::par_unseq, method);
   }
 }
-

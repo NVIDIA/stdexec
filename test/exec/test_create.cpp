@@ -42,41 +42,31 @@ namespace {
     void anIntAPI(int a, int b, void* context, void (*completed)(void* context, int result)) {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
-      scope_.spawn(
-        ex::on(
-          pool_.get_scheduler(),
-          ex::then(ex::just(), [=]() noexcept {
-            auto result = a + b;
-            completed(context, result);
-          })
-        )
-      );
+      scope_.spawn(ex::on(pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept {
+                            auto result = a + b;
+                            completed(context, result);
+                          })));
     }
 
     void aVoidAPI(void* context, void (*completed)(void* context)) {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
-      scope_.spawn(
-        ex::on(
-          pool_.get_scheduler(),
-          ex::then(ex::just(), [=]() noexcept {
-            completed(context);
-          })
-        )
-      );
+      scope_.spawn(ex::on(
+        pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept { completed(context); })));
     }
   };
 } // anonymous namespace
 
-TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result", "[detail][create]") {
+TEST_CASE_METHOD(
+  create_test_fixture,
+  "wrap an async API that computes a result",
+  "[detail][create]") {
   auto snd = [this](int a, int b) {
-    return exec::create<ex::set_value_t(int)>(
-      [a, b, this]<class Context>(Context& ctx) noexcept {
-        anIntAPI(a, b, &ctx, [](void* pv, int result) {
-          ex::set_value(std::move(static_cast<Context*>(pv)->receiver), result);
-        });
-      }
-    );
+    return exec::create<ex::set_value_t(int)>([a, b, this]<class Context>(Context& ctx) noexcept {
+      anIntAPI(a, b, &ctx, [](void* pv, int result) {
+        ex::set_value(std::move(static_cast<Context*>(pv)->receiver), result);
+      });
+    });
   }(1, 2);
 
   REQUIRE_NOTHROW([&] {
@@ -85,7 +75,10 @@ TEST_CASE_METHOD(create_test_fixture, "wrap an async API that computes a result"
   }());
 }
 
-TEST_CASE_METHOD(create_test_fixture, "wrap an async API that doesn't compute a result", "[detail][create]") {
+TEST_CASE_METHOD(
+  create_test_fixture,
+  "wrap an async API that doesn't compute a result",
+  "[detail][create]") {
   bool called = false;
   auto snd = [&called, this]() {
     return exec::create<ex::set_value_t()>(
@@ -96,8 +89,7 @@ TEST_CASE_METHOD(create_test_fixture, "wrap an async API that doesn't compute a 
           ex::set_value(std::move(ctx.receiver));
         });
       },
-      &called
-    );
+      &called);
   }();
 
   std::optional<std::tuple<>> res = stdexec::sync_wait(std::move(snd));

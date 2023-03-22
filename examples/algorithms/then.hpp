@@ -21,34 +21,36 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // then algorithm:
-template<class R, class F>
-class _then_receiver
-    : stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
+template <class R, class F>
+class _then_receiver : stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
   friend stdexec::receiver_adaptor<_then_receiver, R>;
   F f_;
 
   template <class... As>
-  using _completions =
+  using _completions = //
     stdexec::completion_signatures<
       stdexec::set_value_t(std::invoke_result_t<F, As...>),
       stdexec::set_error_t(std::exception_ptr)>;
 
   // Customize set_value by invoking the callable and passing the result to the inner receiver
-  template<class... As>
+  template <class... As>
     requires stdexec::receiver_of<R, _completions<As...>>
-  void set_value(As&&... as) && noexcept try {
-    stdexec::set_value(std::move(*this).base(), std::invoke((F&&) f_, (As&&) as...));
-  } catch(...) {
-    stdexec::set_error(std::move(*this).base(), std::current_exception());
+  void set_value(As&&... as) && noexcept {
+    try {
+      stdexec::set_value(std::move(*this).base(), std::invoke((F&&) f_, (As&&) as...));
+    } catch (...) {
+      stdexec::set_error(std::move(*this).base(), std::current_exception());
+    }
   }
 
  public:
   _then_receiver(R r, F f)
-   : stdexec::receiver_adaptor<_then_receiver, R>{std::move(r)}
-   , f_(std::move(f)) {}
+    : stdexec::receiver_adaptor<_then_receiver, R>{std::move(r)}
+    , f_(std::move(f)) {
+  }
 };
 
-template<stdexec::sender S, class F>
+template <stdexec::sender S, class F>
 struct _then_sender {
   using is_sender = void;
 
@@ -57,37 +59,37 @@ struct _then_sender {
 
   // Compute the completion signatures
   template <class... Args>
-    using _set_value_t =
-      stdexec::completion_signatures<
-        stdexec::set_value_t(std::invoke_result_t<F, Args...>)>;
+  using _set_value_t =
+    stdexec::completion_signatures< stdexec::set_value_t(std::invoke_result_t<F, Args...>)>;
 
   template <class Env>
-    using _completions_t =
-      stdexec::make_completion_signatures<S, Env,
-        stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
-        _set_value_t>;
+  using _completions_t = //
+    stdexec::make_completion_signatures<
+      S,
+      Env,
+      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
+      _set_value_t>;
 
-  template<class Env>
+  template <class Env>
   friend auto tag_invoke(stdexec::get_completion_signatures_t, _then_sender&&, Env)
     -> _completions_t<Env>;
 
   // Connect:
-  template<class R>
-    //requires stdexec::receiver_of<R, _completions_t<stdexec::env_of_t<R>>>
-    //requires stdexec::receiver_of<R, stdexec::completion_signatures_of_t<S, stdexec::env_of_t<R>>>
+  template <class R>
+  //requires stdexec::receiver_of<R, _completions_t<stdexec::env_of_t<R>>>
+  //requires stdexec::receiver_of<R, stdexec::completion_signatures_of_t<S, stdexec::env_of_t<R>>>
   friend auto tag_invoke(stdexec::connect_t, _then_sender&& self, R r)
     -> stdexec::connect_result_t<S, _then_receiver<R, F>> {
-      return stdexec::connect(
-        (S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
+    return stdexec::connect((S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
   }
 
-  friend auto tag_invoke(stdexec::get_env_t, const _then_sender& self)
+  friend auto tag_invoke(stdexec::get_env_t, const _then_sender& self) //
     noexcept(noexcept(stdexec::get_env(self.s_))) -> std::invoke_result_t<stdexec::get_env_t, S> {
     return stdexec::get_env(self.s_);
   }
 };
 
-template<stdexec::sender S, class F>
+template <stdexec::sender S, class F>
 stdexec::sender auto then(S s, F f) {
   return _then_sender<S, F>{(S&&) s, (F&&) f};
 }
