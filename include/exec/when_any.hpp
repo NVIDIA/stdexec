@@ -141,8 +141,8 @@ namespace exec {
           std::visit(
             [this]<class _Tuple>(_Tuple&& __result) {
               std::apply(
-                [this]<class _C, class... _As>(_C, _As&&... __args) noexcept {
-                  _C{}((_Receiver&&) __receiver_, (_As&&) __args...);
+                [this]<class _Cpo, class... _As>(_Cpo, _As&&... __args) noexcept {
+                  _Cpo{}((_Receiver&&) __receiver_, (_As&&) __args...);
                 },
                 (_Tuple&&) __result);
             },
