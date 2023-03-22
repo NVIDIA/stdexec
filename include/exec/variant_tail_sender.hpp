@@ -172,8 +172,8 @@ namespace exec {
     template <class _Env>
     friend constexpr bool tag_invoke(
       exec::always_completes_inline_t,
-      exec::c_t<__variant_tail_sender>,
-      exec::c_t<_Env>) noexcept {
+      exec::__mtype<__variant_tail_sender>,
+      exec::__mtype<_Env>) noexcept {
       return true;
     }
 

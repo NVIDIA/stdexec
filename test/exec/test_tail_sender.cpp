@@ -59,8 +59,8 @@ namespace {
     template <class _Env>
     friend constexpr bool tag_invoke(
       exec::always_completes_inline_t,
-      exec::c_t<ATailSender>,
-      exec::c_t<_Env>) noexcept {
+      exec::__mtype<ATailSender>,
+      exec::__mtype<_Env>) noexcept {
       return true;
     }
   };
@@ -136,7 +136,7 @@ namespace {
 
   //   template<class _Env>
   //   friend constexpr bool tag_invoke(
-  //       exec::always_completes_inline_t, exec::c_t<ATailSender>, exec::c_t<_Env>) noexcept {
+  //       exec::always_completes_inline_t, exec::__mtype<ATailSender>, exec::__mtype<_Env>) noexcept {
   //     return true;
   //   }
   // };
