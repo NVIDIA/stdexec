@@ -4763,7 +4763,7 @@ namespace stdexec {
         _Attrs __env_;
         _Sender __sndr_;
 
-        template <__decays_to<__t> _Self, class _Receiver>
+        template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, _Receiver>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) -> stdexec::__t<
           __operation1<_SchedulerId, stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>>> {
