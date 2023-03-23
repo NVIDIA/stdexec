@@ -413,10 +413,8 @@ namespace stdexec {
   using __as_awaitable::as_awaitable_t;
   extern const as_awaitable_t as_awaitable;
 
-  struct _ERROR_BASE_ { };
-
   template <class _Fn, class... _Args>
-  struct _ERRONEOUS_SUBSTITUTION_ : _ERROR_BASE_ {
+  struct _ERRONEOUS_SUBSTITUTION_ {
   };
 
   
@@ -716,8 +714,14 @@ namespace stdexec {
   using __debug::__is_debug_env_t;
   using __debug::__debug_env_t;
 
-  template <class _Derived>
-  using __derived_from_error = __bool<derived_from<_Derived, _ERROR_BASE_>>;
+  struct __test_for_erroneous_subst {
+    template <class _Fn, class... _Args>
+    void operator()(const _ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>&);
+  };
+
+  template <class _Sig>
+  using __derived_from_error = __bool<__callable<__test_for_erroneous_subst, _Sig>>;
+
 
   template <class _Fn, class _Completions>
   using __apply_completions = __mapply<
