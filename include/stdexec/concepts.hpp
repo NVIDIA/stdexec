@@ -65,7 +65,7 @@ namespace stdexec::__std_concepts {
   concept integral = std::is_integral_v<T>;
 
   template <class _Ap, class _Bp>
-  concept derived_from =         //
+  concept derived_from =           //
     std::is_base_of_v<_Bp, _Ap> && //
     std::is_convertible_v<const volatile _Ap*, const volatile _Bp*>;
 

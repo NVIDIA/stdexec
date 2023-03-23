@@ -22,51 +22,8 @@
 #include <exec/on_coro_disposition.hpp>
 #include <catch2/catch.hpp>
 
-#include <test_common/schedulers.hpp>
-
-#if __has_include(<unistd.h>) && __has_include(<sys/wait.h>)
-#include <unistd.h>
-#include <sys/wait.h>
-#define STDEXEC_HAS_FORK
-#endif
-
-#ifdef STDEXEC_HAS_FORK
-namespace {
-  template <class F, class... Args>
-  void REQUIRE_TERMINATE(F&& f, Args&&... args) {
-    // spawn a new process
-    auto child_pid = ::fork();
-
-    // if the fork succeed
-    if (child_pid >= 0) {
-
-      // if we are in the child process
-      if (child_pid == 0) {
-
-        // call the function that we expect to abort
-        std::set_terminate([] { std::exit(EXIT_FAILURE); });
-
-        std::invoke((F&&) f, (Args&&) args...);
-
-        // if the function didn't abort, we'll exit cleanly
-        std::exit(EXIT_SUCCESS);
-      }
-    }
-
-    // determine if the child process aborted
-    int exit_status{};
-    ::wait(&exit_status);
-
-    // we check the exit status instead of a signal interrupt, because
-    // Catch is going to catch the signal and exit with an error
-    bool aborted = WEXITSTATUS(exit_status);
-    if (!aborted) {
-      INFO("He didn't fall? Inconceivable!");
-    }
-    REQUIRE(aborted);
-  }
-} // namespace
-#endif
+#include "../test_common/require_terminate.hpp"
+#include "../test_common/schedulers.hpp"
 
 using namespace exec;
 using stdexec::sync_wait;
@@ -264,7 +221,7 @@ namespace {
     result *= 3;
   }
 
-#ifdef STDEXEC_HAS_FORK
+#ifdef REQUIRE_TERMINATE
 
   void test_cancel_in_cleanup_action_causes_death(int& result) {
     task<void> t = []() -> task<void> {
@@ -314,7 +271,7 @@ namespace {
     REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
   }
 
-#endif // STDEXEC_HAS_FORK
+#endif // REQUIRE_TERMINATE
 
 } // unnamed namespace
 
@@ -450,7 +407,7 @@ TEST_CASE("OnSuccessCleanupActionWithMutableStateful", "[task][at_coroutine_exit
   REQUIRE(result == 10);
 }
 
-#ifdef STDEXEC_HAS_FORK
+#ifdef REQUIRE_TERMINATE
 
 TEST_CASE("CancelInCleanupActionCallsTerminate", "[task][at_coroutine_exit]") {
   int result = 0;
@@ -484,6 +441,6 @@ TEST_CASE(
   test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(result);
 }
 
-#endif // STDEXEC_HAS_FORK
+#endif // REQUIRE_TERMINATE
 
 #endif // !STDEXEC_STD_NO_COROUTINES_

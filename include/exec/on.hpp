@@ -107,8 +107,7 @@ namespace exec {
         __declval<__current_scheduler_t<_Receiver>>()));
 
       template <class _Sender>
-      using __on_sender_t =
-        __copy_cvref_t<_Sender, __start_on_t<_Sender, _Scheduler>>;
+      using __on_sender_t = __copy_cvref_t<_Sender, __start_on_t<_Sender, _Scheduler>>;
 
       template <class _Sender, class _Receiver>
       using __diagnostic_t = //
@@ -204,8 +203,7 @@ namespace exec {
         __declval<__current_scheduler_t<_Receiver>>()));
 
       template <class _Sender>
-      using __on_sender_t =
-        __copy_cvref_t<_Sender, __continue_on_t<_Sender, _Scheduler, _Closure>>;
+      using __on_sender_t = __copy_cvref_t<_Sender, __continue_on_t<_Sender, _Scheduler, _Closure>>;
 
       template <class _Sender, class _Receiver>
       using __diagnostic_t = //

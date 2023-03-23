@@ -315,7 +315,9 @@ namespace tbbexec {
             stdexec::__v<stdexec::__value_types_of_t<
               Sender,
               Env,
-              stdexec::__transform<stdexec::__q<__decay_ref>, stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>>,
+              stdexec::__transform<
+                stdexec::__q<__decay_ref>,
+                stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>>,
               stdexec::__q<stdexec::__mand>>>,
             stdexec::completion_signatures<>,
             stdexec::__with_exception_ptr>;
