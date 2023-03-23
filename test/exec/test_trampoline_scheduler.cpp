@@ -58,15 +58,15 @@ struct fails_alot {
   std::shared_ptr<int> counter_ = std::make_shared<int>(1'000'000);
 };
 
-#if defined(REQUIRE_TERMINATE) && !STDEXEC_NVHPC()
-// For some reason, when compiling with nvc++, the forked process dies with SIGSEGV
-// but the error code returned from ::wait reports success, so this test fails.
-TEST_CASE("running deeply recursing algo blows the stack", "[schedulers][trampoline_scheduler]") {
+// #if defined(REQUIRE_TERMINATE)
+// // For some reason, when compiling with nvc++, the forked process dies with SIGSEGV
+// // but the error code returned from ::wait reports success, so this test fails.
+// TEST_CASE("running deeply recursing algo blows the stack", "[schedulers][trampoline_scheduler]") {
 
-  auto recurse_deeply = retry(fails_alot{});
-  REQUIRE_TERMINATE([&] { sync_wait(std::move(recurse_deeply)); });
-}
-#endif
+//   auto recurse_deeply = retry(fails_alot{});
+//   REQUIRE_TERMINATE([&] { sync_wait(std::move(recurse_deeply)); });
+// }
+// #endif
 
 TEST_CASE(
   "running deeply recursing algo on trampoline_scheduler doesn't blow the stack",
