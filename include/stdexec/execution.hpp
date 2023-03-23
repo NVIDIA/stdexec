@@ -717,8 +717,7 @@ namespace stdexec {
   };
 
   template <class _Sig>
-  using __derived_from_error = __bool<__callable<__test_for_erroneous_subst, _Sig>>;
-
+  using __is_substitution_error = __bool<__callable<__test_for_erroneous_subst, _Sig>>;
 
   template <class _Fn, class _Completions>
   using __apply_completions = __mapply<
@@ -730,7 +729,7 @@ namespace stdexec {
 
   template <class _Completions>
   concept __has_no_substitution_error =
-    __v<__apply_completions<__mnone_of<__q<__derived_from_error>>, _Completions>>;
+    __v<__apply_completions<__mnone_of<__q<__is_substitution_error>>, _Completions>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
@@ -857,7 +856,7 @@ namespace stdexec {
   template <class _Variant>
   struct __check_for_errors {
     template <class... _Types>
-      requires __v<__minvoke<__mnone_of<__q<__derived_from_error>>, _Types...>>
+      requires __v<__minvoke<__mnone_of<__q<__is_substitution_error>>, _Types...>>
     using __f = __minvoke<_Variant, _Types...>;
   };
 
@@ -5937,7 +5936,7 @@ namespace stdexec {
       __transform<__q<decay_t>, _Continuation>,
       __q<__msingle>>;
 
-    template <class _Sender>
+    template <stdexec::sender_in<__debug_env_t<__env>> _Sender>
     using __sync_wait_result_t = __sync_wait_result_impl<_Sender, __q<std::tuple>>;
 
     template <class _Sender>
