@@ -145,7 +145,8 @@ namespace stdexec {
       template <class _Tp>
         requires tag_invocable<execute_may_block_caller_t, __cref_t<_Tp>>
       constexpr bool operator()(_Tp&& __t) const noexcept {
-        static_assert(same_as<bool, tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_Tp>>>);
+        static_assert(
+          same_as<bool, tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_Tp>>>);
         static_assert(nothrow_tag_invocable<execute_may_block_caller_t, __cref_t<_Tp>>);
         return tag_invoke(execute_may_block_caller_t{}, std::as_const(__t));
       }
@@ -600,6 +601,9 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
+  template <class _Receiver>
+  concept __receiver_r5_or_r7 =
+    enable_receiver<_Receiver> || tag_invocable<get_env_t, __cref_t<_Receiver>>;
 
   template <class _Receiver>
   concept receiver =
@@ -610,9 +614,9 @@ namespace stdexec {
     // explicit get_env. All R5 receivers provided an explicit get_env,
     // so this is backwards compatible.
     //  NOTE: Double-negation here is to make the constraint atomic
-    (!!(enable_receiver<_Receiver> || tag_invocable<get_env_t, __cref_t<_Receiver>>) ) && //
-    environment_provider<__cref_t<_Receiver>> &&                                          //
-    move_constructible<remove_cvref_t<_Receiver>> &&                                      //
+    !!__receiver_r5_or_r7<_Receiver> &&              //
+    environment_provider<__cref_t<_Receiver>> &&     //
+    move_constructible<remove_cvref_t<_Receiver>> && //
     constructible_from<remove_cvref_t<_Receiver>, _Receiver>;
 
   template <class _Receiver, class _Completions>
@@ -718,11 +722,13 @@ namespace stdexec {
   // Here are the sender concepts that provide backward compatibility
   // with R5-style senders.
   template <class _Sender, class _Env = no_env>
+  concept __sender_r5_or_r7 = (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
+                           || __with_completion_signatures<_Sender, _Env>;
+
+  template <class _Sender, class _Env = no_env>
   concept __sender =
     // Double-negation here is to make this an atomic constraint
-    (!!(
-      (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
-      || __with_completion_signatures<_Sender, _Env>) );
+    !!__sender_r5_or_r7<_Sender, _Env>;
 
   template <class _Sender, class _Env = no_env>
   concept sender =
