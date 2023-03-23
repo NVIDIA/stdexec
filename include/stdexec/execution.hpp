@@ -2775,7 +2775,7 @@ namespace stdexec {
       __mbind_front_q<__non_throwing_, _Fun>,
       __q<__mand>>;
 
-  template <__has_value _Boolean>
+  template <class _Boolean>
   using __as_boolean = __bool<__v<_Boolean>>;
 
   template <class _Tag, class _Fun, class _Sender, class _Env>
