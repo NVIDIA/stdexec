@@ -413,12 +413,10 @@ namespace stdexec {
   using __as_awaitable::as_awaitable_t;
   extern const as_awaitable_t as_awaitable;
 
+  struct _ERROR_BASE_ { };
 
   template <class _Fn, class... _Args>
-  struct _ERRONEOUS_SUBSTITUTION_ {
-    friend auto operator,(_ERRONEOUS_SUBSTITUTION_, auto) -> _ERRONEOUS_SUBSTITUTION_ {
-      return {};
-    }
+  struct _ERRONEOUS_SUBSTITUTION_ : _ERROR_BASE_ {
   };
 
   
@@ -718,23 +716,20 @@ namespace stdexec {
   using __debug::__is_debug_env_t;
   using __debug::__debug_env_t;
 
-  template <class _Sig>
-  std::true_type __is_successful_signal_transform_fn(_Sig*);
+  template <class _Derived>
+  using __derived_from_error = __bool<derived_from<_Derived, _ERROR_BASE_>>;
 
-  template <class _Fn, class... _Args>
-  std::false_type __is_successful_signal_transform_fn(_ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>*);
-
-  template <class _Type>
-  using __is_successful_signal_transform = decltype(__is_successful_signal_transform_fn((decay_t<_Type>*) 0));
-
-  template <class... _Sigs>
-  auto __has_successful_signal_transforms(completion_signatures<_Sigs...>*)
-    -> decltype((__declval<_Sigs>(), ...));
-
-  auto __has_successful_signal_transforms(__compl_sigs::__dependent*) -> std::true_type;
+  template <class _Fn, class _Completions>
+  using __apply_completions = __mapply<
+    _Fn,
+    __if_c<
+      __decays_to<_Completions, __compl_sigs::__dependent>,
+      __types<_Completions>,
+      _Completions>>;
 
   template <class _Completions>
-  concept __is_valid_completion_signal_transform = __is_successful_signal_transform<decltype(__has_successful_signal_transforms((_Completions*) 0))>::value;
+  concept __has_no_substitution_error =
+    __v<__apply_completions<__mnone_of<__q<__derived_from_error>>, _Completions>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
@@ -742,7 +737,7 @@ namespace stdexec {
   using __completion_signatures_of_t = __call_result_t< get_completion_signatures_t, _Sender, _Env>;
 
   template <class _Sender, class _Env>
-  concept __has_no_substition_errors_in_completion_signatures = __is_valid_completion_signal_transform<__completion_signatures_of_t<_Sender, __debug_env_t<_Env>>>;
+  concept __has_no_substitution_errors_in_completion_signatures = __has_no_substitution_error<__completion_signatures_of_t<_Sender, __debug_env_t<_Env>>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
@@ -771,7 +766,6 @@ namespace stdexec {
   // with R5-style senders.
   template <class _Sender, class _Env = no_env>
   concept __sender =
-    __has_no_substition_errors_in_completion_signatures<_Sender, _Env> &&
     // Double-negation here is to make this an atomic constraint
     (!!(
       (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
@@ -861,12 +855,12 @@ namespace stdexec {
   template <class _Variant>
   struct __check_for_errors {
     template <class... _Types>
-      requires (__is_successful_signal_transform<_Types>::value && ...)
+      requires __v<__minvoke<__mnone_of<__q<__derived_from_error>>, _Types...>>
     using __f = __minvoke<_Variant, _Types...>;
   };
 
   template <class _Tag, class _Completions, class _Tuple, class _Variant, bool _WithCheck>
-  using __gather_signal = __compl_sigs::
+  using __gather_signal_ext = __compl_sigs::
     __for_all_sigs<
       __only_gather_signal<_Tag, _Completions>, 
       __with_fn<
@@ -874,10 +868,13 @@ namespace stdexec {
         __invoke_completions<__mcompose<error_transformation_t<_Tuple>, __mbind_front_q<__set_tag_type, _Tag>>>>,
       __if_c<_WithCheck, __check_for_errors<_Variant>, __with_fn<_Variant, error_transformation_t<_Variant>>>>;
 
+  template <class _Tag, class _Completions, class _Tuple, class _Variant>
+  using __gather_signal = __gather_signal_ext<_Tag, _Completions, _Tuple, _Variant, true>;
+
   template <class _Tag, class _Sender, class _Env, class _Tuple, class _Variant>
     requires sender_in<_Sender, _Env>
   using __gather_completions_for =
-    __gather_signal<_Tag, completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant, !tag_invocable<__is_debug_env_t, _Env>>;
+    __gather_signal_ext<_Tag, completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant, !tag_invocable<__is_debug_env_t, _Env>>;
 
   template <                             //
     class _Sender,                       //
@@ -5918,10 +5915,17 @@ namespace stdexec {
 
     // What should sync_wait(just_stopped()) return?
     template <class _Sender, class _Continuation>
-    using __sync_wait_result_impl =
-      __value_types_of_t< _Sender, __env, __transform<__q<decay_t>, _Continuation>, __q<__msingle>>;
+    using __sync_wait_result_impl = __minvoke<
+      __if_c<
+        __has_no_substitution_errors_in_completion_signatures<_Sender, __env>,
+        __q<__value_types_of_t>,
+        __mconst<__minvoke<_Continuation>>>,
+      _Sender,
+      __env,
+      __transform<__q<decay_t>, _Continuation>,
+      __q<__msingle>>;
 
-    template <stdexec::sender_in<__env> _Sender>
+    template <class _Sender>
     using __sync_wait_result_t = __sync_wait_result_impl<_Sender, __q<std::tuple>>;
 
     template <class _Sender>
@@ -5990,8 +5994,9 @@ namespace stdexec {
       using __receiver_t = __t<__sync_wait_result_impl<_Sender, __q<__receiver>>>;
 
       // TODO: constrain on return type
-      template <__single_value_variant_sender<__env> _Sender> // NOT TO SPEC
-        requires __tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>
+      template <__has_no_substitution_errors_in_completion_signatures<__env> _Sender> // NOT TO SPEC
+        requires __single_value_variant_sender<_Sender, __env>
+          && __tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>
       tag_invoke_result_t< sync_wait_t, __completion_scheduler_for<_Sender, set_value_t>, _Sender>
         operator()(_Sender&& __sndr) const
         noexcept(nothrow_tag_invocable<
@@ -6003,17 +6008,20 @@ namespace stdexec {
       }
 
       // TODO: constrain on return type
-      template <__single_value_variant_sender<__env> _Sender> // NOT TO SPEC
-        requires(!__tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>)
+      template <__has_no_substitution_errors_in_completion_signatures<__env> _Sender> // NOT TO SPEC
+        requires __single_value_variant_sender<_Sender, __env>
+             && (!__tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>)
              && tag_invocable<sync_wait_t, _Sender>
       tag_invoke_result_t<sync_wait_t, _Sender> operator()(_Sender&& __sndr) const
         noexcept(nothrow_tag_invocable<sync_wait_t, _Sender>) {
         return tag_invoke(sync_wait_t{}, (_Sender&&) __sndr);
       }
 
-      template <__single_value_variant_sender<__env> _Sender>
-        requires(!__tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>)
-             && (!tag_invocable<sync_wait_t, _Sender>) && sender_in<_Sender, __env>
+      template <__has_no_substitution_errors_in_completion_signatures<__env> _Sender>
+        requires __single_value_variant_sender<_Sender, __env>
+             && (!__tag_invocable_with_completion_scheduler< sync_wait_t, set_value_t, _Sender>)
+             && (!tag_invocable<sync_wait_t, _Sender>)
+             && sender_in<_Sender, __env>
              && sender_to<_Sender, __receiver_t<_Sender>>
       auto operator()(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
         using state_t = __sync_wait_result_impl<_Sender, __q<__state>>;

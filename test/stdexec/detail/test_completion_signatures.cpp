@@ -135,7 +135,7 @@ void expect_val_types() {
     stdexec::set_value_t,
     CS,
     stdexec::__q<stdexec::__types>,
-    stdexec::__q<stdexec::__types>, true>;
+    stdexec::__q<stdexec::__types>>;
   static_assert(is_same_v<t, ExpectedValTypes>);
 }
 
@@ -145,7 +145,7 @@ void expect_err_types() {
     stdexec::set_error_t,
     CS,
     stdexec::__q<stdexec::__midentity>,
-    stdexec::__q<stdexec::__types>, true>;
+    stdexec::__q<stdexec::__types>>;
   static_assert(is_same_v<t, ExpectedErrTypes>);
 }
 
