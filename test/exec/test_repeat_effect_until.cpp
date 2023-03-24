@@ -15,6 +15,8 @@
  */
 
 #include "exec/repeat_effect_until.hpp"
+#include "exec/on.hpp"
+#include "exec/trampoline_scheduler.hpp"
 #include "stdexec/concepts.hpp"
 #include "stdexec/execution.hpp"
 #include <exception>
@@ -91,17 +93,19 @@ TEST_CASE(
   stdexec::sync_wait(exec::repeat_effect_until(std::move(input_snd)));
 }
 
-// TEST_CASE("simple example for repeat_effect_until", "[adaptors][repeat_effect_until]") {
-//   // Run 1'000'000 times
-//   int n = 1;
-//   sender auto snd = exec::repeat_effect_until(just() | then([&n] {
-//                                                 ++n;
-//                                                 return n == 1'000'000;
-//                                               }));
+TEST_CASE("simple example for repeat_effect_until", "[adaptors][repeat_effect_until]") {
+  // Run 1'000'000 times
+  int n = 1;
+  exec::trampoline_scheduler sched;
+  auto source = exec::on(sched, just() | then([&n] {
+                                  ++n;
+                                  return n == 1'000'000;
+                                }));
+  sender auto snd = exec::repeat_effect_until(std::move(source));
 
-//   stdexec::sync_wait(std::move(snd));
-//   CHECK(n == 1'000'000);
-// }
+  stdexec::sync_wait(std::move(snd));
+  CHECK(n == 1'000'000);
+}
 
 TEST_CASE("repeat_effect_until with pipeline operator", "[adaptors][repeat_effect_until]") {
   bool should_stopped = true;
