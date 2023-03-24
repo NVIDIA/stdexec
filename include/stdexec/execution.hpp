@@ -414,9 +414,10 @@ namespace stdexec {
   extern const as_awaitable_t as_awaitable;
 
   template <class _Fn, class... _Args>
-  struct _ERRONEOUS_SUBSTITUTION_ : std::false_type { 
-    friend auto operator,(const _ERRONEOUS_SUBSTITUTION_&, auto)
-      -> _ERRONEOUS_SUBSTITUTION_ { return {}; }
+  struct _ERRONEOUS_SUBSTITUTION_ : std::false_type {
+    friend auto operator,(const _ERRONEOUS_SUBSTITUTION_&, auto) -> _ERRONEOUS_SUBSTITUTION_ {
+      return {};
+    }
   };
 
   /////////////////////////////////////////////////////////////////////////////
@@ -723,7 +724,8 @@ namespace stdexec {
   auto __has_no_subs_error(_Tag (*)(_Args...)) -> std::true_type;
 
   template <class _Fn, class... _Args>
-  auto __has_no_subs_error(_ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>*) -> _ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>;
+  auto __has_no_subs_error(_ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>*)
+    -> _ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>;
 
   template <class... _Sigs>
   auto __has_no_subs_errors(completion_signatures<_Sigs...>*)
@@ -731,7 +733,7 @@ namespace stdexec {
 
   template <class _Completion>
   concept __has_no_substitution_error = _Completion::value;
-    // __v<__apply_completions<__mnone_of<__q<__is_substitution_error>>, _Completions>>;
+  // __v<__apply_completions<__mnone_of<__q<__is_substitution_error>>, _Completions>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
@@ -855,10 +857,9 @@ namespace stdexec {
   template <class _Sender, class _Env>
   concept __has_no_substitution_errors_in_completion_signatures =
     sender_in<_Sender, __debug_env_t<_Env>>
-    && requires (__completion_signatures_of_t<_Sender, __debug_env_t<_Env>>* __completions) {
-       { __has_no_subs_errors(__completions) } 
-        -> __has_no_substitution_error;
-    };
+    && requires(__completion_signatures_of_t<_Sender, __debug_env_t<_Env>>* __completions) {
+         { __has_no_subs_errors(__completions) } -> __has_no_substitution_error;
+       };
 
   template <class _Fn>
   using __error_transformation_t = __mbind_front_q<_ERRONEOUS_SUBSTITUTION_, _Fn>;
@@ -872,15 +873,14 @@ namespace stdexec {
   template <class _Fn>
   using __try_fn = __try_fn_or<_Fn, __error_transformation_t<_Fn>>;
 
-  template <class _Tag, class _Completions, class _Tuple, class _Variant>
-  using __gather_signal_checked = __minvoke<
-    __try_fn<__q<__compl_sigs::__for_all_sigs>>,
+  template <class _Tag, class _Completions, class _Tuple, class _Variant, bool _WithCheck>
+  using __gather_signal_checked = __compl_sigs::__for_all_sigs<
     __minvoke<__try_fn<__q<__only_gather_signal>>, _Tag, _Completions>,
     __try_fn_or<
       __invoke_completions<_Tuple>,
       __invoke_completions<
         __mcompose<__error_transformation_t<_Tuple>, __mbind_front_q<__set_tag_type, _Tag>>>>,
-    __try_fn<_Variant>>;
+    __if_c<_WithCheck, __check_for_errors<_Variant>, __try_fn<_Variant>>>;
 
   template <class _Tag, class _Completions, class _Tuple, class _Variant>
   using __gather_signal = __compl_sigs::
@@ -888,12 +888,12 @@ namespace stdexec {
 
   template <class _Tag, class _Sender, class _Env, class _Tuple, class _Variant>
     requires sender_in<_Sender, _Env>
-  using __gather_completions_for = __minvoke<
-    __if_c<tag_invocable<__is_debug_env_t, _Env>, __q<__gather_signal_checked>, __q<__gather_signal>>,
+  using __gather_completions_for = __gather_signal_checked<
     _Tag,
-    __minvoke<__try_fn<__q<completion_signatures_of_t>>, _Sender, _Env>,
+    completion_signatures_of_t<_Sender, _Env>,
     _Tuple,
-    _Variant>;
+    _Variant,
+    !tag_invocable<__is_debug_env_t, _Env>>;
 
   template <                             //
     class _Sender,                       //
@@ -1573,8 +1573,8 @@ namespace stdexec {
     };
   } // namespace __debug
 
-  using __debug::__is_debug_env_t;
-  using __debug::__debug_env_t;
+  // using __debug::__is_debug_env_t;
+  // using __debug::__debug_env_t;
 
   // BUGBUG maybe instead of the disjunction here we want to make
   // get_completion_signatures recognize debug environments and return
