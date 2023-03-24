@@ -414,10 +414,10 @@ namespace stdexec {
   extern const as_awaitable_t as_awaitable;
 
   template <class _Fn, class... _Args>
-  struct _ERRONEOUS_SUBSTITUTION_ { };
-
-  template <class _Fn>
-  using error_transformation_t = __mbind_front_q<_ERRONEOUS_SUBSTITUTION_, _Fn>;
+  struct _ERRONEOUS_SUBSTITUTION_ : std::false_type { 
+    friend auto operator,(const _ERRONEOUS_SUBSTITUTION_&, auto)
+      -> _ERRONEOUS_SUBSTITUTION_ { return {}; }
+  };
 
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
@@ -719,26 +719,24 @@ namespace stdexec {
   template <class _Sig>
   using __is_substitution_error = __bool<__callable<__test_for_erroneous_subst, _Sig>>;
 
-  template <class _Fn, class _Completions>
-  using __apply_completions = __mapply<
-    _Fn,
-    __if_c<
-      __decays_to<_Completions, __compl_sigs::__dependent>,
-      __types<_Completions>,
-      _Completions>>;
+  template <class _Tag, class... _Args>
+  auto __has_no_subs_error(_Tag (*)(_Args...)) -> std::true_type;
 
-  template <class _Completions>
-  concept __has_no_substitution_error =
-    __v<__apply_completions<__mnone_of<__q<__is_substitution_error>>, _Completions>>;
+  template <class _Fn, class... _Args>
+  auto __has_no_subs_error(_ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>*) -> std::false_type;
+
+  template <class... _Sigs>
+  auto __has_no_subs_errors(completion_signatures<_Sigs...>*)
+    -> decltype((__has_no_subs_error((_Sigs*) 0), ...));
+
+  template <class _Completion>
+  concept __has_no_substitution_error = _Completion::value;
+    // __v<__apply_completions<__mnone_of<__q<__is_substitution_error>>, _Completions>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.traits]
   template <class _Sender, class _Env>
   using __completion_signatures_of_t = __call_result_t< get_completion_signatures_t, _Sender, _Env>;
-
-  template <class _Sender, class _Env>
-  concept __has_no_substitution_errors_in_completion_signatures =
-    __has_no_substitution_error<__completion_signatures_of_t<_Sender, __debug_env_t<_Env>>>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
@@ -847,12 +845,6 @@ namespace stdexec {
     __select_completions_for_or<_Tag, __mbind_front_q<__set_tag_type, _Tag>>,
     __remove<__, __q<completion_signatures>>>;
 
-  template <class _Fn, class _Alt>
-  struct __with_fn {
-    template <class... _Args>
-    using __f = __minvoke<__if_c<__minvocable<_Fn, _Args...>, _Fn, _Alt>, _Args...>;
-  };
-
   template <class _Variant>
   struct __check_for_errors {
     template <class... _Types>
@@ -860,29 +852,48 @@ namespace stdexec {
     using __f = __minvoke<_Variant, _Types...>;
   };
 
-  template <class _Tag, class _Completions, class _Tuple, class _Variant, bool _WithCheck>
-  using __gather_signal_ext = __compl_sigs::__for_all_sigs<
-    __only_gather_signal<_Tag, _Completions>,
-    __with_fn<
-      __invoke_completions<_Tuple>,
-      __invoke_completions<
-        __mcompose<error_transformation_t<_Tuple>, __mbind_front_q<__set_tag_type, _Tag>>>>,
-    __if_c<
-      _WithCheck,
-      __check_for_errors<_Variant>,
-      __with_fn<_Variant, error_transformation_t<_Variant>>>>;
+  template <class _Sender, class _Env>
+  concept __has_no_substitution_errors_in_completion_signatures =
+    sender_in<_Sender, __debug_env_t<_Env>>
+    && requires (__completion_signatures_of_t<_Sender, __debug_env_t<_Env>>* __completions) {
+       { __has_no_subs_errors(__completions) } 
+        -> __has_no_substitution_error;
+    };
+
+  template <class _Fn>
+  using __error_transformation_t = __mbind_front_q<_ERRONEOUS_SUBSTITUTION_, _Fn>;
+
+  template <class _Fn, class _Alt>
+  struct __try_fn_or {
+    template <class... _Args>
+    using __f = __minvoke<__if_c<__minvocable<_Fn, _Args...>, _Fn, _Alt>, _Args...>;
+  };
+
+  template <class _Fn>
+  using __try_fn = __try_fn_or<_Fn, __error_transformation_t<_Fn>>;
 
   template <class _Tag, class _Completions, class _Tuple, class _Variant>
-  using __gather_signal = __gather_signal_ext<_Tag, _Completions, _Tuple, _Variant, true>;
+  using __gather_signal_checked = __minvoke<
+    __try_fn<__q<__compl_sigs::__for_all_sigs>>,
+    __minvoke<__try_fn<__q<__only_gather_signal>>, _Tag, _Completions>,
+    __try_fn_or<
+      __invoke_completions<_Tuple>,
+      __invoke_completions<
+        __mcompose<__error_transformation_t<_Tuple>, __mbind_front_q<__set_tag_type, _Tag>>>>,
+    __try_fn<_Variant>>;
+
+  template <class _Tag, class _Completions, class _Tuple, class _Variant>
+  using __gather_signal = __compl_sigs::
+    __for_all_sigs<__only_gather_signal<_Tag, _Completions>, __invoke_completions<_Tuple>, _Variant>;
 
   template <class _Tag, class _Sender, class _Env, class _Tuple, class _Variant>
     requires sender_in<_Sender, _Env>
-  using __gather_completions_for = __gather_signal_ext<
+  using __gather_completions_for = __minvoke<
+    __if_c<tag_invocable<__is_debug_env_t, _Env>, __q<__gather_signal_checked>, __q<__gather_signal>>,
     _Tag,
-    completion_signatures_of_t<_Sender, _Env>,
+    __minvoke<__try_fn<__q<completion_signatures_of_t>>, _Sender, _Env>,
     _Tuple,
-    _Variant,
-    !tag_invocable<__is_debug_env_t, _Env>>;
+    _Variant>;
 
   template <                             //
     class _Sender,                       //
@@ -969,9 +980,9 @@ namespace stdexec {
           _Sender,
           _Env,
           _SetValue,
-          __with_fn<
+          __try_fn_or<
             __q<__ensure_concat>,
-            __mcompose<__q<completion_signatures>, error_transformation_t<__q<__ensure_concat>>>>>,
+            __mcompose<__q<completion_signatures>, __error_transformation_t<__q<__ensure_concat>>>>>,
         __error_types_of_t<_Sender, _Env, __transform<_SetError, __q<__ensure_concat>>>,
         __if_c<sends_stopped<_Sender, _Env>, _SetStopped, completion_signatures<>>>;
 
@@ -2782,7 +2793,7 @@ namespace stdexec {
   using __with_error_invoke_t = //
     __if_c<
       __v<__minvoke<
-        __with_fn<__q<__as_boolean>, __mconst<std::false_type>>,
+        __try_fn_or<__q<__as_boolean>, __mconst<std::false_type>>,
         __with_error_invoke_t_<_Tag, _Fun, _Sender, _Env>>>,
       completion_signatures<>,
       __with_exception_ptr>;
@@ -4061,7 +4072,7 @@ namespace stdexec {
       template <class _Env, class _Fun>
       using __f = //
         make_completion_signatures<
-          __minvoke<__result_sender<_Fun>, _Args...>,
+          __minvoke<__try_fn<__result_sender<_Fun>>, _Args...>,
           _Env,
           // because we don't know if connect-ing the result sender will throw:
           completion_signatures<set_error_t(std::exception_ptr)>>;
