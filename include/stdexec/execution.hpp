@@ -723,7 +723,7 @@ namespace stdexec {
   auto __has_no_subs_error(_Tag (*)(_Args...)) -> std::true_type;
 
   template <class _Fn, class... _Args>
-  auto __has_no_subs_error(_ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>*) -> std::false_type;
+  auto __has_no_subs_error(_ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>*) -> _ERRONEOUS_SUBSTITUTION_<_Fn, _Args...>;
 
   template <class... _Sigs>
   auto __has_no_subs_errors(completion_signatures<_Sigs...>*)
