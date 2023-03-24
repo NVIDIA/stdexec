@@ -408,7 +408,8 @@ namespace exec {
       }
 
       template <class _Tp>
-      friend void tag_invoke(__move_construct_t, __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
+      friend void
+        tag_invoke(__move_construct_t, __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
         if (!__other.__object_pointer_) {
           return;
         }

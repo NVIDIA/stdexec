@@ -27,6 +27,8 @@ namespace exec {
   struct _FAILURE_TO_CONNECT_ {
     template <class... _Message>
     struct _WHAT_ {
+      using is_sender = void;
+
       friend _WHAT_
         tag_invoke(stdexec::get_completion_signatures_t, _WHAT_, stdexec::__ignore) noexcept {
         return {};
@@ -91,6 +93,7 @@ namespace exec {
       __declval<__receiver_placeholder<_Env>&>()));
 
     struct __dependent_sender {
+      using is_sender = void;
       using __t = __dependent_sender;
       friend auto tag_invoke(get_completion_signatures_t, __dependent_sender, no_env)
         -> dependent_completion_signatures<no_env>;
