@@ -20,7 +20,9 @@
 #include "exec/trampoline_scheduler.hpp"
 #include "exec/on.hpp"
 #include "__detail/__manual_lifetime.hpp"
+#include "stdexec/__detail/__meta.hpp"
 #include "stdexec/concepts.hpp"
+#include "stdexec/functional.hpp"
 #include <concepts>
 
 namespace exec {
@@ -40,19 +42,20 @@ namespace exec {
       struct __t : stdexec::__immovable {
         using __id = __operation;
         using __receiver_t = stdexec::__t<__receiver<_SourceId, _ReceiverId>>;
+        using __source_on_scheduler_sender =
+          __call_result_t<stdexec::on_t, trampoline_scheduler, _Source>;
+        using __source_op_t = stdexec::connect_result_t<__source_on_scheduler_sender, __receiver_t>;
 
         [[no_unique_address]] _Source __source_;
         [[no_unique_address]] _Receiver __rcvr_;
-        trampoline_scheduler __sched_;
-
-        using __source_on_scheduler_sender = decltype(stdexec::on(__sched_, __source_));
-        using __source_op_t = stdexec::connect_result_t<__source_on_scheduler_sender, __receiver_t>;
         __manual_lifetime<__source_op_t> __source_op_;
+        trampoline_scheduler __sched_;
 
         template <class _Source2>
         __t(_Source2 &&__source, _Receiver __rcvr) noexcept(
           __nothrow_decay_copyable<_Source2> &&__nothrow_decay_copyable<_Receiver>
-            &&__nothrow_connectable<_Source &, __receiver_t>)
+            &&nothrow_tag_invocable<stdexec::on_t, trampoline_scheduler, _Source>
+              &&__nothrow_connectable<__source_on_scheduler_sender, __receiver_t>)
           : __source_((_Source2 &&) __source)
           , __rcvr_((_Receiver &&) __rcvr) {
           __source_op_.__construct_with([&] {
@@ -126,9 +129,9 @@ namespace exec {
         stdexec::set_error((_Receiver &&) __op->__rcvr_, (_Error &&) __error);
       }
 
-      friend env_of_t<const _Receiver &> tag_invoke(get_env_t, const __t &__self) noexcept(
+      friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t &__self) noexcept(
         __nothrow_callable<get_env_t, const _Receiver &>) {
-        return get_env(const_cast<const _Receiver &>(__self.__op_->__rcvr_));
+        return get_env(__self.__op_->__rcvr_);
       }
     };
 
