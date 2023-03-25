@@ -17,6 +17,8 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
+#include "exec/trampoline_scheduler.hpp"
+#include "exec/on.hpp"
 #include "__detail/__manual_lifetime.hpp"
 #include "stdexec/concepts.hpp"
 #include <concepts>
@@ -38,10 +40,13 @@ namespace exec {
       struct __t : stdexec::__immovable {
         using __id = __operation;
         using __receiver_t = stdexec::__t<__receiver<_SourceId, _ReceiverId>>;
-        using __source_op_t = stdexec::connect_result_t<_Source &, __receiver_t>;
 
         [[no_unique_address]] _Source __source_;
         [[no_unique_address]] _Receiver __rcvr_;
+        trampoline_scheduler __sched_;
+
+        using __source_on_scheduler_sender = decltype(stdexec::on(__sched_, __source_));
+        using __source_op_t = stdexec::connect_result_t<__source_on_scheduler_sender, __receiver_t>;
         __manual_lifetime<__source_op_t> __source_op_;
 
         template <class _Source2>
@@ -51,7 +56,7 @@ namespace exec {
           : __source_((_Source2 &&) __source)
           , __rcvr_((_Receiver &&) __rcvr) {
           __source_op_.__construct_with([&] {
-            return stdexec::connect(__source_, __receiver_t{this});
+            return stdexec::connect(stdexec::on(__sched_, __source_), __receiver_t{this});
           });
         }
 
@@ -96,7 +101,7 @@ namespace exec {
         } else {
           try {
             auto &__source_op = __op->__source_op_.__construct_with([&]() {
-              return stdexec::connect(__op->__source_, __t{__op});
+              return stdexec::connect(stdexec::on(__op->__sched_, __op->__source_), __t{__op});
             });
             stdexec::start(__source_op);
           } catch (...) {
