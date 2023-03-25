@@ -181,8 +181,9 @@ namespace exec {
           return {((_Self &&) __self).__source_, (_Receiver &&) __rcvr};
         }
 
-        friend env_of_t<const _Source &> tag_invoke(get_env_t, const __t &__self) noexcept(
-          __nothrow_callable<get_env_t, const _Source &>) {
+        friend auto tag_invoke(get_env_t, const __t &__self) //
+          noexcept(__nothrow_callable<get_env_t, const _Source &>)
+            -> __call_result_t<get_env_t, const _Source &> {
           return get_env(__self.__source_);
         }
       };
