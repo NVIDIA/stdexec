@@ -72,11 +72,18 @@ namespace exec {
           __t<_SenderId>,
           __with_sched_kernel<_Scheduler>> { };
 
-    template <class _Sender>
-    using __pretty_print = __minvoke<__with_default<__id_<>, _Sender>, _Sender>;
+    struct __dependent_sender {
+      using is_sender = void;
+      using __t = __dependent_sender;
+      friend auto tag_invoke(get_completion_signatures_t, __dependent_sender, no_env)
+        -> dependent_completion_signatures<no_env>;
+    };
 
     template <class _SenderId, class _Scheduler>
     struct __start_on;
+
+    template <class _Sender, class _Scheduler>
+    using __start_on_t = __t<__start_on<__id<decay_t<_Sender>>, _Scheduler>>;
 
     template <class _Scheduler>
     struct __start_on_kernel : __default_kernel {
@@ -100,8 +107,7 @@ namespace exec {
         __declval<__current_scheduler_t<_Receiver>>()));
 
       template <class _Sender>
-      using __on_sender_t =
-        __copy_cvref_t<_Sender, __start_on<__pretty_print<decay_t<_Sender>>, _Scheduler>>;
+      using __on_sender_t = __copy_cvref_t<_Sender, __start_on_t<_Sender, _Scheduler>>;
 
       template <class _Sender, class _Receiver>
       using __diagnostic_t = //
@@ -111,14 +117,18 @@ namespace exec {
             __on_sender_t<_Sender>>>;
 
       template <class _Sender, class _Receiver>
-      using __result_t = //
-        __minvoke<
-          __if_c<
-            __valid<__new_sender_t, _Sender, _Receiver>,
-            __q<__new_sender_t>,
-            __q<__diagnostic_t>>,
-          _Sender,
-          _Receiver>;
+      static auto __transform_sender_result() {
+        if constexpr (__valid<__new_sender_t, _Sender, _Receiver>) {
+          return (__new_sender_t<_Sender, _Receiver>(*)()) nullptr;
+        } else if constexpr (same_as<env_of_t<_Receiver>, no_env>) {
+          return (__dependent_sender(*)()) nullptr;
+        } else {
+          return (__diagnostic_t<_Sender, _Receiver>(*)()) nullptr;
+        }
+      }
+
+      template <class _Sender, class _Receiver>
+      using __result_t = decltype(__transform_sender_result<_Sender, _Receiver>()());
 
       template <class _Sender, class _Receiver>
       auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr)
@@ -145,9 +155,6 @@ namespace exec {
       };
     };
 
-    template <class _Sender, class _Scheduler>
-    using __start_on_t = __t<__start_on<__id<decay_t<_Sender>>, _Scheduler>>;
-
     template <>
     struct on_t<on_kind::start_on> {
       template <scheduler _Scheduler, sender _Sender>
@@ -166,6 +173,9 @@ namespace exec {
 
     template <class _SenderId, class _Scheduler, class _Closure>
     struct __continue_on;
+
+    template <class _Sender, class _Scheduler, class _Closure>
+    using __continue_on_t = __t<__continue_on<__id<decay_t<_Sender>>, _Scheduler, _Closure>>;
 
     template <class _Scheduler, class _Closure>
     struct __continue_on_kernel : __default_kernel {
@@ -193,10 +203,7 @@ namespace exec {
         __declval<__current_scheduler_t<_Receiver>>()));
 
       template <class _Sender>
-      using __on_sender_t = //
-        __copy_cvref_t<
-          _Sender,
-          __continue_on<__pretty_print<decay_t<_Sender>>, _Scheduler, _Closure>>;
+      using __on_sender_t = __copy_cvref_t<_Sender, __continue_on_t<_Sender, _Scheduler, _Closure>>;
 
       template <class _Sender, class _Receiver>
       using __diagnostic_t = //
@@ -206,14 +213,18 @@ namespace exec {
             __on_sender_t<_Sender>>>;
 
       template <class _Sender, class _Receiver>
-      using __result_t = //
-        __minvoke<
-          __if_c<
-            __valid<__new_sender_t, _Sender, _Receiver>,
-            __q<__new_sender_t>,
-            __q<__diagnostic_t>>,
-          _Sender,
-          _Receiver>;
+      static auto __transform_sender_result() {
+        if constexpr (__valid<__new_sender_t, _Sender, _Receiver>) {
+          return (__new_sender_t<_Sender, _Receiver>(*)()) nullptr;
+        } else if constexpr (same_as<env_of_t<_Receiver>, no_env>) {
+          return (__dependent_sender(*)()) nullptr;
+        } else {
+          return (__diagnostic_t<_Sender, _Receiver>(*)()) nullptr;
+        }
+      }
+
+      template <class _Sender, class _Receiver>
+      using __result_t = decltype(__transform_sender_result<_Sender, _Receiver>()());
 
       template <class _Sender, class _Receiver>
       auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr)
@@ -244,9 +255,6 @@ namespace exec {
         using __base::__base;
       };
     };
-
-    template <class _Sender, class _Scheduler, class _Closure>
-    using __continue_on_t = __t<__continue_on<__id<decay_t<_Sender>>, _Scheduler, _Closure>>;
 
     template <>
     struct on_t<on_kind::continue_on> {

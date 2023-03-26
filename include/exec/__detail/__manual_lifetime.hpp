@@ -40,6 +40,11 @@ namespace exec {
       return *::new (static_cast<void*>(std::addressof(__value_))) _Ty((_Args&&) __args...);
     }
 
+    template <class _Func>
+    _Ty& __construct_with(_Func&& func) {
+      return *::new (static_cast<void*>(std::addressof(__value_))) _Ty(((_Func&&) func)());
+    }
+
     void __destruct() noexcept {
       __value_.~_Ty();
     }

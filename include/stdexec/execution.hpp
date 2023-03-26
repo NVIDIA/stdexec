@@ -581,7 +581,7 @@ namespace stdexec {
     template <class _Receiver, class _Tag, class... _Args>
     using __missing_completion_signal_t = //
       __if<
-        __bool<nothrow_tag_invocable<_Tag, _Receiver, _Args...>>,
+        __mbool<nothrow_tag_invocable<_Tag, _Receiver, _Args...>>,
         __found_completion_signature,
         _MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>>;
 
@@ -603,6 +603,9 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
+  template <class _Receiver>
+  concept __receiver_r5_or_r7 =
+    enable_receiver<_Receiver> || tag_invocable<get_env_t, __cref_t<_Receiver>>;
 
   template <class _Receiver>
   concept receiver =
@@ -613,9 +616,9 @@ namespace stdexec {
     // explicit get_env. All R5 receivers provided an explicit get_env,
     // so this is backwards compatible.
     //  NOTE: Double-negation here is to make the constraint atomic
-    (!!(enable_receiver<_Receiver> || tag_invocable<get_env_t, __cref_t<_Receiver>>) ) && //
-    environment_provider<__cref_t<_Receiver>> &&                                          //
-    move_constructible<remove_cvref_t<_Receiver>> &&                                      //
+    !!__receiver_r5_or_r7<_Receiver> &&              //
+    environment_provider<__cref_t<_Receiver>> &&     //
+    move_constructible<remove_cvref_t<_Receiver>> && //
     constructible_from<remove_cvref_t<_Receiver>, _Receiver>;
 
   template <class _Receiver, class _Completions>
@@ -721,11 +724,13 @@ namespace stdexec {
   // Here are the sender concepts that provide backward compatibility
   // with R5-style senders.
   template <class _Sender, class _Env = no_env>
+  concept __sender_r5_or_r7 = (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
+                           || __with_completion_signatures<_Sender, _Env>;
+
+  template <class _Sender, class _Env = no_env>
   concept __sender =
     // Double-negation here is to make this an atomic constraint
-    (!!(
-      (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
-      || __with_completion_signatures<_Sender, _Env>) );
+    !!__sender_r5_or_r7<_Sender, _Env>;
 
   template <class _Sender, class _Env = no_env>
   concept sender =
@@ -865,7 +870,7 @@ namespace stdexec {
     sender_in<_Sender, _Env> && __valid<__single_value_variant_sender_t, _Sender, _Env>;
 
   template <class... Errs>
-  using __nofail = __bool<sizeof...(Errs) == 0>;
+  using __nofail = __mbool<sizeof...(Errs) == 0>;
 
   template <class _Sender, class _Env = no_env>
   concept __nofail_sender =
@@ -1045,7 +1050,7 @@ namespace stdexec {
   template <class _Tag, const auto& _Predicate>
   concept tag_category = //
     requires {
-      typename __bool<bool{_Predicate(_Tag{})}>;
+      typename __mbool<bool{_Predicate(_Tag{})}>;
       requires bool{_Predicate(_Tag{})};
     };
 
@@ -2707,7 +2712,7 @@ namespace stdexec {
 
   template <class _Fun, class... _Args>
     requires invocable<_Fun, _Args...>
-  using __non_throwing_ = __bool<__nothrow_invocable<_Fun, _Args...>>;
+  using __non_throwing_ = __mbool<__nothrow_invocable<_Fun, _Args...>>;
 
   template <class _Tag, class _Fun, class _Sender, class _Env>
   using __with_error_invoke_t = //
@@ -2777,8 +2782,8 @@ namespace stdexec {
         connect_result_t<_Sender, __receiver_t> __op_;
 
         __t(_Sender&& __sndr, _Receiver __rcvr, _Fun __fun) //
-          noexcept(__nothrow_decay_copyable<_Receiver&&>    //
-                     && __nothrow_decay_copyable<_Fun&&>    //
+          noexcept(__nothrow_decay_copyable<_Receiver>      //
+                     && __nothrow_decay_copyable<_Fun>      //
                        && __nothrow_connectable<_Sender, __receiver_t>)
           : __data_{(_Receiver&&) __rcvr, (_Fun&&) __fun}
           , __op_(connect((_Sender&&) __sndr, __receiver_t{&__data_})) {
@@ -4784,7 +4789,7 @@ namespace stdexec {
         _Attrs __env_;
         _Sender __sndr_;
 
-        template <__decays_to<__t> _Self, class _Receiver>
+        template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, _Receiver>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) -> stdexec::__t<
           __operation1<_SchedulerId, stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>>> {
@@ -4796,7 +4801,7 @@ namespace stdexec {
         }
 
         template <class... _Errs>
-        using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Errs> && ...)>;
+        using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Errs> && ...)>;
 
         template <class _Env>
         using __scheduler_with_error_t = //
@@ -5312,7 +5317,7 @@ namespace stdexec {
         __minvoke< __mconcat<__qf<set_value_t>>, __single_values_of_t<_Env, _Senders>...>>;
 
     template <class... _Args>
-    using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Args> && ...)>;
+    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
 
     template <class _Env, class... _SenderIds>
     using __all_value_and_error_args_nothrow_decay_copyable = __mand<

@@ -70,7 +70,7 @@ namespace stdexec {
   using __t = typename _Tp::__t;
 
   template <bool _Bp>
-  using __bool = std::bool_constant<_Bp>;
+  using __mbool = std::bool_constant<_Bp>;
 
   template <class _Ty>
   struct __mtype {
@@ -344,7 +344,7 @@ namespace stdexec {
   template <class _Tp>
   struct __contains {
     template <class... _Args>
-    using __f = __bool<(__v<std::is_same<_Tp, _Args>> || ...)>;
+    using __f = __mbool<(__v<std::is_same<_Tp, _Args>> || ...)>;
   };
 
   template <class _Continuation = __q<__types>>
@@ -564,7 +564,7 @@ namespace stdexec {
   };
   template <bool _Enable, class _Fun, class... _As>
   using __call_result_if_t =
-    typename __if<__bool<_Enable>, __qcall_result, __>::template __f<_Fun, _As...>;
+    typename __if<__mbool<_Enable>, __qcall_result, __>::template __f<_Fun, _As...>;
 
   // For emplacing non-movable types into optionals:
   template <class _Fn>
@@ -660,11 +660,11 @@ namespace stdexec {
   };
 
   template <class... _Booleans>
-  using __mand = __bool<(__v<_Booleans> && ...)>;
+  using __mand = __mbool<(__v<_Booleans> && ...)>;
   template <class... _Booleans>
-  using __mor = __bool<(__v<_Booleans> || ...)>;
+  using __mor = __mbool<(__v<_Booleans> || ...)>;
   template <class _Boolean>
-  using __mnot = __bool<!__v<_Boolean>>;
+  using __mnot = __mbool<!__v<_Boolean>>;
 
   template <class _Fn>
   struct __mall_of {
@@ -719,7 +719,7 @@ namespace stdexec {
   using __2 = __placeholder<2>;
   using __3 = __placeholder<3>;
 
-  template <class _Ty, class _Noexcept = __bool<true>>
+  template <class _Ty, class _Noexcept = __mbool<true>>
   struct __mconstruct {
     template <class... _As>
     auto operator()(_As&&... __as) const noexcept(__v<_Noexcept>&& noexcept(_Ty((_As&&) __as...)))
@@ -728,7 +728,7 @@ namespace stdexec {
     }
   };
 
-  template <template <class...> class _Cp, class _Noexcept = __bool<true>>
+  template <template <class...> class _Cp, class _Noexcept = __mbool<true>>
   using __mconstructor_for = __mcompose<__q<__mconstruct>, __q<_Cp>>;
 
   template <std::size_t>
@@ -822,7 +822,7 @@ namespace stdexec {
   using __dispatch_result_t = __call_result_t<__mdispatch<_Ty>, _Ts...>;
 
   template <class _Signature, class... _Args>
-  using __try_dispatch_ = __bool<__dispatchable<_Signature, _Args...>>;
+  using __try_dispatch_ = __mbool<__dispatchable<_Signature, _Args...>>;
 
   template <class _Signatures, class _Continuation = __q<__mfront>>
   struct __which { };

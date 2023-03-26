@@ -581,7 +581,8 @@ namespace exec {
      private:
       _Base __base_;
 
-      friend void tag_invoke(stdexec::start_t, __io_task_facade& __self) noexcept {
+      STDEXEC_CPO_ACCESS(stdexec::start_t);
+      STDEXEC_DEFINE_CUSTOM(void start)(this __io_task_facade& __self, stdexec::start_t) noexcept {
         __context& __context = __self.__base_.context();
         if (__context.submit(&__self)) {
           __context.wakeup();
