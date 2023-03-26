@@ -579,7 +579,7 @@ namespace stdexec {
     template <class _Receiver, class _Tag, class... _Args>
     using __missing_completion_signal_t = //
       __if<
-        __bool<nothrow_tag_invocable<_Tag, _Receiver, _Args...>>,
+        __mbool<nothrow_tag_invocable<_Tag, _Receiver, _Args...>>,
         __found_completion_signature,
         _MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>>;
 
@@ -868,7 +868,7 @@ namespace stdexec {
     sender_in<_Sender, _Env> && __valid<__single_value_variant_sender_t, _Sender, _Env>;
 
   template <class... Errs>
-  using __nofail = __bool<sizeof...(Errs) == 0>;
+  using __nofail = __mbool<sizeof...(Errs) == 0>;
 
   template <class _Sender, class _Env = no_env>
   concept __nofail_sender =
@@ -1048,7 +1048,7 @@ namespace stdexec {
   template <class _Tag, const auto& _Predicate>
   concept tag_category = //
     requires {
-      typename __bool<bool{_Predicate(_Tag{})}>;
+      typename __mbool<bool{_Predicate(_Tag{})}>;
       requires bool{_Predicate(_Tag{})};
     };
 
@@ -2699,7 +2699,7 @@ namespace stdexec {
 
   template <class _Fun, class... _Args>
     requires invocable<_Fun, _Args...>
-  using __non_throwing_ = __bool<__nothrow_invocable<_Fun, _Args...>>;
+  using __non_throwing_ = __mbool<__nothrow_invocable<_Fun, _Args...>>;
 
   template <class _Tag, class _Fun, class _Sender, class _Env>
   using __with_error_invoke_t = //
@@ -4775,7 +4775,7 @@ namespace stdexec {
         }
 
         template <class... _Errs>
-        using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Errs> && ...)>;
+        using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Errs> && ...)>;
 
         template <class _Env>
         using __scheduler_with_error_t = //
@@ -5289,7 +5289,7 @@ namespace stdexec {
         __minvoke< __mconcat<__qf<set_value_t>>, __single_values_of_t<_Env, _Senders>...>>;
 
     template <class... _Args>
-    using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Args> && ...)>;
+    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
 
     template <class _Env, class... _SenderIds>
     using __all_value_and_error_args_nothrow_decay_copyable = __mand<

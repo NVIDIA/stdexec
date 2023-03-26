@@ -89,7 +89,7 @@ namespace tbbexec {
         };
 
         template <class Fun, class Shape, class... Args>
-        using bulk_non_throwing = stdexec::__bool<
+        using bulk_non_throwing = stdexec::__mbool<
           // If function invocation doesn't throw
           stdexec::__nothrow_callable<Fun, Shape, Args...> &&
           // and emplacing a tuple doesn't throw

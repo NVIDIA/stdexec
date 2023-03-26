@@ -40,7 +40,7 @@ namespace exec {
     using __signature_to_tuple_t = decltype(__signature_to_tuple_((_Sig*) nullptr));
 
     template <class... _Args>
-    using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Args> && ...)>;
+    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
 
     template <class... _Args>
     using __all_nothrow_move_constructible =

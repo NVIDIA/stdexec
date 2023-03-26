@@ -123,7 +123,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Completions>
       using sends_values = //
-        stdexec::__bool<
+        stdexec::__mbool<
           stdexec::__v< stdexec::__gather_signal<
             stdexec::set_value_t,
             Completions,
