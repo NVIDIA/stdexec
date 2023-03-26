@@ -43,7 +43,7 @@ namespace exec {
         using __id = __operation;
         using __receiver_t = stdexec::__t<__receiver<_SourceId, _ReceiverId>>;
         using __source_on_scheduler_sender =
-          __call_result_t<stdexec::on_t, trampoline_scheduler, _Source&>;
+          __call_result_t<stdexec::on_t, trampoline_scheduler, _Source &>;
         using __source_op_t = stdexec::connect_result_t<__source_on_scheduler_sender, __receiver_t>;
 
         [[no_unique_address]] _Source __source_;
@@ -166,7 +166,7 @@ namespace exec {
           return {};
         }
 
-        template <class _Source2>
+        template <__decays_to<_Source> _Source2>
         explicit __t(_Source2 &&__source) noexcept(__nothrow_decay_copyable<_Source2>)
           : __source_((_Source2 &&) __source) {
         }
