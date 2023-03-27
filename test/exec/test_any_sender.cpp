@@ -552,3 +552,91 @@ TEST_CASE("Schedule Sender lifetime", "[types][any_scheduler][any_sender]") {
     start(op);
   }
 }
+
+//! Scheduler that returns a sender that always completes with error.
+struct leaky_scheduler {
+  using __id = leaky_scheduler;
+  using __t = leaky_scheduler;
+
+  leaky_scheduler() = default;
+  leaky_scheduler(const leaky_scheduler&) noexcept = default;
+  //leaky_scheduler(leaky_scheduler&&) noexcept = default;
+
+  explicit leaky_scheduler(std::exception_ptr err)
+    : err_((std::exception_ptr&&) err) {
+  }
+
+ private:
+  template <class R>
+  struct operation : immovable {
+    R recv_;
+    std::exception_ptr err_;
+
+    friend void tag_invoke(ex::start_t, operation& self) noexcept {
+      ex::set_error((R&&) self.recv_, (std::exception_ptr&&) self.err_);
+    }
+  };
+
+  struct sender {
+    using __id = sender;
+    using __t = sender;
+
+    using is_sender = void;
+    using completion_signatures = ex::completion_signatures< //
+      ex::set_value_t(),                                     //
+      ex::set_error_t(std::exception_ptr),
+      ex::set_stopped_t()>;
+
+    std::exception_ptr err_;
+
+    template <ex::receiver R>
+    friend operation<R> tag_invoke(ex::connect_t, sender self, R r) {
+      return {{}, (R&&) r, (std::exception_ptr&&) self.err_};
+    }
+
+    friend auto tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, const sender& self) noexcept
+      -> leaky_scheduler {
+      return leaky_scheduler{self.err_};
+    }
+
+    friend const sender& tag_invoke(ex::get_env_t, const sender& self) noexcept {
+      return self;
+    }
+  };
+
+  std::exception_ptr err_{};
+
+  friend sender tag_invoke(ex::schedule_t, leaky_scheduler self) noexcept {
+    return {(std::exception_ptr&&) self.err_};
+  }
+
+  friend bool operator==(leaky_scheduler, leaky_scheduler) noexcept {
+    return true;
+  }
+
+  friend bool operator!=(leaky_scheduler, leaky_scheduler) noexcept {
+    return false;
+  }
+};
+
+TEST_CASE("LEAKS", "[types][any_scheduler][any_sender]") {
+  using receiver_ref =
+    any_receiver_ref<completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>;
+  using sender_t = receiver_ref::any_sender<>;
+  using scheduler_t = sender_t::any_scheduler<>;
+  scheduler_t scheduler = exec::inline_scheduler();
+  {
+    auto op = connect(schedule(scheduler), expect_void_receiver{});
+    start(op);
+  }
+  scheduler = stopped_scheduler();
+  {
+    auto op = connect(schedule(scheduler), expect_stopped_receiver{});
+    start(op);
+  }
+  scheduler = leaky_scheduler{std::make_exception_ptr(std::logic_error("test"))};
+  {
+    auto op = connect(schedule(scheduler), expect_error_receiver<>{});
+    start(op);
+  }
+}
