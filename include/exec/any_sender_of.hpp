@@ -417,6 +417,9 @@ namespace exec {
         if constexpr (__is_small<_Tp>) {
           _Tp& __other_object = *__pointer;
           __self.template __construct_small<_Tp>((_Tp&&) __other_object);
+          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          _Alloc __alloc{__self.__allocator_};
+          std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         } else {
           __self.__object_pointer_ = __pointer;
         }
