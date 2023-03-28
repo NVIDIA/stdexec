@@ -304,7 +304,7 @@ namespace exec {
 
       __t() = default;
 
-      template <__none_of<__t&, const __t&> _Tp>
+      template <__not_decays_to<__t> _Tp>
         requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<std::decay_t<_Tp>>>
       __t(_Tp&& __object)
         : __vtable_{__get_vtable<_Tp>()} {
