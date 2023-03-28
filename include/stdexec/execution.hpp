@@ -602,8 +602,14 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
   template <class _Receiver>
-  concept __receiver_r5_or_r7 =
-    enable_receiver<_Receiver> || tag_invocable<get_env_t, __cref_t<_Receiver>>;
+  concept __receiver_r5_or_r7 = //
+    enable_receiver<_Receiver>  //
+    || tag_invocable<get_env_t, __cref_t<_Receiver>>;
+
+  template <class _Receiver>
+  concept __receiver = //
+    // Nested requirement here is to make this an atomic constraint
+    requires { requires __receiver_r5_or_r7<_Receiver>; };
 
   template <class _Receiver>
   concept receiver =
@@ -719,16 +725,20 @@ namespace stdexec {
     __with_completion_signatures<_Sender, _Env>;
 
 #else
+  template <class _Sender, class _Env>
+  concept __sender_r7 = !!(same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>);
+
   // Here are the sender concepts that provide backward compatibility
   // with R5-style senders.
   template <class _Sender, class _Env = no_env>
-  concept __sender_r5_or_r7 = (same_as<_Env, no_env> && enable_sender<remove_cvref_t<_Sender>>)
-                           || __with_completion_signatures<_Sender, _Env>;
+  concept __sender_r5_or_r7 =  //
+    __sender_r7<_Sender, _Env> //
+    || __with_completion_signatures<_Sender, _Env>;
 
   template <class _Sender, class _Env = no_env>
   concept __sender =
-    // Double-negation here is to make this an atomic constraint
-    !!__sender_r5_or_r7<_Sender, _Env>;
+    // Nested requirement here is to make this an atomic constraint
+    requires { requires __sender_r5_or_r7<_Sender, _Env>; };
 
   template <class _Sender, class _Env = no_env>
   concept sender =
