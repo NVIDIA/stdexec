@@ -1388,7 +1388,7 @@ namespace stdexec {
         };
 
         return __awaiter{__fn};
-      };
+      }
 
       template <class _Awaitable, class _Receiver>
       static __operation_t<_Receiver> __co_impl(_Awaitable __await, _Receiver __rcvr) {
