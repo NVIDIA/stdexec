@@ -74,9 +74,9 @@ namespace exec {
 
     struct __dependent_sender {
       using is_sender = void;
+      using __id = __dependent_sender;
       using __t = __dependent_sender;
-      friend auto tag_invoke(get_completion_signatures_t, __dependent_sender, no_env)
-        -> dependent_completion_signatures<no_env>;
+      using completion_signatures = dependent_completion_signatures<no_env>;
     };
 
     template <class _SenderId, class _Scheduler>
@@ -110,8 +110,9 @@ namespace exec {
       using __on_sender_t = __copy_cvref_t<_Sender, __start_on_t<_Sender, _Scheduler>>;
 
       template <class _Sender, class _Receiver>
-      using __diagnostic_t = //
-        _FAILURE_TO_CONNECT_::_WHAT_<
+      using __diagnostic_t =    //
+        __minvoke<              //
+          _FAILURE_TO_CONNECT_, //
           _ENVIRONMENT_HAS_NO_SCHEDULER_FOR_THE_ON_ADAPTOR_TO_TRANSITION_BACK_TO<
             env_of_t<_Receiver>,
             __on_sender_t<_Sender>>>;
@@ -206,8 +207,9 @@ namespace exec {
       using __on_sender_t = __copy_cvref_t<_Sender, __continue_on_t<_Sender, _Scheduler, _Closure>>;
 
       template <class _Sender, class _Receiver>
-      using __diagnostic_t = //
-        _FAILURE_TO_CONNECT_::_WHAT_<
+      using __diagnostic_t =    //
+        __minvoke<              //
+          _FAILURE_TO_CONNECT_, //
           _ENVIRONMENT_HAS_NO_SCHEDULER_FOR_THE_ON_ADAPTOR_TO_TRANSITION_BACK_TO<
             env_of_t<_Receiver>,
             __on_sender_t<_Sender>>>;

@@ -105,6 +105,9 @@ namespace stdexec {
   template <class _Ty, class _Up>
   concept __decays_to = __same_as<decay_t<_Ty>, _Up>;
 
+  template <class _Ty, class _Up>
+  concept __not_decays_to = !__decays_to<_Ty, _Up>;
+
   template <class...>
   concept __true = true;
 

@@ -304,7 +304,7 @@ namespace exec {
 
       __t() = default;
 
-      template <__none_of<__t&, const __t&> _Tp>
+      template <__not_decays_to<__t> _Tp>
         requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<std::decay_t<_Tp>>>
       __t(_Tp&& __object)
         : __vtable_{__get_vtable<_Tp>()} {
@@ -417,6 +417,9 @@ namespace exec {
         if constexpr (__is_small<_Tp>) {
           _Tp& __other_object = *__pointer;
           __self.template __construct_small<_Tp>((_Tp&&) __other_object);
+          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          _Alloc __alloc{__self.__allocator_};
+          std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         } else {
           __self.__object_pointer_ = __pointer;
         }
