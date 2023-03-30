@@ -91,6 +91,9 @@ namespace stdexec {
 #if __has_builtin(__decay)
   template <class _Ty>
   using __decay_t = __decay(_Ty);
+#elif STDEXEC_NVHPC()
+  template <class _Ty>
+  using __decay_t = std::decay_t<_Ty>;
 #else
   namespace __tt {
     struct __decay_object {
