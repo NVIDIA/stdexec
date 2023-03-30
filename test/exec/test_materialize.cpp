@@ -24,8 +24,8 @@ using namespace exec;
 
 
 template <class _Tag, class... _Args>
-  requires __completion_tag<decay_t<_Tag>>
-using __dematerialize_value = completion_signatures<decay_t<_Tag>(_Args...)>;
+  requires __completion_tag<std::decay_t<_Tag>>
+using __dematerialize_value = completion_signatures<std::decay_t<_Tag>(_Args...)>;
 
 TEST_CASE("materialize completion signatures", "[adaptors][materialize]") {
   auto just_ = materialize(just());

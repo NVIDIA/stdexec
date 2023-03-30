@@ -267,8 +267,8 @@ namespace exec {
     };
 
     template <class _Promise, class _ParentPromise = void>
-    using awaiter_context_t =                          //
-      typename std::remove_cvref_t<env_of_t<_Promise>> //
+    using awaiter_context_t =                //
+      typename __decay_t<env_of_t<_Promise>> //
       ::template awaiter_context_t<_Promise, _ParentPromise>;
 
     ////////////////////////////////////////////////////////////////////////////////

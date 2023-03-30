@@ -190,7 +190,7 @@ namespace exec {
     };
 
     template <class _Source>
-    using __sender_t = __t< __sender<stdexec::__id<std::remove_cvref_t<_Source>>>>;
+    using __sender_t = __t< __sender<stdexec::__id<__decay_t<_Source>>>>;
 
     struct repeat_effect_until_t {
       template <sender _Source>

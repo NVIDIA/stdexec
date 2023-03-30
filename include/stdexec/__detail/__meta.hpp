@@ -584,8 +584,10 @@ namespace stdexec {
   template <class _Fn>
   __conv(_Fn) -> __conv<_Fn>;
 
-  template <class _Tp>
-  using __cref_t = const std::remove_reference_t<_Tp>&;
+  template <class _Ty>
+  const _Ty& __cref_fn(const _Ty&);
+  template <class _Ty>
+  using __cref_t = decltype(stdexec::__cref_fn(__declval<_Ty>()));
 
   template <class, class, class, class>
   struct __mzip_with2_;
