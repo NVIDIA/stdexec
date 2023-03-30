@@ -696,10 +696,8 @@ namespace exec {
         __t(__t&&) = default;
         __t& operator=(__t&&) = default;
 
-        template <class _Sender>
-          requires(
-            !__decays_to<_Sender, __t>
-            && sender_to<_Sender, __receiver_ref<_Sigs, _ReceiverQueries>>)
+        template <__not_decays_to<__t> _Sender>
+          requires sender_to<_Sender, __receiver_ref<_Sigs, _ReceiverQueries>>
         __t(_Sender&& __sndr)
           : __storage_{(_Sender&&) __sndr} {
         }
@@ -849,7 +847,7 @@ namespace exec {
       using completion_signatures = typename __sender_base::completion_signatures;
 
       template <class _Sender>
-        requires(!stdexec::__decays_to<_Sender, any_sender> && stdexec::sender<_Sender>)
+        requires(!stdexec::__decays_to<_Sender, any_sender>) && stdexec::sender<_Sender>
       any_sender(_Sender&& __sender) noexcept(
         std::is_nothrow_constructible_v<__sender_base, _Sender>)
         : __sender_((_Sender&&) __sender) {
