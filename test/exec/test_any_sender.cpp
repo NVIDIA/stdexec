@@ -552,3 +552,79 @@ TEST_CASE("Schedule Sender lifetime", "[types][any_scheduler][any_sender]") {
     start(op);
   }
 }
+
+// A scheduler that counts how many instances are extant.
+struct counting_scheduler {
+  using __id = counting_scheduler;
+  using __t = counting_scheduler;
+
+  static int count;
+
+  counting_scheduler() noexcept {
+    ++count;
+  }
+  counting_scheduler(const counting_scheduler&) noexcept {
+    ++count;
+  }
+  counting_scheduler(counting_scheduler&&) noexcept {
+    ++count;
+  }
+  ~counting_scheduler() {
+    --count;
+  }
+
+  bool operator==(const counting_scheduler&) const noexcept = default;
+
+ private:
+  template <class R>
+  struct operation : immovable {
+    R recv_;
+
+    friend void tag_invoke(ex::start_t, operation& self) noexcept {
+      ex::set_value((R&&) self.recv_);
+    }
+  };
+
+  struct sender {
+    using __id = sender;
+    using __t = sender;
+
+    using is_sender = void;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <ex::receiver R>
+    friend operation<R> tag_invoke(ex::connect_t, sender self, R r) {
+      return {{}, (R&&) r};
+    }
+
+    friend auto tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, sender) noexcept
+      -> counting_scheduler {
+      return {};
+    }
+
+    friend const sender& tag_invoke(ex::get_env_t, const sender& self) noexcept {
+      return self;
+    }
+  };
+
+  friend sender tag_invoke(ex::schedule_t, counting_scheduler) noexcept {
+    return {};
+  }
+};
+
+int counting_scheduler::count = 0;
+
+TEST_CASE("check that any_scheduler cleans up all resources", "[types][any_scheduler][any_sender]") {
+  using receiver_ref = any_receiver_ref<completion_signatures<set_value_t()>>;
+  using sender_t = receiver_ref::any_sender<>;
+  using scheduler_t = sender_t::any_scheduler<>;
+  {
+    scheduler_t scheduler = exec::inline_scheduler{};
+    scheduler = counting_scheduler{};
+    {
+      auto op = connect(schedule(scheduler), expect_value_receiver<>{});
+      start(op);
+    }
+  }
+  CHECK(counting_scheduler::count == 0);
+}

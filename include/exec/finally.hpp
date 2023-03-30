@@ -246,15 +246,16 @@ namespace exec {
         _InitialSender __initial_sender_;
         _FinalSender __final_sender_;
 
-        template <__decays_to<__t> _Self, class _R>
+        template <__decays_to<__t> _Self, class _Rec>
           requires receiver_of<
-            _R,
-            __completion_signatures_t<_InitialSender, _FinalSender, env_of_t<_R>>>
-        friend __op_t< _Self, _R> tag_invoke(connect_t, _Self&& __self, _R&& __receiver) noexcept {
+            _Rec,
+            __completion_signatures_t<_InitialSender, _FinalSender, env_of_t<_Rec>>>
+        friend __op_t< _Self, _Rec>
+          tag_invoke(connect_t, _Self&& __self, _Rec&& __receiver) noexcept {
           return {
             ((_Self&&) __self).__initial_sender_,
             ((_Self&&) __self).__final_sender_,
-            (_R&&) __receiver};
+            (_Rec&&) __receiver};
         }
 
         template <__decays_to<__t> _Self, class _Env>
@@ -271,21 +272,21 @@ namespace exec {
        public:
         using is_sender = void;
 
-        template <__decays_to<_InitialSender> _I, __decays_to<_FinalSender> _F>
-        __t(_I&& __initial_sender, _F&& __final_sender) noexcept(
-          __nothrow_decay_copyable<_I>&& __nothrow_decay_copyable<_F>)
-          : __initial_sender_{(_I&&) __initial_sender}
-          , __final_sender_{(_F&&) __final_sender} {
+        template <__decays_to<_InitialSender> _Is, __decays_to<_FinalSender> _Fs>
+        __t(_Is&& __initial_sender, _Fs&& __final_sender) noexcept(
+          __nothrow_decay_copyable<_Is>&& __nothrow_decay_copyable<_Fs>)
+          : __initial_sender_{(_Is&&) __initial_sender}
+          , __final_sender_{(_Fs&&) __final_sender} {
         }
       };
     };
 
     struct __finally_t {
-      template <sender _I, sender _F>
-      __t<__sender<__id<decay_t<_I>>, __id<decay_t<_F>>>>
-        operator()(_I&& __initial_sender, _F&& __final_sender) const
-        noexcept(__nothrow_decay_copyable<_I>&& __nothrow_decay_copyable<_F>) {
-        return {(_I&&) __initial_sender, (_F&&) __final_sender};
+      template <sender _Is, sender _Fs>
+      __t<__sender<__id<decay_t<_Is>>, __id<decay_t<_Fs>>>>
+        operator()(_Is&& __initial_sender, _Fs&& __final_sender) const
+        noexcept(__nothrow_decay_copyable<_Is>&& __nothrow_decay_copyable<_Fs>) {
+        return {(_Is&&) __initial_sender, (_Fs&&) __final_sender};
       }
     };
   }

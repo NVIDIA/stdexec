@@ -14,7 +14,7 @@
 # limitations under the License.
 #=============================================================================
 
-set(stdexec_test_sources 
+set(stdexec_test_sources
     test_main.cpp
     stdexec/cpos/test_cpo_bulk.cpp
     stdexec/cpos/test_cpo_ensure_started.cpp
@@ -69,6 +69,7 @@ set(stdexec_test_sources
     exec/test_on.cpp
     exec/test_on2.cpp
     exec/test_on3.cpp
+    exec/test_repeat_effect_until.cpp
     exec/async_scope/test_dtor.cpp
     exec/async_scope/test_spawn.cpp
     exec/async_scope/test_spawn_future.cpp
@@ -78,6 +79,7 @@ set(stdexec_test_sources
     exec/test_at_coroutine_exit.cpp
     exec/test_materialize.cpp
     exec/test_io_uring_context.cpp
+    exec/test_trampoline_scheduler.cpp
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
     )
 

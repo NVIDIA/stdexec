@@ -36,21 +36,21 @@
 
 namespace stdexec::__std_concepts {
 #if defined(__clang__)
-  template <class _A, class _B>
-  concept __same_as = __is_same(_A, _B);
+  template <class _Ap, class _Bp>
+  concept __same_as = __is_same(_Ap, _Bp);
 #elif defined(__GNUC__)
-  template <class _A, class _B>
-  concept __same_as = __is_same_as(_A, _B);
+  template <class _Ap, class _Bp>
+  concept __same_as = __is_same_as(_Ap, _Bp);
 #else
-  template <class _A, class _B>
+  template <class _Ap, class _Bp>
   inline constexpr bool __same_as = false;
-  template <class _A>
-  inline constexpr bool __same_as<_A, _A> = true;
+  template <class _Ap>
+  inline constexpr bool __same_as<_Ap, _Ap> = true;
 #endif
 
   // Make sure we're using a same_as concept that doesn't instantiate std::is_same
-  template <class _A, class _B>
-  concept same_as = __same_as<_A, _B> && __same_as<_B, _A>;
+  template <class _Ap, class _Bp>
+  concept same_as = __same_as<_Ap, _Bp> && __same_as<_Bp, _Ap>;
 
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
 
@@ -64,10 +64,10 @@ namespace stdexec::__std_concepts {
   template <class T>
   concept integral = std::is_integral_v<T>;
 
-  template <class _A, class _B>
-  concept derived_from =         //
-    std::is_base_of_v<_B, _A> && //
-    std::is_convertible_v<const volatile _A*, const volatile _B*>;
+  template <class _Ap, class _Bp>
+  concept derived_from =           //
+    std::is_base_of_v<_Bp, _Ap> && //
+    std::is_convertible_v<const volatile _Ap*, const volatile _Bp*>;
 
   template <class _From, class _To>
   concept convertible_to =               //
@@ -102,14 +102,17 @@ namespace stdexec {
   //   using decay_t = decltype((__decay_<_Ty>)(0));
 
   // C++20 concepts
-  template <class _Ty, class _U>
-  concept __decays_to = __same_as<decay_t<_Ty>, _U>;
+  template <class _Ty, class _Up>
+  concept __decays_to = __same_as<decay_t<_Ty>, _Up>;
+
+  template <class _Ty, class _Up>
+  concept __not_decays_to = !__decays_to<_Ty, _Up>;
 
   template <class...>
   concept __true = true;
 
-  template <class _C>
-  concept __class = __true<int _C::*> && (!__same_as<const _C, _C>);
+  template <class _Cp>
+  concept __class = __true<int _Cp::*> && (!__same_as<const _Cp, _Cp>);
 
   template <class _Ty, class... _As>
   concept __one_of = (__same_as<_Ty, _As> || ...);
@@ -140,8 +143,8 @@ namespace stdexec {
   inline constexpr bool __destructible_<_Ty&> = true;
   template <class _Ty>
   inline constexpr bool __destructible_<_Ty&&> = true;
-  template <class _Ty, std::size_t _N>
-  inline constexpr bool __destructible_<_Ty[_N]> = __destructible_<_Ty>;
+  template <class _Ty, std::size_t _Np>
+  inline constexpr bool __destructible_<_Ty[_Np]> = __destructible_<_Ty>;
 
   template <class T>
   concept destructible = __destructible_<T>;

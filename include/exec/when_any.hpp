@@ -40,7 +40,7 @@ namespace exec {
     using __signature_to_tuple_t = decltype(__signature_to_tuple_((_Sig*) nullptr));
 
     template <class... _Args>
-    using __all_nothrow_decay_copyable = __bool<(__nothrow_decay_copyable<_Args> && ...)>;
+    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
 
     template <class... _Args>
     using __all_nothrow_move_constructible =
@@ -141,8 +141,8 @@ namespace exec {
           std::visit(
             [this]<class _Tuple>(_Tuple&& __result) {
               std::apply(
-                [this]<class _C, class... _As>(_C, _As&&... __args) noexcept {
-                  _C{}((_Receiver&&) __receiver_, (_As&&) __args...);
+                [this]<class _Cpo, class... _As>(_Cpo, _As&&... __args) noexcept {
+                  _Cpo{}((_Receiver&&) __receiver_, (_As&&) __args...);
                 },
                 (_Tuple&&) __result);
             },

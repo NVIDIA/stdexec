@@ -24,10 +24,10 @@ namespace exec {
     using namespace stdexec;
 
     struct __create_vtable_t {
-      template <class _VTable, class _T>
-        requires __tag_invocable_r<const _VTable*, __create_vtable_t, __mtype<_VTable>, __mtype<_T>>
-      constexpr const _VTable* operator()(__mtype<_VTable>, __mtype<_T>) const noexcept {
-        return tag_invoke(__create_vtable_t{}, __mtype<_VTable>{}, __mtype<_T>{});
+      template <class _VTable, class _Tp>
+        requires __tag_invocable_r<const _VTable*, __create_vtable_t, __mtype<_VTable>, __mtype<_Tp>>
+      constexpr const _VTable* operator()(__mtype<_VTable>, __mtype<_Tp>) const noexcept {
+        return tag_invoke(__create_vtable_t{}, __mtype<_VTable>{}, __mtype<_Tp>{});
       }
     };
 
@@ -142,23 +142,23 @@ namespace exec {
       }
     };
 
-    template <class _Storage, class _T>
+    template <class _Storage, class _Tp>
     struct __storage_vfun_fn {
       template <class _Tag, class... _As>
-        requires __callable<_Tag, __mtype<_T>, _Storage&, _As...>
+        requires __callable<_Tag, __mtype<_Tp>, _Storage&, _As...>
       constexpr void (*operator()(_Tag (*)(void (*)(_As...))) const noexcept)(void*, _As...) {
         return +[](void* __storage, _As... __as) -> void {
-          return _Tag{}(__mtype<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
+          return _Tag{}(__mtype<_Tp>{}, *(_Storage*) __storage, (_As&&) __as...);
         };
       }
 
       template <class _Tag, class... _As>
-        requires __callable<_Tag, __mtype<_T>, _Storage&, _As...>
+        requires __callable<_Tag, __mtype<_Tp>, _Storage&, _As...>
       constexpr void (
         *operator()(_Tag (*)(void (*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
         return +[](void* __storage, _As... __as) noexcept -> void {
-          static_assert(__nothrow_callable<_Tag, __mtype<_T>, _Storage&, _As...>);
-          return _Tag{}(__mtype<_T>{}, *(_Storage*) __storage, (_As&&) __as...);
+          static_assert(__nothrow_callable<_Tag, __mtype<_Tp>, _Storage&, _As...>);
+          return _Tag{}(__mtype<_Tp>{}, *(_Storage*) __storage, (_As&&) __as...);
         };
       }
     };
@@ -187,34 +187,34 @@ namespace exec {
     inline constexpr __get_object_pointer_t __get_object_pointer{};
 
     struct __delete_t {
-      template <class _Storage, class _T>
-        requires tag_invocable<__delete_t, __mtype<_T>, _Storage&>
-      void operator()(__mtype<_T>, _Storage& __storage) noexcept {
-        static_assert(nothrow_tag_invocable<__delete_t, __mtype<_T>, _Storage&>);
-        tag_invoke(__delete_t{}, __mtype<_T>{}, __storage);
+      template <class _Storage, class _Tp>
+        requires tag_invocable<__delete_t, __mtype<_Tp>, _Storage&>
+      void operator()(__mtype<_Tp>, _Storage& __storage) noexcept {
+        static_assert(nothrow_tag_invocable<__delete_t, __mtype<_Tp>, _Storage&>);
+        tag_invoke(__delete_t{}, __mtype<_Tp>{}, __storage);
       }
     };
 
     inline constexpr __delete_t __delete{};
 
     struct __copy_construct_t {
-      template <class _Storage, class _T>
-        requires tag_invocable<__copy_construct_t, __mtype<_T>, _Storage&, const _Storage&>
-      void operator()(__mtype<_T>, _Storage& __self, const _Storage& __from) noexcept(
-        nothrow_tag_invocable<__copy_construct_t, __mtype<_T>, _Storage&, const _Storage&>) {
-        tag_invoke(__copy_construct_t{}, __mtype<_T>{}, __self, __from);
+      template <class _Storage, class _Tp>
+        requires tag_invocable<__copy_construct_t, __mtype<_Tp>, _Storage&, const _Storage&>
+      void operator()(__mtype<_Tp>, _Storage& __self, const _Storage& __from) noexcept(
+        nothrow_tag_invocable<__copy_construct_t, __mtype<_Tp>, _Storage&, const _Storage&>) {
+        tag_invoke(__copy_construct_t{}, __mtype<_Tp>{}, __self, __from);
       }
     };
 
     inline constexpr __copy_construct_t __copy_construct{};
 
     struct __move_construct_t {
-      template <class _Storage, class _T>
-        requires tag_invocable<__move_construct_t, __mtype<_T>, _Storage&, _Storage&&>
-      void operator()(__mtype<_T>, _Storage& __self, __midentity<_Storage&&> __from) noexcept {
+      template <class _Storage, class _Tp>
+        requires tag_invocable<__move_construct_t, __mtype<_Tp>, _Storage&, _Storage&&>
+      void operator()(__mtype<_Tp>, _Storage& __self, __midentity<_Storage&&> __from) noexcept {
         static_assert(
-          nothrow_tag_invocable<__move_construct_t, __mtype<_T>, _Storage&, _Storage&&>);
-        tag_invoke(__move_construct_t{}, __mtype<_T>{}, __self, (_Storage&&) __from);
+          nothrow_tag_invocable<__move_construct_t, __mtype<_Tp>, _Storage&, _Storage&&>);
+        tag_invoke(__move_construct_t{}, __mtype<_Tp>{}, __self, (_Storage&&) __from);
       }
     };
 
@@ -249,10 +249,10 @@ namespace exec {
       return &__null_storage_vtbl<_ParentVTable, _StorageCPOs...>;
     }
 
-    template <class _Storage, class _T, class _ParentVTable, class... _StorageCPOs>
+    template <class _Storage, class _Tp, class _ParentVTable, class... _StorageCPOs>
     static const __storage_vtable<_ParentVTable, _StorageCPOs...> __storage_vtbl{
-      {*__create_vtable(__mtype<_ParentVTable>{}, __mtype<_T>{})},
-      {__storage_vfun_fn<_Storage, _T>{}((_StorageCPOs*) nullptr)}...};
+      {*__create_vtable(__mtype<_ParentVTable>{}, __mtype<_Tp>{})},
+      {__storage_vfun_fn<_Storage, _Tp>{}((_StorageCPOs*) nullptr)}...};
 
     template <
       class _Vtable,
@@ -281,21 +281,21 @@ namespace exec {
       using __with_move = __move_construct_t(void(__t&&) noexcept);
       using __with_delete = __delete_t(void() noexcept);
 
-      template <class _T>
-      static constexpr bool __is_small = sizeof(_T) <= __buffer_size && alignof(_T) <= __alignment
-                                      && std::is_nothrow_move_constructible_v<_T>;
+      template <class _Tp>
+      static constexpr bool __is_small = sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment
+                                      && std::is_nothrow_move_constructible_v<_Tp>;
 
       using __vtable_t = __if_c<
         _Copyable,
         __storage_vtable<_Vtable, __with_delete, __with_move, __with_copy>,
         __storage_vtable<_Vtable, __with_delete, __with_move>>;
 
-      template <class _T>
+      template <class _Tp>
       static constexpr const __vtable_t* __get_vtable() noexcept {
         if constexpr (_Copyable) {
-          return &__storage_vtbl<__t, decay_t<_T>, _Vtable, __with_delete, __with_move, __with_copy>;
+          return &__storage_vtbl<__t, decay_t<_Tp>, _Vtable, __with_delete, __with_move, __with_copy>;
         } else {
-          return &__storage_vtbl<__t, decay_t<_T>, _Vtable, __with_delete, __with_move>;
+          return &__storage_vtbl<__t, decay_t<_Tp>, _Vtable, __with_delete, __with_move>;
         }
       }
 
@@ -304,26 +304,26 @@ namespace exec {
 
       __t() = default;
 
-      template <__none_of<__t&, const __t&> _T>
-        requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<std::decay_t<_T>>>
-      __t(_T&& __object)
-        : __vtable_{__get_vtable<_T>()} {
-        using _D = decay_t<_T>;
-        if constexpr (__is_small<_D>) {
-          __construct_small<_D>((_T&&) __object);
+      template <__not_decays_to<__t> _Tp>
+        requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<std::decay_t<_Tp>>>
+      __t(_Tp&& __object)
+        : __vtable_{__get_vtable<_Tp>()} {
+        using _Dp = decay_t<_Tp>;
+        if constexpr (__is_small<_Dp>) {
+          __construct_small<_Dp>((_Tp&&) __object);
         } else {
-          __construct_large<_D>((_T&&) __object);
+          __construct_large<_Dp>((_Tp&&) __object);
         }
       }
 
-      template <class _T, class... _Args>
-        requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<_T>>
-      __t(std::in_place_type_t<_T>, _Args&&... __args)
-        : __vtable_{__get_vtable<_T>()} {
-        if constexpr (__is_small<_T>) {
-          __construct_small<_T>((_Args&&) __args...);
+      template <class _Tp, class... _Args>
+        requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<_Tp>>
+      __t(std::in_place_type_t<_Tp>, _Args&&... __args)
+        : __vtable_{__get_vtable<_Tp>()} {
+        if constexpr (__is_small<_Tp>) {
+          __construct_small<_Tp>((_Args&&) __args...);
         } else {
-          __construct_large<_T>((_Args&&) __args...);
+          __construct_large<_Tp>((_Args&&) __args...);
         }
       }
 
@@ -361,21 +361,21 @@ namespace exec {
       }
 
      private:
-      template <class _T, class... _As>
+      template <class _Tp, class... _As>
       void __construct_small(_As&&... __args) {
-        static_assert(sizeof(_T) <= __buffer_size && alignof(_T) <= __alignment);
-        _T* __pointer = static_cast<_T*>(static_cast<void*>(&__buffer_[0]));
-        using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
+        static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
+        _Tp* __pointer = static_cast<_Tp*>(static_cast<void*>(&__buffer_[0]));
+        using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
         _Alloc __alloc{__allocator_};
         std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (_As&&) __args...);
         __object_pointer_ = __pointer;
       }
 
-      template <class _T, class... _As>
+      template <class _Tp, class... _As>
       void __construct_large(_As&&... __args) {
-        using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
+        using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
         _Alloc __alloc{__allocator_};
-        _T* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
+        _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
         try {
           std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (_As&&) __args...);
         } catch (...) {
@@ -393,29 +393,33 @@ namespace exec {
         return __self.__object_pointer_;
       }
 
-      template <class _T>
-      friend void tag_invoke(__delete_t, __mtype<_T>, __t& __self) noexcept {
+      template <class _Tp>
+      friend void tag_invoke(__delete_t, __mtype<_Tp>, __t& __self) noexcept {
         if (!__self.__object_pointer_) {
           return;
         }
-        using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_T>;
+        using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
         _Alloc __alloc{__self.__allocator_};
-        _T* __pointer = static_cast<_T*>(std::exchange(__self.__object_pointer_, nullptr));
+        _Tp* __pointer = static_cast<_Tp*>(std::exchange(__self.__object_pointer_, nullptr));
         std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
-        if constexpr (!__is_small<_T>) {
+        if constexpr (!__is_small<_Tp>) {
           std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
         }
       }
 
-      template <class _T>
-      friend void tag_invoke(__move_construct_t, __mtype<_T>, __t& __self, __t&& __other) noexcept {
+      template <class _Tp>
+      friend void
+        tag_invoke(__move_construct_t, __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
         if (!__other.__object_pointer_) {
           return;
         }
-        _T* __pointer = static_cast<_T*>(std::exchange(__other.__object_pointer_, nullptr));
-        if constexpr (__is_small<_T>) {
-          _T& __other_object = *__pointer;
-          __self.template __construct_small<_T>((_T&&) __other_object);
+        _Tp* __pointer = static_cast<_Tp*>(std::exchange(__other.__object_pointer_, nullptr));
+        if constexpr (__is_small<_Tp>) {
+          _Tp& __other_object = *__pointer;
+          __self.template __construct_small<_Tp>((_Tp&&) __other_object);
+          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          _Alloc __alloc{__self.__allocator_};
+          std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         } else {
           __self.__object_pointer_ = __pointer;
         }
@@ -423,17 +427,17 @@ namespace exec {
           __other.__vtable_, __default_storage_vtable((__vtable_t*) nullptr));
       }
 
-      template <class _T>
+      template <class _Tp>
         requires _Copyable
-      friend void tag_invoke(__copy_construct_t, __mtype<_T>, __t& __self, const __t& __other) {
+      friend void tag_invoke(__copy_construct_t, __mtype<_Tp>, __t& __self, const __t& __other) {
         if (!__other.__object_pointer_) {
           return;
         }
-        const _T& __other_object = *static_cast<const _T*>(__other.__object_pointer_);
-        if constexpr (__is_small<_T>) {
-          __self.template __construct_small<_T>(__other_object);
+        const _Tp& __other_object = *static_cast<const _Tp*>(__other.__object_pointer_);
+        if constexpr (__is_small<_Tp>) {
+          __self.template __construct_small<_Tp>(__other_object);
         } else {
-          __self.template __construct_large<_T>(__other_object);
+          __self.template __construct_large<_Tp>(__other_object);
         }
         __self.__vtable_ = __other.__vtable_;
       }

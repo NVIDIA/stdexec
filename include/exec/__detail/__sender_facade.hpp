@@ -27,11 +27,14 @@ namespace exec {
   struct _FAILURE_TO_CONNECT_ {
     template <class... _Message>
     struct _WHAT_ {
-      friend _WHAT_
-        tag_invoke(stdexec::get_completion_signatures_t, _WHAT_, stdexec::__ignore) noexcept {
-        return {};
-      }
+      struct __t {
+        using __id = _WHAT_;
+        using is_sender = void;
+        using completion_signatures = _WHAT_;
+      };
     };
+    template <class... _Message>
+    using __f = stdexec::__t<_WHAT_<_Message...>>;
   };
 
   struct _TYPE_IS_NOT_A_VALID_SENDER_WITH_CURRENT_ENVIRONMENT_ {
@@ -91,6 +94,7 @@ namespace exec {
       __declval<__receiver_placeholder<_Env>&>()));
 
     struct __dependent_sender {
+      using is_sender = void;
       using __t = __dependent_sender;
       friend auto tag_invoke(get_completion_signatures_t, __dependent_sender, no_env)
         -> dependent_completion_signatures<no_env>;
@@ -249,13 +253,14 @@ namespace exec {
 
     template <class _Self>
     __minvoke<__id_<>, _Self> __is_derived_sender_(const _Self&);
-    template <class _Self, class _Derived>
+
+    template <class _Self, class _DerivedId>
     concept __is_derived_sender = //
       requires(_Self&& __self) {
-        { __is_derived_sender_((_Self&&) __self) } -> same_as<_Derived>;
+        { __is_derived_sender_((_Self&&) __self) } -> same_as<_DerivedId>;
       };
 
-    template <class _Derived, class _Sender, class _Kernel>
+    template <class _DerivedId, class _Sender, class _Kernel>
     struct __sender {
       template <class _Self, class _Receiver>
       using __operation_t = //
@@ -263,7 +268,7 @@ namespace exec {
           __operation< __copy_cvref_t<_Self, _Sender>, _Kernel, stdexec::__id<_Receiver>>>;
 
       struct __t {
-        using __id = _Derived;
+        using __id = _DerivedId;
         using is_sender = void;
         _Sender __sndr_;
         _Kernel __kernel_;
@@ -275,7 +280,7 @@ namespace exec {
           , __kernel_{(_As&&) __as...} {
         }
 
-        template <__is_derived_sender<_Derived> _Self, receiver _Receiver>
+        template <__is_derived_sender<_DerivedId> _Self, receiver _Receiver>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
           return {((_Self&&) __self).__sndr_, ((_Self&&) __self).__kernel_, (_Receiver&&) __rcvr};
@@ -294,21 +299,14 @@ namespace exec {
         template <class _NewEnv, class _PreCompletions>
         using __completions_t = __compute_completions_t<_Kernel, _NewEnv, _PreCompletions>;
 
-        struct __completions_or_error {
-          template <class _Self, class _Env, class _NewEnv>
-          using __f_ =
-            __completions_t< _NewEnv, __pre_completions_t<__new_sender_t<_Self, _Env>, _NewEnv>>;
-          template <class _Self, class _Env>
-          using __f = __f_<_Self, _Env, __new_env_t<_Env>>;
-        };
-
         template <class _Env>
-        using __diagnostic_t = //
-          _FAILURE_TO_CONNECT_::_WHAT_<
-            _TYPE_IS_NOT_A_VALID_SENDER_WITH_CURRENT_ENVIRONMENT_::_WITH_< _Derived, _Env>>;
+        using __diagnostic_t =    //
+          __minvoke<              //
+            _FAILURE_TO_CONNECT_, //
+            _TYPE_IS_NOT_A_VALID_SENDER_WITH_CURRENT_ENVIRONMENT_::_WITH_<_DerivedId, _Env>>;
 
-        template <class _Self, class _Env>
-        static auto __impl() {
+        template <__is_derived_sender<_DerivedId> _Self, class _Env>
+        static auto __new_completion_sigs_type() {
           using _NewSender = __new_sender_t<_Self, _Env>;
           if constexpr (sender<_NewSender>) {
             using _NewEnv = __new_env_t<_Env>;
@@ -316,32 +314,34 @@ namespace exec {
               using _Completions =
                 __completions_t<_NewEnv, __pre_completions_t<_NewSender, _NewEnv>>;
               if constexpr (__valid_completion_signatures<_Completions, _Env>) {
-                return __completions_or_error{};
+                return (_Completions(*)()) nullptr;
               } else if constexpr (same_as<no_env, _Env>) {
-                return __mconst<dependent_completion_signatures<no_env>>{};
+                return (dependent_completion_signatures<no_env>(*)()) nullptr;
               } else {
-                return __completions_or_error{}; // assume this is an error message and return it directly
+                // assume this is an error message and return it directly
+                return (_Completions(*)()) nullptr;
               }
             } else if constexpr (same_as<no_env, _Env>) {
-              return __mconst<dependent_completion_signatures<no_env>>{};
+              return (dependent_completion_signatures<no_env>(*)()) nullptr;
             } else {
-              return __mconst<__diagnostic_t<_Env>>{};
+              return (__diagnostic_t<_Env>(*)()) nullptr;
             }
           } else if constexpr (same_as<no_env, _Env>) {
-            return __mconst<dependent_completion_signatures<no_env>>{};
+            return (dependent_completion_signatures<no_env>(*)()) nullptr;
           } else if constexpr (same_as<_NewSender, __sender_transform_failed>) {
-            return __mconst<__diagnostic_t<_Env>>{};
+            return (__diagnostic_t<_Env>(*)()) nullptr;
           } else {
-            return __mconst<_NewSender>{}; // assume this is an error message and return it directly
+            // assume this is an error message and return it directly
+            return (_NewSender(*)()) nullptr;
           }
         }
 
         template <class _Self, class _Env>
-        using __impl_fn = decltype(__impl<_Self, _Env>());
+        using __new_completions_t = decltype(__new_completion_sigs_type<_Self, _Env>()());
 
-        template <__is_derived_sender<_Derived> _Self, class _Env>
+        template <__is_derived_sender<_DerivedId> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __minvoke<__impl_fn<_Self, _Env>, _Self, _Env>;
+          -> __new_completions_t<_Self, _Env>;
 
         friend auto tag_invoke(stdexec::get_env_t, const __t& __self) //
           noexcept(__nothrow_callable<stdexec::get_env_t, const _Sender&>)
@@ -352,8 +352,8 @@ namespace exec {
     };
   } // namespace __stl
 
-  template <class _Derived, class _Sender, class _Kernel>
-  using __sender_facade = __stl::__sender<_Derived, _Sender, _Kernel>;
+  template <class _DerivedId, class _Sender, class _Kernel>
+  using __sender_facade = __stl::__sender<_DerivedId, _Sender, _Kernel>;
 
   struct __default_kernel {
     struct __no_data { };
