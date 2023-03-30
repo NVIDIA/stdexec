@@ -728,7 +728,7 @@ namespace stdexec {
   };
 
   template <class _Sig>
-  using __is_substitution_error = __bool<__callable<__test_for_erroneous_subst, _Sig>>;
+  using __is_substitution_error = __mbool<__callable<__test_for_erroneous_subst, _Sig>>;
 
   template <class _Tag, class... _Args>
   auto __has_no_subs_error(_Tag (*)(_Args...)) -> std::true_type;
@@ -2803,7 +2803,7 @@ namespace stdexec {
       __q<__mand>>;
 
   template <class _Boolean>
-  using __as_boolean = __bool<__v<_Boolean>>;
+  using __as_boolean = __mbool<__v<_Boolean>>;
 
   template <class _Tag, class _Fun, class _Sender, class _Env>
   using __with_error_invoke_t = //
