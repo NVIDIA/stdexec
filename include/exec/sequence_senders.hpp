@@ -301,12 +301,14 @@ namespace exec {
         __operation_base<_Receiver, _Fun>* __op_;
 
         template <class _Item>
+          requires __callable<set_next_t, _Receiver&, __call_result_t<_Fun, _Item&&>>
         friend auto tag_invoke(set_next_t, __t& __self, _Item&& __item) noexcept {
           return set_next(
             __self.__op_->__rcvr_, __self.__op_->__fun_(static_cast<_Item&&>(__item)));
         }
 
         template <__completion_tag _Tag, class... _Args>
+          requires __callable<_Tag, _Receiver&&, _Args&&...>
         friend void tag_invoke(_Tag __complete, __t&& __self, _Args&&... __args) noexcept {
           __complete(
             static_cast<_Receiver&&>(__self.__op_->__rcvr_), static_cast<_Args&&>(__args)...);
@@ -346,21 +348,11 @@ namespace exec {
     template <class _Sender, class _Receiver, class _Fun>
     using __operation_t = __t<__operation<__id<_Sender>, __id<__decay_t<_Receiver>>, _Fun>>;
 
-    template <class _Fun, class... _Args>
-    using __value_sig = set_value_t(__call_result_t<_Fun, _Args...>);
-
-    template <class _Fun, class... _Args>
-      requires __callable<_Fun, _Args...>
-    using __sigs_fun = completion_signatures<set_value_t(__call_result_t<_Fun, _Args...>)>;
-
     template <class... _Errors>
     using __error_sigs = completion_signatures<set_error_t(_Errors)...>;
 
     template <class _Sender, class _Env, class _Fun>
-    using __completion_sigs = __make_completion_signatures<
-      __call_result_t<_Fun, _Sender>,
-      _Env,
-      error_types_of_t<_Sender, _Env, __error_sigs>>;
+    using __completion_sigs = completion_signatures_of_t<__call_result_t<_Fun, _Sender>, _Env>;
 
     template <class _Sender, class _Fun>
     struct __sender {
@@ -433,6 +425,9 @@ namespace exec {
       }
     };
 
+    template <class _Item, class _Fun, auto _Let>
+    using __next_item_t = decltype(_Let(__declval<_Item&&>(), __declval<__apply_fun<_Fun>>()));
+
     template <class _ReceiverId, class _Fun, auto _Let>
     struct __receiver {
       using _Receiver = stdexec::__t<_ReceiverId>;
@@ -441,6 +436,7 @@ namespace exec {
         __operation_base<_Receiver, _Fun>* __op_;
 
         template <class _Item>
+          requires __callable<set_next_t, _Receiver&, __next_item_t<_Item, _Fun, _Let>>
         friend auto tag_invoke(set_next_t, __t& __self, _Item&& __item) noexcept {
           return set_next(
             __self.__op_->__rcvr_,
@@ -448,6 +444,7 @@ namespace exec {
         }
 
         template <__completion_tag _Tag, class... _Args>
+          requires __callable<_Tag, _Receiver&&, _Args&&...>
         friend void tag_invoke(_Tag __complete, __t&& __self, _Args&&... __args) noexcept {
           __complete(
             static_cast<_Receiver&&>(__self.__op_->__rcvr_), static_cast<_Args&&>(__args)...);
@@ -488,33 +485,8 @@ namespace exec {
     template <class _Sender, class _Receiver, class _Fun, auto _Let>
     using __operation_t = __t<__operation<__id<_Sender>, __id<__decay_t<_Receiver>>, _Fun, _Let>>;
 
-    template <class _Env, class _Fun, class... _Args>
-      requires __callable<_Fun, _Args...> && sender_in<__call_result_t<_Fun, _Args...>, _Env>
-    using __sigs_fun = completion_signatures_of_t<__call_result_t<_Fun, _Args...>, _Env>;
-
-    using __compl_sigs::__default_set_value;
-    using __compl_sigs::__default_set_error;
-
     template <class _Sender, class _Env, class _Fun, auto _Let>
-    using __completion_sigs = __make_completion_signatures<
-      _Sender,
-      _Env,
-      completion_signatures<>,
-      __if_c<
-        same_as<__decay_t<decltype(_Let)>, __decay_t<decltype(let_value)>>,
-        __mbind_front_q<__sigs_fun, _Env, _Fun>,
-        __q<__default_set_value>>,
-      __if_c<
-        same_as<__decay_t<decltype(_Let)>, __decay_t<decltype(let_error)>>,
-        __mbind_front_q<__sigs_fun, _Env, _Fun>,
-        __q<__default_set_error>>,
-      __if_c<
-        same_as<__decay_t<decltype(_Let)>, __decay_t<decltype(let_stopped)>>,
-        completion_signatures_of_t<__minvoke<
-          // BUGBUG. How to defer the evaluation of __call_result_t<_Fun> ??
-          __if_c<__callable<_Fun>, __q<__call_result_t>, __mconst<decltype(just_stopped())>>,
-          _Fun>>,
-        completion_signatures<set_stopped_t()>>>;
+    using __completion_sigs = completion_signatures_of_t<__next_item_t<_Sender, _Fun, _Let>, _Env>;
 
     template <class _Sender, class _Fun, auto _Let>
     struct __sender {
