@@ -96,8 +96,8 @@ namespace exec {
     stdexec::receiver_of<_Receiver, stdexec::completion_signatures<stdexec::set_value_t()>>
     && requires(Signatures* sigs) {
          {
-           __sequence_sender::__has_sequence_signatures<stdexec::decay_t<_Receiver>>(sigs)
-         } -> __sequence_sender::is_valid_next_completions<stdexec::decay_t<_Receiver>>;
+           __sequence_sender::__has_sequence_signatures<stdexec::__decay_t<_Receiver>>(sigs)
+         } -> __sequence_sender::is_valid_next_completions<stdexec::__decay_t<_Receiver>>;
        };
 
   template <class _Receiver, class _Sender>
@@ -227,7 +227,7 @@ namespace exec {
     };
 
     template <class _SourceSender, class _Receiver>
-    using __operation_t = __t<__operation<__id<_SourceSender>, __id<decay_t<_Receiver>>>>;
+    using __operation_t = __t<__operation<__id<_SourceSender>, __id<__decay_t<_Receiver>>>>;
 
     template <class _Source, class _Env>
     using __compl_sigs = make_completion_signatures<
@@ -237,17 +237,17 @@ namespace exec {
 
     template <class _SourceId>
     struct __sender {
-      using _Source = stdexec::__t<decay_t<_SourceId>>;
+      using _Source = stdexec::__t<__decay_t<_SourceId>>;
 
       template <class _Rcvr>
-      using __next_sender = __call_result_t<set_next_t, decay_t<_Rcvr>&, _Source>;
+      using __next_sender = __call_result_t<set_next_t, __decay_t<_Rcvr>&, _Source>;
 
       template <class _Rcvr>
       using __next_on_scheduler_sender =
         __call_result_t<on_t, exec::trampoline_scheduler, __next_sender<_Rcvr>&&>;
 
       template <class _Rcvr>
-      using __recveiver = typename __operation<__id<_Source>, __id<decay_t<_Rcvr>>>::__receiver;
+      using __recveiver = typename __operation<__id<_Source>, __id<__decay_t<_Rcvr>>>::__receiver;
 
       class __t {
         [[no_unique_address]] _Source __source_;
@@ -276,7 +276,7 @@ namespace exec {
     struct __repeat_each_t {
       template <sender Sender>
       auto operator()(Sender&& source) const {
-        return __t<__sender<__id<decay_t<Sender>>>>{static_cast<Sender&&>(source)};
+        return __t<__sender<__id<__decay_t<Sender>>>>{static_cast<Sender&&>(source)};
       }
     };
   } // namespace repeat_each_
@@ -330,7 +330,7 @@ namespace exec {
       };
     };
     template <class _Receiver, class _Fun, auto _Let>
-    using __receiver_t = __t<__receiver<__id<decay_t<_Receiver>>, _Fun, _Let>>;
+    using __receiver_t = __t<__receiver<__id<__decay_t<_Receiver>>, _Fun, _Let>>;
 
     template <class _SenderId, class _ReceiverId, class _Fun, auto _Let>
     struct __operation {
@@ -357,7 +357,7 @@ namespace exec {
       };
     };
     template <class _Sender, class _Receiver, class _Fun, auto _Let>
-    using __operation_t = __t<__operation<__id<_Sender>, __id<decay_t<_Receiver>>, _Fun, _Let>>;
+    using __operation_t = __t<__operation<__id<_Sender>, __id<__decay_t<_Receiver>>, _Fun, _Let>>;
 
     template <class _Env, class _Fun, class... _Args>
       requires __callable<_Fun, _Args...> && sender_in<__call_result_t<_Fun, _Args...>, _Env>
@@ -405,7 +405,7 @@ namespace exec {
                      __completion_sigs<__copy_cvref_t<Self, _Sender>, env_of_t<Rcvr>, _Fun, _Let>>
                 && sequence_sender_to<
                      __copy_cvref_t<Self, _Sender>,
-                     __receiver_t<decay_t<Rcvr>, _Fun, _Let>>
+                     __receiver_t<__decay_t<Rcvr>, _Fun, _Let>>
         friend __operation_t<__copy_cvref_t<Self, _Sender>, Rcvr, _Fun, _Let>
           tag_invoke(sequence_connect_t, Self&& __self, Rcvr&& __rcvr) {
           return __operation_t<__copy_cvref_t<Self, _Sender>, Rcvr, _Fun, _Let>(
@@ -424,7 +424,7 @@ namespace exec {
     struct let_xxx_each_t {
       template <stdexec::sender _Sender, class _Fun>
       auto operator()(_Sender&& sndr, _Fun __fun) const {
-        return __t<__sender<decay_t<_Sender>, _Fun, _Let>>{
+        return __t<__sender<__decay_t<_Sender>, _Fun, _Let>>{
           static_cast<_Sender&&>(sndr), static_cast<_Fun&&>(__fun)};
       }
 
@@ -561,10 +561,10 @@ namespace exec {
                      __completion_sigs<__copy_cvref_t<_Self, _Sender>, env_of_t<_Rcvr>, _Int>>
                 && sequence_sender_to<
                      __copy_cvref_t<_Self, _Sender>,
-                     __receiver_t<_Int, decay_t<_Rcvr>>>
+                     __receiver_t<_Int, __decay_t<_Rcvr>>>
         friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Rcvr&& __rcvr)
-          -> __operation_t<_Int, __copy_cvref_t<_Self, _Sender>, decay_t<_Rcvr>> {
-          return __operation_t<_Int, _Sender, decay_t<_Rcvr>>(
+          -> __operation_t<_Int, __copy_cvref_t<_Self, _Sender>, __decay_t<_Rcvr>> {
+          return __operation_t<_Int, _Sender, __decay_t<_Rcvr>>(
             static_cast<_Self&&>(__self).__sndr_, (_Rcvr&&) __rcvr, __self.__initial_val_);
         }
 
@@ -577,7 +577,7 @@ namespace exec {
     struct enumerate_each_t {
       template <sender _Sender, std::integral _Int = int>
       auto operator()(_Sender&& __sndr, _Int __initial_val = _Int{}) const noexcept {
-        return __t<__sender<_Int, __id<decay_t<_Sender>>>>{
+        return __t<__sender<_Int, __id<__decay_t<_Sender>>>>{
           static_cast<_Sender&&>(__sndr), __initial_val};
       }
 
@@ -623,7 +623,7 @@ namespace exec {
     };
 
     template <class _Rcvr>
-    using __receiver_t = __t<__receiver<__id<decay_t<_Rcvr>>>>;
+    using __receiver_t = __t<__receiver<__id<__decay_t<_Rcvr>>>>;
 
     template <class... _Args>
     using __drop_value_args = completion_signatures<set_value_t()>;
@@ -637,7 +637,7 @@ namespace exec {
 
     template <class _SenderId>
     struct __sender {
-      using _Sender = stdexec::__t<decay_t<_SenderId>>;
+      using _Sender = stdexec::__t<__decay_t<_SenderId>>;
 
       struct __t {
         [[no_unique_address]] _Sender __sndr_;
@@ -662,7 +662,7 @@ namespace exec {
     struct join_all_t {
       template <class _Sender>
       constexpr auto operator()(_Sender&& __sndr) const {
-        return __t<__sender<__id<decay_t<_Sender>>>>{static_cast<_Sender&&>(__sndr)};
+        return __t<__sender<__id<__decay_t<_Sender>>>>{static_cast<_Sender&&>(__sndr)};
       }
 
       constexpr auto operator()() const noexcept -> __binder_back<join_all_t> {
