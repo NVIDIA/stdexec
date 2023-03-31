@@ -565,12 +565,15 @@ struct counting_scheduler {
   counting_scheduler() noexcept {
     ++count;
   }
+
   counting_scheduler(const counting_scheduler&) noexcept {
     ++count;
   }
+
   counting_scheduler(counting_scheduler&&) noexcept {
     ++count;
   }
+
   ~counting_scheduler() {
     --count;
   }
@@ -616,7 +619,9 @@ struct counting_scheduler {
 
 int counting_scheduler::count = 0;
 
-TEST_CASE("check that any_scheduler cleans up all resources", "[types][any_scheduler][any_sender]") {
+TEST_CASE(
+  "check that any_scheduler cleans up all resources",
+  "[types][any_scheduler][any_sender]") {
   using receiver_ref = any_receiver_ref<completion_signatures<set_value_t()>>;
   using sender_t = receiver_ref::any_sender<>;
   using scheduler_t = sender_t::any_scheduler<>;

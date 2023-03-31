@@ -50,7 +50,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         friend void tag_invoke(stdexec::set_error_t, __t&& self, Error&& error) noexcept
           requires std::invocable<Fun, Error>
         {
-          using result_t = std::invoke_result_t<Fun, std::decay_t<Error>>;
+          using result_t = std::invoke_result_t<Fun, stdexec::__decay_t<Error>>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
           cudaStream_t stream = self.op_state_.get_stream();
 
@@ -63,7 +63,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
-            using decayed_result_t = std::decay_t<result_t>;
+            using decayed_result_t = stdexec::__decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(
               self.op_state_.temp_storage_);
             kernel_with_result<Fun, Error><<<1, 1, 0, stream>>>(self.f_, d_result, error);

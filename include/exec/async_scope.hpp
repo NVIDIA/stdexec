@@ -129,7 +129,7 @@ namespace exec {
     };
 
     template <class _Constrained>
-    using __when_empty_sender_t = __when_empty_sender<__x<remove_cvref_t<_Constrained>>>;
+    using __when_empty_sender_t = __when_empty_sender<__x<__decay_t<_Constrained>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::nest implementation
@@ -243,7 +243,7 @@ namespace exec {
     };
 
     template <class _Constrained>
-    using __nest_sender_t = __nest_sender<__x<remove_cvref_t<_Constrained>>>;
+    using __nest_sender_t = __nest_sender<__x<__decay_t<_Constrained>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn_future implementation
@@ -399,10 +399,10 @@ namespace exec {
 #endif
 
     template <class... _Ts>
-    using __decay_values_t = completion_signatures<set_value_t(decay_t<_Ts>&&...)>;
+    using __decay_values_t = completion_signatures<set_value_t(__decay_t<_Ts>&&...)>;
 
     template <class _Ty>
-    using __decay_error_t = completion_signatures<set_error_t(decay_t<_Ty>&&)>;
+    using __decay_error_t = completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
 
     template <class _Sender, class _Env>
     using __future_completions_t = //
@@ -605,7 +605,7 @@ namespace exec {
     };
 
     template <class _Sender, class _Env>
-    using __future_t = __future<__x<__nest_sender_t<_Sender>>, __x<remove_cvref_t<_Env>>>;
+    using __future_t = __future<__x<__nest_sender_t<_Sender>>, __x<__decay_t<_Env>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn implementation

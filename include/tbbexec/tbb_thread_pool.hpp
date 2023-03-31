@@ -61,14 +61,14 @@ namespace tbbexec {
 
          private:
           template <typename Receiver>
-          operation<DerivedPoolType, stdexec::__x<std::decay_t<Receiver>>>
+          operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>
             make_operation_(Receiver&& r) const {
-            return operation<DerivedPoolType, stdexec::__x<std::decay_t<Receiver>>>{
+            return operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>{
               this->pool_, (Receiver&&) r};
           }
 
           template <class Receiver>
-          friend operation<DerivedPoolType, stdexec::__x<std::decay_t<Receiver>>>
+          friend operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>
             tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
             return s.make_operation_(std::forward<Receiver>(r));
           }
@@ -298,7 +298,7 @@ namespace tbbexec {
         };
 
         template <class _Ty>
-        using __decay_ref = stdexec::decay_t<_Ty>&;
+        using __decay_ref = stdexec::__decay_t<_Ty>&;
 
         template <class SenderId, std::integral Shape, class FunId>
         struct bulk_sender {
@@ -324,7 +324,7 @@ namespace tbbexec {
 
           template <class... Tys>
           using set_value_t =
-            stdexec::completion_signatures<stdexec::set_value_t(std::decay_t<Tys>...)>;
+            stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
 
           template <class Self, class Env>
           using completion_signatures = stdexec::__make_completion_signatures<

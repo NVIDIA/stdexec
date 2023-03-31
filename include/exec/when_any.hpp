@@ -56,12 +56,12 @@ namespace exec {
         __all_nothrow_move_constructible>...>>;
 
     template <class... Args>
-    using __as_rvalues = set_value_t(decay_t<Args>&&...);
+    using __as_rvalues = set_value_t(__decay_t<Args>&&...);
 
     template <class... E>
     using __as_error = completion_signatures<set_error_t(E)...>;
 
-    // Here we convert all set_value(Args...) to set_value(decay_t<Args>&&...)
+    // Here we convert all set_value(Args...) to set_value(__decay_t<Args>&&...)
     // Note, we keep all error types as they are and unconditionally add set_stopped()
     template <class _Env, class... _SenderIds>
     using __completion_signatures_t = __concat_completion_signatures_t<
@@ -243,7 +243,7 @@ namespace exec {
         stdexec::__t< __receiver<_Receiver, __result_type_t<env_of_t<_Receiver>, _SenderIds...>>>;
 
       template <class _Receiver>
-      using __op_t = stdexec::__t<__op<__id<decay_t<_Receiver>>, _SenderIds...>>;
+      using __op_t = stdexec::__t<__op<__id<__decay_t<_Receiver>>, _SenderIds...>>;
 
       class __t {
        public:
@@ -281,7 +281,7 @@ namespace exec {
 
     struct __when_any_t {
       template <class... _Senders>
-      using __sender_t = __t<__sender<__id<decay_t<_Senders>>...>>;
+      using __sender_t = __t<__sender<__id<__decay_t<_Senders>>...>>;
 
       template <sender... _Senders>
         requires(sizeof...(_Senders) > 0 && sender<__sender_t<_Senders...>>)

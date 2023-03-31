@@ -106,7 +106,7 @@ namespace exec {
     struct __read_with_default_t {
       template <class _Tag, class _Default>
       constexpr auto operator()(_Tag, _Default&& __default) const
-        -> __sender<_Tag, __x<decay_t<_Default>>> {
+        -> __sender<_Tag, __x<__decay_t<_Default>>> {
         return {(_Default&&) __default};
       }
     };
@@ -200,7 +200,7 @@ namespace exec {
       template <__is_not_instance_of<__env::__with> _Sender, class... _Tags, class... _Values>
         requires sender<_Sender>
       auto operator()(_Sender&& __sndr, __env::__with<_Tags, _Values>... __withs) const
-        -> __sender<__x<decay_t<_Sender>>, __env::__with<_Tags, _Values>...> {
+        -> __sender<__x<__decay_t<_Sender>>, __env::__with<_Tags, _Values>...> {
         return {(_Sender&&) __sndr, {std::move(__withs)...}};
       }
 

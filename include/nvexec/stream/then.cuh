@@ -48,10 +48,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <class... As>
         friend void tag_invoke(stdexec::set_value_t, __t&& self, As&&... as) noexcept
-          requires std::invocable<Fun, std::decay_t<As>...>
+          requires std::invocable<Fun, stdexec::__decay_t<As>...>
         {
 
-          using result_t = std::invoke_result_t<Fun, std::decay_t<As>...>;
+          using result_t = std::invoke_result_t<Fun, stdexec::__decay_t<As>...>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
           operation_state_base_t<ReceiverId>& op_state = self.op_state_;
           cudaStream_t stream = op_state.get_stream();
@@ -66,9 +66,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
-            using decayed_result_t = std::decay_t<result_t>;
+            using decayed_result_t = stdexec::__decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
-            kernel_with_result<std::decay_t<Fun>, decayed_result_t, As...>
+            kernel_with_result<stdexec::__decay_t<Fun>, decayed_result_t, As...>
               <<<1, 1, 0, stream>>>(self.f_, d_result, (As&&) as...);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());

@@ -83,7 +83,7 @@ namespace exec {
     struct __start_on;
 
     template <class _Sender, class _Scheduler>
-    using __start_on_t = __t<__start_on<__id<decay_t<_Sender>>, _Scheduler>>;
+    using __start_on_t = __t<__start_on<__id<__decay_t<_Sender>>, _Scheduler>>;
 
     template <class _Scheduler>
     struct __start_on_kernel : __default_kernel {
@@ -159,7 +159,7 @@ namespace exec {
     template <>
     struct on_t<on_kind::start_on> {
       template <scheduler _Scheduler, sender _Sender>
-        requires constructible_from<decay_t<_Sender>, _Sender>
+        requires constructible_from<__decay_t<_Sender>, _Sender>
       auto operator()(_Scheduler __sched, _Sender&& __sndr) const
         -> __start_on_t<_Sender, _Scheduler> {
         // connect-based customization will remove the need for this check
@@ -176,7 +176,7 @@ namespace exec {
     struct __continue_on;
 
     template <class _Sender, class _Scheduler, class _Closure>
-    using __continue_on_t = __t<__continue_on<__id<decay_t<_Sender>>, _Scheduler, _Closure>>;
+    using __continue_on_t = __t<__continue_on<__id<__decay_t<_Sender>>, _Scheduler, _Closure>>;
 
     template <class _Scheduler, class _Closure>
     struct __continue_on_kernel : __default_kernel {
@@ -193,7 +193,7 @@ namespace exec {
 
       template <class _Sender, class _OldScheduler>
       auto transform_sender_(_Sender&& __sndr, _OldScheduler __old_sched) {
-        using __sender_t = __t<__with_sched<__id<decay_t<_Sender>>, _OldScheduler>>;
+        using __sender_t = __t<__with_sched<__id<__decay_t<_Sender>>, _OldScheduler>>;
         return __sender_t{(_Sender&&) __sndr, __old_sched} | transfer(__sched_)
              | (__copy_cvref_t<_Sender, _Closure>&&) __closure_ | transfer(__old_sched);
       }
@@ -261,7 +261,7 @@ namespace exec {
     template <>
     struct on_t<on_kind::continue_on> {
       template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
-        requires constructible_from<decay_t<_Sender>, _Sender>
+        requires constructible_from<__decay_t<_Sender>, _Sender>
       auto operator()(_Sender&& __sndr, _Scheduler __sched, _Closure __closure) const
         -> __continue_on_t<_Sender, _Scheduler, _Closure> {
         return {(_Sender&&) __sndr, (_Scheduler&&) __sched, (_Closure&&) __closure};

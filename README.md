@@ -5,7 +5,7 @@
 **Purpose of this Repository:**
 1. Provide a proof-of-concept implementation of the design proposed in [P2300](http://wg21.link/p2300).
 2. Provide early access to developers looking to experiment with the Sender model.
-3. Colloborate with those interested in participating or contributing to the design of P2300 (contributions welcome!).
+3. Collaborate with those interested in participating or contributing to the design of P2300 (contributions welcome!).
 
 ## Disclaimer
 

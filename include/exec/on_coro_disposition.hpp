@@ -194,7 +194,7 @@ namespace exec {
 
      public:
       template <class _Action, class... _Ts>
-        requires __callable<std::decay_t<_Action>, std::decay_t<_Ts>...>
+        requires __callable<__decay_t<_Action>, __decay_t<_Ts>...>
       __task<_Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {
         return __impl((_Action&&) __action, (_Ts&&) __ts...);
       }

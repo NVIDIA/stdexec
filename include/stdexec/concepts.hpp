@@ -34,6 +34,8 @@
 #  include <type_traits>
 #endif
 
+#include "__detail/__meta.hpp"
+
 namespace stdexec::__std_concepts {
 #if defined(__clang__)
   template <class _Ap, class _Bp>
@@ -76,7 +78,7 @@ namespace stdexec::__std_concepts {
 
   template <class _Ty>
   concept equality_comparable = //
-    requires(const std::remove_reference_t<_Ty>& __t) {
+    requires(__cref_t<_Ty> __t) {
       { __t == __t } -> convertible_to<bool>;
       { __t != __t } -> convertible_to<bool>;
     };
@@ -85,25 +87,95 @@ namespace stdexec::__std_concepts {
 
 namespace stdexec {
   using namespace __std_concepts;
-  using std::decay_t;
 
-  // // TODO: this makes nvc++ sad. Find out why.
-  // template <class _Ty>
-  //   _Ty __decay__(const _Ty&);
-  // template <class _Ty>
-  //   _Ty* __decay__(_Ty*);
+#if __has_builtin(__decay)
+  template <class _Ty>
+  using __decay_t = __decay(_Ty);
+#elif STDEXEC_NVHPC()
+  template <class _Ty>
+  using __decay_t = std::decay_t<_Ty>;
+#else
+  namespace __tt {
+    struct __decay_object {
+      template <class _Ty>
+      static _Ty __g(_Ty const &);
+      template <class _Ty>
+      using __f = decltype(__g(__declval<_Ty>()));
+    };
 
-  // template <class _Ty>
-  //   auto __decay_(_Ty&&(*__fn)()) -> decltype((__decay__)(__fn()));
-  // template <class>
-  //   void __decay_(...);
+    struct __decay_default {
+      template <class _Ty>
+      static _Ty __g(_Ty);
+      template <class _Ty>
+      using __f = decltype(__g(__declval<_Ty>()));
+    };
 
-  // template <class _Ty>
-  //   using decay_t = decltype((__decay_<_Ty>)(0));
+    struct __decay_abominable {
+      template <class _Ty>
+      using __f = _Ty;
+    };
+
+    struct __decay_void {
+      template <class _Ty>
+      using __f = void;
+    };
+
+    template <class _Ty>
+    extern __decay_object __mdecay;
+
+    template <class _Ty, class... Us>
+    extern __decay_default __mdecay<_Ty(Us...)>;
+
+    template <class _Ty, class... Us>
+    extern __decay_default __mdecay<_Ty(Us...) noexcept>;
+
+    template <class _Ty, class... Us>
+    extern __decay_default __mdecay<_Ty (&)(Us...)>;
+
+    template <class _Ty, class... Us>
+    extern __decay_default __mdecay<_Ty (&)(Us...) noexcept>;
+
+    template <class _Ty, class... Us>
+    extern __decay_abominable __mdecay<_Ty(Us...) const>;
+
+    template <class _Ty, class... Us>
+    extern __decay_abominable __mdecay<_Ty(Us...) const noexcept>;
+
+    template <class _Ty, class... Us>
+    extern __decay_abominable __mdecay<_Ty(Us...) const &>;
+
+    template <class _Ty, class... Us>
+    extern __decay_abominable __mdecay<_Ty(Us...) const & noexcept>;
+
+    template <class _Ty, class... Us>
+    extern __decay_abominable __mdecay<_Ty(Us...) const &&>;
+
+    template <class _Ty, class... Us>
+    extern __decay_abominable __mdecay<_Ty(Us...) const && noexcept>;
+
+    template <class _Ty>
+    extern __decay_default __mdecay<_Ty[]>;
+
+    template <class _Ty, std::size_t N>
+    extern __decay_default __mdecay<_Ty[N]>;
+
+    template <class _Ty, std::size_t N>
+    extern __decay_default __mdecay<_Ty (&)[N]>;
+
+    template <>
+    inline __decay_void __mdecay<void>;
+
+    template <>
+    inline __decay_void __mdecay<void const>;
+  } // namespace __tt
+
+  template <class _Ty>
+  using __decay_t = typename decltype(__tt::__mdecay<_Ty>)::template __f<_Ty>;
+#endif
 
   // C++20 concepts
   template <class _Ty, class _Up>
-  concept __decays_to = __same_as<decay_t<_Ty>, _Up>;
+  concept __decays_to = __same_as<__decay_t<_Ty>, _Up>;
 
   template <class _Ty, class _Up>
   concept __not_decays_to = !__decays_to<_Ty, _Up>;
@@ -233,10 +305,8 @@ namespace stdexec {
     equality_comparable<_Ty>;
 
   template < class T, class U >
-  concept __partially_ordered_with =       //
-    requires(
-      const std::remove_reference_t<T>& t, //
-      const std::remove_reference_t<U>& u) {
+  concept __partially_ordered_with = //
+    requires(__cref_t<T> t, __cref_t<U> u) {
       { t < u } -> __boolean_testable_;
       { t > u } -> __boolean_testable_;
       { t <= u } -> __boolean_testable_;
@@ -253,9 +323,9 @@ namespace stdexec {
     __partially_ordered_with<_Ty, _Ty>;
 
   template <class _Ty>
-  concept __movable_value =             //
-    move_constructible<decay_t<_Ty>> && //
-    constructible_from<decay_t<_Ty>, _Ty>;
+  concept __movable_value =               //
+    move_constructible<__decay_t<_Ty>> && //
+    constructible_from<__decay_t<_Ty>, _Ty>;
 
   template <class _Trait>
   concept __is_true = _Trait::value;
@@ -282,10 +352,10 @@ namespace stdexec {
 #endif
 
   template <class _Ty>
-  concept __decay_copyable = constructible_from<decay_t<_Ty>, _Ty>;
+  concept __decay_copyable = constructible_from<__decay_t<_Ty>, _Ty>;
 
   template <class _Ty>
-  concept __nothrow_decay_copyable = __nothrow_constructible_from<decay_t<_Ty>, _Ty>;
+  concept __nothrow_decay_copyable = __nothrow_constructible_from<__decay_t<_Ty>, _Ty>;
 } // namespace stdexec
 
 #if !STDEXEC_HAS_STD_CONCEPTS_HEADER()

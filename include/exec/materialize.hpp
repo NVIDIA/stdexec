@@ -54,10 +54,10 @@ namespace exec {
 
     template <class _SenderId>
     struct __sender {
-      using _Sender = decay_t<stdexec::__t<_SenderId>>;
+      using _Sender = __decay_t<stdexec::__t<_SenderId>>;
 
       template <class _Receiver>
-      using __receiver_t = stdexec::__t<__receiver<__id<decay_t<_Receiver>>>>;
+      using __receiver_t = stdexec::__t<__receiver<__id<__decay_t<_Receiver>>>>;
 
       class __t {
        public:
@@ -103,7 +103,7 @@ namespace exec {
 
     struct __materialize_t {
       template <class _Sender>
-      __t<__sender<__id<decay_t<_Sender>>>> operator()(_Sender&& __sender) const
+      __t<__sender<__id<__decay_t<_Sender>>>> operator()(_Sender&& __sender) const
         noexcept(__nothrow_decay_copyable<_Sender>) {
         return {(_Sender&&) __sender};
       }
@@ -121,7 +121,7 @@ namespace exec {
 
     template <class _ReceiverId>
     struct __receiver {
-      using _Receiver = decay_t<stdexec::__t<_ReceiverId>>;
+      using _Receiver = __decay_t<stdexec::__t<_ReceiverId>>;
 
       class __t {
        public:
@@ -157,10 +157,10 @@ namespace exec {
 
     template <class _SenderId>
     struct __sender {
-      using _Sender = decay_t<stdexec::__t<_SenderId>>;
+      using _Sender = __decay_t<stdexec::__t<_SenderId>>;
 
       template <class _Receiver>
-      using __receiver_t = stdexec::__t<__receiver<__id<decay_t<_Receiver>>>>;
+      using __receiver_t = stdexec::__t<__receiver<__id<__decay_t<_Receiver>>>>;
 
       class __t {
        public:
@@ -184,8 +184,8 @@ namespace exec {
         }
 
         template <class _Tag, class... _Args>
-          requires __completion_tag<decay_t<_Tag>>
-        using __dematerialize_value = completion_signatures<decay_t<_Tag>(_Args...)>;
+          requires __completion_tag<__decay_t<_Tag>>
+        using __dematerialize_value = completion_signatures<__decay_t<_Tag>(_Args...)>;
 
         template <class _Env>
         using __completion_signatures_for_t =

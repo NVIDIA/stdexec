@@ -66,7 +66,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
-            using decayed_result_t = std::decay_t<result_t>;
+            using decayed_result_t = stdexec::__decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(
               self.op_state_.temp_storage_);
             kernel_with_result<Fun><<<1, 1, 0, stream>>>(self.f_, d_result);

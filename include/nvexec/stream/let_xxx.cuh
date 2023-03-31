@@ -29,7 +29,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     template <class _Tp>
-    using __decay_ref = stdexec::decay_t<_Tp>&;
+    using __decay_ref = stdexec::__decay_t<_Tp>&;
 
     template <class _Fun>
     using __result_sender = //
@@ -114,7 +114,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           result_sender_t* result_sender = static_cast<result_sender_t*>(
             __self.__op_state_->temp_storage_);
-          kernel_with_result<std::decay_t<_Fun>, result_sender_t, _As...>
+          kernel_with_result<stdexec::__decay_t<_Fun>, result_sender_t, _As...>
             <<<1, 1, 0, stream>>>(__self.__op_state_->__fun_, result_sender, (_As&&) __as...);
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
@@ -213,14 +213,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using __operation_t = //
         let_xxx::__operation<
           stdexec::__id<stdexec::__copy_cvref_t<_Self, _Sender>>,
-          stdexec::__id<std::remove_cvref_t<_Receiver>>,
+          stdexec::__id<stdexec::__decay_t<_Receiver>>,
           _Fun,
           _Set>;
       template <class _Self, class _Receiver>
       using __receiver_t = //
         stdexec::__t< let_xxx::__receiver<
           stdexec::__id<stdexec::__copy_cvref_t<_Self, _Sender>>,
-          stdexec::__id<std::remove_cvref_t<_Receiver>>,
+          stdexec::__id<stdexec::__decay_t<_Receiver>>,
           _Fun,
           _Set>>;
 
