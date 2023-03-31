@@ -79,7 +79,7 @@ namespace exec {
     auto __has_sequence_signature(set_stopped_t (*)())
       -> __receiver_concepts::__missing_completion_signal_t<_Receiver, set_stopped_t>;
 
-    template < class _Receiver, class Error>
+    template <class _Receiver, class Error>
     auto __has_sequence_signature(set_error_t (*)(Error))
       -> __receiver_concepts::__missing_completion_signal_t<_Receiver, set_error_t, Error>;
 
@@ -342,9 +342,9 @@ namespace exec {
 
         template <class _Sndr, class _Rcvr>
         __t(_Sndr&& __sndr, _Rcvr&& __rcvr, _Fun __fun)
-          : __operation_base<_Receiver, _Fun>(
+          : __operation_base<_Receiver, _Fun>{
             static_cast<_Rcvr&&>(__rcvr),
-            static_cast<_Fun&&>(__fun))
+            static_cast<_Fun&&>(__fun)}
           , __op_(
               sequence_connect(static_cast<_Sndr&&>(__sndr), __receiver_t<_Receiver, _Fun>{this})) {
         }
@@ -358,8 +358,16 @@ namespace exec {
     template <class _Sender, class _Receiver, class _Fun>
     using __operation_t = __t<__operation<__id<_Sender>, __id<decay_t<_Receiver>>, _Fun>>;
 
-    template <class _Sender, class Env, class _Fun>
-    using __compl_sigs = make_completion_signatures< _Sender, Env>;
+    template <class _Env, class _Fun, class... _Args>
+      requires __callable<_Fun, _Args...> && sender_in<__call_result_t<_Fun, _Args...>, _Env>
+    using __value_types = completion_signatures_of_t<__call_result_t<_Fun, _Args...>, _Env>;
+
+    template <class _Sender, class _Env, class _Fun>
+    using __compl_sigs = __make_completion_signatures<
+      _Sender,
+      _Env,
+      completion_signatures<>,
+      __mbind_front_q<__value_types, _Env, _Fun>>;
 
     template <class _Sender, class _Fun>
     struct __sender {
@@ -388,9 +396,9 @@ namespace exec {
             static_cast<Self&&>(__self).__fun_);
         }
 
-        template <class Env>
-        friend auto tag_invoke(get_completion_signatures_t, const __t&, const Env&)
-          -> __compl_sigs<_Sender, Env, _Fun>;
+        template <__decays_to<__t> _Self, class _Env>
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, const _Env&)
+          -> __compl_sigs<__copy_cvref_t<_Self, _Sender>, _Env, _Fun>;
       };
     };
 
@@ -420,7 +428,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
-        _Receiver __rcvr_;
+        [[no_unique_address]] _Receiver __rcvr_;
 
         template <class _Item>
         friend _Item&& tag_invoke(set_next_t, __t&, _Item&& __item) noexcept {
@@ -462,7 +470,7 @@ namespace exec {
       using _Sender = stdexec::__t<decay_t<_SenderId>>;
 
       struct __t {
-        _Sender __sndr_;
+        [[no_unique_address]] _Sender __sndr_;
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires receiver_of<
