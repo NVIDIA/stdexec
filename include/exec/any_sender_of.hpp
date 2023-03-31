@@ -293,9 +293,15 @@ namespace exec {
       template <class _Tp>
       static constexpr const __vtable_t* __get_vtable() noexcept {
         if constexpr (_Copyable) {
-          return &__storage_vtbl<__t, decay_t<_Tp>, _Vtable, __with_delete, __with_move, __with_copy>;
+          return &__storage_vtbl<
+            __t,
+            __decay_t<_Tp>,
+            _Vtable,
+            __with_delete,
+            __with_move,
+            __with_copy>;
         } else {
-          return &__storage_vtbl<__t, decay_t<_Tp>, _Vtable, __with_delete, __with_move>;
+          return &__storage_vtbl<__t, __decay_t<_Tp>, _Vtable, __with_delete, __with_move>;
         }
       }
 
@@ -305,10 +311,10 @@ namespace exec {
       __t() = default;
 
       template <__not_decays_to<__t> _Tp>
-        requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<std::decay_t<_Tp>>>
+        requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<__decay_t<_Tp>>>
       __t(_Tp&& __object)
         : __vtable_{__get_vtable<_Tp>()} {
-        using _Dp = decay_t<_Tp>;
+        using _Dp = __decay_t<_Tp>;
         if constexpr (__is_small<_Dp>) {
           __construct_small<_Dp>((_Tp&&) __object);
         } else {
@@ -715,7 +721,7 @@ namespace exec {
         __unique_storage_t<__vtable> __storage_;
 
         template <receiver_of<_Sigs> _Rcvr>
-        friend stdexec::__t<__operation<__t, std::decay_t<_Rcvr>, _ReceiverQueries>>
+        friend stdexec::__t<__operation<__t, __decay_t<_Rcvr>, _ReceiverQueries>>
           tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr) {
           return {(__t&&) __self, (_Rcvr&&) __rcvr};
         }

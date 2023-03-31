@@ -118,7 +118,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class CvrefEnv>
       using completion_sigs = //
         stdexec::__t<when_all::completions<
-          when_all::env_t<std::remove_cvref_t<CvrefEnv>>,
+          when_all::env_t<stdexec::__decay_t<CvrefEnv>>,
           stdexec::__copy_cvref_t<CvrefEnv, stdexec::__t<SenderIds>>...>>;
 
       template <class Completions>
@@ -137,7 +137,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class CvrefReceiverId, std::size_t Index>
       struct receiver_t {
         using WhenAll = stdexec::__copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
-        using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
+        using Receiver = stdexec::__t<stdexec::__decay_t<CvrefReceiverId>>;
         using Env = //
           make_terminal_stream_env_t< exec::make_env_t<
             stdexec::env_of_t<Receiver>,
@@ -166,7 +166,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               op_state_->stop_source_.request_stop();
               // We won the race, free to write the error into the operation
               // state without worry.
-              op_state_->errors_.template emplace<std::decay_t<Error>>((Error&&) err);
+              op_state_->errors_.template emplace<stdexec::__decay_t<Error>>((Error&&) err);
             }
             op_state_->arrive();
           }
@@ -228,7 +228,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class CvrefReceiverId>
       struct operation_t : stream_op_state_base {
         using WhenAll = stdexec::__copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
-        using Receiver = stdexec::__t<std::decay_t<CvrefReceiverId>>;
+        using Receiver = stdexec::__t<stdexec::__decay_t<CvrefReceiverId>>;
         using Env = stdexec::env_of_t<Receiver>;
         using CvrefEnv = stdexec::__copy_cvref_t<CvrefReceiverId, Env>;
         using Completions = completion_sigs<CvrefEnv>;
@@ -409,7 +409,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
       friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-        -> operation_t<stdexec::__copy_cvref_t<Self, stdexec::__id<std::decay_t<Receiver>>>> {
+        -> operation_t<stdexec::__copy_cvref_t<Self, stdexec::__id<stdexec::__decay_t<Receiver>>>> {
         return {(Self&&) self, (Receiver&&) rcvr};
       }
 

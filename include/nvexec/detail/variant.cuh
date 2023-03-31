@@ -135,7 +135,7 @@ namespace nvexec {
   template <class VisitorT, class V>
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE void visit(VisitorT&& visitor, V&& v) {
     detail::visit_impl(
-      std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{},
+      std::integral_constant<std::size_t, stdexec::__decay_t<V>::size - 1>{},
       (VisitorT&&) visitor,
       (V&&) v,
       v.index_);
@@ -144,7 +144,7 @@ namespace nvexec {
   template <class VisitorT, class V>
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE void visit(VisitorT&& visitor, V&& v, std::size_t index) {
     detail::visit_impl(
-      std::integral_constant<std::size_t, std::decay_t<V>::size - 1>{},
+      std::integral_constant<std::size_t, stdexec::__decay_t<V>::size - 1>{},
       (VisitorT&&) visitor,
       (V&&) v,
       index);
@@ -202,7 +202,7 @@ namespace nvexec {
       if (holds_alternative()) {
         visit(
           [](auto& val) noexcept {
-            using val_t = std::decay_t<decltype(val)>;
+            using val_t = stdexec::__decay_t<decltype(val)>;
             if constexpr (
               std::is_same_v<val_t, ::cuda::std::tuple<stdexec::set_error_t, std::exception_ptr>>) {
               // TODO Not quite possible at the moment

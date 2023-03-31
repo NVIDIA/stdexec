@@ -230,7 +230,8 @@ namespace nvexec {
 
     struct reduce_t {
       template <class Sender, class Fun>
-      using __sender = stdexec::__t<reduce_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
+      using __sender =
+        stdexec::__t<reduce_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Fun>>;
 
       template <stdexec::sender Sender, stdexec::__movable_value Fun>
       __sender<Sender, Fun> operator()(Sender&& __sndr, Fun __fun) const {
