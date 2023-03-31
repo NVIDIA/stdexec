@@ -39,7 +39,7 @@ namespace exec {
 
       template <class R>
       friend auto tag_invoke(stdexec::connect_t, __sender, R&& rec) //
-        noexcept(std::is_nothrow_constructible_v<stdexec::__decay_t<R>, R>)
+        noexcept(stdexec::__nothrow_constructible_from<stdexec::__decay_t<R>, R>)
           -> __op<stdexec::__x<stdexec::__decay_t<R>>> {
         return {(R&&) rec};
       }

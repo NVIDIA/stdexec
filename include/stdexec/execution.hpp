@@ -2297,7 +2297,7 @@ namespace stdexec {
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         __t<__sender<__decay_t<_Ts>...>>
         operator()(_Ts&&... __ts) const
-        noexcept((std::is_nothrow_constructible_v<__decay_t<_Ts>, _Ts> && ...)) {
+        noexcept((__nothrow_constructible_from<__decay_t<_Ts>, _Ts> && ...)) {
         return {{{(_Ts&&) __ts...}}};
       }
     } just{};
@@ -2307,7 +2307,7 @@ namespace stdexec {
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         __t<__error_sender<__decay_t<_Error>>>
         operator()(_Error&& __err) const
-        noexcept(std::is_nothrow_constructible_v<__decay_t<_Error>, _Error>) {
+        noexcept(__nothrow_constructible_from<__decay_t<_Error>, _Error>) {
         return {{{(_Error&&) __err}}};
       }
     } just_error{};
@@ -2804,7 +2804,7 @@ namespace stdexec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
-          noexcept(std::is_nothrow_constructible_v<
+          noexcept(__nothrow_constructible_from<
                    __operation<_Self, _Receiver>,
                    __copy_cvref_t<_Self, _Sender>,
                    _Receiver&&,
