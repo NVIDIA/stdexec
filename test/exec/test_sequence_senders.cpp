@@ -28,12 +28,15 @@ struct next_receiver {
     return __item;
   }
 
-  friend void tag_invoke(set_value_t, next_receiver&&) noexcept {}
+  friend void tag_invoke(set_value_t, next_receiver&&) noexcept {
+  }
 
-  friend void tag_invoke(set_stopped_t, next_receiver&&) noexcept {}
+  friend void tag_invoke(set_stopped_t, next_receiver&&) noexcept {
+  }
 
   template <class E>
-  friend void tag_invoke(set_error_t, next_receiver&&, E&&) noexcept {}
+  friend void tag_invoke(set_error_t, next_receiver&&, E&&) noexcept {
+  }
 
   friend empty_env tag_invoke(get_env_t, const next_receiver&) noexcept {
     return {};
@@ -44,7 +47,8 @@ TEST_CASE("sequence_senders - Test missing next signature", "[sequence_senders]"
   using just_t = decltype(just());
   STATIC_REQUIRE(receiver<next_receiver>);
   STATIC_REQUIRE(sequence_receiver_of<next_receiver, completion_signatures<set_value_t(int)>>);
-  STATIC_REQUIRE(sequence_receiver_of<next_receiver, completion_signatures<set_value_t(), set_stopped_t()>>);
+  STATIC_REQUIRE(
+    sequence_receiver_of<next_receiver, completion_signatures<set_value_t(), set_stopped_t()>>);
   STATIC_REQUIRE(sender_to<just_t, next_receiver>);
   STATIC_REQUIRE_FALSE(sequence_sender_to<just_t, next_receiver>);
 }
@@ -92,32 +96,20 @@ TEST_CASE("sequence_senders - let_stopped_each", "[sequence_senders]") {
 }
 
 TEST_CASE("sequence_senders - enumerate_each", "[sequence_senders]") {
-  using just_t = decltype(just());
+  using just_int_t = decltype(just(0));
   using just_stopped_t = decltype(just_stopped());
-  auto e = enumerate_each(repeat_each(just()));
-  using enumerate_t = decltype(e);
-  auto fun = [](int) -> exec::variant_sender<just_t, just_stopped_t> {
-    return just();
-  };
-  auto l = let_value_each(e, fun);
-  using let_t = decltype(l);
-  STATIC_REQUIRE(sender_in<let_t, empty_env>);
-  STATIC_REQUIRE(sequence_sender_to<let_t, next_receiver>);
-  using enumerate_t = decltype(e);
-  STATIC_REQUIRE(sender_in<enumerate_t, empty_env>);
-  STATIC_REQUIRE(sequence_sender_to<enumerate_t, next_receiver>);
   int count = 0;
   sync_wait(
     repeat_each(just()) //
     | enumerate_each()  //
-    | let_value_each([&count](int counter) -> exec::variant_sender<just_t, just_stopped_t> {
+    | let_value_each([&](int counter) -> exec::variant_sender<just_int_t, just_stopped_t> {
         if (counter < 10) {
-          ++count;
-          return just();
+          return just(counter);
         } else {
           return just_stopped();
         }
-      }) //
+      })                                                  //
+    | transform_each(then([&count](int n) { CHECK(n == count++); })) //
     | join_all());
   CHECK(count == 10);
 }
