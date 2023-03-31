@@ -33,7 +33,7 @@ namespace exec {
         return tag_invoke(*this, __rcvr, (_Item&&) __item);
       }
     };
-  }
+  } // namespace __sequence_sender
 
   using __sequence_sender::set_next_t;
   inline constexpr set_next_t set_next;
@@ -75,9 +75,13 @@ namespace exec {
     auto __has_sequence_signature(set_value_t (*)(_Args...))
       -> __missing_next_signature_t<_Receiver, _Args...>;
 
-    template <__one_of<set_error_t, set_stopped_t> _Tag, class _Receiver, class... _Args>
-    auto __has_sequence_signature(_Tag (*)(_Args...))
-      -> __receiver_concepts::__missing_completion_signal_t<_Receiver, _Tag, _Args...>;
+    template < class _Receiver>
+    auto __has_sequence_signature(set_stopped_t (*)())
+      -> __receiver_concepts::__missing_completion_signal_t<_Receiver, set_stopped_t>;
+
+    template < class _Receiver, class Error>
+    auto __has_sequence_signature(set_error_t (*)(Error))
+      -> __receiver_concepts::__missing_completion_signal_t<_Receiver, set_error_t, Error>;
 
     template <class _Receiver, class... _Sigs>
     auto __has_sequence_signatures(completion_signatures<_Sigs...>*)
@@ -108,7 +112,7 @@ namespace exec {
     concept __sequence_connectable_with_tag_invoke =
       receiver<_Receiver> &&                        //
       sender_in<_Sender, env_of_t<_Receiver>> &&    //
-      // sequence_receiver_from<_Receiver, _Sender> && //
+      sequence_receiver_from<_Receiver, _Sender> && //
       tag_invocable<sequence_connect_t, _Sender, _Receiver>;
 
     struct sequence_connect_t {
@@ -139,10 +143,10 @@ namespace exec {
     stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>>
     && sequence_receiver_from<_Receiver, _Sender>
     && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-         { stdexec::connect((_Sender&&) __sndr, (_Receiver&&) __rcvr) } -> stdexec::operation_state;
+         { sequence_connect((_Sender&&) __sndr, (_Receiver&&) __rcvr) } -> stdexec::operation_state;
        };
 
-  namespace __repeat_effect {
+  namespace __repeat_each {
     using namespace stdexec;
 
     // Takes a sender and creates a sequence sender by repeating the sender as item to the set_next
@@ -162,28 +166,27 @@ namespace exec {
 
         template <class... _Args>
         friend void tag_invoke(set_value_t, __receiver&& __self, _Args&&...) noexcept {
-          static_assert(sizeof...(_Args) == 0);
           __self.__op_->repeat();
         }
 
         template <__decays_to<__receiver> _Self, class _Error>
           requires __callable<set_error_t, _Receiver&&, _Error&&>
         friend void tag_invoke(set_error_t, _Self&& __self, _Error e) noexcept {
-          set_error((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) e);
+          stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) e);
         }
 
         friend void tag_invoke(set_stopped_t, __receiver&& __self) noexcept {
-          auto token = get_stop_token(get_env(__self.__op_->__rcvr_));
+          auto token = stdexec::get_stop_token(stdexec::get_env(__self.__op_->__rcvr_));
           if (token.stop_requested()) {
-            set_stopped((_Receiver&&) __self.__op_->__rcvr_);
+            stdexec::set_stopped((_Receiver&&) __self.__op_->__rcvr_);
           } else {
-            set_value((_Receiver&&) __self.__op_->__rcvr_);
+            stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_);
           }
         }
 
         friend env_of_t<_Receiver> tag_invoke(get_env_t, const __receiver& __self) noexcept(
           __nothrow_callable<get_env_t, const _Receiver&>) {
-          return get_env(__self.__op_->__rcvr_);
+          return stdexec::get_env(__self.__op_->__rcvr_);
         }
       };
 
@@ -194,20 +197,20 @@ namespace exec {
         std::optional<connect_result_t<__next_on_scheduler_sender, __receiver>> __next_op_;
 
         void repeat() noexcept {
-          auto __token = get_stop_token(get_env(__rcvr_));
+          auto __token = stdexec::get_stop_token(stdexec::get_env(__rcvr_));
           if (__token.stop_requested()) {
-            set_stopped((_Receiver&&) __rcvr_);
+            stdexec::set_stopped((_Receiver&&) __rcvr_);
             return;
           }
           try {
-            auto& next = __next_op_.emplace(__conv{[&] {
+            auto& __next = __next_op_.emplace(__conv{[&] {
               return connect(
                 stdexec::on(__trampoline_, set_next(__rcvr_, _SourceSender{__source_})),
                 __receiver{this});
             }});
-            start(next);
+            stdexec::start(__next);
           } catch (...) {
-            set_error((_Receiver&&) __rcvr_, std::current_exception());
+            stdexec::set_error((_Receiver&&) __rcvr_, std::current_exception());
           }
         }
 
@@ -250,7 +253,8 @@ namespace exec {
         _Source __source_;
 
         template <__decays_to<__t> _Self, class _Receiver>
-          requires sender_to<__next_on_scheduler_sender<_Receiver>, __recveiver<_Receiver>>
+          requires sequence_receiver_of<_Receiver, __compl_sigs<_Source&&, env_of_t<_Receiver>>>
+                && sender_to<__next_on_scheduler_sender<_Receiver>, __recveiver<_Receiver>>
         friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Receiver&& __rcvr)
           -> __operation_t<_Source, _Receiver> {
           return __operation_t<_Source, _Receiver>{
@@ -259,7 +263,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, const _Env&)
-          -> __compl_sigs<__copy_cvref_t<_Self, _Source>, _Env>;
+          -> __compl_sigs<_Source&&, _Env>;
 
        public:
         template <__decays_to<_Source> _Sndr>
@@ -269,17 +273,16 @@ namespace exec {
       };
     };
 
-    struct __repeat_effectt {
-      template <sender_of<set_value_t()> Sender>
-        requires __single_typed_sender<Sender> && copy_constructible<Sender>
+    struct __repeat_each_t {
+      template <sender Sender>
       auto operator()(Sender&& source) const {
         return __t<__sender<__id<decay_t<Sender>>>>{static_cast<Sender&&>(source)};
       }
     };
   } // namespace repeat_each_
 
-  using __repeat_effect::__repeat_effectt;
-  inline constexpr __repeat_effectt repeat_effect;
+  using __repeat_each::__repeat_each_t;
+  inline constexpr __repeat_each_t repeat_each;
 
   namespace __join_all {
     using namespace stdexec;
@@ -324,17 +327,23 @@ namespace exec {
         _Sender __sndr_;
 
         template <__decays_to<__t> _Self, class _Receiver>
-        // requires sequence_sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
+          requires sequence_sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
         friend sequence_connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
           return sequence_connect(
-            __copy_cvref_t<_Self, _Sender>(__self.__sndr_),
-            __receiver_t<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
+            ((_Self&&) __self).__sndr_, __receiver_t<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
         }
+
+        template <class... Args>
+        using __drop_value_args = set_value_t();
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, const _Env&)
-          -> completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env>;
+          -> make_completion_signatures<
+            __copy_cvref_t<_Self, _Sender>,
+            _Env,
+            completion_signatures<set_value_t()>,
+            __drop_value_args>;
       };
     };
 
