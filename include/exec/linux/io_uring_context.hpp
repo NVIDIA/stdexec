@@ -537,7 +537,7 @@ namespace exec {
       };
 
     template <__stoppable_task _Op>
-    using __receiver_of_t = std::decay_t<decltype(std::declval<_Op&>().receiver())>;
+    using __receiver_of_t = stdexec::__decay_t<decltype(std::declval<_Op&>().receiver())>;
 
     template <__io_task _Base>
     struct __io_task_facade : __task {

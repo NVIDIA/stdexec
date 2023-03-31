@@ -114,7 +114,7 @@ namespace stdexec {
   inline constexpr tag_invoke_t tag_invoke{};
 
   template <auto& _Tag>
-  using tag_t = decay_t<decltype(_Tag)>;
+  using tag_t = __decay_t<decltype(_Tag)>;
 
   using __tag_invoke::tag_invocable;
   using __tag_invoke::__tag_invocable_r;

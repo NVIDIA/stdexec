@@ -65,7 +65,7 @@ namespace exec {
     };
 
     template <class... _Args>
-    using __as_rvalues = completion_signatures<set_value_t(decay_t<_Args> && ...)>;
+    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args> && ...)>;
 
     template <class _InitialSender, class _FinalSender, class _Env>
     using __completion_signatures_t = make_completion_signatures<
@@ -283,7 +283,7 @@ namespace exec {
 
     struct __finally_t {
       template <sender _Is, sender _Fs>
-      __t<__sender<__id<decay_t<_Is>>, __id<decay_t<_Fs>>>>
+      __t<__sender<__id<__decay_t<_Is>>, __id<__decay_t<_Fs>>>>
         operator()(_Is&& __initial_sender, _Fs&& __final_sender) const
         noexcept(__nothrow_decay_copyable<_Is>&& __nothrow_decay_copyable<_Fs>) {
         return {(_Is&&) __initial_sender, (_Fs&&) __final_sender};

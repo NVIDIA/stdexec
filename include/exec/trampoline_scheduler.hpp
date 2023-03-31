@@ -123,7 +123,7 @@ namespace exec {
       friend __schedule_sender;
 
       template <class _Receiver>
-      using __operation_t = stdexec::__t<__operation<__id<remove_cvref_t<_Receiver>>>>;
+      using __operation_t = stdexec::__t<__operation<__id<__decay_t<_Receiver>>>>;
 
       struct __schedule_sender {
         using is_sender = void;
