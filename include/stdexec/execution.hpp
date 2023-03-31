@@ -594,6 +594,12 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
+  //   NOT TO SPEC:
+  //   As we upgrade the receiver related entities from R5 to R7,
+  //   we allow types that do not yet satisfy enable_receiver to
+  //   still satisfy the receiver concept if the type provides an
+  //   explicit get_env. All R5 receivers provided an explicit get_env,
+  //   so this is backwards compatible.
   template <class _Receiver>
   concept __receiver_r5_or_r7 = //
     enable_receiver<_Receiver>  //
@@ -606,14 +612,7 @@ namespace stdexec {
 
   template <class _Receiver>
   concept receiver =
-    // NOT TO SPEC:
-    // As we upgrade the receiver related entities from R5 to R7,
-    // we allow types that do not yet satisfy enable_receiver to
-    // still satisfy the receiver concept if the type provides an
-    // explicit get_env. All R5 receivers provided an explicit get_env,
-    // so this is backwards compatible.
-    //  NOTE: Double-negation here is to make the constraint atomic
-    !!__receiver_r5_or_r7<_Receiver> &&          //
+    __receiver<_Receiver> &&                     //
     environment_provider<__cref_t<_Receiver>> && //
     move_constructible<__decay_t<_Receiver>> &&  //
     constructible_from<__decay_t<_Receiver>, _Receiver>;
@@ -719,13 +718,13 @@ namespace stdexec {
 
 #else
   template <class _Sender, class _Env>
-  concept __sender_r7 = !!(same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>);
+  concept __sender_r7 = same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>;
 
   // Here are the sender concepts that provide backward compatibility
   // with R5-style senders.
   template <class _Sender, class _Env = no_env>
-  concept __sender_r5_or_r7 =  //
-    __sender_r7<_Sender, _Env> //
+  concept __sender_r5_or_r7 =               //
+    __satisfies<__sender_r7<_Sender, _Env>> //
     || __with_completion_signatures<_Sender, _Env>;
 
   template <class _Sender, class _Env = no_env>
