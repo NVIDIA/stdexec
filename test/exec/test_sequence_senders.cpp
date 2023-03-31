@@ -59,3 +59,33 @@ TEST_CASE("sequence_senders - repeat_each", "[sequence_senders]") {
   REQUIRE(result);
   CHECK(std::get<0>(result.value()));
 }
+
+TEST_CASE("sequence_senders - let_value_each", "[sequence_senders]") {
+  auto r = repeat_each(just());
+  int count = 0;
+  auto fun = [&count]() {
+    ++count;
+    return just_stopped();
+  };
+  auto l = let_value_each(r, fun);
+  using let_t = decltype(l);
+  STATIC_REQUIRE(sender_in<let_t, empty_env>);
+  STATIC_REQUIRE(sequence_sender_to<let_t, next_receiver>);
+  sync_wait(join_all(l));
+  CHECK(count == 1);
+}
+
+TEST_CASE("sequence_senders - let_stopped_each", "[sequence_senders]") {
+  auto r = repeat_each(just_stopped());
+  int count = 0;
+  auto fun = [&count]() {
+    ++count;
+    return just_stopped();
+  };
+  auto l = let_stopped_each(r, fun);
+  using let_t = decltype(l);
+  STATIC_REQUIRE(sender_in<let_t, empty_env>);
+  STATIC_REQUIRE(sequence_sender_to<let_t, next_receiver>);
+  sync_wait(join_all(l));
+  CHECK(count == 1);
+}
