@@ -24,14 +24,14 @@ namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     template <stdexec::sender Sender, std::integral Shape, class Fun>
     using multi_gpu_bulk_sender_th =
-      stdexec::__t<multi_gpu_bulk_sender_t<stdexec::__id<std::decay_t<Sender>>, Shape, Fun>>;
+      stdexec::__t<multi_gpu_bulk_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>>;
 
     struct multi_gpu_stream_scheduler {
       friend stream_context;
 
       template <stdexec::sender Sender>
-      using schedule_from_sender_th =
-        stdexec::__t<schedule_from_sender_t<stream_scheduler, stdexec::__id<std::decay_t<Sender>>>>;
+      using schedule_from_sender_th = stdexec::__t<
+        schedule_from_sender_t<stream_scheduler, stdexec::__id<stdexec::__decay_t<Sender>>>>;
 
       template <class RId>
       struct operation_state_t : stream_op_state_base {
@@ -64,10 +64,10 @@ namespace nvexec {
             }
           } else {
             if (op.status_ == cudaSuccess) {
-              continuation_kernel<std::decay_t<R>, stdexec::set_value_t>
+              continuation_kernel<stdexec::__decay_t<R>, stdexec::set_value_t>
                 <<<1, 1, 0, op.stream_>>>(op.rec_, stdexec::set_value);
             } else {
-              continuation_kernel<std::decay_t<R>, stdexec::set_error_t, cudaError_t>
+              continuation_kernel<stdexec::__decay_t<R>, stdexec::set_error_t, cudaError_t>
                 <<<1, 1, 0, op.stream_>>>(op.rec_, stdexec::set_error, op.status_);
             }
           }
@@ -96,9 +96,9 @@ namespace nvexec {
 
         template <class R>
         friend auto tag_invoke(stdexec::connect_t, sender_t, R&& rec) //
-          noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-            -> operation_state_t<stdexec::__id<std::remove_cvref_t<R>>> {
-          return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>((R&&) rec);
+          noexcept(stdexec::__nothrow_constructible_from<stdexec::__decay_t<R>, R>)
+            -> operation_state_t<stdexec::__id<stdexec::__decay_t<R>>> {
+          return operation_state_t<stdexec::__id<stdexec::__decay_t<R>>>((R&&) rec);
         }
 
         friend const env& tag_invoke(stdexec::get_env_t, const sender_t& self) noexcept {

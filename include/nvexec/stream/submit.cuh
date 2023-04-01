@@ -61,9 +61,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::submit {
   struct submit_t {
     template <stdexec::receiver Receiver, stdexec::sender_to<Receiver> Sender>
     void operator()(Sender&& sndr, Receiver&& rcvr) const noexcept(false) {
-      stdexec::start((new op_state_t<stdexec::__id<Sender>, stdexec::__id<std::decay_t<Receiver>>>{
-                        (Sender&&) sndr, (Receiver&&) rcvr})
-                       ->op_state_);
+      stdexec::start(
+        (new op_state_t<stdexec::__id<Sender>, stdexec::__id<stdexec::__decay_t<Receiver>>>{
+           (Sender&&) sndr, (Receiver&&) rcvr})
+          ->op_state_);
     }
   };
 

@@ -56,12 +56,12 @@ namespace exec {
         __all_nothrow_move_constructible>...>>;
 
     template <class... Args>
-    using __as_rvalues = set_value_t(decay_t<Args>&&...);
+    using __as_rvalues = set_value_t(__decay_t<Args>&&...);
 
     template <class... E>
     using __as_error = completion_signatures<set_error_t(E)...>;
 
-    // Here we convert all set_value(Args...) to set_value(decay_t<Args>&&...)
+    // Here we convert all set_value(Args...) to set_value(__decay_t<Args>&&...)
     // Note, we keep all error types as they are and unconditionally add set_stopped()
     template <class _Env, class... _SenderIds>
     using __completion_signatures_t = __concat_completion_signatures_t<
@@ -85,8 +85,8 @@ namespace exec {
 
     template <class _Variant, class... _Ts>
     concept __nothrow_result_constructible_from =
-      std::is_nothrow_constructible_v<__decayed_tuple<_Ts...>, _Ts...>
-      && std::is_nothrow_constructible_v<_Variant, __decayed_tuple<_Ts...>&&>;
+      __nothrow_constructible_from<__decayed_tuple<_Ts...>, _Ts...>
+      && __nothrow_constructible_from<_Variant, __decayed_tuple<_Ts...>&&>;
 
     template <class _Receiver, class _ResultVariant>
     struct __op_base : __immovable {
@@ -236,7 +236,7 @@ namespace exec {
         stdexec::__t< __receiver<_Receiver, __result_type_t<env_of_t<_Receiver>, _SenderIds...>>>;
 
       template <class _Receiver>
-      using __op_t = stdexec::__t<__op<__id<decay_t<_Receiver>>, _SenderIds...>>;
+      using __op_t = stdexec::__t<__op<__id<__decay_t<_Receiver>>, _SenderIds...>>;
 
       class __t {
        public:
@@ -255,7 +255,7 @@ namespace exec {
             sender_to< __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, __receiver_t<_Receiver>>
             && ...)
         friend __op_t<_Receiver> tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) //
-          noexcept(std::is_nothrow_constructible_v<__op_t<_Receiver>, _Self&&, _Receiver&&>) {
+          noexcept(__nothrow_constructible_from<__op_t<_Receiver>, _Self&&, _Receiver&&>) {
           return __op_t<_Receiver>{((_Self&&) __self).__senders_, (_Receiver&&) __rcvr};
         }
 
@@ -274,7 +274,7 @@ namespace exec {
 
     struct __when_any_t {
       template <class... _Senders>
-      using __sender_t = __t<__sender<__id<decay_t<_Senders>>...>>;
+      using __sender_t = __t<__sender<__id<__decay_t<_Senders>>...>>;
 
       template <sender... _Senders>
         requires(sizeof...(_Senders) > 0 && sender<__sender_t<_Senders...>>)

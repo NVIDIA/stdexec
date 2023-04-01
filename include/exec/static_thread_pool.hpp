@@ -66,12 +66,12 @@ namespace exec {
           stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
        private:
         template <typename Receiver>
-        operation<stdexec::__x<std::decay_t<Receiver>>> make_operation_(Receiver&& r) const {
-          return operation<stdexec::__x<std::decay_t<Receiver>>>{pool_, (Receiver&&) r};
+        operation<stdexec::__x<stdexec::__decay_t<Receiver>>> make_operation_(Receiver&& r) const {
+          return operation<stdexec::__x<stdexec::__decay_t<Receiver>>>{pool_, (Receiver&&) r};
         }
 
         template <stdexec::receiver Receiver>
-        friend operation<stdexec::__x<std::decay_t<Receiver>>>
+        friend operation<stdexec::__x<stdexec::__decay_t<Receiver>>>
           tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
           return s.make_operation_((Receiver&&) r);
         }
@@ -353,7 +353,7 @@ namespace exec {
 
         template <class... Tys>
         using set_value_t =
-          stdexec::completion_signatures< stdexec::set_value_t(std::decay_t<Tys>...)>;
+          stdexec::completion_signatures< stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
 
         template <class Self, class Env>
         using completion_signatures = //
@@ -367,7 +367,7 @@ namespace exec {
         using bulk_op_state_t = //
           bulk_op_state<
             stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
-            stdexec::__x<std::remove_cvref_t<Receiver>>,
+            stdexec::__x<stdexec::__decay_t<Receiver>>,
             Shape,
             Fun>;
 
@@ -376,7 +376,7 @@ namespace exec {
             receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
           friend bulk_op_state_t<Self, Receiver>                       //
           tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) //
-          noexcept(std::is_nothrow_constructible_v<
+          noexcept(stdexec::__nothrow_constructible_from<
                    bulk_op_state_t<Self, Receiver>,
                    static_thread_pool&,
                    Shape,
@@ -410,9 +410,9 @@ namespace exec {
       template <stdexec::sender Sender, std::integral Shape, class Fun>
       using bulk_sender_t = //
         bulk_sender<
-          stdexec::__x<std::remove_cvref_t<Sender>>,
+          stdexec::__x<stdexec::__decay_t<Sender>>,
           Shape,
-          stdexec::__x<std::remove_cvref_t<Fun>>>;
+          stdexec::__x<stdexec::__decay_t<Fun>>>;
 
       template <stdexec::sender S, std::integral Shape, class Fn>
       friend bulk_sender_t<S, Shape, Fn>

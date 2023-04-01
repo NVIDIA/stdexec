@@ -307,7 +307,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using __id = split_sender_t;
       template <class Receiver>
       using operation_t =
-        stdexec::__t<split::operation_t<SenderId, stdexec::__id<std::remove_cvref_t<Receiver>>>>;
+        stdexec::__t<split::operation_t<SenderId, stdexec::__id<stdexec::__decay_t<Receiver>>>>;
 
       Sender sndr_;
       std::shared_ptr<sh_state_> shared_state_;
@@ -316,7 +316,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         requires stdexec::
           receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::empty_env>>
         friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& recvr) //
-        noexcept(std::is_nothrow_constructible_v<std::decay_t<Receiver>, Receiver>)
+        noexcept(stdexec::__nothrow_constructible_from<stdexec::__decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
         return operation_t<Receiver>{(Receiver&&) recvr, self.shared_state_};
       }
@@ -329,11 +329,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class... Tys>
       using set_value_t =
-        stdexec::completion_signatures<stdexec::set_value_t(const std::decay_t<Tys>&...)>;
+        stdexec::completion_signatures<stdexec::set_value_t(const stdexec::__decay_t<Tys>&...)>;
 
       template <class Ty>
       using set_error_t =
-        stdexec::completion_signatures<stdexec::set_error_t(const std::decay_t<Ty>&)>;
+        stdexec::completion_signatures<stdexec::set_error_t(const stdexec::__decay_t<Ty>&)>;
 
       template <stdexec::__decays_to<__t> Self, class Env>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)

@@ -174,7 +174,7 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<_Source &, __receiver_t<_Receiver>>
         friend __op_t<_Receiver> tag_invoke(connect_t, _Self &&__self, _Receiver __rcvr) noexcept(
-          std::is_nothrow_constructible_v<
+          __nothrow_constructible_from<
             __op_t<_Receiver>,
             __copy_cvref_t<_Self, _Source>,
             _Receiver>) {
@@ -190,7 +190,7 @@ namespace exec {
     };
 
     template <class _Source>
-    using __sender_t = __t< __sender<stdexec::__id<std::remove_cvref_t<_Source>>>>;
+    using __sender_t = __t< __sender<stdexec::__id<__decay_t<_Source>>>>;
 
     struct repeat_effect_until_t {
       template <sender _Source>
@@ -203,7 +203,7 @@ namespace exec {
 
       template <sender _Source>
       auto operator()(_Source &&__source) const
-        noexcept(std::is_nothrow_constructible_v< __sender_t<_Source>, _Source>)
+        noexcept(__nothrow_constructible_from< __sender_t<_Source>, _Source>)
           -> __sender_t<_Source> {
         return __sender_t<_Source>{(_Source &&) __source};
       }

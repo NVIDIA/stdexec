@@ -43,36 +43,38 @@ namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     template <stdexec::sender Sender, std::integral Shape, class Fun>
     using bulk_sender_th =
-      stdexec::__t<bulk_sender_t<stdexec::__id<std::decay_t<Sender>>, Shape, Fun>>;
+      stdexec::__t<bulk_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>>;
 
     template <stdexec::sender Sender>
-    using split_sender_th = stdexec::__t<split_sender_t<stdexec::__id<std::decay_t<Sender>>>>;
+    using split_sender_th = stdexec::__t<split_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>>>;
 
     template <stdexec::sender Sender, class Fun>
-    using then_sender_th = stdexec::__t<then_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
+    using then_sender_th =
+      stdexec::__t<then_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Fun>>;
 
     template <class Scheduler, stdexec::sender... Senders>
-    using when_all_sender_th =
-      stdexec::__t<when_all_sender_t<false, Scheduler, stdexec::__id<std::decay_t<Senders>>...>>;
+    using when_all_sender_th = stdexec::__t<
+      when_all_sender_t<false, Scheduler, stdexec::__id<stdexec::__decay_t<Senders>>...>>;
 
     template <class Scheduler, stdexec::sender... Senders>
-    using transfer_when_all_sender_th =
-      stdexec::__t<when_all_sender_t<true, Scheduler, stdexec::__id<std::decay_t<Senders>>...>>;
+    using transfer_when_all_sender_th = stdexec::__t<
+      when_all_sender_t<true, Scheduler, stdexec::__id<stdexec::__decay_t<Senders>>...>>;
 
     template <stdexec::sender Sender, class Fun>
     using upon_error_sender_th =
-      stdexec::__t<upon_error_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
+      stdexec::__t<upon_error_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Fun>>;
 
     template <stdexec::sender Sender, class Fun>
     using upon_stopped_sender_th =
-      stdexec::__t<upon_stopped_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun>>;
+      stdexec::__t<upon_stopped_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Fun>>;
 
     template <class Set, stdexec::sender Sender, class Fun>
     using let_xxx_th =
-      stdexec::__t<let_sender_t<stdexec::__id<std::decay_t<Sender>>, Fun, stdexec::__x<Set>>>;
+      stdexec::__t<let_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Fun, stdexec::__x<Set>>>;
 
     template <stdexec::sender Sender>
-    using transfer_sender_th = stdexec::__t<transfer_sender_t<stdexec::__id<std::decay_t<Sender>>>>;
+    using transfer_sender_th =
+      stdexec::__t<transfer_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>>>;
 
     template <stdexec::sender Sender>
     using ensure_started_th = stdexec::__t<ensure_started_sender_t<stdexec::__id<Sender>>>;
@@ -81,8 +83,8 @@ namespace nvexec {
       friend stream_context;
 
       template <stdexec::sender Sender>
-      using schedule_from_sender_th =
-        stdexec::__t<schedule_from_sender_t<stream_scheduler, stdexec::__id<std::decay_t<Sender>>>>;
+      using schedule_from_sender_th = stdexec::__t<
+        schedule_from_sender_t<stream_scheduler, stdexec::__id<stdexec::__decay_t<Sender>>>>;
 
       template <class ReceiverId>
       struct operation_state_ {
@@ -129,9 +131,9 @@ namespace nvexec {
 
           template <class R>
           friend auto tag_invoke(stdexec::connect_t, const __t& self, R&& rec) //
-            noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-              -> operation_state_t<stdexec::__id<std::remove_cvref_t<R>>> {
-            return operation_state_t<stdexec::__id<std::remove_cvref_t<R>>>(
+            noexcept(stdexec::__nothrow_constructible_from<stdexec::__decay_t<R>, R>)
+              -> operation_state_t<stdexec::__id<stdexec::__decay_t<R>>> {
+            return operation_state_t<stdexec::__id<stdexec::__decay_t<R>>>(
               (R&&) rec, self.env_.context_state_);
           }
 

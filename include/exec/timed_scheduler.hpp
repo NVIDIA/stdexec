@@ -63,7 +63,7 @@ namespace exec {
 
   template <__timed_scheduler _TimedScheduler>
   using duration_of_t = //
-    typename std::remove_cvref_t<time_point_of_t<_TimedScheduler>>::duration;
+    typename stdexec::__decay_t<time_point_of_t<_TimedScheduler>>::duration;
 
   namespace __schedule_after {
     struct schedule_after_t;
