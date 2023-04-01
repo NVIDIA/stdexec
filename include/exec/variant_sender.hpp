@@ -85,7 +85,7 @@ namespace exec {
         template <class _Sender>
           requires __one_of<__decay_t<_Sender>, stdexec::__t<_SenderIds>...>
         __t(_Sender&& __sender) noexcept(
-          std::is_nothrow_constructible_v<std::variant<stdexec::__t<_SenderIds>...>, _Sender>)
+          __nothrow_constructible_from<std::variant<stdexec::__t<_SenderIds>...>, _Sender>)
           : __variant_{(_Sender&&) __sender} {
         }
       };
