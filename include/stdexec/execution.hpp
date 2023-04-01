@@ -594,6 +594,12 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
+  //   NOT TO SPEC:
+  //   As we upgrade the receiver related entities from R5 to R7,
+  //   we allow types that do not yet satisfy enable_receiver to
+  //   still satisfy the receiver concept if the type provides an
+  //   explicit get_env. All R5 receivers provided an explicit get_env,
+  //   so this is backwards compatible.
   template <class _Receiver>
   concept __receiver_r5_or_r7 = //
     enable_receiver<_Receiver>  //
@@ -606,14 +612,7 @@ namespace stdexec {
 
   template <class _Receiver>
   concept receiver =
-    // NOT TO SPEC:
-    // As we upgrade the receiver related entities from R5 to R7,
-    // we allow types that do not yet satisfy enable_receiver to
-    // still satisfy the receiver concept if the type provides an
-    // explicit get_env. All R5 receivers provided an explicit get_env,
-    // so this is backwards compatible.
-    //  NOTE: Double-negation here is to make the constraint atomic
-    !!__receiver_r5_or_r7<_Receiver> &&          //
+    __receiver<_Receiver> &&                     //
     environment_provider<__cref_t<_Receiver>> && //
     move_constructible<__decay_t<_Receiver>> &&  //
     constructible_from<__decay_t<_Receiver>, _Receiver>;
@@ -719,13 +718,13 @@ namespace stdexec {
 
 #else
   template <class _Sender, class _Env>
-  concept __sender_r7 = !!(same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>);
+  concept __sender_r7 = same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>;
 
   // Here are the sender concepts that provide backward compatibility
   // with R5-style senders.
   template <class _Sender, class _Env = no_env>
-  concept __sender_r5_or_r7 =  //
-    __sender_r7<_Sender, _Env> //
+  concept __sender_r5_or_r7 =               //
+    __satisfies<__sender_r7<_Sender, _Env>> //
     || __with_completion_signatures<_Sender, _Env>;
 
   template <class _Sender, class _Env = no_env>
@@ -2297,7 +2296,7 @@ namespace stdexec {
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         __t<__sender<__decay_t<_Ts>...>>
         operator()(_Ts&&... __ts) const
-        noexcept((std::is_nothrow_constructible_v<__decay_t<_Ts>, _Ts> && ...)) {
+        noexcept((__nothrow_constructible_from<__decay_t<_Ts>, _Ts> && ...)) {
         return {{{(_Ts&&) __ts...}}};
       }
     } just{};
@@ -2307,7 +2306,7 @@ namespace stdexec {
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         __t<__error_sender<__decay_t<_Error>>>
         operator()(_Error&& __err) const
-        noexcept(std::is_nothrow_constructible_v<__decay_t<_Error>, _Error>) {
+        noexcept(__nothrow_constructible_from<__decay_t<_Error>, _Error>) {
         return {{{(_Error&&) __err}}};
       }
     } just_error{};
@@ -2804,7 +2803,7 @@ namespace stdexec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
-          noexcept(std::is_nothrow_constructible_v<
+          noexcept(__nothrow_constructible_from<
                    __operation<_Self, _Receiver>,
                    __copy_cvref_t<_Self, _Sender>,
                    _Receiver&&,

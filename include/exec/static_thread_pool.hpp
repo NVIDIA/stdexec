@@ -376,7 +376,7 @@ namespace exec {
             receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
           friend bulk_op_state_t<Self, Receiver>                       //
           tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) //
-          noexcept(std::is_nothrow_constructible_v<
+          noexcept(stdexec::__nothrow_constructible_from<
                    bulk_op_state_t<Self, Receiver>,
                    static_thread_pool&,
                    Shape,

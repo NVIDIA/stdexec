@@ -561,7 +561,7 @@ namespace exec {
       template <class... _Args>
         requires stdexec::constructible_from<_Base, std::in_place_t, _Args...>
       __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
-        std::is_nothrow_constructible_v<_Base, _Args...>)
+        stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __task{__vtable}
         , __base_(std::in_place, (_Args&&) __args...) {
       }
@@ -569,7 +569,7 @@ namespace exec {
       template <class... _Args>
         requires stdexec::constructible_from<_Base, _Args...>
       __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
-        std::is_nothrow_constructible_v<_Base, _Args...>)
+        stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __task{__vtable}
         , __base_((_Args&&) __args...) {
       }
@@ -693,7 +693,7 @@ namespace exec {
 
       template <class... _Args>
       __impl_base(std::in_place_t, _Args&&... __args) noexcept(
-        std::is_nothrow_constructible_v<_Base, _Args...>)
+        stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __base_((_Args&&) __args...) {
       }
     };
@@ -704,7 +704,7 @@ namespace exec {
 
       template <class... _Args>
       __impl_base(std::in_place_t, _Args&&... __args) noexcept(
-        std::is_nothrow_constructible_v<_Base, _Args...>)
+        stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __base_((_Args&&) __args...) {
       }
 
@@ -745,7 +745,7 @@ namespace exec {
         template <class... _Args>
           requires stdexec::constructible_from<_Base, _Args...>
         __impl(std::in_place_t, _Args&&... __args) noexcept(
-          std::is_nothrow_constructible_v<_Base, _Args...>)
+          stdexec::__nothrow_constructible_from<_Base, _Args...>)
           : __base_t(std::in_place, (_Args&&) __args...)
           , __stop_operation_{this} {
         }

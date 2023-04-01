@@ -85,8 +85,8 @@ namespace exec {
 
     template <class _Variant, class... _Ts>
     concept __nothrow_result_constructible_from =
-      std::is_nothrow_constructible_v<__decayed_tuple<_Ts...>, _Ts...>
-      && std::is_nothrow_constructible_v<_Variant, __decayed_tuple<_Ts...>&&>;
+      __nothrow_constructible_from<__decayed_tuple<_Ts...>, _Ts...>
+      && __nothrow_constructible_from<_Variant, __decayed_tuple<_Ts...>&&>;
 
     template <class _Receiver, class _ResultVariant>
     struct __op_base : __immovable {
@@ -255,7 +255,7 @@ namespace exec {
             sender_to< __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, __receiver_t<_Receiver>>
             && ...)
         friend __op_t<_Receiver> tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) //
-          noexcept(std::is_nothrow_constructible_v<__op_t<_Receiver>, _Self&&, _Receiver&&>) {
+          noexcept(__nothrow_constructible_from<__op_t<_Receiver>, _Self&&, _Receiver&&>) {
           return __op_t<_Receiver>{((_Self&&) __self).__senders_, (_Receiver&&) __rcvr};
         }
 

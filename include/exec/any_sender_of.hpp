@@ -832,7 +832,7 @@ namespace exec {
                 _Receiver>
       requires stdexec::receiver_of<_Receiver, _Completions>
     any_receiver_ref(_Receiver& __receiver) noexcept(
-      std::is_nothrow_constructible_v<__receiver_base, _Receiver>)
+      stdexec::__nothrow_constructible_from<__receiver_base, _Receiver>)
       : __receiver_(__receiver) {
     }
 
@@ -855,7 +855,7 @@ namespace exec {
       template <class _Sender>
         requires(!stdexec::__decays_to<_Sender, any_sender>) && stdexec::sender<_Sender>
       any_sender(_Sender&& __sender) noexcept(
-        std::is_nothrow_constructible_v<__sender_base, _Sender>)
+        stdexec::__nothrow_constructible_from<__sender_base, _Sender>)
         : __sender_((_Sender&&) __sender) {
       }
 
