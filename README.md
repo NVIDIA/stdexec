@@ -62,6 +62,7 @@ int main()
 - [Structured Concurrency](https://www.youtube.com/watch?v=1Wy5sq3s2rg) (Video): An explanation of structured concurrency in C++ and its benefits
 - [Executors: a Change of Perspective](https://accu.org/journals/overload/29/165/teodorescu/) (Article): An article about the computational completeness of Senders
 - [Structured Concurrency in C++](https://accu.org/journals/overload/30/168/teodorescu/) (Article): An article about how Senders manifest the principles of structured concurrency
+- [Structured Networking in C++](https://www.youtube.com/watch?v=XaNajUp-sGY) (Video): A look at what a P2300-style networking library could look like
 - [HPCWire Article](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/): Provides a high-level overview of the Sender model and its benefits
 - [NVIDIA HPC SDK Documentation](https://docs.nvidia.com/hpc-sdk/index.html): Documentation for the NVIDIA HPC SDK
 - [P2300 - `std::execution`](https://wg21.link/p2300): Senders proposal to C++ Standard
