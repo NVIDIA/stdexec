@@ -88,7 +88,7 @@ namespace exec {
       -> decltype((__has_sequence_signature<_Receiver>(static_cast<_Sigs*>(nullptr)), ...));
 
     template <class _Signatures, class _Receiver>
-    concept is_valid_next_completions = _Signatures::template _WITH_RECEIVER_<_Receiver>::value;
+    concept __is_valid_next_completions = _Signatures::template _WITH_RECEIVER_<_Receiver>::value;
   }
 
   template <class _Receiver, class Signatures>
