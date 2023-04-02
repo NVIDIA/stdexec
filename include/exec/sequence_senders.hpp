@@ -24,7 +24,7 @@ namespace exec {
     using namespace stdexec;
 
     struct set_next_t {
-      template <class _Receiver, class _Item>
+      template <receiver _Receiver, sender _Item>
         requires tag_invocable<set_next_t, _Receiver&, _Item>
       auto operator()(_Receiver& __rcvr, _Item&& __item) const noexcept
         -> tag_invoke_result_t<set_next_t, _Receiver&, _Item> {
@@ -88,7 +88,7 @@ namespace exec {
       -> decltype((__has_sequence_signature<_Receiver>(static_cast<_Sigs*>(nullptr)), ...));
 
     template <class _Signatures, class _Receiver>
-    concept is_valid_next_completions = _Signatures::template _WITH_RECEIVER_<_Receiver>::value;
+    concept __is_valid_next_completions = _Signatures::template _WITH_RECEIVER_<_Receiver>::value;
   }
 
   template <class _Receiver, class Signatures>
