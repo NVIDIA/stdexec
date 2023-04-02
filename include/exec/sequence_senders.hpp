@@ -692,7 +692,7 @@ namespace exec {
 
   inline constexpr __enumerate_each::enumerate_each_t enumerate_each{};
 
-  namespace __join_all {
+  namespace __ignore_all {
     using namespace stdexec;
 
     template <class _ReceiverId>
@@ -760,18 +760,19 @@ namespace exec {
       };
     };
 
-    struct join_all_t {
+    struct ignore_all_t {
       template <class _Sender>
       constexpr auto operator()(_Sender&& __sndr) const {
         return __t<__sender<__id<__decay_t<_Sender>>>>{static_cast<_Sender&&>(__sndr)};
       }
 
-      constexpr auto operator()() const noexcept -> __binder_back<join_all_t> {
+      constexpr auto operator()() const noexcept -> __binder_back<ignore_all_t> {
         return {};
       }
     };
-  } // namespace __join_all
+  } // namespace __ignore_all
 
-  using __join_all::join_all_t;
-  inline constexpr join_all_t join_all;
+  using __ignore_all::ignore_all_t;
+  inline constexpr ignore_all_t ignore_all;
+
 }

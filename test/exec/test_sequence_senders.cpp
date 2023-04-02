@@ -54,7 +54,7 @@ TEST_CASE("sequence_senders - Test missing next signature", "[sequence_senders]"
 }
 
 TEST_CASE("sequence_senders - repeat_each", "[sequence_senders]") {
-  auto r = repeat_each(just_stopped()) | join_all();
+  auto r = repeat_each(just_stopped()) | ignore_all();
   using join_t = decltype(r);
   STATIC_REQUIRE(sender<join_t>);
   STATIC_REQUIRE_FALSE(sequence_sender_to<join_t, next_receiver>);
@@ -76,7 +76,7 @@ TEST_CASE("sequence_senders - let_value_each", "[sequence_senders]") {
   using let_t = decltype(l);
   STATIC_REQUIRE(sender_in<let_t, empty_env>);
   STATIC_REQUIRE(sequence_sender_to<let_t, next_receiver>);
-  sync_wait(join_all(l));
+  sync_wait(ignore_all(l));
   CHECK(count == 1);
 }
 
@@ -91,7 +91,7 @@ TEST_CASE("sequence_senders - let_stopped_each", "[sequence_senders]") {
   using let_t = decltype(l);
   STATIC_REQUIRE(sender_in<let_t, empty_env>);
   STATIC_REQUIRE(sequence_sender_to<let_t, next_receiver>);
-  sync_wait(join_all(l));
+  sync_wait(ignore_all(l));
   CHECK(count == 1);
 }
 
@@ -110,6 +110,6 @@ TEST_CASE("sequence_senders - enumerate_each", "[sequence_senders]") {
         }
       })                                                  //
     | transform_each(then([&count](int n) { CHECK(n == count++); })) //
-    | join_all());
+    | ignore_all());
   CHECK(count == 10);
 }
