@@ -97,7 +97,7 @@ namespace exec {
     && requires(Signatures* sigs) {
          {
            __sequence_sender::__has_sequence_signatures<stdexec::__decay_t<_Receiver>>(sigs)
-         } -> __sequence_sender::is_valid_next_completions<stdexec::__decay_t<_Receiver>>;
+         } -> __sequence_sender::__is_valid_next_completions<stdexec::__decay_t<_Receiver>>;
        };
 
   template <class _Receiver, class _Sender>
