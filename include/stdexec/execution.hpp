@@ -232,7 +232,7 @@ namespace stdexec {
       template <class _WithId>
       using __tag_of = typename _WithId::__tag_t;
       template <class _Self>
-      using __base_env_of = __make_dependent_on<_BaseEnv, _Self>;
+      using __base_env_of = __mfront<_BaseEnv, _Self>;
 
       struct __t : stdexec::__t<_WithIds>... {
         using __id = __env;
@@ -3544,7 +3544,7 @@ namespace stdexec {
             // NOT TO SPEC:
             // See https://github.com/brycelelbach/wg21_p2300_execution/issues/26
             _CvrefSender,
-            __env_t<__make_dependent_on<_Env, _Self>>,
+            __env_t<__mfront<_Env, _Self>>,
             completion_signatures<
               set_error_t(const std::exception_ptr&),
               set_stopped_t()>, // NOT TO SPEC
@@ -3864,7 +3864,7 @@ namespace stdexec {
         using __completions_t = //
           make_completion_signatures<
             _Sender&,
-            __env_t<__make_dependent_on<_Env, _Self>>,
+            __env_t<__mfront<_Env, _Self>>,
             completion_signatures<
               set_error_t(std::exception_ptr&&),
               set_stopped_t()>, // BUGBUG NOT TO SPEC
@@ -5246,12 +5246,12 @@ namespace stdexec {
           __none_of<get_completion_signatures_t, get_stop_token_t> _Tag, //
           same_as<__t> _Self,                                            //
           class... _As>
-          requires __callable<_Tag, const __make_dependent_on<_Env, _Self>&, _As...>
+          requires __callable<_Tag, const __mfront<_Env, _Self>&, _As...>
         friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as) noexcept
           -> __call_result_if_t<
             same_as<_Self, __t>,
             _Tag,
-            const __make_dependent_on<_Env, _Self>&,
+            const __mfront<_Env, _Self>&,
             _As...> {
           return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
         }

@@ -105,23 +105,57 @@ namespace stdexec {
   template <std::size_t _Ip>
   inline constexpr std::size_t __v<char[_Ip]> = _Ip - 1;
 
+  struct __ok {
+    static constexpr bool value = true;
+    static constexpr bool __diagnose() { return true; }
+  };
+
+  template <class _What>
+  struct __merror {
+    __merror operator,(__ok);
+    static constexpr bool value = false;
+    static constexpr auto __diagnose() {
+      _What::__what();
+      return false;
+    }
+  };
+
+  template <class>
+  extern __ok __test;
+
+  template <class _What>
+  extern __merror<_What> __test<__merror<_What>>;
+
+  template <class _Ty>
+  using __is_ok = decltype(__test<_Ty>);
+
+  template <class... _Ts>
+  using __error_or_ok = decltype((__is_ok<void>(), ..., __is_ok<_Ts>()));
+
+  template <class... _Ts>
+  concept __diagnose_all =
+    __error_or_ok<_Ts...>::__diagnose();
+
   template <bool>
   struct __i {
     template <template <class...> class _Fn, class... _Args>
     using __g = _Fn<_Args...>;
   };
 
-  template <class...>
-  concept __tru = true; // a dependent value
+  template <>
+  struct __i<false> {
+    template <template <class...> class, class... _Args>
+    using __g = __error_or_ok<_Args...>;
+  };
+
+  template <class... _Args>
+  concept _Ok = (__is_ok<_Args>::value &&...);
 
   template <template <class...> class _Fn, class... _Args>
-  using __meval = typename __i<__tru<_Args...>>::template __g<_Fn, _Args...>;
+  using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
   template <class _Fn, class... _Args>
   using __minvoke = __meval<_Fn::template __f, _Args...>;
-
-  template <class _Ty, class... _Args>
-  using __make_dependent_on = typename __i<__tru<_Args...>>::template __g<__midentity, _Ty>;
 
   template <template <class...> class _Fn>
   struct __q {
@@ -148,7 +182,7 @@ namespace stdexec {
   using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
   template <template <class...> class _Tp, class... _Args>
-  concept __valid = requires { typename __meval<_Tp, _Args...>; };
+  concept __valid = __is_ok<__meval<_Tp, _Args...>>::value;
 
   template <class _Fn, class... _Args>
   concept __minvocable = __valid<_Fn::template __f, _Args...>;
@@ -564,7 +598,7 @@ namespace stdexec {
   };
   template <bool _Enable, class _Fun, class... _As>
   using __call_result_if_t =
-    typename __if<__mbool<_Enable>, __qcall_result, __>::template __f<_Fun, _As...>;
+    __minvoke<__if<__mbool<_Enable>, __qcall_result, __>, _Fun, _As...>;
 
   // For emplacing non-movable types into optionals:
   template <class _Fn>
