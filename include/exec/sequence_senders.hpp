@@ -23,12 +23,20 @@ namespace exec {
   namespace __sequence_sender {
     using namespace stdexec;
 
+    struct __empty_receiver {
+      friend void tag_invoke(set_value_t, __empty_receiver&&) noexcept;
+      template <class _Error>
+      friend void tag_invoke(set_error_t, __empty_receiver&&, _Error&&) noexcept;
+      friend void tag_invoke(set_stopped_t, __empty_receiver&&) noexcept;
+      friend empty_env tag_invoke(get_env_t, const __empty_receiver&) noexcept;
+    };
+
     struct set_next_t {
       template <receiver _Receiver, sender _Item>
         requires tag_invocable<set_next_t, _Receiver&, _Item>
       auto operator()(_Receiver& __rcvr, _Item&& __item) const noexcept
         -> tag_invoke_result_t<set_next_t, _Receiver&, _Item> {
-        static_assert(sender<tag_invoke_result_t<set_next_t, _Receiver&, _Item>>);
+        static_assert(sender_to<tag_invoke_result_t<set_next_t, _Receiver&, _Item>, __empty_receiver>);
         static_assert(nothrow_tag_invocable<set_next_t, _Receiver&, _Item>);
         return tag_invoke(*this, __rcvr, (_Item&&) __item);
       }
@@ -146,7 +154,7 @@ namespace exec {
          { sequence_connect((_Sender&&) __sndr, (_Receiver&&) __rcvr) } -> stdexec::operation_state;
        };
 
-  namespace __repeat_each {
+  namespace __repeat {
     using namespace stdexec;
 
     // Takes a sender and creates a sequence sender by repeating the sender as item to the set_next
@@ -164,8 +172,7 @@ namespace exec {
       struct __receiver {
         __t* __op_;
 
-        template <class... _Args>
-        friend void tag_invoke(set_value_t, __receiver&& __self, _Args&&...) noexcept {
+        friend void tag_invoke(set_value_t, __receiver&& __self) noexcept {
           __self.__op_->repeat();
         }
 
@@ -191,6 +198,7 @@ namespace exec {
       };
 
       struct __t {
+        using __id = __operation;
         [[no_unique_address]] _Receiver __rcvr_;
         [[no_unique_address]] _SourceSender __source_;
         exec::trampoline_scheduler __trampoline_;
@@ -254,6 +262,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sequence_receiver_of<_Receiver, __compl_sigs<_Source&&, env_of_t<_Receiver>>>
+                && __valid<__next_on_scheduler_sender, _Receiver>
                 && sender_to<__next_on_scheduler_sender<_Receiver>, __recveiver<_Receiver>>
         friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Receiver&& __rcvr)
           -> __operation_t<_Source, _Receiver> {
@@ -266,6 +275,8 @@ namespace exec {
           -> __compl_sigs<_Source&&, _Env>;
 
        public:
+        using __id = __sender;
+
         template <__decays_to<_Source> _Sndr>
         explicit __t(_Sndr&& __source)
           : __source_((_Sndr&&) __source) {
@@ -273,16 +284,16 @@ namespace exec {
       };
     };
 
-    struct __repeat_each_t {
+    struct __repeat_t {
       template <sender Sender>
       auto operator()(Sender&& source) const {
         return __t<__sender<__id<__decay_t<Sender>>>>{static_cast<Sender&&>(source)};
       }
     };
-  } // namespace repeat_each_
+  } // namespace repeat_
 
-  using __repeat_each::__repeat_each_t;
-  inline constexpr __repeat_each_t repeat_each;
+  using __repeat::__repeat_t;
+  inline constexpr __repeat_t repeat;
 
   namespace __transform_each {
     using namespace stdexec;
@@ -433,6 +444,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
+        using __id = __receiver;
         __operation_base<_Receiver, _Fun>* __op_;
 
         template <class _Item>
@@ -700,6 +712,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
+        using __id = __receiver;
         [[no_unique_address]] _Receiver __rcvr_;
 
         template <class _Item>
@@ -741,6 +754,7 @@ namespace exec {
       using _Sender = stdexec::__t<__decay_t<_SenderId>>;
 
       struct __t {
+        using __id = __sender;
         [[no_unique_address]] _Sender __sndr_;
 
         template <__decays_to<__t> _Self, class _Receiver>

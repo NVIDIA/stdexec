@@ -67,6 +67,11 @@ namespace stdexec {
         return __head_ == nullptr;
       }
 
+      [[nodiscard]] _Item* front() noexcept {
+        STDEXEC_ASSERT(!empty());
+        return __head_;
+      }
+
       [[nodiscard]] _Item* pop_front() noexcept {
         STDEXEC_ASSERT(!empty());
         _Item* __item = std::exchange(__head_, __head_->*_Next);

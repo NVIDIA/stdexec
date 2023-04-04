@@ -53,8 +53,8 @@ TEST_CASE("sequence_senders - Test missing next signature", "[sequence_senders]"
   STATIC_REQUIRE_FALSE(sequence_sender_to<just_t, next_receiver>);
 }
 
-TEST_CASE("sequence_senders - repeat_each", "[sequence_senders]") {
-  auto r = repeat_each(just_stopped()) | ignore_all();
+TEST_CASE("sequence_senders - repeat", "[sequence_senders]") {
+  auto r = repeat(just_stopped()) | ignore_all();
   using join_t = decltype(r);
   STATIC_REQUIRE(sender<join_t>);
   STATIC_REQUIRE_FALSE(sequence_sender_to<join_t, next_receiver>);
@@ -66,7 +66,7 @@ TEST_CASE("sequence_senders - repeat_each", "[sequence_senders]") {
 }
 
 TEST_CASE("sequence_senders - let_value_each", "[sequence_senders]") {
-  auto r = repeat_each(just());
+  auto r = repeat(just());
   int count = 0;
   auto fun = [&count]() {
     ++count;
@@ -81,7 +81,7 @@ TEST_CASE("sequence_senders - let_value_each", "[sequence_senders]") {
 }
 
 TEST_CASE("sequence_senders - let_stopped_each", "[sequence_senders]") {
-  auto r = repeat_each(just_stopped());
+  auto r = repeat(just_stopped());
   int count = 0;
   auto fun = [&count]() {
     ++count;
@@ -100,7 +100,7 @@ TEST_CASE("sequence_senders - enumerate_each", "[sequence_senders]") {
   using just_stopped_t = decltype(just_stopped());
   int count = 0;
   sync_wait(
-    repeat_each(just()) //
+    repeat(just()) //
     | enumerate_each()  //
     | let_value_each([&](int counter) -> exec::variant_sender<just_int_t, just_stopped_t> {
         if (counter < 10) {
