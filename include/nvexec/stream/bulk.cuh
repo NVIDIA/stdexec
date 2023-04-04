@@ -48,7 +48,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <class... As>
         friend void tag_invoke(stdexec::set_value_t, __t&& self, As&&... as) noexcept
-          requires stdexec::__callable<Fun, Shape, As...>
+          requires stdexec::__callable<Fun, Shape, As&...>
         {
           operation_state_base_t<ReceiverId>& op_state = self.op_state_;
 
@@ -187,7 +187,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <class... As>
         friend void tag_invoke(stdexec::set_value_t, __t&& self, As&&... as) noexcept
-          requires stdexec::__callable<Fun, Shape, As...>
+          requires stdexec::__callable<Fun, Shape, As&...>
         {
           operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state = self.op_state_;
 
