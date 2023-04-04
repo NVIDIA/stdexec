@@ -42,7 +42,7 @@ struct __exec_system_operation_state_interface {
   virtual void start() noexcept = 0;
 };
 
-struct __exec_system_recever {
+struct __exec_system_receiver {
   void* cpp_recv_ = nullptr;
   void (*set_value)(void* cpp_recv);
   void (*set_stopped)(void* cpp_recv);
@@ -50,7 +50,7 @@ struct __exec_system_recever {
 };
 
 struct __exec_system_sender_interface {
-  virtual __exec_system_operation_state_interface* connect(__exec_system_recever recv) noexcept = 0;
+  virtual __exec_system_operation_state_interface* connect(__exec_system_receiver recv) noexcept = 0;
   virtual __exec_system_scheduler_interface* get_completion_scheduler() noexcept = 0;
 };
 
@@ -114,7 +114,7 @@ struct __exec_system_pool_receiver {
 struct __exec_system_operation_state_impl : public __exec_system_operation_state_interface {
   __exec_system_operation_state_impl(
     __exec_pool_sender_t pool_sender,
-    __exec_system_recever&& recv) :
+    __exec_system_receiver&& recv) :
     recv_{std::move(recv)},
     pool_operation_state_{
       [&](){return stdexec::connect(std::move(pool_sender), __exec_system_pool_receiver{this});}()} {
@@ -130,19 +130,19 @@ struct __exec_system_operation_state_impl : public __exec_system_operation_state
     stdexec::start(pool_operation_state_);
   }
 
-  __exec_system_recever recv_;
+  __exec_system_receiver recv_;
   decltype(stdexec::connect(
       std::move(std::declval<__exec_pool_sender_t>()), std::move(std::declval<__exec_system_pool_receiver>())))
     pool_operation_state_;
 };
 
 inline void tag_invoke(stdexec::set_value_t, __exec_system_pool_receiver&& recv) noexcept {
-  __exec_system_recever &system_recv = recv.os_->recv_;
+  __exec_system_receiver &system_recv = recv.os_->recv_;
   system_recv.set_value((system_recv.cpp_recv_));
 }
 
 inline void tag_invoke(stdexec::set_stopped_t, __exec_system_pool_receiver&& recv) noexcept {
-  __exec_system_recever &system_recv = recv.os_->recv_;
+  __exec_system_receiver &system_recv = recv.os_->recv_;
   recv.os_->recv_.set_stopped(&(system_recv.cpp_recv_));
 }
 
@@ -155,7 +155,7 @@ struct __exec_system_sender_impl : public __exec_system_sender_interface {
 
   }
 
-  __exec_system_operation_state_interface* connect(__exec_system_recever recv) noexcept override {
+  __exec_system_operation_state_interface* connect(__exec_system_receiver recv) noexcept override {
     return
       new __exec_system_operation_state_impl(std::move(pool_sender_), std::move(recv));
   }
@@ -295,7 +295,7 @@ namespace exec {
         std::move(snd),
         std::move(rec),
         [](auto& op){
-          __exec_system_recever receiver_impl{
+          __exec_system_receiver receiver_impl{
             &op.recv_,
             [](void* cpp_recv){
               stdexec::set_value(std::move(*static_cast<R*>(cpp_recv)));
