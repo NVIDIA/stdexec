@@ -67,5 +67,29 @@ TEST_CASE("get_completion_scheduler", "[types][system_scheduler]") {
     ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::schedule(sched))) == sched);
   REQUIRE(
     ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(ex::schedule(sched))) == sched);
+}
 
+TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {
+  std::thread::id this_id = std::this_thread::get_id();
+  std::thread::id pool_id{};
+  std::thread::id pool_id2{};
+  exec::system_context ctx;
+  exec::system_scheduler sched = ctx.get_scheduler();
+
+  auto snd = ex::then(ex::schedule(sched),
+    [&] {
+      pool_id = std::this_thread::get_id();
+    });
+  auto snd2 = ex::then(std::move(snd),
+    [&] {
+      pool_id2 = std::this_thread::get_id();
+    });
+
+  ex::sync_wait(std::move(snd2));
+
+  REQUIRE(pool_id != std::thread::id{});
+  REQUIRE(this_id!=pool_id);
+  REQUIRE(pool_id==pool_id2);
+  (void) snd;
+  (void) snd2;
 }
