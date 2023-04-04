@@ -23,6 +23,8 @@
 
 namespace stdexec {
 
+  struct __undefined;
+
   struct __ { };
 
   struct __ignore {
@@ -77,7 +79,9 @@ namespace stdexec {
     using __t = _Ty;
   };
 
-  // Some utilities for manipulating lists of types at compile time
+  template <auto _Value>
+  using __mtypeof = decltype(_Value);
+
   template <class...>
   struct __types;
 
@@ -105,31 +109,54 @@ namespace stdexec {
   template <std::size_t _Ip>
   inline constexpr std::size_t __v<char[_Ip]> = _Ip - 1;
 
-  struct __ok {
-    static constexpr bool __value = true;
-    static constexpr bool __diagnose() { return true; }
+  template <std::size_t... _Is>
+  using __indices = std::index_sequence<_Is...>*;
+
+  template <std::size_t _Np>
+  using __make_indices = std::make_index_sequence<_Np>*;
+
+  template <std::size_t _Len>
+  class __mstring {
+    template <std::size_t... _Is>
+    constexpr __mstring(const char (&__str)[_Len], __indices<_Is...>) noexcept
+      : __what_{__str[_Is]...} {
+    }
+
+   public:
+    constexpr __mstring(const char (&__str)[_Len]) noexcept
+      : __mstring{__str, __make_indices<_Len>{}} {
+    }
+
+    char const __what_[_Len];
   };
 
-  enum __attention { XXXXXXXXXXXXXXXXX };
+  struct __ok {
+    static constexpr bool __value = true;
 
-  template <__attention, class _What, __attention>
-  struct _EXCEPTION_ {
-    _EXCEPTION_ operator,(__ok);
+    static constexpr bool __diagnose() {
+      return true;
+    }
+  };
+
+  template <class _What, class... _With>
+  struct _ERROR_ {
+    _ERROR_ operator,(__ok);
     static constexpr bool __value = false;
+
     static constexpr auto __diagnose() {
       _What::__what();
       return false;
     }
   };
 
-  template <class _What>
-  using __merror = _EXCEPTION_<XXXXXXXXXXXXXXXXX, _What, XXXXXXXXXXXXXXXXX>;
+  template <class _What, class... _With>
+  using __mexception = _ERROR_<_What, _With...>;
 
   template <class>
   extern __ok __test;
 
-  template <class _What>
-  extern __merror<_What> __test<__merror<_What>>;
+  template <class _What, class... _With>
+  extern __mexception<_What, _With...> __test<__mexception<_What, _With...>>;
 
   template <class _Ty>
   using __is_ok = decltype(__test<_Ty>);
@@ -138,8 +165,7 @@ namespace stdexec {
   using __error_or_ok = decltype((__is_ok<void>(), ..., __is_ok<_Ts>()));
 
   template <class... _Ts>
-  concept __diagnose_all =
-    __error_or_ok<_Ts...>::__diagnose();
+  concept __diagnose_all = __error_or_ok<_Ts...>::__diagnose();
 
   template <bool>
   struct __i {
@@ -154,7 +180,7 @@ namespace stdexec {
   };
 
   template <class... _Args>
-  concept _Ok = (__is_ok<_Args>::__value &&...);
+  concept _Ok = (__is_ok<_Args>::__value && ...);
 
   template <template <class...> class _Fn, class... _Args>
   using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
@@ -261,6 +287,46 @@ namespace stdexec {
 
   template <class _Fn, class _Default>
   using __with_default = __mtry_catch<_Fn, __mconst<_Default>>;
+
+  inline constexpr __mstring const __mbad_substitution(
+    "The specified meta-function could not be evaluated with the types provided.");
+
+  template <__mstring _Diagnostic = __mbad_substitution>
+  struct _BAD_SUBSTITUTION_ {
+    [[deprecated(
+      "The specified meta-function could not be evaluated with the types "
+      "provided.")]] static constexpr void
+      __what() {
+    }
+  };
+
+  template <class... _Args>
+  struct _WITH_TYPES_ { };
+
+  template <template <class...> class _Fun>
+  struct _WITH_META_FUNCTION_T_ {
+    template <class... _Args>
+    using __f = __mexception<_BAD_SUBSTITUTION_<>, _WITH_META_FUNCTION_T_, _WITH_TYPES_<_Args...>>;
+  };
+
+  template <class _Fun>
+  struct _WITH_META_FUNCTION_ {
+    template <class... _Args>
+    using __f = __mexception<_BAD_SUBSTITUTION_<>, _WITH_META_FUNCTION_, _WITH_TYPES_<_Args...>>;
+  };
+
+  template <template <class...> class _Fn>
+  struct __mtry_eval_ {
+    template <class... _Args>
+    using __f = __meval<_Fn, _Args...>;
+  };
+
+  template <template <class...> class _Fn, class... _Args>
+  using __mtry_eval =
+    __minvoke<__mtry_catch<__mtry_eval_<_Fn>, _WITH_META_FUNCTION_T_<_Fn>>, _Args...>;
+
+  template <class _Fn, class... _Args>
+  using __mtry_invoke = __minvoke<__mtry_catch<_Fn, _WITH_META_FUNCTION_<_Fn>>, _Args...>;
 
   template <class _Fn, class _Continuation = __q<__types>>
   struct __transform {
@@ -617,8 +683,7 @@ namespace stdexec {
     using __f = __call_result_t<_Fun, _As...>;
   };
   template <bool _Enable, class _Fun, class... _As>
-  using __call_result_if_t =
-    __minvoke<__if<__mbool<_Enable>, __qcall_result, __>, _Fun, _As...>;
+  using __call_result_if_t = __minvoke<__if<__mbool<_Enable>, __qcall_result, __>, _Fun, _As...>;
 
   // For emplacing non-movable types into optionals:
   template <class _Fn>
