@@ -348,15 +348,17 @@ namespace exec {
       class _ResultTuple,
       class _ErrorsVariant,
       class _ItemId,
-      class _ItemReceiver>
+      class _ItemReceiverId>
     struct __item_operation {
       using __base_type =
-        __item_operation_base<_Index, _ReceiverId, _ResultTuple, _ErrorsVariant, _ItemReceiver>;
+        __item_operation_base<_Index, _ReceiverId, _ResultTuple, _ErrorsVariant, _ItemReceiverId>;
+
+      using _ItemReceiver = stdexec::__t<_ItemReceiverId>;
 
       using _Item = stdexec::__t<_ItemId>;
 
       using __item_receiver_t = stdexec::__t<
-        __item_receiver<_Index, _ReceiverId, _ResultTuple, _ErrorsVariant, _ItemReceiver>>;
+        __item_receiver<_Index, _ReceiverId, _ResultTuple, _ErrorsVariant, _ItemReceiverId>>;
 
       using __operation_base_t = __operation_base<_ReceiverId, _ResultTuple, _ErrorsVariant>;
 
@@ -372,6 +374,8 @@ namespace exec {
         friend void tag_invoke(start_t, __t& __self) noexcept {
           if (__self.__parent_op_->template __push_back_item_op<_Index>(&__self)) {
             start(__self.__item_op_);
+          } else {
+            stdexec::set_stopped((_ItemReceiver&&) __self.__item_rcvr_);
           }
         }
       };
