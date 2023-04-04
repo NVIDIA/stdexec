@@ -23,20 +23,11 @@ namespace exec {
   namespace __sequence_sender {
     using namespace stdexec;
 
-    struct __empty_receiver {
-      friend void tag_invoke(set_value_t, __empty_receiver&&) noexcept;
-      template <class _Error>
-      friend void tag_invoke(set_error_t, __empty_receiver&&, _Error&&) noexcept;
-      friend void tag_invoke(set_stopped_t, __empty_receiver&&) noexcept;
-      friend empty_env tag_invoke(get_env_t, const __empty_receiver&) noexcept;
-    };
-
     struct set_next_t {
       template <receiver _Receiver, sender _Item>
         requires tag_invocable<set_next_t, _Receiver&, _Item>
       auto operator()(_Receiver& __rcvr, _Item&& __item) const noexcept
         -> tag_invoke_result_t<set_next_t, _Receiver&, _Item> {
-        static_assert(sender_to<tag_invoke_result_t<set_next_t, _Receiver&, _Item>, __empty_receiver>);
         static_assert(nothrow_tag_invocable<set_next_t, _Receiver&, _Item>);
         return tag_invoke(*this, __rcvr, (_Item&&) __item);
       }
