@@ -514,10 +514,12 @@ namespace stdexec {
       -> __mconst< __minvoke< _Variant, __minvoke<__as_tagged_tuple<_Sigs, _TaggedTuple>>...>>;
 
     template <class _Completions, class _TaggedTuple, class _Variant>
-    using __for_all_sigs = __minvoke< decltype(__compl_sigs::__for_all_sigs_(
-      (_Completions*) nullptr,
-      (_TaggedTuple*) nullptr,
-      (_Variant*) nullptr))>;
+    using __for_all_sigs =                      //
+      __minvoke<                                //
+        decltype(__compl_sigs::__for_all_sigs_( //
+          (_Completions*) nullptr,
+          (_TaggedTuple*) nullptr,
+          (_Variant*) nullptr))>;
   } // namespace __compl_sigs
 
   template <class _Ty>
@@ -646,29 +648,29 @@ namespace stdexec {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
         if constexpr (__with_tag_invoke<_Sender, _Env>) {
-          return __mbind_front_q<tag_invoke_result_t, get_completion_signatures_t>{};
+          return (tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>(*)()) nullptr;
         } else if constexpr (__with_member_alias<_Sender>) {
-          return __q<__member_alias_t>{};
+          return (__member_alias_t<_Sender, _Env>(*)()) nullptr;
         } else if constexpr (__awaitable<_Sender, __env_promise<_Env>>) {
           using _Result = __await_result_t<_Sender, __env_promise<_Env>>;
           if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
-            return __mconst<dependent_completion_signatures<no_env>>{};
+            return (dependent_completion_signatures<no_env>(*)()) nullptr;
           } else {
-            return __mconst< completion_signatures<
+            return (completion_signatures<
               // set_value_t() or set_value_t(T)
               __minvoke<__remove<void, __qf<set_value_t>>, _Result>,
-              set_error_t(std::exception_ptr)>>{};
+              set_error_t(std::exception_ptr)>(*)()) nullptr;
           }
         }
 #if STDEXEC_LEGACY_R5_CONCEPTS()
         else if constexpr (same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>) {
-          return __mconst<dependent_completion_signatures<no_env>>{};
+          return (dependent_completion_signatures<no_env>(*)()) nullptr;
         }
 #endif
+        else {
+          return (void(*)()) nullptr;
+        }
       }
-
-      template <class _Sender, class _Env>
-      using __impl_fn = decltype(__impl<_Sender, _Env>());
 
       template <class _Sender, class _Env = no_env>
         requires(
@@ -680,7 +682,7 @@ namespace stdexec {
 #endif
             )
       constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept
-        -> __minvoke<__impl_fn<_Sender, _Env>, _Sender, _Env> {
+        -> decltype(__impl<_Sender, _Env>()()) {
         return {};
       }
     };
@@ -781,7 +783,7 @@ namespace stdexec {
   using __nullable_variant_t = __munique<__mbind_front_q<std::variant, std::monostate>>;
 
   template <class... _Ts>
-  using __decayed_tuple = std::tuple<__decay_t<_Ts>...>;
+  using __decayed_tuple = __meval<std::tuple, __decay_t<_Ts>...>;
 
   template <class _Tag, class _Tuple>
   struct __select_completions_for {
@@ -796,25 +798,36 @@ namespace stdexec {
   };
 
   template <class _Tag, class _Tuple>
-  using __select_completions_for_or = __with_default< __select_completions_for<_Tag, _Tuple>, __>;
+  using __select_completions_for_or = //
+    __with_default< __select_completions_for<_Tag, _Tuple>, __>;
 
   template <class _Tag, class... _Args>
   using __set_tag_type = _Tag(_Args...);
 
   template <class _Tag, class _Completions>
-  using __only_gather_signal = __compl_sigs::__for_all_sigs<
-    _Completions,
-    __select_completions_for_or<_Tag, __mbind_front_q<__set_tag_type, _Tag>>,
-    __remove<__, __q<completion_signatures>>>;
+  using __only_gather_signal = //
+    __meval<
+      __compl_sigs::__for_all_sigs,
+      _Completions,
+      __select_completions_for_or<_Tag, __mbind_front_q<__set_tag_type, _Tag>>,
+      __remove<__, __q<completion_signatures>>>;
 
   template <class _Tag, class _Completions, class _Tuple, class _Variant>
-  using __gather_signal = __compl_sigs::
-    __for_all_sigs<__only_gather_signal<_Tag, _Completions>, __invoke_completions<_Tuple>, _Variant>;
+  using __gather_signal = //
+    __meval<
+      __compl_sigs::__for_all_sigs,
+      __only_gather_signal<_Tag, _Completions>,
+      __invoke_completions<_Tuple>,
+      _Variant>;
 
   template <class _Tag, class _Sender, class _Env, class _Tuple, class _Variant>
-    requires sender_in<_Sender, _Env>
-  using __gather_completions_for =
-    __gather_signal<_Tag, completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
+  using __gather_completions_for = //
+    __meval<                       //
+      __gather_signal,
+      _Tag,
+      __completion_signatures_of_t<_Sender, _Env>,
+      _Tuple,
+      _Variant>;
 
   template <                             //
     class _Sender,                       //
@@ -885,7 +898,10 @@ namespace stdexec {
     using __default_set_error = completion_signatures<set_error_t(_Error)>;
 
     template <__is_completion_signatures... _Sigs>
-    using __ensure_concat = __minvoke<__mconcat<__q<completion_signatures>>, _Sigs...>;
+    using __ensure_concat_ = __minvoke<__mconcat<__q<completion_signatures>>, _Sigs...>;
+
+    template <class... _Sigs>
+    using __ensure_concat = __meval<__ensure_concat_, _Sigs...>;
 
     template <             //
       class _Sender,       //
@@ -895,10 +911,11 @@ namespace stdexec {
       class _SetError,     //
       class _SetStopped>
     using __compl_sigs_t = //
-      __concat_completion_signatures_t<
+      __meval<
+        __concat_completion_signatures_t,
         _Sigs,
-        __value_types_of_t<_Sender, _Env, _SetValue, __q<__ensure_concat>>,
-        __error_types_of_t<_Sender, _Env, __transform<_SetError, __q<__ensure_concat>>>,
+        __meval<__value_types_of_t, _Sender, _Env, _SetValue, __q<__ensure_concat>>,
+        __meval<__error_types_of_t, _Sender, _Env, __transform<_SetError, __q<__ensure_concat>>>,
         __if_c<sends_stopped<_Sender, _Env>, _SetStopped, completion_signatures<>>>;
 
     template <         //
@@ -908,19 +925,19 @@ namespace stdexec {
       class _SetValue, //
       class _SetError, //
       class _SetStopped>
-    auto __make(int) -> __compl_sigs_t<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
+    auto __make(int) -> __meval<__compl_sigs_t, _Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
 
+    // BUGBUG if prior overload returns an error and _Env is no_env, we should prefer this one:
     template <class, class _Env, class, class, class, class>
     auto __make(long) -> dependent_completion_signatures<_Env>;
 
     template <                                                             //
       class _Sender,                                                       //
       class _Env = no_env,                                                 //
-      __valid_completion_signatures<_Env> _Sigs = completion_signatures<>, //
+      class _Sigs = completion_signatures<>, //
       class _SetValue = __q<__default_set_value>,                          //
       class _SetError = __q<__default_set_error>,                          //
-      __valid_completion_signatures<_Env> _SetStopped = completion_signatures<set_stopped_t()>>
-      requires sender_in<_Sender, _Env>
+      class _SetStopped = completion_signatures<set_stopped_t()>>
     using __make_completion_signatures =
       decltype(__make<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>(0));
   } // namespace __compl_sigs
@@ -2692,19 +2709,36 @@ namespace stdexec {
     }
   }
 
+  template <class _Fun>
+  struct _FUNCTION_ {
+    template <class..._Args>
+    struct _IS_NOT_CALLABLE_WITH_ARGUMENTS_ {
+      [[deprecated("The specified function is not callable with the specified arguments")]]
+      static constexpr void __what() {}
+    };
+  };
+
+  template <class _Fun, class... _Args>
+  using __not_callable_error =
+    __merror<                             //
+      typename _FUNCTION_<_Fun>::template //
+      _IS_NOT_CALLABLE_WITH_ARGUMENTS_<_Args...>>;
+
   template <class _Fun, class... _Args>
     requires invocable<_Fun, _Args...>
   using __non_throwing_ = __mbool<__nothrow_invocable<_Fun, _Args...>>;
 
+  using __non_throwing = __mtry_catch_q<__non_throwing_, __q<__not_callable_error>>;
+
   template <class _Tag, class _Fun, class _Sender, class _Env>
   using __with_error_invoke_t = //
-    __if_c<
-      __v<__gather_completions_for<
+    __if<
+      __gather_completions_for<
         _Tag,
         _Sender,
         _Env,
-        __mbind_front_q<__non_throwing_, _Fun>,
-        __q<__mand>>>,
+        __mbind_front<__non_throwing, _Fun>,
+        __q<__mand>>,
       completion_signatures<>,
       __with_exception_ptr>;
 
@@ -2794,11 +2828,12 @@ namespace stdexec {
 
         template <class _Self, class _Env>
         using __completion_signatures = //
-          __make_completion_signatures<
+          __meval<
+            __make_completion_signatures,
             __copy_cvref_t<_Self, _Sender>,
             _Env,
             __with_error_invoke_t<set_value_t, _Fun, __copy_cvref_t<_Self, _Sender>, _Env>,
-            __mbind_front_q<__set_value_invoke_t, _Fun>>;
+            __mbind_front<__mtry_catch_q<__set_value_invoke_t, __q<__not_callable_error>>, _Fun>>;
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>

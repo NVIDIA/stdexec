@@ -106,19 +106,24 @@ namespace stdexec {
   inline constexpr std::size_t __v<char[_Ip]> = _Ip - 1;
 
   struct __ok {
-    static constexpr bool value = true;
+    static constexpr bool __value = true;
     static constexpr bool __diagnose() { return true; }
   };
 
-  template <class _What>
-  struct __merror {
-    __merror operator,(__ok);
-    static constexpr bool value = false;
+  enum __attention { XXXXXXXXXXXXXXXXX };
+
+  template <__attention, class _What, __attention>
+  struct _EXCEPTION_ {
+    _EXCEPTION_ operator,(__ok);
+    static constexpr bool __value = false;
     static constexpr auto __diagnose() {
       _What::__what();
       return false;
     }
   };
+
+  template <class _What>
+  using __merror = _EXCEPTION_<XXXXXXXXXXXXXXXXX, _What, XXXXXXXXXXXXXXXXX>;
 
   template <class>
   extern __ok __test;
@@ -149,7 +154,7 @@ namespace stdexec {
   };
 
   template <class... _Args>
-  concept _Ok = (__is_ok<_Args>::value &&...);
+  concept _Ok = (__is_ok<_Args>::__value &&...);
 
   template <template <class...> class _Fn, class... _Args>
   using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
@@ -182,7 +187,7 @@ namespace stdexec {
   using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
   template <template <class...> class _Tp, class... _Args>
-  concept __valid = __is_ok<__meval<_Tp, _Args...>>::value;
+  concept __valid = requires { typename __meval<_Tp, _Args...>; };
 
   template <class _Fn, class... _Args>
   concept __minvocable = __valid<_Fn::template __f, _Args...>;
@@ -206,29 +211,35 @@ namespace stdexec {
   template <class _Fn, class... _Args>
   struct __mdefer : __mdefer_<_Fn, _Args...> { };
 
-  template <bool>
   struct __if_ {
-    template <class _True, class...>
-    using __f = _True;
+    template <bool>
+    struct __ {
+      template <class _True, class...>
+      using __f = _True;
+    };
+
+#if STDEXEC_NVHPC()
+    template <class _Pred, class _True, class... _False>
+    using __f = __minvoke<__<_Pred::value>, _True, _False...>;
+#else
+    template <class _Pred, class _True, class... _False>
+    using __f = __minvoke<__<__v<_Pred>>, _True, _False...>;
+#endif
   };
 
   template <>
-  struct __if_<false> {
+  struct __if_::__<false> {
     template <class, class _False>
     using __f = _False;
   };
-#if STDEXEC_NVHPC()
+
   template <class _Pred, class _True, class... _False>
     requires(sizeof...(_False) <= 1)
-  using __if = __minvoke<__if_<_Pred::value>, _True, _False...>;
-#else
-  template <class _Pred, class _True, class... _False>
-    requires(sizeof...(_False) <= 1)
-  using __if = __minvoke<__if_<__v<_Pred>>, _True, _False...>;
-#endif
+  using __if = __minvoke<__if_, _Pred, _True, _False...>;
+
   template <bool _Pred, class _True, class... _False>
     requires(sizeof...(_False) <= 1)
-  using __if_c = __minvoke<__if_<_Pred>, _True, _False...>;
+  using __if_c = __minvoke<__if_::__<_Pred>, _True, _False...>;
 
   template <class _Tp>
   struct __mconst {
@@ -236,11 +247,20 @@ namespace stdexec {
     using __f = _Tp;
   };
 
-  template <class _Fn, class _Default>
-  struct __with_default {
+  template <template <class...> class _Try, class _Catch>
+  struct __mtry_catch_q {
     template <class... _Args>
-    using __f = __minvoke< __if_c<__minvocable<_Fn, _Args...>, _Fn, __mconst<_Default>>, _Args...>;
+    using __f = __minvoke< __if_c<__valid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
   };
+
+  template <class _Try, class _Catch>
+  struct __mtry_catch {
+    template <class... _Args>
+    using __f = __minvoke< __if_c<__minvocable<_Try, _Args...>, _Try, _Catch>, _Args...>;
+  };
+
+  template <class _Fn, class _Default>
+  using __with_default = __mtry_catch<_Fn, __mconst<_Default>>;
 
   template <class _Fn, class _Continuation = __q<__types>>
   struct __transform {
@@ -267,7 +287,7 @@ namespace stdexec {
     using __f = __minvoke<__mfold_right_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
   };
 
-  template <class _Continuation, class...>
+  template <class _Continuation, class... _As>
   struct __mconcat_ { };
 
   template <class _Continuation, class... _As>
@@ -700,11 +720,19 @@ namespace stdexec {
   };
 
   template <class... _Booleans>
-  using __mand = __mbool<(__v<_Booleans> && ...)>;
+  using __mand_ = __mbool<(__v<_Booleans> && ...)>;
   template <class... _Booleans>
-  using __mor = __mbool<(__v<_Booleans> || ...)>;
+  using __mand = __meval<__mand_, _Booleans...>;
+
+  template <class... _Booleans>
+  using __mor_ = __mbool<(__v<_Booleans> || ...)>;
+  template <class... _Booleans>
+  using __mor = __meval<__mor_, _Booleans...>;
+
   template <class _Boolean>
-  using __mnot = __mbool<!__v<_Boolean>>;
+  using __mnot_ = __mbool<!__v<_Boolean>>;
+  template <class _Boolean>
+  using __mnot = __meval<__mnot_, _Boolean>;
 
   template <class _Fn>
   struct __mall_of {
