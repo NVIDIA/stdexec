@@ -17,6 +17,8 @@
 
 #include "exec/sequence/async_resource.hpp"
 
+#include "exec/variant_sender.hpp"
+
 #include <catch2/catch.hpp>
 
 struct Resource {
@@ -39,12 +41,45 @@ struct Resource {
   }
 };
 
-TEST_CASE("async_resource", "[sequence][async_resource]") {
+struct StopResource {
+  struct Token {
+    friend auto tag_invoke(exec::async_resource::close_t, Token& t) {
+      return stdexec::just();
+    }
+  };
+
+  friend auto tag_invoke(exec::async_resource::open_t, StopResource& r) noexcept {
+    using just_token_t = decltype(stdexec::just(Token{}));
+    using just_stopped_t = decltype(stdexec::just_stopped());
+    return exec::variant_sender<just_token_t, just_stopped_t>{stdexec::just_stopped()};
+  }
+};
+
+TEST_CASE("async_resource - use_resources", "[sequence][async_resource]") {
   Resource resource;
-  // bool called = false;
-  exec::async_resource::open(resource);
-  stdexec::sync_wait(exec::ignore_all(exec::async_resource::run(resource)));
-  // CHECK(called);
-  CHECK(resource.n_open_called == 1);
-  CHECK(resource.n_close_called == 1);
+  bool called = false;
+  stdexec::sync_wait(exec::use_resources(
+    [&](auto&&...) {
+      called = true;
+      return stdexec::just();
+    },
+    resource, resource, resource));
+  CHECK(called);
+  CHECK(resource.n_open_called == 3);
+  CHECK(resource.n_close_called == 3);
+}
+
+TEST_CASE("async_resource - stopped use_resources", "[sequence][async_resource]") {
+  Resource resource;
+  StopResource stop_resource;
+  bool called = false;
+  stdexec::sync_wait(exec::use_resources(
+    [&](Resource::Token& t1, StopResource::Token& t2) {
+      called = true;
+      return stdexec::just();
+    },
+    resource, stop_resource));
+  CHECK_FALSE(called);
+  CHECK(resource.n_open_called == 0);
+  CHECK(resource.n_close_called == 0);
 }
