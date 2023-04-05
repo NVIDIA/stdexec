@@ -40,7 +40,8 @@ namespace exec {
         }
 
         template <class _Error>
-          requires __callable<set_error_t, _ItemReceiver&&, _Error&&>
+          // TODO This triggers some recursion with repeat
+          // requires __callable<set_error_t, _ItemReceiver&&, _Error&&>
         friend void tag_invoke(set_error_t, __t&& __self, _Error&& __error) noexcept {
           stdexec::set_error(
             static_cast<_ItemReceiver&&>(__self.__rcvr_), static_cast<_Error&&>(__error));
