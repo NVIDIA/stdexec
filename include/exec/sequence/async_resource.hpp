@@ -133,6 +133,10 @@ namespace exec {
           __op_states_;
 
         void __notify_open(_Token&& __token) noexcept {
+          if (stdexec::get_stop_token(stdexec::get_env(__receiver)).stop_requested()) {
+            stdexec::set_stopped(static_cast<_Receiver&&>(__receiver));
+            return;
+          }
           try {
             __token_.emplace(static_cast<_Token&&>(__token));
             connect_result_t<_RunAndFinallyClose, __close_receiver_t>& __op =

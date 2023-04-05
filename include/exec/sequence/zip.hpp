@@ -32,7 +32,6 @@ namespace exec {
 
     template <class _ItemResult>
     struct __item_operation_result {
-      using __result_type = _ItemResult;
       __item_operation_result* __next_item_op_{nullptr};
       void (*__complete_)(__item_operation_result*) noexcept = nullptr;
       std::optional<_ItemResult> __item_result_{};
@@ -133,6 +132,39 @@ namespace exec {
         }
       }
 
+      void __notify_stop() {
+        __stop_source_.request_stop();
+        auto __local_queues = std::apply(
+          [this]<same_as<std::mutex>... _Mutex>(_Mutex&... __mutexes) {
+            std::scoped_lock __lock(__mutexes...);
+            __n_ready_next_items_.store(0, std::memory_order_relaxed);
+            return std::apply(
+              [](auto&... __queues) {
+                auto __clear_queue = []<class _Queue>(_Queue& __queue) {
+                  return _Queue{static_cast<_Queue&&>(__queue)};
+                };
+                return std::tuple{__clear_queue(__queues)...};
+              },
+              __item_queues_);
+          },
+          __mutexes_);
+        std::apply(
+          [](auto&... __queues) {
+            auto __clear_queue = []<class _Queue>(_Queue& __queue) {
+              while (!__queue.empty()) {
+                auto __op = __queue.pop_front();
+                if (__op->__item_ready_) {
+                  __op->__complete_(__op);
+                }
+              }
+            };
+            (__clear_queue(__queues), ...);
+          },
+          __local_queues);
+
+        __notify_op_completion();
+      }
+
       template <class _Error>
         requires std::is_assignable_v<_ErrorVariant&, _Error&&>
       void __notify_error(_Error&& __error) {
@@ -142,13 +174,7 @@ namespace exec {
             __error_ = (_Error&&) __error;
           }
         }
-        __stop_source_.request_stop();
-        __notify_op_completion();
-      }
-
-      void __notify_stop() {
-        __stop_source_.request_stop();
-        __notify_op_completion();
+        __notify_stop();
       }
     };
 

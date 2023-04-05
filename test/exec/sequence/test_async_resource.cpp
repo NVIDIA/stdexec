@@ -48,10 +48,12 @@ struct StopResource {
     }
   };
 
-  friend auto tag_invoke(exec::async_resource::open_t, StopResource& r) noexcept {
-    using just_token_t = decltype(stdexec::just(Token{}));
-    using just_stopped_t = decltype(stdexec::just_stopped());
-    return exec::variant_sender<just_token_t, just_stopped_t>{stdexec::just_stopped()};
+  using just_token_t = decltype(stdexec::just(Token{}));
+  using just_stopped_t = decltype(stdexec::just_stopped());
+
+  friend exec::variant_sender<just_token_t, just_stopped_t>
+    tag_invoke(exec::async_resource::open_t, StopResource& r) noexcept {
+    return stdexec::just_stopped();
   }
 };
 
@@ -63,7 +65,9 @@ TEST_CASE("async_resource - use_resources", "[sequence][async_resource]") {
       called = true;
       return stdexec::just();
     },
-    resource, resource, resource));
+    resource,
+    resource,
+    resource));
   CHECK(called);
   CHECK(resource.n_open_called == 3);
   CHECK(resource.n_close_called == 3);
@@ -78,8 +82,9 @@ TEST_CASE("async_resource - stopped use_resources", "[sequence][async_resource]"
       called = true;
       return stdexec::just();
     },
-    resource, stop_resource));
+    resource,
+    stop_resource));
   CHECK_FALSE(called);
-  CHECK(resource.n_open_called == 0);
-  CHECK(resource.n_close_called == 0);
+  CHECK(resource.n_open_called == 1);
+  CHECK(resource.n_close_called == 1);
 }
