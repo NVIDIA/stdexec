@@ -18,7 +18,8 @@
 #include "exec/sequence/zip.hpp"
 #include "exec/variant_sender.hpp"
 
-#include "exec/sequence/transform_each.hpp"
+#include "exec/sequence/enumerate_each.hpp"
+#include "exec/sequence/let_each.hpp"
 #include "exec/sequence/ignore_all.hpp"
 #include "exec/sequence/repeat.hpp"
 
@@ -57,8 +58,7 @@ TEST_CASE("sequence_senders - zip", "[zip]") {
   // __types<__zip::__completions_t<env_t, repeat_t>>{};
   int called = 0;
   auto zip = exec::zip(repeat(just(0)), enumerate_each(repeat(just()))) //
-           | transform_each(
-               let_value([&](int zero, int counter) -> variant_sender<just_t, just_stopped_t> {
+           | let_value_each([&](int zero, int counter) -> variant_sender<just_t, just_stopped_t> {
                  CHECK(zero == 0);
                  CHECK(counter == called);
                  if (counter < 5) {
@@ -66,7 +66,7 @@ TEST_CASE("sequence_senders - zip", "[zip]") {
                    return just();
                  }
                  return just_stopped();
-               }));
+               });
   using zip_t = decltype(zip);
   STATIC_REQUIRE(sender<zip_t>);
   // __types<tag_invoke_result_t<get_completion_signatures_t, zip_t, env_t>>{};

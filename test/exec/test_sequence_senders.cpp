@@ -17,7 +17,9 @@
 #include "exec/sequence_senders.hpp"
 #include "exec/variant_sender.hpp"
 
-#include "exec/sequence/transform_each.hpp"
+#include "exec/sequence/enumerate_each.hpp"
+#include "exec/sequence/let_each.hpp"
+#include "exec/sequence/then_each.hpp"
 #include "exec/sequence/ignore_all.hpp"
 #include "exec/sequence/repeat.hpp"
 
@@ -106,15 +108,14 @@ TEST_CASE("sequence_senders - enumerate_each", "[sequence_senders]") {
   sync_wait(
     repeat(just())     //
     | enumerate_each() //
-    | transform_each(
-      let_value([&](int counter) -> exec::variant_sender<just_int_t, just_stopped_t> {
+    | let_value_each([&](int counter) -> exec::variant_sender<just_int_t, just_stopped_t> {
         if (counter < 10) {
           return just(counter);
         } else {
           return just_stopped();
         }
-      }))                                                            //
-    | transform_each(then([&count](int n) { CHECK(n == count++); })) //
+      })                                                   //
+    | then_each([&count](int n) { CHECK(n == count++); }) //
     | ignore_all());
   CHECK(count == 10);
 }

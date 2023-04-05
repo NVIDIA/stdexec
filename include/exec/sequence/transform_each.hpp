@@ -19,7 +19,6 @@
 #include "../sequence_senders.hpp"
 
 namespace exec {
-
   namespace __transform_each {
     using namespace stdexec;
 

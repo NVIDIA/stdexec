@@ -24,6 +24,7 @@ namespace exec {
     using namespace stdexec;
 
     template <class _ItemReceiverId>
+      requires receiver<stdexec::__t<_ItemReceiverId>>
     struct __item_receiver {
       using _ItemReceiver = stdexec::__t<_ItemReceiverId>;
 
@@ -52,7 +53,7 @@ namespace exec {
         }
 
         friend env_of_t<_ItemReceiver> tag_invoke(get_env_t, const __t& __self) noexcept {
-          return get_env(__self.__rcvr_);
+          return stdexec::get_env(__self.__rcvr_);
         }
       };
     };
@@ -68,24 +69,24 @@ namespace exec {
         using __id = __item_sender;
         [[no_unique_address]] _Item __item;
 
-        template <__decays_to<__item_sender> _Self, receiver _ItemReceiver>
+        template <__decays_to<__t> _Self, receiver _ItemReceiver>
           requires sender_to<_Item, __item_receiver_t<_ItemReceiver>>
-        friend auto tag_invoke(connect_t, __t&& __self, _ItemReceiver&& __rcvr) {
+        friend auto tag_invoke(connect_t, _Self&& __self, _ItemReceiver&& __rcvr) {
           return stdexec::connect(
             static_cast<_Self&&>(__self).__item,
             __item_receiver_t<_ItemReceiver>{static_cast<_ItemReceiver&&>(__rcvr)});
         }
 
-        template <class _Self, class _Env>
+        template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, const _Env& __env)
           -> __make_completion_signatures<
             __copy_cvref_t<_Self, _Item>,
             _Env,
-            completion_signatures<>,
+            completion_signatures<set_value_t()>,
             __mconst<completion_signatures<set_value_t()>>>;
       };
     };
-    
+
     template <class _Sndr>
     using __item_sender_t = __t<__item_sender<__id<__decay_t<_Sndr>>>>;
 

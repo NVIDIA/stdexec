@@ -61,6 +61,8 @@ namespace exec {
       using __on_stop = //
         typename stop_token_of_t<env_of_t<_Receiver&>>::template callback_type< __on_stop_requested>;
 
+      __operation_base(__operation_base&&) = delete;
+
       template <__decays_to<_Receiver> _Rcvr>
       explicit __operation_base(_Rcvr&& __rcvr)
         : __receiver_{(_Rcvr&&) __rcvr} {
