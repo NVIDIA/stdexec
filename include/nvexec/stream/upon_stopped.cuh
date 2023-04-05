@@ -23,8 +23,6 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace upon_stopped {
-    using stdexec::operator""__csz;
-
     template <class Fun>
     __launch_bounds__(1) __global__ void kernel(Fun fn) {
       fn();
