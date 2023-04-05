@@ -573,7 +573,12 @@ namespace exec {
         friend void tag_invoke(start_t, __t& __self) noexcept {
           auto token = get_stop_token(get_env(__self.__receiver_));
           __self.__stop_callback_.emplace(token, __on_stop_requested{__self.__stop_source_});
-          std::apply([](auto&... __ops) { (start(__ops), ...); }, __self.__child_ops_);
+          auto __start_op = [&__self](auto& __op) {
+            if (__self.__increase_op_count()) {
+              start(__op);
+            }
+          };
+          std::apply([&](auto&... __ops) { (__start_op(__ops), ...); }, __self.__child_ops_);
         }
       };
     };
