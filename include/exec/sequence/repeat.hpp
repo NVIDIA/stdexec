@@ -18,7 +18,7 @@
 
 #include "../sequence_senders.hpp"
 
-#include "./trampoline_scheduler.hpp"
+#include "../trampoline_scheduler.hpp"
 
 namespace exec {
   namespace __repeat {
@@ -44,7 +44,7 @@ namespace exec {
         }
 
         template <__decays_to<__receiver> _Self, class _Error>
-          requires __callable<set_error_t, _Receiver&&, _Error&&>
+          requires __callable<set_error_t, _Receiver&&, _Error>
         friend void tag_invoke(set_error_t, _Self&& __self, _Error e) noexcept {
           stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) e);
         }
