@@ -115,6 +115,9 @@ namespace stdexec {
   template <std::size_t _Np>
   using __make_indices = std::make_index_sequence<_Np>*;
 
+  template <class _Char>
+  concept __mchar = __v<std::is_same<_Char, char>>;
+
   template <std::size_t _Len>
   class __mstring {
     template <std::size_t... _Is>
@@ -127,8 +130,28 @@ namespace stdexec {
       : __mstring{__str, __make_indices<_Len>{}} {
     }
 
+    template <__mchar... _Char>
+      requires(sizeof...(_Char) == _Len)
+    constexpr __mstring(_Char... __chars) noexcept
+      : __what_{__chars...} {
+    }
+
     char const __what_[_Len];
   };
+
+#if STDEXEC_NVHPC() && (__EDG_VERSION__ < 604)
+  // Use a non-standard extension for older nvc++ releases
+  template <__mchar _Char, _Char... _Str>
+  constexpr __mstring<sizeof...(_Str)> operator""__csz() noexcept {
+    return {_Str...};
+  }
+#else
+  // Use a standard user-defined string literal template
+  template <__mstring _Str>
+  constexpr __mtypeof<_Str> operator""__csz() noexcept {
+    return _Str;
+  }
+#endif
 
   struct __ok {
     static constexpr bool __value = true;
@@ -288,8 +311,8 @@ namespace stdexec {
   template <class _Fn, class _Default>
   using __with_default = __mtry_catch<_Fn, __mconst<_Default>>;
 
-  inline constexpr __mstring const __mbad_substitution(
-    "The specified meta-function could not be evaluated with the types provided.");
+  inline constexpr __mstring __mbad_substitution =
+    "The specified meta-function could not be evaluated with the types provided."__csz;
 
   template <__mstring _Diagnostic = __mbad_substitution>
   struct _BAD_SUBSTITUTION_ {

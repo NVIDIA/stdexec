@@ -2712,8 +2712,8 @@ namespace stdexec {
   template <class... _Args>
   struct _WITH_ARGUMENTS_ { };
 
-  inline constexpr __mstring const
-    __not_callable_diag("The specified function is not callable with the arguments provided.");
+  inline constexpr __mstring __not_callable_diag =
+    "The specified function is not callable with the arguments provided."__csz;
 
   template <__mstring _Context, __mstring _Diagnostic = __not_callable_diag>
   struct _NOT_CALLABLE_ {
@@ -2818,7 +2818,7 @@ namespace stdexec {
       };
     };
 
-    inline constexpr __mstring __then_context("In stdexec::then(Sender, Function)...");
+    inline constexpr __mstring __then_context = "In stdexec::then(Sender, Function)..."__csz;
     using __on_not_callable = __callable_error<__then_context>;
 
     template <class _SenderId, class _Fun>
@@ -2959,7 +2959,8 @@ namespace stdexec {
       };
     };
 
-    inline constexpr __mstring __upon_error_context("In stdexec::upon_error(Sender, Function)...");
+    inline constexpr __mstring __upon_error_context =
+      "In stdexec::upon_error(Sender, Function)..."__csz;
     using __on_not_callable = __callable_error<__upon_error_context>;
 
     template <class _SenderId, class _Fun>
@@ -3091,8 +3092,8 @@ namespace stdexec {
       };
     };
 
-    inline constexpr __mstring
-      __upon_stopped_context("In stdexec::upon_stopped(Sender, Function)...");
+    inline constexpr __mstring __upon_stopped_context =
+      "In stdexec::upon_stopped(Sender, Function)..."__csz;
     using __on_not_callable = __callable_error<__upon_stopped_context>;
 
     template <class _SenderId, class _Fun>

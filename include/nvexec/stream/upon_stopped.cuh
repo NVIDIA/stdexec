@@ -23,6 +23,8 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace upon_stopped {
+    using stdexec::operator""__csz;
+
     template <class Fun>
     __launch_bounds__(1) __global__ void kernel(Fun fn) {
       fn();
@@ -121,8 +123,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             Fun,
             stdexec::__copy_cvref_t<Self, Sender>,
             Env,
-            stdexec::__callable_error< stdexec::__mstring("In nvexec::upon_stopped(Sender, "
-                                                          "Function)...")>>,
+            stdexec::__callable_error<"In nvexec::upon_stopped(Sender, Function)..."__csz>>,
           stdexec::__q<stdexec::__compl_sigs::__default_set_value>,
           stdexec::__q<stdexec::__compl_sigs::__default_set_error>,
           stdexec::__set_value_invoke_t<Fun>>;
