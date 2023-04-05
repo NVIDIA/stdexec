@@ -18,6 +18,8 @@
 
 #include "../sequence_senders.hpp"
 
+#include "./trampoline_scheduler.hpp"
+
 namespace exec {
   namespace __repeat {
     using namespace stdexec;

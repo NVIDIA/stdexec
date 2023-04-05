@@ -82,7 +82,7 @@ namespace exec {
           -> __make_completion_signatures<
             __copy_cvref_t<_Self, _Item>,
             _Env,
-            completion_signatures<set_value_t()>,
+            completion_signatures<>,
             __mconst<completion_signatures<set_value_t()>>>;
       };
     };
