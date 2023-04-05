@@ -1388,7 +1388,7 @@ namespace stdexec {
         };
 
         return __awaiter{__fn};
-      };
+      }
 
       template <class _Awaitable, class _Receiver>
       static __operation_t<_Receiver> __co_impl(_Awaitable __await, _Receiver __rcvr) {
@@ -4648,7 +4648,7 @@ namespace stdexec {
         static constexpr bool __nothrow_complete_ = (__nothrow_decay_copyable<_Args> && ...);
 
         template <class _Tag, class... _Args>
-        static void __complete_(_Tag __tag, __t&& __self, _Args&&... __args) //
+        static void __complete_(_Tag, __t&& __self, _Args&&... __args) //
           noexcept(__nothrow_complete_<_Args...>) {
           // Write the tag and the args into the operation state so that
           // we can forward the completion from within the scheduler's
