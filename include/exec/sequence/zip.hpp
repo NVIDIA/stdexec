@@ -55,7 +55,7 @@ namespace exec {
     };
 
     template <class _ReceiverId, class _ResultTuple, class _ErrorVariant>
-    struct __operation_base {
+    struct __operation_base : __immovable {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       using __on_stop = //
@@ -177,6 +177,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
+        using __id = __zipped_receiver;
         __zipped_operation_base<_ReceiverId, _ResultTuple, _ErrorsVariant>* __op_{nullptr};
 
         template <class... _Args>
@@ -198,7 +199,8 @@ namespace exec {
 
         friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
           return {
-            stdexec::get_env(__self.__op_->__receiver_), {__self.__op_->__stop_source.get_token()}};
+            stdexec::get_env(__self.__op_->__parent_op_->__receiver_),
+            {__self.__op_->__parent_op_->__stop_source_.get_token()}};
         }
       };
     };
@@ -275,7 +277,9 @@ namespace exec {
       static void __complete(__base_t* __base) noexcept {
         __item_operation_base* __self = static_cast<__item_operation_base*>(__base);
         __operation_base_t* __parent_op = __self->__parent_op_;
-        if (__self->__stop_source_.stop_requested()) {
+        if (
+          stdexec::get_stop_token(stdexec::get_env(__self->__item_rcvr_)).stop_requested()
+          || __parent_op->__stop_source_.stop_requested()) {
           stdexec::set_stopped((_ItemReceiver&&) __self->__item_rcvr_);
         } else {
           stdexec::set_value((_ItemReceiver&&) __self->__item_rcvr_);
@@ -290,7 +294,6 @@ namespace exec {
       }
 
       [[no_unique_address]] _ItemReceiver __item_rcvr_;
-      in_place_stop_source __stop_source_{};
       std::optional<connect_result_t<
         __next_sender_of_t<_ReceiverId, __just_sender_t<_ResultTuple>>,
         __t<__zipped_receiver<_ReceiverId, _ResultTuple, _ErrorsVariant>>>>
@@ -302,10 +305,13 @@ namespace exec {
       class _ReceiverId,
       class _ResultTuple,
       class _ErrorsVariant,
-      class _ItemReceiver>
+      class _ItemReceiverId>
+      requires receiver_of<
+        stdexec::__t<_ItemReceiverId>,
+        completion_signatures<set_value_t(), set_stopped_t()>>
     struct __item_receiver {
       using __item_operation_t =
-        __item_operation_base<_Index, _ReceiverId, _ResultTuple, _ErrorsVariant, _ItemReceiver>;
+        __item_operation_base<_Index, _ReceiverId, _ResultTuple, _ErrorsVariant, _ItemReceiverId>;
 
       using _Env = env_of_t<stdexec::__t<_ReceiverId>>;
 
@@ -335,9 +341,9 @@ namespace exec {
         }
 
         friend __env_t<_Env> tag_invoke(get_env_t, const __t& __self) noexcept {
-          return __env_t<_Env>{
-            get_env(__self.__op_->__parent_op_->__receiver_),
-            {__self.__op_->__stop_source_.get_token()}};
+          using __with_token = __with<get_stop_token_t, in_place_stop_token>;
+          __with_token token{__self.__op_->__parent_op_->__stop_source_.get_token()};
+          return stdexec::__make_env(stdexec::get_env(__self.__op_->__item_rcvr_), token);
         }
       };
     };
@@ -387,6 +393,7 @@ namespace exec {
       class _ResultTuple,
       class _ErrorsVariant,
       class _ItemId>
+      requires __valid<__next_sender_of_t, _ReceiverId, __just_sender_t<_ResultTuple>>
     struct __next_sender {
       using __operation_base_t = __operation_base<_ReceiverId, _ResultTuple, _ErrorsVariant>;
       using _Item = stdexec::__t<_ItemId>;
@@ -399,17 +406,21 @@ namespace exec {
         __copy_cvref_t<_Self, _ItemId>,
         __id<__decay_t<_Rcvr>>>>;
 
+      template <class _Rcvr>
+      using __item_receiver_t = stdexec::__t<
+        __item_receiver<_Index, _ReceiverId, _ResultTuple, _ErrorsVariant, __id<__decay_t<_Rcvr>>>>;
+
       struct __t {
         using completion_signatures =
           stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
 
         using __id = __next_sender;
 
-        _Item __item_;
+        [[no_unique_address]] _Item __item_;
         __operation_base_t* __parent_op_;
 
         template <__decays_to<__t> _Self, receiver _ItemReceiver>
-        requires __valid<__next_sender_of_t, _ReceiverId, __just_sender_t<_ResultTuple>>
+          requires sender_to<_Item, __item_receiver_t<_ItemReceiver>>
         friend __item_operation_t<_Self, _ItemReceiver>
           tag_invoke(connect_t, _Self&& __self, _ItemReceiver&& __item_rcvr) {
           return {__self.__parent_op_, ((_Self&&) __self).__item_, (_ItemReceiver&&) __item_rcvr};
@@ -448,7 +459,7 @@ namespace exec {
         friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
           using __with_token = __with<get_stop_token_t, in_place_stop_token>;
           auto __token = __with_token{__self.__op_->__stop_source_.get_token()};
-          return __make_env(get_env(__self.__op_->__receiver_), __token);
+          return stdexec::__make_env(get_env(__self.__op_->__receiver_), __token);
         }
       };
     };

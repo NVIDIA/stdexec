@@ -17,6 +17,10 @@
 #include "exec/sequence_senders.hpp"
 #include "exec/variant_sender.hpp"
 
+#include "exec/sequence/transform_each.hpp"
+#include "exec/sequence/ignore_all.hpp"
+#include "exec/sequence/repeat.hpp"
+
 #include <catch2/catch.hpp>
 
 using namespace stdexec;
@@ -72,7 +76,7 @@ TEST_CASE("sequence_senders - let_value_each", "[sequence_senders]") {
     ++count;
     return just_stopped();
   };
-  auto l = let_value_each(r, fun);
+  auto l = transform_each(r, let_value(fun));
   using let_t = decltype(l);
   STATIC_REQUIRE(sender_in<let_t, empty_env>);
   STATIC_REQUIRE(sequence_sender_to<let_t, next_receiver>);
@@ -87,7 +91,7 @@ TEST_CASE("sequence_senders - let_stopped_each", "[sequence_senders]") {
     ++count;
     return just_stopped();
   };
-  auto l = let_stopped_each(r, fun);
+  auto l = transform_each(r, let_stopped(fun));
   using let_t = decltype(l);
   STATIC_REQUIRE(sender_in<let_t, empty_env>);
   STATIC_REQUIRE(sequence_sender_to<let_t, next_receiver>);
@@ -100,15 +104,16 @@ TEST_CASE("sequence_senders - enumerate_each", "[sequence_senders]") {
   using just_stopped_t = decltype(just_stopped());
   int count = 0;
   sync_wait(
-    repeat(just()) //
-    | enumerate_each()  //
-    | let_value_each([&](int counter) -> exec::variant_sender<just_int_t, just_stopped_t> {
+    repeat(just())     //
+    | enumerate_each() //
+    | transform_each(
+      let_value([&](int counter) -> exec::variant_sender<just_int_t, just_stopped_t> {
         if (counter < 10) {
           return just(counter);
         } else {
           return just_stopped();
         }
-      })                                                  //
+      }))                                                            //
     | transform_each(then([&count](int n) { CHECK(n == count++); })) //
     | ignore_all());
   CHECK(count == 10);
