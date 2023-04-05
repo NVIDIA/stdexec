@@ -42,6 +42,8 @@ struct Resource {
 };
 
 struct StopResource {
+  Resource* upstream_;
+
   struct Token {
     friend auto tag_invoke(exec::async_resource::close_t, Token& t) {
       return stdexec::just();
@@ -54,6 +56,22 @@ struct StopResource {
   friend exec::variant_sender<just_token_t, just_stopped_t>
     tag_invoke(exec::async_resource::open_t, StopResource& r) noexcept {
     return stdexec::just_stopped();
+  }
+};
+
+struct ErrorResource {
+  struct Token {
+    friend auto tag_invoke(exec::async_resource::close_t, Token& t) {
+      return stdexec::just();
+    }
+  };
+
+  using just_token_t = decltype(stdexec::just(Token{}));
+  using just_error_t = decltype(stdexec::just_error(0));
+
+  friend exec::variant_sender<just_token_t, just_error_t>
+    tag_invoke(exec::async_resource::open_t, ErrorResource& r) noexcept {
+    return stdexec::just_error(42);
   }
 };
 
@@ -84,6 +102,22 @@ TEST_CASE("async_resource - stopped use_resources", "[sequence][async_resource]"
     },
     resource,
     stop_resource));
+  CHECK_FALSE(called);
+  CHECK(resource.n_open_called == 1);
+  CHECK(resource.n_close_called == 1);
+}
+
+TEST_CASE("async_resource - error use_resources", "[sequence][async_resource]") {
+  Resource resource;
+  ErrorResource error_resource;
+  bool called = false;
+  CHECK_THROWS(stdexec::sync_wait(exec::use_resources(
+    [&](Resource::Token& t1, ErrorResource::Token& t2) {
+      called = true;
+      return stdexec::just();
+    },
+    resource,
+    error_resource)));
   CHECK_FALSE(called);
   CHECK(resource.n_open_called == 1);
   CHECK(resource.n_close_called == 1);
