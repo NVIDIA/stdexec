@@ -67,7 +67,6 @@ jobs:
     runs-on: ubuntu-latest
     name: CI (CPU)
     needs:
-      - build-cpu-gcc11
       - build-cpu-clang12
       - build-cpu-gcc11-ubuntu2204
     steps:
