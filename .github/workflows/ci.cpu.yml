@@ -12,22 +12,6 @@ concurrency:
 
 jobs:
 
-  build-cpu-gcc11:
-    runs-on: ubuntu-latest
-    name: CPU (gcc 11, ubuntu 20.04)
-    steps:
-      - name: Checkout stdexec
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-      - name: Build and test CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu20.04
-        with:
-          cc: gcc-11
-          checks: build test
-          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
-          prebuild_command: |
-            apt update && apt upgrade g++-11 libstdc++-11-dev && apt install -y --no-install-recommends git libtbb-dev;
   build-cpu-clang12:
     runs-on: ubuntu-latest
     name: CPU (clang 12, ubuntu 20.04)
@@ -58,9 +42,10 @@ jobs:
         with:
           cc: gcc-11
           checks: build test
+          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
           cxxflags: "-fsanitize=thread"
           prebuild_command: |
-            apt update && apt install -y --no-install-recommends git;
+            apt update && apt install -y --no-install-recommends git libtbb-dev;
   build-cpu-gcc11-ubuntu2204-asan:
     runs-on: ubuntu-22.04
     name: CPU (gcc 11, ubuntu 22.04, ASAN)
