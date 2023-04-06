@@ -4168,7 +4168,8 @@ namespace stdexec {
         using __id = __receiver_;
 
         template <__one_of<_Set> _Tag, class... _As>
-          requires __minvocable<__result_sender<_Fun, _Set>, _As...>
+          requires (1 == __v<__minvoke<__mcount<__decayed_tuple<_As...>>, _Tuples...>>)
+                && __minvocable<__result_sender<_Fun, _Set>, _As...>
                 && sender_to<__minvoke<__result_sender<_Fun, _Set>, _As...>, _Receiver>
         friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
           try {
@@ -4740,9 +4741,6 @@ namespace stdexec {
 
     template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
     struct __operation1;
-
-    template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
-    struct __receiver1;
 
     // This receiver is to be completed on the execution context
     // associated with the scheduler. When the source sender
