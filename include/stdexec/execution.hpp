@@ -4079,16 +4079,20 @@ namespace stdexec {
   // [execution.senders.adaptors.let_stopped]
   namespace __let {
     template <class _Set>
-    inline constexpr __mstring __let_context = "In stdexec::let_value(Sender, Function)..."__csz;
+    constexpr auto __let_context() {
+      return "In stdexec::let_value(Sender, Function)..."__csz;
+    }
     template <>
-    inline constexpr __mstring __let_context<set_error_t> =
-      "In stdexec::let_error(Sender, Function)..."__csz;
+    constexpr auto __let_context<set_error_t>() {
+      return "In stdexec::let_error(Sender, Function)..."__csz;
+    }
     template <>
-    inline constexpr __mstring __let_context<set_stopped_t> =
-      "In stdexec::let_stopped(Sender, Function)..."__csz;
+    constexpr auto __let_context<set_stopped_t>() {
+      return "In stdexec::let_stopped(Sender, Function)..."__csz;
+    }
 
     template <class _Set>
-    using __on_not_callable = __callable_error<__let_context<_Set>>;
+    using __on_not_callable = __callable_error<__let_context<_Set>()>;
 
     template <class _Tp>
     using __decay_ref = __decay_t<_Tp>&;
