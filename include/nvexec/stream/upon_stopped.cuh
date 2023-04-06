@@ -112,14 +112,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Self, class Env>
       using completion_signatures = //
-        stdexec::__make_completion_signatures<
+        stdexec::__meval<
+          stdexec::__try_make_completion_signatures,
           stdexec::__copy_cvref_t<Self, Sender>,
           Env,
           stdexec::__with_error_invoke_t<
             stdexec::set_stopped_t,
             Fun,
             stdexec::__copy_cvref_t<Self, Sender>,
-            Env>,
+            Env,
+            stdexec::__callable_error<"In nvexec::upon_stopped(Sender, Function)..."__csz>>,
           stdexec::__q<stdexec::__compl_sigs::__default_set_value>,
           stdexec::__q<stdexec::__compl_sigs::__default_set_error>,
           stdexec::__set_value_invoke_t<Fun>>;

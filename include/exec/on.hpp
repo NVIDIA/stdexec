@@ -94,7 +94,7 @@ namespace exec {
       }
 
       template <class... _Ts>
-      using __self_t = __make_dependent_on<__start_on_kernel, _Ts...>;
+      using __self_t = __mfront<__start_on_kernel, _Ts...>;
 
       template <class _Sender, class _OldScheduler>
       auto transform_sender_(_Sender&& __sndr, _OldScheduler __old_sched) {
@@ -189,7 +189,7 @@ namespace exec {
       }
 
       template <class... _Ts>
-      using __self_t = __make_dependent_on<__continue_on_kernel, _Ts...>;
+      using __self_t = __mfront<__continue_on_kernel, _Ts...>;
 
       template <class _Sender, class _OldScheduler>
       auto transform_sender_(_Sender&& __sndr, _OldScheduler __old_sched) {

@@ -80,7 +80,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, const _Env& __env)
-          -> __make_completion_signatures<
+          -> __try_make_completion_signatures<
             __copy_cvref_t<_Self, _Item>,
             _Env,
             completion_signatures<>,

@@ -139,7 +139,9 @@ void test_awaitable_sender2() {
 
   static_assert(!ex::__get_completion_signatures::__with_member_alias<awaitable_sender_2>);
 
+#if STDEXEC_LEGACY_R5_CONCEPTS()
   static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_2>, dependent>);
+#endif
 }
 
 void test_awaitable_sender3() {
@@ -153,7 +155,9 @@ void test_awaitable_sender3() {
 
   static_assert(!ex::__get_completion_signatures::__with_member_alias<awaitable_sender_3>);
 
+#if STDEXEC_LEGACY_R5_CONCEPTS()
   static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_3>, dependent>);
+#endif
 }
 
 template <class Signatures>
@@ -170,7 +174,9 @@ void test_awaitable_sender4(Signatures*) {
 
   static_assert(!ex::__get_completion_signatures::__with_member_alias<awaitable_sender_4>);
 
+#if STDEXEC_LEGACY_R5_CONCEPTS()
   static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4>, dependent>);
+#endif
   static_assert(
     std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4, ex::empty_env>, Signatures>);
 }

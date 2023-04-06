@@ -556,7 +556,7 @@ namespace exec {
       }
      private:
       template <class _Self>
-      using __completions_t = __future_completions_t<__make_dependent_on<_Sender, _Self>, _Env>;
+      using __completions_t = __future_completions_t<__mfront<_Sender, _Self>, _Env>;
 
       explicit __future(std::unique_ptr<__future_state<_Sender, _Env>> __state) noexcept
         : __state_(std::move(__state)) {

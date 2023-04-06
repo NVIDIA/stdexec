@@ -23,7 +23,6 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace then {
-
     template <class Fun, class... As>
     __launch_bounds__(1) __global__ void kernel(Fun fn, As... as) {
       ::cuda::std::move(fn)(std::move(as)...);
@@ -153,14 +152,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Self, class Env>
       using completion_signatures = //
-        stdexec::__make_completion_signatures<
+        stdexec::__meval<
+          stdexec::__try_make_completion_signatures,
           stdexec::__copy_cvref_t<Self, Sender>,
           Env,
           stdexec::__with_error_invoke_t<
             stdexec::set_value_t,
             Fun,
             stdexec::__copy_cvref_t<Self, Sender>,
-            Env>,
+            Env,
+            stdexec::__callable_error<"In nvexec::then(Sender, Function)..."__csz>>,
           stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>,
           stdexec::__q<set_error>>;
 

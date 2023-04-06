@@ -164,7 +164,7 @@ namespace detail::a_sender {
       stdexec::__id<receiver_th<Receiver>>>;
 
     template <class Self, class Env>
-    using completion_signatures = stdexec::__make_completion_signatures<
+    using completion_signatures = stdexec::__try_make_completion_signatures<
       stdexec::__copy_cvref_t<Self, Sender>,
       Env,
       stdexec::completion_signatures<>,
@@ -227,7 +227,7 @@ namespace detail::a_receiverless_sender {
       stdexec::__id<Receiver>>;
 
     template <class Self, class Env>
-    using completion_signatures = stdexec::__make_completion_signatures<
+    using completion_signatures = stdexec::__try_make_completion_signatures<
       stdexec::__copy_cvref_t<Self, Sender>,
       Env,
       stdexec::completion_signatures<>>;

@@ -524,7 +524,7 @@ namespace exec {
         __minvoke<
           __with_default<__mbind_front_q<__set_values_sig_t, _Env>, completion_signatures<>>,
           _Senders...>,
-        __make_completion_signatures<
+        __try_make_completion_signatures<
           _Senders,
           _Env,
           completion_signatures<>,

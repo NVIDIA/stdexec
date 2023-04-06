@@ -113,7 +113,7 @@ namespace exec {
     using __add_counter = completion_signatures<set_value_t(_Int, _Args...)>;
 
     template <class _Sender, class _Env, class _Int>
-    using __completion_sigs = __make_completion_signatures<
+    using __completion_sigs = __try_make_completion_signatures<
       _Sender,
       _Env,
       completion_signatures<>,
