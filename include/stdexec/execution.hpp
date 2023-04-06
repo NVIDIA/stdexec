@@ -164,6 +164,7 @@ namespace stdexec {
   }
 
   using __get_completion_signatures::get_completion_signatures_t;
+  extern const get_completion_signatures_t get_completion_signatures;
 
   /////////////////////////////////////////////////////////////////////////////
   // env_of
@@ -591,8 +592,8 @@ namespace stdexec {
 
     template <class _Receiver, class _Tag, class... _Args>
     using __missing_completion_signal_t = //
-      __if<
-        __mbool<nothrow_tag_invocable<_Tag, _Receiver, _Args...>>,
+      __if_c<
+        nothrow_tag_invocable<_Tag, _Receiver, _Args...>,
         __found_completion_signature,
         _MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>>;
 
@@ -648,6 +649,76 @@ namespace stdexec {
     };
 
   /////////////////////////////////////////////////////////////////////////////
+  // Some utilities for debugging senders
+  namespace __debug {
+    struct __is_debug_env_t {
+      friend constexpr bool tag_invoke(forwarding_query_t, const __is_debug_env_t&) noexcept {
+        return true;
+      }
+      template <class _Env>
+        requires tag_invocable<__is_debug_env_t, _Env>
+      void operator()(_Env&&) const noexcept;
+    };
+    template <class _Env>
+    using __debug_env_t = __make_env_t<_Env, __with<__is_debug_env_t, bool>>;
+
+    template <class _Sig>
+    struct __completion;
+
+    template <class _Tag, class... _Args>
+    struct __completion<_Tag(_Args...)> {
+      template <class _Tag2, class... _Args2>
+        requires same_as<_Tag(_Args&&...), _Tag2(_Args2&&...)>
+      friend void tag_invoke(_Tag2, __completion&&, _Args2&&...) noexcept {
+        std::terminate();
+      }
+    };
+
+    struct __completion_signatures { };
+
+    struct _COMPLETION_SIGNATURES_MISMATCH_ { };
+
+    template <class _Sig>
+    struct _COMPLETION_SIGNATURE_ { };
+
+    template <class... _Sigs>
+    struct _IS_NOT_ONE_OF_ { };
+
+    template <class _Env, class _Sigs>
+    struct __debug_receiver;
+
+    template <class _Env>
+    struct __debug_receiver<_Env, __completion_signatures> {
+      using is_receiver = void;
+    };
+
+    template <class _Env, class... _Sigs>
+    struct __debug_receiver<_Env, completion_signatures<_Sigs...>> : __completion<_Sigs>... {
+      using is_receiver = void;
+      template <__completion_tag _Tag, class... _Args>
+      friend auto tag_invoke(_Tag, __ignore, _Args&&...) noexcept {
+        using _What =   //
+          __mexception< //
+            _COMPLETION_SIGNATURES_MISMATCH_,
+            _COMPLETION_SIGNATURE_<_Tag(_Args...)>,
+            _IS_NOT_ONE_OF_<_Sigs...>>;
+        static_assert(__ok<_What>,
+          "The sender claims to send a particular set of completions,"
+          " but in actual fact it completes with a result that is not"
+          " one of the declared completion signatures."
+        );
+      }
+
+      friend __debug_env_t<_Env> tag_invoke(get_env_t, __debug_receiver) noexcept {
+        std::terminate();
+      }
+    };
+  } // namespace __debug
+
+  template <class _Env>
+  concept __is_debug = tag_invocable<__debug::__is_debug_env_t, _Env>;
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
   namespace __get_completion_signatures {
     template <class _Sender, class _Env>
@@ -680,13 +751,17 @@ namespace stdexec {
                     __minvoke<__remove<void, __qf<set_value_t>>, _Result>,
                     set_error_t(std::exception_ptr)>(*)()) nullptr;
           }
-        }
 #if STDEXEC_LEGACY_R5_CONCEPTS()
-        else if constexpr (same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>) {
+        } else if constexpr (same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>) {
           return (dependent_completion_signatures<no_env>(*)()) nullptr;
-        }
 #endif
-        else {
+        } else if constexpr (__is_debug<_Env>) {
+          using __tag_invoke::tag_invoke;
+          // This ought to cause a hard error that indicates where the problem is.
+          using _Completions [[maybe_unused]] =
+            decltype(tag_invoke(get_completion_signatures, __declval<_Sender>(), __declval<_Env>()));
+          return (__debug::__completion_signatures (*)()) nullptr;
+        } else {
           return (void (*)()) nullptr;
         }
       }
@@ -699,8 +774,9 @@ namespace stdexec {
 #if STDEXEC_LEGACY_R5_CONCEPTS()
           || (same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>)
 #endif
-            )
-      constexpr auto operator()(_Sender&&, const _Env& = {}) const noexcept
+          || __is_debug<_Env>
+        )
+      constexpr auto operator()(_Sender&&, const _Env&) const noexcept
         -> decltype(__impl<_Sender, _Env>()()) {
         return {};
       }
@@ -1524,61 +1600,8 @@ namespace stdexec {
   using __sender_queries::forwarding_sender_query_t;
   inline constexpr forwarding_sender_query_t forwarding_sender_query{};
 
-  namespace __debug {
-    struct __is_debug_env_t {
-      friend constexpr bool tag_invoke(forwarding_query_t, const __is_debug_env_t&) noexcept {
-        return true;
-      }
-      template <class _Env>
-        requires tag_invocable<__is_debug_env_t, _Env>
-      void operator()(_Env&&) const noexcept;
-    };
-    template <class _Env>
-    using __debug_env_t = __make_env_t<_Env, __with<__is_debug_env_t, bool>>;
-
-    struct __debug_op_state {
-      __debug_op_state(auto&&);
-      __debug_op_state(__debug_op_state&&) = delete;
-      friend void tag_invoke(start_t, __debug_op_state&) noexcept;
-    };
-
-    template <class _Sig>
-    struct __completion;
-
-    template <class _Tag, class... _Args>
-    struct __completion<_Tag(_Args...)> {
-      friend void tag_invoke(_Tag, __completion&&, _Args&&...) noexcept;
-    };
-
-    template <class _Env, class _Sigs>
-    struct __debug_receiver;
-
-    template <class _Env, class... _Sigs>
-    struct __debug_receiver<_Env, completion_signatures<_Sigs...>> : __completion<_Sigs>... {
-      friend __debug_env_t<_Env> tag_invoke(get_env_t, __debug_receiver) noexcept;
-    };
-
-    template <class _Env>
-    struct __any_debug_receiver {
-      template <class... _Args>
-      friend void tag_invoke(set_value_t, __any_debug_receiver&&, _Args&&...) noexcept;
-      template <class _Error>
-      friend void tag_invoke(set_error_t, __any_debug_receiver&&, _Error&&) noexcept;
-      friend void tag_invoke(set_stopped_t, __any_debug_receiver&&) noexcept;
-      friend __debug_env_t<_Env> tag_invoke(get_env_t, __any_debug_receiver) noexcept;
-    };
-  } // namespace __debug
-
-  using __debug::__is_debug_env_t;
-  using __debug::__debug_env_t;
-
-  // BUGBUG maybe instead of the disjunction here we want to make
-  // get_completion_signatures recognize debug environments and return
-  // an empty list of completions when no tag_invoke overload can be
-  // found. https://github.com/brycelelbach/wg21_p2300_std_execution/issues/603
   template <class _Receiver, class _Sender>
   concept __receiver_from =
-    // tag_invocable<__is_debug_env_t, env_of_t<_Receiver>> ||
     receiver_of< _Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1633,7 +1656,7 @@ namespace stdexec {
       template <sender _Sender, receiver _Receiver>
         requires __connectable_with_tag_invoke<_Sender, _Receiver>
               || __callable<__connect_awaitable_t, _Sender, _Receiver>
-              || tag_invocable<__is_debug_env_t, env_of_t<_Receiver>>
+              || __is_debug<env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
@@ -1683,21 +1706,18 @@ namespace stdexec {
   // template <class _Sigs, class _Env = empty_env, class _Sender>
   //   void __debug_sender(_Sender&& __sndr, _Env = {});
   //
-  // template <class _Sender>
-  //   void __debug_sender(_Sender&& __sndr);
-  //
-  // template <class _Env, class _Sender>
-  //   void __debug_sender(_Sender&& __sndr, _Env);
+  // template <class _Env = empty_env, class _Sender>
+  //   void __debug_sender(_Sender&& __sndr, _Env = {});
   // ```
   //
   // **Usage:**
   //
-  // To find out where in a chain of senders, a sender is failing to connect
+  // To find out where in a chain of senders a sender is failing to connect
   // to a receiver, pass it to `__debug_sender`, optionally with an
   // environment argument; e.g. `__debug_sender(sndr [, env])`
   //
   // To find out why a sender will not connect to a receiver of a particular
-  // signature, specify the error and value types as an explicit template
+  // signature, specify the set of completion signatures as an explicit template
   // argument that names an instantiation of `completion_signatures`; e.g.:
   // `__debug_sender<completion_signatures<set_value_t(int)>>(sndr [, env])`.
   //
@@ -1717,21 +1737,25 @@ namespace stdexec {
   // constraint that failed.
   namespace __debug {
     template <class _Sigs, class _Env = empty_env, class _Sender>
-    void __debug_sender(_Sender&& __sndr, _Env = {}) {
-      using _Receiver = __debug_receiver<_Env, _Sigs>;
-      (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
+    void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
+      if (sizeof(_Sender) == ~0) { // never true
+        using _Receiver = __debug_receiver<_Env, _Sigs>;
+        auto __op = connect((_Sender&&) __sndr, _Receiver{});
+        start(__op);
+      }
     }
 
-    template <class _Sender>
-    void __debug_sender(_Sender&& __sndr) {
-      using _Receiver = __any_debug_receiver<empty_env>;
-      (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
-    }
-
-    template <class _Env, class _Sender>
-    void __debug_sender(_Sender&& __sndr, _Env) {
-      using _Receiver = __any_debug_receiver<_Env>;
-      (void) connect_t{}((_Sender&&) __sndr, _Receiver{});
+    template <class _Env = empty_env, class _Sender>
+    void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
+      if (sizeof(_Sender) == ~0) { // never true
+        using _Sigs = __completion_signatures_of_t<_Sender, __debug_env_t<_Env>>;
+        if constexpr (!same_as<_Sigs, __debug::__completion_signatures>) {
+          using _Receiver = __debug_receiver<_Env, _Sigs>;
+          static_assert(receiver_of<_Receiver, _Sigs>);
+          auto __op = connect((_Sender&&) __sndr, _Receiver{});
+          start(__op);
+        }
+      }
     }
   } // namespace __debug
 
