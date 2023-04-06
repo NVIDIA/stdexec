@@ -72,7 +72,9 @@ TEST_CASE("bulk forwards multiple values on GPU", "[cuda][stream][adaptors][bulk
   REQUIRE(d == 4.2);
 }
 
-TEST_CASE("bulk forwards values that can be taken by reference on GPU", "[cuda][stream][adaptors][bulk]") {
+TEST_CASE(
+  "bulk forwards values that can be taken by reference on GPU",
+  "[cuda][stream][adaptors][bulk]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<1024> flags_storage{};

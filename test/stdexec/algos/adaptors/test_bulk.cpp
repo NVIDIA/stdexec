@@ -150,9 +150,7 @@ TEST_CASE("bulk forwards values that can be taken by reference", "[adaptors][bul
   std::iota(vals_expected.begin(), vals_expected.end(), 0);
 
   auto snd = ex::just(std::move(vals)) //
-           | ex::bulk(n, [&](int i, std::vector<int>& vals) {
-               vals[i] = i;
-             });
+           | ex::bulk(n, [&](int i, std::vector<int>& vals) { vals[i] = i; });
   auto op = ex::connect(std::move(snd), expect_value_receiver{vals_expected});
   ex::start(op);
 }
@@ -249,14 +247,8 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
       std::iota(vals_expected.begin(), vals_expected.end(), 1);
 
       auto snd = ex::transfer_just(sch, std::move(vals))
-               | ex::bulk(
-                   n,
-                   [](int idx, std::vector<int>& vals) {
-                     vals[idx] = idx;
-                   })
-               | ex::bulk(n, [](int idx, std::vector<int>& vals) {
-                   ++vals[idx];
-                 });
+               | ex::bulk(n, [](int idx, std::vector<int>& vals) { vals[idx] = idx; })
+               | ex::bulk(n, [](int idx, std::vector<int>& vals) { ++vals[idx]; });
       auto [vals_actual] = stdexec::sync_wait(std::move(snd)).value();
 
       CHECK(vals_actual == vals_expected);

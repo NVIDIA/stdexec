@@ -144,7 +144,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Self, class Env>
       using completion_signatures = //
-        stdexec::__make_completion_signatures<
+        stdexec::__try_make_completion_signatures<
           stdexec::__copy_cvref_t<Self, Sender>,
           Env,
           stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
