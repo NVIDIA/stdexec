@@ -69,7 +69,7 @@ namespace exec {
         template <__decays_to<__t> _Self, class _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
         friend stdexec::__t<
-          __operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
+          __operation_state<stdexec::__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __r) noexcept(
             (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
              && ...)) {
@@ -82,6 +82,9 @@ namespace exec {
           -> __completion_signatures_t<_Self, _Env>;
 
        public:
+        using is_sender = void;
+        using __id = __sender;
+
         template <class _Sender>
           requires __one_of<__decay_t<_Sender>, stdexec::__t<_SenderIds>...>
         __t(_Sender&& __sender) noexcept(

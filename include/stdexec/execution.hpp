@@ -4934,6 +4934,10 @@ namespace stdexec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+          -> dependent_completion_signatures<_Env>;
+
+        template <__decays_to<__t> _Self, class _Env>
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
           -> __try_make_completion_signatures<
             __copy_cvref_t<_Self, _Sender>,
             _Env,
@@ -4941,7 +4945,8 @@ namespace stdexec {
               __scheduler_completions_t<_Env>,
               __input_sender_with_error_t<_Env>>,
             __decay_signature<set_value_t>,
-            __decay_signature<set_error_t>>;
+            __decay_signature<set_error_t>>
+            requires true;
       };
     };
 

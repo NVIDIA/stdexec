@@ -41,6 +41,7 @@ namespace exec {
       any_receiver_ref<                                                         //
         completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()> //
         >::any_sender<>::any_scheduler<>;
+    static_assert(scheduler<__any_scheduler>);
 
     template <class _Ty>
     concept __stop_token_provider = //

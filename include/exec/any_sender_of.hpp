@@ -503,6 +503,8 @@ namespace exec {
           }
         } __env_;
        public:
+        using is_receiver = void;
+
         template <__none_of<__ref, const __ref, __env_t, const __env_t> _Rcvr>
           requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
                 && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
@@ -561,6 +563,7 @@ namespace exec {
       using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
 
       struct __rec {
+        using is_receiver = void;
         __operation_base<_Receiver, _Sigs, _Queries>* __op_;
 
         template <
@@ -804,6 +807,8 @@ namespace exec {
 
    public:
     using is_receiver = void;
+    using __t = any_receiver_ref;
+    using __id = any_receiver_ref;
 
     template <stdexec::__none_of<any_receiver_ref, const any_receiver_ref, __env_t, const __env_t>
                 _Receiver>
@@ -868,6 +873,9 @@ namespace exec {
 
         __scheduler_base __scheduler_;
        public:
+        using __t = any_scheduler;
+        using __id = any_scheduler;
+
         template <class _Scheduler>
           requires(
             !stdexec::__decays_to<_Scheduler, any_scheduler> && stdexec::scheduler<_Scheduler>)

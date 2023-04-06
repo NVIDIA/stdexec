@@ -948,6 +948,7 @@ namespace exec {
       class __schedule_sender {
         __schedule_env __env_;
        public:
+        using is_sender = void;
         using __id = __schedule_sender;
         using __t = __schedule_sender;
 
@@ -984,6 +985,7 @@ namespace exec {
 
       class __schedule_after_sender {
        public:
+        using is_sender = void;
         using __id = __schedule_after_sender;
         using __t = __schedule_after_sender;
 
