@@ -258,12 +258,17 @@ namespace exec {
         if (this->__parent_op_->template __increase_n_ready_items<_Index>(this)) {
           // 1. Collect all results and assemble one big tuple
           __concat_result_types<_ResultTuple> __result = std::apply(
-            [&](auto&... __queues) {
-              return std::tuple_cat(
-                (__decay_t<decltype(*__queues.front()->__item_result_)>&&) *__queues.front()
-                  ->__item_result_...);
+            [&]<same_as<std::mutex>... _Mutex>(_Mutex&... __mutexes) {
+              std::scoped_lock __lock(__mutexes...);
+              return std::apply(
+                [&](auto&... __queues) {
+                  return std::tuple_cat(
+                    (__decay_t<decltype(*__queues.front()->__item_result_)>&&) *__queues.front()
+                      ->__item_result_...);
+                },
+                this->__parent_op_->__item_queues_);
             },
-            this->__parent_op_->__item_queues_);
+            this->__parent_op_->__mutexes_);
 
           // 2. pop front items from shared queues into a private storage of this op.
           std::apply(
@@ -272,13 +277,7 @@ namespace exec {
               this->__items_.emplace(std::apply(
                 [](auto&... __queues) { return std::tuple{__queues.pop_front()...}; },
                 this->__parent_op_->__item_queues_));
-              const int __count = std::apply(
-                [](auto&... __queues) {
-                  return ((__queues.empty() ? 0 : __queues.front()->__item_ready_) + ...);
-                },
-                this->__parent_op_->__item_queues_);
-              STDEXEC_ASSERT(__count < static_cast<int>(std::tuple_size_v<_ResultTuple>));
-              this->__parent_op_->__n_ready_next_items_.store(__count, std::memory_order_relaxed);
+              this->__parent_op_->__n_ready_next_items_.store(-1, std::memory_order_relaxed);
             },
             this->__parent_op_->__mutexes_);
 
@@ -299,6 +298,34 @@ namespace exec {
               __t<__zipped_receiver<_ReceiverId, _ResultTuple, _ErrorsVariant>>{this});
           }});
           stdexec::start(__op);
+
+          // 4. pop front items from shared queues into a private storage of this op.
+          bool __next_completion = false;
+          std::apply(
+            [&]<same_as<std::mutex>... _Mutex>(_Mutex&... __mutexes) {
+              std::scoped_lock __lock(__mutexes...);
+              const int __count = std::apply(
+                [](auto&... __queues) {
+                  return ((__queues.empty() ? 0 : __queues.front()->__item_ready_) + ...);
+                },
+                this->__parent_op_->__item_queues_);
+              if (__count == std::tuple_size_v<_ResultTuple>) {
+                this->__parent_op_->__n_ready_next_items_.store(
+                  __count - 1, std::memory_order_relaxed);
+                __next_completion = true;
+              } else {
+                STDEXEC_ASSERT(__count < static_cast<int>(std::tuple_size_v<_ResultTuple>));
+                this->__parent_op_->__n_ready_next_items_.store(__count, std::memory_order_relaxed);
+              }
+            },
+            this->__parent_op_->__mutexes_);
+
+          // 5. If all next items are ready, then start the next zipped operation
+          if (__next_completion) {
+            static_cast<__item_operation_base*>(
+              std::get<_Index>(this->__parent_op_->__item_queues_).front())
+              ->__notify_result_completion();
+          }
         }
       }
 
