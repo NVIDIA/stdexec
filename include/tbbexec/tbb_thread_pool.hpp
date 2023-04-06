@@ -44,8 +44,8 @@ namespace tbbexec {
 
      public:
       struct scheduler {
-        using T = scheduler;
-        using ID = scheduler;
+        using __t = scheduler;
+        using __id = scheduler;
         bool operator==(const scheduler&) const = default;
 
        private:
@@ -54,8 +54,9 @@ namespace tbbexec {
 
         class sender {
          public:
-          using T = sender;
-          using ID = sender;
+          using is_sender = void;
+          using __t = sender;
+          using __id = sender;
           using completion_signatures =
             stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
@@ -77,6 +78,10 @@ namespace tbbexec {
           friend typename DerivedPoolType::scheduler
             tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender s) noexcept {
             return typename DerivedPoolType::scheduler{s.pool_};
+          }
+
+          friend const sender& tag_invoke(stdexec::get_env_t, const sender& s) noexcept {
+            return s;
           }
 
           friend struct DerivedPoolType::tbb_thread_pool::scheduler;
@@ -215,6 +220,7 @@ namespace tbbexec {
 
         template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
         struct bulk_receiver {
+          using is_receiver = void;
           using Sender = stdexec::__t<SenderId>;
           using Receiver = stdexec::__t<ReceiverId>;
 
@@ -302,6 +308,7 @@ namespace tbbexec {
 
         template <class SenderId, std::integral Shape, class FunId>
         struct bulk_sender {
+          using is_sender = void;
           using Sender = stdexec::__t<SenderId>;
           using Fun = stdexec::__t<FunId>;
 

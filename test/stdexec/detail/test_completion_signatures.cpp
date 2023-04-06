@@ -120,9 +120,9 @@ TEST_CASE("__error_types_of_t can also transform error types", "[detail][complet
   using set_error_f = stdexec::__q<set_error_sig>;
   using tr = stdexec::__transform<set_error_f>;
 
-  using sig_eptr = stdexec::__error_types_of_t<snd_eptr_t, ex::no_env, tr>;
-  using sig_ec = stdexec::__error_types_of_t<snd_ec_t, ex::no_env, tr>;
-  using sig_str = stdexec::__error_types_of_t<snd_str_t, ex::no_env, tr>;
+  using sig_eptr = stdexec::__error_types_of_t<snd_eptr_t, ex::__default_env, tr>;
+  using sig_ec = stdexec::__error_types_of_t<snd_ec_t, ex::__default_env, tr>;
+  using sig_str = stdexec::__error_types_of_t<snd_str_t, ex::__default_env, tr>;
 
   static_assert(is_same_v<sig_eptr, stdexec::__types<ex::set_error_t(exception_ptr)>>);
   static_assert(is_same_v<sig_ec, stdexec::__types<ex::set_error_t(error_code)>>);
@@ -178,7 +178,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-  "make_completion_signatures with no_env can replicate the completion signatures of input "
+  "make_completion_signatures with __default_env can replicate the completion signatures of input "
   "senders",
   "[detail][completion_signatures]") {
   using snd_int_t = decltype(ex::just(0));
@@ -187,11 +187,11 @@ TEST_CASE(
   using snd_ec_t = decltype(ex::just_error(error_code{}));
   using snd_stopped_t = decltype(ex::just_stopped());
 
-  using cs_int = ex::make_completion_signatures<snd_int_t, ex::no_env>;
-  using cs_double_char = ex::make_completion_signatures<snd_double_char_t, ex::no_env>;
-  using cs_eptr = ex::make_completion_signatures<snd_eptr_t, ex::no_env>;
-  using cs_ec = ex::make_completion_signatures<snd_ec_t, ex::no_env>;
-  using cs_stopped = ex::make_completion_signatures<snd_stopped_t, ex::no_env>;
+  using cs_int = ex::make_completion_signatures<snd_int_t, ex::__default_env>;
+  using cs_double_char = ex::make_completion_signatures<snd_double_char_t, ex::__default_env>;
+  using cs_eptr = ex::make_completion_signatures<snd_eptr_t, ex::__default_env>;
+  using cs_ec = ex::make_completion_signatures<snd_ec_t, ex::__default_env>;
+  using cs_stopped = ex::make_completion_signatures<snd_stopped_t, ex::__default_env>;
 
   expect_val_types<cs_int, stdexec::__types<stdexec::__types<int>>>();
   expect_val_types<cs_double_char, stdexec::__types<stdexec::__types<double, char>>>();
@@ -212,7 +212,7 @@ TEST_CASE(
   using snd_double_t = decltype(ex::just_error(std::exception_ptr{}));
   using cs_with_ec = ex::make_completion_signatures<
     snd_double_t,
-    ex::no_env,
+    ex::__default_env,
     ex::completion_signatures<ex::set_error_t(error_code)>>;
 
   expect_val_types<cs_with_ec, stdexec::__types<>>();
@@ -225,7 +225,7 @@ TEST_CASE(
   using snd_double_t = decltype(ex::just(3.14));
   using cs_with_ec = ex::make_completion_signatures<
     snd_double_t,
-    ex::no_env,
+    ex::__default_env,
     ex::completion_signatures<ex::set_error_t(exception_ptr)>>;
 
   // exception_ptr appears only once
@@ -238,7 +238,7 @@ TEST_CASE(
   using snd_double_t = decltype(ex::just(3.14));
   using cs = ex::make_completion_signatures<
     snd_double_t,
-    ex::no_env,
+    ex::__default_env,
     ex::completion_signatures< //
       ex::set_value_t(int),    //
       ex::set_value_t(double)  //
@@ -260,7 +260,7 @@ TEST_CASE(
   using snd_double_t = decltype(ex::just(3.14));
   using cs = ex::make_completion_signatures<
     snd_double_t,
-    ex::no_env,
+    ex::__default_env,
     ex::completion_signatures< //
       ex::set_value_t(int),    //
       ex::set_value_t(double)  //
@@ -282,7 +282,7 @@ TEST_CASE(
   using snd_double_t = decltype(ex::just_error(std::exception_ptr{}));
   using cs = ex::make_completion_signatures<
     snd_double_t,
-    ex::no_env,
+    ex::__default_env,
     ex::completion_signatures<                  //
       ex::set_error_t(error_code)               //
       >,                                        //
@@ -299,7 +299,7 @@ using my_error_types = Variant<exception_ptr>;
 
 TEST_CASE("error_types_of_t can be used to get error types", "[detail][completion_signatures]") {
   using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
-  using err_t = ex::error_types_of_t<snd_t, ex::no_env, stdexec::__types>;
+  using err_t = ex::error_types_of_t<snd_t, ex::__default_env, stdexec::__types>;
   static_assert(is_same_v<err_t, stdexec::__types<>>);
 }
 
@@ -309,6 +309,6 @@ TEST_CASE(
   using tr = stdexec::__transform<stdexec::__q<set_error_sig>>;
 
   using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
-  using err_t = ex::error_types_of_t<snd_t, ex::no_env, tr::template __f>;
+  using err_t = ex::error_types_of_t<snd_t, ex::__default_env, tr::template __f>;
   static_assert(is_same_v<err_t, stdexec::__types<>>);
 }
