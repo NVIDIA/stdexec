@@ -686,8 +686,8 @@ namespace exec {
         }
 
         __unique_operation_storage __connect(__receiver_ref_t __receiver) {
-          return __storage_.__get_vtable()
-            ->__connect_(__storage_.__get_object_pointer(), (__receiver_ref_t&&) __receiver);
+          return __storage_.__get_vtable()->__connect_(
+            __storage_.__get_object_pointer(), (__receiver_ref_t&&) __receiver);
         }
 
         explicit operator bool() const noexcept {
@@ -753,8 +753,8 @@ namespace exec {
       template <same_as<__scheduler> _Self>
       friend __sender_t tag_invoke(schedule_t, const _Self& __self) noexcept {
         STDEXEC_ASSERT(__self.__storage_.__get_vtable()->__schedule_);
-        return __self.__storage_.__get_vtable()
-          ->__schedule_(__self.__storage_.__get_object_pointer());
+        return __self.__storage_.__get_vtable()->__schedule_(
+          __self.__storage_.__get_object_pointer());
       }
 
       template <class _Tag, same_as<__scheduler> _Self, class... _As>
@@ -762,8 +762,8 @@ namespace exec {
       friend auto tag_invoke(_Tag, const _Self& __self, _As&&... __as) noexcept(
         __nothrow_callable<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...>)
         -> __call_result_t<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...> {
-        return __self.__storage_.__get_vtable()
-          ->__queries()(_Tag{}, __self.__storage_.__get_object_pointer(), (_As&&) __as...);
+        return __self.__storage_.__get_vtable()->__queries()(
+          _Tag{}, __self.__storage_.__get_object_pointer(), (_As&&) __as...);
       }
 
       friend bool operator==(const __scheduler& __self, const __scheduler& __other) noexcept {

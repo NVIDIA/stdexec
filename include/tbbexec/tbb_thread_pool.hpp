@@ -327,7 +327,7 @@ namespace tbbexec {
             stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
 
           template <class Self, class Env>
-          using completion_signatures = stdexec::__make_completion_signatures<
+          using completion_signatures = stdexec::__try_make_completion_signatures<
             stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             with_error_invoke_t<Fun, stdexec::__copy_cvref_t<Self, Sender>, Env>,

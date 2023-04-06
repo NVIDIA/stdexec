@@ -23,6 +23,7 @@
 
 namespace stdexec {
 
+  template <class...>
   struct __undefined;
 
   struct __ { };
@@ -95,7 +96,11 @@ namespace stdexec {
   using __msize_t = char[_Np + 1];
 
   template <class _Tp>
-  inline constexpr auto __v = _Tp::value;
+  extern const __undefined<_Tp> __v;
+
+  template <class _Tp>
+    requires __typename<__mtypeof<_Tp::value>>
+  inline constexpr auto __v<_Tp> = _Tp::value;
 
   template <class _Tp, class _Up>
   inline constexpr bool __v<std::is_same<_Tp, _Up>> = false;
@@ -136,6 +141,10 @@ namespace stdexec {
       : __what_{__chars...} {
     }
 
+    static constexpr std::size_t __length() noexcept {
+      return _Len;
+    }
+
     char const __what_[_Len];
   };
 
@@ -145,6 +154,12 @@ namespace stdexec {
   constexpr __mstring<sizeof...(_Str)> operator""__csz() noexcept {
     return {_Str...};
   }
+#elif STDEXEC_NVHPC()
+  // BUGBUG TODO This is to work around an unknown EDG bug
+  template <__mstring _Str>
+  constexpr auto operator""__csz() noexcept {
+    return _Str;
+  }
 #else
   // Use a standard user-defined string literal template
   template <__mstring _Str>
@@ -153,21 +168,17 @@ namespace stdexec {
   }
 #endif
 
-  struct __ok {
-    static constexpr bool __value = true;
-
-    static constexpr bool __diagnose() {
+  struct __msuccess {
+    constexpr bool operator()() const noexcept {
       return true;
     }
   };
 
   template <class _What, class... _With>
   struct _ERROR_ {
-    _ERROR_ operator,(__ok);
-    static constexpr bool __value = false;
+    _ERROR_ operator,(__msuccess);
 
-    static constexpr auto __diagnose() {
-      _What::__what();
+    constexpr bool operator()() const noexcept {
       return false;
     }
   };
@@ -176,21 +187,18 @@ namespace stdexec {
   using __mexception = _ERROR_<_What, _With...>;
 
   template <class>
-  extern __ok __test;
+  extern __msuccess __ok_v;
 
   template <class _What, class... _With>
-  extern __mexception<_What, _With...> __test<__mexception<_What, _With...>>;
+  extern __mexception<_What, _With...> __ok_v<__mexception<_What, _With...>>;
 
   template <class _Ty>
-  using __is_ok = decltype(__test<_Ty>);
+  using __ok_t = decltype(__ok_v<_Ty>);
 
   template <class... _Ts>
-  using __error_or_ok = decltype((__is_ok<void>(), ..., __is_ok<_Ts>()));
+  using __disp = decltype((__ok_t<void>(), ..., __ok_t<_Ts>()));
 
-  template <class... _Ts>
-  concept __diagnose_all = __error_or_ok<_Ts...>::__diagnose();
-
-  template <bool>
+  template <bool _AllOK>
   struct __i {
     template <template <class...> class _Fn, class... _Args>
     using __g = _Fn<_Args...>;
@@ -199,14 +207,43 @@ namespace stdexec {
   template <>
   struct __i<false> {
     template <template <class...> class, class... _Args>
-    using __g = __error_or_ok<_Args...>;
+    using __g = __disp<_Args...>;
   };
 
+  template <class _Arg>
+  concept __ok = __ok_t<_Arg>()();
+
+  template <class _Arg>
+  concept __merror = !__ok<_Arg>;
+
   template <class... _Args>
-  concept _Ok = (__is_ok<_Args>::__value && ...);
+  concept _Ok = (__ok<_Args> && ...);
+
+#if STDEXEC_NVHPC()
+  // Most compilers memoize alias template specializations, but
+  // nvc++ does not. So we memoize the type computations by
+  // indirecting through a class template specialization.
+  template <template <class...> class _Fn, class... _Args>
+  using __meval__ = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
+
+  template <template <class...> class _Fn, class... _Args>
+  struct __meval_ { };
+
+  template <template <class...> class _Fn, class... _Args>
+    requires __typename<__meval__<_Fn, _Args...>>
+  struct __meval_<_Fn, _Args...> {
+    using __t = __meval__<_Fn, _Args...>;
+  };
+
+  template <template <class...> class _Fn, class... _Args>
+  using __meval = __t<__meval_<_Fn, _Args...>>;
+
+#else
 
   template <template <class...> class _Fn, class... _Args>
   using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
+
+#endif
 
   template <class _Fn, class... _Args>
   using __minvoke = __meval<_Fn::template __f, _Args...>;
@@ -241,6 +278,12 @@ namespace stdexec {
   template <class _Fn, class... _Args>
   concept __minvocable = __valid<_Fn::template __f, _Args...>;
 
+  template <template <class...> class _Tp, class... _Args>
+  concept __msucceeds = __valid<_Tp, _Args...> && __ok<__meval<_Tp, _Args...>>;
+
+  template <class _Fn, class... _Args>
+  concept __minvocable_succeeds = __minvocable<_Fn, _Args...> && __ok<__minvoke<_Fn, _Args...>>;
+
   template <class _Fn, class... _Args>
   struct __force_minvoke_ {
     using __t = __minvoke<_Fn, _Args...>;
@@ -267,13 +310,8 @@ namespace stdexec {
       using __f = _True;
     };
 
-#if STDEXEC_NVHPC()
     template <class _Pred, class _True, class... _False>
-    using __f = __minvoke<__<_Pred::value>, _True, _False...>;
-#else
-    template <class _Pred, class _True, class... _False>
-    using __f = __minvoke<__<__v<_Pred>>, _True, _False...>;
-#endif
+    using __f = __minvoke<__<static_cast<bool>(__v<_Pred>)>, _True, _False...>;
   };
 
   template <>
@@ -315,13 +353,7 @@ namespace stdexec {
     "The specified meta-function could not be evaluated with the types provided."__csz;
 
   template <__mstring _Diagnostic = __mbad_substitution>
-  struct _BAD_SUBSTITUTION_ {
-    [[deprecated(
-      "The specified meta-function could not be evaluated with the types "
-      "provided.")]] static constexpr void
-      __what() {
-    }
-  };
+  struct _BAD_SUBSTITUTION_ { };
 
   template <class... _Args>
   struct _WITH_TYPES_ { };
@@ -350,6 +382,9 @@ namespace stdexec {
 
   template <class _Fn, class... _Args>
   using __mtry_invoke = __minvoke<__mtry_catch<_Fn, _WITH_META_FUNCTION_<_Fn>>, _Args...>;
+
+  template <class _Ty, class... _Default>
+  using __msuccess_or_t = __if_c<__ok<_Ty>, _Ty, _Default...>;
 
   template <class _Fn, class _Continuation = __q<__types>>
   struct __transform {
@@ -452,6 +487,11 @@ namespace stdexec {
 
   template <class _Fn, class _Tp>
   struct __uncurry_;
+
+  template <__merror _Fn, class _Tp>
+  struct __uncurry_<_Fn, _Tp> {
+    using __t = _Fn;
+  };
 
   template <class _Fn, template <class...> class _Ap, class... _As>
     requires __minvocable<_Fn, _As...>
