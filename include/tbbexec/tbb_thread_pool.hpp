@@ -80,8 +80,7 @@ namespace tbbexec {
             return typename DerivedPoolType::scheduler{s.pool_};
           }
 
-          friend const sender&
-            tag_invoke(stdexec::get_env_t, const sender& s) noexcept {
+          friend const sender& tag_invoke(stdexec::get_env_t, const sender& s) noexcept {
             return s;
           }
 

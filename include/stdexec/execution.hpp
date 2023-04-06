@@ -317,6 +317,12 @@ namespace stdexec {
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
 
+#if STDEXEC_LEGACY_R5_CONCEPTS()
+  using __default_env = no_env;
+#else
+  using __default_env = empty_env;
+#endif
+
   template <class _EnvProvider>
   concept environment_provider = //
     requires(_EnvProvider& __ep) {
@@ -657,6 +663,7 @@ namespace stdexec {
     struct get_completion_signatures_t {
       template <class _Sender, class _Env>
       static auto __impl() {
+        static_assert(STDEXEC_LEGACY_R5_CONCEPTS() || !same_as<_Env, no_env>);
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
         if constexpr (__with_tag_invoke<_Sender, _Env>) {
@@ -684,7 +691,7 @@ namespace stdexec {
         }
       }
 
-      template <class _Sender, class _Env = no_env>
+      template <class _Sender, class _Env = __default_env>
         requires(
           __with_tag_invoke<_Sender, _Env> //
           || __with_member_alias<_Sender>  //
@@ -730,6 +737,10 @@ namespace stdexec {
     sender<_Sender> && //
     __with_completion_signatures<_Sender, _Env>;
 
+  template <class _Sender, class _Env = empty_env>
+    requires sender_in<_Sender, _Env>
+  using completion_signatures_of_t = __completion_signatures_of_t<_Sender, _Env>;
+
 #else
   template <class _Sender, class _Env>
   constexpr bool __sender_r7() noexcept {
@@ -762,7 +773,6 @@ namespace stdexec {
 
   template <class _Sender, class _Env = empty_env>
   concept sender_in = sender<_Sender, _Env>;
-#endif
 
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender_in<S, Ctx> are both true, then they
@@ -781,6 +791,7 @@ namespace stdexec {
   template <class _Sender, class _Env = no_env>
     requires sender_in<_Sender, _Env>
   using completion_signatures_of_t = __t<__checked_completion_signatures<_Sender, _Env>>;
+#endif
 
   struct __not_a_variant {
     __not_a_variant() = delete;
@@ -843,7 +854,7 @@ namespace stdexec {
 
   template <                             //
     class _Sender,                       //
-    class _Env = no_env,                 //
+    class _Env = __default_env,          //
     class _Tuple = __q<__decayed_tuple>, //
     class _Variant = __q<__variant>>
   using __try_value_types_of_t =         //
@@ -851,71 +862,71 @@ namespace stdexec {
 
   template <                             //
     class _Sender,                       //
-    class _Env = no_env,                 //
+    class _Env = __default_env,          //
     class _Tuple = __q<__decayed_tuple>, //
     class _Variant = __q<__variant>>
     requires sender_in<_Sender, _Env>
   using __value_types_of_t = //
     __msuccess_or_t<__try_value_types_of_t<_Sender, _Env, _Tuple, _Variant>>;
 
-  template <class _Sender, class _Env = no_env, class _Variant = __q<__variant>>
+  template <class _Sender, class _Env = __default_env, class _Variant = __q<__variant>>
   using __try_error_types_of_t =
     __gather_completions_for<set_error_t, _Sender, _Env, __q<__midentity>, _Variant>;
 
-  template <class _Sender, class _Env = no_env, class _Variant = __q<__variant>>
+  template <class _Sender, class _Env = __default_env, class _Variant = __q<__variant>>
     requires sender_in<_Sender, _Env>
   using __error_types_of_t = __msuccess_or_t<__try_error_types_of_t<_Sender, _Env, _Variant>>;
 
   template <                                            //
     class _Sender,                                      //
-    class _Env = no_env,                                //
+    class _Env = __default_env,                         //
     template <class...> class _Tuple = __decayed_tuple, //
     template <class...> class _Variant = __variant>
     requires sender_in<_Sender, _Env>
   using value_types_of_t = __value_types_of_t<_Sender, _Env, __q<_Tuple>, __q<_Variant>>;
 
-  template <class _Sender, class _Env = no_env, template <class...> class _Variant = __variant>
+  template <class _Sender, class _Env = __default_env, template <class...> class _Variant = __variant>
     requires sender_in<_Sender, _Env>
   using error_types_of_t = __error_types_of_t<_Sender, _Env, __q<_Variant>>;
 
-  template <class _Tag, class _Sender, class _Env = no_env>
+  template <class _Tag, class _Sender, class _Env = __default_env>
   using __try_count_of = //
     __compl_sigs::__maybe_for_all_sigs<
       __completion_signatures_of_t<_Sender, _Env>,
       __q<__mfront>,
       __mcount<_Tag>>;
 
-  template <class _Tag, class _Sender, class _Env = no_env>
+  template <class _Tag, class _Sender, class _Env = __default_env>
     requires sender_in<_Sender, _Env>
   using __count_of = __msuccess_or_t<__try_count_of<_Tag, _Sender, _Env>>;
 
-  template <class _Tag, class _Sender, class _Env = no_env>
+  template <class _Tag, class _Sender, class _Env = __default_env>
     requires __valid<__count_of, _Tag, _Sender, _Env>
   inline constexpr bool __sends = (__v<__count_of<_Tag, _Sender, _Env>> != 0);
 
-  template <class _Sender, class _Env = no_env>
+  template <class _Sender, class _Env = __default_env>
     requires __valid<__count_of, set_stopped_t, _Sender, _Env>
   inline constexpr bool sends_stopped = __sends<set_stopped_t, _Sender, _Env>;
 
-  template <class _Sender, class _Env = no_env>
+  template <class _Sender, class _Env = __default_env>
   using __single_sender_value_t =
     __value_types_of_t<_Sender, _Env, __msingle_or<void>, __q<__msingle>>;
 
-  template <class _Sender, class _Env = no_env>
+  template <class _Sender, class _Env = __default_env>
   using __single_value_variant_sender_t = value_types_of_t<_Sender, _Env, __types, __msingle>;
 
-  template <class _Sender, class _Env = no_env>
+  template <class _Sender, class _Env = __default_env>
   concept __single_typed_sender =
     sender_in<_Sender, _Env> && __valid<__single_sender_value_t, _Sender, _Env>;
 
-  template <class _Sender, class _Env = no_env>
+  template <class _Sender, class _Env = __default_env>
   concept __single_value_variant_sender =
     sender_in<_Sender, _Env> && __valid<__single_value_variant_sender_t, _Sender, _Env>;
 
   template <class... Errs>
   using __nofail = __mbool<sizeof...(Errs) == 0>;
 
-  template <class _Sender, class _Env = no_env>
+  template <class _Sender, class _Env = __default_env>
   concept __nofail_sender =
     sender_in<_Sender, _Env> && (__v<error_types_of_t<_Sender, _Env, __nofail>>);
 
@@ -966,7 +977,7 @@ namespace stdexec {
 
     template <                                                    //
       class _Sender,                                              //
-      class _Env = no_env,                                        //
+      class _Env = __default_env,                                 //
       class _Sigs = completion_signatures<>,                      //
       class _SetValue = __q<__default_set_value>,                 //
       class _SetError = __q<__default_set_error>,                 //
@@ -1003,7 +1014,7 @@ namespace stdexec {
   //
   //  template <
   //    sender Sndr,
-  //    class Env = no_env,
+  //    class Env = __default_env,
   //    class AddlSigs = completion_signatures<>,
   //    template <class...> class SetValue = __default_set_value,
   //    template <class> class SetError = __default_set_error,
@@ -1051,7 +1062,7 @@ namespace stdexec {
   //  SendsStopped>` is an alias for an empty struct
   template <                                                                 //
     class _Sender,                                                           //
-    class _Env = no_env,                                                     //
+    class _Env = __default_env,                                              //
     __valid_completion_signatures<_Env> _Sigs = completion_signatures<>,     //
     template <class...> class _SetValue = __compl_sigs::__default_set_value, //
     template <class> class _SetError = __compl_sigs::__default_set_error,    //
@@ -1742,7 +1753,7 @@ namespace stdexec {
   template <class _Sig>
   using __tag_of_sig_t = decltype(stdexec::__tag_of_sig_((_Sig*) nullptr));
 
-  template <class _Sender, class _SetSig, class _Env = no_env>
+  template <class _Sender, class _SetSig, class _Env = __default_env>
   concept sender_of =
     sender_in<_Sender, _Env>
     && same_as<
@@ -4082,10 +4093,12 @@ namespace stdexec {
     struct __on_not_callable_ {
       using __t = __callable_error<"In stdexec::let_value(Sender, Function)..."__csz>;
     };
+
     template <>
     struct __on_not_callable_<set_error_t> {
       using __t = __callable_error<"In stdexec::let_error(Sender, Function)..."__csz>;
     };
+
     template <>
     struct __on_not_callable_<set_stopped_t> {
       using __t = __callable_error<"In stdexec::let_stopped(Sender, Function)..."__csz>;
@@ -4946,7 +4959,7 @@ namespace stdexec {
               __input_sender_with_error_t<_Env>>,
             __decay_signature<set_value_t>,
             __decay_signature<set_error_t>>
-            requires true;
+          requires true;
       };
     };
 
