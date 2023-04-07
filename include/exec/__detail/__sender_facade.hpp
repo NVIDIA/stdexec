@@ -52,7 +52,7 @@ namespace exec {
 
     template <class _Env>
     struct __receiver_placeholder {
-      template <__one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+      template <__completion_tag _Tag, class... _As>
       friend void tag_invoke(_Tag, __receiver_placeholder, _As&&...) noexcept {
         static_assert(
           __never_true<_Tag, _As...>, "we should never be instantiating the body of this function");
@@ -198,7 +198,7 @@ namespace exec {
         __state* __state_;
 
         template < //
-          __one_of<set_value_t, set_error_t, set_stopped_t> _Tag,
+          __completion_tag _Tag,
           same_as<__t> _Self,
           class... _As>
           requires __valid<__set_result_t, _Kernel, _Receiver, _Tag, _As...>

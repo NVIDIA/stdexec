@@ -162,44 +162,69 @@ namespace nvexec {
             stdexec::__mconst<stdexec::__not_a_variant>>,
           _Ts...>;
 
-      template <class... _Ts>
-      using bind_tuples = //
-        stdexec::__mbind_front_q<
-          variant,
-          ::cuda::std::tuple<stdexec::set_stopped_t>,
-          ::cuda::std::tuple<stdexec::set_error_t, cudaError_t>,
-          _Ts...>;
+      template <class _State, class... _Tuples>
+      using __make_bind_ = stdexec::__mbind_back<_State, _Tuples...>;
 
-      template <class Sender, class Env>
-      using bound_values_t = //
-        stdexec::__value_types_of_t<
-          Sender,
-          Env,
-          stdexec::__mbind_front_q<decayed_tuple, stdexec::set_value_t>,
-          stdexec::__q<bind_tuples>>;
+      template <class _State>
+      using __make_bind = stdexec::__mbind_front_q<__make_bind_, _State>;
+
+      template <class _Tag>
+      using __tuple_t = stdexec::__mbind_front_q<decayed_tuple, _Tag>;
+
+      template <class _Sender, class _Env, class _State, class _Tag>
+      using __bind_completions_t =
+        stdexec::__gather_completions_for<_Tag, _Sender, _Env, __tuple_t<_Tag>, __make_bind<_State>>;
+
+      // template <class... _Ts>
+      // using bind_tuples = //
+      //   stdexec::__mbind_front_q<
+      //     variant,
+      //     ::cuda::std::tuple<stdexec::set_stopped_t>,
+      //     ::cuda::std::tuple<stdexec::set_error_t, cudaError_t>,
+      //     _Ts...>;
+
+      // template <class Sender, class Env>
+      // using bound_values_t = //
+      //   stdexec::__value_types_of_t<
+      //     Sender,
+      //     Env,
+      //     stdexec::__mbind_front_q<decayed_tuple, stdexec::set_value_t>,
+      //     stdexec::__q<bind_tuples>>;
     }
 
-    template <class Sender, class Env>
+    // template <class Sender, class Env>
+    // using variant_storage_t = //
+    //   stdexec::__error_types_of_t<
+    //     Sender,
+    //     Env,
+    //     stdexec::__transform<
+    //       stdexec::__mbind_front_q<decayed_tuple, stdexec::set_error_t>,
+    //       stream_storage_impl::bound_values_t<Sender, Env>>>;
+
+    template <class _Sender, class _Env>
     using variant_storage_t = //
-      stdexec::__error_types_of_t<
-        Sender,
-        Env,
-        stdexec::__transform<
-          stdexec::__mbind_front_q<decayed_tuple, stdexec::set_error_t>,
-          stream_storage_impl::bound_values_t<Sender, Env>>>;
+      stdexec::__minvoke< stdexec::__minvoke<
+        stdexec::__mfold_right<
+          stdexec::__q<stream_storage_impl::variant>,
+          stdexec::__mbind_front_q<stream_storage_impl::__bind_completions_t, _Sender, _Env>>,
+        stdexec::set_value_t,
+        stdexec::set_error_t,
+        stdexec::set_stopped_t>>;
 
     inline constexpr get_stream_t get_stream{};
 
     template <class BaseEnvId>
     struct stream_env : stream_env_base {
+      using __t = stream_env;
+      using __id = stream_env;
       using BaseEnv = stdexec::__t<BaseEnvId>;
       BaseEnv base_env_;
 
       template <class Tag, stdexec::same_as<stream_env> Self, class... As>
         requires stdexec::__callable<Tag, const BaseEnv&, As...>
-      friend auto tag_invoke(Tag tag, const Self& self, As&&... as) noexcept -> stdexec::
+      friend auto tag_invoke(Tag, const Self& self, As&&... as) noexcept -> stdexec::
         __call_result_if_t<stdexec::same_as<Self, stream_env>, Tag, const BaseEnv&, As...> {
-        return ((Tag&&) tag)(self.base_env_, (As&&) as...);
+        return Tag()(self.base_env_, (As&&) as...);
       }
 
       template <stdexec::same_as<stream_env> Self>
@@ -211,6 +236,8 @@ namespace nvexec {
 
     template <class BaseEnvId>
     struct terminal_stream_env : stream_env_base {
+      using __t = terminal_stream_env;
+      using __id = terminal_stream_env;
       using BaseEnv = stdexec::__t<BaseEnvId>;
       BaseEnv base_env_;
 
@@ -219,9 +246,9 @@ namespace nvexec {
         stdexec::same_as<terminal_stream_env> Self,
         class... As>
         requires stdexec::__callable<Tag, const BaseEnv&, As...>
-      friend auto tag_invoke(Tag tag, const Self& self, As&&... as) noexcept
-        -> stdexec::__call_result_t<Tag, const BaseEnv&, As...> {
-        return ((Tag&&) tag)(self.base_env_, (As&&) as...);
+      friend auto tag_invoke(Tag, const Self& self, As&&... as) noexcept -> stdexec::
+        __call_result_if_t<stdexec::same_as<terminal_stream_env, Self>, Tag, const BaseEnv&, As...> {
+        return Tag()(self.base_env_, (As&&) as...);
       }
 
       template <stdexec::same_as<terminal_stream_env> Self>
@@ -231,10 +258,10 @@ namespace nvexec {
     };
 
     template <class BaseEnv>
-    using make_stream_env_t = stream_env<stdexec::__x<BaseEnv>>;
+    using make_stream_env_t = stream_env<stdexec::__id<BaseEnv>>;
 
     template <class BaseEnv>
-    using make_terminal_stream_env_t = terminal_stream_env<stdexec::__x<BaseEnv>>;
+    using make_terminal_stream_env_t = terminal_stream_env<stdexec::__id<BaseEnv>>;
 
     template <class BaseEnv>
     make_stream_env_t<BaseEnv> make_stream_env(BaseEnv base, cudaStream_t stream) noexcept {
@@ -259,10 +286,9 @@ namespace nvexec {
 
     struct stream_op_state_base { };
 
-    template <class EnvId, class VariantId>
+    template <class EnvId, class Variant>
     struct stream_enqueue_receiver {
       using Env = stdexec::__t<EnvId>;
-      using Variant = stdexec::__t<VariantId>;
 
       class __t {
         Env env_;
@@ -273,23 +299,26 @@ namespace nvexec {
        public:
         using __id = stream_enqueue_receiver;
 
-        template <
-          stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> Tag,
-          class... As>
+        template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> Tag, class... As>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend void
-          tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-          self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag{}, std::move(as)...);
+          tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+          self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag(), std::move(as)...);
           self.producer_(self.task_);
         }
 
-        template <stdexec::__decays_to<std::exception_ptr> E>
+        template <stdexec::same_as<stdexec::set_error_t> _Tag, class Error>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend void
-          tag_invoke(stdexec::set_error_t, __t&& self, E&& e) noexcept {
-          // What is `exception_ptr` but death pending
-          self.variant_->template emplace<decayed_tuple<stdexec::set_error_t, cudaError_t>>(
-            stdexec::set_error, cudaErrorUnknown);
+          tag_invoke(_Tag, __t&& self, Error&& e) noexcept {
+          if constexpr (stdexec::__decays_to<Error, std::exception_ptr>) {
+            // What is `exception_ptr` but death pending
+            self.variant_->template emplace<decayed_tuple<stdexec::set_error_t, cudaError_t>>(
+              stdexec::set_error, cudaErrorUnknown);
+          } else {
+            self.variant_->template emplace<decayed_tuple<stdexec::set_error_t, Error>>(
+              stdexec::set_error_t{}, std::move(e));
+          }
           self.producer_(self.task_);
         }
 
@@ -306,10 +335,10 @@ namespace nvexec {
       };
     };
 
-    template <class Receiver, class Tag, class... As>
+    template <class... As, class Receiver, class Tag>
     __launch_bounds__(1) __global__
-      void continuation_kernel(Receiver receiver, Tag tag, As&&... as) {
-      tag(::cuda::std::move(receiver), (As&&) as...);
+      void continuation_kernel(Receiver receiver, Tag, As... as) {
+      Tag()(::cuda::std::move(receiver), static_cast<As&&>(as)...);
     }
 
     template <class Receiver, class Variant>
@@ -333,14 +362,14 @@ namespace nvexec {
           continuation_task_t& self = *static_cast<continuation_task_t*>(t);
 
           visit(
-            [&self](auto&& tpl) noexcept {
+            [&self](auto& tpl) noexcept {
               ::cuda::std::apply(
-                [&self](auto tag, auto&&... as) noexcept {
-                  tag(std::move(self.receiver_), std::move(as)...);
+                [&self]<class Tag, class... As>(Tag, As&... as) noexcept {
+                  Tag()(std::move(self.receiver_), std::move(as)...);
                 },
-                std::move(tpl));
+                tpl);
             },
-            std::move(*self.variant_));
+            *self.variant_);
         };
 
         this->free_ = [](task_base_t* t) noexcept {
@@ -418,12 +447,15 @@ namespace nvexec {
         }
 
         template <class Tag, class... As>
-        void propagate_completion_signal(Tag tag, As&&... as) noexcept {
+        void propagate_completion_signal(Tag, As&&... as) noexcept {
           if constexpr (stream_receiver<outer_receiver_t>) {
-            tag((outer_receiver_t&&) receiver_, (As&&) as...);
+            Tag()((outer_receiver_t&&) receiver_, (As&&) as...);
+          } else if constexpr (stdexec::same_as<Tag, stdexec::set_error_t>) {
+            continuation_kernel<As...> // by value
+              <<<1, 1, 0, get_stream()>>>(std::move(receiver_), Tag(), (As&&) as...);
           } else {
-            continuation_kernel<stdexec::__decay_t<outer_receiver_t>, Tag, As...>
-              <<<1, 1, 0, get_stream()>>>(receiver_, tag, (As&&) as...);
+            continuation_kernel<As&&...> // by reference
+              <<<1, 1, 0, get_stream()>>>(std::move(receiver_), Tag(), (As&&) as...);
           }
         }
 
@@ -450,11 +482,9 @@ namespace nvexec {
 
         operation_state_base_t<OuterReceiverId>& operation_state_;
 
-        template <
-          stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> Tag,
-          class... As >
-        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-          self.operation_state_.propagate_completion_signal(tag, (As&&) as...);
+        template < stdexec::__completion_tag Tag, class... As >
+        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+          self.operation_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
         friend make_stream_env_t<stdexec::env_of_t<outer_receiver_t>>
@@ -476,7 +506,7 @@ namespace nvexec {
 
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using stream_enqueue_receiver_t =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
+          stdexec::__t<stream_enqueue_receiver<stdexec::__id<env_t>, variant_t>>;
         using intermediate_receiver =
           stdexec::__if_c<stream_sender<sender_t>, inner_receiver_t, stream_enqueue_receiver_t>;
         using inner_op_state_t = stdexec::connect_result_t<sender_t, intermediate_receiver>;

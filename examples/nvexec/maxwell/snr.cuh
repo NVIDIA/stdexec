@@ -191,7 +191,9 @@ class receiver_t {
 
  public:
   template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
-  friend void tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
+  STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+    friend void
+    tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
     __tag(std::move(__self.op_state_.receiver_), (_Args&&) __args...);
   }
 
@@ -252,7 +254,12 @@ struct repeat_n_sender_t {
     stdexec::completion_signatures<
       stdexec::set_value_t(),
       stdexec::set_stopped_t(),
-      stdexec::set_error_t(std::exception_ptr)>;
+      stdexec::set_error_t(std::exception_ptr)
+#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+        ,
+      stdexec::set_error_t(cudaError_t)
+#endif
+      >;
 
   Sender sender_;
   Closure closure_;

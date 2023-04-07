@@ -287,6 +287,9 @@ TEST_CASE("split forwards results from a different thread", "[adaptors][split]")
   REQUIRE(val == 42);
 }
 
+template <class>
+struct undef;
+
 TEST_CASE("split is thread-safe", "[adaptors][split]") {
   exec::static_thread_pool pool{1};
 

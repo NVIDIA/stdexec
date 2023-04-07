@@ -50,7 +50,7 @@ jobs:
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CXX_COMPILER="$cxx" \
             -DCMAKE_CUDA_COMPILER="$cxx" \
-            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }}-real;
+            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }};
           # Compile
           cmake --build build;
           # Tests

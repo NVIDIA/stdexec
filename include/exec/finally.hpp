@@ -107,8 +107,8 @@ namespace exec {
        private:
         __final_operation_base<_ResultType, _ReceiverId>* __op_;
 
-        template <__decays_to<__t> _Self>
-        friend void tag_invoke(set_value_t, _Self&& __self) noexcept {
+        template <same_as<set_value_t> _Tag, __decays_to<__t> _Self>
+        friend void tag_invoke(_Tag, _Self&& __self) noexcept {
           if constexpr (std::is_nothrow_move_constructible_v<_ResultType>) {
             _ResultType __result = (_ResultType&&) __self.__op_->__result_;
             __self.__op_->__result_.__destruct();
