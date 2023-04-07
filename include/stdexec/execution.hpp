@@ -4168,7 +4168,8 @@ namespace stdexec {
         using __id = __receiver_;
 
         template <__one_of<_Set> _Tag, class... _As>
-          requires __minvocable<__result_sender<_Fun, _Set>, _As...>
+          requires (1 == __v<__minvoke<__mcount<__decayed_tuple<_As...>>, _Tuples...>>)
+                && __minvocable<__result_sender<_Fun, _Set>, _As...>
                 && sender_to<__minvoke<__result_sender<_Fun, _Set>, _As...>, _Receiver>
         friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
           try {
@@ -4740,9 +4741,6 @@ namespace stdexec {
 
     template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
     struct __operation1;
-
-    template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
-    struct __receiver1;
 
     // This receiver is to be completed on the execution context
     // associated with the scheduler. When the source sender
@@ -6193,7 +6191,28 @@ namespace stdexec {
   using __sync_wait::sync_wait_with_variant_t;
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 
+  struct __ignore_sender {
+    using is_sender = void;
+
+    template <sender _Sender>
+    constexpr __ignore_sender(_Sender&&) noexcept {
+    }
+  };
+
+  template <auto _Reason = "You cannot pipe one sender into another."__csz>
+  struct _CANNOT_PIPE_INTO_A_SENDER_ { };
+
+  template <class _Sender>
+  struct _WITH_SENDER_ { };
+
+  template <class _Sender>
+  using __bad_pipe_sink_t = __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_SENDER_<_Sender>>;
 } // namespace stdexec
+
+// For issuing a meaningful diagnostic for the erroneous `snd1 | snd2`.
+template <stdexec::sender _Sender>
+  requires stdexec::__ok<stdexec::__bad_pipe_sink_t<_Sender>>
+auto operator|(stdexec::__ignore_sender, _Sender&&) noexcept -> stdexec::__ignore_sender;
 
 #include "__detail/__p2300.hpp"
 
