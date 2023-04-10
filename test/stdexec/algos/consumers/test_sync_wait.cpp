@@ -333,5 +333,9 @@ TEST_CASE(
   static_assert(
     std::is_same_v<
       std::tuple<>,
-      ex::value_types_of_t<decltype(ex::just()), ex::no_env, decayed_tuple, std::type_identity_t>>);
+      ex::value_types_of_t<
+        decltype(ex::just()),
+        ex::__default_env,
+        decayed_tuple,
+        std::type_identity_t>>);
 }

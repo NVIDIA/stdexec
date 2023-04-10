@@ -44,8 +44,8 @@ namespace tbbexec {
 
      public:
       struct scheduler {
-        using T = scheduler;
-        using ID = scheduler;
+        using __t = scheduler;
+        using __id = scheduler;
         bool operator==(const scheduler&) const = default;
 
        private:
@@ -54,8 +54,9 @@ namespace tbbexec {
 
         class sender {
          public:
-          using T = sender;
-          using ID = sender;
+          using is_sender = void;
+          using __t = sender;
+          using __id = sender;
           using completion_signatures =
             stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
@@ -77,6 +78,11 @@ namespace tbbexec {
           friend typename DerivedPoolType::scheduler
             tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender s) noexcept {
             return typename DerivedPoolType::scheduler{s.pool_};
+          }
+
+          STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender& s, stdexec::get_env_t) noexcept
+            -> const sender& {
+            return s;
           }
 
           friend struct DerivedPoolType::tbb_thread_pool::scheduler;
@@ -215,6 +221,7 @@ namespace tbbexec {
 
         template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
         struct bulk_receiver {
+          using is_receiver = void;
           using Sender = stdexec::__t<SenderId>;
           using Receiver = stdexec::__t<ReceiverId>;
 
@@ -302,6 +309,7 @@ namespace tbbexec {
 
         template <class SenderId, std::integral Shape, class FunId>
         struct bulk_sender {
+          using is_sender = void;
           using Sender = stdexec::__t<SenderId>;
           using Fun = stdexec::__t<FunId>;
 
@@ -327,7 +335,7 @@ namespace tbbexec {
             stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
 
           template <class Self, class Env>
-          using completion_signatures = stdexec::__make_completion_signatures<
+          using completion_signatures = stdexec::__try_make_completion_signatures<
             stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             with_error_invoke_t<Fun, stdexec::__copy_cvref_t<Self, Sender>, Env>,
@@ -345,7 +353,7 @@ namespace tbbexec {
               receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
             friend bulk_op_state_t<Self, Receiver>
             tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) noexcept(
-              std::is_nothrow_constructible_v<
+              stdexec::__nothrow_constructible_from<
                 bulk_op_state_t<Self, Receiver>,
                 DerivedPoolType&,
                 Shape,

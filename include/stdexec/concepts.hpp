@@ -180,6 +180,9 @@ namespace stdexec {
   template <class _Ty, class _Up>
   concept __not_decays_to = !__decays_to<_Ty, _Up>;
 
+  template <bool _TrueOrFalse>
+  concept __satisfies = _TrueOrFalse;
+
   template <class...>
   concept __true = true;
 

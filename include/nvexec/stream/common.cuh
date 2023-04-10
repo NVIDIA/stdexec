@@ -31,6 +31,7 @@
 #include "../detail/variant.cuh"
 
 namespace nvexec {
+  using stdexec::operator""__csz;
 
   enum class stream_priority {
     high,
@@ -456,9 +457,9 @@ namespace nvexec {
           self.operation_state_.propagate_completion_signal(tag, (As&&) as...);
         }
 
-        friend make_stream_env_t<stdexec::env_of_t<outer_receiver_t>>
-          tag_invoke(stdexec::get_env_t, const __t& self) {
-          return self.operation_state_.make_env();
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, stdexec::get_env_t) noexcept
+          -> make_stream_env_t<stdexec::env_of_t<outer_receiver_t>> {
+          return __self.operation_state_.make_env();
         }
       };
     };

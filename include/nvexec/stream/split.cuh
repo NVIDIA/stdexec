@@ -316,7 +316,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         requires stdexec::
           receiver_of<Receiver, stdexec::completion_signatures_of_t<Self, stdexec::empty_env>>
         friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& recvr) //
-        noexcept(std::is_nothrow_constructible_v<stdexec::__decay_t<Receiver>, Receiver>)
+        noexcept(stdexec::__nothrow_constructible_from<stdexec::__decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
         return operation_t<Receiver>{(Receiver&&) recvr, self.shared_state_};
       }

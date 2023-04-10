@@ -561,7 +561,7 @@ namespace exec {
       template <class... _Args>
         requires stdexec::constructible_from<_Base, std::in_place_t, _Args...>
       __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
-        std::is_nothrow_constructible_v<_Base, _Args...>)
+        stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __task{__vtable}
         , __base_(std::in_place, (_Args&&) __args...) {
       }
@@ -569,7 +569,7 @@ namespace exec {
       template <class... _Args>
         requires stdexec::constructible_from<_Base, _Args...>
       __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
-        std::is_nothrow_constructible_v<_Base, _Args...>)
+        stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __task{__vtable}
         , __base_((_Args&&) __args...) {
       }
@@ -694,7 +694,7 @@ namespace exec {
 
       template <class... _Args>
       __impl_base(std::in_place_t, _Args&&... __args) noexcept(
-        std::is_nothrow_constructible_v<_Base, _Args...>)
+        stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __base_((_Args&&) __args...) {
       }
     };
@@ -705,7 +705,7 @@ namespace exec {
 
       template <class... _Args>
       __impl_base(std::in_place_t, _Args&&... __args) noexcept(
-        std::is_nothrow_constructible_v<_Base, _Args...>)
+        stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __base_((_Args&&) __args...) {
       }
 
@@ -746,7 +746,7 @@ namespace exec {
         template <class... _Args>
           requires stdexec::constructible_from<_Base, _Args...>
         __impl(std::in_place_t, _Args&&... __args) noexcept(
-          std::is_nothrow_constructible_v<_Base, _Args...>)
+          stdexec::__nothrow_constructible_from<_Base, _Args...>)
           : __base_t(std::in_place, (_Args&&) __args...)
           , __stop_operation_{this} {
         }
@@ -949,6 +949,7 @@ namespace exec {
       class __schedule_sender {
         __schedule_env __env_;
        public:
+        using is_sender = void;
         using __id = __schedule_sender;
         using __t = __schedule_sender;
 
@@ -957,9 +958,10 @@ namespace exec {
         }
 
        private:
-        friend __schedule_env
-          tag_invoke(stdexec::get_env_t, const __schedule_sender& __sender) noexcept {
-          return __sender.__env_;
+        STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __schedule_sender& __self, stdexec::get_env_t) noexcept
+          -> __schedule_env {
+          return __self.__env_;
         }
 
         using __completion_sigs =
@@ -985,6 +987,7 @@ namespace exec {
 
       class __schedule_after_sender {
        public:
+        using is_sender = void;
         using __id = __schedule_after_sender;
         using __t = __schedule_after_sender;
 
@@ -992,9 +995,10 @@ namespace exec {
         std::chrono::nanoseconds __duration_;
 
        private:
-        friend __schedule_env
-          tag_invoke(stdexec::get_env_t, const __schedule_after_sender& __sender) noexcept {
-          return __sender.__env_;
+        STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __schedule_after_sender& __self, stdexec::get_env_t) noexcept
+          -> __schedule_env {
+          return __self.__env_;
         }
 
         using __completion_sigs = stdexec::completion_signatures<

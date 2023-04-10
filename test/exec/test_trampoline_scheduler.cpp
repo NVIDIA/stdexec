@@ -72,7 +72,10 @@ TEST_CASE(
   "running deeply recursing algo on trampoline_scheduler doesn't blow the stack",
   "[schedulers][trampoline_scheduler]") {
 
+  using stdexec::__sync_wait::__env;
   exec::trampoline_scheduler sched;
+  stdexec::run_loop loop;
+
   auto recurse_deeply = retry(exec::on(sched, fails_alot{}));
   sync_wait(std::move(recurse_deeply));
 }

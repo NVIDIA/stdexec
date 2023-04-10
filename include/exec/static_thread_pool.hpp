@@ -110,11 +110,11 @@ namespace exec {
       }
 
       template <class Fun, class Shape, class... Args>
-        requires stdexec::__callable<Fun, Shape, Args...>
+        requires stdexec::__callable<Fun, Shape, Args&...>
       using bulk_non_throwing = //
         stdexec::__mbool<
           // If function invocation doesn't throw
-          stdexec::__nothrow_callable<Fun, Shape, Args...> &&
+          stdexec::__nothrow_callable<Fun, Shape, Args&...> &&
           // and emplacing a tuple doesn't throw
           noexcept(stdexec::__decayed_tuple<Args...>(std::declval<Args>()...))
           // there's no need to advertise completion with `exception_ptr`
@@ -359,7 +359,7 @@ namespace exec {
 
         template <class Self, class Env>
         using completion_signatures = //
-          stdexec::__make_completion_signatures<
+          stdexec::__try_make_completion_signatures<
             stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             with_error_invoke_t<Fun, stdexec::__copy_cvref_t<Self, Sender>, Env>,
@@ -378,7 +378,7 @@ namespace exec {
             receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
           friend bulk_op_state_t<Self, Receiver>                       //
           tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) //
-          noexcept(std::is_nothrow_constructible_v<
+          noexcept(stdexec::__nothrow_constructible_from<
                    bulk_op_state_t<Self, Receiver>,
                    static_thread_pool&,
                    Shape,

@@ -131,7 +131,7 @@ namespace nvexec {
 
           template <class R>
           friend auto tag_invoke(stdexec::connect_t, const __t& self, R&& rec) //
-            noexcept(std::is_nothrow_constructible_v<stdexec::__decay_t<R>, R>)
+            noexcept(stdexec::__nothrow_constructible_from<stdexec::__decay_t<R>, R>)
               -> operation_state_t<stdexec::__id<stdexec::__decay_t<R>>> {
             return operation_state_t<stdexec::__id<stdexec::__decay_t<R>>>(
               (R&&) rec, self.env_.context_state_);

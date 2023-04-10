@@ -71,6 +71,7 @@ namespace exec {
 
     template <class _SourceId, class _ReceiverId>
     struct __receiver<_SourceId, _ReceiverId>::__t {
+      using is_receiver = void;
       using __id = __receiver;
       using _Source = stdexec::__t<_SourceId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
@@ -146,6 +147,7 @@ namespace exec {
       using __receiver_t = stdexec::__t< __receiver<_SourceId, stdexec::__id<_Receiver>>>;
 
       struct __t {
+        using is_sender = void;
         using __id = __sender;
         [[no_unique_address]] _Source __source_;
 
@@ -174,7 +176,7 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<_Source &, __receiver_t<_Receiver>>
         friend __op_t<_Receiver> tag_invoke(connect_t, _Self &&__self, _Receiver __rcvr) noexcept(
-          std::is_nothrow_constructible_v<
+          __nothrow_constructible_from<
             __op_t<_Receiver>,
             __copy_cvref_t<_Self, _Source>,
             _Receiver>) {
@@ -203,7 +205,7 @@ namespace exec {
 
       template <sender _Source>
       auto operator()(_Source &&__source) const
-        noexcept(std::is_nothrow_constructible_v< __sender_t<_Source>, _Source>)
+        noexcept(__nothrow_constructible_from< __sender_t<_Source>, _Source>)
           -> __sender_t<_Source> {
         return __sender_t<_Source>{(_Source &&) __source};
       }

@@ -216,7 +216,7 @@ namespace stdexec {
     explicit in_place_stop_callback(
       in_place_stop_token __token,
       _Fun2&& __fun) //
-      noexcept(std::is_nothrow_constructible_v<_Fun, _Fun2>)
+      noexcept(__nothrow_constructible_from<_Fun, _Fun2>)
       : __stok::__in_place_stop_callback_base(
         __token.__source_,
         &in_place_stop_callback::__execute_impl_)

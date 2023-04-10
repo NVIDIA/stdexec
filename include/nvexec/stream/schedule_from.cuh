@@ -49,7 +49,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             [&](auto& tpl) noexcept {
               ::cuda::std::apply(
                 [&](auto tag, auto&... tas) noexcept {
-                  self.operation_state_.template propagate_completion_signal(tag, tas...);
+                  self.operation_state_.propagate_completion_signal(tag, tas...);
                 },
                 tpl);
             },

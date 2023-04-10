@@ -158,6 +158,9 @@ TEST_CASE(
   jthread io_thread{[&] {
     context.run();
   }};
+  auto fn = [&] {
+    CHECK(io_thread.get_id() == std::this_thread::get_id());
+  };
   {
     scope_guard guard{[&]() noexcept {
       context.request_stop();
@@ -165,77 +168,47 @@ TEST_CASE(
     jthread thread1{[&] {
       for (int i = 0; i < 10; ++i) {
         sync_wait(when_all(
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule(scheduler)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); })));
+          schedule(scheduler) | then(fn),
+          schedule(scheduler) | then(fn),
+          schedule(scheduler) | then(fn),
+          schedule(scheduler) | then(fn),
+          schedule(scheduler) | then(fn),
+          schedule(scheduler) | then(fn),
+          schedule(scheduler) | then(fn),
+          schedule(scheduler) | then(fn),
+          schedule(scheduler) | then(fn),
+          schedule(scheduler) | then(fn)));
       }
     }};
     jthread thread2{[&] {
       for (int i = 0; i < 10; ++i) {
         auto tp = std::chrono::steady_clock::now() + 500us;
         sync_wait(when_all(
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_at(scheduler, tp)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); })));
+          schedule_at(scheduler, tp) | then(fn),
+          schedule_at(scheduler, tp) | then(fn),
+          schedule_at(scheduler, tp) | then(fn),
+          schedule_at(scheduler, tp) | then(fn),
+          schedule_at(scheduler, tp) | then(fn),
+          schedule_at(scheduler, tp) | then(fn),
+          schedule_at(scheduler, tp) | then(fn),
+          schedule_at(scheduler, tp) | then(fn),
+          schedule_at(scheduler, tp) | then(fn),
+          schedule_at(scheduler, tp) | then(fn)));
       }
     }};
     jthread thread3{[&] {
       for (int i = 0; i < 10; ++i) {
         sync_wait(when_all(
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); }),
-          schedule_after(scheduler, 500us)
-            | then([&] { CHECK(io_thread.get_id() == std::this_thread::get_id()); })));
+          schedule_after(scheduler, 500us) | then(fn),
+          schedule_after(scheduler, 500us) | then(fn),
+          schedule_after(scheduler, 500us) | then(fn),
+          schedule_after(scheduler, 500us) | then(fn),
+          schedule_after(scheduler, 500us) | then(fn),
+          schedule_after(scheduler, 500us) | then(fn),
+          schedule_after(scheduler, 500us) | then(fn),
+          schedule_after(scheduler, 500us) | then(fn),
+          schedule_after(scheduler, 500us) | then(fn),
+          schedule_after(scheduler, 500us) | then(fn)));
       }
     }};
   }

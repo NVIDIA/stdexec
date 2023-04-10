@@ -126,6 +126,8 @@ namespace exec {
       using __operation_t = stdexec::__t<__operation<__id<__decay_t<_Receiver>>>>;
 
       struct __schedule_sender {
+        using __t = __schedule_sender;
+        using __id = __schedule_sender;
         using is_sender = void;
         using completion_signatures =
           stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
@@ -151,8 +153,8 @@ namespace exec {
           return __scheduler{__self.__max_recursion_depth_};
         }
 
-        friend const __schedule_sender&
-          tag_invoke(get_env_t, const __schedule_sender& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __schedule_sender& __self, get_env_t) noexcept
+          -> const __schedule_sender& {
           return __self;
         }
 

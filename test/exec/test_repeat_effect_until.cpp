@@ -35,6 +35,7 @@
 using namespace stdexec;
 
 struct boolean_sender {
+  using is_sender = void;
   using __t = boolean_sender;
   using __id = boolean_sender;
   using completion_signatures = stdexec::completion_signatures<set_value_t(bool)>;
