@@ -36,12 +36,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         struct receiver_t {
           __t& op_state_;
 
-          template <
-            stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t>
-              Tag,
-            class... As >
-          friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) noexcept {
-            Tag{}(std::move(self.op_state_.receiver_), (As&&) as...);
+          template < stdexec::__completion_tag Tag, class... As >
+          friend void tag_invoke(Tag, receiver_t&& self, As&&... as) noexcept {
+            Tag()(std::move(self.op_state_.receiver_), (As&&) as...);
           }
 
           friend Env tag_invoke(stdexec::get_env_t, const receiver_t& self) {
@@ -60,7 +57,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         ::cuda::std::atomic_flag started_{};
 
         using enqueue_receiver =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__x<Env>, stdexec::__x<variant_t>>>;
+          stdexec::__t<stream_enqueue_receiver<stdexec::__id<Env>, variant_t>>;
         using inner_op_state_t = stdexec::connect_result_t<Sender, enqueue_receiver>;
         inner_op_state_t inner_op_;
 
@@ -120,13 +117,24 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       context_state_t context_state_;
       Sender sndr_;
 
+      template <class... Ts>
+      using value_completions_t =
+        stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Ts>&&...)>;
+
+      template <class Ty>
+      using error_completions_t =
+        stdexec::completion_signatures<stdexec::set_error_t(stdexec::__decay_t<Ty>&&)>;
+
       template <class Self, class Env>
       using completion_signatures = //
-        stdexec::make_completion_signatures<
+        stdexec::__try_make_completion_signatures<
           stdexec::__copy_cvref_t<Self, Sender>,
           Env,
-          stdexec::
-            completion_signatures< stdexec::set_stopped_t(), stdexec::set_error_t(cudaError_t) >>;
+          stdexec::completion_signatures< //
+            stdexec::set_stopped_t(),
+            stdexec::set_error_t(cudaError_t)>,
+          stdexec::__q<value_completions_t>,
+          stdexec::__q<error_completions_t>>;
 
       template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
         requires stdexec::

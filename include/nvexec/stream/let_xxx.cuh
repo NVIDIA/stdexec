@@ -22,10 +22,10 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace let_xxx {
-    template <class Fun, class ResultSenderT, class... As>
+    template <class... As, class Fun, class ResultSenderT>
     __launch_bounds__(1) __global__
       void kernel_with_result(Fun fn, ResultSenderT* result, As... as) {
-      new (result) ResultSenderT(fn((As&&) as...));
+      new (result) ResultSenderT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }
 
     template <class _Tp>
@@ -114,8 +114,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           result_sender_t* result_sender = static_cast<result_sender_t*>(
             __self.__op_state_->temp_storage_);
-          kernel_with_result<stdexec::__decay_t<_Fun>, result_sender_t, _As...>
-            <<<1, 1, 0, stream>>>(__self.__op_state_->__fun_, result_sender, (_As&&) __as...);
+          kernel_with_result<_As&&...>
+            <<<1, 1, 0, stream>>>(std::move(__self.__op_state_->__fun_), result_sender, (_As&&) __as...);
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
@@ -132,13 +132,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        template <
-          stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> _Tag,
-          class... _As>
+        template < stdexec::__completion_tag _Tag, class... _As>
           requires stdexec::__none_of<_Tag, _Let> && stdexec::__callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
+        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
           static_assert(stdexec::__nothrow_callable<_Tag, _Receiver, _As...>);
-          __self.__op_state_->propagate_completion_signal(_Tag{}, (_As&&) __as...);
+          __self.__op_state_->propagate_completion_signal(_Tag(), (_As&&) __as...);
         }
 
         friend _Env tag_invoke(stdexec::get_env_t, const __t& __self) {
@@ -201,10 +199,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
   } // namespace let_xxx
 
-  template <class _SenderId, class _Fun, class _SetId>
+  template <class _SenderId, class _Fun, class _Set>
   struct let_sender_t {
     using _Sender = stdexec::__t<_SenderId>;
-    using _Set = stdexec::__t<_SetId>;
 
     struct __t : stream_sender_base {
       using __id = let_sender_t;

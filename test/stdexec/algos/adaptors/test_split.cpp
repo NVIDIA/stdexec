@@ -287,6 +287,9 @@ TEST_CASE("split forwards results from a different thread", "[adaptors][split]")
   REQUIRE(val == 42);
 }
 
+template <class>
+struct undef;
+
 TEST_CASE("split is thread-safe", "[adaptors][split]") {
   exec::static_thread_pool pool{1};
 
@@ -393,7 +396,7 @@ TEST_CASE("split into then", "[adaptors][split]") {
 
   SECTION("lvalue split copyable sender") {
     auto multishot = ex::split(ex::just(copy_and_movable_type{0}));
-    ex::get_completion_signatures_t{}(multishot);
+    ex::get_completion_signatures_t{}(multishot, ex::__default_env{});
     auto snd = multishot | ex::then([](const copy_and_movable_type&) {});
 
     REQUIRE(!ex::sender_of<decltype(multishot), ex::set_value_t(copy_and_movable_type)>);

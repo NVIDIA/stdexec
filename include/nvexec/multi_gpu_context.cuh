@@ -64,11 +64,9 @@ namespace nvexec {
             }
           } else {
             if (op.status_ == cudaSuccess) {
-              continuation_kernel<stdexec::__decay_t<R>, stdexec::set_value_t>
-                <<<1, 1, 0, op.stream_>>>(op.rec_, stdexec::set_value);
+              continuation_kernel<<<1, 1, 0, op.stream_>>>(std::move(op.rec_), stdexec::set_value);
             } else {
-              continuation_kernel<stdexec::__decay_t<R>, stdexec::set_error_t, cudaError_t>
-                <<<1, 1, 0, op.stream_>>>(op.rec_, stdexec::set_error, op.status_);
+              continuation_kernel<cudaError_t><<<1, 1, 0, op.stream_>>>(std::move(op.rec_), stdexec::set_error, std::move(op.status_));
             }
           }
         }

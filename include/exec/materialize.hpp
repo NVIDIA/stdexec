@@ -38,7 +38,7 @@ namespace exec {
         template <__completion_tag _Tag, __decays_to<__t> _Self, class... _Args>
           requires tag_invocable<set_value_t, _Receiver&&, _Tag, _Args...>
         friend void tag_invoke(_Tag tag, _Self&& __self, _Args&&... __args) noexcept {
-          set_value((_Receiver&&) __self.__upstream_, tag, (_Args&&) __args...);
+          set_value((_Receiver&&) __self.__upstream_, _Tag{}, (_Args&&) __args...);
         }
 
         template <std::same_as<__t> _Self>
@@ -128,10 +128,14 @@ namespace exec {
        private:
         _Receiver __upstream_;
 
-        template <__completion_tag _Tag, __decays_to<__t> _Self, class... _Args>
-          requires tag_invocable<_Tag, _Receiver&&, _Args...>
-        friend void tag_invoke(set_value_t, _Self&& __self, _Tag tag, _Args&&... __args) noexcept {
-          tag((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
+        template <
+          same_as<set_value_t> _Tag,
+          __completion_tag _Tag2,
+          __decays_to<__t> _Self,
+          class... _Args>
+          requires tag_invocable<_Tag2, _Receiver&&, _Args...>
+        friend void tag_invoke(_Tag, _Self&& __self, _Tag2 tag2, _Args&&... __args) noexcept {
+          tag2((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
         }
 
         template <__one_of<set_stopped_t, set_error_t> _Tag, __decays_to<__t> _Self, class... _Args>

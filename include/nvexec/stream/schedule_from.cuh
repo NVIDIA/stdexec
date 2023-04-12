@@ -38,18 +38,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         operation_state_base_t<ReceiverId>& operation_state_;
 
-        template <
-          stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> Tag,
-          class... As>
-        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
+        template < stdexec::__completion_tag Tag, class... As>
+        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
           storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
-          storage->template emplace<decayed_tuple<Tag, As...>>(Tag{}, (As&&) as...);
+          storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
 
           visit(
             [&](auto& tpl) noexcept {
               ::cuda::std::apply(
-                [&](auto tag, auto&... tas) noexcept {
-                  self.operation_state_.propagate_completion_signal(tag, tas...);
+                [&]<class Tag2, class... Bs>(Tag2, Bs&... tas) noexcept {
+                  self.operation_state_.propagate_completion_signal(Tag2(), std::move(tas)...);
                 },
                 tpl);
             },
@@ -83,6 +81,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       Sender sender_;
     };
+
+    template <class... _Ty>
+    using value_completions_t = //
+      stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<_Ty>&&...)>;
+
+    template <class _Ty>
+    using error_completions_t = //
+      stdexec::completion_signatures<stdexec::set_error_t(stdexec::__decay_t<_Ty>&&)>;
   }
 
   template <class Scheduler, class SenderId>
@@ -136,7 +142,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         -> stdexec::make_completion_signatures<
           stdexec::__copy_cvref_t<_Self, Sender>,
           _Env,
-          stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>>;
+          stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
+          schedule_from::value_completions_t,
+          schedule_from::error_completions_t>;
 
       __t(context_state_t context_state, Sender sndr)
         : env_{context_state}

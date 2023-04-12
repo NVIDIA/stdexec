@@ -38,6 +38,8 @@ namespace exec {
 
     template <class _Env, class _SchedulerId>
     struct __with_sched_env : _Env {
+      using __t = __with_sched_env;
+      using __id = __with_sched_env;
       using _Scheduler = stdexec::__t<_SchedulerId>;
       _Scheduler __sched_;
 
