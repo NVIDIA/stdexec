@@ -54,7 +54,7 @@ jobs:
           # Compile
           cmake --build build;
           # Tests
-          ctest --test-dir build --verbose --output-on-failure;
+          ctest --test-dir build --verbose --output-on-failure --timeout 60;
           # Examples
           ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
           ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler
