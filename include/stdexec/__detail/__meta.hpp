@@ -166,6 +166,9 @@ namespace stdexec {
   };
 
   template <class _What, class... _With>
+  struct _WARNING_ { };
+
+  template <class _What, class... _With>
   struct _ERROR_ {
     const _ERROR_& operator,(__msuccess) const noexcept;
 

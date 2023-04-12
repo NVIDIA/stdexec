@@ -720,6 +720,14 @@ namespace stdexec {
     template <class... _Sigs>
     struct _IS_NOT_ONE_OF_ { };
 
+    template <class _Warning>
+    [[deprecated(
+        "The sender claims to send a particular set of completions,"
+        " but in actual fact it completes with a result that is not"
+        " one of the declared completion signatures."
+    )]]
+    void _ATTENTION_() noexcept {}
+
     template <class... _Sigs>
     struct __fallthrough {
       struct __ignore {
@@ -728,18 +736,14 @@ namespace stdexec {
       };
 
       template <__completion_tag _Tag, class... _Args>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE friend auto
-        tag_invoke(_Tag, __ignore, _Args&&...) noexcept {
-        using _What =   //
-          __mexception< //
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      friend auto tag_invoke(_Tag, __ignore, _Args&&...) noexcept {
+        using _What = //
+          _WARNING_<  //
             _COMPLETION_SIGNATURES_MISMATCH_,
             _COMPLETION_SIGNATURE_<_Tag(_Args...)>,
             _IS_NOT_ONE_OF_<_Sigs...>>;
-        static_assert(
-          __ok<_What>,
-          "The sender claims to send a particular set of completions,"
-          " but in actual fact it completes with a result that is not"
-          " one of the declared completion signatures.");
+        __debug::_ATTENTION_<_What>();
       }
     };
 
