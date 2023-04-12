@@ -29,31 +29,31 @@ namespace exec {
       using _ItemReceiver = stdexec::__t<_ItemReceiverId>;
 
       struct __t {
+        using is_receiver = void;
         using __id = __item_receiver;
         [[no_unique_address]] _ItemReceiver __rcvr_;
 
         // We eat all arguments
-        template <class... _Args>
-          requires __callable<set_value_t, _ItemReceiver&&>
-        friend void tag_invoke(set_value_t, __t&& __self, _Args&&...) noexcept {
-          stdexec::set_value(static_cast<_ItemReceiver&&>(__self.__rcvr_));
+        template <same_as<set_value_t> _Tag, class... _Args>
+          requires __callable<_Tag, _ItemReceiver&&>
+        friend void tag_invoke(_Tag, __t&& __self, _Args&&...) noexcept {
+          _Tag{}(static_cast<_ItemReceiver&&>(__self.__rcvr_));
         }
 
-        template <class _Error>
-          // TODO This triggers some recursion with repeat
-          // requires __callable<set_error_t, _ItemReceiver&&, _Error&&>
-        friend void tag_invoke(set_error_t, __t&& __self, _Error&& __error) noexcept {
-          stdexec::set_error(
-            static_cast<_ItemReceiver&&>(__self.__rcvr_), static_cast<_Error&&>(__error));
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __callable<_Tag, _ItemReceiver&&, _Error&&>
+        friend void tag_invoke(_Tag, __t&& __self, _Error&& __error) noexcept {
+          _Tag{}(static_cast<_ItemReceiver&&>(__self.__rcvr_), static_cast<_Error&&>(__error));
         }
 
-        friend void tag_invoke(set_stopped_t, __t&& __self) noexcept
-          requires __callable<set_stopped_t, _ItemReceiver&&>
-        {
-          stdexec::set_stopped(static_cast<_ItemReceiver&&>(__self.__rcvr_));
+        template <same_as<set_stopped_t> _Tag>
+          requires __callable<_Tag, _ItemReceiver&&>
+        friend void tag_invoke(_Tag, __t&& __self) noexcept {
+          _Tag{}(static_cast<_ItemReceiver&&>(__self.__rcvr_));
         }
 
-        friend env_of_t<_ItemReceiver> tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend env_of_t<_ItemReceiver>
+          tag_invoke(same_as<get_env_t> auto, const __t& __self) noexcept {
           return stdexec::get_env(__self.__rcvr_);
         }
       };
@@ -105,9 +105,9 @@ namespace exec {
           return __item_sender_t<_Item>{static_cast<_Item&&>(__item)};
         }
 
-        template <class _Error>
-        friend void tag_invoke(set_error_t, __t&& __self, _Error&& __error) noexcept {
-          set_error(static_cast<_Receiver&&>(__self.__rcvr_), static_cast<_Error&&>(__error));
+        template <__same_as<set_error_t> _SetError, class _Error>
+        friend void tag_invoke(_SetError, __t&& __self, _Error&& __error) noexcept {
+          _SetError{}(static_cast<_Receiver&&>(__self.__rcvr_), static_cast<_Error&&>(__error));
         }
 
         template <__one_of<set_stopped_t, set_value_t> _Tag>
