@@ -189,7 +189,9 @@ target_compile_options(stdexec_executable_flags INTERFACE
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CUDA,Clang>:
                        -Wno-unknown-cuda-version
-                       -Xclang=-fcuda-allow-variadic-functions>
+                       -Xclang=-fcuda-allow-variadic-functions
+                       -D_GLIBCXX_USE_TBB_PAR_BACKEND=0
+                       -include stdexec/__detail/__force_include.hpp>
                        )
 
 # Set up nvexec library
