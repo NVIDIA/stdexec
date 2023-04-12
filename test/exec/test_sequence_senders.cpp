@@ -28,8 +28,56 @@
 using namespace stdexec;
 using namespace exec;
 
+struct nop_operation {
+  friend void tag_invoke(start_t, nop_operation&) noexcept {
+  }
+};
+
+TEST_CASE("sequence_senders - nop_operation is an operation state", "[sequence_senders]")
+{
+  STATIC_REQUIRE(operation_state<nop_operation>);
+}
+
+template <__completion_signature... _Sigs>
+struct some_sender_of {
+  using is_sender = void;
+  using completion_signatures = stdexec::completion_signatures<_Sigs...>;
+
+  template <class R>
+  friend nop_operation tag_invoke(connect_t, some_sender_of self, R&& rcvr);
+};
+
+TEST_CASE("sequence_senders - some_sender_of is a sender", "[sequence_senders]") {
+  STATIC_REQUIRE(sender<some_sender_of<set_value_t()>>);
+  STATIC_REQUIRE(sender_in<some_sender_of<set_value_t()>, empty_env>);
+  STATIC_REQUIRE(same_as<completion_signatures_of_t<some_sender_of<set_value_t()>>, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE(same_as<completion_signatures_of_t<some_sender_of<set_value_t(int)>>, completion_signatures<set_value_t(int)>>);
+}
+
+template <__completion_signature... _Sigs>
+struct test_receiver {
+  using is_receiver = void;
+
+  template <class _Tag, class... _Args>
+    requires __one_of<_Tag(_Args...), _Sigs...>
+  friend void tag_invoke(_Tag, test_receiver&&, _Args&&...) noexcept {}
+
+  friend empty_env tag_invoke(get_env_t, test_receiver) noexcept { return {}; }
+};
+
+TEST_CASE("sequence_senders - test_receiver is a receiver of its Sigs", "[sequence_senders]") {
+  STATIC_REQUIRE(receiver<test_receiver<>>);
+  STATIC_REQUIRE(receiver_of<test_receiver<set_value_t()>, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE_FALSE(receiver_of<test_receiver<set_value_t()>, completion_signatures<set_value_t(int)>>);
+  STATIC_REQUIRE_FALSE(receiver_of<test_receiver<set_value_t()>, completion_signatures<set_error_t(int)>>);
+  STATIC_REQUIRE_FALSE(receiver_of<test_receiver<set_value_t()>, completion_signatures<set_stopped_t()>>);
+  STATIC_REQUIRE(sender_to<some_sender_of<set_value_t()>, test_receiver<set_value_t()>>);
+  STATIC_REQUIRE_FALSE(sender_to<some_sender_of<set_value_t(int), set_stopped_t()>, test_receiver<set_value_t(), set_stopped_t()>>);
+}
+
+template <__completion_signature... _Sigs>
 struct next_receiver {
-  template <sender _Item>
+  template <sender_to<test_receiver<_Sigs...>> _Item>
   friend _Item tag_invoke(set_next_t, next_receiver&, _Item&& __item) noexcept {
     return __item;
   }
@@ -51,71 +99,33 @@ struct next_receiver {
 
 TEST_CASE("sequence_senders - Test missing next signature", "[sequence_senders]") {
   using just_t = decltype(just());
-  STATIC_REQUIRE(receiver<next_receiver>);
-  STATIC_REQUIRE(sequence_receiver_of<next_receiver, completion_signatures<set_value_t(int)>>);
+  using next_receiver_t = next_receiver<set_value_t(int)>;
+  STATIC_REQUIRE(receiver<next_receiver_t>);
   STATIC_REQUIRE(
-    sequence_receiver_of<next_receiver, completion_signatures<set_value_t(), set_stopped_t()>>);
-  STATIC_REQUIRE(sender_to<just_t, next_receiver>);
-  STATIC_REQUIRE_FALSE(sequence_sender_to<just_t, next_receiver>);
+    sequence_receiver_of<next_receiver_t, completion_signatures<set_value_t(int)>>);
+  STATIC_REQUIRE_FALSE(
+    sequence_receiver_of<next_receiver_t, completion_signatures<set_value_t(int), set_stopped_t()>>);
+  STATIC_REQUIRE_FALSE(
+    sequence_receiver_of<next_receiver_t, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE(sender_to<just_t, next_receiver_t>);
+  STATIC_REQUIRE_FALSE(sequence_sender_to<just_t, next_receiver_t>);
 }
 
-TEST_CASE("sequence_senders - repeat", "[sequence_senders]") {
-  auto r = repeat(just_stopped()) | ignore_all();
-  using join_t = decltype(r);
-  STATIC_REQUIRE(sender<join_t>);
-  STATIC_REQUIRE_FALSE(sequence_sender_to<join_t, next_receiver>);
-  using sigs = completion_signatures_of_t<join_t, empty_env>;
-  STATIC_REQUIRE(sequence_receiver_of<next_receiver, sigs>);
-  auto result = sync_wait(r | then([] { return true; }));
-  REQUIRE(result);
-  CHECK(std::get<0>(result.value()));
-}
+template <__completion_signature... _Sigs>
+struct some_sequence_sender_of {
+  using is_sender = void;
+  using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
-TEST_CASE("sequence_senders - let_value_each", "[sequence_senders]") {
-  auto r = repeat(just());
-  int count = 0;
-  auto fun = [&count]() {
-    ++count;
-    return just_stopped();
-  };
-  auto l = transform_each(r, let_value(fun));
-  using let_t = decltype(l);
-  STATIC_REQUIRE(sender_in<let_t, empty_env>);
-  STATIC_REQUIRE(sequence_sender_to<let_t, next_receiver>);
-  sync_wait(ignore_all(l));
-  CHECK(count == 1);
-}
+  template <receiver R>
+  friend nop_operation tag_invoke(sequence_connect_t, some_sequence_sender_of self, R&& rcvr);
+};
 
-TEST_CASE("sequence_senders - let_stopped_each", "[sequence_senders]") {
-  auto r = repeat(just_stopped());
-  int count = 0;
-  auto fun = [&count]() {
-    ++count;
-    return just_stopped();
-  };
-  auto l = transform_each(r, let_stopped(fun));
-  using let_t = decltype(l);
-  STATIC_REQUIRE(sender_in<let_t, empty_env>);
-  STATIC_REQUIRE(sequence_sender_to<let_t, next_receiver>);
-  sync_wait(ignore_all(l));
-  CHECK(count == 1);
-}
-
-TEST_CASE("sequence_senders - enumerate_each", "[sequence_senders]") {
-  using just_int_t = decltype(just(0));
-  using just_stopped_t = decltype(just_stopped());
-  int count = 0;
-  sync_wait(
-    repeat(just())     //
-    | enumerate_each() //
-    | let_value_each([&](int counter) -> exec::variant_sender<just_int_t, just_stopped_t> {
-        if (counter < 10) {
-          return just(counter);
-        } else {
-          return just_stopped();
-        }
-      })                                                   //
-    | then_each([&count](int n) { CHECK(n == count++); }) //
-    | ignore_all());
-  CHECK(count == 10);
+TEST_CASE("sequence_senders - Test for sequence_connect_t", "[sequence_senders]") {
+  using next_receiver_t = next_receiver<set_value_t(int), set_stopped_t()>;
+  using seq_sender_t = some_sequence_sender_of<set_value_t(int), set_stopped_t()>;
+  STATIC_REQUIRE(sender<seq_sender_t>);
+  STATIC_REQUIRE_FALSE(sender_to<seq_sender_t, next_receiver_t>);
+  STATIC_REQUIRE(sequence_sender_to<seq_sender_t, next_receiver_t>);
+  STATIC_REQUIRE(sequence_sender_to<some_sequence_sender_of<set_value_t(int)>, next_receiver_t>);
+  STATIC_REQUIRE_FALSE(sequence_sender_to<seq_sender_t, next_receiver<set_value_t(int)>>);
 }

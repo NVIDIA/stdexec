@@ -36,66 +36,36 @@ namespace exec {
   inline constexpr set_next_t set_next;
 
   namespace __sequence_sender {
-    template <class _Signature>
-    struct _MISSING_NEXT_SIGNATURE_;
-
-    template <class _Item>
-    struct _MISSING_NEXT_SIGNATURE_<set_next_t(_Item)> {
-      template <class _Receiver>
-      struct _WITH_RECEIVER_ : std::false_type { };
-
-      struct _ {
-        _(...) {
-        }
-      };
-
-      friend auto operator,(_MISSING_NEXT_SIGNATURE_, _) -> _MISSING_NEXT_SIGNATURE_ {
-        return {};
+    struct __nop_operation {
+      friend void tag_invoke(start_t, __nop_operation&) noexcept {
       }
     };
 
-    struct __found_next_signature {
-      template <class _Receiver>
-      using _WITH_RECEIVER_ = std::true_type;
+    template <__is_completion_signatures _Sigs>
+    struct __some_sender_of {
+      using is_sender = void;
+      using completion_signatures = _Sigs;
+
+      template <class R>
+      friend __nop_operation tag_invoke(connect_t, __some_sender_of, R&&) {
+        return {};
+      }
     };
-
-    template <class... _Args>
-    using __just_t = decltype(just(__declval<_Args>()...));
-
-    template <class _Receiver, class... _Args>
-    using __missing_next_signature_t = __if<
-      __mbool<nothrow_tag_invocable<set_next_t, _Receiver&, __just_t<_Args...>>>,
-      __found_next_signature,
-      _MISSING_NEXT_SIGNATURE_<set_next_t(__just_t<_Args...>)>>;
-
-    template <class _Receiver, class... _Args>
-    auto __has_sequence_signature(set_value_t (*)(_Args...))
-      -> __missing_next_signature_t<_Receiver, _Args...>;
-
-    template < class _Receiver>
-    auto __has_sequence_signature(set_stopped_t (*)())
-      -> __receiver_concepts::__missing_completion_signal_t<_Receiver, set_stopped_t>;
-
-    template <class _Receiver, class Error>
-    auto __has_sequence_signature(set_error_t (*)(Error))
-      -> __receiver_concepts::__missing_completion_signal_t<_Receiver, set_error_t, Error>;
-
-    template <class _Receiver, class... _Sigs>
-    auto __has_sequence_signatures(completion_signatures<_Sigs...>*)
-      -> decltype((__has_sequence_signature<_Receiver>(static_cast<_Sigs*>(nullptr)), ...));
-
-    template <class _Signatures, class _Receiver>
-    concept __is_valid_next_completions = _Signatures::template _WITH_RECEIVER_<_Receiver>::value;
   }
 
-  template <class _Receiver, class Signatures>
+  template <class _Receiver, class _Signatures>
   concept sequence_receiver_of =
-    stdexec::receiver_of<_Receiver, stdexec::completion_signatures<stdexec::set_value_t()>>
-    && requires(Signatures* sigs) {
-         {
-           __sequence_sender::__has_sequence_signatures<stdexec::__decay_t<_Receiver>>(sigs)
-         } -> __sequence_sender::__is_valid_next_completions<stdexec::__decay_t<_Receiver>>;
-       };
+    stdexec::receiver_of<
+      _Receiver,
+      stdexec::__try_make_completion_signatures<
+        __sequence_sender::__some_sender_of<_Signatures>,
+        stdexec::env_of_t<_Receiver>,
+        stdexec::completion_signatures<>,
+        stdexec::__mconst<stdexec::completion_signatures<stdexec::set_value_t()>>>>
+    && stdexec::__callable<
+      set_next_t,
+      stdexec::__decay_t<_Receiver>&,
+      __sequence_sender::__some_sender_of<_Signatures>>;
 
   template <class _Receiver, class _Sender>
   concept sequence_receiver_from = sequence_receiver_of<
@@ -140,6 +110,9 @@ namespace exec {
     stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>>
     && sequence_receiver_from<_Receiver, _Sender>
     && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-         { sequence_connect((_Sender&&) __sndr, (_Receiver&&) __rcvr) } -> stdexec::operation_state;
+         { sequence_connect((_Sender&&) __sndr, (_Receiver&&) __rcvr) };
        };
+
+  template <class _Receiver, class _Sender>
+  using __next_sender_of_t = decltype(exec::set_next(stdexec::__declval<_Receiver>(), stdexec::__declval<_Sender>()));
 }
