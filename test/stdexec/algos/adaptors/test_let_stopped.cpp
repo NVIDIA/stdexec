@@ -173,13 +173,13 @@ TEST_CASE("let_stopped adds to error_type of the input sender", "[adaptors][let_
 TEST_CASE("let_stopped can be used instead of stopped_as_error", "[adaptors][let_stopped]") {
   impulse_scheduler sched;
   ex::sender auto in_snd = ex::transfer_just(sched, 11);
-  check_val_types<type_array<type_array<int>>>(in_snd);
+  check_val_types<type_array<type_array<int&&>>>(in_snd);
   check_err_types<type_array<>>(in_snd);
   check_sends_stopped<true>(in_snd);
 
   ex::sender auto snd = std::move(in_snd) | ex::let_stopped([] { return ex::just_error(-1); });
 
-  check_val_types<type_array<type_array<int>>>(snd);
+  check_val_types<type_array<type_array<int&&>>>(snd);
   check_err_types<type_array<std::exception_ptr, int>>(snd);
   check_sends_stopped<false>(snd);
 }

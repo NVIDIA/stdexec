@@ -407,7 +407,8 @@ TEST_CASE("split into then", "[adaptors][split]") {
   }
 }
 
-#if 1 //!STDEXEC_NVHPC()
+// NVBUG #4067067
+#if !STDEXEC_NVHPC()
 TEMPLATE_TEST_CASE(
   "split move-only and copyable senders",
   "[adaptors][split]",
@@ -442,7 +443,8 @@ TEST_CASE("split can only accept copyable lvalue input senders", "[adaptors][spl
   static_assert(can_split_lvalue_of<decltype(ex::just(copy_and_movable_type{0}))>);
 }
 
-#if 1 //!STDEXEC_NVHPC()
+// NVBUG #4067067
+#if !STDEXEC_NVHPC()
 TEST_CASE("split into when_all", "[adaptors][split]") {
   int counter{};
   auto snd = ex::split(
