@@ -108,9 +108,12 @@ namespace exec {
     struct __item_op_base {
       using _ItemReceiver = __t<_ItemReceiverId>;
 
-      __item_op_base(_ItemReceiver&& __rcvr, __operation_base<_ReceiverId, _ValuesVariant>* __parent)
-      : __item_rcvr_{static_cast<_ItemReceiver&&>(__rcvr)}
-      , __parent_{__parent} {}
+      __item_op_base(
+        _ItemReceiver&& __rcvr,
+        __operation_base<_ReceiverId, _ValuesVariant>* __parent)
+        : __item_rcvr_{static_cast<_ItemReceiver&&>(__rcvr)}
+        , __parent_{__parent} {
+      }
 
       [[no_unique_address]] _ItemReceiver __item_rcvr_;
       __operation_base<_ReceiverId, _ValuesVariant>* __parent_;
