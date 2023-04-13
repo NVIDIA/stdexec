@@ -37,9 +37,9 @@ namespace exec {
         __operation_base<_Receiver, _Fun>* __op_;
 
         template <class _Item>
-          requires __callable<set_next_t, _Receiver&, __call_result_t<_Fun, _Item&&>>
+          requires __callable<_Fun&, _Item&&> && __callable<set_next_t, _Receiver&, __call_result_t<_Fun&, _Item&&>>
         friend auto tag_invoke(set_next_t, __t& __self, _Item&& __item) noexcept {
-          return set_next(
+          return exec::set_next(
             __self.__op_->__rcvr_, __self.__op_->__fun_(static_cast<_Item&&>(__item)));
         }
 
