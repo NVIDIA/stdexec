@@ -17,12 +17,14 @@
 #pragma once
 
 #include "../sequence_senders.hpp"
-#include "./let_each.hpp"
+#include "../variant_sender.hpp"
 
 namespace exec {
   namespace __filter_each {
+    using namespace stdexec;
+
     template <class _ReceiverId, class _Predicate>
-    struct __operation_base : __immovable {
+    struct __operation_base {
       [[no_unique_address]] __t<_ReceiverId> __rcvr_;
       [[no_unique_address]] _Predicate __pred_;
     };
@@ -32,41 +34,56 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
-        __operation_base<_ReceiverId>* __op_;
+        __operation_base<_ReceiverId, _Predicate>* __op_;
 
-        template <__decays_to<__t> _Self, sender _Item>
-        auto tag_invoke(set_next_t, _Self&& __self, _Item&& __item) noexcept {
+        template <class... _Args>
+        using __just_t = decltype(stdexec::just(__declval<_Args>()...));
+
+        template <class... _Args>
+        using __next_t = __next_sender_of_t<_Receiver&, __just_t<_Args...>>;
+
+        template <same_as<set_next_t> _Tag, __decays_to<__t> _Self, sender _Item>
+          requires __callable<_Tag, _Receiver&, _Item>
+        friend auto tag_invoke(_Tag, _Self&& __self, _Item&& __item) noexcept {
           return let_value(
-            (_Item&&) __item, [__op = __self.__op_]<class... _Args>(_Args&&... __args) {
+            (_Item&&) __item,
+            [__op = __self.__op_]<class... _Args>(
+              _Args&&... __args) -> variant_sender<__just_t<>, __next_t<_Args...>> {
               if (std::invoke(__op->__pred_, __args...)) {
                 return exec::set_next(__op->__rcvr_, just((_Args&&) __args...));
               }
-              return exec::just();
+              return stdexec::just();
             });
         }
 
         template <same_as<set_value_t> _Tag, __decays_to<__t> _Self>
-        void tag_invoke(_Tag, _Self&& __self) noexcept {
+          requires __callable<_Tag, _Receiver&&>
+        friend void tag_invoke(_Tag, _Self&& __self) noexcept {
           _Tag{}((_Receiver&&) __self.__op_->__rcvr_);
         }
 
         template <same_as<set_stopped_t> _Tag, __decays_to<__t> _Self>
-        void tag_invoke(_Tag, _Self&& __self) noexcept {
+          requires __callable<_Tag, _Receiver&&>
+        friend void tag_invoke(_Tag, _Self&& __self) noexcept {
           _Tag{}((_Receiver&&) __self.__op_->__rcvr_);
         }
 
         template <same_as<set_error_t> _Tag, __decays_to<__t> _Self, class _Error>
-        void tag_invoke(_Tag, _Self&& __self, _Error&& __error) noexcept {
+          requires __callable<_Tag, _Receiver&&, _Error>
+        friend void tag_invoke(_Tag, _Self&& __self, _Error&& __error) noexcept {
           _Tag{}((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) __error);
+        }
+
+        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
+          return get_env(__self.__op_->__rcvr_);
         }
       };
     };
 
-    template <class _SenderId, class _ReceiverId, class _Predicate>
+    template <class _Sender, class _ReceiverId, class _Predicate>
     struct __operation {
-      using _Sender = stdexec::__t<_SenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver_t = stdexec::__t<__receiver<_ReceiverId>>;
+      using __receiver_t = stdexec::__t<__receiver<_ReceiverId, _Predicate>>;
       using __op_base_t = __operation_base<_ReceiverId, _Predicate>;
 
       struct __t : __op_base_t {
@@ -85,28 +102,32 @@ namespace exec {
 
     template <class _SenderId, class _Predicate>
     struct __sender {
-      using _Sender = __stdexec::__t<_SenderId>;
+      using _Sender = stdexec::__t<_SenderId>;
 
       template <class _Self, class _Receiver>
       using __operation_t = stdexec::__t<
-        __operation<__copy_cvref_t<_Self, _SenderId>, __id<__decay_t<_Receiver>>, _Predicate>>;
+        __operation<__copy_cvref_t<_Self, _Sender>, __id<__decay_t<_Receiver>>, _Predicate>>;
 
       template <class _Receiver>
-      using __receiver_t = stdexec::__t<__receiver<__id<__decay_t<_Receiver>>>>;
+      using __receiver_t = stdexec::__t<__receiver<__id<__decay_t<_Receiver>>, _Predicate>>;
 
       struct __t {
+        using __id = __sender;
+        using is_sender = void;
+
         _Sender __sndr_;
         _Predicate __pred_;
 
-        template <__decays_to<__t> _Self, class _Receiver>
+        template <__decays_to<__t> _Self, receiver _Receiver>
           requires sequence_sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        auto tag_invoke(sequence_connect_t, _Self&& __self, _Receiver&& __rcvr)
+        friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Receiver&& __rcvr)
           -> __operation_t<_Self, _Receiver> {
-          return {(_Sender&&) __sndr_, (_Receiver&&) __rcvr, (_Predicate&&) __pred_};
+          return __operation_t<_Self, _Receiver>(
+            ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, (_Predicate&&) __self.__pred_);
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        auto tag_invoke(get_completion_signatures_t, _Self&&, const _Env&)
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, const _Env&)
           -> completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env>;
       };
     };
@@ -114,6 +135,14 @@ namespace exec {
     using namespace stdexec;
 
     struct filter_each_t {
+      template <class _Sender, class _Predicate>
+        requires tag_invocable<filter_each_t, _Sender, _Predicate>
+      auto operator()(_Sender&& __sndr, _Predicate __pred) const
+        noexcept(nothrow_tag_invocable<filter_each_t, _Sender, _Predicate>)
+          -> tag_invoke_result_t<filter_each_t, _Sender, _Predicate> {
+        return tag_invoke(*this, (_Sender&&) __sndr, (_Predicate&&) __pred);
+      }
+
       template <sender _Sender, class _Predicate>
         requires(!tag_invocable<filter_each_t, _Sender, _Predicate>)
       auto operator()(_Sender&& __sndr, _Predicate __pred) const

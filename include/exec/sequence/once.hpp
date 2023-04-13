@@ -27,13 +27,23 @@ namespace exec {
       using _Sender = stdexec::__t<_SenderId>;
 
       struct __t {
+        using __id = __sender;
+        using is_sender = void;
         _Sender __sndr_;
 
+        template <class _Self, class _Receiver>
+        using __next_t = __next_sender_of_t<__decay_t<_Receiver>&, __copy_cvref_t<_Self, _Sender>>;
+
         template <__decays_to<__t> _Self, receiver _Receiver>
-        friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Receiver&& __rcvr) {
-          using __next_t = __next_sender_of_t<__decay_t<_Receiver>&, __copy_cvref_t<_Self, _Sender>>;
-          __next_t __next = set_next(__rcvr, static_cast<_Self&&>(__self).__sndr_);
-          return connect(static_cast<__next_t&&>(__next), static_cast<_Receiver&&>(__rcvr));
+          requires sequence_receiver_from<_Receiver, __copy_cvref_t<_Self, _Sender>>
+                && sender_to<__next_t<_Self, _Receiver>, _Receiver>
+        friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Receiver&& __rcvr)
+          -> connect_result_t<__next_t<_Self, _Receiver>, _Receiver>
+        {
+          __next_t<_Self, _Receiver> __next = exec::set_next(
+            __rcvr, static_cast<_Self&&>(__self).__sndr_);
+          return connect(
+            static_cast<__next_t<_Self, _Receiver>&&>(__next), static_cast<_Receiver&&>(__rcvr));
         }
 
         template <__decays_to<__t> _Self, class _Env>
