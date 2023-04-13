@@ -81,8 +81,11 @@ set(stdexec_test_sources
     exec/test_io_uring_context.cpp
     exec/test_trampoline_scheduler.cpp
     exec/test_sequence_senders.cpp
-    exec/sequence/test_once.cpp
     exec/sequence/test_async_resource.cpp
+    exec/sequence/test_filter_each.cpp
+    exec/sequence/test_first_value.cpp
+    exec/sequence/test_once.cpp
+    exec/sequence/test_take_while.cpp
     exec/sequence/test_zip.cpp
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
     )

@@ -143,7 +143,7 @@ namespace exec {
                      __receiver_t<_Int, __decay_t<_Rcvr>>>
         friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Rcvr&& __rcvr)
           -> __operation_t<_Int, __copy_cvref_t<_Self, _Sender>, __decay_t<_Rcvr>> {
-          return __operation_t<_Int, _Sender, __decay_t<_Rcvr>>(
+          return __operation_t<_Int, __copy_cvref_t<_Self, _Sender>, __decay_t<_Rcvr>>(
             static_cast<_Self&&>(__self).__sndr_, (_Rcvr&&) __rcvr, __self.__initial_val_);
         }
 

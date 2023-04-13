@@ -85,18 +85,21 @@ namespace exec {
         template <same_as<set_value_t> _Tag, __decays_to<__t> _Self>
           requires __callable<_Tag, _Receiver&&>
         friend void tag_invoke(_Tag, _Self&& __self) noexcept {
+          __self.__op_->__on_stop_.reset();
           _Tag{}((_Receiver&&) __self.__op_->__rcvr_);
         }
 
         template <same_as<set_stopped_t> _Tag, __decays_to<__t> _Self>
           requires __callable<_Tag, _Receiver&&>
         friend void tag_invoke(_Tag, _Self&& __self) noexcept {
+          __self.__op_->__on_stop_.reset();
           _Tag{}((_Receiver&&) __self.__op_->__rcvr_);
         }
 
         template <same_as<set_error_t> _Tag, __decays_to<__t> _Self, class _Error>
           requires __callable<_Tag, _Receiver&&, _Error>
         friend void tag_invoke(_Tag, _Self&& __self, _Error&& __error) noexcept {
+          __self.__op_->__on_stop_.reset();
           _Tag{}((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) __error);
         }
 
@@ -121,6 +124,7 @@ namespace exec {
         }
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
+          __self.__on_stop_.emplace(get_stop_token(__self.__rcvr_), __on_stop_requested{__self.__stop_source_});
           stdexec::start(__self.__op_);
         }
       };
