@@ -32,13 +32,13 @@ TEST_CASE("sequence_senders - filter_each: fires once", "[sequence_sneders][filt
     return true;
   };
   int count = 0;
-  auto filtered = filter_each(once(just(42)), always_true)
-                | then_each([&](auto&&...) { count += 1; }) | ignore_all();
-  using filtered_t = decltype(filtered);
-  STATIC_REQUIRE(sender<filtered_t>);
-  using compl_sigs_t = completion_signatures_of_t<filtered_t, empty_env>;
-  using Receiver = __debug::__debug_receiver<empty_env, compl_sigs_t>;
-  STATIC_REQUIRE(sender_to<filtered_t, Receiver>);
+  auto filtered = once(just(42))           //
+                | filter_each(always_true) //
+                | then_each([&](int value) {
+                    CHECK(value == 42);
+                    count += 1;
+                  }) //
+                | ignore_all();
   CHECK(count == 0);
   sync_wait(filtered);
   CHECK(count == 1);
@@ -49,9 +49,11 @@ TEST_CASE("sequence_senders - filter_each: fires none", "[sequence_sneders][filt
     return false;
   };
   int count = 0;
-  auto filtered = once(just(42))                            //
-                | filter_each(always_false)                 //
-                | then_each([&](auto&&...) { count += 1; }) //
+  auto filtered = once(just(42))            //
+                | filter_each(always_false) //
+                | then_each([&](int value) {
+                    count += 1;
+                  }) //
                 | ignore_all();
   CHECK(count == 0);
   sync_wait(filtered);
