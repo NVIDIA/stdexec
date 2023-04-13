@@ -41,19 +41,14 @@ namespace exec {
           using __id = __receiver_id;
           _Receiver __receiver_;
 
-          template <__decays_to<__t> _Self, class... _Args>
-            requires __callable<set_value_t, _Receiver, _Args...>
-          friend void tag_invoke(set_value_t, _Self&& __self, _Args&&... __args) noexcept {
-            set_value((_Receiver&&) __self.__receiver_, (_Args&&) __args...);
+          template <__one_of<set_value_t, set_error_t> _Tag, __decays_to<__t> _Self, class... _Args>
+            requires __callable<_Tag, _Receiver, _Args...>
+          friend void tag_invoke(_Tag, _Self&& __self, _Args&&... __args) noexcept {
+            _Tag{}((_Receiver&&) __self.__receiver_, (_Args&&) __args...);
           }
 
-          template <__decays_to<__t> _Self, class _Error>
-            requires __callable<set_error_t, _Receiver, _Error>
-          friend void tag_invoke(set_error_t, _Self&& __self, _Error&& __error) noexcept {
-            set_error((_Receiver&&) __self.__receiver_, (_Error&&) __error);
-          }
-
-          [[noreturn]] friend void tag_invoke(set_stopped_t, __t&&) noexcept {
+          template <same_as<set_stopped_t> _Tag>
+          [[noreturn]] friend void tag_invoke(_Tag, __t&&) noexcept {
             std::terminate();
           }
 

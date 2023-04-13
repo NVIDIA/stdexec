@@ -155,7 +155,7 @@ namespace exec {
         }
       }
 
-      template < __one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+      template < __completion_tag _Tag, class... _As>
         requires __callable<_Tag, _Receiver, _As...>
       friend void tag_invoke(_Tag, __nest_rcvr&& __self, _As&&... __as) noexcept {
         auto __scope = __self.__op_->__scope_;
@@ -493,7 +493,7 @@ namespace exec {
         }
       }
 
-      template < __one_of<set_value_t, set_error_t, set_stopped_t> _Tag, __movable_value... _As>
+      template < __completion_tag _Tag, __movable_value... _As>
       friend void tag_invoke(_Tag, __future_rcvr&& __self, _As&&... __as) noexcept {
         auto& __state = *__self.__state_;
         try {
@@ -607,8 +607,9 @@ namespace exec {
       }
 
       // BUGBUG NOT TO SPEC spawn shouldn't accept senders that can fail.
+      template <same_as<set_error_t> _Tag>
       [[noreturn]] friend void
-        tag_invoke(set_error_t, __spawn_rcvr&&, const std::exception_ptr&) noexcept {
+        tag_invoke(_Tag, __spawn_rcvr&&, const std::exception_ptr&) noexcept {
         std::terminate();
       }
 

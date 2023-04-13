@@ -23,12 +23,12 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace bulk {
-    template <int BlockThreads, std::integral Shape, class Fun, class... As>
+    template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__ void kernel(Shape shape, Fun fn, As... as) {
       const int tid = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (tid < static_cast<int>(shape)) {
-        fn(tid, as...);
+        ::cuda::std::move(fn)(tid, static_cast<As&&>(as)...);
       }
     }
 
@@ -46,8 +46,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
        public:
         using __id = receiver_t;
 
-        template <class... As>
-        friend void tag_invoke(stdexec::set_value_t, __t&& self, As&&... as) noexcept
+        template <stdexec::same_as<stdexec::set_value_t> _Tag, class... As>
+        friend void tag_invoke(_Tag, __t&& self, As&&... as) noexcept
           requires stdexec::__callable<Fun, Shape, As&...>
         {
           operation_state_base_t<ReceiverId>& op_state = self.op_state_;
@@ -57,8 +57,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             constexpr int block_threads = 256;
             const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1)
                                   / block_threads;
-            kernel<block_threads, Shape, Fun, As...>
-              <<<grid_blocks, block_threads, 0, stream>>>(self.shape_, self.f_, (As&&) as...);
+            kernel<block_threads, As&&...>
+              <<<grid_blocks, block_threads, 0, stream>>>(self.shape_, std::move(self.f_), (As&&) as...);
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
@@ -69,8 +69,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(tag, (As&&) as...);
+        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
         friend Env tag_invoke(stdexec::get_env_t, const __t& self) noexcept {
@@ -145,13 +145,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   };
 
   namespace multi_gpu_bulk {
-    template <int BlockThreads, std::integral Shape, class Fun, class... As>
+    template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__
       void kernel(Shape begin, Shape end, Fun fn, As... as) {
       const Shape i = begin + static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (i < end) {
-        fn(i, as...);
+        ::cuda::std::move(fn)(i, ::cuda::std::forward<As>(as)...);
       }
     }
 
@@ -185,8 +185,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
        public:
         using __id = receiver_t;
 
-        template <class... As>
-        friend void tag_invoke(stdexec::set_value_t, __t&& self, As&&... as) noexcept
+        template <stdexec::same_as<stdexec::set_value_t> _Tag, class... As>
+        friend void tag_invoke(_Tag, __t&& self, As&&... as) noexcept
           requires stdexec::__callable<Fun, Shape, As&...>
         {
           operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state = self.op_state_;
@@ -208,8 +208,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 if (begin < end) {
                   cudaSetDevice(dev);
                   cudaStreamWaitEvent(stream, op_state.ready_to_launch_);
-                  kernel<block_threads, Shape, Fun, As...>
-                    <<<grid_blocks, block_threads, 0, stream>>>(begin, end, self.f_, (As&&) as...);
+                  kernel<block_threads, As&...>
+                    <<<grid_blocks, block_threads, 0, stream>>>(begin, end, self.f_, as...);
                   cudaEventRecord(op_state.ready_to_complete_[dev], op_state.streams_[dev]);
                 }
               }
@@ -223,9 +223,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               const int grid_blocks = (shape + block_threads - 1) / block_threads;
 
               if (begin < end) {
-                kernel<block_threads, Shape, Fun, As...>
+                kernel<block_threads, As&...>
                   <<<grid_blocks, block_threads, 0, baseline_stream>>>(
-                    begin, end, self.f_, (As&&) as...);
+                    begin, end, self.f_, as...);
               }
             }
 
@@ -244,8 +244,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(tag, (As&&) as...);
+        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
         friend stdexec::env_of_t<Receiver> tag_invoke(stdexec::get_env_t, const __t& self) {

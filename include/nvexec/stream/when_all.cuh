@@ -53,9 +53,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using __t = stdexec::dependent_completion_signatures<Env>;
     };
 
-    template <class TupleT, class... As>
-    __launch_bounds__(1) __global__ void copy_kernel(TupleT* tpl, As&&... as) {
-      *tpl = decayed_tuple<As...>((As&&) as...);
+    template <class... As, class TupleT>
+    __launch_bounds__(1) __global__ void copy_kernel(TupleT* tpl, As... as) {
+      *tpl = decayed_tuple<As...>(static_cast<As&&>(as)...);
     }
 
     template <class Env, class... Senders>
@@ -179,7 +179,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               if (op_state_->state_ == when_all::started) {
                 cudaStream_t stream = std::get<Index>(op_state_->child_states_).get_stream();
                 if constexpr (sizeof...(Values)) {
-                  when_all::copy_kernel<<<1, 1, 0, stream>>>(
+                  when_all::copy_kernel<Values&&...><<<1, 1, 0, stream>>>(
                     &get<Index>(*op_state_->values_), (Values&&) vals...);
                 }
 
@@ -292,7 +292,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                   [this](auto&... opt_vals) -> void {
                     std::apply(
                       [this](auto&... all_vals) -> void {
-                        stdexec::set_value((Receiver&&) recvr_, all_vals...);
+                        stdexec::set_value((Receiver&&) recvr_, std::move(all_vals)...);
                       },
                       std::tuple_cat(::cuda::std::apply(
                         [](auto&... vals) { return std::tie(vals...); }, opt_vals)...));

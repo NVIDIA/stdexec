@@ -23,6 +23,7 @@
 #include "stdexec/__detail/__meta.hpp"
 #include "stdexec/concepts.hpp"
 #include "stdexec/functional.hpp"
+#include "trampoline_scheduler.hpp"
 #include <concepts>
 
 namespace exec {
@@ -89,10 +90,10 @@ namespace exec {
         STDEXEC_ASSERT(__op_ != nullptr);
       }
 
-      template <same_as<__t> _Self, convertible_to<bool> _Done>
+      template <same_as<set_value_t> _Tag, same_as<__t> _Self, convertible_to<bool> _Done>
         requires __callable<set_value_t, _Receiver>
               && __callable<set_error_t, _Receiver, std::exception_ptr>
-      friend void tag_invoke(set_value_t, _Self &&__self, _Done &&__done_ish) noexcept {
+      friend void tag_invoke(_Tag, _Self &&__self, _Done &&__done_ish) noexcept {
         bool __done = static_cast<bool>(__done_ish); // BUGBUG potentially throwing.
         auto *__op = __self.__op_;
 
@@ -114,17 +115,17 @@ namespace exec {
         }
       }
 
-      template <same_as<__t> _Self>
-        requires __callable<set_stopped_t, _Receiver>
-      friend void tag_invoke(set_stopped_t, _Self &&__self) noexcept {
+      template <same_as<set_stopped_t> _Tag, same_as<__t> _Self>
+        requires __callable<_Tag, _Receiver>
+      friend void tag_invoke(_Tag, _Self &&__self) noexcept {
         auto *__op = __self.__op_;
         __op->__source_op_.__destruct();
         stdexec::set_stopped((_Receiver &&) __op->__rcvr_);
       }
 
-      template <same_as<__t> _Self, class _Error>
-        requires __callable<set_error_t, _Receiver, _Error>
-      friend void tag_invoke(set_error_t, _Self &&__self, _Error __error) noexcept {
+      template <same_as<set_error_t> _Tag, same_as<__t> _Self, class _Error>
+        requires __callable<_Tag, _Receiver, _Error>
+      friend void tag_invoke(_Tag, _Self &&__self, _Error __error) noexcept {
         auto *__op = __self.__op_;
         __op->__source_op_.__destruct();
         stdexec::set_error((_Receiver &&) __op->__rcvr_, (_Error &&) __error);
@@ -159,7 +160,11 @@ namespace exec {
           stdexec::make_completion_signatures<
             _Source &,
             _Env,
-            completion_signatures<set_error_t(std::exception_ptr), stdexec::set_value_t()>,
+            stdexec::make_completion_signatures<
+              stdexec::schedule_result_t<exec::trampoline_scheduler>,
+              _Env,
+              completion_signatures<set_error_t(std::exception_ptr), stdexec::set_value_t()>,
+              __value_t>,
             __value_t>;
 
         template <__decays_to<__t> _Self, class _Env>
