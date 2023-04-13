@@ -83,6 +83,22 @@
 #define STDEXEC_HAS_BUILTIN(...) 0
 #endif
 
+// Before gcc-12, gcc really didn't like tuples or variants of immovable types
+#if STDEXEC_GCC() && (__GNUC__ < 12)
+#define STDEXEC_IMMOVABLE(_Xp) _Xp(_Xp&&)
+#else
+#define STDEXEC_IMMOVABLE(_Xp) _Xp(_Xp&&) = delete
+#endif
+
+// BUG (gcc PR93711): copy elision fails when initializing a
+// [[no_unique_address]] field from a function returning an object
+// of class type by value
+#if STDEXEC_GCC()
+#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+#else
+#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#endif
+
 #if STDEXEC_CLANG() && defined(__CUDACC__)
 #define STDEXEC_DETAIL_CUDACC_HOST_DEVICE __host__ __device__
 #else

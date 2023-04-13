@@ -7,7 +7,6 @@ if(POLICY CMP0135)
   set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
 endif()
 
-
 ##############################################################################
 # - Download and initialize RAPIDS CMake helpers -----------------------------
 
@@ -215,9 +214,9 @@ if(STDEXEC_ENABLE_CUDA)
     target_link_libraries(nvexec INTERFACE STDEXEC::stdexec)
 
     target_compile_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
     target_link_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
 
     if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
         include(rapids-cuda)

@@ -112,7 +112,7 @@ namespace nvexec {
       V&& v,
       std::size_t index) {
       if (0 == index) {
-        ((VisitorT&&) visitor)(v.template get<0>());
+        ((VisitorT&&) visitor)(((V&&) v).template get<0>());
       }
     }
 
@@ -123,7 +123,7 @@ namespace nvexec {
       V&& v,
       std::size_t index) {
       if (I == index) {
-        ((VisitorT&&) visitor)(v.template get<I>());
+        ((VisitorT&&) visitor)(((V&&) v).template get<I>());
         return;
       }
 

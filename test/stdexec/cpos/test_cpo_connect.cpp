@@ -27,7 +27,7 @@ struct op_state : immovable {
   R recv_;
 
   friend void tag_invoke(ex::start_t, op_state& self) noexcept {
-    ex::set_value((R&&) self.recv_, self.val_);
+    ex::set_value((R&&) self.recv_, (int) self.val_);
   }
 };
 

@@ -35,21 +35,9 @@
 #endif
 
 #include "__detail/__meta.hpp"
+#include "__detail/__type_traits.hpp"
 
 namespace stdexec::__std_concepts {
-#if defined(__clang__)
-  template <class _Ap, class _Bp>
-  concept __same_as = __is_same(_Ap, _Bp);
-#elif defined(__GNUC__)
-  template <class _Ap, class _Bp>
-  concept __same_as = __is_same_as(_Ap, _Bp);
-#else
-  template <class _Ap, class _Bp>
-  inline constexpr bool __same_as = false;
-  template <class _Ap>
-  inline constexpr bool __same_as<_Ap, _Ap> = true;
-#endif
-
   // Make sure we're using a same_as concept that doesn't instantiate std::is_same
   template <class _Ap, class _Bp>
   concept same_as = __same_as<_Ap, _Bp> && __same_as<_Bp, _Ap>;
@@ -87,91 +75,6 @@ namespace stdexec::__std_concepts {
 
 namespace stdexec {
   using namespace __std_concepts;
-
-#if __has_builtin(__decay)
-  template <class _Ty>
-  using __decay_t = __decay(_Ty);
-#elif STDEXEC_NVHPC()
-  template <class _Ty>
-  using __decay_t = std::decay_t<_Ty>;
-#else
-  namespace __tt {
-    struct __decay_object {
-      template <class _Ty>
-      static _Ty __g(_Ty const &);
-      template <class _Ty>
-      using __f = decltype(__g(__declval<_Ty>()));
-    };
-
-    struct __decay_default {
-      template <class _Ty>
-      static _Ty __g(_Ty);
-      template <class _Ty>
-      using __f = decltype(__g(__declval<_Ty>()));
-    };
-
-    struct __decay_abominable {
-      template <class _Ty>
-      using __f = _Ty;
-    };
-
-    struct __decay_void {
-      template <class _Ty>
-      using __f = void;
-    };
-
-    template <class _Ty>
-    extern __decay_object __mdecay;
-
-    template <class _Ty, class... Us>
-    extern __decay_default __mdecay<_Ty(Us...)>;
-
-    template <class _Ty, class... Us>
-    extern __decay_default __mdecay<_Ty(Us...) noexcept>;
-
-    template <class _Ty, class... Us>
-    extern __decay_default __mdecay<_Ty (&)(Us...)>;
-
-    template <class _Ty, class... Us>
-    extern __decay_default __mdecay<_Ty (&)(Us...) noexcept>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const noexcept>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const &>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const & noexcept>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const &&>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const && noexcept>;
-
-    template <class _Ty>
-    extern __decay_default __mdecay<_Ty[]>;
-
-    template <class _Ty, std::size_t N>
-    extern __decay_default __mdecay<_Ty[N]>;
-
-    template <class _Ty, std::size_t N>
-    extern __decay_default __mdecay<_Ty (&)[N]>;
-
-    template <>
-    inline __decay_void __mdecay<void>;
-
-    template <>
-    inline __decay_void __mdecay<void const>;
-  } // namespace __tt
-
-  template <class _Ty>
-  using __decay_t = typename decltype(__tt::__mdecay<_Ty>)::template __f<_Ty>;
-#endif
 
   // C++20 concepts
   template <class _Ty, class _Up>

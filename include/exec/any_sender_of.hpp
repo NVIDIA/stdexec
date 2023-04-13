@@ -512,10 +512,7 @@ namespace exec {
           : __env_{__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr} {
         }
 
-        template <
-          __one_of<set_value_t, set_error_t, set_stopped_t> _Tag,
-          __decays_to<__ref> _Self,
-          class... _As>
+        template < __completion_tag _Tag, __decays_to<__ref> _Self, class... _As>
           requires __one_of<_Tag(_As...), _Sigs...>
         friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
           (*static_cast<const __rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__fn_)(
@@ -566,10 +563,7 @@ namespace exec {
         using is_receiver = void;
         __operation_base<_Receiver, _Sigs, _Queries>* __op_;
 
-        template <
-          __one_of<set_value_t, set_error_t, set_stopped_t> _CPO,
-          __decays_to<__rec> _Self,
-          class... _Args>
+        template < __completion_tag _CPO, __decays_to<__rec> _Self, class... _Args>
           requires __callable<_CPO, _Receiver&&, _Args...>
         friend void tag_invoke(_CPO, _Self&& __self, _Args&&... __args) noexcept {
           _CPO{}((_Receiver&&) __self.__op_->__receiver_, (_Args&&) __args...);
