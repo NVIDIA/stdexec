@@ -36,14 +36,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test GPU schedulers
-        shell: bash -l {0}
+        shell: bash -elxo pipefail {0}
         env:
           cxx: "${{ matrix.cxx }}"
         run: |
-          set -x;
-          sudo mkdir -p /workspaces/stdexec/;
-          sudo cp -ar . /workspaces/stdexec/;
-          sudo chown -R $(id -u):$(id -g) /workspaces;
+          mkdir -p /workspaces;
+          cp -ar . /workspaces/stdexec;
           cd /workspaces/stdexec;
           # Configure
           cmake -S . -B build -GNinja \

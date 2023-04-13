@@ -1,5 +1,5 @@
 {
-  "image": "rapidsai/devcontainers:23.04-cpp-llvm16-cuda12.0-nvhpc23.1-ubuntu22.04",
+  "image": "rapidsai/devcontainers:23.06-cpp-llvm16-cuda12.0-nvhpc23.3-ubuntu22.04",
 
   "hostRequirements": { "gpu": true },
 
