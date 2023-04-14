@@ -114,8 +114,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           result_sender_t* result_sender = static_cast<result_sender_t*>(
             __self.__op_state_->temp_storage_);
-          kernel_with_result<_As&&...>
-            <<<1, 1, 0, stream>>>(std::move(__self.__op_state_->__fun_), result_sender, (_As&&) __as...);
+          kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
+            std::move(__self.__op_state_->__fun_), result_sender, (_As&&) __as...);
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {

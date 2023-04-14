@@ -36,10 +36,6 @@
 #include "coroutine.hpp"
 #include "stop_token.hpp"
 
-#if STDEXEC_NVHPC()
-#include <nv/target>
-#endif
-
 #ifdef __EDG__
 #pragma diagnostic push
 #pragma diag_suppress 1302
@@ -598,47 +594,23 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
+  template <class _Receiver>
+  struct _WITH_RECEIVER_ { };
+
   template <class _Sig>
-  struct _MISSING_COMPLETION_SIGNAL_;
+  struct _MISSING_COMPLETION_SIGNAL_ { };
 
-  template <class _Tag, class... _Args>
-  struct _MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)> {
-    template <class _Receiver>
-    struct _WITH_RECEIVER_ : std::false_type { };
+  template <class _Receiver, class _Tag, class... _Args>
+  auto __try_completion(_Tag (*)(_Args...))
+    -> __mexception<_MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>, _WITH_RECEIVER_<_Receiver>>;
 
-    friend auto operator,(_MISSING_COMPLETION_SIGNAL_, auto) -> _MISSING_COMPLETION_SIGNAL_ {
-      return {};
-    }
-  };
+  template <class _Receiver, class _Tag, class... _Args>
+    requires nothrow_tag_invocable<_Tag, _Receiver, _Args...>
+  int __try_completion(_Tag (*)(_Args...));
 
-  namespace __receiver_concepts {
-    struct __found_completion_signature {
-      template <class>
-      using _WITH_RECEIVER_ = std::true_type;
-    };
-
-    template <class _Receiver, class _Tag, class... _Args>
-    using __missing_completion_signal_t = //
-      __if_c<
-        nothrow_tag_invocable<_Tag, _Receiver, _Args...>,
-        __found_completion_signature,
-        _MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>>;
-
-    template <class _Receiver, class _Tag, class... _Args>
-    auto __has_completion(_Tag (*)(_Args...))
-      -> __missing_completion_signal_t<_Receiver, _Tag, _Args...>;
-
-    template <class _Receiver, class... _Sigs>
-    auto __has_completions(completion_signatures<_Sigs...>*)
-      -> decltype((__has_completion<_Receiver>((_Sigs*) 0), ...));
-
-    template <class _Completion, class _Receiver>
-    concept __is_valid_completion = //
-      _Completion::template _WITH_RECEIVER_<_Receiver>::value;
-  }                                 // namespace __receiver_concepts
-
-  using __receiver_concepts::__has_completions;
-  using __receiver_concepts::__is_valid_completion;
+  template <class _Receiver, class... _Sigs>
+  auto __try_completions(completion_signatures<_Sigs...>*)
+    -> decltype((void(), ..., stdexec::__try_completion<_Receiver>((_Sigs*) nullptr)));
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -656,7 +628,7 @@ namespace stdexec {
   template <class _Receiver>
   concept __receiver = //
     // Nested requirement here is to make this an atomic constraint
-    requires { requires __receiver_r5_or_r7<_Receiver>; };
+    requires { requires __receiver_r5_or_r7<__decay_t<_Receiver>>; };
 
   template <class _Receiver>
   concept receiver =
@@ -668,11 +640,8 @@ namespace stdexec {
   template <class _Receiver, class _Completions>
   concept receiver_of =    //
     receiver<_Receiver> && //
-    requires(_Completions* __required_completions) {
-      {
-        __has_completions<__decay_t<_Receiver>>(__required_completions)
-      } //
-        ->__is_valid_completion<__decay_t<_Receiver>>;
+    requires(_Completions* __completions) {
+      { stdexec::__try_completions<__decay_t<_Receiver>>(__completions) } -> __ok;
     };
 
   /////////////////////////////////////////////////////////////////////////////
@@ -690,27 +659,52 @@ namespace stdexec {
     template <class _Env>
     using __debug_env_t = __make_env_t<_Env, __with<__is_debug_env_t, bool>>;
 
+    template <class _Env>
+    concept __is_debug_env = tag_invocable<__debug::__is_debug_env_t, _Env>;
+
+    struct __completion_signatures { };
+
     template <class _Sig>
-    struct __completion;
+    extern int __normalize_sig;
 
     template <class _Tag, class... _Args>
-    struct __completion<_Tag(_Args...)> {
-      template <class _Tag2, class... _Args2>
-        requires same_as<_Tag(_Args&&...), _Tag2(_Args2&&...)>
+    extern _Tag (*__normalize_sig<_Tag(_Args...)>)(_Args&&...);
+
+    template <class _Sig>
+    using __normalize_sig_t = decltype(__normalize_sig<_Sig>);
+
+    template <class... _Sigs>
+    struct __valid_completions {
+      template <derived_from<__valid_completions> _Self, class _Tag, class... _Args>
+        requires __one_of<_Tag (*)(_Args&&...), _Sigs...>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         friend void
-        tag_invoke(_Tag2, __completion&&, _Args2&&...) noexcept {
-#if STDEXEC_NVHPC()
-          NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();))
-#elif STDEXEC_CLANG() && defined(__CUDACC__) && defined(__CUDA_ARCH__)
-       __trap();
-#else
-        std::terminate();
-#endif
+        tag_invoke(_Tag, _Self&&, _Args&&...) noexcept {
+        STDEXEC_TERMINATE();
       }
     };
 
-    struct __completion_signatures { };
+    template <class _CvrefSenderId, class _Env, class _Completions>
+    struct __debug_receiver {
+      using __t = __debug_receiver;
+      using __id = __debug_receiver;
+      using is_receiver = void;
+    };
+
+    template <class _CvrefSenderId, class _Env, class... _Sigs>
+    struct __debug_receiver<_CvrefSenderId, _Env, completion_signatures<_Sigs...>> //
+      : __valid_completions<__normalize_sig_t<_Sigs>...> {
+      using __t = __debug_receiver;
+      using __id = __debug_receiver;
+      using is_receiver = void;
+
+      template <same_as<get_env_t> _Tag>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+        friend __debug_env_t<_Env>
+        tag_invoke(_Tag, __debug_receiver) noexcept {
+        STDEXEC_TERMINATE();
+      }
+    };
 
     struct _COMPLETION_SIGNATURES_MISMATCH_ { };
 
@@ -720,62 +714,45 @@ namespace stdexec {
     template <class... _Sigs>
     struct _IS_NOT_ONE_OF_ { };
 
+    template <class _Sender>
+    struct _SIGNAL_SENT_BY_SENDER_ { };
+
     template <class _Warning>
     [[deprecated(
-        "The sender claims to send a particular set of completions,"
-        " but in actual fact it completes with a result that is not"
-        " one of the declared completion signatures."
-    )]]
-    void _ATTENTION_() noexcept {}
+      "The sender claims to send a particular set of completions,"
+      " but in actual fact it completes with a result that is not"
+      " one of the declared completion signatures.")]] STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      void
+      _ATTENTION_() noexcept {
+    }
 
-    template <class... _Sigs>
-    struct __fallthrough {
-      struct __ignore {
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE __ignore(__fallthrough) noexcept {
+    template <class _Sig>
+    struct __invalid_completion {
+      struct __t {
+        template <class _CvrefSenderId, class _Env, class... _Sigs>
+        __t(__debug_receiver<_CvrefSenderId, _Env, completion_signatures<_Sigs...>>&&) noexcept {
+          using _SenderId = __decay_t<_CvrefSenderId>;
+          using _Sender = stdexec::__t<_SenderId>;
+          using _What = //
+            _WARNING_<  //
+              _COMPLETION_SIGNATURES_MISMATCH_,
+              _COMPLETION_SIGNATURE_<_Sig>,
+              _IS_NOT_ONE_OF_<_Sigs...>,
+              _SIGNAL_SENT_BY_SENDER_<_Sender>>;
+          __debug::_ATTENTION_<_What>();
         }
       };
-
-      template <__completion_tag _Tag, class... _Args>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      friend auto tag_invoke(_Tag, __ignore, _Args&&...) noexcept {
-        using _What = //
-          _WARNING_<  //
-            _COMPLETION_SIGNATURES_MISMATCH_,
-            _COMPLETION_SIGNATURE_<_Tag(_Args...)>,
-            _IS_NOT_ONE_OF_<_Sigs...>>;
-        __debug::_ATTENTION_<_What>();
-      }
     };
 
-    template <class _Env>
-    concept __is_debug_env = tag_invocable<__debug::__is_debug_env_t, _Env>;
-
-    template <class _Env, class _Sigs>
-    struct __debug_receiver;
-
-    template <class _Env>
-    struct __debug_receiver<_Env, __completion_signatures> {
-      using __t = __debug_receiver;
-      using __id = __debug_receiver;
-      using is_receiver = void;
-    };
-
-    template <class _Env, class... _Sigs>
-    struct __debug_receiver<_Env, completion_signatures<_Sigs...>> //
-      : __completion<_Sigs>...
-      , __fallthrough<_Sigs...> {
-      using is_receiver = void;
-      using __t = __debug_receiver;
-      using __id = __debug_receiver;
-
-      template <same_as<get_env_t> _Tag>
-      friend __debug_env_t<_Env> tag_invoke(_Tag, __debug_receiver) noexcept {
-        std::terminate();
-      }
-    };
+    template <__completion_tag _Tag, class... _Args>
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      void
+      tag_invoke(_Tag, __t<__invalid_completion<_Tag(_Args...)>>, _Args&&...) noexcept {
+    }
 
     struct __debug_operation {
-      friend void tag_invoke(same_as<start_t> auto, __debug_operation&) noexcept {
+      template <same_as<start_t> _Tag>
+      friend void tag_invoke(_Tag, __debug_operation&) noexcept {
       }
     };
 
@@ -827,7 +804,7 @@ namespace stdexec {
     void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env> && !same_as<_Env, no_env>) {
         if (sizeof(_Sender) == ~0) { // never true
-          using _Receiver = __debug_receiver<_Env, _Sigs>;
+          using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;
           using _Operation = connect_result_t<_Sender, _Receiver>;
           //static_assert(receiver_of<_Receiver, _Sigs>);
           if constexpr (!same_as<_Operation, __debug_operation>) {
@@ -844,7 +821,7 @@ namespace stdexec {
         if (sizeof(_Sender) == ~0) { // never true
           using _Sigs = __completion_signatures_of_t<_Sender, __debug_env_t<_Env>>;
           if constexpr (!same_as<_Sigs, __debug::__completion_signatures>) {
-            using _Receiver = __debug_receiver<_Env, _Sigs>;
+            using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;
             using _Operation = connect_result_t<_Sender, _Receiver>;
             //static_assert(receiver_of<_Receiver, _Sigs>);
             if constexpr (!same_as<_Operation, __debug_operation>) {
@@ -864,6 +841,9 @@ namespace stdexec {
   // [execution.sndtraits]
   namespace __get_completion_signatures {
     template <class _Sender, class _Env>
+    concept __r7_style_sender = same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>;
+
+    template <class _Sender, class _Env>
     concept __with_tag_invoke =
       __valid<tag_invoke_result_t, get_completion_signatures_t, _Sender, _Env>;
 
@@ -880,7 +860,12 @@ namespace stdexec {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
         if constexpr (__with_tag_invoke<_Sender, _Env>) {
-          return (tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>(*)()) nullptr;
+          using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
+          if constexpr (same_as<_Env, no_env> && __merror<_Result>) {
+            return (dependent_completion_signatures<no_env>(*)()) nullptr;
+          } else {
+            return (_Result(*)()) nullptr;
+          }
         } else if constexpr (__with_member_alias<_Sender>) {
           return (__member_alias_t<_Sender, _Env>(*)()) nullptr;
         } else if constexpr (__awaitable<_Sender, __env_promise<_Env>>) {
@@ -894,11 +879,13 @@ namespace stdexec {
                     set_error_t(std::exception_ptr),
                     set_stopped_t()>(*)()) nullptr;
           }
+        } else
 #if STDEXEC_LEGACY_R5_CONCEPTS()
-        } else if constexpr (same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>) {
+          if constexpr (__r7_style_sender<_Sender, _Env>) {
           return (dependent_completion_signatures<no_env>(*)()) nullptr;
+        } else
 #endif
-        } else if constexpr (__is_debug_env<_Env>) {
+          if constexpr (__is_debug_env<_Env>) {
           using __tag_invoke::tag_invoke;
           // This ought to cause a hard error that indicates where the problem is.
           using _Completions
@@ -911,13 +898,13 @@ namespace stdexec {
 
       template <class _Sender, class _Env = __default_env>
         requires(
-          __with_tag_invoke<_Sender, _Env> //
-          || __with_member_alias<_Sender>  //
-          || __awaitable<_Sender, __env_promise<_Env>>
-#if STDEXEC_LEGACY_R5_CONCEPTS()
-          || (same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>)
-#endif
-          || __is_debug_env<_Env>)
+          __with_tag_invoke<_Sender, _Env> ||          //
+          __with_member_alias<_Sender> ||              //
+          __awaitable<_Sender, __env_promise<_Env>> || //
+#if STDEXEC_LEGACY_R5_CONCEPTS()                       //
+          __r7_style_sender<_Sender, _Env> ||          //
+#endif                                                 //
+          __is_debug_env<_Env>)                        //
       constexpr auto operator()(_Sender&& __sndr, const _Env& __env) const noexcept
         -> decltype(__impl<_Sender, _Env>()()) {
         return {};
@@ -931,11 +918,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   // NOT TO SPEC (YET)
-  template <class _Sender, class _Env>
-  concept __with_completion_signatures =
-    __callable<get_completion_signatures_t, _Sender, _Env>
-    && __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env>;
-
 #if !STDEXEC_LEGACY_R5_CONCEPTS()
   // Here is the R7 sender concepts, not yet enabled.
   template <class _Sender>
@@ -948,29 +930,22 @@ namespace stdexec {
   template <class _Sender, class _Env = empty_env>
   concept sender_in =  //
     sender<_Sender> && //
-    __with_completion_signatures<_Sender, _Env>;
+    requires(_Sender&& __sndr, _Env&& __env) {
+      {
+        get_completion_signatures((_Sender&&) __sndr, (_Env&&) __env)
+      } -> __valid_completion_signatures<_Env>;
+    };
 
   template <class _Sender, class _Env = empty_env>
     requires sender_in<_Sender, _Env>
   using completion_signatures_of_t = __completion_signatures_of_t<_Sender, _Env>;
 
 #else
-  template <class _Sender, class _Env>
-  constexpr bool __sender_r7() noexcept {
-    return same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>;
-  }
-
-  // BUGBUG TODO STDEXEC_NVHPC(): this results in a duplicate symbol linker error with nvc++
-  // template <class _Sender, class _Env>
-  // inline constexpr bool __sender_r7 = //
-  //   same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>;
 
   template <class _Sender, class _Env = no_env>
-  concept __sender =
-    // Nested requirement here is to make this an atomic constraint
-    requires { //
-      requires(__sender_r7<_Sender, _Env>() || __with_completion_signatures<_Sender, _Env>);
-    };
+  concept __sender = requires(_Sender&& __sndr, _Env&& __env) {
+    get_completion_signatures((_Sender&&) __sndr, (_Env&&) __env);
+  } && __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env>, _Env>;
 
   template <class _Sender, class _Env = no_env>
   concept sender =
@@ -985,7 +960,9 @@ namespace stdexec {
     constructible_from<__decay_t<_Sender>, _Sender>;
 
   template <class _Sender, class _Env = empty_env>
-  concept sender_in = sender<_Sender, _Env>;
+  concept sender_in =          //
+    __sender<_Sender, _Env> && //
+    sender<_Sender, _Env>;
 
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender_in<S, Ctx> are both true, then they
@@ -1827,6 +1804,7 @@ namespace stdexec {
   template <class _Sender, class _Receiver>
   concept sender_to =
     receiver<_Receiver> &&                     //
+    __sender<_Sender, env_of_t<_Receiver>> &&  // NOT TO SPEC: for simpler diagnostics
     sender_in<_Sender, env_of_t<_Receiver>> && //
     __receiver_from<_Receiver, _Sender> &&     //
     requires(_Sender&& __sndr, _Receiver&& __rcvr) {
@@ -3612,7 +3590,7 @@ namespace stdexec {
 
         using __receiver_ = stdexec::__t<__receiver<_CvrefSenderId, _EnvId>>;
 
-        void* const __token_{(void*)0xDEADBEEF};
+        void* const __token_{(void*) 0xDEADBEEF};
         in_place_stop_source __stop_source_{};
         __variant_t __data_;
         std::atomic<void*> __head_{nullptr};
@@ -3693,7 +3671,7 @@ namespace stdexec {
         friend void tag_invoke(start_t, __t& __self) noexcept {
           stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>* __shared_state =
             __self.__shared_state_.get();
-          STDEXEC_ASSERT(__shared_state->__token_ == (void*)0xDEADBEEF);
+          STDEXEC_ASSERT(__shared_state->__token_ == (void*) 0xDEADBEEF);
           std::atomic<void*>& __head = __shared_state->__head_;
           void* const __completion_state = static_cast<void*>(__shared_state);
           void* __old = __head.load(std::memory_order_acquire);
@@ -3750,7 +3728,6 @@ namespace stdexec {
         }
 
        private:
-
         using __sh_state_ = stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>;
 
         template <class... _Tys>
@@ -3812,8 +3789,7 @@ namespace stdexec {
     inline constexpr bool __is_split_customized = __minvocable<__which<__cust_sigs>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
-    using __sender_t =
-      __t<__sender<stdexec::__cvref_id<_Sender, _Sender>, stdexec::__id<__decay_t<_Env>>>>;
+    using __sender_t = __t<__sender<stdexec::__cvref_id<_Sender>, stdexec::__id<__decay_t<_Env>>>>;
 
     template <class _Sender, class _Env>
     using __dispatcher_for =
@@ -5022,17 +4998,19 @@ namespace stdexec {
         using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
 
         template <class _Self, class _Env>
-        using __all_values_and_errors_nothrow_decay_copyable =
-          __mand<
-            error_types_of_t<__copy_cvref_t<_Self, _Sender>, _Env, __all_nothrow_decay_copyable>,
-            value_types_of_t<__copy_cvref_t<_Self, _Sender>, _Env, __all_nothrow_decay_copyable, __mand>>;
+        using __all_values_and_errors_nothrow_decay_copyable = __mand<
+          error_types_of_t<__copy_cvref_t<_Self, _Sender>, _Env, __all_nothrow_decay_copyable>,
+          value_types_of_t<
+            __copy_cvref_t<_Self, _Sender>,
+            _Env,
+            __all_nothrow_decay_copyable,
+            __mand>>;
 
         template <class _Self, class _Env>
-        using __with_error_t =
-          __if<
-            __all_values_and_errors_nothrow_decay_copyable<_Self, _Env>,
-            completion_signatures<>,
-            __with_exception_ptr>;
+        using __with_error_t = __if<
+          __all_values_and_errors_nothrow_decay_copyable<_Self, _Env>,
+          completion_signatures<>,
+          __with_exception_ptr>;
 
         template <class _Self, class _Env>
         using __completions_t = //
@@ -6212,13 +6190,29 @@ namespace stdexec {
     template <class _Sender>
     using __dispatcher_for = __make_dispatcher<__cust_sigs, __mconst<__default_impl>, _Sender>;
 
+    // These are for hiding the metaprogramming in diagnostics
+    template <class _Sender>
+    struct __sync_receiver_for {
+      using __t = __receiver_t<_Sender>;
+    };
+    template <class _Sender>
+    using __sync_receiver_for_t = __t<__sync_receiver_for<_Sender>>;
+
+    template <class _Sender>
+    struct __value_tuple_for {
+      using __t = __sync_wait_result_t<_Sender>;
+    };
+    template <class _Sender>
+    using __value_tuple_for_t = __t<__value_tuple_for<_Sender>>;
+
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
       template <sender_in<__env> _Sender>
-        requires __valid<__single_value_variant_sender_t, _Sender, __env>
-              && (sender_to<_Sender, __receiver_t<_Sender>> || __is_sync_wait_customized<_Sender>)
-      auto operator()(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
+        requires __satisfies<__single_value_variant_sender<_Sender, __env>>
+              && (sender_to<_Sender, __sync_receiver_for_t<_Sender>>
+                  || __is_sync_wait_customized<_Sender>)
+      auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
         // The selected implementation should return void
         return __dispatcher_for<_Sender>{}((_Sender&&) __sndr);
       }
