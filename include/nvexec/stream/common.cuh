@@ -336,8 +336,7 @@ namespace nvexec {
     };
 
     template <class... As, class Receiver, class Tag>
-    __launch_bounds__(1) __global__
-      void continuation_kernel(Receiver receiver, Tag, As... as) {
+    __launch_bounds__(1) __global__ void continuation_kernel(Receiver receiver, Tag, As... as) {
       Tag()(::cuda::std::move(receiver), static_cast<As&&>(as)...);
     }
 

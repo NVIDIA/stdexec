@@ -66,7 +66,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           } else {
             using decayed_result_t = stdexec::__decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
-            kernel_with_result<As&&...><<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (As&&) as...);
+            kernel_with_result<As&&...>
+              <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (As&&) as...);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
