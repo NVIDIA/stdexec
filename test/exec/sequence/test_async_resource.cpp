@@ -75,7 +75,7 @@ struct ErrorResource {
   }
 };
 
-TEST_CASE("async_resource - use_resources", "[sequence][async_resource]") {
+TEST_CASE("async_resource - use_resources", "[sequence_senders][async_resource]") {
   Resource resource;
   bool called = false;
   auto [value] = stdexec::sync_wait(exec::use_resources(
@@ -92,7 +92,7 @@ TEST_CASE("async_resource - use_resources", "[sequence][async_resource]") {
   CHECK(resource.n_close_called == 3);
 }
 
-TEST_CASE("async_resource - stopped use_resources", "[sequence][async_resource]") {
+TEST_CASE("async_resource - stopped use_resources", "[sequence_senders][async_resource]") {
   Resource resource;
   StopResource stop_resource;
   bool called = false;
@@ -108,7 +108,7 @@ TEST_CASE("async_resource - stopped use_resources", "[sequence][async_resource]"
   CHECK(resource.n_close_called == 1);
 }
 
-TEST_CASE("async_resource - error use_resources", "[sequence][async_resource]") {
+TEST_CASE("async_resource - error use_resources", "[sequence_senders][async_resource]") {
   Resource resource;
   ErrorResource error_resource;
   bool called = false;
