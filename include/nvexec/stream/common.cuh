@@ -611,7 +611,7 @@ namespace nvexec {
       requires stream_receiver<OuterReceiver>
     using exit_operation_state_t = //
       operation_state_t<
-        stdexec::__cvref_id<CvrefSender, stdexec::__decay_t<CvrefSender>>,
+        stdexec::__cvref_id<CvrefSender>,
         stdexec::__id<stdexec::__t<propagate_receiver_t<stdexec::__id<OuterReceiver>>>>,
         stdexec::__id<OuterReceiver>>;
 
@@ -657,7 +657,7 @@ namespace nvexec {
     template <class CvrefSender, class InnerReceiver, class OuterReceiver>
     using stream_op_state_t = //
       operation_state_t<
-        stdexec::__cvref_id<CvrefSender, stdexec::__decay_t<CvrefSender>>,
+        stdexec::__cvref_id<CvrefSender>,
         stdexec::__id<InnerReceiver>,
         stdexec::__id<OuterReceiver>>;
 
