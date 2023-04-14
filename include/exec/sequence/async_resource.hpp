@@ -17,7 +17,7 @@
 #pragma once
 
 #include "./let_each.hpp"
-#include "./ignore_all.hpp"
+#include "./first_value.hpp"
 #include "./zip.hpp"
 
 #include "../finally.hpp"
@@ -264,7 +264,7 @@ namespace exec {
   struct use_resources_t {
     template <class _SenderFactory, class... _Resources>
     auto operator()(_SenderFactory&& __fn, _Resources&&... __resources) const {
-      return ignore_all(let_value_each(
+      return first_value(let_value_each(
         zip(async_resource::run(static_cast<_Resources&&>(__resources))...),
         static_cast<_SenderFactory&&>(__fn)));
     }

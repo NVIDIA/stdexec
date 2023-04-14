@@ -136,17 +136,23 @@ namespace exec {
 
         template <same_as<set_stopped_t> _Tag, same_as<__t> _Self>
         friend void tag_invoke(_Tag, _Self&& __self) noexcept {
+          __self.__op_->__on_item_stop_.reset();
+          __self.__op_->__on_parent_stop_.reset();
           stdexec::set_value(static_cast<_ItemReceiver&&>(__self.__op_->__item_rcvr_));
         }
 
         template <same_as<set_value_t> _Tag, same_as<__t> _Self, class... _Args>
         friend void tag_invoke(_Tag, _Self&& __self, _Args&&... __args) noexcept {
           __self.__op_->__parent_->__notify_value(static_cast<_Args&&>(__args)...);
+          __self.__op_->__on_item_stop_.reset();
+          __self.__op_->__on_parent_stop_.reset();
           stdexec::set_value(static_cast<_ItemReceiver&&>(__self.__op_->__item_rcvr_));
         }
 
         template <same_as<set_error_t> _Tag, same_as<__t> _Self, class _Error>
         friend void tag_invoke(_Tag, _Self&& __self, _Error&& __error) noexcept {
+          __self.__op_->__on_item_stop_.reset();
+          __self.__op_->__on_parent_stop_.reset();
           stdexec::set_value(static_cast<_ItemReceiver&&>(__self.__op_->__item_rcvr_));
         }
 
@@ -179,6 +185,12 @@ namespace exec {
         }
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
+          __self.__on_item_stop_.emplace(
+            stdexec::get_stop_token(stdexec::get_env(__self.__item_rcvr_)),
+            __on_stop_requested{__self.__stop_source_});
+          __self.__on_parent_stop_.emplace(
+            __self.__parent_->__stop_source_.get_token(),
+            __on_stop_requested{__self.__stop_source_});
           stdexec::start(__self.__op_);
         }
       };
@@ -286,9 +298,6 @@ namespace exec {
       };
     };
 
-    template <class>
-    using __drop_errors = completion_signatures<>;
-
     template <class _SenderId>
     struct __sender {
       using _Sender = stdexec::__t<_SenderId>;
@@ -323,8 +332,7 @@ namespace exec {
             __copy_cvref_t<_Self, _Sender>,
             _Env,
             completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>,
-            __compl_sigs::__default_set_value,
-            __drop_errors>;
+            __compl_sigs::__default_set_value>;
       };
     };
 

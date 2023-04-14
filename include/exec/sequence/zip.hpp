@@ -122,10 +122,12 @@ namespace exec {
             stdexec::set_stopped((_Receiver&&) __receiver_);
           } else if (__error_.index()) {
             std::visit(
-              [&]<class _Error>(const _Error& __error) {
-                stdexec::set_error((_Receiver&&) __receiver_, __error);
+              [&]<class _Error>(_Error&& __error) {
+                if constexpr (!__decays_to<_Error, std::monostate>) {
+                  stdexec::set_error((_Receiver&&) __receiver_, (_Error&&) __error);
+                }
               },
-              __error_);
+              (_ErrorVariant&&) __error_);
           } else {
             stdexec::set_value((_Receiver&&) __receiver_);
           }
@@ -226,9 +228,9 @@ namespace exec {
         }
 
         friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
-          return {
+          return stdexec::__make_env(
             stdexec::get_env(__self.__op_->__parent_op_->__receiver_),
-            {__self.__op_->__parent_op_->__stop_source_.get_token()}};
+            __with_(get_stop_token, __self.__op_->__parent_op_->__stop_source_.get_token()));
         }
       };
     };
