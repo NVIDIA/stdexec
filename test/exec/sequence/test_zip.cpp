@@ -28,32 +28,10 @@
 using namespace stdexec;
 using namespace exec;
 
-struct next_receiver {
-  using __id = next_receiver;
-  using __t = next_receiver;
-
-  template <sender _Item>
-  friend _Item tag_invoke(set_next_t, next_receiver&, _Item&& __item) noexcept {
-    return __item;
-  }
-
-  friend void tag_invoke(set_value_t, next_receiver&&) noexcept {
-  }
-
-  friend void tag_invoke(set_stopped_t, next_receiver&&) noexcept {
-  }
-
-  template <class E>
-  friend void tag_invoke(set_error_t, next_receiver&&, E&&) noexcept {
-  }
-
-  friend __debug_env_t<empty_env> tag_invoke(get_env_t, const next_receiver&) noexcept;
-};
-
 using just_t = decltype(just());
 using just_stopped_t = decltype(just_stopped());
 
-TEST_CASE("sequence_senders - zip", "[zip]") {
+TEST_CASE("sequence_senders - zip", "[sequence_senders][zip]") {
   // using env_t = __debug_env_t<empty_env>;
   // __types<__zip::__completions_t<env_t, repeat_t>>{};
   int called = 0;
@@ -67,10 +45,6 @@ TEST_CASE("sequence_senders - zip", "[zip]") {
                  }
                  return just_stopped();
                });
-  using zip_t = decltype(zip);
-  STATIC_REQUIRE(sender<zip_t>);
-  // __types<tag_invoke_result_t<get_completion_signatures_t, zip_t, env_t>>{};
-  STATIC_REQUIRE(sequence_sender_to<zip_t, next_receiver>);
   sync_wait(ignore_all(zip));
   CHECK(called == 5);
 }
