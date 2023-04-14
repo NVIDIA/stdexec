@@ -78,14 +78,15 @@ struct ErrorResource {
 TEST_CASE("async_resource - use_resources", "[sequence][async_resource]") {
   Resource resource;
   bool called = false;
-  stdexec::sync_wait(exec::use_resources(
+  auto [value] = stdexec::sync_wait(exec::use_resources(
     [&](auto&&...) {
       called = true;
-      return stdexec::just();
+      return stdexec::just(42);
     },
     resource,
     resource,
-    resource));
+    resource)).value();
+  CHECK(value == 42);
   CHECK(called);
   CHECK(resource.n_open_called == 3);
   CHECK(resource.n_close_called == 3);
