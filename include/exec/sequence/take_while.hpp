@@ -93,7 +93,11 @@ namespace exec {
           requires __callable<_Tag, _Receiver&&>
         friend void tag_invoke(_Tag, _Self&& __self) noexcept {
           __self.__op_->__on_stop_.reset();
-          _Tag{}((_Receiver&&) __self.__op_->__rcvr_);
+          if (get_stop_token(__self.__op_->__rcvr_).stop_requested()) {
+            stdexec::set_stopped((_Receiver&&) __self.__op_->__rcvr_);
+          } else {
+            stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_);
+          }
         }
 
         template <same_as<set_error_t> _Tag, __decays_to<__t> _Self, class _Error>
