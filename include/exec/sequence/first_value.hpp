@@ -84,10 +84,7 @@ namespace exec {
         __state __result_state = __state_.load(std::memory_order_acquire);
         switch (__result_state) {
         case __state::__empty:
-          stdexec::set_error(
-            static_cast<_Receiver&&>(__rcvr_),
-            std::make_exception_ptr(std::runtime_error("No value was produced by the sequence "
-                                                       "sender")));
+          stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
           break;
         case __state::__emplace_in_progress:
           stdexec::set_error(
@@ -250,7 +247,9 @@ namespace exec {
 
         template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
         friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
-          if (get_stop_token(get_env(__self.__op_->__rcvr_)).stop_requested()) {
+          if (
+            !__self.__op_->__stop_source_.stop_requested()
+            || get_stop_token(get_env(__self.__op_->__rcvr_)).stop_requested()) {
             stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
           } else {
             __self.__op_->__notify_completion();

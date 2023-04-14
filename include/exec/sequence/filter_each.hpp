@@ -113,7 +113,7 @@ namespace exec {
 
       struct __t {
         using __id = __sender;
-        using is_sender = void;
+        using is_sequence_sender = void;
 
         _Sender __sndr_;
         _Predicate __pred_;

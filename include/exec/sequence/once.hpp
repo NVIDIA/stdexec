@@ -28,7 +28,7 @@ namespace exec {
 
       struct __t {
         using __id = __sender;
-        using is_sender = void;
+        using is_sequence_sender = void;
         _Sender __sndr_;
 
         template <class _Self, class _Receiver>

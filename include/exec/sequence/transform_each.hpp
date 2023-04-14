@@ -37,7 +37,8 @@ namespace exec {
         __operation_base<_Receiver, _Fun>* __op_;
 
         template <class _Item>
-          requires __callable<_Fun&, _Item&&> && __callable<set_next_t, _Receiver&, __call_result_t<_Fun&, _Item&&>>
+          requires __callable<_Fun&, _Item&&>
+                && __callable<set_next_t, _Receiver&, __call_result_t<_Fun&, _Item&&>>
         friend auto tag_invoke(set_next_t, __t& __self, _Item&& __item) noexcept {
           return exec::set_next(
             __self.__op_->__rcvr_, __self.__op_->__fun_(static_cast<_Item&&>(__item)));
@@ -88,13 +89,21 @@ namespace exec {
     template <class... _Errors>
     using __error_sigs = completion_signatures<set_error_t(_Errors)...>;
 
+    template <class _Sender, class _Env>
+    using __some_sender = __copy_cvref_t<
+        _Sender,__sequence_sender::__some_sender_of<completion_signatures_of_t<_Sender, _Env>>>;
+
     template <class _Sender, class _Env, class _Fun>
-    using __completion_sigs = completion_signatures_of_t<__call_result_t<_Fun, _Sender>, _Env>;
+    using __completion_sigs = completion_signatures_of_t<__call_result_t<
+      _Fun,
+      __some_sender<_Sender, _Env>>,
+      _Env>;
 
     template <class _Sender, class _Fun>
     struct __sender {
       struct __t {
         using __id = __sender;
+        using is_sequence_sender = void;
         [[no_unique_address]] _Sender __sndr_;
         [[no_unique_address]] _Fun __fun_;
 

@@ -140,6 +140,7 @@ namespace exec {
 
       struct __t {
         using __id = __sender;
+        using is_sender = void;
         [[no_unique_address]] _Sender __sndr_;
 
         template <__decays_to<__t> _Self, class _Receiver>
