@@ -105,6 +105,17 @@
 #define STDEXEC_DETAIL_CUDACC_HOST_DEVICE
 #endif
 
+#if STDEXEC_NVHPC()
+#include <nv/target>
+#define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
+#elif STDEXEC_CLANG() && defined(__CUDACC__) && defined(__CUDA_ARCH__)
+#define STDEXEC_TERMINATE() \
+  __trap(); \
+  __builtin_unreachable()
+#else
+#define STDEXEC_TERMINATE() std::terminate()
+#endif
+
 #ifdef STDEXEC_ASSERT
 #error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif

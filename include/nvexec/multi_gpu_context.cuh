@@ -66,7 +66,8 @@ namespace nvexec {
             if (op.status_ == cudaSuccess) {
               continuation_kernel<<<1, 1, 0, op.stream_>>>(std::move(op.rec_), stdexec::set_value);
             } else {
-              continuation_kernel<cudaError_t><<<1, 1, 0, op.stream_>>>(std::move(op.rec_), stdexec::set_error, std::move(op.status_));
+              continuation_kernel<cudaError_t><<<1, 1, 0, op.stream_>>>(
+                std::move(op.rec_), stdexec::set_error, std::move(op.status_));
             }
           }
         }

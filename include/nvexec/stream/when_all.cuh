@@ -179,8 +179,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               if (op_state_->state_ == when_all::started) {
                 cudaStream_t stream = std::get<Index>(op_state_->child_states_).get_stream();
                 if constexpr (sizeof...(Values)) {
-                  when_all::copy_kernel<Values&&...><<<1, 1, 0, stream>>>(
-                    &get<Index>(*op_state_->values_), (Values&&) vals...);
+                  when_all::copy_kernel<Values&&...>
+                    <<<1, 1, 0, stream>>>(&get<Index>(*op_state_->values_), (Values&&) vals...);
                 }
 
                 if constexpr (stream_receiver<Receiver>) {

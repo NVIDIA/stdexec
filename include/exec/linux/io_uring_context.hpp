@@ -531,7 +531,7 @@ namespace exec {
       __io_task<_Op> &&        //
       requires(_Op& __op) {
         {
-          __op.receiver()
+          ((_Op&&) __op).receiver()
         } noexcept
           -> stdexec::receiver_of< stdexec::completion_signatures<stdexec::set_stopped_t()>>;
       };
