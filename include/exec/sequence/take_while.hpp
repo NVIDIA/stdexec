@@ -38,7 +38,7 @@ namespace exec {
     struct __operation_base {
       using _Receiver = __t<_ReceiverId>;
       using __on_stop =
-        stop_token_of_t<env_of_t<_Receiver&>>::template callback_type<__on_stop_requested>;
+        typename stop_token_of_t<env_of_t<_Receiver&>>::template callback_type<__on_stop_requested>;
 
       [[no_unique_address]] _Receiver __rcvr_;
       [[no_unique_address]] _Predicate __pred_;
