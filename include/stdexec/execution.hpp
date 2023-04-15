@@ -606,11 +606,11 @@ namespace stdexec {
 
   template <class _Receiver, class _Tag, class... _Args>
     requires nothrow_tag_invocable<_Tag, _Receiver, _Args...>
-  int __try_completion(_Tag (*)(_Args...));
+  __msuccess __try_completion(_Tag (*)(_Args...));
 
   template <class _Receiver, class... _Sigs>
   auto __try_completions(completion_signatures<_Sigs...>*)
-    -> decltype((void(), ..., stdexec::__try_completion<_Receiver>((_Sigs*) nullptr)));
+    -> decltype((__msuccess(), ..., stdexec::__try_completion<_Receiver>((_Sigs*) nullptr)));
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
