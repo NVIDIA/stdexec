@@ -159,11 +159,7 @@ namespace stdexec {
   }
 #endif
 
-  struct __msuccess {
-    constexpr bool operator()() const noexcept {
-      return true;
-    }
-  };
+  using __msuccess = int;
 
   template <class _What, class... _With>
   struct _WARNING_ { };
@@ -171,10 +167,6 @@ namespace stdexec {
   template <class _What, class... _With>
   struct _ERROR_ {
     const _ERROR_& operator,(__msuccess) const noexcept;
-
-    constexpr bool operator()() const noexcept {
-      return false;
-    }
   };
 
   template <class _What, class... _With>
@@ -190,7 +182,7 @@ namespace stdexec {
   using __ok_t = decltype(__ok_v<_Ty>);
 
   template <class... _Ts>
-  using __disp = const decltype((__ok_t<void>(), ..., __ok_t<_Ts>()))&;
+  using __disp = const decltype((__msuccess(), ..., __ok_t<_Ts>()))&;
 
   template <bool _AllOK>
   struct __i {
@@ -205,7 +197,7 @@ namespace stdexec {
   };
 
   template <class _Arg>
-  concept __ok = __ok_t<_Arg>()();
+  concept __ok = __same_as<__ok_t<_Arg>, __msuccess>;
 
   template <class _Arg>
   concept __merror = !__ok<_Arg>;
