@@ -428,7 +428,7 @@ namespace exec {
       const __vtable_t* __vtable_{__default_storage_vtable((__vtable_t*) nullptr)};
       void* __object_pointer_{nullptr};
       alignas(__alignment) std::byte __buffer_[__buffer_size]{};
-      [[no_unique_address]] _Allocator __allocator_{};
+      STDEXEC_NO_UNIQUE_ADDRESS _Allocator __allocator_{};
     };
 
     template <class _VTable, class _Allocator = std::allocator<std::byte>>
@@ -551,7 +551,7 @@ namespace exec {
 
     template <class _Receiver, class _Sigs, class _Queries>
     struct __operation_base {
-      [[no_unique_address]] _Receiver __receiver_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
     };
 
     template <class _Sender, class _Receiver, class _Queries>

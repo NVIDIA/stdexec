@@ -410,8 +410,6 @@ TEST_CASE("split into then", "[adaptors][split]") {
   }
 }
 
-// NVBUG #4067067
-#if !STDEXEC_NVHPC()
 TEMPLATE_TEST_CASE(
   "split move-only and copyable senders",
   "[adaptors][split]",
@@ -436,7 +434,6 @@ TEMPLATE_TEST_CASE(
   REQUIRE(v2 == 22);
   REQUIRE(v3 == 33);
 }
-#endif
 
 template <class T>
 concept can_split_lvalue_of = requires(T t) { ex::split(t); };
@@ -446,8 +443,6 @@ TEST_CASE("split can only accept copyable lvalue input senders", "[adaptors][spl
   static_assert(can_split_lvalue_of<decltype(ex::just(copy_and_movable_type{0}))>);
 }
 
-// NVBUG #4067067
-#if !STDEXEC_NVHPC()
 TEST_CASE("split into when_all", "[adaptors][split]") {
   int counter{};
   auto snd = ex::split(
@@ -464,7 +459,6 @@ TEST_CASE("split into when_all", "[adaptors][split]") {
   REQUIRE(v1 == 10);
   REQUIRE(v2 == 20);
 }
-#endif
 
 TEST_CASE("split can nest", "[adaptors][split]") {
   auto split_1 = ex::just(42) | ex::split();
