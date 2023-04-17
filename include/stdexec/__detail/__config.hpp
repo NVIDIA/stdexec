@@ -90,6 +90,13 @@
 #define STDEXEC_IMMOVABLE(_Xp) _Xp(_Xp&&) = delete
 #endif
 
+// NVBUG #4067067
+#if STDEXEC_NVHPC()
+#define STDEXEC_NO_UNIQUE_ADDRESS
+#else
+#define STDEXEC_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#endif
+
 // BUG (gcc PR93711): copy elision fails when initializing a
 // [[no_unique_address]] field from a function returning an object
 // of class type by value
