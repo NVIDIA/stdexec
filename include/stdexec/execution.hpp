@@ -1016,14 +1016,11 @@ namespace stdexec {
   using __select_completions_for_or = //
     __with_default< __select_completions_for<_Tag, _Tuple>, __>;
 
-  template <class _Tag, class... _Args>
-  using __set_tag_type = _Tag(_Args...);
-
   template <class _Tag, class _Completions>
   using __only_gather_signal = //
     __compl_sigs::__maybe_for_all_sigs<
       _Completions,
-      __select_completions_for_or<_Tag, __mbind_front_q<__set_tag_type, _Tag>>,
+      __select_completions_for_or<_Tag, __qf<_Tag>>,
       __remove<__, __q<completion_signatures>>>;
 
   template <class _Tag, class _Completions, class _Tuple, class _Variant>
