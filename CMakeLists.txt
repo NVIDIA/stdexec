@@ -7,7 +7,6 @@ if(POLICY CMP0135)
   set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
 endif()
 
-
 ##############################################################################
 # - Download and initialize RAPIDS CMake helpers -----------------------------
 
@@ -189,7 +188,9 @@ target_compile_options(stdexec_executable_flags INTERFACE
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CUDA,Clang>:
                        -Wno-unknown-cuda-version
-                       -Xclang=-fcuda-allow-variadic-functions>
+                       -Xclang=-fcuda-allow-variadic-functions
+                       -D_GLIBCXX_USE_TBB_PAR_BACKEND=0
+                       -include stdexec/__detail/__force_include.hpp>
                        )
 
 # Set up nvexec library
@@ -213,9 +214,9 @@ if(STDEXEC_ENABLE_CUDA)
     target_link_libraries(nvexec INTERFACE STDEXEC::stdexec)
 
     target_compile_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
     target_link_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
 
     if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
         include(rapids-cuda)

@@ -65,9 +65,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace sync_wait {
         loop_->finish();
       }
 
-      template <class Sender2 = Sender, class... As>
+      template <stdexec::same_as<stdexec::set_value_t> _Tag, class Sender2 = Sender, class... As>
         requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
-      friend void tag_invoke(stdexec::set_value_t, __t&& rcvr, As&&... as) noexcept {
+      friend void tag_invoke(_Tag, __t&& rcvr, As&&... as) noexcept {
         try {
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
               status == cudaSuccess) {
@@ -81,8 +81,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace sync_wait {
         }
       }
 
-      template <class Error>
-      friend void tag_invoke(stdexec::set_error_t, __t&& rcvr, Error err) noexcept {
+      template <stdexec::same_as<stdexec::set_error_t> _Tag, class Error>
+      friend void tag_invoke(_Tag, __t&& rcvr, Error err) noexcept {
         if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
             status == cudaSuccess) {
           rcvr.set_error((Error&&) err);

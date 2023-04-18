@@ -96,7 +96,7 @@ namespace exec {
 
         struct __t : __operation_base {
           using __id = __operation;
-          [[no_unique_address]] _Receiver __receiver_;
+          STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
 
           explicit __t(_Receiver __rcvr, std::size_t __max_depth) noexcept(
             __nothrow_decay_copyable<_Receiver>)

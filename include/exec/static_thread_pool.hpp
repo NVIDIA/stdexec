@@ -162,7 +162,8 @@ namespace exec {
 
                 if (is_last_thread) {
                   if (sh_state.exception_) {
-                    stdexec::set_error((Receiver&&) sh_state.receiver_, sh_state.exception_);
+                    stdexec::set_error(
+                      (Receiver&&) sh_state.receiver_, std::move(sh_state.exception_));
                   } else {
                     sh_state.apply(completion);
                   }
@@ -260,7 +261,10 @@ namespace exec {
         }
 
         template <class... As>
-        friend void tag_invoke(stdexec::set_value_t, bulk_receiver&& self, As&&... as) noexcept {
+        friend void tag_invoke(
+          stdexec::same_as<stdexec::set_value_t> auto,
+          bulk_receiver&& self,
+          As&&... as) noexcept {
           using tuple_t = stdexec::__decayed_tuple<As...>;
 
           shared_state& state = self.shared_state_;

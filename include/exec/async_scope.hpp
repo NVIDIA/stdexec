@@ -55,7 +55,7 @@ namespace exec {
     template <class _ReceiverId>
     struct __when_empty_op_base : __task {
       using _Receiver = __t<_ReceiverId>;
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
     };
 
     template <class _ConstrainedId, class _ReceiverId>
@@ -93,8 +93,7 @@ namespace exec {
         return __self.__start_();
       }
 
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      connect_result_t<_Constrained, _Receiver> __op_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, _Receiver> __op_;
     };
 
     template <class _ConstrainedId>
@@ -125,7 +124,7 @@ namespace exec {
       }
 
       const __impl* __scope_;
-      [[no_unique_address]] _Constrained __c_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
     };
 
     template <class _Constrained>
@@ -137,7 +136,7 @@ namespace exec {
     struct __nest_op_base : __immovable {
       using _Receiver = __t<_ReceiverId>;
       const __impl* __scope_;
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
     };
 
     template <class _ReceiverId>
@@ -161,7 +160,7 @@ namespace exec {
         }
       }
 
-      template < __one_of<set_value_t, set_error_t, set_stopped_t> _Tag, class... _As>
+      template < __completion_tag _Tag, class... _As>
         requires __callable<_Tag, _Receiver, _As...>
       friend void tag_invoke(_Tag, __nest_rcvr&& __self, _As&&... __as) noexcept {
         auto __scope = __self.__op_->__scope_;
@@ -184,7 +183,7 @@ namespace exec {
       using _Constrained = __t<_ConstrainedId>;
       using _Receiver = __t<_ReceiverId>;
 
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS //
       connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>> __op_;
 
       template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
@@ -217,7 +216,7 @@ namespace exec {
       using is_sender = void;
 
       const __impl* __scope_;
-      [[no_unique_address]] _Constrained __c_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
 
       template <class _Receiver>
       using __nest_operation_t = __nest_op<_ConstrainedId, __x<_Receiver>>;
@@ -345,9 +344,9 @@ namespace exec {
         }
       }
 
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
       std::unique_ptr<__future_state<_Sender, _Env>> __state_;
-      [[no_unique_address]] __forward_consumer __forward_consumer_;
+      STDEXEC_NO_UNIQUE_ADDRESS __forward_consumer __forward_consumer_;
 
      public:
       ~__future_op() noexcept {
@@ -510,7 +509,7 @@ namespace exec {
         }
       }
 
-      template < __one_of<set_value_t, set_error_t, set_stopped_t> _Tag, __movable_value... _As>
+      template < __completion_tag _Tag, __movable_value... _As>
       friend void tag_invoke(_Tag, __future_rcvr&& __self, _As&&... __as) noexcept {
         auto& __state = *__self.__state_;
         try {
@@ -628,8 +627,9 @@ namespace exec {
       }
 
       // BUGBUG NOT TO SPEC spawn shouldn't accept senders that can fail.
+      template <same_as<set_error_t> _Tag>
       [[noreturn]] friend void
-        tag_invoke(set_error_t, __spawn_rcvr&&, const std::exception_ptr&) noexcept {
+        tag_invoke(_Tag, __spawn_rcvr&&, const std::exception_ptr&) noexcept {
         std::terminate();
       }
 

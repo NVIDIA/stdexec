@@ -23,14 +23,14 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace then {
-    template <class Fun, class... As>
+    template <class... As, class Fun>
     __launch_bounds__(1) __global__ void kernel(Fun fn, As... as) {
-      ::cuda::std::move(fn)(std::move(as)...);
+      ::cuda::std::move(fn)(static_cast<As&&>(as)...);
     }
 
-    template <class Fun, class ResultT, class... As>
+    template <class... As, class Fun, class ResultT>
     __launch_bounds__(1) __global__ void kernel_with_result(Fun fn, ResultT* result, As... as) {
-      new (result) ResultT(::cuda::std::move(fn)(::cuda::std::move(as)...));
+      new (result) ResultT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }
 
     template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
@@ -45,18 +45,17 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __id = receiver_t;
         constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
-        template <class... As>
-        friend void tag_invoke(stdexec::set_value_t, __t&& self, As&&... as) noexcept
+        template <stdexec::same_as<stdexec::set_value_t> _Tag, class... As>
+        friend void tag_invoke(_Tag, __t&& self, As&&... as) noexcept
           requires std::invocable<Fun, stdexec::__decay_t<As>...>
         {
-
           using result_t = std::invoke_result_t<Fun, stdexec::__decay_t<As>...>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
           operation_state_base_t<ReceiverId>& op_state = self.op_state_;
           cudaStream_t stream = op_state.get_stream();
 
           if constexpr (does_not_return_a_value) {
-            kernel<Fun, As...><<<1, 1, 0, stream>>>(self.f_, (As&&) as...);
+            kernel<As&&...><<<1, 1, 0, stream>>>(std::move(self.f_), (As&&) as...);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
@@ -67,12 +66,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           } else {
             using decayed_result_t = stdexec::__decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
-            kernel_with_result<stdexec::__decay_t<Fun>, decayed_result_t, As...>
-              <<<1, 1, 0, stream>>>(self.f_, d_result, (As&&) as...);
+            kernel_with_result<As&&...>
+              <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (As&&) as...);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              op_state.propagate_completion_signal(stdexec::set_value, *d_result);
+              op_state.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
             } else {
               op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
@@ -80,8 +79,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(tag, (As&&) as...);
+        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, stdexec::get_env_t) noexcept
@@ -148,20 +147,25 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           then::receiver_t< max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun>>;
 
       template <class _Error>
-      using set_error = stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>;
+      using set_error = stdexec::completion_signatures<stdexec::set_error_t(_Error)>;
 
       template <class Self, class Env>
-      using completion_signatures = //
-        stdexec::__meval<
-          stdexec::__try_make_completion_signatures,
-          stdexec::__copy_cvref_t<Self, Sender>,
-          Env,
+      using __error_completions_t = //
+        stdexec::__concat_completion_signatures_t<
           stdexec::__with_error_invoke_t<
             stdexec::set_value_t,
             Fun,
             stdexec::__copy_cvref_t<Self, Sender>,
             Env,
             stdexec::__callable_error<"In nvexec::then(Sender, Function)..."__csz>>,
+          stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>>;
+
+      template <class Self, class Env>
+      using completion_signatures = //
+        stdexec::__try_make_completion_signatures<
+          stdexec::__copy_cvref_t<Self, Sender>,
+          Env,
+          __error_completions_t<Self, Env>,
           stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>,
           stdexec::__q<set_error>>;
 

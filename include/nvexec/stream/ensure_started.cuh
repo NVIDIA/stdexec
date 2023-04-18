@@ -23,10 +23,10 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace ensure_started {
-    template <class Tag, class Variant, class... As>
-    __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As&&... as) {
+    template <class Tag, class... As, class Variant>
+    __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
       using tuple_t = decayed_tuple<Tag, As...>;
-      var->template emplace<tuple_t>(Tag{}, (As&&) as...);
+      var->template emplace<tuple_t>(Tag(), static_cast<As&&>(as)...);
     }
 
     using env_t = //
@@ -47,17 +47,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           : shared_state_(shared_state.__intrusive_from_this()) {
         }
 
-        template <
-          stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> Tag,
-          class... As>
-        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
+        template < stdexec::__completion_tag Tag, class... As>
+        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
           SharedState& state = *self.shared_state_;
 
           if constexpr (stream_sender<Sender>) {
             cudaStream_t stream = state.stream_;
             using tuple_t = decayed_tuple<Tag, As...>;
             state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-            copy_kernel<Tag><<<1, 1, 0, stream>>>(state.data_, (As&&) as...);
+            copy_kernel<Tag, As&&...><<<1, 1, 0, stream>>>(state.data_, (As&&) as...);
             state.status_ = STDEXEC_DBG_ERR(cudaEventRecord(state.event_, stream));
           } else {
             using tuple_t = decayed_tuple<Tag, As...>;
@@ -110,7 +108,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using inner_receiver_t = stdexec::__t<receiver_t<SenderId, sh_state_t>>;
       using task_t = continuation_task_t<inner_receiver_t, variant_t>;
       using enqueue_receiver_t =
-        stdexec::__t<stream_enqueue_receiver<stdexec::__x<env_t>, stdexec::__x<variant_t>>>;
+        stdexec::__t<stream_enqueue_receiver<stdexec::__id<env_t>, variant_t>>;
       using intermediate_receiver = //
         stdexec::__t< std::conditional_t<
           stream_sender<Sender>,
@@ -256,8 +254,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             visit(
               [&](auto& tupl) noexcept -> void {
                 ::cuda::std::apply(
-                  [&](auto tag, auto&... args) noexcept -> void {
-                    op->propagate_completion_signal(tag, args...);
+                  [&]<class Tag, class... As>(Tag, As&... args) noexcept -> void {
+                    op->propagate_completion_signal(Tag(), std::move(args)...);
                   },
                   tupl);
               },
@@ -336,11 +334,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class... Tys>
       using set_value_t =
-        stdexec::completion_signatures<stdexec::set_value_t(const stdexec::__decay_t<Tys>&...)>;
+        stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>&&...)>;
 
       template <class Ty>
       using set_error_t =
-        stdexec::completion_signatures<stdexec::set_error_t(const stdexec::__decay_t<Ty>&)>;
+        stdexec::completion_signatures<stdexec::set_error_t(stdexec::__decay_t<Ty>&&)>;
 
       template <std::same_as<__t> Self, class Env>
       friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)

@@ -70,7 +70,7 @@ namespace nvexec {
 
     template <class Set, stdexec::sender Sender, class Fun>
     using let_xxx_th =
-      stdexec::__t<let_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Fun, stdexec::__x<Set>>>;
+      stdexec::__t<let_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Fun, Set>>;
 
     template <stdexec::sender Sender>
     using transfer_sender_th =
@@ -80,6 +80,8 @@ namespace nvexec {
     using ensure_started_th = stdexec::__t<ensure_started_sender_t<stdexec::__id<Sender>>>;
 
     struct stream_scheduler {
+      using __t = stream_scheduler;
+      using __id = stream_scheduler;
       friend stream_context;
 
       template <stdexec::sender Sender>

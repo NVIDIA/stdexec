@@ -23,14 +23,14 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace upon_error {
-    template <class Fun, class... As>
+    template <class... As, class Fun>
     __launch_bounds__(1) __global__ void kernel(Fun fn, As... as) {
-      fn(as...);
+      ::cuda::std::move(fn)(static_cast<As&&>(as)...);
     }
 
-    template <class Fun, class ResultT, class... As>
+    template <class... As, class Fun, class ResultT>
     __launch_bounds__(1) __global__ void kernel_with_result(Fun fn, ResultT* result, As... as) {
-      new (result) ResultT(fn(as...));
+      new (result) ResultT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }
 
     template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
@@ -46,16 +46,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
-        template <class Error>
-        friend void tag_invoke(stdexec::set_error_t, __t&& self, Error&& error) noexcept
+        template <stdexec::same_as<stdexec::set_error_t> _Tag, class Error>
+        friend void tag_invoke(_Tag, __t&& self, Error&& error) noexcept
           requires std::invocable<Fun, Error>
         {
-          using result_t = std::invoke_result_t<Fun, stdexec::__decay_t<Error>>;
+          using result_t = std::invoke_result_t<Fun, Error>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
           cudaStream_t stream = self.op_state_.get_stream();
 
           if constexpr (does_not_return_a_value) {
-            kernel<Fun, Error><<<1, 1, 0, stream>>>(self.f_, (Error&&) error);
+            kernel<Error><<<1, 1, 0, stream>>>(std::move(self.f_), (Error&&) error);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
               self.op_state_.propagate_completion_signal(stdexec::set_value);
@@ -66,10 +66,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             using decayed_result_t = stdexec::__decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(
               self.op_state_.temp_storage_);
-            kernel_with_result<Fun, Error><<<1, 1, 0, stream>>>(self.f_, d_result, error);
+            kernel_with_result<Error>
+              <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (Error&&) error);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              self.op_state_.propagate_completion_signal(stdexec::set_value, *d_result);
+              self.op_state_.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
             } else {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
@@ -77,8 +78,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(tag, (As&&) as...);
+        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
         STDEXEC_DEFINE_CUSTOM(env_t get_env)(this const __t& self, stdexec::get_env_t) {

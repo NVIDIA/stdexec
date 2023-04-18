@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <utility>
 #include "__config.hpp"
+#include "__type_traits.hpp"
 
 namespace stdexec {
 
@@ -34,22 +35,6 @@ namespace stdexec {
     constexpr __ignore(auto&&...) noexcept {
     }
   };
-
-  // Before gcc-12, gcc really didn't like tuples or variants of immovable types
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
-#  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
-#else
-#  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
-#endif
-
-  // BUG (gcc PR93711): copy elision fails when initializing a
-  // [[no_unique_address]] field from a function returning an object
-  // of class type by value
-#if defined(__GNUC__) && !defined(__clang__)
-#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-#else
-#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
-#endif
 
   struct __none_such { };
 
@@ -95,6 +80,12 @@ namespace stdexec {
   template <std::size_t _Np>
   using __msize_t = char[_Np + 1];
 
+  template <class _Tp, class _Up>
+  using __mfirst = _Tp;
+
+  template <class _Tp, class _UXp>
+  using __msecond = _UXp;
+
   template <class _Tp>
   extern const __undefined<_Tp> __v;
 
@@ -121,7 +112,7 @@ namespace stdexec {
   using __make_indices = std::make_index_sequence<_Np>*;
 
   template <class _Char>
-  concept __mchar = __v<std::is_same<_Char, char>>;
+  concept __mchar = __same_as<_Char, char>;
 
   template <std::size_t _Len>
   class __mstring {
@@ -168,35 +159,30 @@ namespace stdexec {
   }
 #endif
 
-  struct __msuccess {
-    constexpr bool operator()() const noexcept {
-      return true;
-    }
-  };
+  using __msuccess = int;
+
+  template <class _What, class... _With>
+  struct _WARNING_ { };
 
   template <class _What, class... _With>
   struct _ERROR_ {
-    _ERROR_ operator,(__msuccess);
-
-    constexpr bool operator()() const noexcept {
-      return false;
-    }
+    const _ERROR_& operator,(__msuccess) const noexcept;
   };
 
   template <class _What, class... _With>
-  using __mexception = _ERROR_<_What, _With...>;
+  using __mexception = const _ERROR_<_What, _With...>&;
 
   template <class>
   extern __msuccess __ok_v;
 
   template <class _What, class... _With>
-  extern __mexception<_What, _With...> __ok_v<__mexception<_What, _With...>>;
+  extern _ERROR_<_What, _With...> __ok_v<__mexception<_What, _With...>>;
 
   template <class _Ty>
   using __ok_t = decltype(__ok_v<_Ty>);
 
   template <class... _Ts>
-  using __disp = decltype((__ok_t<void>(), ..., __ok_t<_Ts>()));
+  using __disp = const decltype((__msuccess(), ..., __ok_t<_Ts>()))&;
 
   template <bool _AllOK>
   struct __i {
@@ -211,7 +197,7 @@ namespace stdexec {
   };
 
   template <class _Arg>
-  concept __ok = __ok_t<_Arg>()();
+  concept __ok = __same_as<__ok_t<_Arg>, __msuccess>;
 
   template <class _Arg>
   concept __merror = !__ok<_Arg>;
@@ -320,11 +306,11 @@ namespace stdexec {
     using __f = _False;
   };
 
-  template <class _Pred, class _True, class... _False>
+  template <class _Pred, class _True = void, class... _False>
     requires(sizeof...(_False) <= 1)
   using __if = __minvoke<__if_, _Pred, _True, _False...>;
 
-  template <bool _Pred, class _True, class... _False>
+  template <bool _Pred, class _True = void, class... _False>
     requires(sizeof...(_False) <= 1)
   using __if_c = __minvoke<__if_::__<_Pred>, _True, _False...>;
 
@@ -515,7 +501,7 @@ namespace stdexec {
   template <class _Ty>
   struct __mcount {
     template <class... _Ts>
-    using __f = __msize_t<(__v<std::is_same<_Ts, _Ty>> + ... + 0)>;
+    using __f = __msize_t<(__same_as<_Ts, _Ty> + ... + 0)>;
   };
 
   template <class _Fn>
@@ -527,7 +513,7 @@ namespace stdexec {
   template <class _Tp>
   struct __contains {
     template <class... _Args>
-    using __f = __mbool<(__v<std::is_same<_Tp, _Args>> || ...)>;
+    using __f = __mbool<(__same_as<_Tp, _Args> || ...)>;
   };
 
   template <class _Continuation = __q<__types>>
@@ -573,7 +559,7 @@ namespace stdexec {
   template <class _Old, class _New, class _Continuation = __q<__types>>
   struct __replace {
     template <class... _Args>
-    using __f = __minvoke<_Continuation, __if<std::is_same<_Args, _Old>, _New, _Args>...>;
+    using __f = __minvoke<_Continuation, __if_c<__same_as<_Args, _Old>, _New, _Args>...>;
   };
 
   template <class _Old, class _Continuation = __q<__types>>
@@ -582,7 +568,7 @@ namespace stdexec {
     using __f = //
       __minvoke<
         __mconcat<_Continuation>,
-        __if<std::is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
+        __if_c<__same_as<_Args, _Old>, __types<>, __types<_Args>>...>;
   };
 
   template <class _Pred, class _Continuation = __q<__types>>
@@ -599,59 +585,6 @@ namespace stdexec {
     template <class... _Args>
     using __f = _Return(_Args...);
   };
-
-  // A very simple std::declval replacement that doesn't handle void
-  template <class _Tp>
-  _Tp&& __declval() noexcept;
-
-  // For copying cvref from one type to another:
-  struct __cp {
-    template <class _Tp>
-    using __f = _Tp;
-  };
-
-  struct __cpc {
-    template <class _Tp>
-    using __f = const _Tp;
-  };
-
-  struct __cplr {
-    template <class _Tp>
-    using __f = _Tp&;
-  };
-
-  struct __cprr {
-    template <class _Tp>
-    using __f = _Tp&&;
-  };
-
-  struct __cpclr {
-    template <class _Tp>
-    using __f = const _Tp&;
-  };
-
-  struct __cpcrr {
-    template <class _Tp>
-    using __f = const _Tp&&;
-  };
-
-  template <class>
-  extern __cp __cpcvr;
-  template <class _Tp>
-  extern __cpc __cpcvr<const _Tp>;
-  template <class _Tp>
-  extern __cplr __cpcvr<_Tp&>;
-  template <class _Tp>
-  extern __cprr __cpcvr<_Tp&&>;
-  template <class _Tp>
-  extern __cpclr __cpcvr<const _Tp&>;
-  template <class _Tp>
-  extern __cpcrr __cpcvr<const _Tp&&>;
-  template <class _Tp>
-  using __copy_cvref_fn = decltype(__cpcvr<_Tp>);
-
-  template <class _From, class _To>
-  using __copy_cvref_t = __minvoke<__copy_cvref_fn<_From>, _To>;
 
   template <class _Ty, class...>
   using __mfront_ = _Ty;
@@ -711,7 +644,7 @@ namespace stdexec {
   template <class _Ty>
   using __cvref_t = __copy_cvref_t<_Ty, __t<std::remove_cvref_t<_Ty>>>;
 
-  template <class _From, class _To>
+  template <class _From, class _To = __decay_t<_From>>
   using __cvref_id = __copy_cvref_t<_From, __id<_To>>;
 
   template <class _Fun, class... _As>

@@ -26,7 +26,7 @@ namespace exec {
     template <class R_>
     struct __op {
       using R = stdexec::__t<R_>;
-      [[no_unique_address]] R rec_;
+      STDEXEC_NO_UNIQUE_ADDRESS R rec_;
 
       STDEXEC_DEFINE_CUSTOM(void start)(this __op& op, stdexec::start_t) noexcept {
         stdexec::set_value((R&&) op.rec_);
@@ -57,7 +57,9 @@ namespace exec {
       }
     };
 
-    friend __sender tag_invoke(stdexec::schedule_t, const inline_scheduler&) noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      friend __sender
+      tag_invoke(stdexec::schedule_t, const inline_scheduler&) noexcept {
       return {};
     }
 

@@ -19,13 +19,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "nvc++ 23.1", cuda: "12.0", cxx: "mpic++",  tag: "nvhpc23.1",       gpu: "v100", sm: "70", driver: "525", arch: "amd64" }
-          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "525", arch: "amd64" }
-    runs-on:
-      - self-hosted
-      - linux
-      - gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
-      - ${{ matrix.arch }}
+          - { name: "nvc++ 23.1", cuda: "12.0", cxx: "mpic++",  tag: "nvhpc23.1",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+    runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
       image: rapidsai/devcontainers:23.04-cpp-${{ matrix.tag }}-ubuntu22.04
@@ -40,25 +36,23 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test GPU schedulers
-        shell: bash -l {0}
+        shell: bash -elxo pipefail {0}
         env:
           cxx: "${{ matrix.cxx }}"
         run: |
-          set -x;
-          sudo mkdir -p /workspaces/stdexec/;
-          sudo cp -ar . /workspaces/stdexec/;
-          sudo chown -R $(id -u):$(id -g) /workspaces;
+          mkdir -p /workspaces;
+          cp -ar . /workspaces/stdexec;
           cd /workspaces/stdexec;
           # Configure
           cmake -S . -B build -GNinja \
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CXX_COMPILER="$cxx" \
             -DCMAKE_CUDA_COMPILER="$cxx" \
-            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }}-real;
+            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }};
           # Compile
           cmake --build build;
           # Tests
-          ctest --test-dir build --verbose --output-on-failure;
+          ctest --test-dir build --verbose --output-on-failure --timeout 60;
           # Examples
           ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
           ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler

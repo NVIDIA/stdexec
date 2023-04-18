@@ -32,8 +32,8 @@ namespace exec {
 
     template <class _Receiver, class _Args>
     struct __context {
-      [[no_unique_address]] _Receiver receiver;
-      [[no_unique_address]] _Args args;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver receiver;
+      STDEXEC_NO_UNIQUE_ADDRESS _Args args;
     };
 
     template <class _ReceiverId, class _Fun, class _ArgsId>
@@ -42,9 +42,9 @@ namespace exec {
       using _Result = __call_result_t<_Fun, _Context&>;
       using _State = __if_c<same_as<_Result, void>, __void, std::optional<_Result>>;
 
-      [[no_unique_address]] _Context __ctx_;
-      [[no_unique_address]] _Fun __fun_;
-      [[no_unique_address]] _State __state_{};
+      STDEXEC_NO_UNIQUE_ADDRESS _Context __ctx_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+      STDEXEC_NO_UNIQUE_ADDRESS _State __state_{};
 
       STDEXEC_DEFINE_CUSTOM(void start)(this __operation& __self, start_t) noexcept {
         __self.__state_.emplace(__conv{[&]() noexcept {

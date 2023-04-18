@@ -83,8 +83,8 @@ namespace nvexec {
 
           constexpr static std::size_t memory_allocation_size = max_result_size::value;
 
-          template <class Range>
-          friend void tag_invoke(stdexec::set_value_t, __t&& self, Range&& range) noexcept {
+          template <stdexec::same_as<stdexec::set_value_t> _Tag, class Range>
+          friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept {
             cudaStream_t stream = self.op_state_.get_stream();
 
             using Result = //
@@ -150,8 +150,8 @@ namespace nvexec {
           }
 
           template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-          friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-            self.op_state_.propagate_completion_signal(tag, (As&&) as...);
+          friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+            self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
           }
 
           STDEXEC_DEFINE_CUSTOM(stdexec::env_of_t<Receiver> get_env)(

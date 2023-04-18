@@ -30,15 +30,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::submit {
     struct receiver_t : stream_receiver_base {
       op_state_t* op_state_;
 
-      template <
-        stdexec::__one_of<stdexec::set_value_t, stdexec::set_error_t, stdexec::set_stopped_t> Tag,
-        class... As>
+      template < stdexec::__completion_tag Tag, class... As>
         requires stdexec::__callable<Tag, Receiver, As...>
-      friend void tag_invoke(Tag tag, receiver_t&& self, As&&... as) //
+      friend void tag_invoke(Tag, receiver_t&& self, As&&... as) //
         noexcept(stdexec::__nothrow_callable<Tag, Receiver, As...>) {
         // Delete the state as cleanup:
         std::unique_ptr<op_state_t> g{self.op_state_};
-        return tag((Receiver&&) self.op_state_->rcvr_, (As&&) as...);
+        return Tag()((Receiver&&) self.op_state_->rcvr_, (As&&) as...);
       }
 
       // Forward all receiever queries.

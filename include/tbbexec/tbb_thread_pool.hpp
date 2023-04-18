@@ -200,7 +200,7 @@ namespace tbbexec {
 
                 if (is_last_thread) {
                   if (self.exception_) {
-                    stdexec::set_error((Receiver&&) self.receiver_, self.exception_);
+                    stdexec::set_error((Receiver&&) self.receiver_, std::move(self.exception_));
                   } else {
                     self.apply(completion);
                   }
@@ -234,7 +234,10 @@ namespace tbbexec {
           }
 
           template <class... As>
-          friend void tag_invoke(stdexec::set_value_t, bulk_receiver&& self, As&&... as) noexcept {
+          friend void tag_invoke(
+            stdexec::same_as<stdexec::set_value_t> auto,
+            bulk_receiver&& self,
+            As&&... as) noexcept {
             using tuple_t = stdexec::__decayed_tuple<As...>;
 
             shared_state& state = self.shared_state_;

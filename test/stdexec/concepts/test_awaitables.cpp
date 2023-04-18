@@ -203,8 +203,8 @@ void test_awaitable_sender5(Signatures*) {
 }
 
 template <typename Error, typename... Values>
-auto signature_error_values(Error, Values...)
-  -> ex::completion_signatures<ex::set_value_t(Values...), ex::set_error_t(Error)>* {
+auto signature_error_values(Error, Values...) -> ex::
+  completion_signatures<ex::set_value_t(Values...), ex::set_error_t(Error), ex::set_stopped_t()>* {
   return {};
 }
 
