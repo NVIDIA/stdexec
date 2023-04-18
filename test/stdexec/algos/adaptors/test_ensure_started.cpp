@@ -285,3 +285,13 @@ TEST_CASE("Repeated ensure_started compiles", "[adaptors][ensure_started]") {
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
 }
+
+TEST_CASE("ensure_started with move only input sender", "[adaptors][ensure_started]") {
+  bool called{false};
+  auto snd1 = ex::just(movable(42)) | ex::then([&](movable &&) { called = true; });
+  CHECK_FALSE(called);
+  auto snd = ex::ensure_started(std::move(snd1));
+  CHECK(called);
+  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  ex::start(op);
+}
