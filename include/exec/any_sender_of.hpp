@@ -599,8 +599,8 @@ namespace exec {
     template <class _Queries>
     class __query_vtable;
 
-    template <template <class...> class _L, typename... _Queries>
-    class __query_vtable<_L<_Queries...>> : public __query_vfun<_Queries>... {
+    template <template <class...> class _List, typename... _Queries>
+    class __query_vtable<_List<_Queries...>> : public __query_vfun<_Queries>... {
      public:
       using __query_vfun<_Queries>::operator()...;
      private:
