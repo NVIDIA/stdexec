@@ -4029,8 +4029,7 @@ namespace stdexec {
         using is_sender = void;
 
         explicit __t(_CvrefSender __sndr, _Env __env)
-          : __sndr_((_CvrefSender&&) __sndr)
-          , __shared_state_{__make_intrusive<__sh_state_>((_CvrefSender&&)__sndr_, (_Env&&) __env)} {
+          : __shared_state_{__make_intrusive<__sh_state_>((_CvrefSender&&)__sndr, (_Env&&) __env)} {
         }
 
         ~__t() {
@@ -4065,7 +4064,6 @@ namespace stdexec {
             __q<__set_value_t>,
             __q<__set_error_t>>;
 
-        _CvrefSender __sndr_;
         __intrusive_ptr<__sh_state_> __shared_state_;
 
         template <same_as<__t> _Self, receiver_of<__completions_t<_Self>> _Receiver>
