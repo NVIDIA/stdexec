@@ -65,8 +65,8 @@ namespace nvexec {
                 stdexec::__q<max_in_pack>>>;
           };
 
-          PAYLOAD f_;
           operation_state_base_t<ReceiverId>& op_state_;
+          PAYLOAD f_;
 
          public:
           using __id = receiver_t;
@@ -74,64 +74,7 @@ namespace nvexec {
           constexpr static std::size_t memory_allocation_size = max_result_size::value;
 
           template <stdexec::same_as<stdexec::set_value_t> _Tag, class Range>
-          friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept {
-            cudaStream_t stream = self.op_state_.get_stream();
-
-            using value_t = result_t<Range>;
-            value_t* d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
-
-            void* d_temp_storage{};
-            std::size_t temp_storage_size{};
-
-            auto first = begin(range);
-            auto last = end(range);
-
-            std::size_t num_items = std::distance(first, last);
-
-            cudaError_t status;
-
-            do {
-              if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
-                    d_temp_storage,
-                    temp_storage_size,
-                    first,
-                    d_out,
-                    num_items,
-                    self.f_,
-                    value_t{},
-                    stream));
-                  status != cudaSuccess) {
-                break;
-              }
-
-              if (status = STDEXEC_DBG_ERR(
-                    cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
-                  status != cudaSuccess) {
-                break;
-              }
-
-              if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
-                    d_temp_storage,
-                    temp_storage_size,
-                    first,
-                    d_out,
-                    num_items,
-                    self.f_,
-                    value_t{},
-                    stream));
-                  status != cudaSuccess) {
-                break;
-              }
-
-              status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
-            } while (false);
-
-            if (status == cudaSuccess) {
-              self.op_state_.propagate_completion_signal(stdexec::set_value, *d_out);
-            } else {
-              self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
-            }
-          }
+          friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept;
 
           template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
           friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
@@ -143,15 +86,78 @@ namespace nvexec {
           }
 
           __t(PAYLOAD fun, operation_state_base_t<ReceiverId>& op_state)
-            : f_((PAYLOAD&&) fun)
-            , op_state_(op_state) {
+            : op_state_(op_state)
+            , f_((PAYLOAD&&) fun) {
           }
         };
+
+        template <stdexec::same_as<stdexec::set_value_t> _Tag, class Range>
+        friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept {
+          cudaStream_t stream = self.op_state_.get_stream();
+
+          using value_t = result_t<Range>;
+          value_t* d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
+
+          void* d_temp_storage{};
+          std::size_t temp_storage_size{};
+
+          auto first = begin(range);
+          auto last = end(range);
+
+          std::size_t num_items = std::distance(first, last);
+
+          cudaError_t status;
+
+          do {
+            if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+                  d_temp_storage,
+                  temp_storage_size,
+                  first,
+                  d_out,
+                  num_items,
+                  self.f_,
+                  value_t{},
+                  stream));
+                status != cudaSuccess) {
+              break;
+            }
+
+            if (status = STDEXEC_DBG_ERR(
+                  cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
+                status != cudaSuccess) {
+              break;
+            }
+
+            if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+                  d_temp_storage,
+                  temp_storage_size,
+                  first,
+                  d_out,
+                  num_items,
+                  self.f_,
+                  value_t{},
+                  stream));
+                status != cudaSuccess) {
+              break;
+            }
+
+            status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
+          } while (false);
+
+          if (status == cudaSuccess) {
+            self.op_state_.propagate_completion_signal(stdexec::set_value, *d_out);
+          } else {
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+          }
+        }
       };
 
       template <class SenderId, class Fun>
       struct sender_t {
         using Sender = stdexec::__t<SenderId>;
+
+        template<class Receiver>
+        using receiver_t = stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, Fun>>;
 
         template<class Range>
         using result_t = ::cuda::std::decay_t< ::cuda::std::invoke_result_t<
@@ -165,10 +171,6 @@ namespace nvexec {
 
           Sender sndr_;
           PAYLOAD payload_;
-
-          template <class Receiver>
-          using receiver_t =
-            stdexec::__t<receiver_t< SenderId, stdexec::__id<Receiver>, PAYLOAD>>;
 
           template <class... Range>
             requires(sizeof...(Range) == 1)
