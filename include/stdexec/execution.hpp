@@ -1691,26 +1691,6 @@ namespace stdexec {
 #endif
   inline constexpr __connect_awaitable_t __connect_awaitable{};
 
-  /////////////////////////////////////////////////////////////////////////////
-  // [exec.snd_queries]
-  namespace __sender_queries {
-    struct forwarding_sender_query_t : __query<forwarding_sender_query_t> {
-      template <class _Tag>
-      constexpr bool operator()(_Tag __tag) const noexcept {
-        if constexpr (
-          nothrow_tag_invocable<forwarding_sender_query_t, _Tag>
-          && std::is_invocable_r_v<bool, tag_t<tag_invoke>, forwarding_sender_query_t, _Tag>) {
-          return tag_invoke(*this, (_Tag&&) __tag);
-        } else {
-          return false;
-        }
-      }
-    };
-  } // namespace __sender_queries
-
-  using __sender_queries::forwarding_sender_query_t;
-  inline constexpr forwarding_sender_query_t forwarding_sender_query{};
-
   template <class _Receiver, class _Sender>
   concept __receiver_from =
     receiver_of< _Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
@@ -1787,7 +1767,7 @@ namespace stdexec {
         }
       }
 
-      friend constexpr bool tag_invoke(forwarding_sender_query_t, connect_t) noexcept {
+      friend constexpr bool tag_invoke(forwarding_query_t, connect_t) noexcept {
         return false;
       }
     };
@@ -1830,12 +1810,6 @@ namespace stdexec {
   namespace __sender_queries {
     template <__completion_tag _CPO>
     struct get_completion_scheduler_t : __query<get_completion_scheduler_t<_CPO>> {
-      // NOT TO SPEC:
-      friend constexpr bool
-        tag_invoke(forwarding_sender_query_t, const get_completion_scheduler_t&) noexcept {
-        return true;
-      }
-
       friend constexpr bool
         tag_invoke(forwarding_query_t, const get_completion_scheduler_t&) noexcept {
         return true;
@@ -1856,7 +1830,6 @@ namespace stdexec {
   } // namespace __sender_queries
 
   using __sender_queries::get_completion_scheduler_t;
-  using __sender_queries::forwarding_sender_query_t;
 
   template <__completion_tag _CPO>
   inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
