@@ -17,6 +17,7 @@
 
 #include "../../stdexec/execution.hpp"
 #include <type_traits>
+#include <ranges>
 
 #include <cuda/std/type_traits>
 
@@ -27,34 +28,23 @@
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
-    template <typename Range>
-    auto __begin(Range&& range) {
-      return begin(range);
-    }
-
     namespace reduce_ {
-      struct range_value_ {
-        template <class RT, class... Range>
-        auto operator()(RT&& range, Range...) {
-          return *begin(range);
-        }
-      };
-
-      template <class... Range>
-      using range_value_t = ::cuda::std::invoke_result_t<range_value_, Range...>;
-
       template <class SenderId, class ReceiverId, class Fun>
       struct receiver_t {
+        template<class Range>
+        using result_t = ::cuda::std::decay_t< ::cuda::std::invoke_result_t<
+                            Fun,
+                            ::std::ranges::range_value_t<Range>,
+                            ::std::ranges::range_value_t<Range>>>;
+
+        using PAYLOAD = Fun;
         class __t : public stream_receiver_base {
           using Sender = stdexec::__t<SenderId>;
           using Receiver = stdexec::__t<ReceiverId>;
 
           template <class... Range>
           struct result_size_for {
-            using __t = stdexec::__msize_t< sizeof(
-              ::cuda::std::decay_t<
-                ::cuda::std::
-                  invoke_result_t< Fun, range_value_t<Range...>, range_value_t<Range...> > >)>;
+            using __t = stdexec::__msize_t< sizeof(result_t<Range...>)>;
           };
 
           template <class... Sizes>
@@ -75,7 +65,7 @@ namespace nvexec {
                 stdexec::__q<max_in_pack>>>;
           };
 
-          Fun f_;
+          PAYLOAD f_;
           operation_state_base_t<ReceiverId>& op_state_;
 
          public:
@@ -87,13 +77,7 @@ namespace nvexec {
           friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept {
             cudaStream_t stream = self.op_state_.get_stream();
 
-            using Result = //
-              ::cuda::std::decay_t< ::cuda::std::invoke_result_t<
-                Fun,
-                decltype(*begin(std::declval<Range>())),
-                decltype(*begin(std::declval<Range>()))>>;
-
-            using value_t = Result;
+            using value_t = result_t<Range>;
             value_t* d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
 
             void* d_temp_storage{};
@@ -158,8 +142,8 @@ namespace nvexec {
             return stdexec::get_env(self.op_state_.receiver_);
           }
 
-          __t(Fun fun, operation_state_base_t<ReceiverId>& op_state)
-            : f_((Fun&&) fun)
+          __t(PAYLOAD fun, operation_state_base_t<ReceiverId>& op_state)
+            : f_((PAYLOAD&&) fun)
             , op_state_(op_state) {
           }
         };
@@ -170,23 +154,27 @@ namespace nvexec {
     struct reduce_sender_t {
       using Sender = stdexec::__t<SenderId>;
 
+      template<class Range>
+      using result_t = ::cuda::std::decay_t< ::cuda::std::invoke_result_t<
+                          Fun,
+                          ::std::ranges::range_value_t<Range>,
+                          ::std::ranges::range_value_t<Range>>>;
+
+      using PAYLOAD = Fun;
       struct __t : stream_sender_base {
         using __id = reduce_sender_t;
 
         Sender sndr_;
-        Fun fun_;
+        PAYLOAD payload_;
 
         template <class Receiver>
         using receiver_t =
-          stdexec::__t< reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, Fun>>;
+          stdexec::__t< reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, PAYLOAD>>;
 
         template <class... Range>
           requires(sizeof...(Range) == 1)
         using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(
-          std::add_lvalue_reference_t< ::cuda::std::decay_t< ::cuda::std::invoke_result_t<
-            Fun,
-            decltype(*__begin(std::declval<Range>())),
-            decltype(*__begin(std::declval<Range>()))> > >...)>;
+          std::add_lvalue_reference_t<result_t<Range>>...)>;
 
         template <class Self, class Env>
         using completion_signatures = //
@@ -208,7 +196,7 @@ namespace nvexec {
             ((Self&&) self).sndr_,
             (Receiver&&) rcvr,
             [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
-              -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
+              -> receiver_t<Receiver> { return receiver_t<Receiver>(self.payload_, stream_provider); });
         }
 
         template <stdexec::__decays_to<__t> Self, class Env>
@@ -229,18 +217,18 @@ namespace nvexec {
     };
 
     struct reduce_t {
-      template <class Sender, class Fun>
+      template <class Sender, class PAYLOAD>
       using __sender =
-        stdexec::__t<reduce_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Fun>>;
+        stdexec::__t<reduce_sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, PAYLOAD>>;
 
-      template <stdexec::sender Sender, stdexec::__movable_value Fun>
-      __sender<Sender, Fun> operator()(Sender&& __sndr, Fun __fun) const {
-        return __sender<Sender, Fun>{{}, (Sender&&) __sndr, (Fun&&) __fun};
+      template <stdexec::sender Sender, stdexec::__movable_value PAYLOAD>
+      __sender<Sender, PAYLOAD> operator()(Sender&& __sndr, PAYLOAD __fun) const {
+        return __sender<Sender, PAYLOAD>{{}, (Sender&&) __sndr, (PAYLOAD&&) __fun};
       }
 
-      template <class Fun = cub::Sum>
-      stdexec::__binder_back<reduce_t, Fun> operator()(Fun __fun = {}) const {
-        return {{}, {}, {(Fun&&) __fun}};
+      template <class PAYLOAD = cub::Sum>
+      stdexec::__binder_back<reduce_t, PAYLOAD> operator()(PAYLOAD __fun = {}) const {
+        return {{}, {}, {(PAYLOAD&&) __fun}};
       }
     };
   }
