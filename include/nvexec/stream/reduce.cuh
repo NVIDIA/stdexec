@@ -31,11 +31,11 @@ namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     namespace reduce_ {
       template <class SenderId, class ReceiverId, class Fun>
-      struct receiver_t : public ::nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base::receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>> {
-        using base = ::nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base::receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>>;
+      struct receiver_t : public __algo_range_fun::receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>> {
+        using base = __algo_range_fun::receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>>;
 
         template<class Range>
-        using result_t = typename ::nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base::binary_invoke_result_t<Range, Fun>;
+        using result_t = typename __algo_range_fun::binary_invoke_result_t<Range, Fun>;
 
         template <class Range>
         static void set_value_impl(base::__t&& self, Range&& range) noexcept {
@@ -61,7 +61,7 @@ namespace nvexec {
                   first,
                   d_out,
                   num_items,
-                  self.payload_,
+                  self.fun_,
                   value_t{},
                   stream));
                 status != cudaSuccess) {
@@ -80,7 +80,7 @@ namespace nvexec {
                   first,
                   d_out,
                   num_items,
-                  self.payload_,
+                  self.fun_,
                   value_t{},
                   stream));
                 status != cudaSuccess) {
@@ -99,13 +99,13 @@ namespace nvexec {
       };
 
       template <class SenderId, class Fun>
-      struct sender_t : public ::nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base::sender_t<SenderId, Fun, sender_t<SenderId, Fun>> {
+      struct sender_t : public __algo_range_fun::sender_t<SenderId, Fun, sender_t<SenderId, Fun>> {
         template<class Receiver>
         using receiver_t = stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, Fun>>;
 
         template <class Range>
         using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(
-            ::std::add_lvalue_reference_t<typename ::nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base::binary_invoke_result_t<Range, Fun>>)>;
+            ::std::add_lvalue_reference_t<typename __algo_range_fun::binary_invoke_result_t<Range, Fun>>)>;
       };
     }
 

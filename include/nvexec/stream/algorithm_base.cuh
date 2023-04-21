@@ -17,7 +17,6 @@
 
 #include "../../stdexec/execution.hpp"
 #include <type_traits>
-#include <ranges>
 
 #include <cuda/std/type_traits>
 
@@ -26,14 +25,14 @@
 #include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_fun {
     template<class Range, class Fun>
     using binary_invoke_result_t = ::cuda::std::decay_t<::cuda::std::invoke_result_t<
                                         Fun,
-                                        ::std::ranges::range_value_t<Range>,
-                                        ::std::ranges::range_value_t<Range>>>;
+                                        ::stdexec::range_value_t<Range>,
+                                        ::stdexec::range_value_t<Range>>>;
 
-    template <class SenderId, class ReceiverId, class Payload, class DerivedReceiver>
+    template <class SenderId, class ReceiverId, class Fun, class DerivedReceiver>
     struct receiver_t {
         struct __t : public stream_receiver_base {
             using Sender = stdexec::__t<SenderId>;
@@ -63,7 +62,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base {
             };
 
             operation_state_base_t<ReceiverId>& op_state_;
-            Payload payload_;
+            STDEXEC_NO_UNIQUE_ADDRESS Fun fun_;
 
             public:
             using __id = receiver_t;
@@ -84,11 +83,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base {
             return stdexec::get_env(self.op_state_.receiver_);
             }
 
-            __t(Payload payload, operation_state_base_t<ReceiverId>& op_state) : op_state_(op_state) , payload_((Payload&&) payload) {}
+            __t(Fun fun, operation_state_base_t<ReceiverId>& op_state) : op_state_(op_state) , fun_((Fun&&) fun) {}
         };
     };
 
-    template <class SenderId, class Payload, class DerivedSender>
+    template <class SenderId, class Fun, class DerivedSender>
     struct sender_t {
         struct __t : stream_sender_base {
             using Sender = stdexec::__t<SenderId>;
@@ -101,7 +100,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base {
             using set_value_t = typename DerivedSender::set_value_t<Range>;
 
             Sender sndr_;
-            Payload payload_;
+            STDEXEC_NO_UNIQUE_ADDRESS Fun fun_;
 
             template <class Self, class Env>
             using completion_signatures = //
@@ -123,7 +122,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base {
                 ((Self&&) self).sndr_,
                 (Receiver&&) rcvr,
                 [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
-                    -> receiver_t<Receiver> { return receiver_t<Receiver>(self.payload_, stream_provider); });
+                    -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
             }
 
             template <stdexec::__decays_to<__t> Self, class Env>
