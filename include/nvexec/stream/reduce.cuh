@@ -23,6 +23,7 @@
 
 #include <cub/device/device_reduce.cuh>
 
+#include "algorithm_base.cuh"
 #include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
@@ -30,69 +31,14 @@ namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     namespace reduce_ {
       template <class SenderId, class ReceiverId, class Fun>
-      struct receiver_t {
+      struct receiver_t : public ::nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base::receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>> {
+        using base = ::nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base::receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>>;
+
         template<class Range>
-        using result_t = ::cuda::std::decay_t< ::cuda::std::invoke_result_t<
-                            Fun,
-                            ::std::ranges::range_value_t<Range>,
-                            ::std::ranges::range_value_t<Range>>>;
+        using result_t = typename ::nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_base::binary_invoke_result_t<Range, Fun>;
 
-        using PAYLOAD = Fun;
-        class __t : public stream_receiver_base {
-          using Sender = stdexec::__t<SenderId>;
-          using Receiver = stdexec::__t<ReceiverId>;
-
-          template <class... Range>
-          struct result_size_for {
-            using __t = stdexec::__msize_t< sizeof(result_t<Range...>)>;
-          };
-
-          template <class... Sizes>
-          struct max_in_pack {
-            static constexpr std::size_t value = std::max({std::size_t{}, stdexec::__v<Sizes>...});
-          };
-
-          struct max_result_size {
-            template <class... _As>
-            using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
-
-            static constexpr std::size_t value = //
-              stdexec::__v< stdexec::__gather_completions_for<
-                stdexec::set_value_t,
-                Sender,
-                stdexec::env_of_t<Receiver>,
-                stdexec::__q<result_size_for_t>,
-                stdexec::__q<max_in_pack>>>;
-          };
-
-          operation_state_base_t<ReceiverId>& op_state_;
-          PAYLOAD f_;
-
-         public:
-          using __id = receiver_t;
-
-          constexpr static std::size_t memory_allocation_size = max_result_size::value;
-
-          template <stdexec::same_as<stdexec::set_value_t> _Tag, class Range>
-          friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept;
-
-          template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-          friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-            self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
-          }
-
-          friend stdexec::env_of_t<Receiver> tag_invoke(stdexec::get_env_t, const __t& self) {
-            return stdexec::get_env(self.op_state_.receiver_);
-          }
-
-          __t(PAYLOAD fun, operation_state_base_t<ReceiverId>& op_state)
-            : op_state_(op_state)
-            , f_((PAYLOAD&&) fun) {
-          }
-        };
-
-        template <stdexec::same_as<stdexec::set_value_t> _Tag, class Range>
-        friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept {
+        template <class Range>
+        static void set_value_impl(base::__t&& self, Range&& range) noexcept {
           cudaStream_t stream = self.op_state_.get_stream();
 
           using value_t = result_t<Range>;
@@ -115,7 +61,7 @@ namespace nvexec {
                   first,
                   d_out,
                   num_items,
-                  self.f_,
+                  self.payload_,
                   value_t{},
                   stream));
                 status != cudaSuccess) {
@@ -134,7 +80,7 @@ namespace nvexec {
                   first,
                   d_out,
                   num_items,
-                  self.f_,
+                  self.payload_,
                   value_t{},
                   stream));
                 status != cudaSuccess) {
