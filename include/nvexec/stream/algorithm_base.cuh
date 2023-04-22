@@ -40,7 +40,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_fun {
 
             template <class... Range>
             struct result_size_for {
-            using __t = stdexec::__msize_t< sizeof(typename DerivedReceiver::result_t<Range...>)>;
+            using __t = stdexec::__msize_t< sizeof(typename DerivedReceiver::template result_t<Range...>)>;
             };
 
             template <class... Sizes>
@@ -94,10 +94,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_fun {
             using __id = sender_t;
 
             template<class Receiver>
-            using receiver_t = typename DerivedSender::receiver_t<Receiver>;
+            using receiver_t = typename DerivedSender::template receiver_t<Receiver>;
 
             template <class Range>
-            using set_value_t = typename DerivedSender::set_value_t<Range>;
+            using set_value_t = typename DerivedSender::template set_value_t<Range>;
 
             Sender sndr_;
             STDEXEC_NO_UNIQUE_ADDRESS Fun fun_;
