@@ -105,12 +105,6 @@ namespace std {
 
     // [exec.sched_queries], scheduler queries
     using forward_progress_guarantee STDEXEC_STD_DEPRECATED = stdexec::forward_progress_guarantee;
-    using forwarding_scheduler_query_t STDEXEC_STD_DEPRECATED =
-      stdexec::forwarding_scheduler_query_t;
-    using get_forward_progress_guarantee_t STDEXEC_STD_DEPRECATED =
-      stdexec::get_forward_progress_guarantee_t;
-    STDEXEC_STD_DEPRECATED
-    inline constexpr stdexec::forwarding_scheduler_query_t forwarding_scheduler_query{};
     STDEXEC_STD_DEPRECATED
     inline constexpr stdexec::get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 
