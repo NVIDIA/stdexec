@@ -173,7 +173,7 @@ namespace exec {
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __nest_rcvr& __self, get_env_t) noexcept
         -> __env_t<env_of_t<_Receiver>> {
         return make_env(
-          get_env(__self.__op_->__rcvr_),
+          stdexec::get_env(__self.__op_->__rcvr_),
           with(get_stop_token, __self.__op_->__scope_->__stop_source_.get_token()));
       }
     };

@@ -177,12 +177,12 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -ftemplate-backtrace-limit=0>
                        )
 
-# Always enable colored output
-target_compile_options(stdexec_executable_flags INTERFACE
-                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
-                       -fcolor-diagnostics>
-                       $<$<CXX_COMPILER_ID:GNU>:-fdiagnostics-color=always>
-                       )
+# # Always enable colored output
+# target_compile_options(stdexec_executable_flags INTERFACE
+#                        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
+#                        -fcolor-diagnostics>
+#                        $<$<CXX_COMPILER_ID:GNU>:-fdiagnostics-color=always>
+#                        )
 
 # Clang CUDA options
 target_compile_options(stdexec_executable_flags INTERFACE

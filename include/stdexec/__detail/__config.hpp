@@ -72,11 +72,9 @@
 #define STDEXEC_PROBE_N(_XP, _NP) _XP, _NP,
 
 #define STDEXEC_IF(_IF, _TRUE, ...) STDEXEC_CAT(STDEXEC_IF_, _IF)(_TRUE, __VA_ARGS__) /**/
-
 #define STDEXEC_IF_0(_TRUE, ...)                                                                   \
   __VA_OPT__(STDEXEC_EXPAND __VA_ARGS__)                                                           \
   /**/
-
 #define STDEXEC_IF_1(_TRUE, ...) STDEXEC_EXPAND _TRUE /**/
 
 #if defined(__NVCOMPILER)
@@ -121,9 +119,9 @@
 
 // Before gcc-12, gcc really didn't like tuples or variants of immovable types
 #if STDEXEC_GCC() && (__GNUC__ < 12)
-#define STDEXEC_IMMOVABLE(_Xp) _Xp(_Xp&&)
+#define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
 #else
-#define STDEXEC_IMMOVABLE(_Xp) _Xp(_Xp&&) = delete
+#define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
 #endif
 
 // NVBUG #4067067
