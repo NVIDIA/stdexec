@@ -30,15 +30,15 @@
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     namespace reduce_ {
-      template <class SenderId, class ReceiverId, class Fun>
+      template <class SenderId, class ReceiverId, class T, class Fun>
       struct receiver_t
-        : public __algo_range_fun::
-            receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>> {
-        using base = __algo_range_fun::
-          receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>>;
+        : public __algo_range_init_fun::
+            receiver_t<SenderId, ReceiverId, T, Fun, receiver_t<SenderId, ReceiverId, T, Fun>> {
+        using base = __algo_range_init_fun::
+          receiver_t<SenderId, ReceiverId, T, Fun, receiver_t<SenderId, ReceiverId, T, Fun>>;
 
         template <class Range>
-        using result_t = typename __algo_range_fun::binary_invoke_result_t<Range, Fun>;
+        using result_t = typename __algo_range_init_fun::binary_invoke_result_t<Range, T, Fun>;
 
         template <class Range>
         static void set_value_impl(base::__t&& self, Range&& range) noexcept {
@@ -57,42 +57,42 @@ namespace nvexec {
 
           cudaError_t status;
 
-          do {
-            if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
-                  d_temp_storage,
-                  temp_storage_size,
-                  first,
-                  d_out,
-                  num_items,
-                  self.fun_,
-                  value_t{},
-                  stream));
-                status != cudaSuccess) {
-              break;
-            }
+          if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+                d_temp_storage,
+                temp_storage_size,
+                first,
+                d_out,
+                num_items,
+                self.fun_,
+                self.init_,
+                stream));
+              status != cudaSuccess) {
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            return;
+          }
 
-            if (status = STDEXEC_DBG_ERR( //
-                  cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
-                status != cudaSuccess) {
-              break;
-            }
+          if (status = STDEXEC_DBG_ERR( //
+                cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
+              status != cudaSuccess) {
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            return;
+          }
 
-            if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
-                  d_temp_storage,
-                  temp_storage_size,
-                  first,
-                  d_out,
-                  num_items,
-                  self.fun_,
-                  value_t{},
-                  stream));
-                status != cudaSuccess) {
-              break;
-            }
+          if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
+                d_temp_storage,
+                temp_storage_size,
+                first,
+                d_out,
+                num_items,
+                self.fun_,
+                self.init_,
+                stream));
+              status != cudaSuccess) {
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            return;
+          }
 
-            status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
-          } while (false);
-
+          status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
           if (status == cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_value, *d_out);
           } else {
@@ -101,32 +101,40 @@ namespace nvexec {
         }
       };
 
-      template <class SenderId, class Fun>
-      struct sender_t : public __algo_range_fun::sender_t<SenderId, Fun, sender_t<SenderId, Fun>> {
+      template <class SenderId, class T, class Fun>
+      struct sender_t
+        : public __algo_range_init_fun::sender_t<SenderId, T, Fun, sender_t<SenderId, T, Fun>> {
         template <class Receiver>
         using receiver_t =
-          stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, Fun>>;
+          stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, T, Fun>>;
 
         template <class Range>
         using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(
           ::std::add_lvalue_reference_t<
-            typename __algo_range_fun::binary_invoke_result_t<Range, Fun>>)>;
+            typename __algo_range_init_fun::binary_invoke_result_t<Range, T, Fun>>)>;
       };
     }
 
     struct reduce_t {
-      template <class Sender, class Fun>
+      template <class Sender, class T, class Fun>
       using __sender =
-        stdexec::__t<reduce_::sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, Fun>>;
+        stdexec::__t<reduce_::sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, T, Fun>>;
 
-      template <stdexec::sender Sender, stdexec::__movable_value Fun>
-      __sender<Sender, Fun> operator()(Sender&& __sndr, Fun __fun) const {
-        return __sender<Sender, Fun>{{}, (Sender &&) __sndr, (Fun &&) __fun};
+      template <
+        stdexec::sender Sender,
+        stdexec::__movable_value T,
+        stdexec::__movable_value Fun = cub::Sum>
+      __sender<Sender, T, Fun> operator()(Sender&& sndr, T init, Fun fun) const {
+        return __sender<Sender, T, Fun>{{}, (Sender &&) sndr, (T &&) init, (Fun &&) fun};
       }
 
-      template <class Fun = cub::Sum>
-      stdexec::__binder_back<reduce_t, Fun> operator()(Fun __fun = {}) const {
-        return {{}, {}, {(Fun &&) __fun}};
+      template <class T, class Fun = cub::Sum>
+      stdexec::__binder_back<reduce_t, T, Fun> operator()(T init, Fun fun = {}) const {
+        return {
+          {},
+          {},
+          {(T &&) init, (Fun &&) fun}
+        };
       }
     };
   }

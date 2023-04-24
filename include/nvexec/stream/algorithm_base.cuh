@@ -25,14 +25,12 @@
 #include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_fun {
-  template <class Range, class Fun>
-  using binary_invoke_result_t = ::cuda::std::decay_t< ::cuda::std::invoke_result_t< //
-    Fun,
-    ::stdexec::range_value_t<Range>,
-    ::stdexec::range_value_t<Range>>>;
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
+  template <class Range, class T, class Fun>
+  using binary_invoke_result_t =
+    ::cuda::std::decay_t<::cuda::std::invoke_result_t<Fun, ::stdexec::range_value_t<Range>, T>>;
 
-  template <class SenderId, class ReceiverId, class Fun, class DerivedReceiver>
+  template <class SenderId, class ReceiverId, class T, class Fun, class DerivedReceiver>
   struct receiver_t {
     struct __t : public stream_receiver_base {
       using Sender = stdexec::__t<SenderId>;
@@ -64,6 +62,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_fun {
       };
 
       operation_state_base_t<ReceiverId>& op_state_;
+      STDEXEC_NO_UNIQUE_ADDRESS T init_;
       STDEXEC_NO_UNIQUE_ADDRESS Fun fun_;
 
      public:
@@ -85,14 +84,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_fun {
         return stdexec::get_env(self.op_state_.receiver_);
       }
 
-      __t(Fun fun, operation_state_base_t<ReceiverId>& op_state)
+      __t(T init, Fun fun, operation_state_base_t<ReceiverId>& op_state)
         : op_state_(op_state)
+        , init_((T &&) init)
         , fun_((Fun &&) fun) {
       }
     };
   };
 
-  template <class SenderId, class Fun, class DerivedSender>
+  template <class SenderId, class T, class Fun, class DerivedSender>
   struct sender_t {
     struct __t : stream_sender_base {
       using Sender = stdexec::__t<SenderId>;
@@ -105,6 +105,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_fun {
       using set_value_t = typename DerivedSender::template set_value_t<Range>;
 
       Sender sndr_;
+      STDEXEC_NO_UNIQUE_ADDRESS T init_;
       STDEXEC_NO_UNIQUE_ADDRESS Fun fun_;
 
       template <class Self, class Env>
@@ -124,7 +125,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_fun {
           ((Self &&) self).sndr_,
           (Receiver &&) rcvr,
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
-            -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
+            -> receiver_t<Receiver> {
+            return receiver_t<Receiver>(self.init_, self.fun_, stream_provider);
+          });
       }
 
       template <stdexec::__decays_to<__t> Self, class Env>
