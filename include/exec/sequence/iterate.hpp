@@ -66,9 +66,9 @@ namespace exec {
           try {
             auto& __op = __item_.emplace(__conv{[&] {
               return stdexec::connect(
-                exec::next(__rcvr_, just(__it_) | then([](std::ranges::iterator_t<_Range> __it) {
-                                      return *__it;
-                                    })),
+                exec::set_next(
+                  __rcvr_,
+                  just(__it_) | then([](std::ranges::iterator_t<_Range> __it) { return *__it; })),
                 __receiver_t{this});
             }});
             stdexec::start(__op);
@@ -80,46 +80,45 @@ namespace exec {
     };
 
     template <class _Range, class _ReceiverId>
-    struct __receiver {
-      struct __t {
-        using __id = __receiver;
-        using _Receiver = stdexec::__t<_ReceiverId>;
-        stdexec::__t<__operation<_Range, _ReceiverId>>* __op;
+    struct __receiver<_Range, _ReceiverId>::__t {
 
-        bool __upstream_is_stopped() const noexcept {
-          return stdexec::get_stop_token(stdexec::get_env(__op->__rcvr_)).stop_requested();
-        }
+      using __id = __receiver;
+      using _Receiver = stdexec::__t<_ReceiverId>;
+      stdexec::__t<__operation<_Range, _ReceiverId>>* __op;
 
-        template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
-          requires __callable<set_value_t, _Receiver&&> && __callable<set_stopped_t, _Receiver&&>
-        friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
-          if (__self.__upstream_is_stopped()) {
-            stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op->__rcvr));
-            return;
-          }
-          ++__self.__op->__it;
-          if (__self.__op->__it != __self.__op->__end) {
-            __do_next();
-          } else {
-            stdexec::set_value(static_cast<_Receiver&&>(__self.__op->__rcvr));
-          }
-        }
+      bool __upstream_is_stopped() const noexcept {
+        return stdexec::get_stop_token(stdexec::get_env(__op->__rcvr_)).stop_requested();
+      }
 
-        template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
-          requires __callable<set_value_t, _Receiver&&> && __callable<set_stopped_t, _Receiver&&>
-        friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
-          if (__self.__upstream_is_stopped()) {
-            stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op->__rcvr));
-          } else {
-            stdexec::set_value(static_cast<_Receiver&&>(__self.__op->__rcvr));
-          }
+      template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
+        requires __callable<set_value_t, _Receiver&&> && __callable<set_stopped_t, _Receiver&&>
+      friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
+        if (__self.__upstream_is_stopped()) {
+          stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op->__rcvr));
+          return;
         }
+        ++__self.__op->__it;
+        if (__self.__op->__it != __self.__op->__end) {
+          __self.__op_->__do_next();
+        } else {
+          stdexec::set_value(static_cast<_Receiver&&>(__self.__op->__rcvr));
+        }
+      }
 
-        template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
-        friend auto tag_invoke(_GetEnv, const _Self& __self) noexcept {
-          return stdexec::get_env(__self.__op->__rcvr_);
+      template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
+        requires __callable<set_value_t, _Receiver&&> && __callable<set_stopped_t, _Receiver&&>
+      friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+        if (__self.__upstream_is_stopped()) {
+          stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op->__rcvr));
+        } else {
+          stdexec::set_value(static_cast<_Receiver&&>(__self.__op->__rcvr));
         }
-      };
+      }
+
+      template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
+      friend auto tag_invoke(_GetEnv, const _Self& __self) noexcept {
+        return stdexec::get_env(__self.__op->__rcvr_);
+      }
     };
 
     template <class _Range>
@@ -156,10 +155,12 @@ namespace exec {
         using __operation_t = stdexec::__t<__operation<_Range, stdexec::__id<__decay_t<_Rcvr>>>>;
 
         template <__decays_to<__t> _Self, class _Rcvr>
-          requires sender_to<__next_sender_t<_Rcvr>, __receiver_t<_Rcvr>>
+          requires sequence_receiver_of<_Rcvr, __completion_sigs<env_of_t<_Rcvr>>>
+                && sender_to<__next_sender_t<_Rcvr>, __receiver_t<_Rcvr>>
         friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Rcvr&& __rcvr)
-          -> __operation_t {
-          return __operation_t{static_cast<_Self&&>(__self).__range_, static_cast<_Rcvr&&>(__rcvr)};
+          -> __operation_t<_Rcvr> {
+          return __operation_t<_Rcvr>{
+            static_cast<_Self&&>(__self).__range_, static_cast<_Rcvr&&>(__rcvr)};
         }
 
         template <__decays_to<__t> _Self, class _Env>
@@ -168,7 +169,12 @@ namespace exec {
       };
     };
 
-    struct iterate_t { };
+    struct iterate_t {
+      template <std::ranges::input_range _Range>
+      __t<__sender<__decay_t<_Range>>> operator()(_Range&& __rng) const {
+        return {static_cast<_Range&&>(__rng)};
+      }
+    };
   }
 
   using __iterate::iterate_t;
