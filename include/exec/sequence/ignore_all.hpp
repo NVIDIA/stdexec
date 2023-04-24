@@ -41,9 +41,9 @@ namespace exec {
         }
 
         template <same_as<set_error_t> _Tag, class _Error>
-          requires __callable<_Tag, _ItemReceiver&&, _Error&&>
-        friend void tag_invoke(_Tag, __t&& __self, _Error&& __error) noexcept {
-          _Tag{}(static_cast<_ItemReceiver&&>(__self.__rcvr_), static_cast<_Error&&>(__error));
+          requires __callable<set_stopped_t, _ItemReceiver&&>
+        friend void tag_invoke(_Tag, __t&& __self, _Error&&) noexcept {
+          stdexec::set_stopped(static_cast<_ItemReceiver&&>(__self.__rcvr_));
         }
 
         template <same_as<set_stopped_t> _Tag>
@@ -83,8 +83,9 @@ namespace exec {
           -> __try_make_completion_signatures<
             __copy_cvref_t<_Self, _Item>,
             _Env,
-            completion_signatures<>,
-            __mconst<completion_signatures<set_value_t()>>>;
+            completion_signatures<set_value_t()>,
+            __mconst<completion_signatures<set_value_t()>>,
+            __mconst<completion_signatures<set_stopped_t()>>>;
       };
     };
 

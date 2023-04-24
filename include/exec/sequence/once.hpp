@@ -42,7 +42,7 @@ namespace exec {
         {
           __next_t<_Self, _Receiver> __next = exec::set_next(
             __rcvr, static_cast<_Self&&>(__self).__sndr_);
-          return connect(
+          return stdexec::connect(
             static_cast<__next_t<_Self, _Receiver>&&>(__next), static_cast<_Receiver&&>(__rcvr));
         }
 

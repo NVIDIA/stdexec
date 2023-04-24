@@ -53,6 +53,13 @@ namespace exec {
     };
   }
 
+  template <class _Signatures, class _Env = stdexec::empty_env>
+  using __sequence_to_sender_sigs_t = stdexec::__try_make_completion_signatures<
+    __sequence_sender::__some_sender_of<_Signatures>,
+    _Env,
+    stdexec::completion_signatures<>,
+    stdexec::__mconst<stdexec::completion_signatures<stdexec::set_value_t()>>>;
+
   template <class _Receiver, class _Signatures>
   concept sequence_receiver_of =
     stdexec::receiver_of<
@@ -114,5 +121,6 @@ namespace exec {
        };
 
   template <class _Receiver, class _Sender>
-  using __next_sender_of_t = decltype(exec::set_next(stdexec::__declval<_Receiver>(), stdexec::__declval<_Sender>()));
+  using __next_sender_of_t =
+    decltype(exec::set_next(stdexec::__declval<_Receiver>(), stdexec::__declval<_Sender>()));
 }

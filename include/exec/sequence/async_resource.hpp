@@ -226,6 +226,7 @@ namespace exec {
         auto operator()(_Resource&& __resource) const
           noexcept(nothrow_tag_invocable<run_t, _Resource>)
             -> tag_invoke_result_t<run_t, _Resource> {
+          static_assert(__single_typed_sender<tag_invoke_result_t<run_t, _Resource>>);
           return tag_invoke(*this, static_cast<_Resource&&>(__resource));
         }
 
@@ -261,8 +262,15 @@ namespace exec {
     inline constexpr close_t close{};
   }
 
+  template <class _Resource>
+  concept resource = requires(_Resource&& __resource) { async_resource::run(__resource); };
+
+  template <resource _Resource, class _Env = stdexec::empty_env>
+  using resource_token_of_t = stdexec::__single_sender_value_t<
+    stdexec::__call_result_t<async_resource::run_t, _Resource&>, _Env>;
+
   struct use_resources_t {
-    template <class _SenderFactory, class... _Resources>
+    template <class _SenderFactory, resource... _Resources>
     auto operator()(_SenderFactory&& __fn, _Resources&&... __resources) const {
       return first_value(let_value_each(
         zip(async_resource::run(static_cast<_Resources&&>(__resources))...),
