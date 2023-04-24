@@ -48,38 +48,45 @@ namespace exec {
     };
 
     template <class _ReceiverId, class _Predicate>
+    struct __next_adaptor {
+      using _Receiver = __t<_ReceiverId>;
+      __operation_base<_ReceiverId, _Predicate>* __op_;
+
+      using __just_stopped_t = decltype(stdexec::just_stopped());
+
+      template <class... _Args>
+      using __just_t = decltype(stdexec::just(__declval<_Args>()...));
+
+      template <class... _Args>
+      using __next_t = __next_sender_of_t<_Receiver&, __just_t<_Args...>>;
+
+      template <class... _Args>
+      auto operator()(_Args&&... __args) const noexcept
+        -> variant_sender<__just_stopped_t, __next_t<_Args...>> {
+        std::scoped_lock __lock{__op_->__mutex_};
+        if (__op_->__stop_source_.stop_requested()) {
+          return stdexec::just_stopped();
+        }
+        if (std::invoke(__op_->__pred_, __args...)) {
+          return exec::set_next(__op_->__rcvr_, stdexec::just((_Args&&) __args...));
+        } else {
+          __op_->__stop_source_.request_stop();
+          return stdexec::just_stopped();
+        }
+      }
+    };
+
+    template <class _ReceiverId, class _Predicate>
     struct __receiver {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
         __operation_base<_ReceiverId, _Predicate>* __op_;
 
-        using __just_stopped_t = decltype(stdexec::just_stopped());
-
-        template <class... _Args>
-        using __just_t = decltype(stdexec::just(__declval<_Args>()...));
-
-        template <class... _Args>
-        using __next_t = __next_sender_of_t<_Receiver&, __just_t<_Args...>>;
-
         template <same_as<set_next_t> _Tag, __decays_to<__t> _Self, sender _Item>
           requires __callable<_Tag, _Receiver&, _Item>
         friend auto tag_invoke(_Tag, _Self&& __self, _Item&& __item) noexcept {
-          return let_value(
-            (_Item&&) __item,
-            [__op = __self.__op_]<class... _Args>(
-              _Args&&... __args) -> variant_sender<__just_stopped_t, __next_t<_Args...>> {
-              std::scoped_lock __lock{__op->__mutex_};
-              if (__op->__stop_source_.stop_requested()) {
-                return stdexec::just_stopped();
-              }
-              if (std::invoke(__op->__pred_, __args...)) {
-                return exec::set_next(__op->__rcvr_, just((_Args&&) __args...));
-              } else {
-                __op->__stop_source_.request_stop();
-                return stdexec::just_stopped();
-              }
-            });
+          return let_value((_Item&&) __item, __next_adaptor<_ReceiverId, _Predicate>{__self.__op_});
         }
 
         template <same_as<set_value_t> _Tag, __decays_to<__t> _Self>
@@ -128,7 +135,8 @@ namespace exec {
         }
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
-          __self.__on_stop_.emplace(get_stop_token(__self.__rcvr_), __on_stop_requested{__self.__stop_source_});
+          __self.__on_stop_.emplace(
+            get_stop_token(__self.__rcvr_), __on_stop_requested{__self.__stop_source_});
           stdexec::start(__self.__op_);
         }
       };

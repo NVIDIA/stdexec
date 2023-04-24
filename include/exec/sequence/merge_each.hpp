@@ -250,11 +250,23 @@ namespace exec {
       };
     };
 
+    template <class _Receiver>
+    struct __error_visitor {
+      _Receiver* __rcvr_;
+
+      template <class _Error>
+      void operator()(_Error&& __error) const noexcept {
+        if constexpr (__not_decays_to<_Error, std::monostate>) {
+          stdexec::set_error(static_cast<_Receiver&&>(*__rcvr_), static_cast<_Error&&>(__error));
+        }
+      }
+    };
+
     template <class _ReceiverId, class _ErrorsVariant>
     struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
+        using _Receiver = stdexec::__t<_ReceiverId>;
         using __id = __receiver;
         __operation_base<_Receiver, _ErrorsVariant>* __op_;
 
@@ -278,13 +290,7 @@ namespace exec {
             break;
           case __state_t::__error:
             std::visit(
-              [&]<class _Error>(_Error&& __error) {
-                if constexpr (__not_decays_to<_Error, std::monostate>) {
-                  stdexec::set_error(
-                    static_cast<_Receiver&&>(__self.__op_->__rcvr_),
-                    static_cast<_Error&&>(__error));
-                }
-              },
+              __error_visitor<_Receiver>{&__self.__op_->__rcvr_},
               static_cast<_ErrorsVariant&&>(__self.__op_->__errors_));
           case __state_t::__emplace:
             [[fallthrough]];

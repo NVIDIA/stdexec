@@ -29,6 +29,28 @@ namespace exec {
       [[no_unique_address]] _Predicate __pred_;
     };
 
+
+    template <class... _Args>
+    using __just_t = decltype(stdexec::just(__declval<_Args>()...));
+
+    template <class _Receiver, class... _Args>
+    using __next_t = __next_sender_of_t<_Receiver, __just_t<_Args...>>;
+
+    template <class _ReceiverId, class _Predicate>
+    struct __next_adaptor {
+      using _Receiver = __t<_ReceiverId>;
+      __operation_base<_ReceiverId, _Predicate>* __op_;
+
+      template <class... _Args>
+      auto operator()(_Args&&... __args) const noexcept
+        -> variant_sender<__just_t<>, __next_t<_Receiver&, _Args...>> {
+        if (std::invoke(__op_->__pred_, __args...)) {
+          return exec::set_next(__op_->__rcvr_, just((_Args&&) __args...));
+        }
+        return stdexec::just();
+      }
+    };
+
     template <class _ReceiverId, class _Predicate>
     struct __receiver {
       using _Receiver = stdexec::__t<_ReceiverId>;
@@ -36,24 +58,10 @@ namespace exec {
       struct __t {
         __operation_base<_ReceiverId, _Predicate>* __op_;
 
-        template <class... _Args>
-        using __just_t = decltype(stdexec::just(__declval<_Args>()...));
-
-        template <class... _Args>
-        using __next_t = __next_sender_of_t<_Receiver&, __just_t<_Args...>>;
-
         template <same_as<set_next_t> _Tag, __decays_to<__t> _Self, sender _Item>
           requires __callable<_Tag, _Receiver&, _Item>
         friend auto tag_invoke(_Tag, _Self&& __self, _Item&& __item) noexcept {
-          return let_value(
-            (_Item&&) __item,
-            [__op = __self.__op_]<class... _Args>(
-              _Args&&... __args) -> variant_sender<__just_t<>, __next_t<_Args...>> {
-              if (std::invoke(__op->__pred_, __args...)) {
-                return exec::set_next(__op->__rcvr_, just((_Args&&) __args...));
-              }
-              return stdexec::just();
-            });
+          return let_value((_Item&&) __item, __next_adaptor<_ReceiverId, _Predicate>{__self.__op_});
         }
 
         template <same_as<set_value_t> _Tag, __decays_to<__t> _Self>
