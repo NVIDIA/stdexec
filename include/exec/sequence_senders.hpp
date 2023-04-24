@@ -57,7 +57,7 @@ namespace exec {
   using __sequence_to_sender_sigs_t = stdexec::__try_make_completion_signatures<
     __sequence_sender::__some_sender_of<_Signatures>,
     _Env,
-    stdexec::completion_signatures<>,
+    stdexec::completion_signatures<stdexec::set_value_t()>,
     stdexec::__mconst<stdexec::completion_signatures<stdexec::set_value_t()>>>;
 
   template <class _Receiver, class _Signatures>
@@ -67,7 +67,7 @@ namespace exec {
       stdexec::__try_make_completion_signatures<
         __sequence_sender::__some_sender_of<_Signatures>,
         stdexec::env_of_t<_Receiver>,
-        stdexec::completion_signatures<>,
+        stdexec::completion_signatures<stdexec::set_value_t()>,
         stdexec::__mconst<stdexec::completion_signatures<stdexec::set_value_t()>>>>
     && stdexec::__callable<
       set_next_t,
