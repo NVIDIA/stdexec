@@ -35,7 +35,7 @@
 #endif
 
 #include "__detail/__meta.hpp"
-#include "__detail/__type_traits.hpp"
+#include "__detail/__concepts.hpp"
 
 namespace stdexec::__std_concepts {
   // Make sure we're using a same_as concept that doesn't instantiate std::is_same
@@ -75,40 +75,6 @@ namespace stdexec::__std_concepts {
 
 namespace stdexec {
   using namespace __std_concepts;
-
-  // C++20 concepts
-  template <class _Ty, class _Up>
-  concept __decays_to = __same_as<__decay_t<_Ty>, _Up>;
-
-  template <class _Ty, class _Up>
-  concept __not_decays_to = !__decays_to<_Ty, _Up>;
-
-  template <bool _TrueOrFalse>
-  concept __satisfies = _TrueOrFalse;
-
-  template <class...>
-  concept __true = true;
-
-  template <class _Cp>
-  concept __class = __true<int _Cp::*> && (!__same_as<const _Cp, _Cp>);
-
-  template <class _Ty, class... _As>
-  concept __one_of = (__same_as<_Ty, _As> || ...);
-
-  template <class _Ty, class... _Us>
-  concept __all_of = (__same_as<_Ty, _Us> && ...);
-
-  template <class _Ty, class... _Us>
-  concept __none_of = ((!__same_as<_Ty, _Us>) &&...);
-
-  // Not exactly right, but close.
-  template <class _Ty>
-  concept __boolean_testable_ = convertible_to<_Ty, bool>;
-
-  template <class _Ty>
-  inline constexpr bool __is_lvalue_reference_ = false;
-  template <class _Ty>
-  inline constexpr bool __is_lvalue_reference_<_Ty&> = true;
 
   // Avoid using libstdc++'s object concepts because they instantiate a
   // lot of templates.
@@ -155,8 +121,8 @@ namespace stdexec {
     && constructible_from<_Ty, _Ty const &>;
 
   template <class _LHS, class _RHS >
-  concept assignable_from =         //
-    __is_lvalue_reference_<_LHS> && //
+  concept assignable_from = //
+    same_as<_LHS, _LHS&> && //
     // std::common_reference_with<
     //   const std::remove_reference_t<_LHS>&,
     //   const std::remove_reference_t<_RHS>&> &&
@@ -168,8 +134,10 @@ namespace stdexec {
     using std::swap;
 
     template <class _Ty, class _Uy>
-    concept swappable_with = //
-      requires(_Ty&& __t, _Uy&& __u) { swap((_Ty&&) __t, (_Uy&&) __u); };
+    concept swappable_with =           //
+      requires(_Ty&& __t, _Uy&& __u) { //
+        swap((_Ty&&) __t, (_Uy&&) __u);
+      };
 
     inline constexpr auto const __fn = //
       []<class _Ty, swappable_with<_Ty> _Uy>(_Ty&& __t, _Uy&& __u) noexcept(
@@ -210,6 +178,10 @@ namespace stdexec {
     semiregular<_Ty> && //
     equality_comparable<_Ty>;
 
+  // Not exactly right, but close.
+  template <class _Ty>
+  concept __boolean_testable_ = convertible_to<_Ty, bool>;
+
   template < class T, class U >
   concept __partially_ordered_with = //
     requires(__cref_t<T> t, __cref_t<U> u) {
@@ -233,20 +205,6 @@ namespace stdexec {
     move_constructible<__decay_t<_Ty>> && //
     constructible_from<__decay_t<_Ty>, _Ty>;
 
-  template <class _Trait>
-  concept __is_true = _Trait::value;
-
-  template <class, template <class...> class>
-  constexpr bool __is_instance_of_ = false;
-  template <class... _As, template <class...> class _Ty>
-  constexpr bool __is_instance_of_<_Ty<_As...>, _Ty> = true;
-
-  template <class _Ay, template <class...> class _Ty>
-  concept __is_instance_of = __is_instance_of_<_Ay, _Ty>;
-
-  template <class _Ay, template <class...> class _Ty>
-  concept __is_not_instance_of = !__is_instance_of<_Ay, _Ty>;
-
 #if __has_builtin(__is_nothrow_constructible)
   template <class _Ty, class... _As>
   concept __nothrow_constructible_from =
@@ -268,8 +226,8 @@ namespace stdexec {
 
 } // namespace stdexec
 
-#if !STDEXEC_HAS_STD_CONCEPTS_HEADER()
-namespace std {
-  using namespace stdexec::__std_concepts;
-}
-#endif
+// #if !STDEXEC_HAS_STD_CONCEPTS_HEADER()
+// namespace std {
+//   using namespace stdexec::__std_concepts;
+// }
+// #endif

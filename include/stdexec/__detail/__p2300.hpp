@@ -105,12 +105,6 @@ namespace std {
 
     // [exec.sched_queries], scheduler queries
     using forward_progress_guarantee STDEXEC_STD_DEPRECATED = stdexec::forward_progress_guarantee;
-    using forwarding_scheduler_query_t STDEXEC_STD_DEPRECATED =
-      stdexec::forwarding_scheduler_query_t;
-    using get_forward_progress_guarantee_t STDEXEC_STD_DEPRECATED =
-      stdexec::get_forward_progress_guarantee_t;
-    STDEXEC_STD_DEPRECATED
-    inline constexpr stdexec::forwarding_scheduler_query_t forwarding_scheduler_query{};
     STDEXEC_STD_DEPRECATED
     inline constexpr stdexec::get_forward_progress_guarantee_t get_forward_progress_guarantee{};
 
@@ -193,13 +187,9 @@ namespace std {
     template <class _Sender, class _Receiver>
     using connect_result_t STDEXEC_STD_DEPRECATED = stdexec::connect_result_t<_Sender, _Receiver>;
 
-    // [exec.snd_queries], sender queries
-    using forwarding_sender_query_t STDEXEC_STD_DEPRECATED = stdexec::forwarding_sender_query_t;
     template <class _Tag>
     using get_completion_scheduler_t STDEXEC_STD_DEPRECATED =
       stdexec::get_completion_scheduler_t<_Tag>;
-    STDEXEC_STD_DEPRECATED
-    inline constexpr stdexec::forwarding_sender_query_t forwarding_sender_query{};
 
     template <class _Tag>
     STDEXEC_STD_DEPRECATED inline constexpr stdexec::get_completion_scheduler_t<_Tag>
