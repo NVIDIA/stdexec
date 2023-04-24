@@ -31,10 +31,13 @@ namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     namespace reduce_ {
       template <class SenderId, class ReceiverId, class Fun>
-      struct receiver_t : public __algo_range_fun::receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>> {
-        using base = __algo_range_fun::receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>>;
+      struct receiver_t
+        : public __algo_range_fun::
+            receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>> {
+        using base = __algo_range_fun::
+          receiver_t<SenderId, ReceiverId, Fun, receiver_t<SenderId, ReceiverId, Fun>>;
 
-        template<class Range>
+        template <class Range>
         using result_t = typename __algo_range_fun::binary_invoke_result_t<Range, Fun>;
 
         template <class Range>
@@ -68,7 +71,7 @@ namespace nvexec {
               break;
             }
 
-            if (status = STDEXEC_DBG_ERR(
+            if (status = STDEXEC_DBG_ERR( //
                   cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
                 status != cudaSuccess) {
               break;
@@ -100,15 +103,16 @@ namespace nvexec {
 
       template <class SenderId, class Fun>
       struct sender_t : public __algo_range_fun::sender_t<SenderId, Fun, sender_t<SenderId, Fun>> {
-        template<class Receiver>
-        using receiver_t = stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, Fun>>;
+        template <class Receiver>
+        using receiver_t =
+          stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, Fun>>;
 
         template <class Range>
         using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(
-            ::std::add_lvalue_reference_t<typename __algo_range_fun::binary_invoke_result_t<Range, Fun>>)>;
+          ::std::add_lvalue_reference_t<
+            typename __algo_range_fun::binary_invoke_result_t<Range, Fun>>)>;
       };
     }
-
 
     struct reduce_t {
       template <class Sender, class Fun>
@@ -117,12 +121,12 @@ namespace nvexec {
 
       template <stdexec::sender Sender, stdexec::__movable_value Fun>
       __sender<Sender, Fun> operator()(Sender&& __sndr, Fun __fun) const {
-        return __sender<Sender, Fun>{{}, (Sender&&) __sndr, (Fun&&) __fun};
+        return __sender<Sender, Fun>{{}, (Sender &&) __sndr, (Fun &&) __fun};
       }
 
       template <class Fun = cub::Sum>
       stdexec::__binder_back<reduce_t, Fun> operator()(Fun __fun = {}) const {
-        return {{}, {}, {(Fun&&) __fun}};
+        return {{}, {}, {(Fun &&) __fun}};
       }
     };
   }
