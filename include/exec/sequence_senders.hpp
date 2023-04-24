@@ -75,9 +75,11 @@ namespace exec {
       __sequence_sender::__some_sender_of<_Signatures>>;
 
   template <class _Receiver, class _Sender>
-  concept sequence_receiver_from = sequence_receiver_of<
-    _Receiver,
-    stdexec::completion_signatures_of_t<_Sender, stdexec::env_of_t<_Receiver>>>;
+  concept sequence_receiver_from =
+    stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>>
+    && sequence_receiver_of<
+      _Receiver,
+      stdexec::completion_signatures_of_t<_Sender, stdexec::env_of_t<_Receiver>>>;
 
   namespace __sequence_sender {
     struct sequence_connect_t;
