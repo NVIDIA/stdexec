@@ -27,7 +27,7 @@
 using namespace stdexec;
 using namespace exec;
 
-TEST_CASE("sequence_senders - filter_each: fires once", "[sequence_sneders][filter_each]") {
+TEST_CASE("sequence_senders - filter_each: fires once", "[sequence_senders][filter_each]") {
   auto always_true = [](auto&&...) {
     return true;
   };
@@ -44,7 +44,7 @@ TEST_CASE("sequence_senders - filter_each: fires once", "[sequence_sneders][filt
   CHECK(count == 1);
 }
 
-TEST_CASE("sequence_senders - filter_each: fires none", "[sequence_sneders][filter_each]") {
+TEST_CASE("sequence_senders - filter_each: fires none", "[sequence_senders][filter_each]") {
   auto always_false = [](auto&&...) {
     return false;
   };

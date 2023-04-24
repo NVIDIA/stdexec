@@ -26,7 +26,7 @@
 using namespace stdexec;
 using namespace exec;
 
-TEST_CASE("Merge each", "[sequence][merge_each]") {
+TEST_CASE("Merge each", "[sequence_senders][merge_each]") {
   auto seq = once(just(once(just(42))));
   auto merged = merge_each_sequence(seq);
   auto ignored = ignore_all(merged | then_each([](int val) { 
