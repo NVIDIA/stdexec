@@ -247,6 +247,8 @@ namespace stdexec {
   template <__completion_tag _CPO>
   inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
 
+  template <class _Tag>
+  concept __forwarding_query = forwarding_query(_Tag{});
 
   /////////////////////////////////////////////////////////////////////////////
   // env_of

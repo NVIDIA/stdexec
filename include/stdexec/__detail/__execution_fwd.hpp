@@ -93,9 +93,6 @@ namespace stdexec {
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
 
-  template <class _Tag>
-  concept __forwarding_query = forwarding_query(_Tag{});
-
   template <class _Tp>
   using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Tp>>;
 
