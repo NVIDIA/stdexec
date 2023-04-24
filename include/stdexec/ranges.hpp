@@ -189,6 +189,19 @@ namespace stdexec {
     using __transform::transform_t;
     inline constexpr transform_t transform{};
 
+    namespace __filter {
+      inline constexpr __mstring __filter_context =
+        "In stdexec::views::filter(Sender, Function)..."__csz;
+
+      struct filter_t
+        : public __view_adaptor::
+            __pipe< __callable_error<__filter_context>, decltype(::std::views::filter), filter_t> {
+      };
+    } // __filter
+
+    using __filter::filter_t;
+    inline constexpr filter_t filter{};
+
   } // namespace views
 
 } // namespace stdexec

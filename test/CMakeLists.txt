@@ -55,6 +55,7 @@ set(stdexec_test_sources
     stdexec/algos/consumers/test_start_detached.cpp
     stdexec/algos/consumers/test_sync_wait.cpp
     stdexec/algos/other/test_execute.cpp
+    stdexec/algos/views/test_filter.cpp
     stdexec/algos/views/test_transform.cpp
     stdexec/detail/test_completion_signatures.cpp
     stdexec/detail/test_utility.cpp
