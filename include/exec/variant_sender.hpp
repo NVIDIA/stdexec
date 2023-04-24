@@ -56,10 +56,10 @@ namespace exec {
       struct __visitor {
         _Receiver __r;
 
-        template <class _S>
+        template <class _Sender>
         stdexec::__t< __operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
-          operator()(_S&& __s) const {
-          return {(_S&&) __s, (_Receiver&&) __r};
+          operator()(_Sender&& __s) const {
+          return {(_Sender&&) __s, (_Receiver&&) __r};
         }
       };
 

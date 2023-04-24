@@ -57,7 +57,7 @@ namespace exec {
       using _Default = __t<_DefaultId>;
       using _Receiver = __t<_ReceiverId>;
 
-      [[no_unique_address]] _Default __default_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Default __default_;
       _Receiver __rcvr_;
 
       friend void tag_invoke(start_t, __operation& __self) noexcept {
@@ -78,7 +78,7 @@ namespace exec {
     struct __sender {
       using _Default = __t<_DefaultId>;
       using is_sender = void;
-      [[no_unique_address]] _Default __default_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Default __default_;
 
       template <class _Env>
       using __value_t =

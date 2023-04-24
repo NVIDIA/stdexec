@@ -21,6 +21,7 @@
 #include <utility>
 #include "__config.hpp"
 #include "__type_traits.hpp"
+#include "__concepts.hpp"
 
 namespace stdexec {
 
@@ -71,9 +72,6 @@ namespace stdexec {
   template <class...>
   struct __types;
 
-  template <class... _Ts>
-  concept __typename = requires { typename __types<_Ts...>; };
-
   template <class _Tp>
   using __midentity = _Tp;
 
@@ -112,7 +110,7 @@ namespace stdexec {
   using __make_indices = std::make_index_sequence<_Np>*;
 
   template <class _Char>
-  concept __mchar = __v<std::is_same<_Char, char>>;
+  concept __mchar = __same_as<_Char, char>;
 
   template <std::size_t _Len>
   class __mstring {
@@ -501,7 +499,7 @@ namespace stdexec {
   template <class _Ty>
   struct __mcount {
     template <class... _Ts>
-    using __f = __msize_t<(__v<std::is_same<_Ts, _Ty>> + ... + 0)>;
+    using __f = __msize_t<(__same_as<_Ts, _Ty> + ... + 0)>;
   };
 
   template <class _Fn>
@@ -513,7 +511,7 @@ namespace stdexec {
   template <class _Tp>
   struct __contains {
     template <class... _Args>
-    using __f = __mbool<(__v<std::is_same<_Tp, _Args>> || ...)>;
+    using __f = __mbool<(__same_as<_Tp, _Args> || ...)>;
   };
 
   template <class _Continuation = __q<__types>>
@@ -559,7 +557,7 @@ namespace stdexec {
   template <class _Old, class _New, class _Continuation = __q<__types>>
   struct __replace {
     template <class... _Args>
-    using __f = __minvoke<_Continuation, __if<std::is_same<_Args, _Old>, _New, _Args>...>;
+    using __f = __minvoke<_Continuation, __if_c<__same_as<_Args, _Old>, _New, _Args>...>;
   };
 
   template <class _Old, class _Continuation = __q<__types>>
@@ -568,7 +566,7 @@ namespace stdexec {
     using __f = //
       __minvoke<
         __mconcat<_Continuation>,
-        __if<std::is_same<_Args, _Old>, __types<>, __types<_Args>>...>;
+        __if_c<__same_as<_Args, _Old>, __types<>, __types<_Args>>...>;
   };
 
   template <class _Pred, class _Continuation = __q<__types>>
@@ -646,18 +644,6 @@ namespace stdexec {
 
   template <class _From, class _To = __decay_t<_From>>
   using __cvref_id = __copy_cvref_t<_From, __id<_To>>;
-
-  template <class _Fun, class... _As>
-  concept __callable =                      //
-    requires(_Fun&& __fun, _As&&... __as) { //
-      ((_Fun&&) __fun)((_As&&) __as...);    //
-    };
-  template <class _Fun, class... _As>
-  concept __nothrow_callable =  //
-    __callable<_Fun, _As...> && //
-    requires(_Fun&& __fun, _As&&... __as) {
-      { ((_Fun&&) __fun)((_As&&) __as...) } noexcept;
-    };
 
 #if STDEXEC_NVHPC()
   // nvc++ doesn't cache the results of alias template specializations.

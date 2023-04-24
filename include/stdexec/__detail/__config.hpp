@@ -21,27 +21,27 @@
 
 #include <cassert>
 
-#define STDEXEC_CAT_(_Xp, ...) _Xp##__VA_ARGS__
-#define STDEXEC_CAT(_Xp, ...) STDEXEC_CAT_(_Xp, __VA_ARGS__)
+#define STDEXEC_CAT_(_XP, ...) _XP##__VA_ARGS__
+#define STDEXEC_CAT(_XP, ...) STDEXEC_CAT_(_XP, __VA_ARGS__)
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
-#define STDEXEC_EVAL(_M, ...) _M(__VA_ARGS__)
+#define STDEXEC_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
 
-#define STDEXEC_NOT(_Xp) STDEXEC_CAT(STDEXEC_NOT_, _Xp)
+#define STDEXEC_NOT(_XP) STDEXEC_CAT(STDEXEC_NOT_, _XP)
 #define STDEXEC_NOT_0 1
 #define STDEXEC_NOT_1 0
 
-#define STDEXEC_IIF_0(_Yp, ...) __VA_ARGS__
-#define STDEXEC_IIF_1(_Yp, ...) _Yp
-#define STDEXEC_IIF(_Xp, _Yp, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _Xp), _Yp, __VA_ARGS__)
+#define STDEXEC_IIF_0(_YP, ...) __VA_ARGS__
+#define STDEXEC_IIF_1(_YP, ...) _YP
+#define STDEXEC_IIF(_XP, _YP, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _XP), _YP, __VA_ARGS__)
 
 #define STDEXEC_COUNT(...) \
   STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
-#define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _Np, ...) _Np
+#define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _NP, ...) _NP
 
 #define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0, ))
-#define STDEXEC_CHECK_N(_Xp, _Np, ...) _Np
-#define STDEXEC_PROBE(_Xp) _Xp, 1,
+#define STDEXEC_CHECK_N(_XP, _NP, ...) _NP
+#define STDEXEC_PROBE(_XP) _XP, 1,
 
 #if defined(__NVCOMPILER)
 #define STDEXEC_NVHPC() 1
@@ -67,14 +67,14 @@
 #endif
 
 #if STDEXEC_CLANG()
-#define STDEXEC_STRINGIZE(__arg) #__arg
+#define STDEXEC_STRINGIZE(_ARG) #_ARG
 #define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
 #define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
-#define STDEXEC_PRAGMA_IGNORE(__arg) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __arg))
+#define STDEXEC_PRAGMA_IGNORE(_ARG) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored _ARG))
 #else
 #define STDEXEC_PRAGMA_PUSH()
 #define STDEXEC_PRAGMA_POP()
-#define STDEXEC_PRAGMA_IGNORE(__arg)
+#define STDEXEC_PRAGMA_IGNORE(_ARG)
 #endif
 
 #ifdef __has_builtin
@@ -85,9 +85,16 @@
 
 // Before gcc-12, gcc really didn't like tuples or variants of immovable types
 #if STDEXEC_GCC() && (__GNUC__ < 12)
-#define STDEXEC_IMMOVABLE(_Xp) _Xp(_Xp&&)
+#define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
 #else
-#define STDEXEC_IMMOVABLE(_Xp) _Xp(_Xp&&) = delete
+#define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
+#endif
+
+// NVBUG #4067067
+#if STDEXEC_NVHPC()
+#define STDEXEC_NO_UNIQUE_ADDRESS
+#else
+#define STDEXEC_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
 // BUG (gcc PR93711): copy elision fails when initializing a
@@ -120,10 +127,10 @@
 #error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif
 
-#define STDEXEC_ASSERT(_Xp) \
+#define STDEXEC_ASSERT(_XP) \
   do { \
-    static_assert(noexcept(_Xp)); \
-    STDEXEC_ASSERT_FN(_Xp); \
+    static_assert(noexcept(_XP)); \
+    STDEXEC_ASSERT_FN(_XP); \
   } while (false)
 
 #ifndef STDEXEC_ASSERT_FN

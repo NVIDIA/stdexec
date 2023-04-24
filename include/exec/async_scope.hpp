@@ -55,7 +55,7 @@ namespace exec {
     template <class _ReceiverId>
     struct __when_empty_op_base : __task {
       using _Receiver = __t<_ReceiverId>;
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
     };
 
     template <class _ConstrainedId, class _ReceiverId>
@@ -89,8 +89,7 @@ namespace exec {
         return __self.__start_();
       }
 
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      connect_result_t<_Constrained, _Receiver> __op_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, _Receiver> __op_;
     };
 
     template <class _ConstrainedId>
@@ -119,7 +118,7 @@ namespace exec {
       }
 
       const __impl* __scope_;
-      [[no_unique_address]] _Constrained __c_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
     };
 
     template <class _Constrained>
@@ -131,7 +130,7 @@ namespace exec {
     struct __nest_op_base : __immovable {
       using _Receiver = __t<_ReceiverId>;
       const __impl* __scope_;
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
     };
 
     template <class _ReceiverId>
@@ -177,8 +176,8 @@ namespace exec {
     struct __nest_op : __nest_op_base<_ReceiverId> {
       using _Constrained = __t<_ConstrainedId>;
       using _Receiver = __t<_ReceiverId>;
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>> __op_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>>
+        __op_;
 
       template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
       explicit __nest_op(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)
@@ -206,7 +205,7 @@ namespace exec {
       using is_sender = void;
 
       const __impl* __scope_;
-      [[no_unique_address]] _Constrained __c_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
 
       template <class _Receiver>
       using __nest_operation_t = __nest_op<_ConstrainedId, __x<_Receiver>>;
@@ -328,9 +327,9 @@ namespace exec {
         }
       }
 
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
       std::unique_ptr<__future_state<_Sender, _Env>> __state_;
-      [[no_unique_address]] __forward_consumer __forward_consumer_;
+      STDEXEC_NO_UNIQUE_ADDRESS __forward_consumer __forward_consumer_;
 
      public:
       ~__future_op() noexcept {

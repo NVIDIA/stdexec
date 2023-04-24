@@ -20,7 +20,8 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "augustocdias.tasks-shell-input"
+        "augustocdias.tasks-shell-input",
+        "ericniebler.erics-build-output-colorizer"
       ],
       "settings": {
         "debug.toolBarLocation": "docked",

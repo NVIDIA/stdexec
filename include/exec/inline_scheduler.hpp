@@ -26,7 +26,7 @@ namespace exec {
     template <class R_>
     struct __op {
       using R = stdexec::__t<R_>;
-      [[no_unique_address]] R rec_;
+      STDEXEC_NO_UNIQUE_ADDRESS R rec_;
 
       friend void tag_invoke(stdexec::start_t, __op& op) noexcept {
         stdexec::set_value((R&&) op.rec_);
