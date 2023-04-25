@@ -4108,16 +4108,17 @@ namespace stdexec {
     using __sender_t =
       __t<__sender<stdexec::__cvref_id<_Sender, _Sender>, stdexec::__id<__decay_t<_Env>>>>;
 
-    template <class _Sender, class _Env>
-    using __dispatcher_for =
-      __make_dispatcher<__cust_sigs, __mconstructor_for<__sender_t>, _Sender, _Env>;
-
-    template <class _SenderId, class _EnvId>
-    void __test_ensure_started_sender(__sender<_SenderId, _EnvId> const & __sndr2){};
-
     template <class _Sender>
     concept __ensure_started_sender = //
-      requires(typename _Sender::__cvref_id __sndr1) { __test_ensure_started_sender(__sndr1); };
+      __is_instance_of<__id<__decay_t<_Sender>>, __sender>;
+
+    template <class _Sender>
+    using __fallback =
+      __if_c<__ensure_started_sender<_Sender>, __mconst<__first>, __mconstructor_for<__sender_t>>;
+
+    template <class _Sender, class _Env>
+    using __dispatcher_for =
+      __make_dispatcher<__cust_sigs, __fallback<_Sender>, _Sender, _Env>;
 
     struct ensure_started_t {
       template <sender _Sender, class _Env = empty_env>
@@ -4127,11 +4128,6 @@ namespace stdexec {
         noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
           -> __call_result_t<__dispatcher_for<_Sender, _Env>, _Sender, _Env> {
         return __dispatcher_for<_Sender, _Env>{}((_Sender&&) __sndr, (_Env&&) __env);
-      }
-
-      template <__ensure_started_sender _Sender>
-      _Sender operator()(_Sender __sndr) const {
-        return std::move(__sndr);
       }
 
       __binder_back<ensure_started_t> operator()() const {

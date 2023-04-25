@@ -46,6 +46,13 @@ namespace stdexec {
       { std::invoke((_Fun&&) __f, (_As&&) __as...) } noexcept;
     };
 
+  struct __first {
+    template <class _First, class _Second>
+    constexpr _First&& operator()(_First&& __first, _Second&&) const noexcept {
+      return (_First&&) __first;
+    }
+  };
+
   template <auto _Fun>
   struct __fun_c_t {
     using _FunT = decltype(_Fun);

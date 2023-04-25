@@ -283,6 +283,7 @@ TEST_CASE("Repeated ensure_started compiles", "[adaptors][ensure_started]") {
   CHECK_FALSE(called);
   auto snd2 = ex::ensure_started(std::move(snd1));
   auto snd = ex::ensure_started(std::move(snd2));
+  STATIC_REQUIRE(ex::same_as<decltype(snd2), decltype(snd)>);
   CHECK(called);
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
