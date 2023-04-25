@@ -51,6 +51,8 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
+        using __id = __receiver;
+
         explicit __t(__operation_base<_Int, _Receiver>* __op) noexcept
           : __op_(__op) {
         }
@@ -124,6 +126,8 @@ namespace exec {
       using _Sender = stdexec::__t<_SenderId>;
 
       struct __t {
+        using __id = __sender;
+
         [[no_unique_address]] _Sender __sndr_;
         _Int __initial_val_;
 

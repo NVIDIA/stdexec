@@ -87,6 +87,7 @@ set(stdexec_test_sources
     exec/sequence/test_filter_each.cpp
     exec/sequence/test_first_value.cpp
     exec/sequence/test_generate_each.cpp
+    exec/sequence/test_iterate.cpp
     exec/sequence/test_once.cpp
     exec/sequence/test_take_while.cpp
     exec/sequence/test_zip.cpp
