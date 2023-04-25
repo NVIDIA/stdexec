@@ -30,15 +30,19 @@
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     namespace reduce_ {
-      template <class SenderId, class ReceiverId, class T, class Fun>
+      template <class SenderId, class ReceiverId, class InitT, class Fun>
       struct receiver_t
-        : public __algo_range_init_fun::
-            receiver_t<SenderId, ReceiverId, T, Fun, receiver_t<SenderId, ReceiverId, T, Fun>> {
+        : public __algo_range_init_fun::receiver_t<
+            SenderId,
+            ReceiverId,
+            InitT,
+            Fun,
+            receiver_t<SenderId, ReceiverId, InitT, Fun>> {
         using base = __algo_range_init_fun::
-          receiver_t<SenderId, ReceiverId, T, Fun, receiver_t<SenderId, ReceiverId, T, Fun>>;
+          receiver_t<SenderId, ReceiverId, InitT, Fun, receiver_t<SenderId, ReceiverId, InitT, Fun>>;
 
         template <class Range>
-        using result_t = typename __algo_range_init_fun::binary_invoke_result_t<Range, T, Fun>;
+        using result_t = typename __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>;
 
         template <class Range>
         static void set_value_impl(base::__t&& self, Range&& range) noexcept {
@@ -101,39 +105,40 @@ namespace nvexec {
         }
       };
 
-      template <class SenderId, class T, class Fun>
+      template <class SenderId, class InitT, class Fun>
       struct sender_t
-        : public __algo_range_init_fun::sender_t<SenderId, T, Fun, sender_t<SenderId, T, Fun>> {
+        : public __algo_range_init_fun::
+            sender_t<SenderId, InitT, Fun, sender_t<SenderId, InitT, Fun>> {
         template <class Receiver>
         using receiver_t =
-          stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, T, Fun>>;
+          stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, InitT, Fun>>;
 
         template <class Range>
         using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(
           ::std::add_lvalue_reference_t<
-            typename __algo_range_init_fun::binary_invoke_result_t<Range, T, Fun>>)>;
+            typename __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>>)>;
       };
     }
 
     struct reduce_t {
-      template <class Sender, class T, class Fun>
+      template <class Sender, class InitT, class Fun>
       using __sender =
-        stdexec::__t<reduce_::sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, T, Fun>>;
+        stdexec::__t<reduce_::sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, InitT, Fun>>;
 
       template <
         stdexec::sender Sender,
-        stdexec::__movable_value T,
+        stdexec::__movable_value InitT,
         stdexec::__movable_value Fun = cub::Sum>
-      __sender<Sender, T, Fun> operator()(Sender&& sndr, T init, Fun fun) const {
-        return __sender<Sender, T, Fun>{{}, (Sender &&) sndr, (T &&) init, (Fun &&) fun};
+      __sender<Sender, InitT, Fun> operator()(Sender&& sndr, InitT init, Fun fun) const {
+        return __sender<Sender, InitT, Fun>{{}, (Sender &&) sndr, (InitT &&) init, (Fun &&) fun};
       }
 
-      template <class T, class Fun = cub::Sum>
-      stdexec::__binder_back<reduce_t, T, Fun> operator()(T init, Fun fun = {}) const {
+      template <class InitT, class Fun = cub::Sum>
+      stdexec::__binder_back<reduce_t, InitT, Fun> operator()(InitT init, Fun fun = {}) const {
         return {
           {},
           {},
-          {(T &&) init, (Fun &&) fun}
+          {(InitT &&) init, (Fun &&) fun}
         };
       }
     };
