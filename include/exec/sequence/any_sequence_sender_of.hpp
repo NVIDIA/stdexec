@@ -105,6 +105,7 @@ namespace exec {
           } __env_;
          public:
           using is_receiver = void;
+          using __id = __receiver_ref;
 
           template <__none_of<__t, const __t, __env_t, const __env_t> _Rcvr>
             requires sequence_receiver_of<_Rcvr, completion_signatures<_Sigs...>>
@@ -272,8 +273,9 @@ namespace exec {
       using is_sequence_sender = void;
       using completion_signatures = typename __sender_base::completion_signatures;
 
-      template <class _Sender>
-        requires(!stdexec::__decays_to<_Sender, any_sender>) && stdexec::sender<_Sender>
+      template <stdexec::__not_decays_to<any_sender> _Sender>
+        requires stdexec::sender_in<_Sender, __env_t>
+              && sequence_sender_to<_Sender, __receiver_base>
       any_sender(_Sender&& __sender) noexcept(
         stdexec::__nothrow_constructible_from<__sender_base, _Sender>)
         : __sender_((_Sender&&) __sender) {

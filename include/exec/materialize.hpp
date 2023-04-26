@@ -22,58 +22,87 @@ namespace exec {
   namespace __materialize {
     using namespace stdexec;
 
+    template <class _Receiver>
+    struct __operation_base {
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
+    };
+
     template <class _ReceiverId>
     struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
       class __t {
        public:
-        __t(_Receiver&& __upstream)
-          : __upstream_{(_Receiver&&) __upstream} {
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        using __id = __receiver;
+
+        __t(__operation_base<_Receiver>* __op)
+          : __op_{__op} {
         }
 
        private:
-        _Receiver __upstream_;
+        __operation_base<_Receiver>* __op_;
 
-        template <__completion_tag _Tag, __decays_to<__t> _Self, class... _Args>
+        template <__completion_tag _Tag, same_as<__t> _Self, class... _Args>
           requires tag_invocable<set_value_t, _Receiver&&, _Tag, _Args...>
         friend void tag_invoke(_Tag tag, _Self&& __self, _Args&&... __args) noexcept {
-          set_value((_Receiver&&) __self.__upstream_, _Tag{}, (_Args&&) __args...);
+          set_value((_Receiver&&) __self.__op_->__receiver_, _Tag{}, (_Args&&) __args...);
         }
 
-        template <std::same_as<__t> _Self>
+        template <same_as<__t> _Self>
         friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
-          return get_env(__self.__upstream_);
+          return get_env(__self.__op_->__receiver_);
+        }
+      };
+    };
+
+    template <class _Sender, class _ReceiverId>
+    struct __operation {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      struct __t : __operation_base<_Receiver> {
+        connect_result_t<_Sender, stdexec::__t<__receiver<_ReceiverId>>> __op_;
+
+        __t(_Sender __sndr, _Receiver __rcvr)
+          : __operation_base<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
+          , __op_{stdexec::connect(
+              static_cast<_Sender&&>(__sndr),
+              stdexec::__t<__receiver<_ReceiverId>>{this})} {
+        }
+
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          stdexec::start(__self.__op_);
         }
       };
     };
 
     template <class _SenderId>
     struct __sender {
-      using _Sender = __decay_t<stdexec::__t<_SenderId>>;
+      using _Sender = stdexec::__t<_SenderId>;
 
       template <class _Receiver>
-      using __receiver_t = stdexec::__t<__receiver<__id<__decay_t<_Receiver>>>>;
+      using __receiver_t = stdexec::__t<__receiver<stdexec::__id<__decay_t<_Receiver>>>>;
 
       class __t {
        public:
         using is_sender = void;
+        using __id = __sender;
+
+        template <class _Self, class _Rcvr>
+        using __operation_t = stdexec::__t<
+          __operation<__copy_cvref_t<_Self, _Sender>, stdexec::__id<__decay_t<_Rcvr>>>>;
 
         template <__decays_to<_Sender> _Sndr>
         __t(_Sndr&& __sender)
           : __sender_{(_Sndr&&) __sender} {
         }
 
-        //  private:
-        _Sender __sender_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sender_;
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        friend connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
+        friend __operation_t<_Self, _Receiver>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
             __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>) {
-          return connect(
-            ((_Self&&) __self).__sender_, __receiver_t<_Receiver>{(_Receiver&&) __receiver});
+          return {static_cast<_Self&&>(__self).__sender_, static_cast<_Receiver&&>(__receiver)};
         }
 
         template <class... _Args>
@@ -115,38 +144,64 @@ namespace exec {
   namespace __dematerialize {
     using namespace stdexec;
 
+    template <class _Receiver>
+    struct __operation_base {
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
+    };
+
     template <class _ReceiverId>
     struct __receiver {
-      using _Receiver = __decay_t<stdexec::__t<_ReceiverId>>;
-
       class __t {
        public:
-        __t(_Receiver&& __upstream)
-          : __upstream_{(_Receiver&&) __upstream} {
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        using __id = __receiver;
+
+        __t(__operation_base<_Receiver>* __op)
+          : __op_{__op} {
         }
 
        private:
-        _Receiver __upstream_;
+        __operation_base<_Receiver>* __op_;
 
         template <
           same_as<set_value_t> _Tag,
           __completion_tag _Tag2,
-          __decays_to<__t> _Self,
+          same_as<__t> _Self,
           class... _Args>
-          requires tag_invocable<_Tag2, _Receiver&&, _Args...>
+          requires __callable<_Tag2, _Receiver&&, _Args...>
         friend void tag_invoke(_Tag, _Self&& __self, _Tag2 tag2, _Args&&... __args) noexcept {
-          tag2((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
+          tag2((_Receiver&&) __self.__op_->__receiver_, (_Args&&) __args...);
         }
 
-        template <__one_of<set_stopped_t, set_error_t> _Tag, __decays_to<__t> _Self, class... _Args>
-          requires tag_invocable<_Tag, _Receiver&&, _Args...>
+        template <__one_of<set_stopped_t, set_error_t> _Tag, same_as<__t> _Self, class... _Args>
+          requires __callable<_Tag, _Receiver&&, _Args...>
         friend void tag_invoke(_Tag tag, _Self&& __self, _Args&&... __args) noexcept {
-          tag((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
+          tag((_Receiver&&) __self.__op_->__receiver_, (_Args&&) __args...);
         }
 
         template <std::same_as<__t> _Self>
         friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
-          return get_env(__self.__upstream_);
+          return stdexec::get_env(__self.__op_->__receiver_);
+        }
+      };
+    };
+
+    template <class _Sender, class _ReceiverId>
+    struct __operation {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      struct __t : __operation_base<_Receiver> {
+        connect_result_t<_Sender, stdexec::__t<__receiver<_ReceiverId>>> __op_;
+
+        __t(_Sender __sndr, _Receiver __rcvr)
+          : __operation_base<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
+          , __op_{stdexec::connect(
+              static_cast<_Sender&&>(__sndr),
+              stdexec::__t<__receiver<_ReceiverId>>{this})} {
+        }
+
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          stdexec::start(__self.__op_);
         }
       };
     };
@@ -170,13 +225,16 @@ namespace exec {
        private:
         _Sender __sender_;
 
+        template <class _Self, class _Rcvr>
+        using __operation_t = stdexec::__t<
+          __operation<__copy_cvref_t<_Self, _Sender>, stdexec::__id<__decay_t<_Rcvr>>>>;
+
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        friend connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
+        friend __operation_t<_Self, _Receiver>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
             __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>) {
-          return connect(
-            ((_Self&&) __self).__sender_, __receiver_t<_Receiver>{(_Receiver&&) __receiver});
+          return {static_cast<_Self&&>(__self).__sender_, static_cast<_Receiver&&>(__receiver)};
         }
 
         template <class _Tag, class... _Args>

@@ -488,7 +488,7 @@ namespace exec {
       template <class... _Sigs, class... _Queries>
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
        private:
-        using __vtable_t = __t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
+        using __vtable_t = stdexec::__t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
 
         struct __env_t {
           const __vtable_t* __vtable_;
@@ -504,6 +504,8 @@ namespace exec {
         } __env_;
        public:
         using is_receiver = void;
+        using __id = __ref;
+        using __t = __ref;
 
         template <__none_of<__ref, const __ref, __env_t, const __env_t> _Rcvr>
           requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
