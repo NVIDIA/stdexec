@@ -486,3 +486,15 @@ TEST_CASE("split can nest", "[adaptors][split]") {
   REQUIRE(v2 == 2);
   REQUIRE(v3 == 1);
 }
+
+TEST_CASE("split doesn't advertise completion scheduler", "[adaptors][split]") {
+  inline_scheduler sched;
+
+  auto snd = ex::transfer_just(sched, 42) | ex::split();
+  using snd_t = decltype(snd);
+  static_assert(!stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_value_t>, snd_t>);
+  static_assert(!stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_error_t>, snd_t>);
+  static_assert(
+    !stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_stopped_t>, snd_t>);
+  (void) snd;
+}

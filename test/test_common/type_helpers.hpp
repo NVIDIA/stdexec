@@ -82,10 +82,10 @@ inline void check_val_types(S snd) {
 }
 
 //! Check that the env of a sender matches the expected type
-template <typename ExpectedAttrsType, typename S>
+template <typename ExpectedEnvType, typename S>
 inline void check_env_type(S snd) {
   using t = decltype(ex::get_env(snd));
-  static_assert(std::same_as<t, ExpectedAttrsType>);
+  static_assert(std::same_as<t, ExpectedEnvType>);
 }
 
 //! Check that the error_types of a sender matches the expected type

@@ -8,7 +8,7 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("upon_stopped returns a sender", "[cuda][stream][adaptors][upon_stopped]") {
+TEST_CASE("nvexec upon_stopped returns a sender", "[cuda][stream][adaptors][upon_stopped]") {
   nvexec::stream_context stream_ctx{};
 
   auto snd = ex::just_stopped() | ex::transfer(stream_ctx.get_scheduler())
@@ -17,7 +17,7 @@ TEST_CASE("upon_stopped returns a sender", "[cuda][stream][adaptors][upon_stoppe
   (void) snd;
 }
 
-TEST_CASE("upon_stopped executes on GPU", "[cuda][stream][adaptors][upon_stopped]") {
+TEST_CASE("nvexec upon_stopped executes on GPU", "[cuda][stream][adaptors][upon_stopped]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};

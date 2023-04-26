@@ -12,7 +12,7 @@
 
 namespace ex = stdexec;
 
-TEST_CASE("reduce returns a sender with single input", "[cuda][stream][adaptors][reduce]") {
+TEST_CASE("nvexec reduce returns a sender with single input", "[cuda][stream][adaptors][reduce]") {
   constexpr int N = 2048;
   int input[N] = {};
   std::fill_n(input, N, 1);
@@ -25,7 +25,7 @@ TEST_CASE("reduce returns a sender with single input", "[cuda][stream][adaptors]
   (void) snd;
 }
 
-TEST_CASE("reduce returns a sender with two inputs", "[cuda][stream][adaptors][reduce]") {
+TEST_CASE("nvexec reduce returns a sender with two inputs", "[cuda][stream][adaptors][reduce]") {
   constexpr int N = 2048;
   int input[N] = {};
   std::fill_n(input, N, 1);
@@ -39,7 +39,7 @@ TEST_CASE("reduce returns a sender with two inputs", "[cuda][stream][adaptors][r
   (void) snd;
 }
 
-TEST_CASE("reduce uses sum as default", "[cuda][stream][adaptors][reduce]") {
+TEST_CASE("nvexec reduce uses sum as default", "[cuda][stream][adaptors][reduce]") {
   constexpr int N = 2048;
   constexpr int init = 42;
 
@@ -56,7 +56,7 @@ TEST_CASE("reduce uses sum as default", "[cuda][stream][adaptors][reduce]") {
   REQUIRE(result == N + init);
 }
 
-TEST_CASE("reduce uses the passed function", "[cuda][stream][adaptors][reduce]") {
+TEST_CASE("nvexec reduce uses the passed function", "[cuda][stream][adaptors][reduce]") {
   constexpr int N = 2048;
   constexpr int init = 42;
 
@@ -73,7 +73,7 @@ TEST_CASE("reduce uses the passed function", "[cuda][stream][adaptors][reduce]")
   REQUIRE(result == 1);
 }
 
-TEST_CASE("reduce executes on GPU", "[cuda][stream][adaptors][reduce]") {
+TEST_CASE("nvexec reduce executes on GPU", "[cuda][stream][adaptors][reduce]") {
   constexpr int N = 2048;
   constexpr int init = 42;
 

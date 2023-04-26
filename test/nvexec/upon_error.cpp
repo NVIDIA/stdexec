@@ -30,7 +30,7 @@ inline void check_err_types(S snd) {
   check_types_impl<ExpectedValType, t>();
 }
 
-TEST_CASE("upon_error returns a sender", "[cuda][stream][adaptors][upon_error]") {
+TEST_CASE("nvexec upon_error returns a sender", "[cuda][stream][adaptors][upon_error]") {
   nvexec::stream_context stream_ctx{};
 
   auto snd = ex::just_error(42) | ex::transfer(stream_ctx.get_scheduler())
@@ -39,7 +39,7 @@ TEST_CASE("upon_error returns a sender", "[cuda][stream][adaptors][upon_error]")
   (void) snd;
 }
 
-TEST_CASE("upon_error executes on GPU", "[cuda][stream][adaptors][upon_error]") {
+TEST_CASE("nvexec upon_error executes on GPU", "[cuda][stream][adaptors][upon_error]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};

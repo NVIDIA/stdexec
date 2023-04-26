@@ -9,7 +9,7 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("transfer to stream context returns a sender", "[cuda][stream][adaptors][transfer]") {
+TEST_CASE("nvexec transfer to stream context returns a sender", "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
   exec::inline_scheduler cpu{};
   nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
@@ -19,7 +19,7 @@ TEST_CASE("transfer to stream context returns a sender", "[cuda][stream][adaptor
   (void) snd;
 }
 
-TEST_CASE("transfer from stream context returns a sender", "[cuda][stream][adaptors][transfer]") {
+TEST_CASE("nvexec transfer from stream context returns a sender", "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
 
   exec::inline_scheduler cpu{};
@@ -30,7 +30,7 @@ TEST_CASE("transfer from stream context returns a sender", "[cuda][stream][adapt
   (void) snd;
 }
 
-TEST_CASE("transfer changes context to GPU", "[cuda][stream][adaptors][transfer]") {
+TEST_CASE("nvexec transfer changes context to GPU", "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
 
   exec::inline_scheduler cpu{};
@@ -55,7 +55,7 @@ TEST_CASE("transfer changes context to GPU", "[cuda][stream][adaptors][transfer]
   REQUIRE(result == 2);
 }
 
-TEST_CASE("transfer changes context from GPU", "[cuda][stream][adaptors][transfer]") {
+TEST_CASE("nvexec transfer changes context from GPU", "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
 
   exec::inline_scheduler cpu{};
@@ -80,7 +80,7 @@ TEST_CASE("transfer changes context from GPU", "[cuda][stream][adaptors][transfe
   REQUIRE(result == 2);
 }
 
-TEST_CASE("transfer_just changes context to GPU", "[cuda][stream][adaptors][transfer]") {
+TEST_CASE("nvexec transfer_just changes context to GPU", "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
   nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
@@ -96,7 +96,7 @@ TEST_CASE("transfer_just changes context to GPU", "[cuda][stream][adaptors][tran
   REQUIRE(result == true);
 }
 
-TEST_CASE("transfer_just supports move-only types", "[cuda][stream][adaptors][transfer]") {
+TEST_CASE("nvexec transfer_just supports move-only types", "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
   nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
@@ -112,7 +112,7 @@ TEST_CASE("transfer_just supports move-only types", "[cuda][stream][adaptors][tr
   REQUIRE(result == true);
 }
 
-TEST_CASE("transfer supports move-only types", "[cuda][stream][adaptors][transfer]") {
+TEST_CASE("nvexec transfer supports move-only types", "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
 
   exec::inline_scheduler cpu{};

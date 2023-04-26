@@ -8,14 +8,14 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("split returns a sender", "[cuda][stream][adaptors][split]") {
+TEST_CASE("nvexec split returns a sender", "[cuda][stream][adaptors][split]") {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::split(ex::schedule(stream_ctx.get_scheduler()));
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
   (void) snd;
 }
 
-TEST_CASE("split works", "[cuda][stream][adaptors][split]") {
+TEST_CASE("nvexec split works", "[cuda][stream][adaptors][split]") {
   nvexec::stream_context stream_ctx{};
 
   auto fork = ex::schedule(stream_ctx.get_scheduler()) //
@@ -31,7 +31,7 @@ TEST_CASE("split works", "[cuda][stream][adaptors][split]") {
   REQUIRE(v2 == 42);
 }
 
-TEST_CASE("split can preceed a sender without values", "[cuda][stream][adaptors][split]") {
+TEST_CASE("nvexec split can preceed a sender without values", "[cuda][stream][adaptors][split]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -50,7 +50,7 @@ TEST_CASE("split can preceed a sender without values", "[cuda][stream][adaptors]
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("split can succeed a sender", "[cuda][stream][adaptors][split]") {
+TEST_CASE("nvexec split can succeed a sender", "[cuda][stream][adaptors][split]") {
   SECTION("without values") {
     nvexec::stream_context stream_ctx{};
     flags_storage_t<2> flags_storage{};

@@ -63,9 +63,9 @@ struct value_env {
   int value;
 };
 
-template <class Attrs, class... Values>
+template <class Env, class... Values>
 struct just_with_env {
-  std::remove_cvref_t<Attrs> env_;
+  std::remove_cvref_t<Env> env_;
   std::tuple<Values...> values_;
   using is_sender = void;
   using completion_signatures = ex::completion_signatures<ex::set_value_t(Values...)>;
@@ -88,7 +88,7 @@ struct just_with_env {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
 
-  friend Attrs tag_invoke(ex::get_env_t, const just_with_env& self) noexcept {
+  friend Env tag_invoke(ex::get_env_t, const just_with_env& self) noexcept {
     return self.env_;
   }
 };
