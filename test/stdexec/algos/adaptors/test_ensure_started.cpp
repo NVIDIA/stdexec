@@ -33,9 +33,11 @@ TEST_CASE("ensure_started returns a sender", "[adaptors][ensure_started]") {
   (void) snd;
 }
 
+static const auto env = exec::make_env(exec::with(ex::get_scheduler, inline_scheduler{}));
+
 TEST_CASE("ensure_started with environment returns a sender", "[adaptors][ensure_started]") {
-  auto snd = ex::ensure_started(ex::just(19));
-  static_assert(ex::sender_in<decltype(snd), empty_env>);
+  auto snd = ex::ensure_started(ex::just(19), env);
+  static_assert(ex::sender_in<decltype(snd), decltype(env)>);
   (void) snd;
 }
 
@@ -281,6 +283,17 @@ TEST_CASE("Repeated ensure_started compiles", "[adaptors][ensure_started]") {
   CHECK_FALSE(called);
   auto snd2 = ex::ensure_started(std::move(snd1));
   auto snd = ex::ensure_started(std::move(snd2));
+  STATIC_REQUIRE(ex::same_as<decltype(snd2), decltype(snd)>);
+  CHECK(called);
+  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  ex::start(op);
+}
+
+TEST_CASE("ensure_started with move only input sender", "[adaptors][ensure_started]") {
+  bool called{false};
+  auto snd1 = ex::just(movable(42)) | ex::then([&](movable &&) { called = true; });
+  CHECK_FALSE(called);
+  auto snd = ex::ensure_started(std::move(snd1));
   CHECK(called);
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
