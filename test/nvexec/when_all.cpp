@@ -9,7 +9,7 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("when_all returns a sender", "[cuda][stream][adaptors][when_all]") {
+TEST_CASE("nvexec when_all returns a sender", "[cuda][stream][adaptors][when_all]") {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::when_all(
     ex::schedule(stream_ctx.get_scheduler()), ex::schedule(stream_ctx.get_scheduler()));
@@ -17,7 +17,7 @@ TEST_CASE("when_all returns a sender", "[cuda][stream][adaptors][when_all]") {
   (void) snd;
 }
 
-TEST_CASE("when_all works", "[cuda][stream][adaptors][when_all]") {
+TEST_CASE("nvexec when_all works", "[cuda][stream][adaptors][when_all]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<2> flags_storage{};
@@ -41,7 +41,7 @@ TEST_CASE("when_all works", "[cuda][stream][adaptors][when_all]") {
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("when_all returns values", "[cuda][stream][adaptors][when_all]") {
+TEST_CASE("nvexec when_all returns values", "[cuda][stream][adaptors][when_all]") {
   nvexec::stream_context stream_ctx{};
 
   auto snd = ex::when_all(
@@ -53,7 +53,7 @@ TEST_CASE("when_all returns values", "[cuda][stream][adaptors][when_all]") {
   REQUIRE(v2 == 42);
 }
 
-TEST_CASE("when_all with many senders", "[cuda][stream][adaptors][when_all]") {
+TEST_CASE("nvexec when_all with many senders", "[cuda][stream][adaptors][when_all]") {
   nvexec::stream_context stream_ctx{};
 
   auto snd = ex::when_all(
@@ -71,7 +71,7 @@ TEST_CASE("when_all with many senders", "[cuda][stream][adaptors][when_all]") {
   REQUIRE(v5 == 5);
 }
 
-TEST_CASE("when_all works with unknown senders", "[cuda][stream][adaptors][when_all]") {
+TEST_CASE("nvexec when_all works with unknown senders", "[cuda][stream][adaptors][when_all]") {
   nvexec::stream_context stream_ctx{};
   auto sch = stream_ctx.get_scheduler();
 

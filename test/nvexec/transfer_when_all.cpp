@@ -24,7 +24,7 @@
 
 namespace ex = stdexec;
 
-TEST_CASE("transfer_when_all returns a sender", "[cuda][stream][adaptors][transfer_when_all]") {
+TEST_CASE("nvexec transfer_when_all returns a sender", "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
   auto snd = ex::transfer_when_all(gpu, ex::just(3), ex::just(0.1415));
@@ -33,7 +33,7 @@ TEST_CASE("transfer_when_all returns a sender", "[cuda][stream][adaptors][transf
 }
 
 TEST_CASE(
-  "transfer_when_all with environment returns a sender",
+  "nvexec transfer_when_all with environment returns a sender",
   "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
@@ -42,21 +42,21 @@ TEST_CASE(
   (void) snd;
 }
 
-TEST_CASE("transfer_when_all with no senders", "[cuda][stream][adaptors][transfer_when_all]") {
+TEST_CASE("nvexec transfer_when_all with no senders", "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
   auto snd = ex::transfer_when_all(gpu);
   wait_for_value(std::move(snd));
 }
 
-TEST_CASE("transfer_when_all one sender", "[cuda][stream][adaptors][transfer_when_all]") {
+TEST_CASE("nvexec transfer_when_all one sender", "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
   auto snd = ex::transfer_when_all(gpu, ex::just(3.1415));
   wait_for_value(std::move(snd), 3.1415);
 }
 
-TEST_CASE("transfer_when_all two senders", "[cuda][stream][adaptors][transfer_when_all]") {
+TEST_CASE("nvexec transfer_when_all two senders", "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
   auto snd1 = ex::transfer_when_all(gpu, ex::just(3), ex::just(0.1415));
@@ -65,7 +65,7 @@ TEST_CASE("transfer_when_all two senders", "[cuda][stream][adaptors][transfer_wh
 }
 
 TEST_CASE(
-  "transfer_when_all two senders on same scheduler",
+  "nvexec transfer_when_all two senders on same scheduler",
   "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
@@ -75,7 +75,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-  "transfer_when_all_with_variant returns a sender",
+  "nvexec transfer_when_all_with_variant returns a sender",
   "[cuda][stream][adaptors][transfer_when_all_with_variant]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
@@ -85,7 +85,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-  "transfer_when_all_with_variant with environment returns a sender",
+  "nvexec transfer_when_all_with_variant with environment returns a sender",
   "[cuda][stream][adaptors][transfer_when_all_with_variant]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
@@ -95,7 +95,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-  "transfer_when_all_with_variant basic example",
+  "nvexec transfer_when_all_with_variant basic example",
   "[cuda][stream][adaptors][transfer_when_all_with_variant]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();

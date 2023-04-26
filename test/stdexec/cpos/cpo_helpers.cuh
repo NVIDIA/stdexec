@@ -42,6 +42,8 @@ struct cpo_t {
 template <class CPO>
 struct free_standing_sender_t {
   using is_sender = void;
+  using __id = free_standing_sender_t;
+  using __t = free_standing_sender_t;
   using completion_signatures = ex::completion_signatures< //
     ex::set_value_t(),                                     //
     ex::set_error_t(std::exception_ptr),                   //
@@ -59,6 +61,9 @@ struct free_standing_sender_t {
 
 template <class CPO, class... CompletionSignals>
 struct scheduler_t {
+  using __id = scheduler_t;
+  using __t = scheduler_t;
+
   struct env_t {
     template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
     friend scheduler_t tag_invoke(ex::get_completion_scheduler_t<Tag>, const env_t&) noexcept {
@@ -68,6 +73,8 @@ struct scheduler_t {
 
   struct sender_t {
     using is_sender = void;
+    using __id = sender_t;
+    using __t = sender_t;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //
