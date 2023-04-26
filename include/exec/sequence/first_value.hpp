@@ -45,7 +45,7 @@ namespace exec {
       using __on_stop =
         typename stop_token_of_t<env_of_t<_Receiver&>>::template callback_type<__on_stop_requested>;
 
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
       std::atomic<__state> __state_{__state::__empty};
       _ValuesVariant __values_{};
       in_place_stop_source __stop_source_{};
@@ -112,7 +112,7 @@ namespace exec {
         , __parent_{__parent} {
       }
 
-      [[no_unique_address]] _ItemReceiver __item_rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _ItemReceiver __item_rcvr_;
       __operation_base<_ReceiverId, _ValuesVariant>* __parent_;
       in_place_stop_source __stop_source_{};
 
@@ -213,7 +213,7 @@ namespace exec {
         using __id = __item_sender;
         using completion_signatures = stdexec::completion_signatures<set_value_t()>;
 
-        [[no_unique_address]] _Item __item_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Item __item_;
         __operation_base<_ReceiverId, _ValuesVariant>* __op_;
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _ItemReceiver>
@@ -324,7 +324,7 @@ namespace exec {
             __compl_sigs::__default_set_value>;
 
       struct __t {
-        [[no_unique_address]] _Sender __sndr;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr;
 
         template <__decays_to<__t> _Self, class _Rcvr>
           requires receiver_of<_Rcvr, __completion_sigs<_Self, env_of_t<_Rcvr>>>

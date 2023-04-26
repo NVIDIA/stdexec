@@ -125,7 +125,7 @@ namespace exec {
         using __open_receiver_t = stdexec::__t<__open_receiver<_OpenId, _ReceiverId>>;
         using __close_receiver_t = stdexec::__t<__close_receiver<_ReceiverId>>;
 
-        [[no_unique_address]] _Receiver __receiver;
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver;
         std::optional<_Token> __token_;
         std::variant<
           connect_result_t<_Open, __open_receiver_t>,
@@ -240,7 +240,7 @@ namespace exec {
       template <class _Resource>
       struct resource_facade {
         struct __t {
-          [[no_unique_address]] _Resource* __resource;
+          STDEXEC_NO_UNIQUE_ADDRESS _Resource* __resource;
 
           template <__decays_to<__t> _Self>
           friend __sequence_sender_t<_Resource> tag_invoke(run_t, _Self&& __self) noexcept {

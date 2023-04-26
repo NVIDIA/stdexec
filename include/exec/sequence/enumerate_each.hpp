@@ -24,7 +24,7 @@ namespace exec {
 
     template <class _Int, class _Receiver>
     struct __operation_base {
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
       std::atomic<_Int> __count_{};
 
       template <class _Rcvr>
@@ -128,7 +128,7 @@ namespace exec {
       struct __t {
         using __id = __sender;
 
-        [[no_unique_address]] _Sender __sndr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr_;
         _Int __initial_val_;
 
         template <__decays_to<_Sender> _Sndr>

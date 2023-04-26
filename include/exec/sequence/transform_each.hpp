@@ -24,8 +24,8 @@ namespace exec {
 
     template <class _Receiver, class _Fun>
     struct __operation_base {
-      [[no_unique_address]] _Receiver __rcvr_;
-      [[no_unique_address]] _Fun __fun_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
     };
 
     template <class _ReceiverId, class _Fun>
@@ -104,8 +104,8 @@ namespace exec {
       struct __t {
         using __id = __sender;
         using is_sequence_sender = void;
-        [[no_unique_address]] _Sender __sndr_;
-        [[no_unique_address]] _Fun __fun_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
 
         template <__decays_to<_Sender> Sndr>
         __t(Sndr&& __sndr, _Fun __fun)

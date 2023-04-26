@@ -67,7 +67,7 @@ namespace exec {
         : __receiver_{(_Rcvr&&) __rcvr} {
       }
 
-      [[no_unique_address]] _Receiver __receiver_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
       __mapply<__transform<__mconst<std::mutex>, __q<std::tuple>>, _ResultTuple> __mutexes_{};
       std::atomic<int> __n_ready_next_items_{};
       __mapply<__q<__to_op_queue>, _ResultTuple> __item_queues_{};
@@ -350,7 +350,7 @@ namespace exec {
         , __item_rcvr_((_ItemReceiver&&) __item_rcvr) {
       }
 
-      [[no_unique_address]] _ItemReceiver __item_rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _ItemReceiver __item_rcvr_;
       std::optional<connect_result_t<
         __next_sender_of_t<_ReceiverId, __just_sender_t<_ResultTuple>>,
         __t<__zipped_receiver<_ReceiverId, _ResultTuple, _ErrorsVariant>>>>
@@ -473,7 +473,7 @@ namespace exec {
 
         using __id = __next_sender;
 
-        [[no_unique_address]] _Item __item_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Item __item_;
         __operation_base_t* __parent_op_;
 
         template <__decays_to<__t> _Self, receiver _ItemReceiver>

@@ -26,7 +26,7 @@ namespace exec {
 
     template <class _ReceiverId>
     struct __op_base {
-      [[no_unique_address]] __t<_ReceiverId> __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS __t<_ReceiverId> __rcvr_;
       void (*__repeat_)(__op_base*) noexcept = nullptr;
     };
 
@@ -88,7 +88,7 @@ namespace exec {
 
       struct __t : __op_base<_ReceiverId> {
         using __id = __operation;
-        [[no_unique_address]] _SourceSender __source_;
+        STDEXEC_NO_UNIQUE_ADDRESS _SourceSender __source_;
         exec::trampoline_scheduler __trampoline_;
         std::optional<connect_result_t<__next_on_scheduler_sender, __receiver_t>> __next_op_;
 
@@ -148,7 +148,7 @@ namespace exec {
       using __recveiver_t = stdexec::__t<__receiver<__id<__decay_t<_Rcvr>>>>;
 
       class __t {
-        [[no_unique_address]] _Source __source_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Source __source_;
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sequence_receiver_of<_Receiver, __compl_sigs<_Source&, env_of_t<_Receiver>>>

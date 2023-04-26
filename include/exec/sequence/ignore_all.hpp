@@ -31,7 +31,7 @@ namespace exec {
       struct __t {
         using is_receiver = void;
         using __id = __item_receiver;
-        [[no_unique_address]] _ItemReceiver __rcvr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _ItemReceiver __rcvr_;
 
         // We eat all arguments
         template <same_as<set_value_t> _Tag, class... _Args>
@@ -68,7 +68,7 @@ namespace exec {
 
       struct __t {
         using __id = __item_sender;
-        [[no_unique_address]] _Item __item;
+        STDEXEC_NO_UNIQUE_ADDRESS _Item __item;
 
         template <__decays_to<__t> _Self, receiver _ItemReceiver>
           requires sender_to<_Item, __item_receiver_t<_ItemReceiver>>
@@ -98,7 +98,7 @@ namespace exec {
 
       struct __t {
         using __id = __receiver;
-        [[no_unique_address]] _Receiver __rcvr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
 
         template <sender _Item>
         friend __item_sender_t<_Item> tag_invoke(set_next_t, __t&, _Item&& __item) noexcept {
@@ -142,7 +142,7 @@ namespace exec {
       struct __t {
         using __id = __sender;
         using is_sender = void;
-        [[no_unique_address]] _Sender __sndr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr_;
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires receiver_of<

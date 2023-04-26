@@ -41,8 +41,8 @@ namespace exec {
       using __on_stop =
         typename stop_token_of_t<env_of_t<_Receiver&>>::template callback_type<__on_stop_requested>;
 
-      [[no_unique_address]] _Receiver __rcvr_;
-      [[no_unique_address]] _Predicate __pred_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Predicate __pred_;
       in_place_stop_source __stop_source_{};
       std::optional<__on_stop> __on_stop_{};
     };
