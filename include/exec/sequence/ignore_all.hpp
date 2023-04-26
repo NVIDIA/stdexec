@@ -148,10 +148,10 @@ namespace exec {
           requires receiver_of<
                      _Receiver,
                      __completion_sigs<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>>
-                && sequence_sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
+                // && sequence_sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
         friend sequence_connect_result_t< __copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
-          return sequence_connect(
+          return exec::sequence_connect(
             ((_Self&&) __self).__sndr_, __receiver_t<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
         }
 

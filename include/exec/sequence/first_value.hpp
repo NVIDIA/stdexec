@@ -116,8 +116,8 @@ namespace exec {
       __operation_base<_ReceiverId, _ValuesVariant>* __parent_;
       in_place_stop_source __stop_source_{};
 
-      using __on_item_stop =
-        typename stop_token_of_t<env_of_t<_ItemReceiver&>>::template callback_type<__on_stop_requested>;
+      using __on_item_stop = typename stop_token_of_t<
+        env_of_t<_ItemReceiver&>>::template callback_type<__on_stop_requested>;
       std::optional<__on_item_stop> __on_item_stop_{};
       std::optional<in_place_stop_token::callback_type<__on_stop_requested>> __on_parent_stop_{};
     };
@@ -249,7 +249,7 @@ namespace exec {
         friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
           if (
             !__self.__op_->__stop_source_.stop_requested()
-            || get_stop_token(get_env(__self.__op_->__rcvr_)).stop_requested()) {
+            || stdexec::get_stop_token(stdexec::get_env(__self.__op_->__rcvr_)).stop_requested()) {
             stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
           } else {
             __self.__op_->__notify_completion();
@@ -270,8 +270,8 @@ namespace exec {
         template <same_as<__t> _Self>
         friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const _Self& __self) noexcept {
           return stdexec::__make_env(
-            get_env(__self.__op_->__rcvr_),
-            __with_(get_stop_token, __self.__op_->__stop_source_.get_token()));
+            stdexec::get_env(__self.__op_->__rcvr_),
+            stdexec::__with_(get_stop_token, __self.__op_->__stop_source_.get_token()));
         }
       };
     };
@@ -286,7 +286,7 @@ namespace exec {
 
         __t(_Sender&& __sndr, _Receiver&& __rcvr)
           : __operation_base<_ReceiverId, _ValuesVariant>{static_cast<_Receiver&&>(__rcvr)}
-          , __op_{sequence_connect(static_cast<_Sender&&>(__sndr), __receiver_t{this})} {
+          , __op_{exec::sequence_connect(static_cast<_Sender&&>(__sndr), __receiver_t{this})} {
         }
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
@@ -316,10 +316,19 @@ namespace exec {
         __id<__decay_t<_Rcvr>>,
         __values_variant_t<__copy_cvref_t<_Self, _Sender>, _Rcvr>>>;
 
+      template <class _Self, class _Env>
+      using __completion_sigs = make_completion_signatures<
+            __copy_cvref_t<_Self, _Sender>,
+            _Env,
+            completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>,
+            __compl_sigs::__default_set_value>;
+
       struct __t {
         [[no_unique_address]] _Sender __sndr;
 
         template <__decays_to<__t> _Self, class _Rcvr>
+          requires receiver_of<_Rcvr, __completion_sigs<_Self, env_of_t<_Rcvr>>>
+                // && sequence_sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Rcvr>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Rcvr&& __rcvr)
           -> __operation_t<_Self, _Rcvr> {
           return {static_cast<_Self&&>(__self).__sndr, static_cast<_Rcvr&&>(__rcvr)};
@@ -327,11 +336,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, const _Env&)
-          -> make_completion_signatures<
-            __copy_cvref_t<_Self, _Sender>,
-            _Env,
-            completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>,
-            __compl_sigs::__default_set_value>;
+          -> __completion_sigs<_Self, _Env>;
       };
     };
 

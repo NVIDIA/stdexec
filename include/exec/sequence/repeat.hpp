@@ -38,6 +38,9 @@ namespace exec {
         using __id = __receiver;
         __op_base<_ReceiverId>* __op_;
 
+        static constexpr bool __unstoppable_token =
+          unstoppable_token<stop_token_of_t<env_of_t<_Receiver>>>;
+
         template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
         friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
           STDEXEC_ASSERT(__self.__op_->__repeat_);
@@ -53,11 +56,15 @@ namespace exec {
 
         template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
         friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
-          auto token = stdexec::get_stop_token(stdexec::get_env(__self.__op_->__rcvr_));
-          if (token.stop_requested()) {
-            stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
-          } else {
+          if constexpr (__unstoppable_token) {
             stdexec::set_value(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+          } else {
+            auto token = stdexec::get_stop_token(stdexec::get_env(__self.__op_->__rcvr_));
+            if (token.stop_requested()) {
+              stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+            } else {
+              stdexec::set_value(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+            }
           }
         }
 
@@ -94,7 +101,7 @@ namespace exec {
           }
           try {
             auto& __next = __self->__next_op_.emplace(__conv{[&] {
-              return connect(
+              return stdexec::connect(
                 stdexec::on(
                   __self->__trampoline_, exec::set_next(__self->__rcvr_, __self->__source_)),
                 __receiver_t{__base});

@@ -16,6 +16,10 @@
  */
 #pragma once
 
+#if __has_include(<version>)
+#include <version>
+#ifdef __cpp_lib_ranges
+
 #include "../sequence_senders.hpp"
 
 #include <ranges>
@@ -94,24 +98,27 @@ namespace exec {
     };
 
     template <class _Range, class _ReceiverId>
+    auto __set_next(__operation_base<_Range, _ReceiverId>* __self) {
+      return exec::set_next(
+        __self->__rcvr_,
+        stdexec::just(__self->__it_)
+          | stdexec::then([](std::ranges::iterator_t<_Range> __it) { return *__it; }));
+    }
+
+    template <class _Range, class _ReceiverId>
     struct __operation {
       struct __t : __operation_base<_Range, _ReceiverId> {
         using __id = __operation;
         using _Receiver = stdexec::__t<_ReceiverId>;
 
         using __item_sender_t =
-          decltype(stdexec::just(__declval<std::ranges::iterator_t<_Range>>()) | stdexec::then([](std::ranges::iterator_t<_Range> __it) {
+          decltype(stdexec::just(__declval<std::ranges::iterator_t<_Range>>()) //
+                  | stdexec::then([](std::ranges::iterator_t<_Range> __it) {
                      return *__it;
                    }));
 
-        static auto __set_next(__operation_base<_Range, _ReceiverId>* __self) {
-          return exec::set_next(
-            __self->__rcvr_,
-            stdexec::just(__self->__it_)
-              | stdexec::then([](std::ranges::iterator_t<_Range> __it) { return *__it; }));
-        }
-
-        using __next_sender_t = decltype(__set_next(__declval<__t*>()));
+        using __next_sender_t =
+          decltype(__set_next(__declval<__operation_base<_Range, _ReceiverId>*>()));
 
         using __receiver_t = stdexec::__t<__receiver<_Range, _ReceiverId>>;
         std::optional<connect_result_t<__next_sender_t, __receiver_t>> __item_;
@@ -170,12 +177,14 @@ namespace exec {
             set_stopped_t()>>;
 
         using __item_sender_t =
-          decltype(just(__declval<std::ranges::iterator_t<_Range>>()) | then([](std::ranges::iterator_t<_Range> __it) {
+          decltype(stdexec::just(__declval<std::ranges::iterator_t<_Range>>()) //
+                   | stdexec::then([](std::ranges::iterator_t<_Range> __it) {
                      return *__it;
                    }));
 
         template <class _Rcvr>
-        using __next_sender_t = __next_sender_of_t<__decay_t<_Rcvr>&, __item_sender_t>;
+        using __next_sender_t = decltype(__set_next(
+          __declval<__operation_base<_Range, stdexec::__id<__decay_t<_Rcvr>>>*>()));
 
         template <class _Rcvr>
         using __operation_t = stdexec::__t<__operation<_Range, stdexec::__id<__decay_t<_Rcvr>>>>;
@@ -206,3 +215,6 @@ namespace exec {
   using __iterate::iterate_t;
   inline constexpr iterate_t iterate{};
 }
+
+#endif
+#endif

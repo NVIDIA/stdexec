@@ -16,6 +16,7 @@
  */
 
 #include "exec/sequence/iterate.hpp"
+#ifdef __cpp_lib_ranges
 
 #include "exec/sequence/enumerate_each.hpp"
 #include "exec/sequence/ignore_all.hpp"
@@ -45,9 +46,20 @@ TEST_CASE("iterate is unstoppable if the environment is", "[sequence_senders][it
 
 TEST_CASE("sequence senders - iterate over array", "[sequence_senders][iterate]") {
   std::array<int, 3> a = {42, 43, 44};
+  auto snd = exec::iterate(a) //
+           | exec::ignore_all();
+  stdexec::sync_wait(std::move(snd));
+}
+
+TEST_CASE(
+  "sequence senders - iterate over array and apply algorithms",
+  "[sequence_senders][iterate]") {
+  std::array<int, 3> a = {42, 43, 44};
   auto snd = exec::iterate(a)                                                      //
            | exec::enumerate_each()                                                //
            | exec::then_each([](int counter, int i) { CHECK(i == 42 + counter); }) //
            | exec::ignore_all();
   stdexec::sync_wait(snd);
 }
+
+#endif
