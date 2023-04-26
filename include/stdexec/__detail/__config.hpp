@@ -136,3 +136,6 @@
 #ifndef STDEXEC_ASSERT_FN
 #define STDEXEC_ASSERT_FN assert
 #endif
+
+namespace stdexec {
+}

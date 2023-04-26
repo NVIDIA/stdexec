@@ -376,7 +376,8 @@ TEST_CASE(
   "any_sender does connect with stop token if the get_stop_token query is registered",
   "[types][any_sender]") {
   using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
-  using receiver_ref = any_receiver_ref<Sigs, get_stop_token.signature<in_place_stop_token() noexcept>>;
+  using receiver_ref =
+    any_receiver_ref<Sigs, get_stop_token.signature<in_place_stop_token() noexcept>>;
   using stoppable_sender = receiver_ref::any_sender<>;
   stoppable_sender sender = when_any(just(21));
   in_place_stop_source stop_source{};

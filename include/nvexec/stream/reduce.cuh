@@ -114,7 +114,7 @@ namespace nvexec {
           stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, InitT, Fun>>;
 
         template <class Range>
-        using set_value_t = stdexec::completion_signatures<stdexec::set_value_t(
+        using _set_value_t = completion_signatures<set_value_t(
           ::std::add_lvalue_reference_t<
             typename __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>>)>;
       };
@@ -123,22 +123,19 @@ namespace nvexec {
     struct reduce_t {
       template <class Sender, class InitT, class Fun>
       using __sender =
-        stdexec::__t<reduce_::sender_t<stdexec::__id<stdexec::__decay_t<Sender>>, InitT, Fun>>;
+        stdexec::__t<reduce_::sender_t<stdexec::__id<__decay_t<Sender>>, InitT, Fun>>;
 
-      template <
-        stdexec::sender Sender,
-        stdexec::__movable_value InitT,
-        stdexec::__movable_value Fun = cub::Sum>
+      template < sender Sender, __movable_value InitT, __movable_value Fun = cub::Sum>
       __sender<Sender, InitT, Fun> operator()(Sender&& sndr, InitT init, Fun fun) const {
-        return __sender<Sender, InitT, Fun>{{}, (Sender &&) sndr, (InitT &&) init, (Fun &&) fun};
+        return __sender<Sender, InitT, Fun>{{}, (Sender&&) sndr, (InitT&&) init, (Fun&&) fun};
       }
 
       template <class InitT, class Fun = cub::Sum>
-      stdexec::__binder_back<reduce_t, InitT, Fun> operator()(InitT init, Fun fun = {}) const {
+      __binder_back<reduce_t, InitT, Fun> operator()(InitT init, Fun fun = {}) const {
         return {
           {},
           {},
-          {(InitT &&) init, (Fun &&) fun}
+          {(InitT&&) init, (Fun&&) fun}
         };
       }
     };
